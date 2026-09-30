@@ -6,6 +6,10 @@ import type { AuthUser } from "../types/auth";
 
 // Component bảo vệ route hoặc trang chủ sau khi đăng nhập thành công
 const HomePage: React.FC = () => {
+  React.useEffect(() => {
+    document.title = "Trang chủ | LOHA SALES";
+  }, []);
+
   const token = localStorage.getItem("auth_token");
   const storedUser = localStorage.getItem("auth_user");
   const user: AuthUser | null = storedUser ? JSON.parse(storedUser) : null;

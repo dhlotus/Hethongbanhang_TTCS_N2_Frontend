@@ -20,7 +20,7 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    "w-full h-12 rounded-xl font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus:ring-4 select-none disabled:opacity-60 disabled:cursor-not-allowed";
+    "w-full h-10.5 sm:h-11 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus:ring-4 select-none disabled:opacity-60 disabled:cursor-not-allowed";
 
   const variantStyles = {
     primary:

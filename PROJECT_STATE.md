@@ -32,13 +32,11 @@
   - `Button` (`src/components/button.tsx`): Trạng thái loading spinner, chặn click đúp, micro-interactions.
   - `Alert` (`src/components/alert.tsx`): Hiển thị thông báo lỗi và cảnh báo tạm khóa tài khoản.
 - [x] **Trang Đăng nhập hoàn chỉnh (`/login` - `src/pages/login-page.tsx`):**
-  - **Layout Split-Screen:** 
-    - Desktop (`>= lg`): 55% Cột Trái Brand Showcase (Dark Gradient sang trọng, 3 giá trị cốt lõi, footer bảo mật) & 45% Cột Phải Form đăng nhập.
-    - Mobile (`< lg`): Tự động ẩn cột trái, căn giữa Form đăng nhập 100% tiện dụng.
-  - **Form Đăng nhập chuẩn Senior Frontend:**
-    - Icon nhận diện thương hiệu đa lớp, tiêu đề *"Hệ thống quản lý LOHA SALES"* và subtitle căn giữa.
-    - Validate Email & Mật khẩu chuẩn Zod Schema.
-    - Đăng nhập nhanh Demo bằng **Interactive Role Chips** (5 vai trò: Admin, NV Sale, Thủ kho, Kế toán, Khách hàng) kèm chấm màu trạng thái phân quyền trực quan.
+  - **Layout Split-Screen & Zero-Scrollbar (Khớp 100% màn hình):**
+    - Desktop (`>= lg`): Thiết lập `h-screen max-h-screen overflow-hidden` vừa khít khung nhìn, chấm dứt hoàn toàn hiện tượng thanh cuộn / thanh kéo dọc trên mọi màn hình laptop.
+    - Cột Trái: Sử dụng Poster minh họa 3D isometric hiện đại, tone màu pastel dịu mắt về kho vận & phân phối B2B (`src/assets/login-poster.jpg`), loại bỏ toàn bộ khối chữ thừa thãi.
+    - Cột Phải: Form đăng nhập chuẩn production (chỉ gồm `Email`, `Mật khẩu`, `Ghi nhớ đăng nhập`, `Quên mật khẩu?` và nút `Đăng nhập`), loại bỏ hoàn toàn các nút/thành phần test demo, căn giữa thoáng đãng và sang trọng.
+    - Mobile (`< lg`): Tự động ẩn cột poster, form co dãn linh hoạt, hỗ trợ cuộn êm ái khi bàn phím ảo xuất hiện.
   - **Dịch vụ Xác thực (`src/services/auth.service.ts`):** Giả lập đăng nhập, mã hóa lỗi chung 401 chống user enumeration, xử lý khóa tạm 15 phút khi nhập sai nhiều lần.
 - [x] **Kiểm tra chất lượng:**
   - `npm run build`: Thành công (**0 lỗi**).
