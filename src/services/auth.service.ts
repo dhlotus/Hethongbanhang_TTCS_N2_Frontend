@@ -2,61 +2,151 @@ import axios from "axios";
 import { apiClient } from "./api";
 import type { LoginCredentials, LoginResponse } from "../types/auth";
 
-// Danh sách tài khoản demo cho môi trường dev và kiểm thử offline
+// Danh sách 7 tài khoản demo theo đúng 7 vai trò của hệ thống LOHA SALES (Mật khẩu chung: 123456)
 const DEMO_USERS: Record<string, LoginResponse> = {
+  // 1. Quản trị hệ thống (Admin)
+  "admin@loha.vn": {
+    accessToken: "demo-jwt-admin-token",
+    tokenType: "Bearer",
+    user: {
+      id: "demo-admin",
+      username: "admin",
+      fullName: "Nguyễn Văn Admin (Quản Trị Viên)",
+      email: "admin@loha.vn",
+      roles: ["ADMIN"],
+    },
+  },
   "admin@system.local": {
     accessToken: "demo-jwt-admin-token",
     tokenType: "Bearer",
     user: {
       id: "demo-admin",
       username: "admin",
-      fullName: "Quản Trị Viên",
-      email: "admin@system.local",
-      roles: ["Admin"],
+      fullName: "Nguyễn Văn Admin (Quản Trị Viên)",
+      email: "admin@loha.vn",
+      roles: ["ADMIN"],
+    },
+  },
+
+  // 2. Nhân viên kinh doanh (Sales Rep)
+  "sales@loha.vn": {
+    accessToken: "demo-jwt-sales-token",
+    tokenType: "Bearer",
+    user: {
+      id: "demo-sales-rep",
+      username: "sales",
+      fullName: "Trần Văn Nam (Nhân Viên Kinh Doanh)",
+      email: "sales@loha.vn",
+      roles: ["SALES_REP"],
     },
   },
   "sales@system.local": {
     accessToken: "demo-jwt-sales-token",
     tokenType: "Bearer",
     user: {
-      id: "demo-sales",
+      id: "demo-sales-rep",
       username: "sales",
-      fullName: "Nhân Viên Kinh Doanh",
-      email: "sales@system.local",
-      roles: ["Sales Rep"],
+      fullName: "Trần Văn Nam (Nhân Viên Kinh Doanh)",
+      email: "sales@loha.vn",
+      roles: ["SALES_REP"],
+    },
+  },
+
+  // 3. Quản lý kinh doanh (Sales Manager)
+  "salesmanager@loha.vn": {
+    accessToken: "demo-jwt-salesmanager-token",
+    tokenType: "Bearer",
+    user: {
+      id: "demo-sales-manager",
+      username: "salesmanager",
+      fullName: "Lê Hoàng Trưởng Phòng (Quản Lý Kinh Doanh)",
+      email: "salesmanager@loha.vn",
+      roles: ["SALES_MANAGER"],
+    },
+  },
+
+  // 4. Thủ kho (Warehouse Keeper)
+  "warehouse@loha.vn": {
+    accessToken: "demo-jwt-wh-keeper-token",
+    tokenType: "Bearer",
+    user: {
+      id: "demo-warehouse-keeper",
+      username: "warehouse",
+      fullName: "Phạm Hùng Kho (Thủ Kho)",
+      email: "warehouse@loha.vn",
+      roles: ["WAREHOUSE_KEEPER"],
     },
   },
   "warehouse@system.local": {
-    accessToken: "demo-jwt-wh-token",
+    accessToken: "demo-jwt-wh-keeper-token",
     tokenType: "Bearer",
     user: {
-      id: "demo-wh",
+      id: "demo-warehouse-keeper",
       username: "warehouse",
-      fullName: "Thủ Kho",
-      email: "warehouse@system.local",
-      roles: ["Warehouse"],
+      fullName: "Phạm Hùng Kho (Thủ Kho)",
+      email: "warehouse@loha.vn",
+      roles: ["WAREHOUSE_KEEPER"],
+    },
+  },
+
+  // 5. Quản lý kho (Warehouse Manager)
+  "warehousemanager@loha.vn": {
+    accessToken: "demo-jwt-wh-manager-token",
+    tokenType: "Bearer",
+    user: {
+      id: "demo-warehouse-manager",
+      username: "warehousemanager",
+      fullName: "Đỗ Quốc Bảo (Quản Lý Kho)",
+      email: "warehousemanager@loha.vn",
+      roles: ["WAREHOUSE_MANAGER"],
+    },
+  },
+
+  // 6. Kế toán (Accountant)
+  "accountant@loha.vn": {
+    accessToken: "demo-jwt-acc-token",
+    tokenType: "Bearer",
+    user: {
+      id: "demo-accountant",
+      username: "accountant",
+      fullName: "Vũ Mai Hoa (Kế Toán Công Nợ)",
+      email: "accountant@loha.vn",
+      roles: ["ACCOUNTANT"],
     },
   },
   "accountant@system.local": {
     accessToken: "demo-jwt-acc-token",
     tokenType: "Bearer",
     user: {
-      id: "demo-acc",
+      id: "demo-accountant",
       username: "accountant",
-      fullName: "Kế Toán Công Nợ",
-      email: "accountant@system.local",
-      roles: ["Accountant"],
+      fullName: "Vũ Mai Hoa (Kế Toán Công Nợ)",
+      email: "accountant@loha.vn",
+      roles: ["ACCOUNTANT"],
+    },
+  },
+
+  // 7. Đại lý / Khách hàng B2B (Dealer / Customer)
+  "dealer@loha.vn": {
+    accessToken: "demo-jwt-dealer-token",
+    tokenType: "Bearer",
+    user: {
+      id: "demo-dealer",
+      username: "dealer",
+      fullName: "Đại Lý Cửa Hàng Minh Khang (B2B)",
+      email: "dealer@loha.vn",
+      roles: ["CUSTOMER"],
     },
   },
   "customer@gmail.com": {
-    accessToken: "demo-jwt-cus-token",
+    accessToken: "demo-jwt-dealer-token",
     tokenType: "Bearer",
     user: {
-      id: "demo-cus",
-      username: "customer",
-      fullName: "Đại Lý Cửa Hàng",
-      email: "customer@gmail.com",
-      roles: ["Customer"],
+      id: "demo-dealer",
+      username: "dealer",
+      fullName: "Đại Lý Cửa Hàng Minh Khang (B2B)",
+      email: "dealer@loha.vn",
+      roles: ["CUSTOMER"],
     },
   },
 };

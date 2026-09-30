@@ -1,0 +1,9 @@
+1	Quản trị hệ thống	admin@loha.vn
+2	Nhân viên kinh doanh	sales@loha.vn
+3	Quản lý kinh doanh	salesmanager@loha.vn
+4	Thủ kho	warehouse@loha.vn
+5	Quản lý kho	warehousemanager@loha.vn
+6	Kế toán công nợ	accountant@loha.vn
+7	Đại lý / Khách hàng B2B	dealer@loha.vn
+
+password: 123456

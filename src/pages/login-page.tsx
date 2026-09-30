@@ -12,21 +12,25 @@ import {
 } from "lucide-react";
 import { Input } from "../components/input";
 import { Button } from "../components/button";
-import { Alert } from "../components/alert";
+import { Toast, type ToastType } from "../components/toast";
 import { loginSchema, type LoginFormData } from "../utils/validation";
 import { authService } from "../services/auth.service";
 import loginPoster from "../assets/login-poster.jpg";
 
 /**
  * Trang Đăng nhập LOHA SALES:
- * - Cột Trái: Poster hình ảnh phân phối & kho vận tinh tế, nhẹ nhàng, không cầu kỳ
- * - Cột Phải: Form đăng nhập chuẩn UI/UX, vừa vặn tuyệt đối 100% viewport, loại bỏ hoàn toàn thanh kéo
- * - Thích ứng responsive đa thiết bị
+ * - Thông báo lỗi qua Toast nổi ở góc màn hình, tuyệt đối không chèn Alert làm vỡ form
+ * - Thích ứng Responsive hoàn hảo trên mọi kích thước (Mobile, Tablet, Laptop, Desktop)
+ * - Cột Trái: Poster minh họa hiện đại, nhẹ nhàng
+ * - Cột Phải: Form chuẩn UI/UX, co dãn tự nhiên
  */
 export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string>("");
-  const [isLocked, setIsLocked] = useState(false);
+  const [toast, setToast] = useState<{
+    type: ToastType;
+    title: string;
+    message: string;
+  } | null>(null);
 
   const navigate = useNavigate();
 
@@ -48,8 +52,7 @@ export const LoginPage: React.FC = () => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    setErrorMessage("");
-    setIsLocked(false);
+    setToast(null);
 
     try {
       const response = await authService.login(data);
@@ -61,39 +64,54 @@ export const LoginPage: React.FC = () => {
     } catch (error: unknown) {
       const err = error as Error;
       const message = err.message || "Tài khoản hoặc mật khẩu không chính xác";
-      setErrorMessage(message);
 
-      if (
+      const isLock =
         message.toLowerCase().includes("khóa tạm thời") ||
         message.toLowerCase().includes("15 phút") ||
-        message.toLowerCase().includes("tạm khóa")
-      ) {
-        setIsLocked(true);
-      }
+        message.toLowerCase().includes("tạm khóa");
+
+      setToast({
+        type: isLock ? "warning" : "error",
+        title: isLock ? "Cảnh báo bảo mật" : "Đăng nhập thất bại",
+        message,
+      });
     }
   };
 
   return (
-    <div className="w-full h-screen max-h-screen overflow-hidden flex bg-slate-50 text-slate-800 antialiased">
+    <div className="w-full min-h-screen lg:h-screen flex items-center justify-center p-3 sm:p-4 lg:p-6 bg-slate-50 text-slate-800 antialiased overflow-hidden">
+      {/* Toast thông báo lỗi / cảnh báo nổi, không chiếm diện tích form */}
+      {toast && (
+        <Toast
+          type={toast.type}
+          title={toast.title}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       {/* ========================================================================= */}
-      {/* CỘT TRÁI: Poster Hình Ảnh Tinh Tế, Nhẹ Nhàng, Không Cầu Kỳ                 */}
+      {/* CONTAINER CHÍNH: Dùng đơn vị tương đối (82vh, max 560px) luôn vừa khít     */}
       {/* ========================================================================= */}
-      <section className="relative hidden lg:flex lg:w-1/2 xl:w-5/12 h-full p-4 lg:p-6 xl:p-8 shrink-0">
-        <div className="relative w-full h-full rounded-2xl xl:rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-slate-100 flex flex-col justify-between">
+      <div className="w-full max-w-md lg:max-w-4xl xl:max-w-5xl lg:h-[82vh] lg:max-h-[560px] bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-[0_10px_40px_rgba(0,0,0,0.04)] overflow-hidden grid grid-cols-1 lg:grid-cols-2 my-auto">
+        {/* ===================================================================== */}
+        {/* CỘT TRÁI: Poster (Chiếm chính xác 50% chiều rộng & 100% chiều cao)     */}
+        {/* ===================================================================== */}
+        <div className="relative hidden lg:block w-full h-full bg-slate-100 select-none">
           <img
             src={loginPoster}
             alt="LOHA SALES - Hệ thống Quản lý Bán hàng & Kho B2B"
-            className="absolute inset-0 w-full h-full object-cover object-center select-none pointer-events-none"
+            className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
           />
 
-          {/* Lớp phủ gradient mờ nhẹ ở trên và dưới để tăng độ tương phản và sang trọng */}
+          {/* Lớp phủ gradient mờ nhẹ để tôn logo và chữ */}
           <div
             aria-hidden="true"
-            className="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-transparent to-slate-900/30 pointer-events-none"
+            className="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-transparent to-slate-900/35 pointer-events-none"
           />
 
-          {/* Badge nhận diện thương hiệu tinh tế ở góc trên */}
-          <div className="relative z-10 p-5 sm:p-6 flex items-center gap-3">
+          {/* Badge thương hiệu góc trên */}
+          <div className="relative z-10 p-5 xl:p-6 flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-blue-600 text-white shadow-md flex items-center justify-center">
               <Layers className="w-4.5 h-4.5" />
             </div>
@@ -101,28 +119,25 @@ export const LoginPage: React.FC = () => {
               <span className="text-base font-bold text-white block leading-tight tracking-tight drop-shadow-xs">
                 LOHA SALES
               </span>
-              <span className="text-[10px] text-blue-100/90 font-medium block drop-shadow-xs">
+              <span className="text-[10px] text-blue-100 font-medium block drop-shadow-xs">
                 Hệ thống Quản lý Bán hàng & Kho B2B
               </span>
             </div>
           </div>
 
-          {/* Tagline nhẹ nhàng ở đáy poster */}
-          <div className="relative z-10 p-5 sm:p-6 text-[11px] text-white/80 font-medium drop-shadow-xs">
+          {/* Tagline góc dưới */}
+          <div className="absolute bottom-0 inset-x-0 p-5 xl:p-6 text-[11px] text-white/90 font-medium drop-shadow-xs z-10">
             Vận hành phân phối & kho vận thông minh
           </div>
         </div>
-      </section>
 
-      {/* ========================================================================= */}
-      {/* CỘT PHẢI: Form Đăng Nhập Chuẩn UI/UX, Vừa Vặn Không Scrollbar             */}
-      {/* ========================================================================= */}
-      <section className="relative flex-1 h-full flex flex-col justify-center items-center p-4 sm:p-6 overflow-y-auto lg:overflow-hidden">
-        {/* Card Form Đăng nhập */}
-        <div className="relative w-full max-w-[380px] bg-white rounded-2xl border border-slate-200/80 shadow-[0_4px_24px_rgb(0,0,0,0.03)] p-6 sm:p-7">
+        {/* ===================================================================== */}
+        {/* CỘT PHẢI: Form Đăng Nhập (Cân xứng tuyệt đối với cột Poster)           */}
+        {/* ===================================================================== */}
+        <div className="w-full h-full flex flex-col justify-center p-6 sm:p-8 lg:p-8 xl:p-10 bg-white overflow-y-auto">
           {/* Header Card */}
-          <div className="text-center mb-5">
-            <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 mb-2.5 shadow-2xs">
+          <div className="text-center mb-4 sm:mb-5">
+            <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 mb-2 shadow-2xs">
               <Layers className="w-5 h-5 text-blue-600" />
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
@@ -133,19 +148,8 @@ export const LoginPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Thông báo lỗi / Khóa tài khoản */}
-          {errorMessage && (
-            <div className="mb-4">
-              <Alert
-                type={isLocked ? "warning" : "error"}
-                title={isLocked ? "Cảnh báo bảo mật" : "Đăng nhập thất bại"}
-                message={errorMessage}
-              />
-            </div>
-          )}
-
           {/* Form đăng nhập */}
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-3.5">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-3 sm:space-y-3.5">
             {/* Input Email */}
             <Input
               label="Email"
@@ -188,13 +192,13 @@ export const LoginPage: React.FC = () => {
             />
 
             {/* Tùy chọn Ghi nhớ & Quên mật khẩu */}
-            <div className="flex items-center justify-between text-xs pt-0.5">
+            <div className="flex items-center justify-between text-xs sm:text-sm pt-0.5">
               <label className="flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 select-none">
                 <input
                   type="checkbox"
                   defaultChecked
                   disabled={isSubmitting}
-                  className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 cursor-pointer"
+                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 cursor-pointer"
                 />
                 <span>Ghi nhớ đăng nhập</span>
               </label>
@@ -220,7 +224,7 @@ export const LoginPage: React.FC = () => {
             </Button>
           </form>
         </div>
-      </section>
+      </div>
     </div>
   );
 };

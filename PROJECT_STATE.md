@@ -30,14 +30,25 @@
 - [x] **Bộ UI Components dùng chung:**
   - `Input` (`src/components/input.tsx`): Hỗ trợ icon, toggle ẩn/hiện password, validate real-time.
   - `Button` (`src/components/button.tsx`): Trạng thái loading spinner, chặn click đúp, micro-interactions.
-  - `Alert` (`src/components/alert.tsx`): Hiển thị thông báo lỗi và cảnh báo tạm khóa tài khoản.
+  - `Alert` (`src/components/alert.tsx`): Khối thông báo cảnh báo.
+  - `Toast` (`src/components/toast.tsx`): Thông báo nổi góc màn hình (Floating Toast), tự đóng sau 4s, giữ form cố định không bị đẩy lệch layout.
 - [x] **Trang Đăng nhập hoàn chỉnh (`/login` - `src/pages/login-page.tsx`):**
-  - **Layout Split-Screen & Zero-Scrollbar (Khớp 100% màn hình):**
-    - Desktop (`>= lg`): Thiết lập `h-screen max-h-screen overflow-hidden` vừa khít khung nhìn, chấm dứt hoàn toàn hiện tượng thanh cuộn / thanh kéo dọc trên mọi màn hình laptop.
-    - Cột Trái: Sử dụng Poster minh họa 3D isometric hiện đại, tone màu pastel dịu mắt về kho vận & phân phối B2B (`src/assets/login-poster.jpg`), loại bỏ toàn bộ khối chữ thừa thãi.
-    - Cột Phải: Form đăng nhập chuẩn production (chỉ gồm `Email`, `Mật khẩu`, `Ghi nhớ đăng nhập`, `Quên mật khẩu?` và nút `Đăng nhập`), loại bỏ hoàn toàn các nút/thành phần test demo, căn giữa thoáng đãng và sang trọng.
-    - Mobile (`< lg`): Tự động ẩn cột poster, form co dãn linh hoạt, hỗ trợ cuộn êm ái khi bàn phím ảo xuất hiện.
-  - **Dịch vụ Xác thực (`src/services/auth.service.ts`):** Giả lập đăng nhập, mã hóa lỗi chung 401 chống user enumeration, xử lý khóa tạm 15 phút khi nhập sai nhiều lần.
+  - **Thông báo lỗi qua Toast:** Khi đăng nhập sai hoặc bị tạm khóa, thông báo xuất hiện dưới dạng Toast nổi phía trên bên phải màn hình, tuyệt đối không chèn vào trong form gây biến dạng layout.
+  - **Layout Dual-Panel Cân Xứng Tuyệt Đối (Equal 50/50 Split & Relative Viewport Units):**
+    - Desktop (`>= lg`): Sử dụng đơn vị tương đối **`lg:h-[82vh] lg:max-h-[560px]`**, loại bỏ hoàn toàn các thông số cố định pixel cứng (`min-h-[540px]`). Chiều cao khung thẻ luôn co dãn tỉ lệ thuận với màn hình (luôn chiếm 82% chiều cao màn hình, chừa 18% cho lề trên dưới), đảm bảo **vừa khít 100% viewport** trên mọi độ phân giải. Poster bên trái và Form bên phải luôn bằng nhau tuyệt đối cả rộng lẫn cao.
+    - Mobile / Tablet (`< lg`): Tự động ẩn cột poster, form căn giữa (`w-full max-w-md`) với lề thoáng đãng, hỗ trợ cuộn mượt mà khi màn hình thấp hoặc bàn phím ảo bật lên.
+    - Chống tràn ngang và dọc (`overflow-hidden`).
+  - **Dịch vụ Xác thực (`src/services/auth.service.ts`):** Giả lập đăng nhập chuẩn 7 vai trò, mã hóa lỗi chung 401 chống user enumeration, xử lý khóa tạm 15 phút khi nhập sai nhiều lần.
+  - **Danh sách 7 Tài khoản Test (Mật khẩu chung: `123456`):**
+    | STT | Vai trò | Email đăng nhập | Tên hiển thị mẫu | Mã Role |
+    | :---: | :--- | :--- | :--- | :--- |
+    | 1 | **Quản trị hệ thống** | `admin@loha.vn` | Nguyễn Văn Admin | `ADMIN` |
+    | 2 | **Nhân viên kinh doanh** | `sales@loha.vn` | Trần Văn Nam | `SALES_REP` |
+    | 3 | **Quản lý kinh doanh** | `salesmanager@loha.vn` | Lê Hoàng Trưởng Phòng | `SALES_MANAGER` |
+    | 4 | **Thủ kho** | `warehouse@loha.vn` | Phạm Hùng Kho | `WAREHOUSE_KEEPER` |
+    | 5 | **Quản lý kho** | `warehousemanager@loha.vn` | Đỗ Quốc Bảo | `WAREHOUSE_MANAGER` |
+    | 6 | **Kế toán** | `accountant@loha.vn` | Vũ Mai Hoa | `ACCOUNTANT` |
+    | 7 | **Đại lý B2B** | `dealer@loha.vn` | Cửa Hàng Minh Khang | `CUSTOMER` |
 - [x] **Kiểm tra chất lượng:**
   - `npm run build`: Thành công (**0 lỗi**).
   - `npm run lint`: Thành công (**0 lỗi, 0 cảnh báo**).
