@@ -107,18 +107,27 @@ interface ToastState {
 export const UsersPage: React.FC = () => {
   const currentAdmin = getStoredUser();
 
-  // Danh sách và phân trang
+  // Danh sách và phân trang (Mặc định 20 dòng / trang theo chuẩn SN-13)
   const [users, setUsers] = useState<UserManagementItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [limit] = useState(8);
+  const [limit, setLimit] = useState(20);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Bộ lọc
+  // Bộ lọc & Tìm kiếm mượt mà có Debounce (350ms)
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [searchInput]);
 
   // Toast thông báo nổi mượt mà (Fade in & Slide out)
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -154,11 +163,11 @@ export const UsersPage: React.FC = () => {
     if (!toast) return;
     const timer = setTimeout(() => {
       hideToast();
-    }, 3800);
+    }, 4500);
     return () => clearTimeout(timer);
   }, [toast, hideToast]);
 
-  // Modal Tạo / Chỉnh sửa
+  // Modal Tạo / Chỉnh sửa & Quản lý Lỗi Validate
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserManagementItem | null>(null);
   const [formData, setFormData] = useState<CreateUserPayload>({
@@ -170,6 +179,17 @@ export const UsersPage: React.FC = () => {
     assignedWarehouse: "",
     password: "",
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const clearFieldError = (field: string) => {
+    setFormErrors((prev) => {
+      if (!prev[field]) return prev;
+      const updated = { ...prev };
+      delete updated[field];
+      return updated;
+    });
+  };
+
   const [submitting, setSubmitting] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -206,7 +226,7 @@ export const UsersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, roleFilter, statusFilter]);
+  }, [page, limit, search, roleFilter, statusFilter, showToast]);
 
   useEffect(() => {
     fetchUsers();
@@ -255,6 +275,7 @@ export const UsersPage: React.FC = () => {
   // Mở Modal tạo mới
   const handleOpenCreateModal = () => {
     setEditingUser(null);
+    setFormErrors({});
     setFormData({
       fullName: "",
       username: "",
@@ -270,6 +291,7 @@ export const UsersPage: React.FC = () => {
   // Mở Modal chỉnh sửa
   const handleOpenEditModal = (user: UserManagementItem) => {
     setEditingUser(user);
+    setFormErrors({});
     setFormData({
       fullName: user.fullName,
       username: user.username,
@@ -282,21 +304,78 @@ export const UsersPage: React.FC = () => {
     setModalOpen(true);
   };
 
+  // Hàm validate biểu mẫu phía Client (SN-13)
+  const validateForm = (): boolean => {
+    const errs: Record<string, string> = {};
+
+    // 1. Họ và tên
+    if (!formData.fullName.trim()) {
+      errs.fullName = "Họ và tên nhân sự không được để trống";
+    } else if (formData.fullName.trim().length < 2) {
+      errs.fullName = "Họ và tên phải có ít nhất 2 ký tự";
+    }
+
+    // 2. Tên đăng nhập (chỉ kiểm tra khi tạo mới)
+    if (!editingUser) {
+      if (!formData.username.trim()) {
+        errs.username = "Tên đăng nhập không được để trống";
+      } else if (formData.username.trim().length < 3) {
+        errs.username = "Tên đăng nhập phải có ít nhất 3 ký tự";
+      } else if (!/^[a-zA-Z0-9_.-]+$/.test(formData.username.trim())) {
+        errs.username = "Tên đăng nhập chỉ chứa chữ cái, số, gạch dưới/ngang, không dấu";
+      }
+    }
+
+    // 3. Email
+    if (!formData.email.trim()) {
+      errs.email = "Email công việc không được để trống";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      errs.email = "Định dạng email không hợp lệ (VD: nhanvien@loha.vn)";
+    }
+
+    // 4. Số điện thoại (chuẩn Việt Nam: 10 chữ số, đầu số 03, 05, 07, 08, 09 hoặc +84)
+    if (formData.phone && formData.phone.trim()) {
+      const cleanPhone = formData.phone.trim().replace(/[\s.-]+/g, "");
+      const vnPhoneRegex = /^(0|\+84)(3[2-9]|5[6|8|9]|7[0|6-9]|8[1-9]|9[0-9])[0-9]{7}$/;
+      if (!vnPhoneRegex.test(cleanPhone)) {
+        errs.phone = "Số điện thoại không hợp lệ (chuẩn SĐT Việt Nam gồm 10 chữ số, ví dụ: 0912345678)";
+      }
+    }
+
+    // 5. Vai trò
+    if (!formData.role) {
+      errs.role = "Vui lòng chọn 1 vai trò trong 7 vai trò hệ thống";
+    }
+
+    setFormErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   // Gửi form Thêm / Sửa
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      showToast(
+        "warning",
+        "Thông tin chưa hợp lệ",
+        "Vui lòng kiểm tra và sửa lại các trường thông tin đang báo lỗi trên biểu mẫu.",
+      );
+      return;
+    }
+
     try {
       setSubmitting(true);
 
       if (editingUser) {
         // Cập nhật người dùng
         const updatePayload: UpdateUserPayload = {
-          fullName: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
+          fullName: formData.fullName.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone?.trim() || "",
           role: formData.role,
-          assignedWarehouse: formData.assignedWarehouse,
-          password: formData.password ? formData.password : undefined,
+          assignedWarehouse: formData.assignedWarehouse?.trim() || "",
+          password: formData.password ? formData.password.trim() : undefined,
         };
 
         const updated = await usersService.updateUser(editingUser.id, updatePayload);
@@ -307,26 +386,51 @@ export const UsersPage: React.FC = () => {
         );
       } else {
         // Tạo người dùng mới
-        const res = await usersService.createUser(formData);
+        const res = await usersService.createUser({
+          ...formData,
+          fullName: formData.fullName.trim(),
+          username: formData.username.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone?.trim() || "",
+          assignedWarehouse: formData.assignedWarehouse?.trim() || "",
+          password: formData.password ? formData.password.trim() : undefined,
+        });
+
         const tempPassMsg = res.temporaryPassword
-          ? ` (Mật khẩu khởi tạo: ${res.temporaryPassword})`
-          : "";
+          ? `Mật khẩu khởi tạo: ${res.temporaryPassword}. Thư kích hoạt kèm hướng dẫn đã được gửi tới ${res.user.email}.`
+          : `Thư kích hoạt tài khoản đã được gửi tới ${res.user.email}.`;
 
         showToast(
           "success",
-          "Thêm nhân sự thành công",
-          `Tài khoản "${res.user.fullName}" đã được tạo thành công${tempPassMsg}.`,
+          "Thêm nhân sự mới thành công",
+          `Tài khoản "${res.user.fullName}" (${res.user.username}) đã được tạo. ${tempPassMsg}`,
         );
       }
 
       setModalOpen(false);
       fetchUsers();
     } catch (err: any) {
-      showToast(
-        "error",
-        "Thao tác thất bại",
-        err.response?.data?.message || "Có lỗi xảy ra khi lưu thông tin người dùng.",
-      );
+      const serverMsg =
+        err.response?.data?.message ||
+        "Có lỗi xảy ra khi lưu thông tin người dùng.";
+
+      // Nếu máy chủ báo trùng lặp tên đăng nhập hoặc email, highlight lỗi trực tiếp
+      if (typeof serverMsg === "string") {
+        if (serverMsg.includes("Tên đăng nhập")) {
+          setFormErrors((prev) => ({
+            ...prev,
+            username: "Tên đăng nhập này đã được sử dụng trên hệ thống",
+          }));
+        }
+        if (serverMsg.includes("email") || serverMsg.includes("Email")) {
+          setFormErrors((prev) => ({
+            ...prev,
+            email: "Địa chỉ email này đã được sử dụng trên hệ thống",
+          }));
+        }
+      }
+
+      showToast("error", "Thao tác thất bại", serverMsg);
     } finally {
       setSubmitting(false);
     }
@@ -504,27 +608,26 @@ export const UsersPage: React.FC = () => {
       <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between rounded-2xl bg-white p-4 border border-slate-100 shadow-2xs">
         {/* Nhóm tìm kiếm và bộ lọc bên trái */}
         <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center flex-1">
-          {/* Ô tìm kiếm */}
+          {/* Ô tìm kiếm có debounce mượt mà */}
           <div className="relative flex-1 min-w-[260px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Tìm theo họ tên, username, email, số điện thoại..."
               className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-9 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
             />
-            {search && (
+            {searchInput && (
               <button
                 type="button"
                 onClick={() => {
+                  setSearchInput("");
                   setSearch("");
                   setPage(1);
                 }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                title="Xóa tìm kiếm"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -800,11 +903,32 @@ export const UsersPage: React.FC = () => {
           </table>
         </div>
 
-        {/* Phân trang */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-100 text-xs text-slate-500">
-          <div>
-            Trang <strong>{page}</strong> / <strong>{totalPages}</strong> (Tổng cộng{" "}
-            <strong>{total}</strong> nhân sự)
+        {/* Phân trang (Mặc định 20 dòng / trang theo chuẩn SN-13) */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-100 text-xs text-slate-500 bg-slate-50/30">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div>
+              Hiển thị{" "}
+              <strong>
+                {total === 0 ? 0 : (page - 1) * limit + 1} - {Math.min(page * limit, total)}
+              </strong>{" "}
+              trong tổng số <strong>{total}</strong> nhân sự
+            </div>
+
+            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+              <span className="text-slate-400">Số dòng/trang:</span>
+              <select
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+              >
+                <option value={10}>10 dòng</option>
+                <option value={20}>20 dòng (Chuẩn)</option>
+                <option value={50}>50 dòng</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -812,16 +936,49 @@ export const UsersPage: React.FC = () => {
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
             >
               <ChevronLeft className="h-4 w-4" />
               <span>Trước</span>
             </button>
+
+            {/* Các nút bấm số trang */}
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(
+                  (p) =>
+                    p === 1 ||
+                    p === totalPages ||
+                    Math.abs(p - page) <= 1,
+                )
+                .map((p, idx, arr) => {
+                  const showEllipsisBefore = idx > 0 && p - arr[idx - 1] > 1;
+                  return (
+                    <React.Fragment key={p}>
+                      {showEllipsisBefore && (
+                        <span className="px-1 text-slate-400 font-bold">...</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setPage(p)}
+                        className={`h-7 min-w-7 px-2 rounded-lg text-xs font-semibold transition-all ${
+                          page === p
+                            ? "bg-purple-600 text-white shadow-2xs shadow-purple-600/30"
+                            : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+            </div>
+
             <button
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
             >
               <span>Sau</span>
               <ChevronRight className="h-4 w-4" />
@@ -877,29 +1034,50 @@ export const UsersPage: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    required
                     value={formData.fullName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, fullName: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setFormData({ ...formData, fullName: e.target.value });
+                      clearFieldError("fullName");
+                    }}
                     placeholder="VD: Nguyễn Văn An"
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-all ${
+                      formErrors.fullName
+                        ? "border-rose-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 bg-rose-50/15"
+                        : "border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    }`}
                   />
+                  {formErrors.fullName && (
+                    <p className="mt-1 text-[11px] text-rose-500 flex items-center gap-1 font-medium">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      <span>{formErrors.fullName}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Số điện thoại liên hệ
+                    Số điện thoại liên hệ (SĐT Việt Nam)
                   </label>
                   <input
                     type="text"
                     value={formData.phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setFormData({ ...formData, phone: e.target.value });
+                      clearFieldError("phone");
+                    }}
                     placeholder="VD: 0912345678"
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-all ${
+                      formErrors.phone
+                        ? "border-rose-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 bg-rose-50/15"
+                        : "border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    }`}
                   />
+                  {formErrors.phone && (
+                    <p className="mt-1 text-[11px] text-rose-500 flex items-center gap-1 font-medium">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      <span>{formErrors.phone}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -911,15 +1089,25 @@ export const UsersPage: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    required
                     disabled={Boolean(editingUser)}
                     value={formData.username}
-                    onChange={(e) =>
-                      setFormData({ ...formData, username: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setFormData({ ...formData, username: e.target.value });
+                      clearFieldError("username");
+                    }}
                     placeholder="VD: sales_an"
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs disabled:bg-slate-100 disabled:text-slate-500 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    className={`w-full rounded-xl border px-3.5 py-2 text-xs disabled:bg-slate-100 disabled:text-slate-500 transition-all ${
+                      formErrors.username
+                        ? "border-rose-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 bg-rose-50/15"
+                        : "border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    }`}
                   />
+                  {formErrors.username && (
+                    <p className="mt-1 text-[11px] text-rose-500 flex items-center gap-1 font-medium">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      <span>{formErrors.username}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -928,14 +1116,24 @@ export const UsersPage: React.FC = () => {
                   </label>
                   <input
                     type="email"
-                    required
                     value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setFormData({ ...formData, email: e.target.value });
+                      clearFieldError("email");
+                    }}
                     placeholder="VD: an.nguyen@loha.vn"
-                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-all ${
+                      formErrors.email
+                        ? "border-rose-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 bg-rose-50/15"
+                        : "border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    }`}
                   />
+                  {formErrors.email && (
+                    <p className="mt-1 text-[11px] text-rose-500 flex items-center gap-1 font-medium">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      <span>{formErrors.email}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -947,10 +1145,15 @@ export const UsersPage: React.FC = () => {
                   </label>
                   <select
                     value={formData.role}
-                    onChange={(e) =>
-                      setFormData({ ...formData, role: e.target.value })
-                    }
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    onChange={(e) => {
+                      setFormData({ ...formData, role: e.target.value });
+                      clearFieldError("role");
+                    }}
+                    className={`w-full rounded-xl border bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-2 ${
+                      formErrors.role
+                        ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/20"
+                        : "border-slate-200 focus:border-purple-500 focus:ring-purple-500/20"
+                    }`}
                   >
                     {Object.keys(ROLE_CONFIG).map((roleKey) => (
                       <option key={roleKey} value={roleKey}>
@@ -958,6 +1161,12 @@ export const UsersPage: React.FC = () => {
                       </option>
                     ))}
                   </select>
+                  {formErrors.role && (
+                    <p className="mt-1 text-[11px] text-rose-500 flex items-center gap-1 font-medium">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      <span>{formErrors.role}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>
