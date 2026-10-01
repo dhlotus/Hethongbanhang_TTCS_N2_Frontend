@@ -28,3 +28,77 @@ export const loginSchema = z.object({
 });
 
 export type LoginFormData = z.infer<typeof loginSchema>;
+
+/**
+ * Schema validate dữ liệu Form Đổi mật khẩu (Change Password)
+ * - currentPassword: Bắt buộc nhập
+ * - newPassword: Bắt buộc nhập, tối thiểu 8 ký tự, phải chứa cả chữ cái và chữ số
+ * - confirmPassword: Phải trùng khớp với newPassword
+ */
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z
+      .string()
+      .min(1, "Vui lòng nhập mật khẩu hiện tại"),
+    newPassword: z
+      .string()
+      .min(1, "Vui lòng nhập mật khẩu mới")
+      .min(8, "Mật khẩu mới phải có tối thiểu 8 ký tự")
+      .regex(
+        /^(?=.*[A-Za-z])(?=.*\d)/,
+        "Mật khẩu mới phải bao gồm cả chữ cái và chữ số",
+      ),
+    confirmPassword: z
+      .string()
+      .min(1, "Vui lòng xác nhận lại mật khẩu mới"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Mật khẩu xác nhận không trùng khớp với mật khẩu mới",
+    path: ["confirmPassword"],
+  })
+  .refine((data) => data.currentPassword !== data.newPassword, {
+    message: "Mật khẩu mới không được trùng với mật khẩu hiện tại",
+    path: ["newPassword"],
+  });
+
+export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
+
+/**
+ * Schema validate dữ liệu Form Quên mật khẩu (SN-8)
+ * - email: Bắt buộc nhập, đúng định dạng email
+ */
+export const forgotPasswordSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, "Vui lòng nhập địa chỉ email của bạn")
+    .email("Địa chỉ email không đúng định dạng (ví dụ: loha@example.vn)"),
+});
+
+export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
+
+/**
+ * Schema validate dữ liệu Form Đặt lại mật khẩu (SN-8)
+ * - newPassword: Tối thiểu 8 ký tự, phải chứa cả chữ cái và chữ số
+ * - confirmPassword: Phải trùng khớp với newPassword
+ */
+export const resetPasswordSchema = z
+  .object({
+    newPassword: z
+      .string()
+      .min(1, "Vui lòng nhập mật khẩu mới")
+      .min(8, "Mật khẩu mới phải có tối thiểu 8 ký tự")
+      .regex(
+        /^(?=.*[A-Za-z])(?=.*\d)/,
+        "Mật khẩu mới phải bao gồm cả chữ cái và chữ số",
+      ),
+    confirmPassword: z
+      .string()
+      .min(1, "Vui lòng xác nhận lại mật khẩu mới"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Mật khẩu xác nhận không trùng khớp với mật khẩu mới",
+    path: ["confirmPassword"],
+  });
+
+export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;

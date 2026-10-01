@@ -82,6 +82,27 @@
 
 ---
 
-## 6. Kiểm Tra Chất Lượng Mã Nguồn
+## 6. Tiến Độ & Nghiệm Thu Tính Năng Đổi Mật Khẩu (Change Password Page)
+| Tiêu chí chấp nhận (AC) | Trạng thái | File đảm nhiệm | Chi tiết kỹ thuật |
+| :--- | :---: | :--- | :--- |
+| **AC 1: Cấu trúc Giao diện & Form (UI/UX)** | ✅ Đạt | [`src/pages/change-password-page.tsx`](./src/pages/change-password-page.tsx) | Card Form hiện đại chuẩn UI Guidelines, bo góc mềm mại, hiển thị 3 trường (Mật khẩu hiện tại, Mật khẩu mới, Xác nhận mật khẩu mới) kèm icon ẩn/hiện mắt và thước đo độ mạnh mật khẩu realtime. |
+| **AC 2: Validate phía Client (Zod + React Hook Form)** | ✅ Đạt | [`src/utils/validation.ts`](./src/utils/validation.ts) | Bắt buộc nhập mật khẩu hiện tại; mật khẩu mới tối thiểu 8 ký tự kèm chữ cái và chữ số; xác nhận mật khẩu mới khớp với mật khẩu mới qua `refine`; hiển thị thông báo lỗi màu đỏ ngay dưới từng input. |
+| **AC 3: Gọi API POST /auth/change-password** | ✅ Đạt | [`src/services/auth.service.ts`](./src/services/auth.service.ts) | Gọi `POST /auth/change-password` với `{ currentPassword, newPassword }`, xử lý bắt lỗi từ Backend và hiển thị Toast lỗi màu đỏ khi sai mật khẩu hiện tại. |
+| **AC 4: Dọn dẹp Token & Chuyển hướng sau khi thành công** | ✅ Đạt | [`src/pages/change-password-page.tsx`](./src/pages/change-password-page.tsx) | Hiển thị Toast thành công xanh mát: *"Đổi mật khẩu thành công! Vui lòng đăng nhập lại."*; xóa sạch `localStorage` qua `tokenStorage.clearAuthData()` và tự động điều hướng về `/auth/login` sau 1.8 giây. |
+| **AC 5: Định tuyến bảo vệ (Protected Route)** | ✅ Đạt | [`src/routes/index.tsx`](./src/routes/index.tsx) | Cấu hình tuyến đường `/profile/change-password` và `/settings/security` nằm trong `ProtectedRoute` cho toàn bộ các vai trò trong hệ thống. |
+
+---
+
+## 7. Tiến Độ & Nghiệm Thu Epic/Task SN-7: Duy Trì Phiên Đăng Nhập & Đăng Xuất An Toàn Khi Mạng Chập Chờn (100% AC Passed)
+| Tiêu chí chấp nhận (AC) | Trạng thái | File đảm nhiệm | Chi tiết kỹ thuật |
+| :--- | :---: | :--- | :--- |
+| **AC 1: Giữ phiên liền mạch & Auto Refresh Token** | ✅ Đạt | [`src/services/api.ts`](./src/services/api.ts), [`src/utils/token-storage.ts`](./src/utils/token-storage.ts) | Khi token hết hạn trong quá trình thao tác, hệ thống tự động refresh token ngầm và retry request cũ trong suốt mà không làm gián đoạn người dùng. Lỗi mạng (ERR_NETWORK / Timeout) không bị nhầm lẫn với 401, không làm rớt phiên. |
+| **AC 2: Chống mất dữ liệu khi mạng chập chờn (Form Draft)** | ✅ Đạt | [`src/hooks/use-form-draft.ts`](./src/hooks/use-form-draft.ts) | Custom hook `useFormDraft` tự động lưu nháp cục bộ (Local Persistence với debounce 600ms) theo người dùng, hỗ trợ khôi phục dữ liệu form khi F5 hoặc rớt mạng giữa chừng; có hàm `clearDraft()` khi submit thành công. |
+| **AC 3: Chỉ báo trạng thái kết nối mạng (Network Status)** | ✅ Đạt | [`src/hooks/use-network-status.ts`](./src/hooks/use-network-status.ts), [`src/components/network-status-indicator.tsx`](./src/components/network-status-indicator.tsx), [`src/routes/index.tsx`](./src/routes/index.tsx) | Component `NetworkStatusIndicator` hiển thị toàn cục: cảnh báo nổi tinh tế khi mất mạng (*"Mất kết nối Internet. Dữ liệu đang được lưu tạm cục bộ"*), và thông báo xanh tự động biến mất khi có mạng trở lại. |
+| **AC 4: Đăng xuất an toàn tuyệt đối khi mạng lag (Resilient Logout)** | ✅ Đạt | [`src/services/auth.service.ts`](./src/services/auth.service.ts) | Tối ưu hàm `logout`: kiểm tra `navigator.onLine`, giới hạn `timeout: 3000` khi gọi `POST /auth/logout` lên máy chủ. Khối `finally` luôn luôn dọn sạch token ở Client và điều hướng về `/auth/login` ngay cả khi rớt mạng hoàn toàn. |
+
+---
+
+## 8. Kiểm Tra Chất Lượng Mã Nguồn
 - `npm run build`: Thành công (**0 lỗi**).
 - `npm run lint`: Thành công (**0 lỗi, 0 cảnh báo**).

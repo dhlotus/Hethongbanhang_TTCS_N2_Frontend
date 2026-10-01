@@ -1,7 +1,17 @@
 import axios from "axios";
 import { apiClient, refreshClient } from "./api";
 import { tokenStorage } from "../utils/token-storage";
-import type { LoginCredentials, LoginResponse, TokenResponse } from "../types/auth";
+import type {
+  LoginCredentials,
+  LoginResponse,
+  TokenResponse,
+  ChangePasswordRequest,
+  ChangePasswordResponse,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
+} from "../types/auth";
 
 // Danh sách 7 tài khoản demo theo đúng 7 vai trò của hệ thống LOHA SALES (Mật khẩu chung: 123456)
 const DEMO_USERS: Record<string, LoginResponse> = {
@@ -323,7 +333,9 @@ export const authService = {
       const now = Date.now();
 
       if (lockData && lockData.lockedUntil > now) {
-        throw new Error("Tài khoản bị khóa tạm thời 15 phút");
+        throw new Error(
+          "Tài khoản bị khóa tạm thời 15 phút do nhập sai quá số lần quy định",
+        );
       }
 
       await new Promise((resolve) => setTimeout(resolve, 400));
@@ -335,7 +347,9 @@ export const authService = {
             count: 5,
             lockedUntil: now + 15 * 60 * 1000,
           });
-          throw new Error("Tài khoản bị khóa tạm thời 15 phút");
+          throw new Error(
+            "Tài khoản bị khóa tạm thời 15 phút do nhập sai quá số lần quy định",
+          );
         }
 
         demoFailedAttempts.set(identifier, { count: nextCount, lockedUntil: 0 });
@@ -377,7 +391,10 @@ export const authService = {
           rawMessage.toLowerCase().includes("15 phút");
 
         if (isLocked) {
-          throw new Error("Tài khoản bị khóa tạm thời 15 phút", { cause: error });
+          throw new Error(
+            "Tài khoản bị khóa tạm thời 15 phút do nhập sai quá số lần quy định",
+            { cause: error },
+          );
         }
 
         // Bắt lỗi 401 hoặc 400: Luôn trả về thông báo chung để chống lộ thông tin tồn tại tài khoản
@@ -428,7 +445,14 @@ export const authService = {
     const accessToken = tokenStorage.getAccessToken();
 
     try {
-      if (refreshToken && !refreshToken.startsWith("demo-jwt-")) {
+      // Chỉ gửi request lên máy chủ nếu thiết bị đang có mạng
+      const isOnline = typeof navigator === "undefined" || navigator.onLine;
+
+      if (
+        isOnline &&
+        refreshToken &&
+        !refreshToken.startsWith("demo-jwt-")
+      ) {
         await refreshClient.post(
           "/auth/logout",
           { refreshToken },
@@ -436,18 +460,191 @@ export const authService = {
             headers: accessToken
               ? { Authorization: `Bearer ${accessToken}` }
               : undefined,
+            timeout: 3000, // Timeout ngắn 3 giây tránh treo khi mạng lag/rớt
           },
         );
       }
     } catch (error: unknown) {
       // Ghi log cảnh báo nhưng không chặn việc dọn dẹp client
-      console.warn("Không thể thu hồi token trên máy chủ khi đăng xuất:", error);
+      console.warn(
+        "Không thể thu hồi token trên máy chủ khi đăng xuất (có thể do mạng chập chờn):",
+        error,
+      );
     } finally {
       tokenStorage.clearAuthData();
 
       if (redirect) {
         window.location.href = "/auth/login";
       }
+    }
+  },
+
+  /**
+   * Đổi mật khẩu tài khoản người dùng: POST /auth/change-password
+   */
+  async changePassword(
+    data: ChangePasswordRequest,
+  ): Promise<ChangePasswordResponse> {
+    const token = tokenStorage.getAccessToken();
+
+    // 1. Kiểm tra tài khoản Demo (hỗ trợ thử nghiệm khi chưa bật backend)
+    if (token && token.startsWith("demo-jwt-")) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      if (data.currentPassword !== "123456") {
+        throw new Error("Mật khẩu hiện tại không chính xác");
+      }
+
+      return {
+        success: true,
+        message: "Đổi mật khẩu thành công! Vui lòng đăng nhập lại.",
+      };
+    }
+
+    // 2. Gọi API Backend thật: POST /auth/change-password
+    try {
+      const response = await apiClient.post<ChangePasswordResponse>(
+        "/auth/change-password",
+        {
+          currentPassword: data.currentPassword,
+          newPassword: data.newPassword,
+        },
+      );
+
+      return response.data;
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        if (!error.response) {
+          throw new Error(
+            "Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng!",
+            { cause: error },
+          );
+        }
+
+        const resData = error.response.data as {
+          message?: string | string[];
+          statusCode?: number;
+        };
+
+        const rawMessage = Array.isArray(resData?.message)
+          ? resData.message.join(", ")
+          : resData?.message || "";
+
+        if (error.response.status === 400 || error.response.status === 401) {
+          throw new Error(
+            rawMessage || "Mật khẩu hiện tại không chính xác",
+            { cause: error },
+          );
+        }
+
+        throw new Error(
+          rawMessage || "Không thể đổi mật khẩu. Vui lòng thử lại sau!",
+          { cause: error },
+        );
+      }
+
+      const err = error as Error;
+      throw new Error(err.message || "Đổi mật khẩu thất bại", { cause: error });
+    }
+  },
+
+  /**
+   * Yêu cầu gửi email đặt lại mật khẩu: POST /auth/forgot-password (SN-8)
+   */
+  async forgotPassword(
+    data: ForgotPasswordRequest,
+  ): Promise<ForgotPasswordResponse> {
+    const email = data.email.trim().toLowerCase();
+
+    try {
+      const response = await apiClient.post<ForgotPasswordResponse>(
+        "/auth/forgot-password",
+        { email },
+      );
+      return response.data;
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        if (!error.response) {
+          throw new Error(
+            "Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng!",
+            { cause: error },
+          );
+        }
+
+        const resData = error.response.data as {
+          message?: string | string[];
+          statusCode?: number;
+        };
+        const rawMessage = Array.isArray(resData?.message)
+          ? resData.message.join(", ")
+          : resData?.message;
+
+        throw new Error(
+          rawMessage || "Địa chỉ email này chưa được đăng ký trong hệ thống!",
+          { cause: error },
+        );
+      }
+
+      const err = error as Error;
+      throw new Error(err.message || "Gửi yêu cầu thất bại", { cause: error });
+    }
+  },
+
+  /**
+   * Đặt lại mật khẩu mới với token từ email: POST /auth/reset-password (SN-8)
+   */
+  async resetPassword(
+    data: ResetPasswordRequest,
+  ): Promise<ResetPasswordResponse> {
+    const { token, newPassword } = data;
+
+    // Giả lập cho token demo
+    if (token.startsWith("demo-reset-token")) {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      return {
+        success: true,
+        message: "Đặt lại mật khẩu thành công! Vui lòng đăng nhập bằng mật khẩu mới.",
+      };
+    }
+
+    try {
+      const response = await apiClient.post<ResetPasswordResponse>(
+        "/auth/reset-password",
+        {
+          token: token.trim(),
+          newPassword,
+        },
+      );
+      return response.data;
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        if (!error.response) {
+          throw new Error(
+            "Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng!",
+            { cause: error },
+          );
+        }
+
+        const resData = error.response.data as {
+          message?: string | string[];
+          statusCode?: number;
+        };
+
+        const rawMessage = Array.isArray(resData?.message)
+          ? resData.message.join(", ")
+          : resData?.message;
+
+        throw new Error(
+          rawMessage || "Mã token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn (30 phút).",
+          { cause: error },
+        );
+      }
+
+      const err = error as Error;
+      throw new Error(
+        err.message || "Không thể đặt lại mật khẩu. Vui lòng thử lại sau!",
+        { cause: error },
+      );
     }
   },
 };

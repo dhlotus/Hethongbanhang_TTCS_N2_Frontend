@@ -1,8 +1,12 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { LoginPage } from "../pages/login-page";
+import { ForgotPasswordPage } from "../pages/forgot-password-page";
+import { ResetPasswordPage } from "../pages/reset-password-page";
+import { ChangePasswordPage } from "../pages/change-password-page";
 import { RoleModulePage } from "../pages/role-module-page";
 import { ProtectedRoute } from "../components/protected-route";
+import { NetworkStatusIndicator } from "../components/network-status-indicator";
 import { AdminLayout } from "../layouts/admin-layout";
 import { getRedirectPathByUser, getStoredUser } from "../utils/navigation";
 import { tokenStorage } from "../utils/token-storage";
@@ -38,6 +42,9 @@ const RootRedirect: React.FC = () => {
 export const AppRoutes: React.FC = () => {
   return (
     <BrowserRouter>
+      {/* Chỉ báo trạng thái kết nối mạng & bảo vệ bản nháp toàn cục */}
+      <NetworkStatusIndicator />
+
       <Routes>
         {/* ================================================================= */}
         {/* 1. Tuyến đường công khai (Public Routes)                           */}
@@ -45,6 +52,10 @@ export const AppRoutes: React.FC = () => {
         {/* ================================================================= */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
 
         {/* ================================================================= */}
         {/* 2. Tuyến đường được bảo vệ (Protected Routes)                      */}
@@ -163,6 +174,10 @@ export const AppRoutes: React.FC = () => {
               }
             />
           </Route>
+
+          {/* Phân hệ Cài đặt bảo mật & Đổi mật khẩu cá nhân (Mọi vai trò đăng nhập đều có quyền) */}
+          <Route path="/profile/change-password" element={<ChangePasswordPage />} />
+          <Route path="/settings/security" element={<ChangePasswordPage />} />
 
           {/* Alias routes tương thích ngược */}
           <Route path="/admin/dashboard" element={<Navigate to="/system/users" replace />} />
