@@ -1,149 +1,166 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LoginPage } from "../pages/login-page";
-import { LogOut, User, CheckCircle2, Shield, Compass } from "lucide-react";
-import type { AuthUser } from "../types/auth";
-import { getRedirectPathByRole, ROLE_ROUTES } from "../utils/auth";
+import { RoleModulePage } from "../pages/role-module-page";
+import { ProtectedRoute } from "../components/protected-route";
+import { AdminLayout } from "../layouts/admin-layout";
+import { getRedirectPathByUser, getStoredUser } from "../utils/navigation";
 
-// Component hiển thị Dashboard mẫu tương ứng sau khi đăng nhập thành công
-const DashboardView: React.FC<{ defaultTitle?: string }> = ({ defaultTitle = "Trang chủ" }) => {
-  const location = useLocation();
-
-  React.useEffect(() => {
-    document.title = `${defaultTitle} | LOHA SALES`;
-  }, [defaultTitle]);
-
-  const token =
-    localStorage.getItem("access_token") || localStorage.getItem("auth_token");
-  const storedUser = localStorage.getItem("auth_user");
-  const user: AuthUser | null = storedUser ? JSON.parse(storedUser) : null;
-
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("auth_user");
-    window.location.href = "/login";
-  };
-
-  return (
-    <div className="min-h-screen w-full bg-slate-50 flex flex-col items-center justify-center p-6 text-center antialiased">
-      <div className="max-w-lg w-full bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-[0_10px_35px_rgba(0,0,0,0.04)] p-6 sm:p-8 text-left">
-        <div className="flex items-center gap-3.5 mb-6 pb-4 border-b border-slate-100">
-          <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-lg shadow-2xs">
-            <User className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-slate-900">{user?.fullName || "Người dùng"}</h1>
-            <p className="text-xs text-slate-500 font-mono">{user?.email}</p>
-          </div>
-        </div>
-
-        <div className="space-y-3 mb-6">
-          <div className="flex items-center justify-between text-sm p-3 rounded-xl bg-slate-50/80 border border-slate-100">
-            <span className="text-slate-500 flex items-center gap-1.5">
-              <Compass className="w-4 h-4 text-slate-400" />
-              Tuyến đường (Route):
-            </span>
-            <span className="font-mono text-xs font-semibold text-slate-700 bg-white border border-slate-200 px-2.5 py-1 rounded-md">
-              {location.pathname}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between text-sm p-3 rounded-xl bg-slate-50/80 border border-slate-100">
-            <span className="text-slate-500 flex items-center gap-1.5">
-              <Shield className="w-4 h-4 text-slate-400" />
-              Vai trò hệ thống:
-            </span>
-            <span className="font-semibold text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded-md text-xs">
-              {user?.roles?.join(", ") || "User"}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between text-sm p-3 rounded-xl bg-slate-50/80 border border-slate-100">
-            <span className="text-slate-500 flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              Trạng thái xác thực:
-            </span>
-            <span className="font-medium text-emerald-600 text-xs">
-              Đã đăng nhập (Tokens lưu an toàn)
-            </span>
-          </div>
-        </div>
-
-        <button
-          onClick={handleLogout}
-          className="w-full py-2.5 px-4 rounded-xl border border-red-200 bg-white text-red-600 hover:bg-red-50 active:bg-red-100 font-medium text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-        >
-          <LogOut className="w-4 h-4" />
-          <span>Đăng xuất</span>
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Component điều hướng thông minh ở root '/'
+/**
+ * Component xử lý điều hướng thông minh tại root ('/'):
+ * - Nếu chưa đăng nhập: chuyển hướng về trang /login
+ * - Nếu đã đăng nhập: tự động chuyển hướng về route tương ứng với vai trò của user
+ */
 const RootRedirect: React.FC = () => {
   const token =
     localStorage.getItem("access_token") || localStorage.getItem("auth_token");
-  const storedUser = localStorage.getItem("auth_user");
+  const user = getStoredUser();
 
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  let targetPath = "/";
-  if (storedUser) {
-    try {
-      const user: AuthUser = JSON.parse(storedUser);
-      targetPath = getRedirectPathByRole(user.roles);
-    } catch {
-      targetPath = "/";
-    }
-  }
-
-  if (targetPath && targetPath !== "/") {
-    return <Navigate to={targetPath} replace />;
-  }
-
-  return <DashboardView defaultTitle="Trang chủ" />;
+  return <Navigate to={getRedirectPathByUser(user)} replace />;
 };
 
 export const AppRoutes: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
+        {/* ================================================================= */}
+        {/* 1. Tuyến đường công khai (Public Routes)                           */}
+        {/* Hỗ trợ cả /login và /auth/login                                   */}
+        {/* ================================================================= */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<RootRedirect />} />
-        
-        {/* Các tuyến đường Dashboard tương ứng theo vai trò (Role Routes) */}
-        <Route
-          path={ROLE_ROUTES.ADMIN}
-          element={<DashboardView defaultTitle="Quản trị Hệ thống" />}
-        />
-        <Route
-          path={ROLE_ROUTES.SALES_REP}
-          element={<DashboardView defaultTitle="Kinh doanh B2B" />}
-        />
-        <Route
-          path={ROLE_ROUTES.WAREHOUSE_KEEPER}
-          element={<DashboardView defaultTitle="Quản lý Kho & Tồn kho" />}
-        />
-        <Route
-          path={ROLE_ROUTES.ACCOUNTANT}
-          element={<DashboardView defaultTitle="Kế toán & Công nợ" />}
-        />
-        <Route
-          path={ROLE_ROUTES.CUSTOMER}
-          element={<DashboardView defaultTitle="Cổng Đại lý B2B" />}
-        />
+        <Route path="/auth/login" element={<LoginPage />} />
 
-        {/* Fallback route */}
+        {/* ================================================================= */}
+        {/* 2. Tuyến đường được bảo vệ (Protected Routes)                      */}
+        {/* ================================================================= */}
+        <Route element={<ProtectedRoute />}>
+          {/* Phân hệ Quản trị hệ thống sử dụng khung AdminLayout chuẩn */}
+          <Route element={<AdminLayout />}>
+            {/* 1. Quản lý người dùng */}
+            <Route
+              path="/system/users"
+              element={
+                <RoleModulePage
+                  title="Quản lý Người dùng & Phân quyền"
+                  subtitle="Quản trị danh sách người dùng, cấp phát vai trò và trạng thái tài khoản"
+                  requiredRole="ADMIN"
+                />
+              }
+            />
+
+            {/* 2. Nhật ký hệ thống */}
+            <Route
+              path="/system/audit-logs"
+              element={
+                <RoleModulePage
+                  title="Nhật ký hệ thống (Audit Logs)"
+                  subtitle="Giám sát lịch sử đăng nhập, thay đổi dữ liệu và cảnh báo an toàn"
+                  requiredRole="ADMIN"
+                />
+              }
+            />
+
+            {/* 3. Danh mục sản phẩm */}
+            <Route
+              path="/catalog/products"
+              element={
+                <RoleModulePage
+                  title="Danh mục sản phẩm"
+                  subtitle="Quản lý danh sách hàng hóa, quy cách đóng gói và mã phân loại SKU"
+                  requiredRole="ADMIN"
+                />
+              }
+            />
+
+            {/* 4. Bảng giá & Chiết khấu */}
+            <Route
+              path="/catalog/pricing"
+              element={
+                <RoleModulePage
+                  title="Bảng giá & Chiết khấu"
+                  subtitle="Cấu hình ma trận giá theo nhóm đại lý, chiết khấu số lượng và khuyến mãi"
+                  requiredRole="ADMIN"
+                />
+              }
+            />
+
+            {/* 5. Tổng quan hệ thống */}
+            <Route
+              path="/dashboard"
+              element={
+                <RoleModulePage
+                  title="Bảng Điều khiển Tổng quan (Dashboard)"
+                  subtitle="Chỉ số hoạt động tổng thể doanh nghiệp, biểu đồ doanh thu và vận hành"
+                  requiredRole="ADMIN / MANAGER"
+                />
+              }
+            />
+          </Route>
+
+          {/* Phân hệ 3: Nhân viên kinh doanh (Sales Rep) */}
+          <Route
+            path="/sales/orders"
+            element={
+              <RoleModulePage
+                title="Quản lý Đơn hàng Bán buôn"
+                subtitle="Phân hệ Kinh doanh theo dõi đơn hàng, áp giá và kiểm tra tồn khả dụng"
+                requiredRole="SALES_REP"
+              />
+            }
+          />
+
+          {/* Phân hệ 4: Thủ kho (Warehouse Keeper) */}
+          <Route
+            path="/inventory/stock"
+            element={
+              <RoleModulePage
+                title="Quản lý Tồn kho & Nhập xuất"
+                subtitle="Phân hệ Thủ kho kiểm soát vị trí, lô hạn chuẩn FEFO và phiếu xuất kho"
+                requiredRole="WAREHOUSE_KEEPER"
+              />
+            }
+          />
+
+          {/* Phân hệ 5: Kế toán (Accountant) */}
+          <Route
+            path="/accounting/invoices"
+            element={
+              <RoleModulePage
+                title="Quản lý Hóa đơn & Công nợ"
+                subtitle="Phân hệ Kế toán theo dõi công nợ, đối chiếu chứng từ và thanh toán"
+                requiredRole="ACCOUNTANT"
+              />
+            }
+          />
+
+          {/* Phân hệ 6: Đại lý / Khách hàng B2B (Customer Portal) */}
+          <Route
+            path="/portal/orders"
+            element={
+              <RoleModulePage
+                title="Cổng Đặt hàng Đại lý B2B"
+                subtitle="Phân hệ Đại lý theo dõi hạn mức tín dụng, bảng giá và đặt hàng trực tuyến"
+                requiredRole="CUSTOMER"
+              />
+            }
+          />
+
+          {/* Alias routes tương thích ngược */}
+          <Route path="/admin/dashboard" element={<Navigate to="/system/users" replace />} />
+          <Route path="/sales/dashboard" element={<Navigate to="/sales/orders" replace />} />
+          <Route path="/warehouse/dashboard" element={<Navigate to="/inventory/stock" replace />} />
+          <Route path="/accountant/dashboard" element={<Navigate to="/accounting/invoices" replace />} />
+          <Route path="/customer/portal" element={<Navigate to="/portal/orders" replace />} />
+        </Route>
+
+        {/* ================================================================= */}
+        {/* 3. Điều hướng gốc & Fallback                                     */}
+        {/* ================================================================= */}
+        <Route path="/" element={<RootRedirect />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

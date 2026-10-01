@@ -15,15 +15,14 @@ import { Button } from "../components/button";
 import { Toast, type ToastType } from "../components/toast";
 import { loginSchema, type LoginFormData } from "../utils/validation";
 import { authService } from "../services/auth.service";
-import { getRedirectPathByRole } from "../utils/auth";
+import { getRedirectPathByUser } from "../utils/navigation";
 import loginPoster from "../assets/login-poster.jpg";
 
 /**
  * Trang Đăng nhập LOHA SALES:
+ * - Chuyển hướng thông minh sau đăng nhập dựa vào Role của người dùng
  * - Thông báo lỗi qua Toast nổi ở góc màn hình, tuyệt đối không chèn Alert làm vỡ form
  * - Thích ứng Responsive hoàn hảo trên mọi kích thước (Mobile, Tablet, Laptop, Desktop)
- * - Cột Trái: Poster minh họa hiện đại, nhẹ nhàng
- * - Cột Phải: Form chuẩn UI/UX, co dãn tự nhiên
  */
 export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -37,7 +36,19 @@ export const LoginPage: React.FC = () => {
 
   useEffect(() => {
     document.title = "Đăng nhập | LOHA SALES";
-  }, []);
+
+    // Nếu đã đăng nhập trước đó, tự động chuyển về trang tương ứng với vai trò
+    const token = localStorage.getItem("auth_token");
+    const storedUser = localStorage.getItem("auth_user");
+    if (token && storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        navigate(getRedirectPathByUser(user), { replace: true });
+      } catch {
+        // bỏ qua lỗi parse json nếu có
+      }
+    }
+  }, [navigate]);
 
   const {
     register,
@@ -66,9 +77,9 @@ export const LoginPage: React.FC = () => {
       }
       localStorage.setItem("auth_user", JSON.stringify(response.user));
 
-      // Điều hướng về đúng trang Dashboard tương ứng theo vai trò (Role)
-      const redirectPath = getRedirectPathByRole(response.user.roles);
-      navigate(redirectPath, { replace: true });
+      // Chuyển hướng mượt mà về đúng route ứng với vai trò của user
+      const targetPath = getRedirectPathByUser(response.user);
+      navigate(targetPath, { replace: true });
     } catch (error: unknown) {
       const err = error as Error;
       const message = err.message || "Tài khoản hoặc mật khẩu không chính xác";

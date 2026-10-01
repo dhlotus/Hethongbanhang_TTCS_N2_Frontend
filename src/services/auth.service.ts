@@ -326,4 +326,12 @@ export const authService = {
       throw new Error(err.message || "Đăng nhập thất bại", { cause: error });
     }
   },
+
+  /**
+   * Đăng xuất khỏi hệ thống: xóa token xác thực và thông tin người dùng
+   */
+  logout(): void {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("auth_user");
+  },
 };
