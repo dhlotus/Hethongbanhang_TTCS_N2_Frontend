@@ -1,10 +1,23 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { LoginPage } from "../pages/login-page";
 import { RoleModulePage } from "../pages/role-module-page";
 import { ProtectedRoute } from "../components/protected-route";
 import { AdminLayout } from "../layouts/admin-layout";
 import { getRedirectPathByUser, getStoredUser } from "../utils/navigation";
+
+/**
+ * Layout bọc ngoài cho các phân hệ chức năng độc lập (Sales, Kho, Kế toán, Đại lý)
+ */
+const GeneralRoleLayout: React.FC = () => {
+  return (
+    <div className="min-h-screen w-full bg-slate-50 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+      <div className="mx-auto max-w-7xl">
+        <Outlet />
+      </div>
+    </div>
+  );
+};
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -101,53 +114,56 @@ export const AppRoutes: React.FC = () => {
             />
           </Route>
 
-          {/* Phân hệ 3: Nhân viên kinh doanh (Sales Rep) */}
-          <Route
-            path="/sales/orders"
-            element={
-              <RoleModulePage
-                title="Quản lý Đơn hàng Bán buôn"
-                subtitle="Phân hệ Kinh doanh theo dõi đơn hàng, áp giá và kiểm tra tồn khả dụng"
-                requiredRole="SALES_REP"
-              />
-            }
-          />
+          {/* Phân hệ dành cho các vai trò nghiệp vụ (Sales, Kho, Kế toán, Đại lý) */}
+          <Route element={<GeneralRoleLayout />}>
+            {/* Phân hệ 3: Nhân viên kinh doanh (Sales Rep) */}
+            <Route
+              path="/sales/orders"
+              element={
+                <RoleModulePage
+                  title="Quản lý Đơn hàng Bán buôn"
+                  subtitle="Phân hệ Kinh doanh theo dõi đơn hàng, áp giá và kiểm tra tồn khả dụng"
+                  requiredRole="SALES_REP"
+                />
+              }
+            />
 
-          {/* Phân hệ 4: Thủ kho (Warehouse Keeper) */}
-          <Route
-            path="/inventory/stock"
-            element={
-              <RoleModulePage
-                title="Quản lý Tồn kho & Nhập xuất"
-                subtitle="Phân hệ Thủ kho kiểm soát vị trí, lô hạn chuẩn FEFO và phiếu xuất kho"
-                requiredRole="WAREHOUSE_KEEPER"
-              />
-            }
-          />
+            {/* Phân hệ 4: Thủ kho (Warehouse Keeper) */}
+            <Route
+              path="/inventory/stock"
+              element={
+                <RoleModulePage
+                  title="Quản lý Tồn kho & Nhập xuất"
+                  subtitle="Phân hệ Thủ kho kiểm soát vị trí, lô hạn chuẩn FEFO và phiếu xuất kho"
+                  requiredRole="WAREHOUSE_KEEPER"
+                />
+              }
+            />
 
-          {/* Phân hệ 5: Kế toán (Accountant) */}
-          <Route
-            path="/accounting/invoices"
-            element={
-              <RoleModulePage
-                title="Quản lý Hóa đơn & Công nợ"
-                subtitle="Phân hệ Kế toán theo dõi công nợ, đối chiếu chứng từ và thanh toán"
-                requiredRole="ACCOUNTANT"
-              />
-            }
-          />
+            {/* Phân hệ 5: Kế toán (Accountant) */}
+            <Route
+              path="/accounting/invoices"
+              element={
+                <RoleModulePage
+                  title="Quản lý Hóa đơn & Công nợ"
+                  subtitle="Phân hệ Kế toán theo dõi công nợ, đối chiếu chứng từ và thanh toán"
+                  requiredRole="ACCOUNTANT"
+                />
+              }
+            />
 
-          {/* Phân hệ 6: Đại lý / Khách hàng B2B (Customer Portal) */}
-          <Route
-            path="/portal/orders"
-            element={
-              <RoleModulePage
-                title="Cổng Đặt hàng Đại lý B2B"
-                subtitle="Phân hệ Đại lý theo dõi hạn mức tín dụng, bảng giá và đặt hàng trực tuyến"
-                requiredRole="CUSTOMER"
-              />
-            }
-          />
+            {/* Phân hệ 6: Đại lý / Khách hàng B2B (Customer Portal) */}
+            <Route
+              path="/portal/orders"
+              element={
+                <RoleModulePage
+                  title="Cổng Đặt hàng Đại lý B2B"
+                  subtitle="Phân hệ Đại lý theo dõi hạn mức tín dụng, bảng giá và đặt hàng trực tuyến"
+                  requiredRole="CUSTOMER"
+                />
+              }
+            />
+          </Route>
 
           {/* Alias routes tương thích ngược */}
           <Route path="/admin/dashboard" element={<Navigate to="/system/users" replace />} />
