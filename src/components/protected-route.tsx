@@ -1,7 +1,8 @@
 import React from "react";
 import { Navigate, useLocation, Outlet } from "react-router-dom";
-import { getRedirectPathByUser, getStoredUser } from "../utils/navigation";
+import { getStoredUser } from "../utils/navigation";
 import { tokenStorage } from "../utils/token-storage";
+import { ForbiddenPage } from "../pages/forbidden-page";
 
 interface ProtectedRouteProps {
   children?: React.ReactNode;
@@ -26,17 +27,20 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
-  // 3. Kiểm tra phân quyền theo vai trò (nếu có khai báo allowedRoles)
+  // 2. Kiểm tra phân quyền theo vai trò (nếu có khai báo allowedRoles)
   if (allowedRoles && allowedRoles.length > 0 && user?.roles) {
-    const userRolesLower = user.roles.map((r) => r.toLowerCase());
-    const hasPermission = allowedRoles.some((allowed) =>
-      userRolesLower.includes(allowed.toLowerCase()),
+    const userRoles = (user.roles || (user.role ? [user.role] : [])).map((r) =>
+      r.trim().toUpperCase(),
     );
 
-    if (!hasPermission) {
-      // Điều hướng về trang tương ứng với vai trò của user nếu cố tình truy cập trang không có quyền
-      const fallbackPath = getRedirectPathByUser(user);
-      return <Navigate to={fallbackPath} replace />;
+    if (!userRoles.includes("ADMIN")) {
+      const hasPermission = allowedRoles.some((allowed) =>
+        userRoles.includes(allowed.trim().toUpperCase()),
+      );
+
+      if (!hasPermission) {
+        return <ForbiddenPage allowedRoles={allowedRoles} />;
+      }
     }
   }
 
