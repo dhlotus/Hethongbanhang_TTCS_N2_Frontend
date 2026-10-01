@@ -17,6 +17,8 @@ import {
   ChevronRight,
   KeyRound,
   ShieldAlert,
+  Shield,
+  Info,
   Copy,
   Check,
   Sparkles,
@@ -176,6 +178,7 @@ export const UsersPage: React.FC = () => {
     email: "",
     phone: "",
     role: USER_ROLES.SALES_REP,
+    roles: [USER_ROLES.SALES_REP],
     assignedWarehouse: "",
     password: "",
   });
@@ -193,6 +196,54 @@ export const UsersPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  // Kiểm tra tài khoản đang chỉnh sửa có phải chính Admin đang đăng nhập hay không
+  const isEditingCurrentSelf = Boolean(
+    editingUser &&
+      currentAdmin &&
+      (currentAdmin.id === editingUser.id ||
+        currentAdmin.username?.toLowerCase() ===
+          editingUser.username.toLowerCase() ||
+        currentAdmin.email?.toLowerCase() ===
+          editingUser.email.toLowerCase()),
+  );
+
+  // Thao tác chọn / bỏ chọn nhiều vai trò (Multi-role toggle)
+  const handleToggleRole = (roleKey: string) => {
+    const currentRoles =
+      formData.roles && formData.roles.length > 0
+        ? [...formData.roles]
+        : formData.role
+        ? [formData.role]
+        : [];
+    const isSelected = currentRoles.includes(roleKey);
+
+    // Chặn tuyệt đối tự thu hồi quyền ADMIN của chính mình
+    if (isSelected && isEditingCurrentSelf && roleKey === USER_ROLES.ADMIN) {
+      showToast(
+        "warning",
+        "Quyền Quản trị được bảo vệ",
+        "Bạn không thể tự thu hồi quyền Quản trị hệ thống (ADMIN) của chính mình.",
+      );
+      return;
+    }
+
+    let updatedRoles: string[];
+    if (isSelected) {
+      updatedRoles = currentRoles.filter((r) => r !== roleKey);
+    } else {
+      updatedRoles = [...currentRoles, roleKey];
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      roles: updatedRoles,
+      role: updatedRoles[0] || "",
+    }));
+
+    clearFieldError("roles");
+    clearFieldError("role");
+  };
 
   // Modal Khóa / Mở khóa
   const [statusModalOpen, setStatusModalOpen] = useState(false);
@@ -282,6 +333,7 @@ export const UsersPage: React.FC = () => {
       email: "",
       phone: "",
       role: USER_ROLES.SALES_REP,
+      roles: [USER_ROLES.SALES_REP],
       assignedWarehouse: "",
       password: "",
     });
@@ -292,19 +344,25 @@ export const UsersPage: React.FC = () => {
   const handleOpenEditModal = (user: UserManagementItem) => {
     setEditingUser(user);
     setFormErrors({});
+    const initialRoles =
+      user.roles && user.roles.length > 0
+        ? (user.roles as string[])
+        : [user.role as string];
+
     setFormData({
       fullName: user.fullName,
       username: user.username,
       email: user.email,
       phone: user.phone || "",
-      role: user.role,
+      role: (user.role as string) || initialRoles[0],
+      roles: initialRoles,
       assignedWarehouse: user.assignedWarehouse || "",
       password: "",
     });
     setModalOpen(true);
   };
 
-  // Hàm validate biểu mẫu phía Client (SN-13)
+  // Hàm validate biểu mẫu phía Client (SN-13 & SN-14)
   const validateForm = (): boolean => {
     const errs: Record<string, string> = {};
 
@@ -342,9 +400,41 @@ export const UsersPage: React.FC = () => {
       }
     }
 
-    // 5. Vai trò
-    if (!formData.role) {
-      errs.role = "Vui lòng chọn 1 vai trò trong 7 vai trò hệ thống";
+    // 5. Đa vai trò hệ thống (SN-14)
+    const selectedRoles =
+      formData.roles && formData.roles.length > 0
+        ? formData.roles
+        : formData.role
+        ? [formData.role]
+        : [];
+    if (selectedRoles.length === 0) {
+      errs.roles = "Vui lòng chọn ít nhất 1 vai trò trong 7 vai trò hệ thống";
+    }
+
+    // Bảo mật Admin: Không thể tự bỏ vai trò ADMIN của chính mình
+    if (isEditingCurrentSelf && editingUser) {
+      const hadAdmin = (
+        editingUser.roles && editingUser.roles.length > 0
+          ? editingUser.roles
+          : [editingUser.role]
+      ).includes(USER_ROLES.ADMIN);
+
+      if (hadAdmin && !selectedRoles.includes(USER_ROLES.ADMIN)) {
+        errs.roles = "Không thể tự thu hồi quyền Quản trị hệ thống (ADMIN) của chính mình";
+      }
+    }
+
+    // 6. Ràng buộc cứng Kho (Business Validation - SN-14)
+    const requiresWarehouse = selectedRoles.some(
+      (r) =>
+        r === USER_ROLES.WAREHOUSE_KEEPER || r === USER_ROLES.WAREHOUSE_MANAGER,
+    );
+    if (
+      requiresWarehouse &&
+      (!formData.assignedWarehouse || !formData.assignedWarehouse.trim())
+    ) {
+      errs.assignedWarehouse =
+        "Nhân sự thuộc vai trò Kho bắt buộc phải được gắn với ít nhất một kho phụ trách cụ thể";
     }
 
     setFormErrors(errs);
@@ -366,14 +456,19 @@ export const UsersPage: React.FC = () => {
 
     try {
       setSubmitting(true);
+      const selectedRoles =
+        formData.roles && formData.roles.length > 0
+          ? formData.roles
+          : [formData.role];
 
       if (editingUser) {
-        // Cập nhật người dùng
+        // Cập nhật người dùng (Đa vai trò & kho)
         const updatePayload: UpdateUserPayload = {
           fullName: formData.fullName.trim(),
           email: formData.email.trim(),
           phone: formData.phone?.trim() || "",
-          role: formData.role,
+          role: selectedRoles[0],
+          roles: selectedRoles,
           assignedWarehouse: formData.assignedWarehouse?.trim() || "",
           password: formData.password ? formData.password.trim() : undefined,
         };
@@ -392,6 +487,8 @@ export const UsersPage: React.FC = () => {
           username: formData.username.trim(),
           email: formData.email.trim(),
           phone: formData.phone?.trim() || "",
+          role: selectedRoles[0],
+          roles: selectedRoles,
           assignedWarehouse: formData.assignedWarehouse?.trim() || "",
           password: formData.password ? formData.password.trim() : undefined,
         });
@@ -725,13 +822,6 @@ export const UsersPage: React.FC = () => {
                 </tr>
               ) : (
                 users.map((u) => {
-                  const roleConfig = ROLE_CONFIG[u.role] || {
-                    label: u.role,
-                    bgClass: "bg-slate-100",
-                    textClass: "text-slate-700",
-                    ringClass: "ring-slate-700/10",
-                  };
-
                   const isCurrentSelf = Boolean(
                     currentAdmin &&
                       (currentAdmin.id === u.id ||
@@ -812,13 +902,28 @@ export const UsersPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Vai trò */}
+                      {/* Vai trò (Đa vai trò SN-14) */}
                       <td className="px-5 py-3.5">
-                        <span
-                          className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${roleConfig.bgClass} ${roleConfig.textClass} ${roleConfig.ringClass}`}
-                        >
-                          {roleConfig.label}
-                        </span>
+                        <div className="flex flex-wrap gap-1 max-w-[230px]">
+                          {((u.roles && u.roles.length > 0 ? u.roles : [u.role]) as string[]).map(
+                            (rKey) => {
+                              const config = ROLE_CONFIG[rKey] || {
+                                label: rKey,
+                                bgClass: "bg-slate-100",
+                                textClass: "text-slate-700",
+                                ringClass: "ring-slate-700/10",
+                              };
+                              return (
+                                <span
+                                  key={rKey}
+                                  className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${config.bgClass} ${config.textClass} ${config.ringClass}`}
+                                >
+                                  {config.label}
+                                </span>
+                              );
+                            },
+                          )}
+                        </div>
                       </td>
 
                       {/* Kho / Địa bàn */}
@@ -1137,60 +1242,168 @@ export const UsersPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Vai trò hệ thống & Kho trực thuộc */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Vai trò hệ thống <span className="text-rose-500">*</span>
+              {/* PHÂN QUYỀN ĐA VAI TRÒ (Multi-role - SN-14) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Vai trò hệ thống (Đa vai trò) <span className="text-rose-500">*</span>
                   </label>
-                  <select
-                    value={formData.role}
-                    onChange={(e) => {
-                      setFormData({ ...formData, role: e.target.value });
-                      clearFieldError("role");
-                    }}
-                    className={`w-full rounded-xl border bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-2 ${
-                      formErrors.role
-                        ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/20"
-                        : "border-slate-200 focus:border-purple-500 focus:ring-purple-500/20"
-                    }`}
-                  >
-                    {Object.keys(ROLE_CONFIG).map((roleKey) => (
-                      <option key={roleKey} value={roleKey}>
-                        {ROLE_CONFIG[roleKey].label} ({roleKey})
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.role && (
-                    <p className="mt-1 text-[11px] text-rose-500 flex items-center gap-1 font-medium">
-                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                      <span>{formErrors.role}</span>
-                    </p>
-                  )}
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    Đã chọn:{" "}
+                    <strong className="text-purple-700">
+                      {formData.roles?.length || 0}
+                    </strong>{" "}
+                    vai trò
+                  </span>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Kho hoặc Địa bàn phụ trách
-                  </label>
-                  <select
-                    value={formData.assignedWarehouse}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        assignedWarehouse: e.target.value,
-                      })
-                    }
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                  >
-                    <option value="">Chưa phân công địa bàn / kho</option>
-                    {WAREHOUSE_OPTIONS.map((wh) => (
-                      <option key={wh} value={wh}>
-                        {wh}
-                      </option>
-                    ))}
-                  </select>
+                {/* Cảnh báo an toàn khi Admin sửa tài khoản chính mình */}
+                {isEditingCurrentSelf && (
+                  <div className="flex items-start gap-2.5 rounded-xl border border-purple-200/80 bg-purple-50/70 p-3 text-xs text-purple-900 shadow-2xs">
+                    <Shield className="h-4 w-4 text-purple-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">Bảo vệ quyền Quản trị viên:</span> Bạn đang chỉnh sửa tài khoản Quản trị của chính mình. Quyền <strong>Quản trị hệ thống (ADMIN)</strong> được khóa cố định để đảm bảo bạn không bị mất quyền truy cập.
+                    </div>
+                  </div>
+                )}
+
+                {/* Danh sách 7 vai trò dạng checkbox/cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {Object.keys(ROLE_CONFIG).map((roleKey) => {
+                    const cfg = ROLE_CONFIG[roleKey];
+                    const isSelected = (formData.roles || []).includes(roleKey);
+                    const isAdminLocked = isEditingCurrentSelf && roleKey === USER_ROLES.ADMIN;
+
+                    return (
+                      <div
+                        key={roleKey}
+                        onClick={() => {
+                          if (!isAdminLocked) handleToggleRole(roleKey);
+                        }}
+                        className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
+                          isAdminLocked
+                            ? "bg-purple-50/40 border-purple-200 cursor-not-allowed"
+                            : isSelected
+                            ? "bg-purple-50/60 border-purple-300 shadow-2xs"
+                            : "bg-white border-slate-200 hover:bg-slate-50/80"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            disabled={isAdminLocked}
+                            onChange={() => {
+                              if (!isAdminLocked) handleToggleRole(roleKey);
+                            }}
+                            className="h-4 w-4 rounded text-purple-600 focus:ring-purple-500 border-slate-300 cursor-pointer disabled:cursor-not-allowed"
+                          />
+                          <div className="truncate">
+                            <span className="font-semibold text-slate-800">{cfg.label}</span>
+                            <span className="text-[10px] font-mono text-slate-400 ml-1.5">
+                              ({roleKey})
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0 ml-2">
+                          {isAdminLocked ? (
+                            <span
+                              title="Quyền quản trị của chính bạn được bảo vệ"
+                              className="inline-flex items-center gap-1 rounded-md bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-700"
+                            >
+                              <Lock className="h-2.5 w-2.5" />
+                              Khóa
+                            </span>
+                          ) : (
+                            <span
+                              className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${cfg.bgClass} ${cfg.textClass} ${cfg.ringClass}`}
+                            >
+                              {roleKey === USER_ROLES.WAREHOUSE_KEEPER || roleKey === USER_ROLES.WAREHOUSE_MANAGER
+                                ? "Kho"
+                                : "Nhóm"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+
+                {formErrors.roles && (
+                  <p className="mt-1 text-[11px] text-rose-500 flex items-center gap-1 font-medium">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    <span>{formErrors.roles}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* KHO HOẶC ĐỊA BÀN PHỤ TRÁCH (Ràng buộc động SN-14) */}
+              <div>
+                {(() => {
+                  const hasWarehouseRole = (formData.roles || []).some(
+                    (r) =>
+                      r === USER_ROLES.WAREHOUSE_KEEPER ||
+                      r === USER_ROLES.WAREHOUSE_MANAGER,
+                  );
+
+                  return (
+                    <>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-semibold text-slate-700">
+                          Kho hoặc Địa bàn phụ trách{" "}
+                          {hasWarehouseRole ? (
+                            <span className="text-rose-500 font-bold">*</span>
+                          ) : (
+                            <span className="text-slate-400 font-normal">(Tùy chọn)</span>
+                          )}
+                        </label>
+                        {hasWarehouseRole && (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                            Bắt buộc cho vai trò Kho
+                          </span>
+                        )}
+                      </div>
+
+                      <select
+                        value={formData.assignedWarehouse}
+                        onChange={(e) => {
+                          setFormData({
+                            ...formData,
+                            assignedWarehouse: e.target.value,
+                          });
+                          clearFieldError("assignedWarehouse");
+                        }}
+                        className={`w-full rounded-xl border bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-2 transition-all ${
+                          formErrors.assignedWarehouse
+                            ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/15"
+                            : "border-slate-200 focus:border-purple-500 focus:ring-purple-500/20"
+                        }`}
+                      >
+                        <option value="">-- Chưa chọn kho / địa bàn --</option>
+                        {WAREHOUSE_OPTIONS.map((wh) => (
+                          <option key={wh} value={wh}>
+                            {wh}
+                          </option>
+                        ))}
+                      </select>
+
+                      {formErrors.assignedWarehouse ? (
+                        <p className="mt-1 text-[11px] text-rose-500 flex items-center gap-1 font-medium">
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                          <span>{formErrors.assignedWarehouse}</span>
+                        </p>
+                      ) : hasWarehouseRole ? (
+                        <p className="mt-1 text-[11px] text-amber-700 flex items-center gap-1">
+                          <Info className="h-3.5 w-3.5 shrink-0" />
+                          <span>
+                            Nhân sự thuộc vai trò Thủ kho / Quản lý kho bắt buộc phải gắn với kho phụ trách cụ thể.
+                          </span>
+                        </p>
+                      ) : null}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* =============================================================== */}

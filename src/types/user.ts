@@ -9,6 +9,7 @@ export interface UserManagementItem {
   fullName: string;
   phone: string;
   role: UserRoleType | string;
+  roles?: (UserRoleType | string)[];
   status: UserStatusType;
   assignedWarehouse?: string;
   lockReason?: string | null;
@@ -38,6 +39,7 @@ export interface CreateUserPayload {
   email: string;
   phone?: string;
   role: string;
+  roles?: string[];
   assignedWarehouse?: string;
   password?: string;
 }
@@ -47,6 +49,7 @@ export interface UpdateUserPayload {
   email?: string;
   phone?: string;
   role?: string;
+  roles?: string[];
   assignedWarehouse?: string;
   password?: string;
 }
