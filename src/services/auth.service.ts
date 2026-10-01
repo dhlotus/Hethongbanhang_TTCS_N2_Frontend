@@ -327,63 +327,26 @@ export const authService = {
     const identifier = credentials.email.trim().toLowerCase();
     const { password } = credentials;
 
-    // 1. Kiểm tra tài khoản Demo (Hỗ trợ chạy thử nghiệm ngay cả khi chưa bật backend)
-    if (DEMO_USERS[identifier]) {
-      const lockData = demoFailedAttempts.get(identifier);
-      const now = Date.now();
-
-      if (lockData && lockData.lockedUntil > now) {
-        throw new Error(
-          "Tài khoản bị khóa tạm thời 15 phút do nhập sai quá số lần quy định",
-        );
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 400));
-
-      if (password !== "123456") {
-        const nextCount = (lockData?.count || 0) + 1;
-        if (nextCount >= 5) {
-          demoFailedAttempts.set(identifier, {
-            count: 5,
-            lockedUntil: now + 15 * 60 * 1000,
-          });
-          throw new Error(
-            "Tài khoản bị khóa tạm thời 15 phút do nhập sai quá số lần quy định",
-          );
-        }
-
-        demoFailedAttempts.set(identifier, { count: nextCount, lockedUntil: 0 });
-        throw new Error("Tài khoản hoặc mật khẩu không chính xác");
-      }
-
-      // Xóa lịch sử sai khi đăng nhập đúng
-      demoFailedAttempts.delete(identifier);
-      return DEMO_USERS[identifier];
-    }
-
-    // 2. Gọi API Backend thật: POST /auth/login
+    // 1. Luôn ưu tiên gọi API Backend thật: POST /auth/login để nhận Access Token thật từ Server
     try {
       const response = await apiClient.post<LoginResponse>("/auth/login", {
         username: identifier,
+        email: identifier,
         password,
       });
 
       return response.data;
     } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        if (!error.response) {
-          throw new Error(
-            "Không thể kết nối đến máy chủ Backend. Bạn có thể sử dụng các tài khoản Demo có sẵn để kiểm tra!",
-            { cause: error },
-          );
-        }
-
-        const data = error.response.data as { message?: string | string[]; statusCode?: number };
+      if (axios.isAxiosError(error) && error.response) {
+        const data = error.response.data as {
+          message?: string | string[];
+          statusCode?: number;
+        };
         const rawMessage = Array.isArray(data?.message)
           ? data.message.join(", ")
           : data?.message || "";
 
-        // Kiểm tra xem có bị khóa do quá 5 lần sai không (mã 423 hoặc message chứa 'tạm khóa' / '15 phút')
+        // Kiểm tra xem có bị khóa do quá 5 lần sai không
         const isLocked =
           error.response.status === 423 ||
           rawMessage.toLowerCase().includes("tạm khóa") ||
@@ -397,7 +360,7 @@ export const authService = {
           );
         }
 
-        // Bắt lỗi 401 hoặc 400: Luôn trả về thông báo chung để chống lộ thông tin tồn tại tài khoản
+        // Bắt lỗi 401 hoặc 400
         if (error.response.status === 401 || error.response.status === 400) {
           throw new Error("Tài khoản hoặc mật khẩu không chính xác", { cause: error });
         }
@@ -405,8 +368,41 @@ export const authService = {
         throw new Error(rawMessage || "Tài khoản hoặc mật khẩu không chính xác", { cause: error });
       }
 
+      // 2. Chỉ khi máy chủ Backend không phản hồi (Offline / Network error), mới dùng tài khoản Demo dự phòng
+      if (DEMO_USERS[identifier]) {
+        const lockData = demoFailedAttempts.get(identifier);
+        const now = Date.now();
+
+        if (lockData && lockData.lockedUntil > now) {
+          throw new Error(
+            "Tài khoản bị khóa tạm thời 15 phút do nhập sai quá số lần quy định",
+          );
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        if (password !== "123456") {
+          const nextCount = (lockData?.count || 0) + 1;
+          if (nextCount >= 5) {
+            demoFailedAttempts.set(identifier, {
+              count: 5,
+              lockedUntil: now + 15 * 60 * 1000,
+            });
+            throw new Error(
+              "Tài khoản bị khóa tạm thời 15 phút do nhập sai quá số lần quy định",
+            );
+          }
+
+          demoFailedAttempts.set(identifier, { count: nextCount, lockedUntil: 0 });
+          throw new Error("Tài khoản hoặc mật khẩu không chính xác");
+        }
+
+        demoFailedAttempts.delete(identifier);
+        return DEMO_USERS[identifier];
+      }
+
       const err = error as Error;
-      throw new Error(err.message || "Đăng nhập thất bại", { cause: error });
+      throw new Error(err.message || "Không thể kết nối đến máy chủ Backend.", { cause: error });
     }
   },
 
@@ -647,4 +643,48 @@ export const authService = {
       );
     }
   },
+
+  /**
+   * Đặt lại mật khẩu bằng mã cấp từ Quản trị viên (SN-10 Extension)
+   */
+  async resetPasswordWithCode(data: {
+    identifier: string;
+    resetCode: string;
+    newPassword: string;
+  }): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await apiClient.post<{ success: boolean; message: string }>(
+        "/auth/reset-password-with-code",
+        {
+          identifier: data.identifier.trim(),
+          resetCode: data.resetCode.trim().toUpperCase(),
+          newPassword: data.newPassword,
+        },
+      );
+      return response.data;
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        if (!error.response) {
+          throw new Error(
+            "Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng!",
+            { cause: error },
+          );
+        }
+        const resData = error.response.data as {
+          message?: string | string[];
+          statusCode?: number;
+        };
+        const rawMessage = Array.isArray(resData?.message)
+          ? resData.message.join(", ")
+          : resData?.message;
+        throw new Error(
+          rawMessage || "Mã cấp đổi mật khẩu không chính xác hoặc đã được sử dụng.",
+          { cause: error },
+        );
+      }
+      const err = error as Error;
+      throw new Error(err.message || "Đặt lại mật khẩu thất bại.", { cause: error });
+    }
+  },
 };
+

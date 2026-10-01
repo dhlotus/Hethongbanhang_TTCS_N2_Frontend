@@ -9,7 +9,12 @@ import {
   Layers,
   X,
   ShieldCheck,
+  ShoppingCart,
+  Warehouse,
+  Receipt,
+  Store,
 } from "lucide-react";
+import { getStoredUser } from "../utils/navigation";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -21,33 +26,63 @@ interface MenuItem {
   path: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
+  roles?: string[]; // Nếu không khai báo, tất cả vai trò đều thấy
 }
 
 const MENU_ITEMS: MenuItem[] = [
   {
-    name: "Quản lý người dùng",
-    path: "/system/users",
-    icon: Users,
-  },
-  {
-    name: "Nhật ký hệ thống",
-    path: "/system/audit-logs",
-    icon: ScrollText,
+    name: "Tổng quan hệ thống",
+    path: "/dashboard",
+    icon: LayoutDashboard,
+    roles: ["ADMIN", "SALES_MANAGER", "WAREHOUSE_MANAGER"],
   },
   {
     name: "Danh mục sản phẩm",
     path: "/catalog/products",
     icon: Package,
+    // Tất cả người dùng đều có thể xem danh mục (giá vốn tự động ẩn trên server theo SN-10)
+  },
+  {
+    name: "Quản lý tồn kho",
+    path: "/inventory/stock",
+    icon: Warehouse,
+    roles: ["ADMIN", "WAREHOUSE_KEEPER", "WAREHOUSE_MANAGER", "WH_MANAGER"],
+  },
+  {
+    name: "Đơn hàng Bán buôn",
+    path: "/sales/orders",
+    icon: ShoppingCart,
+    roles: ["ADMIN", "SALES_MANAGER", "SALES_REP"],
   },
   {
     name: "Bảng giá & Chiết khấu",
     path: "/catalog/pricing",
     icon: BadgePercent,
+    roles: ["ADMIN", "SALES_MANAGER", "ACCOUNTANT"],
   },
   {
-    name: "Tổng quan hệ thống",
-    path: "/dashboard",
-    icon: LayoutDashboard,
+    name: "Hóa đơn & Công nợ",
+    path: "/accounting/invoices",
+    icon: Receipt,
+    roles: ["ADMIN", "ACCOUNTANT"],
+  },
+  {
+    name: "Cổng đặt hàng Đại lý",
+    path: "/portal/orders",
+    icon: Store,
+    roles: ["ADMIN", "CUSTOMER"],
+  },
+  {
+    name: "Quản lý người dùng",
+    path: "/system/users",
+    icon: Users,
+    roles: ["ADMIN"],
+  },
+  {
+    name: "Nhật ký hệ thống",
+    path: "/system/audit-logs",
+    icon: ScrollText,
+    roles: ["ADMIN"],
   },
 ];
 
@@ -56,9 +91,25 @@ interface SidebarNavContentProps {
 }
 
 /**
- * Nội dung lõi của Sidebar (tái sử dụng cho cả Desktop & Mobile Drawer)
+ * Nội dung lõi của Sidebar (tái sử dụng cho cả Desktop & Mobile Drawer):
+ * - Tự động lọc menu theo vai trò người dùng (RBAC Frontend - SN-10)
+ * - Ẩn bớt các mục không phận sự để giao diện tinh gọn, không rối mắt
  */
 const SidebarNavContent: React.FC<SidebarNavContentProps> = ({ onItemClick }) => {
+  const user = getStoredUser();
+  const userRoles = user?.roles || [];
+
+  // Lọc danh mục điều hướng theo quyền hạn (ADMIN luôn thấy tất cả)
+  const visibleMenuItems = MENU_ITEMS.filter((item) => {
+    if (!item.roles || item.roles.length === 0) {
+      return true;
+    }
+    if (userRoles.includes("ADMIN")) {
+      return true;
+    }
+    return item.roles.some((r) => userRoles.includes(r));
+  });
+
   return (
     <div className="flex h-full flex-col justify-between p-4">
       {/* 1. Phần Đầu: Logo & Brand Identity */}
@@ -76,7 +127,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({ onItemClick }) =>
               </div>
               <div className="flex items-center gap-1">
                 <span className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                  ADMIN PANEL
+                  {userRoles[0] || "PORTAL"}
                 </span>
               </div>
             </div>
@@ -86,10 +137,10 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({ onItemClick }) =>
         {/* 2. Danh mục Menu điều hướng */}
         <div className="mt-6">
           <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-            Quản trị & Cấu hình
+            Chức năng phân hệ
           </p>
           <nav className="mt-2 space-y-1">
-            {MENU_ITEMS.map((item) => {
+            {visibleMenuItems.map((item) => {
               const Icon = item.icon;
               return (
                 <NavLink
@@ -127,7 +178,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({ onItemClick }) =>
         </div>
       </div>
 
-      {/* 3. Phần Cuối: Trạng thái hệ thống */}
+      {/* 3. Phần Cuối: Trạng thái hệ thống & thông tin vai trò */}
       <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
@@ -135,13 +186,13 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({ onItemClick }) =>
             <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
           </span>
           <span className="text-xs font-semibold text-slate-700">
-            Hệ thống: Trực tuyến
+            {user?.fullName || "Đã kết nối"}
           </span>
         </div>
         <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
           <div className="flex items-center gap-1">
-            <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
-            <span>Bảo mật 2FA Active</span>
+            <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
+            <span className="font-medium text-slate-600">RBAC SN-10 Active</span>
           </div>
           <span className="font-mono text-[10px] text-slate-400">v1.0.0</span>
         </div>
@@ -158,28 +209,21 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({ onItemClick }) =>
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   return (
     <>
-      {/* =================================================================== */}
-      {/* 1. Desktop Sidebar (Cố định, không che khuất màn hình)             */}
-      {/* =================================================================== */}
+      {/* 1. Desktop Sidebar */}
       <aside className="hidden h-full w-[260px] shrink-0 border-r border-slate-100 bg-white lg:flex lg:flex-col">
         <SidebarNavContent />
       </aside>
 
-      {/* =================================================================== */}
-      {/* 2. Mobile Drawer (Hiển thị khi mở menu trên mobile/tablet)          */}
-      {/* =================================================================== */}
+      {/* 2. Mobile Drawer */}
       {isOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          {/* Backdrop mờ nhẹ */}
           <div
             className="fixed inset-0 bg-slate-900/30 backdrop-blur-xs transition-opacity"
             onClick={onClose}
             aria-hidden="true"
           />
 
-          {/* Drawer Panel */}
           <div className="fixed inset-y-0 left-0 z-50 flex w-[260px] max-w-full flex-col bg-white shadow-2xl transition-transform">
-            {/* Nút đóng Drawer */}
             <div className="absolute top-4 right-3 z-10">
               <button
                 type="button"

@@ -5,6 +5,8 @@ import { ForgotPasswordPage } from "../pages/forgot-password-page";
 import { ResetPasswordPage } from "../pages/reset-password-page";
 import { ChangePasswordPage } from "../pages/change-password-page";
 import { RoleModulePage } from "../pages/role-module-page";
+import { ProductsPage } from "../pages/products-page";
+import { UsersPage } from "../pages/users-page";
 import { ProtectedRoute } from "../components/protected-route";
 import { NetworkStatusIndicator } from "../components/network-status-indicator";
 import { AdminLayout } from "../layouts/admin-layout";
@@ -63,17 +65,8 @@ export const AppRoutes: React.FC = () => {
         <Route element={<ProtectedRoute />}>
           {/* Phân hệ Quản trị hệ thống sử dụng khung AdminLayout chuẩn */}
           <Route element={<AdminLayout />}>
-            {/* 1. Quản lý người dùng */}
-            <Route
-              path="/system/users"
-              element={
-                <RoleModulePage
-                  title="Quản lý Người dùng & Phân quyền"
-                  subtitle="Quản trị danh sách người dùng, cấp phát vai trò và trạng thái tài khoản"
-                  requiredRole="ADMIN"
-                />
-              }
-            />
+            {/* 1. Quản lý người dùng & Phân quyền (SN-10) */}
+            <Route path="/system/users" element={<UsersPage />} />
 
             {/* 2. Nhật ký hệ thống */}
             <Route
@@ -87,17 +80,8 @@ export const AppRoutes: React.FC = () => {
               }
             />
 
-            {/* 3. Danh mục sản phẩm */}
-            <Route
-              path="/catalog/products"
-              element={
-                <RoleModulePage
-                  title="Danh mục sản phẩm"
-                  subtitle="Quản lý danh sách hàng hóa, quy cách đóng gói và mã phân loại SKU"
-                  requiredRole="ADMIN"
-                />
-              }
-            />
+            {/* 3. Danh mục sản phẩm (SN-10: Bảo mật dữ liệu nhạy cảm & Phân quyền) */}
+            <Route path="/catalog/products" element={<ProductsPage />} />
 
             {/* 4. Bảng giá & Chiết khấu */}
             <Route

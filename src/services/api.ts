@@ -108,6 +108,24 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // Nếu tài khoản bị Khóa (LOCKED), lập tức kích hoạt đăng xuất và hiển thị thông báo khóa
+    const resData = error.response?.data as { message?: string | string[] } | undefined;
+    const rawMessage = Array.isArray(resData?.message)
+      ? resData.message.join(", ")
+      : resData?.message;
+    const isLockedError =
+      typeof rawMessage === "string" &&
+      (rawMessage.toLowerCase().includes("khóa") ||
+        rawMessage.toLowerCase().includes("khoá") ||
+        rawMessage.toLowerCase().includes("locked"));
+
+    if (isLockedError) {
+      handleSessionTimeout(
+        rawMessage || "Tài khoản của bạn đã bị khóa bởi Quản trị viên.",
+      );
+      return Promise.reject(error);
+    }
+
     // Nếu request này đã retry một lần nhưng vẫn nhận lại 401 -> Phiên không còn giá trị
     if (originalRequest._retry) {
       handleSessionTimeout();
