@@ -600,11 +600,11 @@ export const UsersPage: React.FC = () => {
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       {/* ========================================================================= */}
-      {/* 1. FLOATING TOAST NOTIFICATION (Trượt từ bên phải sang, rõ ràng sắc nét) */}
+      {/* 1. FLOATING TOAST NOTIFICATION (Trượt từ bên phải sang, luôn nổi trên cùng) */}
       {/* ========================================================================= */}
       {toast && (
         <div
-          className={`fixed top-6 right-6 z-50 flex items-start gap-3.5 w-96 max-w-[calc(100vw-2rem)] rounded-2xl bg-white p-4 shadow-xl shadow-slate-900/10 border border-slate-200/90 ring-1 ring-slate-900/5 transition-all duration-300 ease-out transform ${
+          className={`fixed top-6 right-6 z-[9999] flex items-start gap-3.5 w-96 max-w-[calc(100vw-2rem)] rounded-2xl bg-white p-4.5 shadow-2xl border border-slate-200/90 ring-1 ring-slate-900/10 transition-all duration-300 ease-out transform ${
             toastVisible
               ? "translate-x-0 opacity-100"
               : "translate-x-full opacity-0 pointer-events-none"
