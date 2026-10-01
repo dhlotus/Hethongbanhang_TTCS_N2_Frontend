@@ -58,15 +58,16 @@
 ---
 
 ## 4. Danh Sách Tài Khoản Thử Nghiệm 7 Vai Trò (Mật khẩu: `123456`)
-| STT | Vai trò | Email / Username | Tên hiển thị | Mã Role | URL Điều hướng sau Login |
+| STT | Vai trò | Email đăng nhập (Tiếng Việt) | Tên hiển thị | Mã Role | URL Điều hướng sau Login |
 | :---: | :--- | :--- | :--- | :--- | :--- |
-| 1 | **Quản trị hệ thống** | `admin@loha.vn` / `admin` | Nguyễn Văn Admin | `ADMIN` | `/system/users` |
-| 2 | **Nhân viên kinh doanh** | `sales@loha.vn` / `sales` | Trần Văn Nam | `SALES_REP` | `/sales/orders` |
-| 3 | **Quản lý kinh doanh** | `salesmanager@loha.vn` | Lê Hoàng Trưởng Phòng | `SALES_MANAGER` | `/dashboard` |
-| 4 | **Thủ kho** | `warehouse@loha.vn` / `warehouse` | Phạm Hùng Kho | `WAREHOUSE_KEEPER` | `/inventory/stock` |
-| 5 | **Quản lý kho** | `warehousemanager@loha.vn` | Đỗ Quốc Bảo | `WAREHOUSE_MANAGER` | `/dashboard` |
-| 6 | **Kế toán** | `accountant@loha.vn` / `accountant` | Vũ Mai Hoa | `ACCOUNTANT` | `/accounting/invoices` |
-| 7 | **Đại lý B2B** | `dealer@loha.vn` / `customer` | Cửa Hàng Minh Khang | `CUSTOMER` | `/portal/orders` |
+| 1 | **Quản trị hệ thống** | `quantrihethong@loha.vn` | Nguyễn Văn Admin | `ADMIN` | `/system/users` |
+| 2 | **Nhân viên kinh doanh** | `nhanvienkinhdoanh@loha.vn` | Trần Văn Nam | `SALES_REP` | `/sales/orders` |
+| 3 | **Quản lý kinh doanh** | `quanlykinhdoanh@loha.vn` | Lê Hoàng Trưởng Phòng | `SALES_MANAGER` | `/dashboard` |
+| 4 | **Thủ kho** | `thukho@loha.vn` | Phạm Hùng Kho | `WAREHOUSE_KEEPER` | `/inventory/stock` |
+| 5 | **Quản lý kho** | `quanlykho@loha.vn` | Đỗ Quốc Bảo | `WAREHOUSE_MANAGER` | `/dashboard` |
+| 6 | **Kế toán công nợ** | `ketoan@loha.vn` | Vũ Mai Hoa | `ACCOUNTANT` | `/accounting/invoices` |
+| 7 | **Đại lý / Khách hàng B2B** | `daily@loha.vn` | Cửa Hàng Minh Khang | `CUSTOMER` | `/portal/orders` |
+
 
 ---
 
