@@ -23,9 +23,12 @@ import {
   Check,
   Sparkles,
   UserX,
+  AlertTriangle,
+  Store,
 } from "lucide-react";
 import { usersService } from "../services/users.service";
 import type {
+  AssignedCustomerItem,
   CreateUserPayload,
   UpdateUserPayload,
   UserManagementItem,
@@ -252,6 +255,8 @@ export const UsersPage: React.FC = () => {
   const [targetStatus, setTargetStatus] = useState<UserStatusType>("LOCKED");
   const [statusReason, setStatusReason] = useState("");
   const [statusSubmitting, setStatusSubmitting] = useState(false);
+  const [assignedCustomers, setAssignedCustomers] = useState<AssignedCustomerItem[]>([]);
+  const [loadingAssignedCustomers, setLoadingAssignedCustomers] = useState(false);
 
   // Tải danh sách người dùng từ API thật
   const fetchUsers = useCallback(async () => {
@@ -533,7 +538,7 @@ export const UsersPage: React.FC = () => {
     }
   };
 
-  // Mở Modal Khóa / Mở khóa
+  // Mở Modal Khóa / Mở khóa (SN-15)
   const handleOpenStatusModal = (
     user: UserManagementItem,
     status: UserStatusType,
@@ -545,32 +550,60 @@ export const UsersPage: React.FC = () => {
         ? ""
         : `Mở khóa khôi phục quyền truy cập cho nhân sự ${user.fullName}`,
     );
+    setAssignedCustomers([]);
     setStatusModalOpen(true);
+
+    if (status === "LOCKED") {
+      setLoadingAssignedCustomers(true);
+      usersService
+        .getAssignedCustomers(user.id)
+        .then((res) => {
+          setAssignedCustomers(res.customers || []);
+        })
+        .catch(() => {
+          setAssignedCustomers([]);
+        })
+        .finally(() => {
+          setLoadingAssignedCustomers(false);
+        });
+    }
   };
 
-  // Gửi form Khóa / Mở khóa
+  // Gửi form Khóa / Mở khóa (SN-15)
   const handleSubmitStatus = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserForStatus) return;
 
     if (targetStatus === "LOCKED" && !statusReason.trim()) {
-      showToast("warning", "Thiếu lý do khóa", "Vui lòng nhập lý do khóa tài khoản để lưu nhật ký kiểm toán.");
+      showToast(
+        "warning",
+        "Thiếu lý do khóa",
+        "Vui lòng nhập lý do khóa tài khoản để lưu nhật ký kiểm toán hệ thống.",
+      );
       return;
     }
 
     try {
       setStatusSubmitting(true);
-      await usersService.updateUserStatus(selectedUserForStatus.id, {
+      const res = await usersService.updateUserStatus(selectedUserForStatus.id, {
         status: targetStatus,
         reason: statusReason.trim(),
       });
 
       if (targetStatus === "LOCKED") {
-        showToast(
-          "success",
-          "Đã khóa tài khoản",
-          `Tài khoản "${selectedUserForStatus.fullName}" đã bị khóa. Toàn bộ phiên làm việc của nhân sự đã bị chấm dứt ngay lập tức.`,
-        );
+        if (res.handoverWarning) {
+          showToast(
+            "warning",
+            "Đã khóa tài khoản - Cần bàn giao",
+            res.handoverWarning,
+          );
+        } else {
+          showToast(
+            "success",
+            "Đã khóa tài khoản",
+            `Tài khoản "${selectedUserForStatus.fullName}" đã bị khóa. Toàn bộ phiên làm việc của nhân sự đã bị chấm dứt ngay lập tức.`,
+          );
+        }
       } else {
         showToast(
           "success",
@@ -1096,8 +1129,8 @@ export const UsersPage: React.FC = () => {
       {/* 5. MODAL THÊM / CẬP NHẬT NHÂN SỰ & CẤP MÃ ĐỔI MẬT KHẨU                    */}
       {/* ========================================================================= */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-modal-backdrop-in">
+          <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] animate-modal-in">
             {/* Header Modal */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
               <div className="flex items-center gap-3">
@@ -1537,8 +1570,8 @@ export const UsersPage: React.FC = () => {
       {/* 6. MODAL KHÓA / MỞ KHÓA TÀI KHOẢN NHÂN SỰ                                */}
       {/* ========================================================================= */}
       {statusModalOpen && selectedUserForStatus && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-modal-backdrop-in">
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 animate-modal-in">
             <button
               type="button"
               onClick={() => setStatusModalOpen(false)}
@@ -1575,7 +1608,7 @@ export const UsersPage: React.FC = () => {
             </div>
 
             {targetStatus === "LOCKED" && (
-              <div className="mb-4 rounded-xl bg-rose-50 border border-rose-200/80 p-3.5 text-xs text-rose-800 space-y-1">
+              <div className="mb-3.5 rounded-xl bg-rose-50 border border-rose-200/80 p-3.5 text-xs text-rose-800 space-y-1">
                 <div className="font-bold flex items-center gap-1.5">
                   <ShieldAlert className="h-4 w-4 shrink-0 text-rose-600" />
                   <span>Cảnh báo bảo mật hệ thống:</span>
@@ -1584,6 +1617,51 @@ export const UsersPage: React.FC = () => {
                   Khi khóa, toàn bộ phiên làm việc của nhân sự sẽ bị ngắt kết nối ngay lập tức. Mọi phiên đăng nhập hiện tại sẽ bị thu hồi và nhân viên sẽ bị out ra ngay lập tức.
                 </p>
               </div>
+            )}
+
+            {/* Cảnh báo Bàn giao Đại lý phụ trách (SN-15) */}
+            {targetStatus === "LOCKED" && (
+              <>
+                {loadingAssignedCustomers ? (
+                  <div className="mb-3.5 rounded-xl bg-slate-50 border border-slate-200/80 p-3 text-xs text-slate-500 flex items-center gap-2">
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-purple-600" />
+                    <span>Đang kiểm tra danh sách đại lý phụ trách...</span>
+                  </div>
+                ) : assignedCustomers.length > 0 ? (
+                  <div className="mb-3.5 rounded-xl bg-amber-50/90 border border-amber-200 p-3.5 text-xs text-amber-900 space-y-2 shadow-2xs">
+                    <div className="font-bold flex items-center gap-1.5 text-amber-800">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                      <span>Cảnh báo bàn giao đại lý phụ trách:</span>
+                    </div>
+                    <p className="leading-relaxed">
+                      Nhân sự này đang phụ trách{" "}
+                      <strong className="text-amber-950 font-bold underline">
+                        {assignedCustomers.length} đại lý
+                      </strong>
+                      . Sau khi khóa, hệ thống khuyến nghị bạn thực hiện chuyển giao địa bàn cho nhân viên kinh doanh khác.
+                    </p>
+                    <div className="mt-1.5 space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                      {assignedCustomers.map((dealer) => (
+                        <div
+                          key={dealer.id}
+                          className="flex items-center justify-between rounded-lg bg-white/95 border border-amber-200/70 px-2.5 py-1.5 text-[11px] shadow-2xs"
+                        >
+                          <div className="font-medium text-slate-800 flex items-center gap-1.5 min-w-0">
+                            <Store className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                            <span className="font-mono font-bold text-amber-900">
+                              {dealer.code}
+                            </span>
+                            <span className="truncate">- {dealer.name}</span>
+                          </div>
+                          <span className="text-[10px] text-slate-600 font-semibold bg-slate-100 px-1.5 py-0.5 rounded shrink-0 ml-1.5">
+                            {dealer.region}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </>
             )}
 
             <form onSubmit={handleSubmitStatus} className="space-y-3.5">
@@ -1637,7 +1715,10 @@ export const UsersPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={statusSubmitting}
+                  disabled={
+                    statusSubmitting ||
+                    (targetStatus === "LOCKED" && !statusReason.trim())
+                  }
                   className={`rounded-xl px-5 py-2 text-xs font-semibold text-white transition-all shadow-sm ${
                     targetStatus === "LOCKED"
                       ? "bg-rose-600 hover:bg-rose-700 shadow-rose-600/20"

@@ -1,10 +1,12 @@
 import { apiClient } from './api';
 import type {
+  AssignedCustomersResponse,
   CreateUserPayload,
   CreateUserResponse,
   PaginatedUsersResponse,
   UpdateUserPayload,
   UpdateUserStatusPayload,
+  UpdateUserStatusResponse,
   UserManagementItem,
 } from '../types/user';
 
@@ -56,15 +58,25 @@ export const usersService = {
   },
 
   /**
-   * Khóa / Mở khóa tài khoản nhân sự kèm lý do (Thu hồi session khi khóa)
+   * Khóa / Mở khóa tài khoản nhân sự kèm lý do (Thu hồi session khi khóa & Cảnh báo bàn giao)
    */
   async updateUserStatus(
     id: string,
     payload: UpdateUserStatusPayload,
-  ): Promise<UserManagementItem> {
-    const response = await apiClient.patch<UserManagementItem>(
+  ): Promise<UpdateUserStatusResponse> {
+    const response = await apiClient.patch<UpdateUserStatusResponse>(
       `/users/${id}/status`,
       payload,
+    );
+    return response.data;
+  },
+
+  /**
+   * Lấy danh sách đại lý do nhân sự phụ trách kèm cảnh báo bàn giao (SN-15)
+   */
+  async getAssignedCustomers(id: string): Promise<AssignedCustomersResponse> {
+    const response = await apiClient.get<AssignedCustomersResponse>(
+      `/users/${id}/assigned-customers`,
     );
     return response.data;
   },

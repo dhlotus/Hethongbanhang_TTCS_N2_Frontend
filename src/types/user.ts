@@ -63,3 +63,27 @@ export interface CreateUserResponse {
   user: UserManagementItem;
   temporaryPassword?: string;
 }
+
+export interface AssignedCustomerItem {
+  id: string;
+  code: string;
+  name: string;
+  region: string;
+  phone?: string;
+  email?: string;
+  status: string;
+  salesRepId?: string;
+}
+
+export interface AssignedCustomersResponse {
+  customers: AssignedCustomerItem[];
+  total: number;
+  warning?: string;
+}
+
+export interface UpdateUserStatusResponse extends UserManagementItem {
+  user: UserManagementItem;
+  assignedCustomers?: AssignedCustomerItem[];
+  assignedCustomersCount?: number;
+  handoverWarning?: string;
+}

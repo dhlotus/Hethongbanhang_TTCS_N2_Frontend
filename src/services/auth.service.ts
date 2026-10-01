@@ -317,6 +317,30 @@ const DEMO_USERS: Record<string, LoginResponse> = {
 };
 
 // Lưu trữ số lần đăng nhập sai cục bộ để mô phỏng khóa 15 phút khi không có backend
+export class TemporaryLockedError extends Error {
+  isTemporaryLocked = true;
+  isLocked = true;
+
+  constructor(message: string, cause?: unknown) {
+    super(message, cause !== undefined ? { cause } : undefined);
+    this.name = "TemporaryLockedError";
+    Object.setPrototypeOf(this, TemporaryLockedError.prototype);
+  }
+}
+
+export class AccountLockedError extends Error {
+  isLocked = true;
+  isAdminLocked = true;
+  lockReason?: string;
+
+  constructor(message: string, lockReason?: string, cause?: unknown) {
+    super(message, cause !== undefined ? { cause } : undefined);
+    this.name = "AccountLockedError";
+    this.lockReason = lockReason;
+    Object.setPrototypeOf(this, AccountLockedError.prototype);
+  }
+}
+
 const demoFailedAttempts = new Map<string, { count: number; lockedUntil: number }>();
 
 export const authService = {
@@ -341,27 +365,61 @@ export const authService = {
         const data = error.response.data as {
           message?: string | string[];
           statusCode?: number;
+          isLocked?: boolean;
+          lockReason?: string;
+          status?: string;
         };
         const rawMessage = Array.isArray(data?.message)
           ? data.message.join(", ")
           : data?.message || "";
 
-        // Kiểm tra xem có bị khóa do quá 5 lần sai không
-        const isLocked =
+        // Kiểm tra xem có bị khóa tạm thời do quá 5 lần sai không
+        const isTemporaryLocked =
           error.response.status === 423 ||
           rawMessage.toLowerCase().includes("tạm khóa") ||
-          rawMessage.toLowerCase().includes("khoá") ||
+          rawMessage.toLowerCase().includes("tạm khoá") ||
           rawMessage.toLowerCase().includes("15 phút");
 
-        if (isLocked) {
-          throw new Error(
+        if (isTemporaryLocked) {
+          throw new TemporaryLockedError(
             "Tài khoản bị khóa tạm thời 15 phút do nhập sai quá số lần quy định",
-            { cause: error },
+            error,
+          );
+        }
+
+        // Kiểm tra xem tài khoản có bị Quản trị viên khóa không
+        const lowerRaw = rawMessage.toLowerCase();
+        const normRaw = rawMessage.normalize("NFC").toLowerCase();
+        const isLockedByAdmin =
+          Boolean(data?.isLocked) ||
+          data?.status === "LOCKED" ||
+          lowerRaw.includes("quản trị viên khóa") ||
+          lowerRaw.includes("quản trị viên khoá") ||
+          normRaw.includes("quản trị viên khóa") ||
+          normRaw.includes("quản trị viên khoá") ||
+          lowerRaw.includes("đã bị khóa") ||
+          lowerRaw.includes("đã bị khoá") ||
+          lowerRaw.includes("tài khoản đã bị");
+
+        if (isLockedByAdmin) {
+          const extractedReason =
+            data?.lockReason ||
+            (rawMessage.includes("Lý do:")
+              ? rawMessage.split("Lý do:")[1]?.split(".")[0]?.trim()
+              : undefined);
+
+          throw new AccountLockedError(
+            rawMessage || "Tài khoản của bạn đã bị quản trị viên khóa.",
+            extractedReason,
           );
         }
 
         // Bắt lỗi 401 hoặc 400
         if (error.response.status === 401 || error.response.status === 400) {
+          // Nếu backend trả về thông báo lỗi cụ thể (như tài khoản chưa kích hoạt), giữ nguyên
+          if (rawMessage && !rawMessage.toLowerCase().includes("unauthorized")) {
+            throw new Error(rawMessage, { cause: error });
+          }
           throw new Error("Tài khoản hoặc mật khẩu không chính xác", { cause: error });
         }
 

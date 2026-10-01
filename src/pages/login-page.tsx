@@ -13,8 +13,9 @@ import {
 import { Input } from "../components/input";
 import { Button } from "../components/button";
 import { Toast, type ToastType } from "../components/toast";
+import { AccountLockedModal } from "../components/account-locked-modal";
 import { loginSchema, type LoginFormData } from "../utils/validation";
-import { authService } from "../services/auth.service";
+import { authService, AccountLockedError } from "../services/auth.service";
 import { getRedirectPathByUser } from "../utils/navigation";
 import { tokenStorage } from "../utils/token-storage";
 import {
@@ -28,6 +29,12 @@ interface ToastState {
   type: ToastType;
   title: string;
   message: string;
+}
+
+interface LockedModalState {
+  isOpen: boolean;
+  reason?: string;
+  message?: string;
 }
 
 /**
@@ -48,17 +55,22 @@ const getInitialSessionToast = (): ToastState | null => {
       (hasExpiredParam ? DEFAULT_SESSION_TIMEOUT_MESSAGE : null);
 
     if (sessionExpiredMessage) {
-      sessionStorage.removeItem(SESSION_TIMEOUT_STORAGE_KEY);
-      window.history.replaceState({}, document.title, window.location.pathname);
-
       const isLocked =
         sessionExpiredMessage.toLowerCase().includes("khóa") ||
         sessionExpiredMessage.toLowerCase().includes("khoá") ||
         sessionExpiredMessage.toLowerCase().includes("locked");
 
+      // Nếu là thông báo khóa tài khoản, nhường việc hiển thị cho AccountLockedModal
+      if (isLocked) {
+        return null;
+      }
+
+      sessionStorage.removeItem(SESSION_TIMEOUT_STORAGE_KEY);
+      window.history.replaceState({}, document.title, window.location.pathname);
+
       return {
-        type: isLocked ? "error" : "warning",
-        title: isLocked ? "Tài khoản đã bị khóa" : "Phiên làm việc đã hết hạn",
+        type: "warning",
+        title: "Phiên làm việc đã hết hạn",
         message: sessionExpiredMessage,
       };
     }
@@ -70,14 +82,60 @@ const getInitialSessionToast = (): ToastState | null => {
 };
 
 /**
+ * Trích xuất trạng thái khóa tài khoản nếu session bị thu hồi do khóa tài khoản
+ */
+const getInitialLockedModal = (): LockedModalState | null => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const searchParams = new URLSearchParams(window.location.search);
+    const hasExpiredParam =
+      searchParams.get("expired") === "1" ||
+      searchParams.get("session_expired") === "1" ||
+      searchParams.get("session_expired") === "true";
+
+    const sessionExpiredMessage =
+      sessionStorage.getItem(SESSION_TIMEOUT_STORAGE_KEY) ||
+      (hasExpiredParam ? DEFAULT_SESSION_TIMEOUT_MESSAGE : null);
+
+    if (sessionExpiredMessage) {
+      const isLocked =
+        sessionExpiredMessage.toLowerCase().includes("khóa") ||
+        sessionExpiredMessage.toLowerCase().includes("khoá") ||
+        sessionExpiredMessage.toLowerCase().includes("locked");
+
+      if (isLocked) {
+        sessionStorage.removeItem(SESSION_TIMEOUT_STORAGE_KEY);
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+        const reason = sessionExpiredMessage.includes("Lý do:")
+          ? sessionExpiredMessage.split("Lý do:")[1]?.split(".")[0]?.trim()
+          : undefined;
+
+        return {
+          isOpen: true,
+          reason,
+          message: sessionExpiredMessage,
+        };
+      }
+    }
+  } catch {
+    // Bỏ qua lỗi trình duyệt
+  }
+
+  return null;
+};
+
+/**
  * Trang Đăng nhập LOHA SALES:
  * - Chuyển hướng thông minh sau đăng nhập dựa vào Role của người dùng
- * - Thông báo lỗi qua Toast nổi ở góc màn hình, tuyệt đối không chèn Alert làm vỡ form
+ * - Thông báo lỗi qua Toast nổi ở góc màn hình hoặc Popup Modal khi tài khoản bị khóa
  * - Thích ứng Responsive hoàn hảo trên mọi kích thước (Mobile, Tablet, Laptop, Desktop)
  */
 export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(getInitialSessionToast);
+  const [lockedModal, setLockedModal] = useState<LockedModalState | null>(getInitialLockedModal);
 
   const navigate = useNavigate();
 
@@ -85,26 +143,41 @@ export const LoginPage: React.FC = () => {
     document.title = "Đăng nhập | LOHA SALES";
 
     // Nếu không có thông báo phiên hết hạn và người dùng đã đăng nhập hợp lệ
-    if (!toast) {
+    if (!toast && !lockedModal?.isOpen) {
       const token = tokenStorage.getAccessToken();
       const storedUser = tokenStorage.getUser();
       if (token && storedUser) {
         navigate(getRedirectPathByUser(storedUser), { replace: true });
       }
     }
-  }, [navigate, toast]);
+  }, [navigate, toast, lockedModal]);
 
   // Lắng nghe sự kiện session-timeout phát ra từ Axios Interceptor khi đang ở trang Login
   useEffect(() => {
     const handleTimeoutEvent = (event: Event) => {
       const customEvent = event as CustomEvent<{ message?: string }>;
       const msg = customEvent.detail?.message || DEFAULT_SESSION_TIMEOUT_MESSAGE;
+      const lower = msg.toLowerCase();
+      const isLocked =
+        lower.includes("khóa") || lower.includes("khoá") || lower.includes("locked");
 
-      setToast({
-        type: "warning",
-        title: "Phiên làm việc đã hết hạn",
-        message: msg,
-      });
+      if (isLocked) {
+        const reason = msg.includes("Lý do:")
+          ? msg.split("Lý do:")[1]?.split(".")[0]?.trim()
+          : undefined;
+
+        setLockedModal({
+          isOpen: true,
+          reason,
+          message: msg,
+        });
+      } else {
+        setToast({
+          type: "warning",
+          title: "Phiên làm việc đã hết hạn",
+          message: msg,
+        });
+      }
     };
 
     window.addEventListener(SESSION_TIMEOUT_EVENT, handleTimeoutEvent);
@@ -140,18 +213,64 @@ export const LoginPage: React.FC = () => {
       const targetPath = getRedirectPathByUser(response.user);
       navigate(targetPath, { replace: true });
     } catch (error: unknown) {
-      const err = error as Error;
-      const message = err.message || "Tài khoản hoặc mật khẩu không chính xác";
+      const err = error as Error & {
+        isLocked?: boolean;
+        isAdminLocked?: boolean;
+        isTemporaryLocked?: boolean;
+        lockReason?: string;
+      };
 
-      const isLock =
-        message.toLowerCase().includes("khóa tạm thời") ||
-        message.toLowerCase().includes("15 phút") ||
-        message.toLowerCase().includes("tạm khóa");
+      const message = err.message || "Tài khoản hoặc mật khẩu không chính xác";
+      const normalizedMsg = (message + " " + (err.lockReason || "")).normalize("NFC").toLowerCase();
+
+      // Kiểm tra tài khoản bị khóa bởi Quản trị viên
+      const isAccountLocked =
+        err instanceof AccountLockedError ||
+        Boolean(err.isLocked) ||
+        Boolean(err.isAdminLocked) ||
+        normalizedMsg.includes("quản trị viên khóa") ||
+        normalizedMsg.includes("quản trị viên khoá") ||
+        normalizedMsg.includes("tài khoản đã bị") ||
+        normalizedMsg.includes("đã bị khóa") ||
+        normalizedMsg.includes("đã bị khoá");
+
+      // Kiểm tra khóa tạm thời do sai mật khẩu 5 lần
+      const isTemporaryLock =
+        Boolean(err.isTemporaryLocked) ||
+        normalizedMsg.includes("khóa tạm thời") ||
+        normalizedMsg.includes("khoá tạm thời") ||
+        normalizedMsg.includes("tạm khóa") ||
+        normalizedMsg.includes("tạm khoá") ||
+        normalizedMsg.includes("15 phút");
+
+      if (isAccountLocked && !isTemporaryLock) {
+        let reason = err.lockReason;
+        if (!reason && message.includes("Lý do:")) {
+          reason = message.split("Lý do:")[1]?.split(".")[0]?.trim();
+        }
+
+        // Bật popup hiển thị tài khoản bị khóa chuẩn SN-15
+        setLockedModal({
+          isOpen: true,
+          reason: reason || "Tài khoản hiện đang bị tạm khóa theo quyết định của Quản trị viên hệ thống.",
+          message,
+        });
+        return;
+      }
+
+      if (isTemporaryLock) {
+        setToast({
+          type: "warning",
+          title: "Cảnh báo bảo mật",
+          message: "Tài khoản bị khóa tạm thời 15 phút do nhập sai mật khẩu quá 5 lần liên tiếp.",
+        });
+        return;
+      }
 
       setToast({
-        type: isLock ? "warning" : "error",
-        title: isLock ? "Cảnh báo bảo mật" : "Đăng nhập thất bại",
-        message,
+        type: "error",
+        title: "Đăng nhập thất bại",
+        message: message || "Tài khoản hoặc mật khẩu không chính xác",
       });
     }
   };
@@ -165,6 +284,16 @@ export const LoginPage: React.FC = () => {
           title={toast.title}
           message={toast.message}
           onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Modal popup cảnh báo tài khoản bị khóa */}
+      {lockedModal?.isOpen && (
+        <AccountLockedModal
+          isOpen={lockedModal.isOpen}
+          reason={lockedModal.reason}
+          message={lockedModal.message}
+          onClose={() => setLockedModal(null)}
         />
       )}
 

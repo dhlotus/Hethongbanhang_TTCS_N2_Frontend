@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
 
 export type ToastType = "error" | "warning" | "success" | "info";
@@ -54,13 +54,23 @@ export const Toast: React.FC<ToastProps> = ({
   onClose,
   duration = 4000,
 }) => {
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 250);
+  };
+
   useEffect(() => {
     if (duration <= 0) return;
     const timer = setTimeout(() => {
-      onClose();
+      handleClose();
     }, duration);
     return () => clearTimeout(timer);
-  }, [duration, onClose]);
+  }, [duration]);
 
   const IconComponent = ICONS[type];
   const style = STYLES[type];
@@ -70,7 +80,9 @@ export const Toast: React.FC<ToastProps> = ({
     <div
       role="alert"
       aria-live="assertive"
-      className="fixed top-4 right-4 sm:top-6 sm:right-6 z-50 w-[calc(100%-2rem)] max-w-sm sm:max-w-md bg-white rounded-2xl border border-slate-200/90 shadow-[0_12px_40px_rgba(0,0,0,0.12)] p-4 flex items-start gap-3.5 transition-all animate-in fade-in slide-in-from-top-4 duration-300"
+      className={`fixed top-4 right-4 sm:top-6 sm:right-6 z-[9999] w-[calc(100%-2rem)] max-w-sm sm:max-w-md bg-white rounded-2xl border border-slate-200/90 shadow-[0_12px_40px_rgba(0,0,0,0.12)] p-4 flex items-start gap-3.5 transition-all ${
+        isClosing ? "animate-toast-out" : "animate-toast-in"
+      }`}
     >
       {/* Icon trạng thái */}
       <div
@@ -92,7 +104,7 @@ export const Toast: React.FC<ToastProps> = ({
       {/* Nút đóng */}
       <button
         type="button"
-        onClick={onClose}
+        onClick={handleClose}
         aria-label="Đóng thông báo"
         className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1 rounded-lg transition-colors cursor-pointer shrink-0"
       >
@@ -101,3 +113,4 @@ export const Toast: React.FC<ToastProps> = ({
     </div>
   );
 };
+
