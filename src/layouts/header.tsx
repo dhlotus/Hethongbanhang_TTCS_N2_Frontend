@@ -78,16 +78,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           <Menu className="h-5 w-5" />
         </button>
 
-        {/* Tiêu đề trang & Breadcrumb */}
-        <div>
-          <div className="hidden sm:flex items-center gap-1 text-[11px] font-medium text-slate-400">
+        {/* Tiêu đề trang & Breadcrumb gọn gàng, không lặp lại */}
+        <div className="flex items-center">
+          <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slate-500">
             <span>{category}</span>
-            <ChevronRight className="h-3 w-3 text-slate-300" />
-            <span className="text-slate-600">{title}</span>
+            <ChevronRight className="h-3.5 w-3.5 text-slate-300" />
+            <span className="font-bold text-slate-900">{title}</span>
           </div>
-          <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-tight">
-            {title}
-          </h1>
         </div>
       </div>
 

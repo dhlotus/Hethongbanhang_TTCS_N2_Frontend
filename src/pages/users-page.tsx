@@ -7,7 +7,6 @@ import {
   Lock,
   Unlock,
   Edit2,
-  ShieldCheck,
   CheckCircle2,
   AlertCircle,
   X,
@@ -121,27 +120,43 @@ export const UsersPage: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
 
-  // Toast thông báo nổi (Thay thế hoàn toàn inline alerts làm vỡ giao diện)
+  // Toast thông báo nổi mượt mà (Fade in & Slide out)
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
 
-  const showToast = (
-    type: "success" | "error" | "info" | "warning",
-    title: string,
-    message: string,
-  ) => {
-    setToast({
-      id: Math.random().toString(),
-      type,
-      title,
-      message,
-    });
-  };
+  const hideToast = useCallback(() => {
+    setToastVisible(false);
+    setTimeout(() => {
+      setToast(null);
+    }, 300);
+  }, []);
+
+  const showToast = useCallback(
+    (
+      type: "success" | "error" | "info" | "warning",
+      title: string,
+      message: string,
+    ) => {
+      setToast({
+        id: Math.random().toString(),
+        type,
+        title,
+        message,
+      });
+      requestAnimationFrame(() => {
+        setTimeout(() => setToastVisible(true), 20);
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3800);
+    const timer = setTimeout(() => {
+      hideToast();
+    }, 3800);
     return () => clearTimeout(timer);
-  }, [toast]);
+  }, [toast, hideToast]);
 
   // Modal Tạo / Chỉnh sửa
   const [modalOpen, setModalOpen] = useState(false);
@@ -384,12 +399,26 @@ export const UsersPage: React.FC = () => {
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       {/* ========================================================================= */}
-      {/* 1. FLOATING TOAST NOTIFICATION (Thay thế inline alert, không làm vỡ form)  */}
+      {/* 1. FLOATING TOAST NOTIFICATION (Trượt từ bên phải sang, rõ ràng sắc nét) */}
       {/* ========================================================================= */}
       {toast && (
-        <div className="fixed top-5 right-5 z-50 flex items-start gap-3 max-w-md rounded-2xl bg-white p-4 shadow-xl border border-slate-100 ring-1 ring-slate-900/5 transition-all duration-200 animate-in slide-in-from-top-3">
+        <div
+          className={`fixed top-6 right-6 z-50 flex items-start gap-3.5 w-96 max-w-[calc(100vw-2rem)] rounded-2xl bg-white p-4 shadow-xl shadow-slate-900/10 border border-slate-200/90 ring-1 ring-slate-900/5 transition-all duration-300 ease-out transform ${
+            toastVisible
+              ? "translate-x-0 opacity-100"
+              : "translate-x-full opacity-0 pointer-events-none"
+          } ${
+            toast.type === "success"
+              ? "border-l-4 border-l-emerald-500"
+              : toast.type === "error"
+              ? "border-l-4 border-l-rose-500"
+              : toast.type === "warning"
+              ? "border-l-4 border-l-amber-500"
+              : "border-l-4 border-l-indigo-500"
+          }`}
+        >
           <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
               toast.type === "success"
                 ? "bg-emerald-50 text-emerald-600"
                 : toast.type === "error"
@@ -405,19 +434,19 @@ export const UsersPage: React.FC = () => {
             {toast.type === "info" && <KeyRound className="h-5 w-5" />}
           </div>
 
-          <div className="flex-1 pr-2">
-            <h4 className="text-xs font-bold text-slate-900 leading-tight">
+          <div className="flex-1 pr-1">
+            <h4 className="text-sm font-bold text-slate-900 leading-tight">
               {toast.title}
             </h4>
-            <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+            <p className="mt-1 text-xs text-slate-600 leading-relaxed font-normal">
               {toast.message}
             </p>
           </div>
 
           <button
             type="button"
-            onClick={() => setToast(null)}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            onClick={hideToast}
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -425,37 +454,126 @@ export const UsersPage: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. HEADER BANNER & STATS CARDS                                            */}
+      {/* 2. STATS CARDS: THỐNG KÊ NHANH TỔNG QUAN                                    */}
       {/* ========================================================================= */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl bg-white p-6 shadow-sm border border-slate-100">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700 ring-1 ring-inset ring-purple-700/20">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              <span>Phân hệ Quản trị & RBAC (SN-10)</span>
-            </span>
-            <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/20">
-              7 Vai trò Nghiệp vụ
-            </span>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div className="rounded-2xl bg-white p-4.5 border border-slate-100 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+            <span className="text-xs font-semibold">Tổng nhân sự</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+              <Users className="h-4 w-4" />
+            </div>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-            Quản lý Người dùng & Phân quyền Hệ thống
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl">
-            Quản trị danh sách nhân sự, phân bổ quyền hạn, kiểm soát trạng thái
-            và cấp mã khôi phục tài khoản toàn hệ thống.
-          </p>
+          <div className="text-2xl font-bold tracking-tight text-slate-900">{total}</div>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="rounded-2xl bg-white p-4.5 border border-slate-100 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+            <span className="text-xs font-semibold">Đang hoạt động</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold tracking-tight text-emerald-700">{activeCount}</div>
+        </div>
+
+        <div className="rounded-2xl bg-white p-4.5 border border-slate-100 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+            <span className="text-xs font-semibold">Đang bị khóa</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+              <Lock className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold tracking-tight text-rose-600">{lockedCount}</div>
+        </div>
+
+        <div className="rounded-2xl bg-white p-4.5 border border-slate-100 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+            <span className="text-xs font-semibold">Chờ đổi mật khẩu</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+              <KeyRound className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold tracking-tight text-indigo-600">{codePendingCount}</div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3. TOOLBAR: TÌM KIẾM, BỘ LỌC & THAO TÁC HỆ THỐNG                          */}
+      {/* ========================================================================= */}
+      <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between rounded-2xl bg-white p-4 border border-slate-100 shadow-2xs">
+        {/* Nhóm tìm kiếm và bộ lọc bên trái */}
+        <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center flex-1">
+          {/* Ô tìm kiếm */}
+          <div className="relative flex-1 min-w-[260px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Tìm theo họ tên, username, email, số điện thoại..."
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-9 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setPage(1);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Bộ lọc vai trò */}
+          <select
+            value={roleFilter}
+            onChange={(e) => {
+              setRoleFilter(e.target.value);
+              setPage(1);
+            }}
+            className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs font-medium text-slate-700 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+          >
+            <option value="">Tất cả vai trò (7)</option>
+            {Object.keys(ROLE_CONFIG).map((roleKey) => (
+              <option key={roleKey} value={roleKey}>
+                {ROLE_CONFIG[roleKey].label}
+              </option>
+            ))}
+          </select>
+
+          {/* Bộ lọc trạng thái */}
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+            className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs font-medium text-slate-700 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="ACTIVE">Đang hoạt động</option>
+            <option value="LOCKED">Đang bị khóa</option>
+          </select>
+        </div>
+
+        {/* Nhóm nút hành động bên phải */}
+        <div className="flex items-center gap-2 shrink-0 justify-end">
           <button
             type="button"
             onClick={() => fetchUsers()}
             disabled={loading}
+            title="Làm mới danh sách"
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-2xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            <span>Làm mới</span>
+            <span className="hidden sm:inline">Làm mới</span>
           </button>
 
           <button
@@ -466,105 +584,6 @@ export const UsersPage: React.FC = () => {
             <UserPlus className="h-4 w-4" />
             <span>Thêm nhân sự mới</span>
           </button>
-        </div>
-      </div>
-
-      {/* Metric Stat Pills */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="rounded-xl bg-white p-4 border border-slate-100 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-medium">Tổng nhân sự</span>
-            <Users className="h-4 w-4 text-purple-600" />
-          </div>
-          <div className="text-xl font-bold text-slate-900">{total}</div>
-        </div>
-
-        <div className="rounded-xl bg-white p-4 border border-slate-100 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-medium">Đang hoạt động</span>
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          </div>
-          <div className="text-xl font-bold text-emerald-700">{activeCount}</div>
-        </div>
-
-        <div className="rounded-xl bg-white p-4 border border-slate-100 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-medium">Đang bị khóa</span>
-            <Lock className="h-4 w-4 text-rose-500" />
-          </div>
-          <div className="text-xl font-bold text-rose-600">{lockedCount}</div>
-        </div>
-
-        <div className="rounded-xl bg-white p-4 border border-slate-100 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-medium">Có mã cấp chưa đổi</span>
-            <KeyRound className="h-4 w-4 text-indigo-500" />
-          </div>
-          <div className="text-xl font-bold text-indigo-600">{codePendingCount}</div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 3. TOOLBAR: TÌM KIẾM NHANH & BỘ LỌC                                        */}
-      {/* ========================================================================= */}
-      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between rounded-xl bg-white p-4 border border-slate-100 shadow-2xs">
-        {/* Ô tìm kiếm */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Tìm theo họ tên, username, email, số điện thoại..."
-            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-9 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("");
-                setPage(1);
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Bộ lọc vai trò & trạng thái */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <select
-            value={roleFilter}
-            onChange={(e) => {
-              setRoleFilter(e.target.value);
-              setPage(1);
-            }}
-            className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-medium text-slate-700 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-          >
-            <option value="">Tất cả vai trò (7)</option>
-            {Object.keys(ROLE_CONFIG).map((roleKey) => (
-              <option key={roleKey} value={roleKey}>
-                {ROLE_CONFIG[roleKey].label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
-            className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-medium text-slate-700 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="ACTIVE">Đang hoạt động</option>
-            <option value="LOCKED">Đang bị khóa</option>
-          </select>
         </div>
       </div>
 
@@ -581,8 +600,8 @@ export const UsersPage: React.FC = () => {
                 <th className="px-5 py-3.5">Số điện thoại</th>
                 <th className="px-5 py-3.5">Vai trò</th>
                 <th className="px-5 py-3.5">Kho / Địa bàn phụ trách</th>
-                <th className="px-5 py-3.5 text-center">Trạng thái</th>
-                <th className="px-5 py-3.5 text-center">Thao tác</th>
+                <th className="px-5 py-3.5 text-center whitespace-nowrap min-w-[130px]">Trạng thái</th>
+                <th className="px-5 py-3.5 text-center whitespace-nowrap min-w-[90px]">Thao tác</th>
               </tr>
             </thead>
 
@@ -714,19 +733,19 @@ export const UsersPage: React.FC = () => {
                       </td>
 
                       {/* Trạng thái */}
-                      <td className="px-5 py-3.5 text-center">
+                      <td className="px-5 py-3.5 text-center whitespace-nowrap">
                         {u.status === "ACTIVE" ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            <span>Hoạt động</span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 whitespace-nowrap">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                            <span className="whitespace-nowrap">Hoạt động</span>
                           </span>
                         ) : (
                           <span
-                            className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-0.5 text-[11px] font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/20 cursor-help"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/20 cursor-help whitespace-nowrap"
                             title={u.lockReason || "Tài khoản bị khóa bởi Quản trị viên"}
                           >
-                            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                            <span>Bị khóa</span>
+                            <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
+                            <span className="whitespace-nowrap">Bị khóa</span>
                           </span>
                         )}
                       </td>
