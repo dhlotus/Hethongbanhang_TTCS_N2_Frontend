@@ -49,6 +49,26 @@
     | 5 | **Quản lý kho** | `warehousemanager@loha.vn` | Đỗ Quốc Bảo | `WAREHOUSE_MANAGER` |
     | 6 | **Kế toán** | `accountant@loha.vn` | Vũ Mai Hoa | `ACCOUNTANT` |
     | 7 | **Đại lý B2B** | `dealer@loha.vn` | Cửa Hàng Minh Khang | `CUSTOMER` |
+- [x] **Xử lý Điều hướng theo Vai trò & Route Protection (Role-based Navigation & Protected Routes):**
+  - **Hàm điều hướng trung tâm (`src/utils/navigation.ts`):**
+    - `getRedirectPathByRole(role?: string): string`: Chuẩn hóa mapping role sang URL tương ứng:
+      - `admin` / `ADMIN` $\rightarrow$ `/system/users`
+      - `sales` / `SALES_REP` $\rightarrow$ `/sales/orders`
+      - `manager` / `SALES_MANAGER` / `WAREHOUSE_MANAGER` $\rightarrow$ `/dashboard`
+      - `warehouse` / `WAREHOUSE_KEEPER` $\rightarrow$ `/inventory/stock`
+      - `accountant` / `ACCOUNTANT` $\rightarrow$ `/accounting/invoices`
+      - `customer` / `dealer` / `CUSTOMER` $\rightarrow$ `/portal/orders`
+      - Fallback $\rightarrow$ `/dashboard`
+    - `getRedirectPathByUser(user)` & `getStoredUser()`: Hỗ trợ truy xuất trạng thái xác thực an toàn từ `localStorage`.
+  - **Tích hợp vào `LoginPage` (`src/pages/login-page.tsx`):**
+    - Đăng nhập thành công $\rightarrow$ Lưu `auth_token` và `auth_user` vào `localStorage` $\rightarrow$ Dùng `useNavigate` điều hướng ngay lập tức về trang phân hệ theo role.
+    - Tự động phát hiện nếu người dùng đã đăng nhập từ trước, nếu truy cập lại `/login` hoặc `/auth/login` sẽ tự động chuyển hướng về trang tương ứng.
+  - **Bộ bảo vệ Route `ProtectedRoute` (`src/components/protected-route.tsx`):**
+    - Kiểm tra token trong `localStorage`. Nếu chưa đăng nhập, tự động đá về `/auth/login` (kèm `location state` để hỗ trợ quay lại trang trước đó sau khi login).
+    - Hỗ trợ kiểm tra phân quyền `allowedRoles`. Nếu vai trò không nằm trong danh sách cho phép, tự động redirect về trang chủ của vai trò đó mà không gây crash màn hình.
+  - **Trang Phân hệ Mẫu & Router (`src/pages/role-module-page.tsx`, `src/routes/index.tsx`):**
+    - Xây dựng trang giao diện phân hệ trực quan chuẩn [`UI_GUIDELINES.md`](./UI_GUIDELINES.md) với thông tin User, Role badge, Current URL, nút Đăng xuất an toàn.
+    - Cấu hình toàn bộ các tuyến đường public (`/login`, `/auth/login`) và protected (`/dashboard`, `/system/users`, `/sales/orders`, `/inventory/stock`, `/accounting/invoices`, `/portal/orders`).
 - [x] **Kiểm tra chất lượng:**
   - `npm run build`: Thành công (**0 lỗi**).
   - `npm run lint`: Thành công (**0 lỗi, 0 cảnh báo**).
