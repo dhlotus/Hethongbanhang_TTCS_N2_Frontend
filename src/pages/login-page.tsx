@@ -9,9 +9,6 @@ import {
   EyeOff,
   ArrowRight,
   Layers,
-  KeyRound,
-  X,
-  ShieldCheck,
 } from "lucide-react";
 import { Input } from "../components/input";
 import { Button } from "../components/button";
@@ -119,7 +116,6 @@ export const LoginPage: React.FC = () => {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -129,63 +125,6 @@ export const LoginPage: React.FC = () => {
     },
     mode: "onTouched",
   });
-
-  // Modal Đổi mật khẩu bằng mã cấp từ Admin
-  const [resetModalOpen, setResetModalOpen] = useState(false);
-  const [resetIdentifier, setResetIdentifier] = useState("");
-  const [resetCode, setResetCode] = useState("");
-  const [resetNewPassword, setResetNewPassword] = useState("");
-  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
-  const [isResetting, setIsResetting] = useState(false);
-  const [resetError, setResetError] = useState("");
-
-  const handleResetWithCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setResetError("");
-
-    if (!resetIdentifier.trim()) {
-      setResetError("Vui lòng nhập Tên đăng nhập hoặc Email");
-      return;
-    }
-    if (!resetCode.trim()) {
-      setResetError("Vui lòng nhập Mã cấp đổi mật khẩu (VD: LH-123456)");
-      return;
-    }
-    if (resetNewPassword.length < 8) {
-      setResetError("Mật khẩu mới phải có tối thiểu 8 ký tự");
-      return;
-    }
-    if (!/^(?=.*[A-Za-z])(?=.*\d)/.test(resetNewPassword)) {
-      setResetError("Mật khẩu mới phải bao gồm cả chữ cái và chữ số");
-      return;
-    }
-    if (resetNewPassword !== resetConfirmPassword) {
-      setResetError("Xác nhận mật khẩu mới không trùng khớp");
-      return;
-    }
-
-    try {
-      setIsResetting(true);
-      const res = await authService.resetPasswordWithCode({
-        identifier: resetIdentifier,
-        resetCode: resetCode,
-        newPassword: resetNewPassword,
-      });
-
-      setResetModalOpen(false);
-      setToast({
-        type: "success",
-        title: "Đổi mật khẩu thành công!",
-        message: res.message || "Bạn có thể đăng nhập ngay với mật khẩu mới.",
-      });
-      setValue("email", resetIdentifier.trim());
-      setValue("password", resetNewPassword);
-    } catch (err: any) {
-      setResetError(err.message || "Không thể đặt lại mật khẩu với mã này.");
-    } finally {
-      setIsResetting(false);
-    }
-  };
 
   const onSubmit = async (data: LoginFormData) => {
     setToast(null);
@@ -360,137 +299,9 @@ export const LoginPage: React.FC = () => {
               <span>Đăng nhập</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
             </Button>
-
-            {/* Tùy chọn đổi mật khẩu bằng mã cấp từ Admin */}
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setResetError("");
-                  setResetModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline focus:outline-none transition-colors cursor-pointer"
-              >
-                <KeyRound className="w-3.5 h-3.5" />
-                <span>Đổi mật khẩu bằng mã cấp từ Quản trị viên</span>
-              </button>
-            </div>
           </form>
         </div>
       </div>
-
-      {/* Modal Đổi mật khẩu bằng mã cấp từ Admin */}
-      {resetModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100">
-            <button
-              type="button"
-              onClick={() => setResetModalOpen(false)}
-              className="absolute top-4 right-4 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900">
-                  Đổi mật khẩu bằng mã cấp
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Nhập mã được Quản trị viên cấp để thiết lập mật khẩu mới
-                </p>
-              </div>
-            </div>
-
-            {resetError && (
-              <div className="mb-4 rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700">
-                {resetError}
-              </div>
-            )}
-
-            <form onSubmit={handleResetWithCode} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Tên đăng nhập hoặc Email công việc <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={resetIdentifier}
-                  onChange={(e) => setResetIdentifier(e.target.value)}
-                  placeholder="VD: sales_rep hoặc sales@loha.vn"
-                  required
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Mã cấp đổi mật khẩu từ Admin <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={resetCode}
-                  onChange={(e) => setResetCode(e.target.value.toUpperCase())}
-                  placeholder="VD: LH-829401"
-                  required
-                  className="w-full font-mono font-bold tracking-wider rounded-xl border border-slate-200 px-3.5 py-2 text-sm uppercase focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Mã có định dạng LH-XXXXXX do Quản trị viên cấp trong mục Quản lý người dùng.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Mật khẩu mới <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  value={resetNewPassword}
-                  onChange={(e) => setResetNewPassword(e.target.value)}
-                  placeholder="Tối thiểu 8 ký tự, có chữ và số"
-                  required
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Xác nhận mật khẩu mới <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  value={resetConfirmPassword}
-                  onChange={(e) => setResetConfirmPassword(e.target.value)}
-                  placeholder="Nhập lại mật khẩu mới"
-                  required
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setResetModalOpen(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
-                >
-                  Hủy bỏ
-                </button>
-                <button
-                  type="submit"
-                  disabled={isResetting}
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                >
-                  {isResetting ? "Đang xử lý..." : "Cập nhật mật khẩu"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

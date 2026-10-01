@@ -985,7 +985,7 @@ export const UsersPage: React.FC = () => {
               </div>
 
               {/* =============================================================== */}
-              {/* KHU VỰC CẤP MÃ ĐỔI MẬT KHẨU CHO NHÂN SỰ (Nếu đang chỉnh sửa)    */}
+              {/* KHU VỰC CẤP MÃ ĐĂNG NHẬP CHO NHÂN SỰ (Nếu đang chỉnh sửa)       */}
               {/* =============================================================== */}
               {editingUser ? (
                 <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 space-y-3">
@@ -993,7 +993,7 @@ export const UsersPage: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <KeyRound className="h-4 w-4 text-indigo-600" />
                       <span className="text-xs font-bold text-indigo-950">
-                        Khôi phục & Cấp mã đổi mật khẩu cho nhân sự
+                        Cấp mã đăng nhập tạm thời cho nhân sự
                       </span>
                     </div>
 
@@ -1004,44 +1004,50 @@ export const UsersPage: React.FC = () => {
                       className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-indigo-700 transition-colors shadow-2xs disabled:opacity-50"
                     >
                       <Sparkles className="h-3 w-3" />
-                      <span>{editingUser.resetCode ? "Cấp lại mã khác" : "Cấp mã đổi mật khẩu"}</span>
+                      <span>{editingUser.resetCode ? "Cấp lại mã khác" : "Cấp mã đăng nhập"}</span>
                     </button>
                   </div>
 
                   {editingUser.resetCode ? (
-                    <div className="rounded-lg bg-white p-3 border border-indigo-200 flex items-center justify-between flex-wrap gap-2">
-                      <div>
-                        <div className="text-[11px] text-slate-500 font-medium">
-                          Mã cấp đổi mật khẩu hiện tại (Chưa sử dụng):
+                    <div className="rounded-lg bg-white p-3 border border-indigo-200 space-y-2">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                          <div className="text-[11px] text-slate-500 font-medium">
+                            Mã đăng nhập tạm thời hiện tại (Chưa sử dụng):
+                          </div>
+                          <div className="font-mono text-base font-extrabold text-indigo-700 tracking-wider mt-0.5">
+                            {editingUser.resetCode}
+                          </div>
                         </div>
-                        <div className="font-mono text-base font-extrabold text-indigo-700 tracking-wider mt-0.5">
-                          {editingUser.resetCode}
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyCode(editingUser.resetCode!)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
+                          >
+                            {copiedCode === editingUser.resetCode ? (
+                              <>
+                                <Check className="h-3.5 w-3.5 text-emerald-600" />
+                                <span>Đã chép</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3.5 w-3.5" />
+                                <span>Sao chép mã</span>
+                              </>
+                            )}
+                          </button>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleCopyCode(editingUser.resetCode!)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
-                        >
-                          {copiedCode === editingUser.resetCode ? (
-                            <>
-                              <Check className="h-3.5 w-3.5 text-emerald-600" />
-                              <span>Đã chép</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-3.5 w-3.5" />
-                              <span>Sao chép mã</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
+                      <p className="text-[11px] text-indigo-950/70 border-t border-indigo-50 pt-2 leading-relaxed">
+                        💡 <strong>Hướng dẫn:</strong> Nhân sự chỉ cần nhập Tên đăng nhập bình thường và nhập mã này vào ô <strong>Mật khẩu</strong> tại trang Đăng nhập là vào được. Mã sẽ hiển thị tại đây cho đến khi nhân sự tự đổi mật khẩu mới.
+                      </p>
                     </div>
                   ) : (
                     <p className="text-[11px] text-indigo-900/80 leading-relaxed">
-                      Khi nhân sự quên hoặc không thể đăng nhập, bấm nút <strong>"Cấp mã đổi mật khẩu"</strong> ở trên để tạo một mã xác thực (VD: LH-829401). Gửi mã này cho nhân sự để họ tự nhập tại màn hình đăng nhập. Mã sẽ tiếp tục hiển thị tại đây cho đến khi nhân sự đổi mật khẩu thành công.
+                      Khi nhân sự không nhớ tài khoản/mật khẩu và không thể truy cập email, bấm nút <strong>"Cấp mã đăng nhập"</strong> ở trên để tạo mã (VD: LH-829401). Nhân sự nhập tên đăng nhập bình thường và nhập mã này vào ô Mật khẩu để đăng nhập trực tiếp. Mã sẽ hiển thị tại đây đến khi nhân sự tự đổi mật khẩu mới.
                     </p>
                   )}
 

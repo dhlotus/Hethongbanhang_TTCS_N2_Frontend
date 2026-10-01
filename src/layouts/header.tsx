@@ -1,13 +1,15 @@
 import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import {
   Menu,
-  Search,
   Bell,
   LogOut,
   ChevronRight,
+  MapPin,
+  KeyRound,
 } from "lucide-react";
 import { getStoredUser } from "../utils/navigation";
+import { getUserContext } from "../utils/navigation-config";
 import { authService } from "../services/auth.service";
 
 interface HeaderProps {
@@ -20,6 +22,75 @@ interface HeaderProps {
 const getPageHeaderInfo = (
   pathname: string
 ): { title: string; category: string } => {
+  // Đại lý B2B
+  if (pathname.startsWith("/portal/orders")) {
+    return { title: "Cổng đặt hàng", category: "Đại lý B2B" };
+  }
+  if (pathname.startsWith("/portal/tracking")) {
+    return { title: "Theo dõi đơn hàng & Giao hàng", category: "Đại lý B2B" };
+  }
+  if (pathname.startsWith("/portal/debt")) {
+    return { title: "Sổ công nợ của tôi", category: "Đại lý B2B" };
+  }
+  if (pathname.startsWith("/portal/profile")) {
+    return { title: "Thông tin hồ sơ & Điểm giao hàng", category: "Đại lý B2B" };
+  }
+
+  // Kinh doanh
+  if (pathname.startsWith("/sales/approvals")) {
+    return { title: "Phê duyệt Đơn hàng", category: "Kinh doanh" };
+  }
+  if (pathname.startsWith("/sales/customers")) {
+    return { title: "Quản lý Đại lý & Hạn mức", category: "Khách hàng" };
+  }
+  if (pathname.startsWith("/sales/orders")) {
+    return { title: "Quản lý Đơn hàng", category: "Kinh doanh" };
+  }
+  if (pathname.startsWith("/reports/sales")) {
+    return { title: "Báo cáo Doanh số", category: "Báo cáo" };
+  }
+
+  // Kho vận
+  if (pathname.startsWith("/inventory/stock")) {
+    return { title: "Sổ tồn kho & Lô hàng", category: "Kho vận" };
+  }
+  if (pathname.startsWith("/inventory/receipts")) {
+    return { title: "Nhập kho hàng hóa", category: "Kho vận" };
+  }
+  if (pathname.startsWith("/inventory/issues")) {
+    return { title: "Soạn hàng & Xuất kho", category: "Kho vận" };
+  }
+  if (pathname.startsWith("/inventory/transfers")) {
+    return { title: "Chuyển kho nội bộ", category: "Kho vận" };
+  }
+  if (pathname.startsWith("/inventory/audits")) {
+    return { title: "Kiểm kê kho hàng", category: "Kho vận" };
+  }
+  if (pathname.startsWith("/inventory/adjustments")) {
+    return { title: "Phiếu điều chỉnh tồn", category: "Kho vận" };
+  }
+  if (pathname.startsWith("/inventory/batches")) {
+    return { title: "Quản lý Lô & Hạn sử dụng (FEFO)", category: "Kho vận" };
+  }
+  if (pathname.startsWith("/reports/inventory")) {
+    return { title: "Báo cáo kho hàng", category: "Báo cáo" };
+  }
+
+  // Kế toán
+  if (pathname.startsWith("/accounting/invoices")) {
+    return { title: "Quản lý Hóa đơn bán hàng", category: "Kế toán" };
+  }
+  if (pathname.startsWith("/accounting/payments")) {
+    return { title: "Phiếu thu & Đối trừ công nợ", category: "Kế toán" };
+  }
+  if (pathname.startsWith("/accounting/debt")) {
+    return { title: "Sổ chi tiết công nợ & Tuổi nợ", category: "Kế toán" };
+  }
+  if (pathname.startsWith("/accounting/returns")) {
+    return { title: "Xử lý Phiếu trả hàng", category: "Kế toán" };
+  }
+
+  // Quản trị & Chung
   if (pathname.startsWith("/system/users")) {
     return { title: "Quản lý người dùng", category: "Hệ thống" };
   }
@@ -27,35 +98,34 @@ const getPageHeaderInfo = (
     return { title: "Nhật ký hệ thống", category: "Bảo mật & Giám sát" };
   }
   if (pathname.startsWith("/catalog/products")) {
-    return { title: "Danh mục sản phẩm", category: "Hàng hóa & Kho" };
+    return { title: "Danh mục sản phẩm", category: "Hàng hóa" };
   }
   if (pathname.startsWith("/catalog/pricing")) {
     return { title: "Bảng giá & Chiết khấu", category: "Chính sách Bán hàng" };
   }
   if (pathname.startsWith("/dashboard")) {
-    return { title: "Tổng quan hệ thống", category: "Báo cáo Vận hành" };
+    return { title: "Dashboard Điều hành", category: "Tổng quan" };
   }
-  return { title: "Trang Quản trị", category: "Hệ thống" };
+  if (pathname.startsWith("/profile/change-password") || pathname.startsWith("/settings/security")) {
+    return { title: "Đổi mật khẩu tài khoản", category: "Bảo mật cá nhân" };
+  }
+
+  return { title: "Hệ thống LOHA SALES", category: "Vận hành" };
 };
 
 /**
- * Header Component cho AdminLayout:
- * - Tiêu đề trang động & Breadcrumb
- * - Thanh tìm kiếm nhanh tối giản
- * - Chuông thông báo
- * - Thông tin Admin hiện tại & nút Đăng xuất nhanh
+ * Header Component (Context Bar chuẩn theo SN-11):
+ * - Hiển thị Tên người dùng, Vai trò (Badge tiếng Việt), Kho / Địa bàn làm việc
+ * - Nút mở Mobile Menu Drawer (Tối ưu cho 360px Mobile)
+ * - Nút Đăng xuất an toàn & Thông báo
  */
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const user = getStoredUser();
+  const context = getUserContext(user);
 
   const { title, category } = getPageHeaderInfo(location.pathname);
-
-  // Lấy chữ cái đầu đại diện cho avatar
-  const avatarLetter = user?.fullName
-    ? user.fullName.trim().charAt(0).toUpperCase()
-    : "A";
 
   const handleLogout = async () => {
     await authService.logout();
@@ -63,53 +133,53 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-100 bg-white px-4 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 backdrop-blur-xs px-3 sm:px-6">
       {/* =================================================================== */}
-      {/* 1. Bên Trái: Nút Mobile Menu & Tiêu đề Trang Động                   */}
+      {/* 1. BÊN TRÁI: NÚT HAMBURGER & TIÊU ĐỀ TRANG                          */}
       {/* =================================================================== */}
-      <div className="flex items-center gap-3">
-        {/* Nút Hamburger cho Mobile */}
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        {/* Nút Hamburger cho Mobile (hiển thị trên màn hình < 1024px) */}
         <button
           type="button"
           onClick={onToggleMobileMenu}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 lg:hidden focus:outline-none"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 lg:hidden focus:outline-none transition-colors"
           aria-label="Mở menu điều hướng"
         >
           <Menu className="h-5 w-5" />
         </button>
 
-        {/* Tiêu đề trang & Breadcrumb gọn gàng, không lặp lại */}
-        <div className="flex items-center">
-          <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slate-500">
-            <span>{category}</span>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-300" />
-            <span className="font-bold text-slate-900">{title}</span>
+        {/* Tiêu đề trang & Phân nhóm Breadcrumb */}
+        <div className="flex items-center min-w-0">
+          <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slate-500 truncate">
+            <span className="hidden sm:inline">{category}</span>
+            <ChevronRight className="hidden sm:inline h-3.5 w-3.5 text-slate-300" />
+            <span className="font-bold text-slate-900 truncate">{title}</span>
           </div>
         </div>
       </div>
 
       {/* =================================================================== */}
-      {/* 2. Bên Phải: Tìm kiếm nhanh, Thông báo & Thông tin Admin             */}
+      {/* 2. BÊN PHẢI: CONTEXT BAR (VAI TRÒ + KHO/ĐỊA BÀN + PROFILE + LOGOUT) */}
       {/* =================================================================== */}
-      <div className="flex items-center gap-2 sm:gap-4">
-        {/* Thanh tìm kiếm nhanh tối giản */}
-        <div className="hidden md:flex relative items-center">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <Search className="h-4 w-4 text-slate-400" />
-          </div>
-          <input
-            type="text"
-            placeholder="Tìm nhanh người dùng, tác vụ..."
-            className="h-9 w-60 lg:w-72 rounded-xl border border-slate-200/80 bg-slate-50 pl-9 pr-14 text-xs text-slate-800 placeholder-slate-400 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/15"
-          />
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5">
-            <kbd className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-400 shadow-2xs">
-              Ctrl K
-            </kbd>
-          </div>
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Context: Kho hoặc Địa bàn đang làm việc (Ẩn trên màn hình rất nhỏ) */}
+        <div className="hidden md:flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-slate-50/80 px-2.5 py-1 text-xs text-slate-600 shadow-2xs">
+          <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+          <span className="max-w-[170px] truncate font-medium" title={context.locationText}>
+            {context.locationText}
+          </span>
         </div>
 
-        {/* Biểu tượng thông báo (Notification Bell) */}
+        {/* Context: Badge Vai trò tiếng Việt thân thiện */}
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap ${context.badgeClass}`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${context.dotClass}`} />
+          <span className="hidden sm:inline">{context.roleLabel}</span>
+          <span className="sm:hidden">{context.shortRoleLabel}</span>
+        </span>
+
+        {/* Chuông Thông báo */}
         <button
           type="button"
           className="relative flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors focus:outline-none"
@@ -117,34 +187,50 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           aria-label="Thông báo hệ thống"
         >
           <Bell className="h-4.5 w-4.5" />
-          {/* Badge chấm đỏ thông báo mới */}
           <span className="absolute top-2 right-2 flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500" />
           </span>
         </button>
 
-        {/* Đường kẻ chia cách mảnh */}
+        {/* Đường phân cách mảnh */}
         <div className="h-6 w-px bg-slate-200/80" />
 
-        {/* Thông tin Admin & Nút Đăng xuất thu gọn */}
-        <div className="flex items-center gap-2.5 pl-1">
+        {/* Thông tin Người dùng & Đổi mật khẩu */}
+        <div className="flex items-center gap-2">
           {/* Avatar chữ cái */}
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-xs font-bold text-white shadow-xs">
-            {avatarLetter}
-          </div>
+          <Link
+            to="/profile/change-password"
+            title="Đổi mật khẩu & Cài đặt bảo mật"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-xs font-bold text-white shadow-xs hover:ring-2 hover:ring-blue-500/20 transition-all"
+          >
+            {context.avatarLetter}
+          </Link>
 
-          {/* Tên & Vai trò */}
+          {/* Tên người dùng (Ẩn trên mobile) */}
           <div className="hidden xl:flex flex-col text-left">
-            <span className="max-w-[130px] truncate text-xs font-bold text-slate-800 leading-tight">
-              {user?.fullName || "Nguyễn Văn Admin"}
+            <span
+              className="max-w-[140px] truncate text-xs font-bold text-slate-800 leading-tight"
+              title={context.fullName}
+            >
+              {context.fullName}
             </span>
-            <span className="text-[11px] font-medium text-slate-400 leading-tight">
-              Quản trị viên
+            <span className="text-[10px] font-medium text-slate-400 leading-tight">
+              {context.shortRoleLabel}
             </span>
           </div>
 
-          {/* Nút Đăng xuất nhanh thu gọn */}
+          {/* Nút Đổi mật khẩu thu gọn */}
+          <Link
+            to="/profile/change-password"
+            className="hidden sm:flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors focus:outline-none"
+            title="Đổi mật khẩu tài khoản"
+            aria-label="Đổi mật khẩu"
+          >
+            <KeyRound className="h-4 w-4" />
+          </Link>
+
+          {/* Nút Đăng xuất */}
           <button
             type="button"
             onClick={handleLogout}

@@ -9,6 +9,9 @@ export interface AuthUser {
   fullName: string;
   email: string;
   roles: string[];
+  role?: string;
+  status?: string;
+  assignedWarehouse?: string;
 }
 
 export interface LoginResponse {

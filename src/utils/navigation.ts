@@ -23,13 +23,11 @@ export const getRedirectPathByRole = (role?: string): string => {
     return "/system/users";
   }
 
-  // 2. Quản lý (Sales Manager, Warehouse Manager hoặc Manager chung)
+  // 2. Quản lý kinh doanh
   if (
-    normalized === "manager" ||
-    normalized.includes("salesmanager") ||
+    normalized === "salesmanager" ||
     normalized.includes("sales_manager") ||
-    normalized.includes("warehousemanager") ||
-    normalized.includes("warehouse_manager")
+    normalized.includes("salesmanager")
   ) {
     return "/dashboard";
   }
@@ -43,10 +41,13 @@ export const getRedirectPathByRole = (role?: string): string => {
     return "/sales/orders";
   }
 
-  // 4. Thủ kho
+  // 4. Kho (Thủ kho & Quản lý kho)
   if (
     normalized === "warehouse" ||
     normalized.includes("warehouse_keeper") ||
+    normalized.includes("warehouse_manager") ||
+    normalized.includes("warehousemanager") ||
+    normalized.includes("wh_manager") ||
     normalized.includes("stock")
   ) {
     return "/inventory/stock";

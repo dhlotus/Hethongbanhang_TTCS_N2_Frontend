@@ -1,200 +1,187 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 import {
-  Users,
-  ScrollText,
-  Package,
-  BadgePercent,
-  LayoutDashboard,
   Layers,
   X,
+  MapPin,
+  KeyRound,
   ShieldCheck,
-  ShoppingCart,
-  Warehouse,
-  Receipt,
-  Store,
+  ChevronRight,
 } from "lucide-react";
 import { getStoredUser } from "../utils/navigation";
+import {
+  getNavigationItems,
+  getUserContext,
+  type MenuItem,
+} from "../utils/navigation-config";
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-interface MenuItem {
-  name: string;
-  path: string;
-  icon: React.ComponentType<{ className?: string }>;
-  badge?: string;
-  roles?: string[]; // Nếu không khai báo, tất cả vai trò đều thấy
-}
-
-const MENU_ITEMS: MenuItem[] = [
-  {
-    name: "Tổng quan hệ thống",
-    path: "/dashboard",
-    icon: LayoutDashboard,
-    roles: ["ADMIN", "SALES_MANAGER", "WAREHOUSE_MANAGER"],
-  },
-  {
-    name: "Danh mục sản phẩm",
-    path: "/catalog/products",
-    icon: Package,
-    // Tất cả người dùng đều có thể xem danh mục (giá vốn tự động ẩn trên server theo SN-10)
-  },
-  {
-    name: "Quản lý tồn kho",
-    path: "/inventory/stock",
-    icon: Warehouse,
-    roles: ["ADMIN", "WAREHOUSE_KEEPER", "WAREHOUSE_MANAGER", "WH_MANAGER"],
-  },
-  {
-    name: "Đơn hàng Bán buôn",
-    path: "/sales/orders",
-    icon: ShoppingCart,
-    roles: ["ADMIN", "SALES_MANAGER", "SALES_REP"],
-  },
-  {
-    name: "Bảng giá & Chiết khấu",
-    path: "/catalog/pricing",
-    icon: BadgePercent,
-    roles: ["ADMIN", "SALES_MANAGER", "ACCOUNTANT"],
-  },
-  {
-    name: "Hóa đơn & Công nợ",
-    path: "/accounting/invoices",
-    icon: Receipt,
-    roles: ["ADMIN", "ACCOUNTANT"],
-  },
-  {
-    name: "Cổng đặt hàng Đại lý",
-    path: "/portal/orders",
-    icon: Store,
-    roles: ["ADMIN", "CUSTOMER"],
-  },
-  {
-    name: "Quản lý người dùng",
-    path: "/system/users",
-    icon: Users,
-    roles: ["ADMIN"],
-  },
-  {
-    name: "Nhật ký hệ thống",
-    path: "/system/audit-logs",
-    icon: ScrollText,
-    roles: ["ADMIN"],
-  },
-];
-
 interface SidebarNavContentProps {
   onItemClick?: () => void;
 }
 
 /**
- * Nội dung lõi của Sidebar (tái sử dụng cho cả Desktop & Mobile Drawer):
- * - Tự động lọc menu theo vai trò người dùng (RBAC Frontend - SN-10)
- * - Ẩn bớt các mục không phận sự để giao diện tinh gọn, không rối mắt
+ * Nội dung điều hướng của Sidebar (Dùng chung cho cả Desktop & Mobile Drawer):
+ * - Tự động lọc các mục menu theo Role (RBAC Dynamic Navigation - SN-11)
+ * - Tích hợp Context Bar ở chân Sidebar: Tên người dùng, Vai trò (Badge tiếng Việt), Kho / Địa bàn làm việc
+ * - Giao diện Clean SaaS theo tiêu chuẩn UI_GUIDELINES.md
  */
 const SidebarNavContent: React.FC<SidebarNavContentProps> = ({ onItemClick }) => {
   const user = getStoredUser();
-  const userRoles = user?.roles || [];
-
-  // Lọc danh mục điều hướng theo quyền hạn (ADMIN luôn thấy tất cả)
-  const visibleMenuItems = MENU_ITEMS.filter((item) => {
-    if (!item.roles || item.roles.length === 0) {
-      return true;
-    }
-    if (userRoles.includes("ADMIN")) {
-      return true;
-    }
-    return item.roles.some((r) => userRoles.includes(r));
-  });
+  const context = getUserContext(user);
+  const menuItems: MenuItem[] = getNavigationItems(user?.roles || user?.role);
 
   return (
-    <div className="flex h-full flex-col justify-between p-4">
-      {/* 1. Phần Đầu: Logo & Brand Identity */}
-      <div>
-        <div className="flex items-center justify-between pb-5 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xs">
+    <div className="flex h-full flex-col justify-between p-3.5 sm:p-4 bg-white select-none">
+      {/* ===================================================================== */}
+      {/* PHẦN 1: LOGO & BRAND IDENTITY                                         */}
+      {/* ===================================================================== */}
+      <div className="flex flex-col min-h-0 flex-1">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 px-1">
+          <Link
+            to="/"
+            onClick={onItemClick}
+            className="flex items-center gap-3 group focus:outline-none"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xs group-hover:scale-105 transition-transform duration-200">
               <Layers className="h-5 w-5" />
             </div>
             <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="text-base font-bold tracking-tight text-slate-900">
-                  LOHA SALES
-                </span>
+              <span className="text-base font-bold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
+                LOHA SALES
+              </span>
+              <span className="text-[10px] font-medium text-slate-400">
+                Phân phối & Kho vận B2B
+              </span>
+            </div>
+          </Link>
+        </div>
+
+        {/* ===================================================================== */}
+        {/* PHẦN 2: DANH MỤC MENU ĐIỀU HƯỚNG THEO VAI TRÒ (DYNAMIC NAVIGATION)    */}
+        {/* ===================================================================== */}
+        <div className="mt-4 flex-1 overflow-y-auto pr-1 -mr-1 space-y-4">
+          <div>
+            <div className="flex items-center justify-between px-2.5 mb-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Chức năng phân hệ
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400 font-mono">
+                {menuItems.length} mục
+              </span>
+            </div>
+
+            <nav className="space-y-1">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={onItemClick}
+                    className={({ isActive }) =>
+                      `group relative flex items-center justify-between rounded-xl px-3 py-2.5 text-xs sm:text-sm transition-all duration-150 ${
+                        isActive
+                          ? "bg-blue-50 text-blue-600 font-semibold shadow-xs"
+                          : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
+                      }`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <div className="flex items-center gap-3 min-w-0">
+                          {/* Thanh định vị Active nhỏ ở bên trái */}
+                          {isActive && (
+                            <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-blue-600" />
+                          )}
+                          <Icon
+                            className={`h-4.5 w-4.5 shrink-0 transition-colors ${
+                              isActive
+                                ? "text-blue-600"
+                                : "text-slate-400 group-hover:text-slate-700"
+                            }`}
+                          />
+                          <span className="truncate">{item.name}</span>
+                        </div>
+
+                        {isActive ? (
+                          <ChevronRight className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                        ) : null}
+                      </>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      {/* ===================================================================== */}
+      {/* PHẦN 3: CONTEXT BAR Ở CHÂN SIDEBAR (HIỂN THỊ RÕ TÊN, ROLE & ĐỊA BÀN)  */}
+      {/* ===================================================================== */}
+      <div className="mt-4 pt-3 border-t border-slate-100">
+        <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3 space-y-2.5">
+          {/* Hàng 1: Avatar chữ cái + Họ tên + Trạng thái */}
+          <div className="flex items-center gap-2.5">
+            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-xs font-bold text-white shadow-2xs">
+              {context.avatarLetter}
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${context.dotClass}`}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-1">
+                <p className="text-xs font-bold text-slate-800 truncate" title={context.fullName}>
+                  {context.fullName}
+                </p>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                  {userRoles[0] || "PORTAL"}
+              <div className="mt-0.5">
+                <span
+                  className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold truncate ${context.badgeClass}`}
+                >
+                  {context.roleLabel}
                 </span>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* 2. Danh mục Menu điều hướng */}
-        <div className="mt-6">
-          <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-            Chức năng phân hệ
-          </p>
-          <nav className="mt-2 space-y-1">
-            {visibleMenuItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  onClick={onItemClick}
-                  className={({ isActive }) =>
-                    `group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-all duration-150 ${
-                      isActive
-                        ? "bg-blue-50 text-blue-600 font-semibold shadow-xs"
-                        : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      {/* Vạch chỉ thị Active bên trái */}
-                      {isActive && (
-                        <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-blue-600" />
-                      )}
-                      <Icon
-                        className={`h-4.5 w-4.5 shrink-0 transition-colors ${
-                          isActive
-                            ? "text-blue-600"
-                            : "text-slate-400 group-hover:text-slate-700"
-                        }`}
-                      />
-                      <span className="truncate">{item.name}</span>
-                    </>
-                  )}
-                </NavLink>
-              );
-            })}
-          </nav>
-        </div>
-      </div>
-
-      {/* 3. Phần Cuối: Trạng thái hệ thống & thông tin vai trò */}
-      <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-          </span>
-          <span className="text-xs font-semibold text-slate-700">
-            {user?.fullName || "Đã kết nối"}
-          </span>
-        </div>
-        <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
-          <div className="flex items-center gap-1">
-            <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
-            <span className="font-medium text-slate-600">RBAC SN-10 Active</span>
+          {/* Hàng 2: Kho hoặc Địa bàn đang làm việc */}
+          <div className="rounded-xl bg-white border border-slate-100 p-2 flex items-start gap-2 shadow-2xs">
+            <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] font-medium text-slate-400 block leading-tight">
+                Địa bàn / Kho trực thuộc:
+              </span>
+              <span
+                className="text-[11px] font-semibold text-slate-700 block truncate leading-tight mt-0.5"
+                title={context.locationText}
+              >
+                {context.locationText}
+              </span>
+            </div>
           </div>
-          <span className="font-mono text-[10px] text-slate-400">v1.0.0</span>
+
+          {/* Hàng 3: Tiện ích đổi mật khẩu nhanh & Phiên bảo mật */}
+          <div className="flex items-center justify-between text-[11px] pt-0.5 px-0.5 text-slate-500">
+            <Link
+              to="/profile/change-password"
+              onClick={onItemClick}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-blue-600 transition-colors"
+            >
+              <KeyRound className="h-3 w-3 text-slate-400" />
+              <span>Đổi mật khẩu</span>
+            </Link>
+
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400">
+              <ShieldCheck className="h-3 w-3 text-emerald-500" />
+              <span>RBAC v2</span>
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -202,33 +189,36 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({ onItemClick }) =>
 };
 
 /**
- * Component Sidebar chính cho AdminLayout:
- * - Desktop: Cố định bên trái w-[260px]
- * - Mobile: Drawer trượt off-canvas mượt mà
+ * Component Sidebar chính cho AppLayout:
+ * - Desktop: Cố định bên trái w-[270px]
+ * - Mobile (< 1024px, bao gồm 360px): Drawer trượt off-canvas mượt mà với lớp phủ mờ
  */
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   return (
     <>
       {/* 1. Desktop Sidebar */}
-      <aside className="hidden h-full w-[260px] shrink-0 border-r border-slate-100 bg-white lg:flex lg:flex-col">
+      <aside className="hidden h-full w-[270px] shrink-0 border-r border-slate-100 bg-white lg:flex lg:flex-col">
         <SidebarNavContent />
       </aside>
 
-      {/* 2. Mobile Drawer */}
+      {/* 2. Mobile Drawer (Tối ưu tuyệt đối cho màn hình 360px) */}
       {isOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Lớp nền mờ */}
           <div
-            className="fixed inset-0 bg-slate-900/30 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-200"
             onClick={onClose}
             aria-hidden="true"
           />
 
-          <div className="fixed inset-y-0 left-0 z-50 flex w-[260px] max-w-full flex-col bg-white shadow-2xl transition-transform">
-            <div className="absolute top-4 right-3 z-10">
+          {/* Khung Drawer trượt từ bên trái */}
+          <div className="fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] flex-col bg-white shadow-2xl transition-transform duration-200">
+            {/* Nút đóng Drawer */}
+            <div className="absolute top-3.5 right-3 z-10">
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none"
+                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none transition-colors"
                 aria-label="Đóng thanh điều hướng"
               >
                 <X className="h-5 w-5" />
