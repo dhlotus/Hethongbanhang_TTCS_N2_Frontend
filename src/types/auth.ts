@@ -13,6 +13,20 @@ export interface AuthUser {
 
 export interface LoginResponse {
   accessToken: string;
+  refreshToken?: string;
   tokenType: string;
+  expiresIn?: string;
   user: AuthUser;
 }
+
+export const USER_ROLES = {
+  ADMIN: "ADMIN",
+  SALES_REP: "SALES_REP",
+  SALES_MANAGER: "SALES_MANAGER",
+  WAREHOUSE_KEEPER: "WAREHOUSE_KEEPER",
+  WAREHOUSE_MANAGER: "WAREHOUSE_MANAGER",
+  ACCOUNTANT: "ACCOUNTANT",
+  CUSTOMER: "CUSTOMER",
+} as const;
+
+export type UserRoleType = (typeof USER_ROLES)[keyof typeof USER_ROLES];

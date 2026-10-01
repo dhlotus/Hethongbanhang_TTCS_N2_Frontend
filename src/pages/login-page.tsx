@@ -15,6 +15,7 @@ import { Button } from "../components/button";
 import { Toast, type ToastType } from "../components/toast";
 import { loginSchema, type LoginFormData } from "../utils/validation";
 import { authService } from "../services/auth.service";
+import { getRedirectPathByRole } from "../utils/auth";
 import loginPoster from "../assets/login-poster.jpg";
 
 /**
@@ -57,10 +58,17 @@ export const LoginPage: React.FC = () => {
     try {
       const response = await authService.login(data);
 
+      // Lưu trữ Token an toàn vào localStorage (Hỗ trợ access_token và refresh_token)
       localStorage.setItem("auth_token", response.accessToken);
+      localStorage.setItem("access_token", response.accessToken);
+      if (response.refreshToken) {
+        localStorage.setItem("refresh_token", response.refreshToken);
+      }
       localStorage.setItem("auth_user", JSON.stringify(response.user));
 
-      navigate("/", { replace: true });
+      // Điều hướng về đúng trang Dashboard tương ứng theo vai trò (Role)
+      const redirectPath = getRedirectPathByRole(response.user.roles);
+      navigate(redirectPath, { replace: true });
     } catch (error: unknown) {
       const err = error as Error;
       const message = err.message || "Tài khoản hoặc mật khẩu không chính xác";
@@ -150,12 +158,12 @@ export const LoginPage: React.FC = () => {
 
           {/* Form đăng nhập */}
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-3 sm:space-y-3.5">
-            {/* Input Email */}
+            {/* Input Tên đăng nhập / Email */}
             <Input
-              label="Email"
-              type="email"
-              placeholder="nhap.email@loha.vn"
-              autoComplete="email"
+              label="Tên đăng nhập / Email"
+              type="text"
+              placeholder="admin hoặc email@loha.vn"
+              autoComplete="username"
               required
               disabled={isSubmitting}
               leftIcon={<Mail className="w-4 h-4" />}
