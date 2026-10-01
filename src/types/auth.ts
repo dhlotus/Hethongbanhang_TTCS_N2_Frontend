@@ -19,6 +19,22 @@ export interface LoginResponse {
   user: AuthUser;
 }
 
+export interface TokenResponse {
+  accessToken: string;
+  tokenType: string;
+  expiresIn?: string;
+  refreshToken?: string;
+}
+
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+export interface LogoutResponse {
+  success: boolean;
+  message: string;
+}
+
 export const USER_ROLES = {
   ADMIN: "ADMIN",
   SALES_REP: "SALES_REP",

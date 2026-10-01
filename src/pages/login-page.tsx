@@ -16,7 +16,53 @@ import { Toast, type ToastType } from "../components/toast";
 import { loginSchema, type LoginFormData } from "../utils/validation";
 import { authService } from "../services/auth.service";
 import { getRedirectPathByUser } from "../utils/navigation";
+import { tokenStorage } from "../utils/token-storage";
+import {
+  SESSION_TIMEOUT_EVENT,
+  SESSION_TIMEOUT_STORAGE_KEY,
+  DEFAULT_SESSION_TIMEOUT_MESSAGE,
+} from "../utils/session-timeout";
 import loginPoster from "../assets/login-poster.jpg";
+
+interface ToastState {
+  type: ToastType;
+  title: string;
+  message: string;
+}
+
+/**
+ * Trích xuất thông báo phiên hết hạn từ URL Search Param hoặc SessionStorage khi khởi tạo trang
+ */
+const getInitialSessionToast = (): ToastState | null => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const searchParams = new URLSearchParams(window.location.search);
+    const hasExpiredParam =
+      searchParams.get("expired") === "1" ||
+      searchParams.get("session_expired") === "1" ||
+      searchParams.get("session_expired") === "true";
+
+    const sessionExpiredMessage =
+      sessionStorage.getItem(SESSION_TIMEOUT_STORAGE_KEY) ||
+      (hasExpiredParam ? DEFAULT_SESSION_TIMEOUT_MESSAGE : null);
+
+    if (sessionExpiredMessage) {
+      sessionStorage.removeItem(SESSION_TIMEOUT_STORAGE_KEY);
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      return {
+        type: "warning",
+        title: "Phiên làm việc đã hết hạn",
+        message: sessionExpiredMessage,
+      };
+    }
+  } catch {
+    // Bỏ qua lỗi trình duyệt
+  }
+
+  return null;
+};
 
 /**
  * Trang Đăng nhập LOHA SALES:
@@ -26,29 +72,41 @@ import loginPoster from "../assets/login-poster.jpg";
  */
 export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [toast, setToast] = useState<{
-    type: ToastType;
-    title: string;
-    message: string;
-  } | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(getInitialSessionToast);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     document.title = "Đăng nhập | LOHA SALES";
 
-    // Nếu đã đăng nhập trước đó, tự động chuyển về trang tương ứng với vai trò
-    const token = localStorage.getItem("auth_token");
-    const storedUser = localStorage.getItem("auth_user");
-    if (token && storedUser) {
-      try {
-        const user = JSON.parse(storedUser);
-        navigate(getRedirectPathByUser(user), { replace: true });
-      } catch {
-        // bỏ qua lỗi parse json nếu có
+    // Nếu không có thông báo phiên hết hạn và người dùng đã đăng nhập hợp lệ
+    if (!toast) {
+      const token = tokenStorage.getAccessToken();
+      const storedUser = tokenStorage.getUser();
+      if (token && storedUser) {
+        navigate(getRedirectPathByUser(storedUser), { replace: true });
       }
     }
-  }, [navigate]);
+  }, [navigate, toast]);
+
+  // Lắng nghe sự kiện session-timeout phát ra từ Axios Interceptor khi đang ở trang Login
+  useEffect(() => {
+    const handleTimeoutEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ message?: string }>;
+      const msg = customEvent.detail?.message || DEFAULT_SESSION_TIMEOUT_MESSAGE;
+
+      setToast({
+        type: "warning",
+        title: "Phiên làm việc đã hết hạn",
+        message: msg,
+      });
+    };
+
+    window.addEventListener(SESSION_TIMEOUT_EVENT, handleTimeoutEvent);
+    return () => {
+      window.removeEventListener(SESSION_TIMEOUT_EVENT, handleTimeoutEvent);
+    };
+  }, []);
 
   const {
     register,
@@ -69,13 +127,9 @@ export const LoginPage: React.FC = () => {
     try {
       const response = await authService.login(data);
 
-      // Lưu trữ Token an toàn vào localStorage (Hỗ trợ access_token và refresh_token)
-      localStorage.setItem("auth_token", response.accessToken);
-      localStorage.setItem("access_token", response.accessToken);
-      if (response.refreshToken) {
-        localStorage.setItem("refresh_token", response.refreshToken);
-      }
-      localStorage.setItem("auth_user", JSON.stringify(response.user));
+      // Lưu trữ Token an toàn qua tokenStorage (hỗ trợ cả access_token và refresh_token)
+      tokenStorage.setTokens(response.accessToken, response.refreshToken);
+      tokenStorage.setUser(response.user);
 
       // Chuyển hướng mượt mà về đúng route ứng với vai trò của user
       const targetPath = getRedirectPathByUser(response.user);

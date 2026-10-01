@@ -71,6 +71,17 @@
 
 ---
 
-## 5. Kiểm Tra Chất Lượng Mã Nguồn
+## 5. Tiến Độ & Nghiệm Thu Task SN-111: Auto Refresh Token, Logout & Session Timeout (100% AC Passed)
+| Tiêu chí chấp nhận (AC) | Trạng thái | File đảm nhiệm | Chi tiết kỹ thuật |
+| :--- | :---: | :--- | :--- |
+| **AC 1: Cấu hình Request Interceptor** | ✅ Đạt | [`src/services/api.ts`](./src/services/api.ts), [`src/utils/token-storage.ts`](./src/utils/token-storage.ts) | Tự động lấy Access Token từ `tokenStorage` (`localStorage`) và gán vào header: `config.headers.Authorization = 'Bearer ${token}'`. |
+| **AC 2: Response Interceptor bắt 401 & Hàng đợi chống lặp (Mutex Lock)** | ✅ Đạt | [`src/services/api.ts`](./src/services/api.ts) | Bắt lỗi 401 Unauthorized; quản lý cờ `isRefreshing` và hàng đợi `failedQueue` chống việc nhiều API đồng thời kích hoạt nhiều request refresh; gắn cờ `_retry` chống lặp vô tận. Bỏ qua refresh đối với các route auth (`/auth/login`, `/auth/refresh`, `/auth/logout`). |
+| **AC 3: Gọi API /auth/refresh & Retry Request** | ✅ Đạt | [`src/services/api.ts`](./src/services/api.ts), [`src/services/auth.service.ts`](./src/services/auth.service.ts) | Gọi `POST /auth/refresh` bằng client độc lập `refreshClient`; khi thành công tự động cập nhật token mới vào storage, giải phóng hàng đợi và retry lại request ban đầu với header mới. |
+| **AC 4: Chức năng Đăng xuất (Logout)** | ✅ Đạt | [`src/services/auth.service.ts`](./src/services/auth.service.ts), [`src/layouts/header.tsx`](./src/layouts/header.tsx), [`src/pages/role-module-page.tsx`](./src/pages/role-module-page.tsx) | Gọi API `POST /auth/logout` lên Backend với Bearer token và `{ refreshToken }`; dọn sạch `localStorage` thông qua `tokenStorage.clearAuthData()`; điều hướng an toàn về `/auth/login`. |
+| **AC 5: Xử lý Session Hết hạn & Thông báo UI** | ✅ Đạt | [`src/utils/session-timeout.ts`](./src/utils/session-timeout.ts), [`src/pages/login-page.tsx`](./src/pages/login-page.tsx), [`src/components/toast.tsx`](./src/components/toast.tsx) | Khi Refresh Token hết hạn hoặc không hợp lệ: tự động dọn sạch storage, phát sự kiện và điều hướng về `/auth/login?expired=1`; hiển thị Toast thông báo màu Amber: *"Phiên làm việc đã hết hạn, vui lòng đăng nhập lại"*. |
+
+---
+
+## 6. Kiểm Tra Chất Lượng Mã Nguồn
 - `npm run build`: Thành công (**0 lỗi**).
 - `npm run lint`: Thành công (**0 lỗi, 0 cảnh báo**).

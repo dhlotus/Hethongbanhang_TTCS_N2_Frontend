@@ -5,7 +5,7 @@ import { RoleModulePage } from "../pages/role-module-page";
 import { ProtectedRoute } from "../components/protected-route";
 import { AdminLayout } from "../layouts/admin-layout";
 import { getRedirectPathByUser, getStoredUser } from "../utils/navigation";
-
+import { tokenStorage } from "../utils/token-storage";
 /**
  * Layout bọc ngoài cho các phân hệ chức năng độc lập (Sales, Kho, Kế toán, Đại lý)
  */
@@ -25,8 +25,7 @@ const GeneralRoleLayout: React.FC = () => {
  * - Nếu đã đăng nhập: tự động chuyển hướng về route tương ứng với vai trò của user
  */
 const RootRedirect: React.FC = () => {
-  const token =
-    localStorage.getItem("access_token") || localStorage.getItem("auth_token");
+  const token = tokenStorage.getAccessToken();
   const user = getStoredUser();
 
   if (!token) {

@@ -1,6 +1,7 @@
 import React from "react";
 import { Navigate, useLocation, Outlet } from "react-router-dom";
 import { getRedirectPathByUser, getStoredUser } from "../utils/navigation";
+import { tokenStorage } from "../utils/token-storage";
 
 interface ProtectedRouteProps {
   children?: React.ReactNode;
@@ -17,7 +18,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles,
 }) => {
   const location = useLocation();
-  const token = localStorage.getItem("auth_token");
+  const token = tokenStorage.getAccessToken();
   const user = getStoredUser();
 
   // 1. Kiểm tra Token đăng nhập

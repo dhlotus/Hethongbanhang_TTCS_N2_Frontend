@@ -1,6 +1,7 @@
 import axios from "axios";
-import { apiClient } from "./api";
-import type { LoginCredentials, LoginResponse } from "../types/auth";
+import { apiClient, refreshClient } from "./api";
+import { tokenStorage } from "../utils/token-storage";
+import type { LoginCredentials, LoginResponse, TokenResponse } from "../types/auth";
 
 // Danh sách 7 tài khoản demo theo đúng 7 vai trò của hệ thống LOHA SALES (Mật khẩu chung: 123456)
 const DEMO_USERS: Record<string, LoginResponse> = {
@@ -393,12 +394,60 @@ export const authService = {
   },
 
   /**
-   * Đăng xuất khỏi hệ thống: xóa token xác thực và thông tin người dùng
+   * Gọi API làm mới token: POST /auth/refresh
    */
-  logout(): void {
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("auth_user");
+  async refreshTokens(refreshToken: string): Promise<TokenResponse> {
+    const cleanToken = refreshToken.trim();
+
+    // Hỗ trợ demo tokens offline
+    if (cleanToken.startsWith("demo-jwt-")) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return {
+        accessToken: `demo-jwt-refreshed-${Date.now()}-access-token`,
+        refreshToken: cleanToken,
+        tokenType: "Bearer",
+        expiresIn: "3600s",
+      };
+    }
+
+    const response = await refreshClient.post<TokenResponse>("/auth/refresh", {
+      refreshToken: cleanToken,
+    });
+
+    return response.data;
+  },
+
+  /**
+   * Đăng xuất khỏi hệ thống:
+   * 1. Gọi API POST /auth/logout để máy chủ thu hồi refresh token / session
+   * 2. Dọn sạch toàn bộ localStorage (access_token, refresh_token, user info)
+   * 3. Tùy chọn chuyển hướng về trang /auth/login
+   */
+  async logout(redirect = false): Promise<void> {
+    const refreshToken = tokenStorage.getRefreshToken();
+    const accessToken = tokenStorage.getAccessToken();
+
+    try {
+      if (refreshToken && !refreshToken.startsWith("demo-jwt-")) {
+        await refreshClient.post(
+          "/auth/logout",
+          { refreshToken },
+          {
+            headers: accessToken
+              ? { Authorization: `Bearer ${accessToken}` }
+              : undefined,
+          },
+        );
+      }
+    } catch (error: unknown) {
+      // Ghi log cảnh báo nhưng không chặn việc dọn dẹp client
+      console.warn("Không thể thu hồi token trên máy chủ khi đăng xuất:", error);
+    } finally {
+      tokenStorage.clearAuthData();
+
+      if (redirect) {
+        window.location.href = "/auth/login";
+      }
+    }
   },
 };

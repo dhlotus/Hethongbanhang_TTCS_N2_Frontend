@@ -30,8 +30,8 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
   const navigate = useNavigate();
   const user = getStoredUser();
 
-  const handleLogout = () => {
-    authService.logout();
+  const handleLogout = async () => {
+    await authService.logout();
     navigate("/auth/login", { replace: true });
   };
 

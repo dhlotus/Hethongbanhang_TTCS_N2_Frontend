@@ -57,8 +57,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     ? user.fullName.trim().charAt(0).toUpperCase()
     : "A";
 
-  const handleLogout = () => {
-    authService.logout();
+  const handleLogout = async () => {
+    await authService.logout();
     navigate("/auth/login", { replace: true });
   };
 

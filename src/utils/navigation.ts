@@ -1,4 +1,5 @@
 import type { AuthUser } from "../types/auth";
+import { tokenStorage } from "./token-storage";
 
 /**
  * Hàm điều hướng trung tâm theo vai trò người dùng (Role-based Navigation):
@@ -84,16 +85,11 @@ export const getRedirectPathByUser = (user?: AuthUser | null): string => {
   return getRedirectPathByRole(user.roles[0]);
 };
 
+
 /**
  * Lấy và parse thông tin AuthUser từ localStorage an toàn
  */
 export const getStoredUser = (): AuthUser | null => {
-  const storedUser = localStorage.getItem("auth_user");
-  if (!storedUser) return null;
-  try {
-    return JSON.parse(storedUser) as AuthUser;
-  } catch {
-    return null;
-  }
+  return tokenStorage.getUser();
 };
 
