@@ -4,19 +4,17 @@ import {
   X,
   Clock,
   User,
-  Globe,
   Database,
   CheckCircle2,
-  Copy,
-  Check,
-  Search,
-  Filter,
-  Layers,
   FileSpreadsheet,
-  AlertTriangle,
 } from "lucide-react";
 import type { AuditLogItem } from "../../types/audit-log";
-import { formatAuditDateTime } from "../../services/audit-log.service";
+import {
+  formatAuditDateTime,
+  formatUserWithRole,
+  resolveEntityCode,
+  resolveEntityDisplayName,
+} from "../../services/audit-log.service";
 
 interface DiffViewerModalProps {
   isOpen: boolean;
@@ -216,8 +214,6 @@ function getPropertyLabel(key: string): string {
   if (PROPERTY_LABELS[key]) {
     return PROPERTY_LABELS[key];
   }
-  // Nếu key có dạng snake_case hoặc camelCase chưa có trong từ điển
-  // Tạo nhãn tiếng Việt gần đúng hoặc định dạng dễ nhìn
   const formatted = key
     .replace(/([A-Z])/g, " $1")
     .replace(/_/g, " ")
@@ -258,17 +254,14 @@ function formatDisplayValue(key: string, value: unknown): string {
     const trimmed = value.trim();
     if (!trimmed) return "—";
 
-    // Kiểm tra từ điển dịch trạng thái
     if (VALUE_TRANSLATIONS[trimmed]) {
       return VALUE_TRANSLATIONS[trimmed];
     }
 
-    // Kiểm tra định dạng ngày giờ ISO (VD: 2026-10-02T14:00:00.000Z)
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(trimmed)) {
       return formatAuditDateTime(trimmed);
     }
 
-    // Kiểm tra định dạng ngày YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
       const parts = trimmed.split("-");
       if (parts.length === 3) {
@@ -279,7 +272,7 @@ function formatDisplayValue(key: string, value: unknown): string {
     return trimmed;
   }
 
-  // Array: Hiển thị mảng thành chuỗi phân cách dấu phẩy, dịch từng phần tử nếu là enum
+  // Array
   if (Array.isArray(value)) {
     if (value.length === 0) return "— (Trống)";
     return value
@@ -290,7 +283,7 @@ function formatDisplayValue(key: string, value: unknown): string {
       .join(", ");
   }
 
-  // Object: Định dạng các trường bên trong thành danh sách gọn gàng không ngoặc nhọn
+  // Object
   if (typeof value === "object") {
     try {
       const entries = Object.entries(value as Record<string, unknown>);
@@ -325,9 +318,6 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
   logItem,
 }) => {
   const [isClosing, setIsClosing] = useState<boolean>(false);
-  const [copiedText, setCopiedText] = useState<boolean>(false);
-  const [onlyShowChanged, setOnlyShowChanged] = useState<boolean>(true);
-  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const handleClose = useCallback(() => {
     if (isClosing) return;
@@ -393,74 +383,27 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
     });
   }, [logItem]);
 
-  // Bộ lọc dữ liệu theo tuỳ chọn hiển thị và từ khóa tìm kiếm
-  const filteredRows = useMemo(() => {
-    let rows = diffRows;
+  // Hiển thị trực tiếp danh sách các trường thay đổi (tập trung nghiệp vụ, không cần bộ lọc phụ)
+  const changedRows = useMemo(() => {
+    const changed = diffRows.filter((r) => r.isChanged);
+    return changed.length > 0 ? changed : diffRows;
+  }, [diffRows]);
 
-    if (onlyShowChanged) {
-      rows = rows.filter((r) => r.isChanged);
-    }
+  // Phân giải đối tượng và người thực hiện chuẩn nghiệp vụ
+  const resolvedCode = useMemo(() => {
+    if (!logItem) return "";
+    return resolveEntityCode(logItem);
+  }, [logItem]);
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      rows = rows.filter(
-        (r) =>
-          r.label.toLowerCase().includes(q) ||
-          r.key.toLowerCase().includes(q) ||
-          r.oldFormatted.toLowerCase().includes(q) ||
-          r.newFormatted.toLowerCase().includes(q)
-      );
-    }
+  const displayEntityName = useMemo(() => {
+    if (!logItem) return "";
+    return resolveEntityDisplayName(logItem.entity_name, resolvedCode);
+  }, [logItem, resolvedCode]);
 
-    return rows;
-  }, [diffRows, onlyShowChanged, searchQuery]);
-
-  const changedCount = useMemo(
-    () => diffRows.filter((r) => r.isChanged).length,
-    [diffRows]
-  );
-
-  // Sao chép bảng đối chiếu văn bản trực quan cho kế toán/thủ kho làm báo cáo
-  const handleCopySummary = () => {
-    if (!logItem) return;
-
-    const lines: string[] = [
-      "==================================================",
-      "BIÊN BẢN ĐỐI CHIẾU THAY ĐỔI DỮ LIỆU HỆ THỐNG",
-      "==================================================",
-      `Mã bản ghi nhật ký : ${logItem.id}`,
-      `Thời điểm ghi nhận : ${formatAuditDateTime(logItem.created_at)}`,
-      `Người thực hiện    : ${logItem.user.full_name} (${logItem.user.email})`,
-      `Địa chỉ IP         : ${logItem.user.ip_address}`,
-      `Đối tượng tác động : ${logItem.entity_name} [Mã: ${logItem.entity_id}]`,
-      `Loại thao tác      : ${logItem.action}`,
-      "--------------------------------------------------",
-      "CHI TIẾT CÁC THUỘC TÍNH BIẾN ĐỘNG:",
-    ];
-
-    const activeRows = diffRows.filter((r) => r.isChanged);
-    if (activeRows.length === 0) {
-      lines.push("  (Không có thuộc tính nào bị thay đổi)");
-    } else {
-      activeRows.forEach((row) => {
-        let tag = "THAY ĐỔI";
-        if (row.isAdded) tag = "THÊM MỚI";
-        if (row.isRemoved) tag = "ĐÃ XÓA";
-
-        lines.push(
-          `• [${tag}] ${row.label} (${row.key}):`
-        );
-        lines.push(`    - Trước: ${row.oldFormatted}`);
-        lines.push(`    - Sau  : ${row.newFormatted}`);
-      });
-    }
-
-    lines.push("==================================================");
-
-    navigator.clipboard.writeText(lines.join("\n"));
-    setCopiedText(true);
-    setTimeout(() => setCopiedText(false), 2000);
-  };
+  const formattedUser = useMemo(() => {
+    if (!logItem) return "";
+    return formatUserWithRole(logItem.user);
+  }, [logItem]);
 
   if (!isOpen || !logItem) return null;
   if (typeof document === "undefined") return null;
@@ -496,8 +439,8 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
                 >
                   Đối chiếu Thay đổi Dữ liệu (Audit Diff Viewer)
                 </h2>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[11px] font-semibold ring-1 ring-inset ring-blue-700/10">
-                  {logItem.action}
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[11px] font-semibold ring-1 ring-inset ring-blue-700/10">
+                  {logItem.action === "UPDATE" ? "Cập nhật (UPDATE)" : logItem.action}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -506,7 +449,12 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
                   {logItem.id}
                 </span>
                 {" • "}
-                <span>Đối tượng: <strong>{logItem.entity_name}</strong></span>
+                <span>
+                  Đối tượng: <strong>{displayEntityName}</strong>
+                  {" ["}
+                  <span className="font-mono text-blue-700 font-semibold">{resolvedCode}</span>
+                  {"]"}
+                </span>
               </p>
             </div>
           </div>
@@ -521,139 +469,65 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
           </button>
         </div>
 
-        {/* 2. Banner Thông tin Truy vết (Audit Meta Information) */}
-        <div className="bg-slate-50/50 px-6 py-3 border-b border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 shadow-2xs shrink-0">
-              <User className="h-3.5 w-3.5" />
+        {/* 2. Banner Thông tin Truy vết (Audit Meta Information - 3 cột tinh gọn, chuẩn nghiệp vụ) */}
+        <div className="bg-slate-50/60 px-6 py-3.5 border-b border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs">
+          {/* Box 1: Người thực hiện (Chỉ Họ tên & Vai trò / Chức vụ, không email) */}
+          <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+            <div className="h-8 w-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-2xs shrink-0">
+              <User className="h-4 w-4" />
             </div>
             <div className="min-w-0">
               <div className="text-[11px] text-slate-400 font-medium">Người thực hiện:</div>
-              <div className="font-semibold text-slate-800 truncate" title={logItem.user.full_name}>
-                {logItem.user.full_name}
+              <div
+                className="font-semibold text-slate-800 truncate text-xs"
+                title={formattedUser}
+              >
+                {formattedUser}
               </div>
-              <div className="text-[10px] text-slate-400 font-mono truncate">{logItem.user.email}</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 shadow-2xs shrink-0">
-              <Globe className="h-3.5 w-3.5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] text-slate-400 font-medium">Địa chỉ IP truy cập:</div>
-              <div className="font-mono text-slate-800 font-semibold">{logItem.user.ip_address}</div>
-              <div className="text-[10px] text-emerald-600 font-medium">Đã xác thực bảo mật</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 shadow-2xs shrink-0">
-              <Clock className="h-3.5 w-3.5" />
+          {/* Box 2: Thời điểm ghi nhận (Định dạng ngày giờ chuẩn, không chú thích kỹ thuật) */}
+          <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+            <div className="h-8 w-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-2xs shrink-0">
+              <Clock className="h-4 w-4" />
             </div>
             <div className="min-w-0">
               <div className="text-[11px] text-slate-400 font-medium">Thời điểm ghi nhận:</div>
-              <div className="font-mono text-slate-800 font-semibold">
+              <div className="font-mono text-slate-800 font-semibold text-xs">
                 {formatAuditDateTime(logItem.created_at)}
               </div>
-              <div className="text-[10px] text-slate-400">Giờ máy chủ (UTC+7)</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 shadow-2xs shrink-0">
-              <Database className="h-3.5 w-3.5 text-blue-600" />
+          {/* Box 3: Mã đối tượng nghiệp vụ (SKU/Code chuẩn, không hiển thị SYSTEM/UNKNOWN) */}
+          <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+            <div className="h-8 w-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-2xs shrink-0">
+              <Database className="h-4 w-4" />
             </div>
             <div className="min-w-0">
               <div className="text-[11px] text-slate-400 font-medium">Mã đối tượng (Target ID):</div>
-              <div className="font-mono text-blue-700 font-semibold truncate" title={logItem.entity_id}>
-                {logItem.entity_id}
-              </div>
-              <div className="text-[10px] text-slate-500 truncate">{logItem.entity_name}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* 3. Thanh điều khiển Bộ lọc & Tìm kiếm thuộc tính trong Modal */}
-        <div className="px-6 py-2.5 bg-white border-b border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
-          {/* Tóm tắt biến động */}
-          <div className="flex items-center gap-2">
-            <div
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                changedCount > 0
-                  ? "bg-amber-50 text-amber-800 border border-amber-200"
-                  : "bg-slate-100 text-slate-600"
-              }`}
-            >
-              {changedCount > 0 ? (
-                <>
-                  <CheckCircle2 className="h-3.5 w-3.5 text-amber-600" />
-                  <span>Phát hiện {changedCount} trường thông tin thay đổi</span>
-                </>
-              ) : (
-                <>
-                  <Layers className="h-3.5 w-3.5 text-slate-400" />
-                  <span>Không có thuộc tính nào biến động</span>
-                </>
-              )}
-            </div>
-
-            {/* Toggle chỉ hiển thị trường thay đổi */}
-            <label className="inline-flex items-center gap-1.5 text-slate-600 font-medium cursor-pointer hover:text-slate-900 select-none">
-              <input
-                type="checkbox"
-                checked={onlyShowChanged}
-                onChange={(e) => setOnlyShowChanged(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-              />
-              <span>Chỉ hiển thị trường thay đổi</span>
-            </label>
-          </div>
-
-          {/* Ô tìm kiếm thuộc tính */}
-          <div className="relative min-w-[220px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm trường thông tin..."
-              className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50/50 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+              <div
+                className="font-mono text-blue-700 font-semibold truncate text-xs"
+                title={resolvedCode}
               >
-                <X className="h-3 w-3" />
-              </button>
-            )}
+                {resolvedCode}
+              </div>
+              <div className="text-[10px] text-slate-500 truncate">{displayEntityName}</div>
+            </div>
           </div>
         </div>
 
-        {/* 4. Thân Modal: Bảng Đối chiếu Trực quan (Property Comparison Table) */}
+        {/* 3. Thân Modal: Bảng Đối chiếu Trực quan (Property Comparison Table) */}
         <div className="flex-1 overflow-y-auto p-6">
-          {filteredRows.length === 0 ? (
+          {changedRows.length === 0 ? (
             <div className="py-16 text-center text-slate-400 space-y-2">
-              <Filter className="h-8 w-8 mx-auto text-slate-300" />
+              <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-500" />
               <p className="font-semibold text-slate-700 text-sm">
-                {searchQuery
-                  ? "Không tìm thấy trường thông tin nào khớp với tìm kiếm"
-                  : onlyShowChanged
-                  ? "Không có trường dữ liệu nào bị thay đổi trong bản ghi này"
-                  : "Không có dữ liệu thuộc tính"}
+                Không phát hiện trường dữ liệu nào bị thay đổi
               </p>
               <p className="text-xs text-slate-400">
-                {onlyShowChanged && (
-                  <button
-                    type="button"
-                    onClick={() => setOnlyShowChanged(false)}
-                    className="text-blue-600 hover:underline font-semibold cursor-pointer"
-                  >
-                    Bấm vào đây để xem toàn bộ tất cả trường thông tin
-                  </button>
-                )}
+                Dữ liệu trước và sau thao tác hoàn toàn đồng nhất.
               </p>
             </div>
           ) : (
@@ -682,7 +556,7 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredRows.map((row) => {
+                  {changedRows.map((row) => {
                     const isRowChanged = row.isChanged;
 
                     return (
@@ -770,41 +644,14 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
               </table>
             </div>
           )}
-
-          {/* Ghi chú giải thích cho thủ kho / kế toán */}
-          <div className="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-500 flex items-start gap-2">
-            <AlertTriangle className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
-            <div>
-              <strong>Lưu ý đối chiếu:</strong> Các giá trị được hiển thị đã được chuyển đổi sang định dạng tiền tệ (VNĐ), ngày tháng và tên tiếng Việt chuẩn hóa. Bạn có thể sử dụng nút <em>"Sao chép bảng đối chiếu"</em> bên dưới để dán vào biên bản kiểm kê hoặc gửi báo cáo quản lý.
-            </div>
-          </div>
         </div>
 
-        {/* 5. Footer Modal */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-t border-slate-100 bg-slate-50/70">
-          <button
-            type="button"
-            onClick={handleCopySummary}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
-            title="Sao chép nội dung so sánh để lập biên bản kiểm kê"
-          >
-            {copiedText ? (
-              <>
-                <Check className="h-4 w-4 text-emerald-600" />
-                <span className="text-emerald-700 font-bold">Đã sao chép vào bộ nhớ tạm!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="h-4 w-4 text-slate-500" />
-                <span>Sao chép bảng đối chiếu</span>
-              </>
-            )}
-          </button>
-
+        {/* 4. Footer Modal: Tối giản, chỉ giữ lại nút Đóng to rõ */}
+        <div className="flex items-center justify-end px-6 py-3.5 border-t border-slate-100 bg-slate-50/70">
           <button
             type="button"
             onClick={handleClose}
-            className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+            className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs hover:shadow transition-all cursor-pointer"
           >
             Đóng cửa sổ
           </button>

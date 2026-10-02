@@ -22,6 +22,7 @@ export interface AuditLogUser {
   full_name: string;
   email: string;
   ip_address: string;
+  role?: string;
 }
 
 export interface AuditLogItem {

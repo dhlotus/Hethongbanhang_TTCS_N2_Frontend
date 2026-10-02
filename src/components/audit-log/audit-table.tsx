@@ -9,7 +9,12 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { AuditLogItem, AuditActionType } from "../../types/audit-log";
-import { formatAuditDateTime } from "../../services/audit-log.service";
+import {
+  formatAuditDateTime,
+  formatUserWithRole,
+  resolveEntityCode,
+  resolveEntityDisplayName,
+} from "../../services/audit-log.service";
 
 interface AuditTableProps {
   logs: AuditLogItem[];
@@ -222,6 +227,13 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                   dotClass: "bg-slate-400",
                 };
 
+                const resolvedCode = resolveEntityCode(log);
+                const displayEntityName = resolveEntityDisplayName(
+                  log.entity_name,
+                  resolvedCode
+                );
+                const formattedUser = formatUserWithRole(log.user);
+
                 return (
                   <tr
                     key={log.id}
@@ -235,17 +247,15 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                       </div>
                     </td>
 
-                    {/* Cột 2: Người thực hiện & Email/IP */}
+                    {/* Cột 2: Người thực hiện (Chỉ Họ tên & Vai trò / Chức vụ, không email/IP) */}
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <span className="font-semibold text-slate-900 leading-snug">
-                          {log.user.full_name}
+                        <span
+                          className="font-semibold text-slate-900 leading-snug"
+                          title={formattedUser}
+                        >
+                          {formattedUser}
                         </span>
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-mono mt-0.5">
-                          <span>{log.user.email}</span>
-                          <span>•</span>
-                          <span>{log.user.ip_address}</span>
-                        </div>
                       </div>
                     </td>
 
@@ -261,14 +271,14 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                       </span>
                     </td>
 
-                    {/* Cột 4: Đối tượng */}
+                    {/* Cột 4: Đối tượng (Tên nghiệp vụ & Mã SKU/Code thực tế) */}
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
                         <span className="font-semibold text-slate-800 leading-snug">
-                          {log.entity_name}
+                          {displayEntityName}
                         </span>
-                        <span className="text-[11px] font-mono text-slate-400 mt-0.5">
-                          ID: {log.entity_id}
+                        <span className="text-[11px] font-mono text-blue-700 font-semibold mt-0.5">
+                          {resolvedCode}
                         </span>
                       </div>
                     </td>
