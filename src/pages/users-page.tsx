@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Users,
   UserPlus,
@@ -1128,8 +1129,10 @@ export const UsersPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* 5. MODAL THÊM / CẬP NHẬT NHÂN SỰ & CẤP MÃ ĐỔI MẬT KHẨU                    */}
       {/* ========================================================================= */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-modal-backdrop-in">
+      {modalOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-modal-backdrop-in">
           <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] animate-modal-in">
             {/* Header Modal */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
@@ -1563,14 +1566,18 @@ export const UsersPage: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ========================================================================= */}
       {/* 6. MODAL KHÓA / MỞ KHÓA TÀI KHOẢN NHÂN SỰ                                */}
       {/* ========================================================================= */}
-      {statusModalOpen && selectedUserForStatus && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-modal-backdrop-in">
+      {statusModalOpen &&
+        selectedUserForStatus &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-modal-backdrop-in">
           <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 animate-modal-in">
             <button
               type="button"
@@ -1734,7 +1741,8 @@ export const UsersPage: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

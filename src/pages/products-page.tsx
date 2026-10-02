@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Package,
   Plus,
@@ -893,15 +894,18 @@ export const ProductsPage: React.FC = () => {
       />
 
       {/* 6. Modal Xác nhận xóa sản phẩm */}
-      {deleteModalOpen && productToDelete && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-modal-backdrop-in"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setDeleteModalOpen(false);
-          }}
-        >
+      {deleteModalOpen &&
+        productToDelete &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-modal-backdrop-in"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setDeleteModalOpen(false);
+            }}
+          >
           <div className="relative w-full max-w-md rounded-2xl sm:rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 animate-modal-in text-slate-800">
             <button
               type="button"
@@ -953,19 +957,23 @@ export const ProductsPage: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* 7. Modal Điều chỉnh tồn kho (Chỉ Thủ kho & Admin) */}
-      {adjustModalOpen && selectedProductForAdjust && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-modal-backdrop-in"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setAdjustModalOpen(false);
-          }}
-        >
+      {adjustModalOpen &&
+        selectedProductForAdjust &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-modal-backdrop-in"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setAdjustModalOpen(false);
+            }}
+          >
           <div className="relative w-full max-w-md rounded-2xl sm:rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 z-10 space-y-4 animate-modal-in text-slate-800">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -1063,7 +1071,8 @@ export const ProductsPage: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
