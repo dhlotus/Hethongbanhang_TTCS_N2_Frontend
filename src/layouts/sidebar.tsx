@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, Link } from "react-router-dom";
 import {
   Layers,
@@ -9,6 +9,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { getStoredUser } from "../utils/navigation";
+import { tokenStorage } from "../utils/token-storage";
+import { resolveAvatarUrl } from "../utils/avatar";
 import {
   getNavigationItems,
   getUserContext,
@@ -31,9 +33,30 @@ interface SidebarNavContentProps {
  * - Giao diện Clean SaaS theo tiêu chuẩn UI_GUIDELINES.md
  */
 const SidebarNavContent: React.FC<SidebarNavContentProps> = ({ onItemClick }) => {
-  const user = getStoredUser();
-  const context = getUserContext(user);
-  const menuItems: MenuItem[] = getNavigationItems(user?.roles || user?.role);
+  const [currentUser, setCurrentUser] = useState(getStoredUser());
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
+    tokenStorage.getUser()?.avatarUrl,
+  );
+
+  useEffect(() => {
+    const syncUser = () => {
+      const u = tokenStorage.getUser();
+      setCurrentUser(u);
+      setAvatarUrl(u?.avatarUrl);
+    };
+
+    window.addEventListener("storage", syncUser);
+    window.addEventListener("avatar-updated", syncUser);
+    syncUser();
+
+    return () => {
+      window.removeEventListener("storage", syncUser);
+      window.removeEventListener("avatar-updated", syncUser);
+    };
+  }, []);
+
+  const context = getUserContext(currentUser);
+  const menuItems: MenuItem[] = getNavigationItems(currentUser?.roles || currentUser?.role);
 
   return (
     <div className="flex h-full flex-col justify-between p-3.5 sm:p-4 bg-white select-none">
@@ -126,17 +149,30 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({ onItemClick }) =>
       {/* ===================================================================== */}
       <div className="mt-4 pt-3 border-t border-slate-100">
         <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3 space-y-2.5">
-          {/* Hàng 1: Avatar chữ cái + Họ tên + Trạng thái */}
-          <div className="flex items-center gap-2.5">
-            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-xs font-bold text-white shadow-2xs">
-              {context.avatarLetter}
+          {/* Hàng 1: Avatar chữ cái hoặc ảnh thực + Họ tên + Trạng thái */}
+          <Link
+            to="/profile"
+            onClick={onItemClick}
+            className="flex items-center gap-2.5 group/user hover:opacity-90 transition-opacity"
+            title="Xem hồ sơ cá nhân & Đổi ảnh đại diện"
+          >
+            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-gradient-to-tr from-blue-600 to-indigo-600 text-xs font-bold text-white shadow-2xs group-hover/user:ring-2 group-hover/user:ring-blue-500/30 transition-all">
+              {avatarUrl ? (
+                <img
+                  src={resolveAvatarUrl(avatarUrl)}
+                  alt={`Ảnh đại diện ${context.fullName}`}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                context.avatarLetter
+              )}
               <span
-                className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${context.dotClass}`}
+                className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white z-10 ${context.dotClass}`}
               />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-1">
-                <p className="text-xs font-bold text-slate-800 truncate" title={context.fullName}>
+                <p className="text-xs font-bold text-slate-800 truncate group-hover/user:text-blue-600 transition-colors" title={context.fullName}>
                   {context.fullName}
                 </p>
               </div>
@@ -148,7 +184,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({ onItemClick }) =>
                 </span>
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* Hàng 2: Kho hoặc Địa bàn đang làm việc */}
           <div className="rounded-xl bg-white border border-slate-100 p-2 flex items-start gap-2 shadow-2xs">

@@ -16,6 +16,7 @@ import { usersService } from '../services/users.service';
 import { tokenStorage } from '../utils/token-storage';
 import { getStoredUser } from '../utils/navigation';
 import { getUserContext } from '../utils/navigation-config';
+import { resolveAvatarUrl } from '../utils/avatar';
 import type { AuthUser } from '../types/auth';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -68,8 +69,13 @@ export const ProfilePage: React.FC = () => {
     setIsFetchingProfile(true);
     try {
       const freshUser = await usersService.getMe();
-      tokenStorage.setUser(freshUser);
-      setUser(freshUser);
+      const currentUser = tokenStorage.getUser();
+      const mergedUser: AuthUser = {
+        ...(currentUser || {}),
+        ...freshUser,
+      };
+      tokenStorage.setUser(mergedUser);
+      setUser(mergedUser);
     } catch {
       // Lỗi mạng — giữ nguyên data localStorage, không hiện toast
     } finally {
@@ -101,13 +107,24 @@ export const ProfilePage: React.FC = () => {
     }
 
     // Production: gọi API thật
-    const updatedUser = await usersService.uploadAvatar(croppedFile);
-    tokenStorage.setUser(updatedUser);
-    setUser(updatedUser);
+    const response = await usersService.uploadAvatar(croppedFile);
+    const newAvatarUrl = response.data?.avatarUrl;
+
+    // Merge state - bảo toàn 100% profile người dùng hiện tại
+    const currentUser = tokenStorage.getUser() || user;
+    if (currentUser) {
+      const mergedUser: AuthUser = {
+        ...currentUser,
+        avatarUrl: newAvatarUrl,
+      };
+      tokenStorage.setUser(mergedUser);
+      setUser(mergedUser);
+      // Thông báo Header cập nhật avatar (cùng tab)
+      window.dispatchEvent(new CustomEvent('avatar-updated', { detail: newAvatarUrl }));
+    }
+
     setShowUploadModal(false);
     setToast({ type: 'success', message: 'Ảnh đại diện đã được cập nhật!' });
-    // Thông báo Header cập nhật avatar (cùng tab)
-    window.dispatchEvent(new CustomEvent('avatar-updated', { detail: updatedUser.avatarUrl }));
   };
 
   // ─── Render ──────────────────────────────────────────────────────────────
@@ -150,7 +167,7 @@ export const ProfilePage: React.FC = () => {
                 <div className="h-24 w-24 rounded-2xl ring-4 ring-white shadow-lg overflow-hidden bg-gradient-to-tr from-blue-100 to-indigo-100">
                   {user?.avatarUrl ? (
                     <img
-                      src={user.avatarUrl}
+                      src={resolveAvatarUrl(user.avatarUrl)}
                       alt={`Ảnh đại diện của ${user.fullName}`}
                       className="h-full w-full object-cover"
                     />

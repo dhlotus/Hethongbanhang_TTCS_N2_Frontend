@@ -13,6 +13,7 @@ import { getStoredUser } from "../utils/navigation";
 import { getUserContext } from "../utils/navigation-config";
 import { authService } from "../services/auth.service";
 import { tokenStorage } from "../utils/token-storage";
+import { resolveAvatarUrl } from "../utils/avatar";
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
@@ -236,7 +237,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           >
             {avatarUrl ? (
               <img
-                src={avatarUrl}
+                src={resolveAvatarUrl(avatarUrl)}
                 alt={`Ảnh đại diện ${context.fullName}`}
                 className="h-full w-full object-cover"
               />

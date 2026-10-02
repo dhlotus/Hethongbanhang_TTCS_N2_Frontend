@@ -12,6 +12,7 @@ export interface UserManagementItem {
   roles?: (UserRoleType | string)[];
   status: UserStatusType;
   assignedWarehouse?: string;
+  avatarUrl?: string | null;
   lockReason?: string | null;
   resetCode?: string | null;
   resetCodeCreatedAt?: string | null;

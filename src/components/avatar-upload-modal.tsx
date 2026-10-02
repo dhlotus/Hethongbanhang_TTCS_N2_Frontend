@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, ZoomIn, ZoomOut, Check, X, ImageIcon, RotateCcw } from 'lucide-react';
+import { resolveAvatarUrl } from '../utils/avatar';
 
 // ─── Hằng số ────────────────────────────────────────────────────────────────
 const MAX_AVATAR_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
@@ -334,7 +335,7 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
               <div className="relative">
                 {previewUrl ? (
                   <img
-                    src={previewUrl}
+                    src={resolveAvatarUrl(previewUrl)}
                     alt="Ảnh đại diện hiện tại"
                     className="h-24 w-24 rounded-2xl object-cover ring-4 ring-blue-100 shadow-md"
                   />

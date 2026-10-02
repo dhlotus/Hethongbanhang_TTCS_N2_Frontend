@@ -11,6 +11,16 @@ import type {
 } from '../types/user';
 import type { AuthUser } from '../types/auth';
 
+export interface AvatarUploadData {
+  avatarUrl: string;
+}
+
+export interface AvatarUploadResponse {
+  statusCode: number;
+  message: string;
+  data: AvatarUploadData;
+}
+
 export const usersService = {
   /**
    * Lấy danh sách người dùng phân trang, tìm kiếm và lọc vai trò/trạng thái
@@ -106,12 +116,12 @@ export const usersService = {
   /**
    * Upload ảnh đại diện cá nhân (SN-144 / SN-145)
    * Gọi POST /users/me/avatar với multipart/form-data
-   * Server trả về AuthUser cập nhật có chứa avatarUrl mới
+   * Server trả về AvatarUploadResponse chứa avatarUrl mới
    */
-  async uploadAvatar(file: File): Promise<AuthUser> {
+  async uploadAvatar(file: File): Promise<AvatarUploadResponse> {
     const formData = new FormData();
     formData.append('avatar', file);
-    const response = await apiClient.post<AuthUser>('/users/me/avatar', formData, {
+    const response = await apiClient.post<AvatarUploadResponse>('/users/me/avatar', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
