@@ -7,6 +7,7 @@ import { ChangePasswordPage } from "../pages/change-password-page";
 import { RoleModulePage } from "../pages/role-module-page";
 import { ProductsPage } from "../pages/products-page";
 import { UsersPage } from "../pages/users-page";
+import { AuditLogsPage } from "../pages/audit-logs-page";
 import { NotFoundPage } from "../pages/not-found-page";
 import { ForbiddenPage } from "../pages/forbidden-page";
 import { ProtectedRoute } from "../components/protected-route";
@@ -405,17 +406,8 @@ export const AppRoutes: React.FC = () => {
               {/* 1. Quản lý người dùng & Phân quyền (SN-10) */}
               <Route path="/system/users" element={<UsersPage />} />
 
-              {/* 2. Nhật ký hệ thống */}
-              <Route
-                path="/system/audit-logs"
-                element={
-                  <RoleModulePage
-                    title="Nhật ký hệ thống (Audit Logs)"
-                    subtitle="Giám sát lịch sử đăng nhập, thay đổi dữ liệu, thao tác quản trị và cảnh báo an toàn"
-                    requiredRole="Quản trị hệ thống"
-                  />
-                }
-              />
+              {/* 2. Nhật ký hệ thống (Audit Logs - Task SN-142 / SN-19) */}
+              <Route path="/system/audit-logs" element={<AuditLogsPage />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
