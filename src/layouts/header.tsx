@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import {
   Menu,
@@ -7,10 +7,12 @@ import {
   ChevronRight,
   MapPin,
   KeyRound,
+  User,
 } from "lucide-react";
 import { getStoredUser } from "../utils/navigation";
 import { getUserContext } from "../utils/navigation-config";
 import { authService } from "../services/auth.service";
+import { tokenStorage } from "../utils/token-storage";
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
@@ -109,6 +111,9 @@ const getPageHeaderInfo = (
   if (pathname.startsWith("/profile/change-password") || pathname.startsWith("/settings/security")) {
     return { title: "Đổi mật khẩu tài khoản", category: "Bảo mật cá nhân" };
   }
+  if (pathname === "/profile") {
+    return { title: "Hồ sơ & Ảnh đại diện", category: "Tài khoản cá nhân" };
+  }
 
   return { title: "Hệ thống LOHA SALES", category: "Vận hành" };
 };
@@ -126,6 +131,21 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const context = getUserContext(user);
 
   const { title, category } = getPageHeaderInfo(location.pathname);
+
+  // Đọc avatarUrl từ localStorage và phản ứng khi thay đổi (sau khi upload)
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
+    tokenStorage.getUser()?.avatarUrl,
+  );
+
+  useEffect(() => {
+    const handleStorage = () => {
+      setAvatarUrl(tokenStorage.getUser()?.avatarUrl);
+    };
+    window.addEventListener('storage', handleStorage);
+    // Kiểm tra lại khi route thay đổi (upload xong rồi navigate)
+    handleStorage();
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     await authService.logout();
@@ -196,15 +216,25 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         {/* Đường phân cách mảnh */}
         <div className="h-6 w-px bg-slate-200/80" />
 
-        {/* Thông tin Người dùng & Đổi mật khẩu */}
+        {/* Thông tin Người dùng & Hồ sơ cá nhân */}
         <div className="flex items-center gap-2">
-          {/* Avatar chữ cái */}
+          {/* Avatar: ảnh hoặc chữ cái */}
           <Link
-            to="/profile/change-password"
-            title="Đổi mật khẩu & Cài đặt bảo mật"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-xs font-bold text-white shadow-xs hover:ring-2 hover:ring-blue-500/20 transition-all"
+            to="/profile"
+            title="Hồ sơ cá nhân & Ảnh đại diện"
+            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-gradient-to-tr from-blue-600 to-indigo-600 text-xs font-bold text-white shadow-xs hover:ring-2 hover:ring-blue-500/30 transition-all"
+            aria-label="Hồ sơ cá nhân"
+            id="header-avatar-btn"
           >
-            {context.avatarLetter}
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={`Ảnh đại diện ${context.fullName}`}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              context.avatarLetter || <User className="h-4 w-4" />
+            )}
           </Link>
 
           {/* Tên người dùng (Ẩn trên mobile) */}

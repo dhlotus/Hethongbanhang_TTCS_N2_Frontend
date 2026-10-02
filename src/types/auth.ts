@@ -12,6 +12,7 @@ export interface AuthUser {
   role?: string;
   status?: string;
   assignedWarehouse?: string;
+  avatarUrl?: string;
 }
 
 export interface LoginResponse {

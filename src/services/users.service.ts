@@ -9,6 +9,7 @@ import type {
   UpdateUserStatusResponse,
   UserManagementItem,
 } from '../types/user';
+import type { AuthUser } from '../types/auth';
 
 export const usersService = {
   /**
@@ -93,4 +94,27 @@ export const usersService = {
     }>(`/users/${id}/reset-code`);
     return response.data;
   },
+
+  /**
+   * Lấy thông tin profile của chính mình (SN-18)
+   */
+  async getMe(): Promise<AuthUser> {
+    const response = await apiClient.get<AuthUser>('/users/me');
+    return response.data;
+  },
+
+  /**
+   * Upload ảnh đại diện cá nhân (SN-144 / SN-145)
+   * Gọi POST /users/me/avatar với multipart/form-data
+   * Server trả về AuthUser cập nhật có chứa avatarUrl mới
+   */
+  async uploadAvatar(file: File): Promise<AuthUser> {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const response = await apiClient.post<AuthUser>('/users/me/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
 };
+
