@@ -6,4 +6,4 @@
 6	Kế toán công nợ	ketoan@loha.vn
 7	Đại lý / Khách hàng B2B	daily@loha.vn
 
-password: 123456
+password: 123456    
