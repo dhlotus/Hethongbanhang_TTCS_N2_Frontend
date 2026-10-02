@@ -138,13 +138,21 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   );
 
   useEffect(() => {
-    const handleStorage = () => {
+    const syncAvatar = () => {
       setAvatarUrl(tokenStorage.getUser()?.avatarUrl);
     };
-    window.addEventListener('storage', handleStorage);
-    // Kiểm tra lại khi route thay đổi (upload xong rồi navigate)
-    handleStorage();
-    return () => window.removeEventListener('storage', handleStorage);
+
+    // Lắng nghe cross-tab storage event
+    window.addEventListener('storage', syncAvatar);
+    // Lắng nghe same-tab custom event (dispatch từ ProfilePage sau khi upload)
+    window.addEventListener('avatar-updated', syncAvatar);
+    // Đọc lại khi route thay đổi
+    syncAvatar();
+
+    return () => {
+      window.removeEventListener('storage', syncAvatar);
+      window.removeEventListener('avatar-updated', syncAvatar);
+    };
   }, [location.pathname]);
 
   const handleLogout = async () => {

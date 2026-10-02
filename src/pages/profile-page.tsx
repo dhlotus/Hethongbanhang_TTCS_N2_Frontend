@@ -95,6 +95,8 @@ export const ProfilePage: React.FC = () => {
       setUser(updatedUser);
       setShowUploadModal(false);
       setToast({ type: 'success', message: 'Ảnh đại diện đã được cập nhật!' });
+      // Thông báo Header cập nhật avatar (cùng tab)
+      window.dispatchEvent(new CustomEvent('avatar-updated', { detail: demoUrl }));
       return;
     }
 
@@ -104,6 +106,8 @@ export const ProfilePage: React.FC = () => {
     setUser(updatedUser);
     setShowUploadModal(false);
     setToast({ type: 'success', message: 'Ảnh đại diện đã được cập nhật!' });
+    // Thông báo Header cập nhật avatar (cùng tab)
+    window.dispatchEvent(new CustomEvent('avatar-updated', { detail: updatedUser.avatarUrl }));
   };
 
   // ─── Render ──────────────────────────────────────────────────────────────
