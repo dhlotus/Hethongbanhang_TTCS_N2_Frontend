@@ -184,6 +184,7 @@ export const UsersPage: React.FC = () => {
 
   // Modal Tạo / Chỉnh sửa & Quản lý Lỗi Validate
   const [modalOpen, setModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserManagementItem | null>(null);
   const [formData, setFormData] = useState<CreateUserPayload>({
     fullName: "",

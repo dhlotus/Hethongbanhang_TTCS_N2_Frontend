@@ -9,9 +9,7 @@ import {
   Copy,
   Check,
   RefreshCw,
-  Download,
   Info,
-  Layers,
 } from 'lucide-react';
 import { usersService } from '../services/users.service';
 import type { ExcelImportReport, ImportRowResult } from '../types/user';
