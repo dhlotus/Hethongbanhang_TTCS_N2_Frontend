@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Camera,
@@ -41,6 +42,7 @@ export const ProfilePage: React.FC = () => {
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [showLogoutModal, setShowLogoutModal] = useState<boolean>(false);
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
+  const [isExiting, setIsExiting] = useState<boolean>(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [isFetchingProfile, setIsFetchingProfile] = useState<boolean>(false);
 
@@ -123,17 +125,26 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  // Đăng xuất an toàn khỏi hệ thống
+  // Đăng xuất an toàn khỏi hệ thống với hiệu ứng chuyển đổi mượt mà
   const handleLogout = async () => {
+    if (isLoggingOut) return;
     setIsLoggingOut(true);
     try {
-      await authService.logout();
+      // Đảm bảo đủ thời gian để hiển thị hiệu ứng chuyển cảnh mượt mà
+      await Promise.all([
+        authService.logout(),
+        new Promise((resolve) => setTimeout(resolve, 850)),
+      ]);
     } catch {
       // Đăng xuất client-side ngay cả khi rớt mạng
     } finally {
-      setIsLoggingOut(false);
-      setShowLogoutModal(false);
-      navigate("/auth/login", { replace: true });
+      setIsExiting(true);
+      setTimeout(() => {
+        setIsLoggingOut(false);
+        setShowLogoutModal(false);
+        setIsExiting(false);
+        navigate("/auth/login", { replace: true });
+      }, 300);
     }
   };
 
@@ -258,62 +269,81 @@ export const ProfilePage: React.FC = () => {
       </div>
 
       {/* ================================================================= */}
-      {/* 4. MODAL XÁC NHẬN ĐĂNG XUẤT                                       */}
+      {/* 4. MODAL XÁC NHẬN ĐĂNG XUẤT (TINH GỌN + HIỆU ỨNG CHUYỂN CẢNH)     */}
       {/* ================================================================= */}
-      {showLogoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 sm:p-7 shadow-2xl ring-1 ring-slate-900/10 space-y-5 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3.5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 ring-1 ring-rose-100">
-                <LogOut className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                  Xác nhận đăng xuất
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Kết thúc phiên làm việc an toàn
-                </p>
-              </div>
-            </div>
+      {showLogoutModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            onClick={() => !isLoggingOut && setShowLogoutModal(false)}
+            className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-300 ${
+              isExiting ? "opacity-0" : "animate-modal-backdrop-in"
+            }`}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className={`relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 transition-all duration-300 ${
+                isExiting ? "scale-95 opacity-0" : "animate-modal-in"
+              }`}
+            >
+              {isLoggingOut ? (
+                /* Hiệu ứng chuyển đổi khi xác nhận đăng xuất */
+                <div className="py-4 flex flex-col items-center justify-center text-center space-y-3">
+                  <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 ring-4 ring-rose-100/70 shadow-sm animate-pulse">
+                    <Loader2 className="h-6 w-6 animate-spin text-rose-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-bold text-slate-900">
+                      Đang đăng xuất...
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Đang kết thúc phiên và chuyển hướng
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                </div>
+              ) : (
+                /* Popup ngắn gọn tinh gọn */
+                <div className="text-center space-y-4">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 ring-1 ring-rose-100 shadow-2xs">
+                    <LogOut className="h-5 w-5" />
+                  </div>
 
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Bạn có chắc chắn muốn đăng xuất khỏi tài khoản{" "}
-              <span className="font-bold text-slate-900">{cleanFullName}</span>?
-              Mọi dữ liệu làm việc đã lưu sẽ được giữ an toàn trên máy chủ.
-            </p>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">
+                      Đăng xuất tài khoản?
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Bạn có chắc muốn kết thúc phiên làm việc này không?
+                    </p>
+                  </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setShowLogoutModal(false)}
-                disabled={isLoggingOut}
-                className="px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-70"
-              >
-                {isLoggingOut ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Đang đăng xuất...</span>
-                  </>
-                ) : (
-                  <>
-                    <LogOut className="h-4 w-4" />
-                    <span>Xác nhận đăng xuất</span>
-                  </>
-                )}
-              </button>
+                  <div className="grid grid-cols-2 gap-2.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowLogoutModal(false)}
+                      className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full rounded-xl bg-rose-600 hover:bg-rose-700 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-600/20 transition-all cursor-pointer active:scale-98"
+                    >
+                      Đăng xuất
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* ================================================================= */}
       {/* 5. MODAL TẢI LÊN ẢNH ĐẠI DIỆN                                     */}
