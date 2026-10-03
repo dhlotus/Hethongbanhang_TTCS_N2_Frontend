@@ -13,6 +13,13 @@ import { apiClient } from "../services/api";
  */
 export const AdminLayout: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("loha_sidebar_collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
 
   const handleToggleMobileMenu = () => {
     setIsMobileMenuOpen((prev) => !prev);
@@ -20,6 +27,18 @@ export const AdminLayout: React.FC = () => {
 
   const handleCloseMobileMenu = () => {
     setIsMobileMenuOpen(false);
+  };
+
+  const handleToggleSidebarCollapse = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("loha_sidebar_collapsed", String(next));
+      } catch {
+        // Bỏ qua lỗi truy cập storage
+      }
+      return next;
+    });
   };
 
   // Giám sát trạng thái tài khoản: Nếu bị Khóa, lập tức bị out ra ngay
@@ -48,13 +67,22 @@ export const AdminLayout: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50 font-sans antialiased text-slate-900">
-      {/* 1. Sidebar điều hướng (Desktop cố định & Mobile Drawer) */}
-      <Sidebar isOpen={isMobileMenuOpen} onClose={handleCloseMobileMenu} />
+      {/* 1. Sidebar điều hướng (Desktop cố định/thu gọn & Mobile Drawer) */}
+      <Sidebar
+        isOpen={isMobileMenuOpen}
+        onClose={handleCloseMobileMenu}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={handleToggleSidebarCollapse}
+      />
 
       {/* 2. Khung bên phải: Header cố định + Vùng Main Content */}
       <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
         {/* Header trên cùng */}
-        <Header onToggleMobileMenu={handleToggleMobileMenu} />
+        <Header
+          onToggleMobileMenu={handleToggleMobileMenu}
+          onToggleDesktopSidebar={handleToggleSidebarCollapse}
+          isSidebarCollapsed={isSidebarCollapsed}
+        />
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
