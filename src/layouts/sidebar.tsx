@@ -128,16 +128,6 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
         {/* ===================================================================== */}
         <div className="mt-3 flex-1 overflow-y-auto pr-0.5 space-y-3">
           <div>
-            {!isCollapsed && (
-              <div className="flex items-center justify-between px-2 mb-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Chức năng phân hệ
-                </span>
-                <span className="text-[10px] font-semibold text-slate-400 font-mono">
-                  {menuItems.length} mục
-                </span>
-              </div>
-            )}
 
             <nav className="space-y-1">
               {menuItems.map((item) => {
@@ -149,34 +139,30 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                     onClick={onItemClick}
                     title={isCollapsed ? item.name : undefined}
                     className={({ isActive }) =>
-                      `group relative flex items-center ${
-                        isCollapsed
-                          ? "justify-center p-2.5"
-                          : "justify-between px-3 py-2.5"
-                      } rounded-xl text-xs sm:text-sm transition-all duration-200 ease-out active:scale-[0.98] ${
-                        isActive
-                          ? "bg-blue-50 text-blue-600 font-semibold shadow-xs"
-                          : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
+                      `group relative flex items-center ${isCollapsed
+                        ? "justify-center p-2.5"
+                        : "justify-between px-3 py-2.5"
+                      } rounded-xl text-xs sm:text-sm transition-all duration-200 ease-out active:scale-[0.98] ${isActive
+                        ? "bg-blue-50 text-blue-600 font-semibold shadow-xs"
+                        : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
                       }`
                     }
                   >
                     {({ isActive }) => (
                       <>
                         <div
-                          className={`flex items-center ${
-                            isCollapsed ? "justify-center" : "gap-3 min-w-0"
-                          }`}
+                          className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3 min-w-0"
+                            }`}
                         >
                           {/* Thanh định vị Active nhỏ ở bên trái */}
                           {isActive && (
                             <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-blue-600" />
                           )}
                           <Icon
-                            className={`h-4.5 w-4.5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
-                              isActive
+                            className={`h-4.5 w-4.5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive
                                 ? "text-blue-600"
                                 : "text-slate-400 group-hover:text-slate-700"
-                            }`}
+                              }`}
                           />
                           {!isCollapsed && (
                             <span className="truncate">{item.name}</span>
@@ -214,9 +200,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* 1. Desktop Sidebar */}
       <aside
-        className={`hidden h-full shrink-0 border-r border-slate-100 bg-white lg:flex lg:flex-col transition-all duration-300 ease-in-out ${
-          isCollapsed ? "w-[72px]" : "w-[270px]"
-        }`}
+        className={`hidden h-full shrink-0 border-r border-slate-100 bg-white lg:flex lg:flex-col transition-all duration-300 ease-in-out ${isCollapsed ? "w-[72px]" : "w-[270px]"
+          }`}
       >
         <SidebarNavContent
           isCollapsed={isCollapsed}
