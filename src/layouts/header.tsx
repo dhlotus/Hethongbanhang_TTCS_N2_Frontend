@@ -8,8 +8,6 @@ import { resolveAvatarUrl } from "../utils/avatar";
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
-  onToggleDesktopSidebar?: () => void;
-  isSidebarCollapsed?: boolean;
 }
 
 /**
@@ -119,11 +117,7 @@ const getPageHeaderInfo = (
  * - Nút đóng/mở Navbar tiện lợi trên cả Desktop và Mobile
  * - Góc phải hiển thị Avatar, Họ tên và Tag vai trò nổi bật
  */
-export const Header: React.FC<HeaderProps> = ({
-  onToggleMobileMenu,
-  onToggleDesktopSidebar,
-  isSidebarCollapsed,
-}) => {
+export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const location = useLocation();
   const user = getStoredUser();
   const context = getUserContext(user);
@@ -159,19 +153,12 @@ export const Header: React.FC<HeaderProps> = ({
       {/* 1. BÊN TRÁI: NÚT ĐÓNG MỞ NAVBAR & TIÊU ĐỀ TRANG CÓ ANIMATION        */}
       {/* =================================================================== */}
       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-        {/* Nút Đóng/Mở Navbar cho cả Mobile và Desktop */}
+        {/* Nút Hamburger chỉ cho Mobile (<1024px) khi sidebar drawer bị ẩn; Desktop hoàn toàn không hiển thị */}
         <button
           type="button"
-          onClick={() => {
-            if (window.innerWidth < 1024) {
-              onToggleMobileMenu();
-            } else if (onToggleDesktopSidebar) {
-              onToggleDesktopSidebar();
-            }
-          }}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:outline-none transition-colors cursor-pointer"
-          title={isSidebarCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"}
-          aria-label="Đóng/Mở thanh điều hướng"
+          onClick={onToggleMobileMenu}
+          className="inline-flex lg:hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:outline-none transition-colors cursor-pointer"
+          aria-label="Mở menu điều hướng"
         >
           <Menu className="h-5 w-5" />
         </button>

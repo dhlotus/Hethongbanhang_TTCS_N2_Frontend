@@ -174,17 +174,17 @@ body {
 }
 
 /* ========================================================================= */
-/* ANIMATION CHUYỂN TAB MƯỢT MÀ CHO TIÊU ĐỀ HEADER                           */
+/* ANIMATION CHUYỂN TAB MƯỢT MÀ TỪ TRÁI SANG CHO TIÊU ĐỀ HEADER              */
 /* ========================================================================= */
 @keyframes headerTitleSlideIn {
   0% {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateX(-18px);
     filter: blur(2px);
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
     filter: blur(0);
   }
 }

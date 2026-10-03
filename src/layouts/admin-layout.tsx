@@ -78,11 +78,7 @@ export const AdminLayout: React.FC = () => {
       {/* 2. Khung bên phải: Header cố định + Vùng Main Content */}
       <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
         {/* Header trên cùng */}
-        <Header
-          onToggleMobileMenu={handleToggleMobileMenu}
-          onToggleDesktopSidebar={handleToggleSidebarCollapse}
-          isSidebarCollapsed={isSidebarCollapsed}
-        />
+        <Header onToggleMobileMenu={handleToggleMobileMenu} />
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">

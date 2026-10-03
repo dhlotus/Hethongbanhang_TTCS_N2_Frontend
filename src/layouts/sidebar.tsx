@@ -4,8 +4,7 @@ import {
   Layers,
   X,
   ChevronRight,
-  PanelLeftClose,
-  PanelLeftOpen,
+  ChevronLeft,
 } from "lucide-react";
 import { getStoredUser } from "../utils/navigation";
 import { tokenStorage } from "../utils/token-storage";
@@ -31,7 +30,7 @@ interface SidebarNavContentProps {
  * Nội dung điều hướng của Sidebar (Dùng chung cho cả Desktop & Mobile Drawer):
  * - Hỗ trợ chế độ thu gọn (isCollapsed) linh hoạt, tiết kiệm không gian
  * - Tự động lọc các mục menu theo Role (RBAC Dynamic Navigation - SN-11)
- * - Nút bấm đóng/mở tiện lợi ngay trên thanh điều hướng
+ * - Nút bấm đóng/mở dạng mũi tên chỉ vào/ra kèm hiệu ứng hover mượt mà
  * - Giao diện Clean SaaS theo tiêu chuẩn UI_GUIDELINES.md
  */
 const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
@@ -63,7 +62,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
       {/* PHẦN 1: LOGO & BRAND IDENTITY KÈM NÚT ĐÓNG/MỞ THU GỌN                 */}
       {/* ===================================================================== */}
       <div className="flex flex-col min-h-0 flex-1">
-        {/* Header khi mở rộng: Logo + Brand + Nút thu gọn */}
+        {/* Header khi mở rộng: Logo + Brand + Nút mũi tên chỉ vào thu gọn */}
         {!isCollapsed ? (
           <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 px-1">
             <Link
@@ -84,21 +83,21 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               </div>
             </Link>
 
-            {/* Nút thu gọn Desktop */}
+            {/* Nút mũi tên chỉ vào (Thu gọn menu) kèm hiệu ứng hover dịch chuyển */}
             {onToggleCollapse && (
               <button
                 type="button"
                 onClick={onToggleCollapse}
-                className="hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
-                title="Thu gọn thanh điều hướng"
-                aria-label="Thu gọn thanh điều hướng"
+                className="group/collapse hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 hover:shadow-xs transition-all duration-200 cursor-pointer active:scale-95"
+                title="Thu gọn menu"
+                aria-label="Thu gọn menu"
               >
-                <PanelLeftClose className="h-4.5 w-4.5" />
+                <ChevronLeft className="h-4.5 w-4.5 transition-transform duration-200 group-hover/collapse:-translate-x-0.5" />
               </button>
             )}
           </div>
         ) : (
-          /* Header khi thu gọn: Logo icon căn giữa + Nút mở rộng */
+          /* Header khi thu gọn: Logo icon căn giữa + Nút mũi tên chỉ ra ngoài mở rộng */
           <div className="flex flex-col items-center gap-2.5 pb-3 border-b border-slate-100">
             <Link
               to="/"
@@ -109,15 +108,16 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               <Layers className="h-4.5 w-4.5" />
             </Link>
 
+            {/* Nút mũi tên chỉ ra ngoài (Mở rộng menu) kèm hiệu ứng hover dịch chuyển */}
             {onToggleCollapse && (
               <button
                 type="button"
                 onClick={onToggleCollapse}
-                className="h-8 w-8 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-blue-600 transition-colors cursor-pointer"
-                title="Mở rộng thanh điều hướng"
-                aria-label="Mở rộng thanh điều hướng"
+                className="group/expand h-8 w-8 flex items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 hover:shadow-xs transition-all duration-200 cursor-pointer active:scale-95"
+                title="Mở rộng menu"
+                aria-label="Mở rộng menu"
               >
-                <PanelLeftOpen className="h-4.5 w-4.5" />
+                <ChevronRight className="h-4.5 w-4.5 transition-transform duration-200 group-hover/expand:translate-x-0.5" />
               </button>
             )}
           </div>
