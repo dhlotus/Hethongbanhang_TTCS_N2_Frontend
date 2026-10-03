@@ -26,6 +26,7 @@ import {
   UserX,
   AlertTriangle,
   Store,
+  Eye,
 } from "lucide-react";
 import { usersService } from "../services/users.service";
 import type {
@@ -38,6 +39,11 @@ import type {
 import { USER_ROLES } from "../types/auth";
 import { getStoredUser } from "../utils/navigation";
 import { resolveAvatarUrl } from "../utils/avatar";
+
+// Lọc bỏ vai trò trong ngoặc khỏi tên hiển thị (ví dụ: "Nguyễn Văn Admin (Quản Trị Viên)" -> "Nguyễn Văn Admin")
+const formatCleanName = (fullName: string): string => {
+  return (fullName || "").replace(/\s*\([^)]*\)/g, "").trim() || fullName || "—";
+};
 
 // Nhãn và màu sắc hiển thị cho 7 vai trò chuẩn
 const ROLE_CONFIG: Record<
@@ -259,6 +265,33 @@ export const UsersPage: React.FC = () => {
   const [statusSubmitting, setStatusSubmitting] = useState(false);
   const [assignedCustomers, setAssignedCustomers] = useState<AssignedCustomerItem[]>([]);
   const [loadingAssignedCustomers, setLoadingAssignedCustomers] = useState(false);
+
+  // Modal Xem chi tiết nhân sự
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedUserForDetail, setSelectedUserForDetail] =
+    useState<UserManagementItem | null>(null);
+  const [detailCustomers, setDetailCustomers] = useState<AssignedCustomerItem[]>([]);
+  const [loadingDetailCustomers, setLoadingDetailCustomers] = useState(false);
+
+  // Mở modal xem chi tiết nhân sự
+  const handleOpenDetailModal = async (user: UserManagementItem) => {
+    setSelectedUserForDetail(user);
+    setDetailModalOpen(true);
+    setDetailCustomers([]);
+
+    const isSales = user.role === "SALES_REP" || user.roles?.includes("SALES_REP");
+    if (isSales) {
+      setLoadingDetailCustomers(true);
+      try {
+        const res = await usersService.getAssignedCustomers(user.id);
+        setDetailCustomers(res.customers || []);
+      } catch {
+        setDetailCustomers([]);
+      } finally {
+        setLoadingDetailCustomers(false);
+      }
+    }
+  };
 
   // Tải danh sách người dùng từ API thật
   const fetchUsers = useCallback(async () => {
@@ -841,31 +874,32 @@ export const UsersPage: React.FC = () => {
       {/* 4. DATA TABLE: BẢNG DỮ LIỆU NGƯỜI DÙNG                                    */}
       {/* ========================================================================= */}
       <div className="rounded-2xl bg-white border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[840px]">
+        {/* ===================================================================== */}
+        {/* A. BẢNG DỮ LIỆU GỌN GÀNG CHO TABLET & DESKTOP (KHÔNG CÒN THANH CUỘN)  */}
+        {/* ===================================================================== */}
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 <th className="px-5 py-3.5">Nhân sự</th>
-                <th className="px-5 py-3.5">Tên đăng nhập / Email</th>
-                <th className="px-5 py-3.5">Số điện thoại</th>
+                <th className="px-5 py-3.5 whitespace-nowrap">Số điện thoại</th>
                 <th className="px-5 py-3.5">Vai trò</th>
-                <th className="px-5 py-3.5">Kho / Địa bàn phụ trách</th>
-                <th className="px-5 py-3.5 text-center whitespace-nowrap min-w-[130px]">Trạng thái</th>
-                <th className="px-5 py-3.5 text-center whitespace-nowrap min-w-[90px]">Thao tác</th>
+                <th className="px-5 py-3.5 text-center whitespace-nowrap min-w-[120px]">Trạng thái</th>
+                <th className="px-5 py-3.5 text-center whitespace-nowrap min-w-[120px]">Thao tác</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-slate-100 text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={5} className="py-12 text-center text-slate-400">
                     <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-purple-600" />
                     <span>Đang tải danh sách nhân sự từ hệ thống...</span>
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={5} className="py-12 text-center text-slate-400">
                     <Users className="h-8 w-8 mx-auto mb-2 text-slate-300" />
                     <span>Không tìm thấy tài khoản phù hợp với điều kiện lọc</span>
                   </td>
@@ -882,80 +916,43 @@ export const UsersPage: React.FC = () => {
                   const userAvatar = isCurrentSelf
                     ? (currentAdmin?.avatarUrl || u.avatarUrl)
                     : u.avatarUrl;
+                  const cleanName = formatCleanName(u.fullName);
 
                   return (
                     <tr
                       key={u.id}
                       className="hover:bg-slate-50/70 transition-colors group"
                     >
-                      {/* Họ và tên & Avatar */}
+                      {/* Nhân sự: Avatar + Họ tên sạch sẽ (Không role thừa, không ID rườm rà) */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-purple-50 font-bold text-purple-700 text-xs shadow-2xs">
                             {userAvatar ? (
                               <img
                                 src={resolveAvatarUrl(userAvatar)}
-                                alt={`Ảnh đại diện của ${u.fullName}`}
+                                alt={`Ảnh đại diện của ${cleanName}`}
                                 className="h-full w-full object-cover"
                               />
                             ) : (
-                              u.fullName.charAt(0).toUpperCase()
+                              cleanName.charAt(0).toUpperCase()
                             )}
                           </div>
-                          <div>
-                            <div className="font-semibold text-slate-900 flex items-center gap-1.5">
-                              <span>{u.fullName}</span>
-                              {isCurrentSelf && (
-                                <span className="rounded-md bg-purple-100 px-1.5 py-0.2 text-[10px] font-bold text-purple-700">
-                                  Bạn
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[11px] text-slate-400 font-mono">
-                              ID: {u.id.substring(0, 16)}...
-                            </div>
+                          <div className="font-semibold text-slate-900 flex items-center gap-1.5 truncate">
+                            <span className="truncate">{cleanName}</span>
+                            {isCurrentSelf && (
+                              <span className="rounded-md bg-purple-100 px-1.5 py-0.2 text-[10px] font-bold text-purple-700 shrink-0">
+                                Bạn
+                              </span>
+                            )}
                           </div>
                         </div>
-                      </td>
-
-                      {/* Tên đăng nhập & Email */}
-                      <td className="px-5 py-3.5">
-                        <div className="font-mono font-bold text-slate-900">
-                          {u.username}
-                        </div>
-                        <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
-                          <Mail className="h-3 w-3 shrink-0" />
-                          <span>{u.email}</span>
-                        </div>
-
-                        {/* Huy hiệu mã cấp đổi mật khẩu (nếu có và chưa đổi) */}
-                        {u.resetCode && (
-                          <div className="mt-1.5 flex items-center gap-1">
-                            <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 font-mono text-[10px] font-bold text-indigo-700 ring-1 ring-inset ring-indigo-600/20">
-                              <KeyRound className="h-2.5 w-2.5" />
-                              <span>Mã cấp: {u.resetCode}</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopyCode(u.resetCode!)}
-                              title="Sao chép mã cấp"
-                              className="rounded p-0.5 text-indigo-400 hover:bg-indigo-100 hover:text-indigo-700 transition-colors"
-                            >
-                              {copiedCode === u.resetCode ? (
-                                <Check className="h-3 w-3 text-emerald-600" />
-                              ) : (
-                                <Copy className="h-3 w-3" />
-                              )}
-                            </button>
-                          </div>
-                        )}
                       </td>
 
                       {/* Số điện thoại */}
-                      <td className="px-5 py-3.5">
+                      <td className="px-5 py-3.5 whitespace-nowrap">
                         {u.phone ? (
-                          <div className="flex items-center gap-1.5 font-mono text-slate-700">
-                            <Phone className="h-3.5 w-3.5 text-slate-400" />
+                          <div className="flex items-center gap-1.5 font-mono text-slate-700 text-xs">
+                            <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                             <span>{u.phone}</span>
                           </div>
                         ) : (
@@ -963,9 +960,9 @@ export const UsersPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Vai trò (Đa vai trò SN-14) */}
+                      {/* Vai trò */}
                       <td className="px-5 py-3.5">
-                        <div className="flex flex-wrap gap-1 max-w-[230px]">
+                        <div className="flex flex-wrap gap-1">
                           {((u.roles && u.roles.length > 0 ? u.roles : [u.role]) as string[]).map(
                             (rKey) => {
                               const config = ROLE_CONFIG[rKey] || {
@@ -977,7 +974,7 @@ export const UsersPage: React.FC = () => {
                               return (
                                 <span
                                   key={rKey}
-                                  className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${config.bgClass} ${config.textClass} ${config.ringClass}`}
+                                  className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset whitespace-nowrap ${config.bgClass} ${config.textClass} ${config.ringClass}`}
                                 >
                                   {config.label}
                                 </span>
@@ -987,52 +984,50 @@ export const UsersPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Kho / Địa bàn */}
-                      <td className="px-5 py-3.5">
-                        {u.assignedWarehouse ? (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-700">
-                            <Warehouse className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                            <span className="truncate max-w-[180px]">
-                              {u.assignedWarehouse}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 italic">Chưa phân công</span>
-                        )}
-                      </td>
-
                       {/* Trạng thái */}
                       <td className="px-5 py-3.5 text-center whitespace-nowrap">
                         {u.status === "ACTIVE" ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 whitespace-nowrap">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                            <span className="whitespace-nowrap">Hoạt động</span>
+                            <span>Hoạt động</span>
                           </span>
                         ) : (
                           <span
-                            className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/20 cursor-help whitespace-nowrap"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/20 cursor-help whitespace-nowrap"
                             title={u.lockReason || "Tài khoản bị khóa bởi Quản trị viên"}
                           >
                             <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
-                            <span className="whitespace-nowrap">Bị khóa</span>
+                            <span>Bị khóa</span>
                           </span>
                         )}
                       </td>
 
-                      {/* Thao tác */}
-                      <td className="px-5 py-3.5 text-center">
+                      {/* Thao tác (Xem chi tiết, Chỉnh sửa, Khóa/Mở khóa) */}
+                      <td className="px-5 py-3.5 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
+                          {/* Nút xem chi tiết */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDetailModal(u)}
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer"
+                            title="Xem toàn bộ thông tin chi tiết nhân sự"
+                            aria-label="Xem chi tiết"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+
                           {/* Nút sửa thông tin */}
                           <button
                             type="button"
                             onClick={() => handleOpenEditModal(u)}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
                             title="Sửa thông tin & Cấp mã đổi mật khẩu"
+                            aria-label="Chỉnh sửa"
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
 
-                          {/* Nút Khóa / Mở khóa (Admin không thể tự khóa chính mình) */}
+                          {/* Nút Khóa / Mở khóa */}
                           {isCurrentSelf ? (
                             <span
                               className="rounded-lg p-1.5 text-slate-300 cursor-not-allowed"
@@ -1044,8 +1039,9 @@ export const UsersPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleOpenStatusModal(u, "LOCKED")}
-                              className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
-                              title="Khóa tài khoản (Chấm dứt phiên làm việc ngay lập tức)"
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
+                              title="Khóa tài khoản"
+                              aria-label="Khóa tài khoản"
                             >
                               <Lock className="h-4 w-4" />
                             </button>
@@ -1053,8 +1049,9 @@ export const UsersPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleOpenStatusModal(u, "ACTIVE")}
-                              className="rounded-lg p-1.5 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors cursor-pointer"
                               title="Mở khóa tài khoản"
+                              aria-label="Mở khóa tài khoản"
                             >
                               <Unlock className="h-4 w-4" />
                             </button>
@@ -1067,6 +1064,146 @@ export const UsersPage: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* ===================================================================== */}
+        {/* B. GIAO DIỆN THẺ (CARD VIEW) CHO MOBILE (<640px) KHÔNG BỊ TRÀN NGANG */}
+        {/* ===================================================================== */}
+        <div className="divide-y divide-slate-100 sm:hidden">
+          {loading ? (
+            <div className="py-12 text-center text-slate-400">
+              <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-purple-600" />
+              <span>Đang tải danh sách nhân sự...</span>
+            </div>
+          ) : users.length === 0 ? (
+            <div className="py-12 text-center text-slate-400">
+              <Users className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+              <span>Không tìm thấy tài khoản phù hợp</span>
+            </div>
+          ) : (
+            users.map((u) => {
+              const isCurrentSelf = Boolean(
+                currentAdmin &&
+                  (currentAdmin.id === u.id ||
+                    currentAdmin.username?.toLowerCase() ===
+                      u.username.toLowerCase() ||
+                    currentAdmin.email?.toLowerCase() === u.email.toLowerCase()),
+              );
+              const userAvatar = isCurrentSelf
+                ? (currentAdmin?.avatarUrl || u.avatarUrl)
+                : u.avatarUrl;
+              const cleanName = formatCleanName(u.fullName);
+
+              return (
+                <div key={u.id} className="p-4 space-y-3 hover:bg-slate-50/50 transition-colors">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-purple-50 font-bold text-purple-700 text-sm shadow-2xs">
+                        {userAvatar ? (
+                          <img
+                            src={resolveAvatarUrl(userAvatar)}
+                            alt={cleanName}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          cleanName.charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-slate-900 flex items-center gap-1.5 truncate">
+                          <span className="truncate">{cleanName}</span>
+                          {isCurrentSelf && (
+                            <span className="rounded-md bg-purple-100 px-1.5 py-0.2 text-[10px] font-bold text-purple-700 shrink-0">
+                              Bạn
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5 font-mono">
+                          {u.phone || "---"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Trạng thái */}
+                    {u.status === "ACTIVE" ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 shrink-0">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        <span>Hoạt động</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/20 shrink-0">
+                        <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                        <span>Bị khóa</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-50">
+                    {/* Vai trò */}
+                    <div className="flex flex-wrap gap-1 min-w-0">
+                      {((u.roles && u.roles.length > 0 ? u.roles : [u.role]) as string[]).map(
+                        (rKey) => {
+                          const config = ROLE_CONFIG[rKey] || {
+                            label: rKey,
+                            bgClass: "bg-slate-100",
+                            textClass: "text-slate-700",
+                            ringClass: "ring-slate-700/10",
+                          };
+                          return (
+                            <span
+                              key={rKey}
+                              className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${config.bgClass} ${config.textClass} ${config.ringClass}`}
+                            >
+                              {config.label}
+                            </span>
+                          );
+                        },
+                      )}
+                    </div>
+
+                    {/* Thao tác */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDetailModal(u)}
+                        className="rounded-lg p-1.5 text-slate-500 hover:bg-blue-50 hover:text-blue-600 cursor-pointer"
+                        title="Xem chi tiết"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(u)}
+                        className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+                        title="Chỉnh sửa"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      {isCurrentSelf ? null : u.status === "ACTIVE" ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenStatusModal(u, "LOCKED")}
+                          className="rounded-lg p-1.5 text-slate-500 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
+                          title="Khóa tài khoản"
+                        >
+                          <Lock className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenStatusModal(u, "ACTIVE")}
+                          className="rounded-lg p-1.5 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 cursor-pointer"
+                          title="Mở khóa tài khoản"
+                        >
+                          <Unlock className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* Phân trang (Mặc định 20 dòng / trang theo chuẩn SN-13) */}
@@ -1771,6 +1908,276 @@ export const UsersPage: React.FC = () => {
         </div>,
         document.body
       )}
+
+      {/* ========================================================================= */}
+      {/* 7. MODAL XEM CHI TIẾT NHÂN SỰ                                             */}
+      {/* ========================================================================= */}
+      {detailModalOpen && selectedUserForDetail &&
+        createPortal(
+          <div
+            onClick={() => setDetailModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-modal-backdrop-in"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-lg rounded-3xl bg-white shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] animate-modal-in"
+            >
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                {/* Profile card */}
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/80 border border-slate-100">
+                  <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl overflow-hidden bg-gradient-to-tr from-purple-500 to-indigo-600 font-bold text-white text-lg shadow-sm">
+                    {selectedUserForDetail.avatarUrl ? (
+                      <img
+                        src={resolveAvatarUrl(selectedUserForDetail.avatarUrl)}
+                        alt={formatCleanName(selectedUserForDetail.fullName)}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      formatCleanName(selectedUserForDetail.fullName).charAt(0).toUpperCase()
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-base font-bold text-slate-900 truncate">
+                      {formatCleanName(selectedUserForDetail.fullName)}
+                    </h4>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                      {((selectedUserForDetail.roles && selectedUserForDetail.roles.length > 0
+                        ? selectedUserForDetail.roles
+                        : [selectedUserForDetail.role]) as string[]).map((rKey) => {
+                        const cfg = ROLE_CONFIG[rKey] || {
+                          label: rKey,
+                          bgClass: "bg-slate-100",
+                          textClass: "text-slate-700",
+                          ringClass: "ring-slate-700/10",
+                        };
+                        return (
+                          <span
+                            key={rKey}
+                            className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset ${cfg.bgClass} ${cfg.textClass} ${cfg.ringClass}`}
+                          >
+                            {cfg.label}
+                          </span>
+                        );
+                      })}
+
+                      {selectedUserForDetail.status === "ACTIVE" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-600/20">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          Hoạt động
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 ring-1 ring-rose-600/20">
+                          <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                          Bị khóa
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Detail grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  {/* Tên đăng nhập */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-1">
+                    <span className="text-[11px] font-medium text-slate-400 block">Tên đăng nhập</span>
+                    <div className="flex items-center justify-between font-mono font-bold text-slate-800">
+                      <span className="truncate">{selectedUserForDetail.username}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyCode(selectedUserForDetail.username)}
+                        className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                        title="Sao chép tên đăng nhập"
+                      >
+                        {copiedCode === selectedUserForDetail.username ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Email */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-1">
+                    <span className="text-[11px] font-medium text-slate-400 block">Địa chỉ Email</span>
+                    <div className="flex items-center justify-between font-medium text-slate-800">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate" title={selectedUserForDetail.email}>
+                          {selectedUserForDetail.email}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyCode(selectedUserForDetail.email)}
+                        className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer shrink-0"
+                        title="Sao chép email"
+                      >
+                        {copiedCode === selectedUserForDetail.email ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Số điện thoại */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-1">
+                    <span className="text-[11px] font-medium text-slate-400 block">Số điện thoại</span>
+                    <span className="font-mono font-medium text-slate-800 block">
+                      {selectedUserForDetail.phone || "Chưa cập nhật"}
+                    </span>
+                  </div>
+
+                  {/* Mã ID người dùng */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-1">
+                    <span className="text-[11px] font-medium text-slate-400 block">Mã ID nhân sự</span>
+                    <div className="flex items-center justify-between font-mono text-[11px] text-slate-700">
+                      <span className="truncate">{selectedUserForDetail.id}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyCode(selectedUserForDetail.id)}
+                        className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer shrink-0"
+                        title="Sao chép ID"
+                      >
+                        {copiedCode === selectedUserForDetail.id ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Kho / Địa bàn phụ trách */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-1 sm:col-span-2">
+                    <span className="text-[11px] font-medium text-slate-400 block">
+                      Kho / Địa bàn phụ trách
+                    </span>
+                    <div className="flex items-center gap-1.5 font-medium text-slate-800">
+                      <Warehouse className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>{selectedUserForDetail.assignedWarehouse || "Chưa phân công địa bàn / kho"}</span>
+                    </div>
+                  </div>
+
+                  {/* Lý do khóa (nếu tài khoản đang bị khóa) */}
+                  {selectedUserForDetail.status === "LOCKED" && selectedUserForDetail.lockReason && (
+                    <div className="p-3.5 rounded-2xl bg-rose-50/70 border border-rose-100 space-y-1 sm:col-span-2 text-rose-800">
+                      <span className="text-[11px] font-semibold text-rose-600 block">Lý do khóa tài khoản</span>
+                      <p className="text-xs">{selectedUserForDetail.lockReason}</p>
+                    </div>
+                  )}
+
+                  {/* Mã cấp đổi mật khẩu (nếu có) */}
+                  {selectedUserForDetail.resetCode && (
+                    <div className="p-3.5 rounded-2xl bg-indigo-50/80 border border-indigo-100 space-y-1 sm:col-span-2">
+                      <span className="text-[11px] font-semibold text-indigo-700 block">
+                        Mã cấp đổi mật khẩu tạm thời
+                      </span>
+                      <div className="flex items-center justify-between font-mono font-bold text-sm text-indigo-900">
+                        <span>{selectedUserForDetail.resetCode}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCode(selectedUserForDetail.resetCode!)}
+                          className="rounded p-1 text-indigo-600 hover:bg-indigo-100 transition-colors cursor-pointer"
+                          title="Sao chép mã"
+                        >
+                          {copiedCode === selectedUserForDetail.resetCode ? (
+                            <Check className="h-4 w-4 text-emerald-600" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Danh sách đại lý phụ trách nếu là Sales Rep */}
+                  {loadingDetailCustomers ? (
+                    <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 sm:col-span-2 text-center text-slate-400">
+                      <RefreshCw className="h-4 w-4 animate-spin mx-auto mb-1 text-blue-600" />
+                      <span>Đang tải danh sách khách hàng phụ trách...</span>
+                    </div>
+                  ) : detailCustomers.length > 0 ? (
+                    <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100 space-y-2 sm:col-span-2">
+                      <span className="text-[11px] font-semibold text-blue-700 block">
+                        Đại lý / Khách hàng đang phụ trách ({detailCustomers.length})
+                      </span>
+                      <div className="max-h-32 overflow-y-auto space-y-1 pr-1">
+                        {detailCustomers.map((c) => (
+                          <div key={c.id} className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-lg bg-white/90 border border-blue-100 shadow-2xs">
+                            <span className="font-semibold text-slate-800 truncate">{c.name}</span>
+                            <span className="font-mono text-slate-500 text-[11px] shrink-0">{c.code}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDetailModalOpen(false);
+                      handleOpenEditModal(selectedUserForDetail);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <Edit2 className="h-3.5 w-3.5 text-slate-600" />
+                    <span>Chỉnh sửa</span>
+                  </button>
+
+                  {/* Khóa / Mở khóa */}
+                  {currentAdmin?.id !== selectedUserForDetail.id && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDetailModalOpen(false);
+                        handleOpenStatusModal(
+                          selectedUserForDetail,
+                          selectedUserForDetail.status === "ACTIVE" ? "LOCKED" : "ACTIVE",
+                        );
+                      }}
+                      className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold shadow-2xs transition-colors cursor-pointer ${
+                        selectedUserForDetail.status === "ACTIVE"
+                          ? "border border-rose-200 bg-rose-50/80 hover:bg-rose-100 text-rose-700"
+                          : "border border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-700"
+                      }`}
+                    >
+                      {selectedUserForDetail.status === "ACTIVE" ? (
+                        <>
+                          <Lock className="h-3.5 w-3.5 text-rose-600" />
+                          <span>Khóa tài khoản</span>
+                        </>
+                      ) : (
+                        <>
+                          <Unlock className="h-3.5 w-3.5 text-emerald-600" />
+                          <span>Mở khóa</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setDetailModalOpen(false)}
+                  className="rounded-xl bg-slate-200/80 hover:bg-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

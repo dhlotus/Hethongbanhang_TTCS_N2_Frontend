@@ -77,9 +77,6 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                 <span className="text-sm font-bold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors truncate">
                   LOHA SALES
                 </span>
-                <span className="text-[10px] font-medium text-slate-400 truncate">
-                  Phân phối & Kho vận B2B
-                </span>
               </div>
             </Link>
 
@@ -160,8 +157,8 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                           )}
                           <Icon
                             className={`h-4.5 w-4.5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive
-                                ? "text-blue-600"
-                                : "text-slate-400 group-hover:text-slate-700"
+                              ? "text-blue-600"
+                              : "text-slate-400 group-hover:text-slate-700"
                               }`}
                           />
                           {!isCollapsed && (
