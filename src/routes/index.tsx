@@ -6,6 +6,7 @@ import { ResetPasswordPage } from "../pages/reset-password-page";
 import { ChangePasswordPage } from "../pages/change-password-page";
 import { RoleModulePage } from "../pages/role-module-page";
 import { ProductsPage } from "../pages/products-page";
+import { SuppliersPage } from "../pages/suppliers-page";
 import { UsersPage } from "../pages/users-page";
 import { AuditLogsPage } from "../pages/audit-logs-page";
 import { ProfilePage } from "../pages/profile-page";
@@ -228,6 +229,26 @@ export const AppRoutes: React.FC = () => {
                   />
                 }
               />
+            </Route>
+
+            {/* ------------------------------------------------------------- */}
+            {/* PHÂN HỆ QUẢN LÝ NHÀ CUNG CẤP (SN-25)                          */}
+            {/* ------------------------------------------------------------- */}
+            <Route
+              element={
+                <RoleGuard
+                  allowedRoles={[
+                    "ADMIN",
+                    "WAREHOUSE_MANAGER",
+                    "WAREHOUSE_KEEPER",
+                    "SALES_MANAGER",
+                    "ACCOUNTANT",
+                  ]}
+                  moduleName="Quản lý Nhà cung cấp"
+                />
+              }
+            >
+              <Route path="/inventory/suppliers" element={<SuppliersPage />} />
             </Route>
 
             <Route

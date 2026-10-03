@@ -21,6 +21,7 @@ import {
   FileText,
   CreditCard,
   RotateCcw,
+  Building2,
 } from "lucide-react";
 import { USER_ROLES, type UserRoleType, type AuthUser } from "../types/auth";
 
@@ -258,6 +259,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: "Nhập / Xuất kho",
     },
     {
+      id: "inventory-suppliers",
+      name: "Nhà cung cấp",
+      path: "/inventory/suppliers",
+      icon: Building2,
+      category: "Nhập / Xuất kho",
+    },
+    {
       id: "inventory-issues",
       name: "Soạn hàng & Xuất kho",
       path: "/inventory/issues",
@@ -323,6 +331,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       path: "/inventory/receipts",
       icon: PackagePlus,
       category: "Lịch sử Nhập / Xuất",
+    },
+    {
+      id: "inventory-suppliers",
+      name: "Nhà cung cấp",
+      path: "/inventory/suppliers",
+      icon: Building2,
+      category: "Kiểm soát Kho",
     },
     {
       id: "inventory-issues",
@@ -428,6 +443,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: "Quản lý tồn kho & Lô hàng",
       path: "/inventory/stock",
       icon: Warehouse,
+      category: "Vận hành Toàn diện",
+    },
+    {
+      id: "inventory-suppliers",
+      name: "Quản lý nhà cung cấp",
+      path: "/inventory/suppliers",
+      icon: Building2,
       category: "Vận hành Toàn diện",
     },
     {
