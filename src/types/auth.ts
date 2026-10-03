@@ -13,6 +13,7 @@ export interface AuthUser {
   status?: string;
   assignedWarehouse?: string;
   avatarUrl?: string;
+  phone?: string;
 }
 
 export interface LoginResponse {

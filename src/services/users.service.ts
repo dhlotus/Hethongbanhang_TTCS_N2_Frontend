@@ -2,6 +2,7 @@ import { apiClient } from './api';
 import type {
   AssignedCustomersResponse,
   CreateUserPayload,
+  UpdateProfilePayload,
   CreateUserResponse,
   PaginatedUsersResponse,
   UpdateUserPayload,
@@ -105,8 +106,18 @@ export const usersService = {
     return response.data;
   },
 
+
   /**
-   * Lấy thông tin profile của chính mình (SN-18)
+   * Cap nhat ho so ca nhan: ho ten va so dien thoai (SN-17)
+   * Chi cho phep sua fullName va phone; cac truong nhu username, role, email,
+   * assignedWarehouse se bi server tu dong loai bo (whitelist).
+   */
+  async updateProfile(payload: UpdateProfilePayload): Promise<AuthUser> {
+    const response = await apiClient.patch<AuthUser>('/users/me', payload);
+    return response.data;
+  },
+  /**
+   * Lay thong tin profile cua chinh minh (SN-18)
    */
   async getMe(): Promise<AuthUser> {
     const response = await apiClient.get<AuthUser>('/users/me');

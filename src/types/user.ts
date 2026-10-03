@@ -88,3 +88,8 @@ export interface UpdateUserStatusResponse extends UserManagementItem {
   assignedCustomersCount?: number;
   handoverWarning?: string;
 }
+
+export interface UpdateProfilePayload {
+  fullName?: string;
+  phone?: string;
+}

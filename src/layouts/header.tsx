@@ -5,6 +5,7 @@ import { getStoredUser } from "../utils/navigation";
 import { getUserContext } from "../utils/navigation-config";
 import { tokenStorage } from "../utils/token-storage";
 import { resolveAvatarUrl } from "../utils/avatar";
+import type { AuthUser } from "../types/auth";
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
@@ -119,8 +120,8 @@ const getPageHeaderInfo = (
  */
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const location = useLocation();
-  const user = getStoredUser();
-  const context = getUserContext(user);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(getStoredUser());
+  const context = getUserContext(currentUser);
 
   const { title } = getPageHeaderInfo(location.pathname);
 
@@ -130,20 +131,24 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   );
 
   useEffect(() => {
-    const syncAvatar = () => {
-      setAvatarUrl(tokenStorage.getUser()?.avatarUrl);
+    const syncUser = () => {
+      const u = tokenStorage.getUser();
+      setCurrentUser(u);
+      setAvatarUrl(u?.avatarUrl);
     };
 
     // Lắng nghe cross-tab storage event
-    window.addEventListener("storage", syncAvatar);
-    // Lắng nghe same-tab custom event (dispatch từ ProfilePage sau khi upload)
-    window.addEventListener("avatar-updated", syncAvatar);
+    window.addEventListener("storage", syncUser);
+    // Lắng nghe same-tab custom event (dispatch từ ProfilePage sau khi upload / cập nhật hồ sơ)
+    window.addEventListener("avatar-updated", syncUser);
+    window.addEventListener("user-updated", syncUser);
     // Đọc lại khi route thay đổi
-    syncAvatar();
+    syncUser();
 
     return () => {
-      window.removeEventListener("storage", syncAvatar);
-      window.removeEventListener("avatar-updated", syncAvatar);
+      window.removeEventListener("storage", syncUser);
+      window.removeEventListener("avatar-updated", syncUser);
+      window.removeEventListener("user-updated", syncUser);
     };
   }, [location.pathname]);
 

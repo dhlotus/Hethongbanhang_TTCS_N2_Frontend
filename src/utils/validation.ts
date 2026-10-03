@@ -102,3 +102,37 @@ export const resetPasswordSchema = z
   });
 
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+
+
+/**
+ * Biểu thức chính quy kiểm tra số điện thoại Việt Nam (SN-17):
+ * - Đầu số di động 10 số: 03, 05, 07, 08, 09 (hoặc +843, +845, +847, +848, +849)
+ * - Đầu số cố định 11 số: 02 (hoặc +842)
+ */
+export const VIETNAM_PHONE_REGEX = /^(?:0|\+84)(?:[35789]\d{8}|2\d{9})$/;
+
+/**
+ * Schema validate Form Cập nhật Hồ sơ cá nhân (SN-17)
+ * - fullName: Bắt buộc nhập, tối đa 100 ký tự
+ * - phone: Tùy chọn nhưng nếu nhập phải đúng định dạng số điện thoại Việt Nam
+ */
+export const updateProfileSchema = z.object({
+  fullName: z
+    .string()
+    .trim()
+    .min(1, 'Họ và tên không được để trống')
+    .max(100, 'Họ và tên không được vượt quá 100 ký tự'),
+  phone: z
+    .string()
+    .trim()
+    .refine(
+      (val) => !val || VIETNAM_PHONE_REGEX.test(val),
+      {
+        message: 'Số điện thoại Việt Nam không hợp lệ (ví dụ: 0912345678, +84912345678 hoặc 02412345678)',
+      },
+    )
+    .optional()
+    .or(z.literal('')),
+});
+
+export type UpdateProfileFormData = z.infer<typeof updateProfileSchema>;
