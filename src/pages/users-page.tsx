@@ -37,6 +37,7 @@ import type {
 } from "../types/user";
 import { USER_ROLES } from "../types/auth";
 import { getStoredUser } from "../utils/navigation";
+import { resolveAvatarUrl } from "../utils/avatar";
 
 // Nhãn và màu sắc hiển thị cho 7 vai trò chuẩn
 const ROLE_CONFIG: Record<
@@ -287,6 +288,21 @@ export const UsersPage: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
+  }, [fetchUsers]);
+
+  // Lắng nghe sự kiện avatar-updated (same-tab) hoặc storage (cross-tab) để tự động làm mới bảng
+  useEffect(() => {
+    const handleAvatarUpdate = () => {
+      fetchUsers();
+    };
+
+    window.addEventListener("avatar-updated", handleAvatarUpdate);
+    window.addEventListener("storage", handleAvatarUpdate);
+
+    return () => {
+      window.removeEventListener("avatar-updated", handleAvatarUpdate);
+      window.removeEventListener("storage", handleAvatarUpdate);
+    };
   }, [fetchUsers]);
 
   // Sao chép mã cấp vào clipboard
@@ -863,17 +879,28 @@ export const UsersPage: React.FC = () => {
                           u.username.toLowerCase() ||
                         currentAdmin.email?.toLowerCase() === u.email.toLowerCase()),
                   );
+                  const userAvatar = isCurrentSelf
+                    ? (currentAdmin?.avatarUrl || u.avatarUrl)
+                    : u.avatarUrl;
 
                   return (
                     <tr
                       key={u.id}
                       className="hover:bg-slate-50/70 transition-colors group"
                     >
-                      {/* Họ và tên */}
+                      {/* Họ và tên & Avatar */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-50 font-bold text-purple-700 text-xs shadow-2xs">
-                            {u.fullName.charAt(0).toUpperCase()}
+                          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-purple-50 font-bold text-purple-700 text-xs shadow-2xs">
+                            {userAvatar ? (
+                              <img
+                                src={resolveAvatarUrl(userAvatar)}
+                                alt={`Ảnh đại diện của ${u.fullName}`}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              u.fullName.charAt(0).toUpperCase()
+                            )}
                           </div>
                           <div>
                             <div className="font-semibold text-slate-900 flex items-center gap-1.5">

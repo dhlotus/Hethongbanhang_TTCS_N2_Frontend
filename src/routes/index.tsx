@@ -8,6 +8,7 @@ import { RoleModulePage } from "../pages/role-module-page";
 import { ProductsPage } from "../pages/products-page";
 import { UsersPage } from "../pages/users-page";
 import { AuditLogsPage } from "../pages/audit-logs-page";
+import { ProfilePage } from "../pages/profile-page";
 import { NotFoundPage } from "../pages/not-found-page";
 import { ForbiddenPage } from "../pages/forbidden-page";
 import { ProtectedRoute } from "../components/protected-route";
@@ -417,6 +418,7 @@ export const AppRoutes: React.FC = () => {
             <Route path="/catalog/products" element={<ProductsPage />} />
 
             {/* Cài đặt bảo mật & Đổi mật khẩu cá nhân */}
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/profile/change-password" element={<ChangePasswordPage />} />
             <Route path="/settings/security" element={<ChangePasswordPage />} />
 
