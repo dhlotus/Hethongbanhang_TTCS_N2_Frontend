@@ -19,7 +19,17 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
     name: "Sữa & Chế phẩm sữa",
     level: 1,
     subCategories: [
-      { id: "cat-milk-powder", code: "MILK_POWDER", name: "Sữa bột công thức", level: 2, parentId: "cat-milk" },
+      {
+        id: "cat-milk-powder",
+        code: "MILK_POWDER",
+        name: "Sữa bột công thức",
+        level: 2,
+        parentId: "cat-milk",
+        subCategories: [
+          { id: "cat-milk-powder-baby", code: "MILK_POWDER_BABY", name: "Sữa bột cho trẻ em", level: 3, parentId: "cat-milk-powder" },
+          { id: "cat-milk-powder-adult", code: "MILK_POWDER_ADULT", name: "Sữa bột người lớn & cao tuổi", level: 3, parentId: "cat-milk-powder" },
+        ],
+      },
       { id: "cat-milk-nut", code: "MILK_NUT", name: "Sữa hạt organic", level: 2, parentId: "cat-milk" },
       { id: "cat-milk-ready", code: "MILK_READY", name: "Sữa tươi & Tiệt trùng", level: 2, parentId: "cat-milk" },
     ],
@@ -30,7 +40,16 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
     name: "Nước yến & Bổ dưỡng",
     level: 1,
     subCategories: [
-      { id: "cat-nest-ready", code: "NEST_READY", name: "Nước yến chưng sẵn", level: 2, parentId: "cat-nest" },
+      {
+        id: "cat-nest-ready",
+        code: "NEST_READY",
+        name: "Nước yến chưng sẵn",
+        level: 2,
+        parentId: "cat-nest",
+        subCategories: [
+          { id: "cat-nest-ready-sugar", code: "NEST_READY_SUGAR", name: "Nước yến chưng đường phèn", level: 3, parentId: "cat-nest-ready" },
+        ],
+      },
       { id: "cat-nest-pure", code: "NEST_PURE", name: "Tổ yến sào tinh chế", level: 2, parentId: "cat-nest" },
     ],
   },
@@ -322,9 +341,29 @@ const sanitizeProduct = (p: Product, canViewCost: boolean): Product => {
 
 export const productsService = {
   /**
-   * Lấy danh sách nhóm hàng 2 cấp
+   * Lấy danh sách nhóm hàng phân cấp (Tree Structure)
    */
   async getCategories(): Promise<ProductCategory[]> {
+    try {
+      const response = await apiClient.get<any[]>('/categories/tree');
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        const mapTree = (nodes: any[]): ProductCategory[] => {
+          return nodes.map((n) => ({
+            id: n.id,
+            name: n.name,
+            code: n.code,
+            level: n.level,
+            parentId: n.parentId || n.parent_id || null,
+            productCount: n.productCount ?? n.product_count ?? 0,
+            children: n.children ? mapTree(n.children) : [],
+            subCategories: n.children ? mapTree(n.children) : [],
+          }));
+        };
+        return mapTree(response.data);
+      }
+    } catch {
+      // Fallback
+    }
     return PRODUCT_CATEGORIES;
   },
 
@@ -336,6 +375,8 @@ export const productsService = {
       page = 1,
       limit = 20,
       search = "",
+      categoryId,
+      category,
       parentCategory,
       subCategory,
       status,
@@ -350,6 +391,8 @@ export const productsService = {
           page,
           limit,
           search: search || undefined,
+          categoryId: categoryId || undefined,
+          category: category || undefined,
           parentCategory: parentCategory || undefined,
           subCategory: subCategory || undefined,
           status: status && status !== 'ALL' ? status : undefined,

@@ -14,10 +14,12 @@ import {
   Image as ImageIcon,
   Sparkles,
   Upload,
+  FolderTree,
 } from "lucide-react";
 import { Button } from "./button";
 import { PRODUCT_CATEGORIES } from "../services/products.service";
-import type { Product, CreateProductPayload } from "../types/products";
+import { categoriesService } from "../services/categories.service";
+import type { Product, ProductCategory, CreateProductPayload } from "../types/products";
 
 export interface ProductFormModalProps {
   isOpen: boolean;
@@ -116,6 +118,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const isEditMode = Boolean(initialData);
   const [isClosing, setIsClosing] = useState(false);
   const [formServerError, setFormServerError] = useState<string | null>(null);
+  const [categoriesList, setCategoriesList] = useState<ProductCategory[]>(PRODUCT_CATEGORIES);
+  const [selectedChildCategory, setSelectedChildCategory] = useState<string>("");
 
   const {
     register,
@@ -141,31 +145,104 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   });
 
   const selectedParentCategory = watch("parentCategory");
+  const watchedSubCategory = watch("subCategory");
   const selectedStatus = watch("status");
   const watchedCostPrice = watch("costPrice");
   const watchedImageUrl = watch("imageUrl");
 
+  // Tải danh mục động từ Backend khi mount
+  useEffect(() => {
+    let isMounted = true;
+    categoriesService.getCategoryTree().then((tree) => {
+      if (isMounted && Array.isArray(tree) && tree.length > 0) {
+        const mapTree = (nodes: any[]): ProductCategory[] => {
+          return nodes.map((n) => ({
+            id: n.id,
+            name: n.name,
+            code: n.code,
+            level: n.level,
+            parentId: n.parentId || n.parent_id || null,
+            productCount: n.productCount ?? n.product_count ?? 0,
+            children: n.children ? mapTree(n.children) : [],
+            subCategories: n.children ? mapTree(n.children) : [],
+          }));
+        };
+        setCategoriesList(mapTree(tree));
+      }
+    }).catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Danh sách Cấp 2 tương ứng theo Cấp 1 đã chọn
-  const currentCategoryObj = PRODUCT_CATEGORIES.find(
-    (c) => c.name === selectedParentCategory
-  );
+  const currentCategoryObj =
+    categoriesList.find((c) => c.name === selectedParentCategory) || categoriesList[0];
   const availableSubCategories = currentCategoryObj?.subCategories || [];
+
+  // Danh sách Cấp 3 tương ứng theo Cấp 2 đã chọn
+  const currentSubCategoryObj =
+    availableSubCategories.find((s) => s.name === watchedSubCategory) || availableSubCategories[0];
+  const availableChildCategories =
+    currentSubCategoryObj?.subCategories || currentSubCategoryObj?.children || [];
 
   // Reset form khi mở hoặc chuyển đổi dữ liệu
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
-        const pCat = initialData.parentCategory || PRODUCT_CATEGORIES[0].name;
-        const subCat =
-          initialData.subCategory ||
-          PRODUCT_CATEGORIES.find((c) => c.name === pCat)?.subCategories?.[0]?.name ||
-          "";
+        let pCat = initialData.parentCategory || "";
+        let sCat = initialData.subCategory || "";
+        let cCat = "";
 
+        // Nếu chuỗi category có 3 cấp dạng "A / B / C"
+        if (initialData.category && initialData.category.includes("/")) {
+          const parts = initialData.category.split("/").map((s) => s.trim());
+          if (parts.length >= 3) {
+            pCat = parts[0];
+            sCat = parts[1];
+            cCat = parts[2];
+          } else if (parts.length === 2) {
+            pCat = parts[0];
+            sCat = parts[1];
+          }
+        }
+
+        // Nếu có categoryId, tra cứu vị trí chính xác trong cây
+        if (initialData.categoryId && categoriesList.length > 0) {
+          for (const parent of categoriesList) {
+            if (parent.id === initialData.categoryId) {
+              pCat = parent.name;
+              break;
+            }
+            for (const sub of parent.subCategories || []) {
+              if (sub.id === initialData.categoryId) {
+                pCat = parent.name;
+                sCat = sub.name;
+                break;
+              }
+              for (const child of sub.subCategories || []) {
+                if (child.id === initialData.categoryId) {
+                  pCat = parent.name;
+                  sCat = sub.name;
+                  cCat = child.name;
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        const fallbackPCat = pCat || categoriesList[0]?.name || "Sữa & Chế phẩm sữa";
+        const parentNode = categoriesList.find((c) => c.name === fallbackPCat) || categoriesList[0];
+        const fallbackSCat =
+          sCat || parentNode?.subCategories?.[0]?.name || "";
+
+        setSelectedChildCategory(cCat);
         reset({
           sku: initialData.sku || "",
           name: initialData.name || "",
-          parentCategory: pCat,
-          subCategory: subCat,
+          parentCategory: fallbackPCat,
+          subCategory: fallbackSCat,
           baseUnit: initialData.baseUnit || "Lon",
           packagingSpec: initialData.packagingSpec || "",
           costPrice: canManageCostPrice ? (initialData.costPrice ?? 0) : undefined,
@@ -173,10 +250,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           imageUrl: initialData.imageUrl || "",
         });
       } else {
-        const defaultPCat = PRODUCT_CATEGORIES[0].name;
+        const defaultPCat = categoriesList[0]?.name || "Sữa & Chế phẩm sữa";
         const defaultSubCat =
-          PRODUCT_CATEGORIES[0].subCategories?.[0]?.name || "";
+          categoriesList[0]?.subCategories?.[0]?.name || "";
+        const defaultChildCat =
+          categoriesList[0]?.subCategories?.[0]?.subCategories?.[0]?.name || "";
 
+        setSelectedChildCategory(defaultChildCat);
         reset({
           sku: "",
           name: "",
@@ -191,16 +271,34 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       }
       setFormServerError(null);
     }
-  }, [initialData, isOpen, canManageCostPrice, reset]);
+  }, [initialData, isOpen, canManageCostPrice, reset, categoriesList]);
 
-  // Xử lý đổi Cấp 1 -> cập nhật Cấp 2 tự động
+  // Xử lý đổi Cấp 1 -> cập nhật Cấp 2 và Cấp 3 tự động
   const handleParentCategoryChange = (newParent: string) => {
     setValue("parentCategory", newParent, { shouldValidate: true });
-    const cat = PRODUCT_CATEGORIES.find((c) => c.name === newParent);
+    const cat = categoriesList.find((c) => c.name === newParent);
     if (cat?.subCategories && cat.subCategories.length > 0) {
-      setValue("subCategory", cat.subCategories[0].name, { shouldValidate: true });
+      const firstSub = cat.subCategories[0];
+      setValue("subCategory", firstSub.name, { shouldValidate: true });
+      if (firstSub.subCategories && firstSub.subCategories.length > 0) {
+        setSelectedChildCategory(firstSub.subCategories[0].name);
+      } else {
+        setSelectedChildCategory("");
+      }
     } else {
       setValue("subCategory", "", { shouldValidate: true });
+      setSelectedChildCategory("");
+    }
+  };
+
+  // Xử lý đổi Cấp 2 -> cập nhật Cấp 3 tự động
+  const handleSubCategoryChange = (newSub: string) => {
+    setValue("subCategory", newSub, { shouldValidate: true });
+    const sub = availableSubCategories.find((s) => s.name === newSub);
+    if (sub?.subCategories && sub.subCategories.length > 0) {
+      setSelectedChildCategory(sub.subCategories[0].name);
+    } else {
+      setSelectedChildCategory("");
     }
   };
 
@@ -246,13 +344,36 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     try {
       setFormServerError(null);
       const cleanSku = formData.sku.trim().toUpperCase().replace(/\s+/g, "");
-      const fullCategory = `${formData.parentCategory} / ${formData.subCategory}`;
+
+      // Xác định chính xác leaf node và categoryId
+      let targetCategoryId = "";
+      let fullCategory = "";
+      let finalSub = formData.subCategory;
+
+      const parentObj = categoriesList.find((c) => c.name === formData.parentCategory);
+      const subObj = parentObj?.subCategories?.find((s) => s.name === formData.subCategory);
+      const childObj = subObj?.subCategories?.find((ch) => ch.name === selectedChildCategory);
+
+      if (childObj && selectedChildCategory) {
+        targetCategoryId = childObj.id;
+        fullCategory = `${formData.parentCategory} / ${formData.subCategory} / ${selectedChildCategory}`;
+        finalSub = selectedChildCategory;
+      } else if (subObj) {
+        targetCategoryId = subObj.id;
+        fullCategory = `${formData.parentCategory} / ${formData.subCategory}`;
+        finalSub = formData.subCategory;
+      } else if (parentObj) {
+        targetCategoryId = parentObj.id;
+        fullCategory = formData.parentCategory;
+        finalSub = formData.parentCategory;
+      }
 
       const payload: CreateProductPayload = {
         sku: cleanSku,
         name: formData.name.trim(),
+        categoryId: targetCategoryId || initialData?.categoryId,
         parentCategory: formData.parentCategory,
-        subCategory: formData.subCategory,
+        subCategory: finalSub,
         category: fullCategory,
         baseUnit: formData.baseUnit.trim(),
         packagingSpec: formData.packagingSpec?.trim() || "",
@@ -409,51 +530,90 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               <span>2. Phân loại & Quy cách</span>
             </div>
 
-            {/* Hàng: Nhóm hàng Cấp 1 & Cấp 2 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/70">
-              <div>
-                <label className="block font-semibold text-slate-800 mb-1">
-                  Nhóm hàng Cấp 1 <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={selectedParentCategory}
-                  onChange={(e) => handleParentCategoryChange(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none cursor-pointer"
-                  disabled={isSubmitting}
-                >
-                  {PRODUCT_CATEGORIES.map((cat) => (
-                    <option key={cat.id} value={cat.name}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.parentCategory && (
-                  <p className="text-[11px] text-rose-500 mt-1 font-medium">
-                    {errors.parentCategory.message}
-                  </p>
+            {/* Hàng: Phân cấp Danh mục Nhóm hàng (Cấp 1 > Cấp 2 > Cấp 3) */}
+            <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/70 space-y-3">
+              <div
+                className={`grid grid-cols-1 ${
+                  availableChildCategories.length > 0 ? "md:grid-cols-3" : "md:grid-cols-2"
+                } gap-4`}
+              >
+                <div>
+                  <label className="block font-semibold text-slate-800 mb-1">
+                    Nhóm hàng Cấp 1 (Ngành chính) <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={selectedParentCategory}
+                    onChange={(e) => handleParentCategoryChange(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none cursor-pointer"
+                    disabled={isSubmitting}
+                  >
+                    {categoriesList.map((cat) => (
+                      <option key={cat.id} value={cat.name}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.parentCategory && (
+                    <p className="text-[11px] text-rose-500 mt-1 font-medium">
+                      {errors.parentCategory.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-800 mb-1">
+                    Nhóm hàng Cấp 2 (Nhóm phụ) <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={watchedSubCategory}
+                    onChange={(e) => handleSubCategoryChange(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none cursor-pointer"
+                    disabled={isSubmitting}
+                  >
+                    {availableSubCategories.map((sub) => (
+                      <option key={sub.id} value={sub.name}>
+                        {sub.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.subCategory && (
+                    <p className="text-[11px] text-rose-500 mt-1 font-medium">
+                      {errors.subCategory.message}
+                    </p>
+                  )}
+                </div>
+
+                {availableChildCategories.length > 0 && (
+                  <div>
+                    <label className="block font-semibold text-slate-800 mb-1">
+                      Phân loại con Cấp 3 <span className="text-blue-600 font-normal">(Chi tiết)</span>
+                    </label>
+                    <select
+                      value={selectedChildCategory}
+                      onChange={(e) => setSelectedChildCategory(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-blue-200 bg-white text-xs font-medium text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none cursor-pointer"
+                      disabled={isSubmitting}
+                    >
+                      <option value="">-- Mặc định theo Cấp 2 --</option>
+                      {availableChildCategories.map((child) => (
+                        <option key={child.id} value={child.name}>
+                          {child.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 )}
               </div>
 
-              <div>
-                <label className="block font-semibold text-slate-800 mb-1">
-                  Nhóm hàng Cấp 2 <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  {...register("subCategory")}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none cursor-pointer"
-                  disabled={isSubmitting}
-                >
-                  {availableSubCategories.map((sub) => (
-                    <option key={sub.id} value={sub.name}>
-                      {sub.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.subCategory && (
-                  <p className="text-[11px] text-rose-500 mt-1 font-medium">
-                    {errors.subCategory.message}
-                  </p>
-                )}
+              {/* Breadcrumb trực quan xác nhận nhánh sản phẩm trên cây */}
+              <div className="flex items-center gap-2 text-xs font-medium text-blue-700 bg-blue-50/70 px-3 py-2 rounded-lg border border-blue-100">
+                <FolderTree className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>Nhánh lưu trên Cây danh mục:</span>
+                <span className="font-bold text-slate-900 truncate">
+                  {selectedParentCategory}
+                  {watchedSubCategory && ` → ${watchedSubCategory}`}
+                  {selectedChildCategory && ` → ${selectedChildCategory}`}
+                </span>
               </div>
             </div>
 

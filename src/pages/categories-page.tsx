@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { Link } from "react-router-dom";
 import {
   FolderTree,
   Folder,
@@ -18,6 +19,7 @@ import {
   X,
   ShieldCheck,
   Tag,
+  ExternalLink,
 } from "lucide-react";
 import { categoriesService } from "../services/categories.service";
 import { tokenStorage } from "../utils/token-storage";
@@ -59,6 +61,13 @@ export const CategoriesPage: React.FC = () => {
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  // Modal State: View Products in Category Branch
+  const [selectedCategoryForProducts, setSelectedCategoryForProducts] =
+    useState<CategoryTreeNode | null>(null);
+  const [categoryProducts, setCategoryProducts] = useState<any[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState<boolean>(false);
+  const [isProductsModalOpen, setIsProductsModalOpen] = useState<boolean>(false);
 
   const currentUser = tokenStorage.getUser();
   const userRoles = currentUser?.roles || (currentUser?.role ? [currentUser.role] : []);
@@ -166,6 +175,21 @@ export const CategoriesPage: React.FC = () => {
     setMoveTargetId(other ? other.id : "");
     setMoveError(null);
     setIsMoveModalOpen(true);
+  };
+
+  // Open View Products Modal
+  const handleViewProducts = async (node: CategoryTreeNode) => {
+    setSelectedCategoryForProducts(node);
+    setIsProductsModalOpen(true);
+    setLoadingProducts(true);
+    try {
+      const items = await categoriesService.getProductsByCategory(node.id);
+      setCategoryProducts(items);
+    } catch {
+      setCategoryProducts([]);
+    } finally {
+      setLoadingProducts(false);
+    }
   };
 
   // Submit Category Form
@@ -402,18 +426,20 @@ export const CategoriesPage: React.FC = () => {
 
           {/* Right: Product Count Badge + Action Buttons */}
           <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-            {/* Product Count Badge */}
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium border ${
+            {/* Product Count Badge - Clickable to view products */}
+            <button
+              type="button"
+              onClick={() => handleViewProducts(node)}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 ${
                 node.productCount > 0
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : "bg-slate-100 text-slate-500 border-slate-200"
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                  : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
               }`}
-              title={`Số lượng sản phẩm liên kết: ${node.productCount}`}
+              title="Bấm để xem danh sách mặt hàng thuộc nhánh này"
             >
-              <Package className="h-3.5 w-3.5" />
+              <Package className="h-3.5 w-3.5 text-emerald-600" />
               <span>{node.productCount} sản phẩm</span>
-            </span>
+            </button>
 
             {/* Actions (Admins & Sales Managers) */}
             {canManageCategories && (
@@ -874,6 +900,120 @@ export const CategoriesPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL: XEM DANH SÁCH SẢN PHẨM TRONG NHÓM HÀNG                       */}
+      {/* ===================================================================== */}
+      {isProductsModalOpen && selectedCategoryForProducts && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="w-full max-w-2xl bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                  <Package className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span>Sản phẩm trong nhóm: {selectedCategoryForProducts.name}</span>
+                    <span className="text-xs font-mono font-medium text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-md">
+                      {selectedCategoryForProducts.code}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Phân cấp Cấp {selectedCategoryForProducts.level} • {categoryProducts.length} sản phẩm trực thuộc nhánh này
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsProductsModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {loadingProducts ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-400 space-y-2">
+                  <RefreshCw className="h-7 w-7 animate-spin text-emerald-500" />
+                  <p className="text-xs">Đang tải sản phẩm thuộc nhánh...</p>
+                </div>
+              ) : categoryProducts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center text-slate-400 space-y-3">
+                  <Package className="h-10 w-10 text-slate-300" />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700">Chưa có sản phẩm nào thuộc nhánh này</p>
+                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                      Khi thêm mới sản phẩm và chọn nhóm "{selectedCategoryForProducts.name}", sản phẩm sẽ tự động quy về nhánh này.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200/80 overflow-hidden">
+                    {categoryProducts.map((p) => (
+                      <div
+                        key={p.id || p.sku}
+                        className="p-3.5 bg-white hover:bg-slate-50/80 transition-colors flex items-center justify-between gap-4"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="h-9 w-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-slate-400 overflow-hidden">
+                            {p.imageUrl ? (
+                              <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <Package className="h-4.5 w-4.5" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs font-bold text-slate-800">{p.sku}</span>
+                              <span
+                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                  p.status === "ACTIVE"
+                                    ? "bg-emerald-50 text-emerald-700"
+                                    : "bg-slate-100 text-slate-500"
+                                }`}
+                              >
+                                {p.status === "ACTIVE" ? "Kinh doanh" : "Ngừng KD"}
+                              </span>
+                            </div>
+                            <p className="text-xs font-medium text-slate-900 truncate mt-0.5">{p.name}</p>
+                            <p className="text-[11px] text-slate-500">
+                              ĐVT: <span className="font-semibold text-slate-700">{p.baseUnit}</span> • Tồn kho:{" "}
+                              <span className="font-semibold text-slate-700">{p.stockQuantity}</span> • Giá:{" "}
+                              <span className="font-semibold text-blue-600">
+                                {new Intl.NumberFormat("vi-VN").format(p.price)} đ
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+              <Link
+                to={`/catalog/products?categoryId=${selectedCategoryForProducts.id}`}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                <span>Mở trong Danh mục sản phẩm</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => setIsProductsModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
       )}

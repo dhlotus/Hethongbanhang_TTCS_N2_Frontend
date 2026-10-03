@@ -37,6 +37,20 @@ export const categoriesService = {
   },
 
   /**
+   * Lấy danh sách sản phẩm thuộc một nhóm hàng (và toàn bộ phân loại con)
+   * GET /api/categories/:id/products
+   */
+  async getProductsByCategory(id: string): Promise<any[]> {
+    try {
+      const response = await apiClient.get<any[]>(`/categories/${id}/products`);
+      return response.data;
+    } catch (err: unknown) {
+      this.handleError(err, 'Không thể tải danh sách sản phẩm theo nhóm.');
+      return [];
+    }
+  },
+
+  /**
    * Tạo nhóm hàng mới
    * POST /api/categories
    */
