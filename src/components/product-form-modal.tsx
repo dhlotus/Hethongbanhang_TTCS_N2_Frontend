@@ -260,6 +260,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         costPrice: canManageCostPrice ? Number(formData.costPrice) : undefined,
         status: formData.status,
         imageUrl: formData.imageUrl?.trim() || undefined,
+        stockQuantity: initialData ? initialData.stockQuantity : undefined,
       };
 
       await onSubmit(payload);

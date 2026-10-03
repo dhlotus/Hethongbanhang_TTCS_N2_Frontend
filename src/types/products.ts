@@ -76,6 +76,7 @@ export interface CreateProductPayload {
   packagingSpec: string;
   price: number;
   costPrice?: number;
+  stockQuantity?: number;
   status: ProductStatus;
   imageUrl?: string;
   barcode?: string;
