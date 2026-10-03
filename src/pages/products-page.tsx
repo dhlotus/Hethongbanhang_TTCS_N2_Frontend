@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { createPortal } from "react-dom";
 import {
   Package,
@@ -17,6 +18,7 @@ import {
   Power,
   ChevronLeft,
   ChevronRight,
+  FolderTree,
 } from "lucide-react";
 import { getStoredUser } from "../utils/navigation";
 import { productsService, PRODUCT_CATEGORIES } from "../services/products.service";
@@ -350,14 +352,25 @@ export const ProductsPage: React.FC = () => {
             </button>
 
             {canManageProducts && (
-              <button
-                type="button"
-                onClick={handleOpenCreateModal}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer"
-              >
-                <Plus className="h-4 w-4" />
-                <span>+ Thêm sản phẩm mới</span>
-              </button>
+              <>
+                <Link
+                  to="/catalog/categories"
+                  className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/80 px-3.5 py-2.5 text-xs font-semibold text-indigo-700 shadow-2xs hover:bg-indigo-100 hover:text-indigo-800 transition-all focus:outline-none cursor-pointer"
+                  title="Mở giao diện quản lý Cây nhóm hàng đa cấp"
+                >
+                  <FolderTree className="h-4 w-4 text-indigo-600" />
+                  <span>Cây nhóm hàng (Tree)</span>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={handleOpenCreateModal}
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>+ Thêm sản phẩm mới</span>
+                </button>
+              </>
             )}
           </div>
         </div>
