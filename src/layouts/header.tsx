@@ -2,7 +2,12 @@ import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { Menu, User } from "lucide-react";
 import { getStoredUser } from "../utils/navigation";
-import { getUserContext } from "../utils/navigation-config";
+import {
+  getUserContext,
+  getNavigationItems,
+  ROLE_NAVIGATION_MATRIX,
+  type MenuItem,
+} from "../utils/navigation-config";
 import { tokenStorage } from "../utils/token-storage";
 import { resolveAvatarUrl } from "../utils/avatar";
 
@@ -11,100 +16,46 @@ interface HeaderProps {
 }
 
 /**
- * Lấy tiêu đề trang và phân nhóm tương ứng dựa theo URL hiện tại
+ * Lấy tiêu đề trang dựa theo danh mục điều hướng của người dùng hiện tại và URL
+ * Đảm bảo 100% tên tab trên Navbar và tiêu đề trên Header luôn đồng nhất tuyệt đối
  */
 const getPageHeaderInfo = (
-  pathname: string
+  pathname: string,
+  userMenuItems: MenuItem[] = []
 ): { title: string; category: string } => {
-  // Đại lý B2B
-  if (pathname.startsWith("/portal/orders")) {
-    return { title: "Cổng đặt hàng", category: "Đại lý B2B" };
-  }
-  if (pathname.startsWith("/portal/tracking")) {
-    return { title: "Theo dõi đơn hàng & Giao hàng", category: "Đại lý B2B" };
-  }
-  if (pathname.startsWith("/portal/debt")) {
-    return { title: "Sổ công nợ của tôi", category: "Đại lý B2B" };
-  }
-  if (pathname.startsWith("/portal/profile")) {
-    return { title: "Hồ sơ cá nhân", category: "Đại lý B2B" };
+  // 1. Ưu tiên khớp chính xác theo menu item của người dùng hiện tại trên Navbar
+  const sortedUserItems = [...userMenuItems].sort((a, b) => b.path.length - a.path.length);
+  const matchedUserItem = sortedUserItems.find(
+    (item) => pathname === item.path || pathname.startsWith(item.path + "/")
+  );
+
+  if (matchedUserItem) {
+    return { title: matchedUserItem.name, category: matchedUserItem.category || "Hệ thống" };
   }
 
-  // Kinh doanh
-  if (pathname.startsWith("/sales/approvals")) {
-    return { title: "Phê duyệt Đơn hàng", category: "Kinh doanh" };
-  }
-  if (pathname.startsWith("/sales/customers")) {
-    return { title: "Quản lý Đại lý & Hạn mức", category: "Khách hàng" };
-  }
-  if (pathname.startsWith("/sales/orders")) {
-    return { title: "Quản lý Đơn hàng", category: "Kinh doanh" };
-  }
-  if (pathname.startsWith("/reports/sales")) {
-    return { title: "Báo cáo Doanh số", category: "Báo cáo" };
+  // 2. Tra cứu đối chiếu theo toàn bộ danh mục các vai trò trong hệ thống
+  for (const items of Object.values(ROLE_NAVIGATION_MATRIX)) {
+    const sorted = [...items].sort((a, b) => b.path.length - a.path.length);
+    const found = sorted.find(
+      (item) => pathname === item.path || pathname.startsWith(item.path + "/")
+    );
+    if (found) {
+      return { title: found.name, category: found.category || "Hệ thống" };
+    }
   }
 
-  // Kho vận
-  if (pathname.startsWith("/inventory/stock")) {
-    return { title: "Sổ tồn kho & Lô hàng", category: "Kho vận" };
-  }
-  if (pathname.startsWith("/inventory/receipts")) {
-    return { title: "Nhập kho hàng hóa", category: "Kho vận" };
-  }
-  if (pathname.startsWith("/inventory/issues")) {
-    return { title: "Soạn hàng & Xuất kho", category: "Kho vận" };
-  }
-  if (pathname.startsWith("/inventory/transfers")) {
-    return { title: "Chuyển kho nội bộ", category: "Kho vận" };
-  }
-  if (pathname.startsWith("/inventory/audits")) {
-    return { title: "Kiểm kê kho hàng", category: "Kho vận" };
-  }
-  if (pathname.startsWith("/inventory/adjustments")) {
-    return { title: "Phiếu điều chỉnh tồn", category: "Kho vận" };
-  }
-  if (pathname.startsWith("/inventory/batches")) {
-    return { title: "Quản lý Lô & Hạn sử dụng (FEFO)", category: "Kho vận" };
-  }
-  if (pathname.startsWith("/reports/inventory")) {
-    return { title: "Báo cáo kho hàng", category: "Báo cáo" };
-  }
-
-  // Kế toán
-  if (pathname.startsWith("/accounting/invoices")) {
-    return { title: "Quản lý Hóa đơn bán hàng", category: "Kế toán" };
-  }
-  if (pathname.startsWith("/accounting/payments")) {
-    return { title: "Phiếu thu & Đối trừ công nợ", category: "Kế toán" };
-  }
-  if (pathname.startsWith("/accounting/debt")) {
-    return { title: "Sổ chi tiết công nợ & Tuổi nợ", category: "Kế toán" };
-  }
-  if (pathname.startsWith("/accounting/returns")) {
-    return { title: "Xử lý Phiếu trả hàng", category: "Kế toán" };
-  }
-
-  // Quản trị & Chung
-  if (pathname.startsWith("/system/users")) {
-    return { title: "Quản lý người dùng", category: "Hệ thống" };
-  }
-  if (pathname.startsWith("/system/audit-logs")) {
-    return { title: "Nhật ký hệ thống", category: "Bảo mật & Giám sát" };
-  }
-  if (pathname.startsWith("/catalog/products")) {
-    return { title: "Danh mục sản phẩm", category: "Hàng hóa" };
-  }
-  if (pathname.startsWith("/catalog/pricing")) {
-    return { title: "Bảng giá & Chiết khấu", category: "Chính sách Bán hàng" };
-  }
-  if (pathname.startsWith("/dashboard")) {
-    return { title: "Dashboard Điều hành", category: "Tổng quan" };
-  }
+  // 3. Các trang nghiệp vụ / chức năng bổ trợ ngoài menu chính
   if (pathname.startsWith("/profile/change-password") || pathname.startsWith("/settings/security")) {
     return { title: "Đổi mật khẩu tài khoản", category: "Bảo mật cá nhân" };
   }
   if (pathname === "/profile") {
     return { title: "Hồ sơ cá nhân", category: "Tài khoản cá nhân" };
+  }
+  if (pathname === "/403") {
+    return { title: "Không có quyền truy cập", category: "Cảnh báo" };
+  }
+  if (pathname === "/404") {
+    return { title: "Không tìm thấy trang", category: "Cảnh báo" };
   }
 
   return { title: "Hệ thống LOHA SALES", category: "Vận hành" };
@@ -119,10 +70,24 @@ const getPageHeaderInfo = (
  */
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const location = useLocation();
-  const user = getStoredUser();
-  const context = getUserContext(user);
+  const [currentUser, setCurrentUser] = useState(getStoredUser());
 
-  const { title } = getPageHeaderInfo(location.pathname);
+  useEffect(() => {
+    const syncUser = () => {
+      setCurrentUser(tokenStorage.getUser() || getStoredUser());
+    };
+
+    window.addEventListener("storage", syncUser);
+    syncUser();
+
+    return () => {
+      window.removeEventListener("storage", syncUser);
+    };
+  }, []);
+
+  const context = getUserContext(currentUser);
+  const menuItems = getNavigationItems(currentUser?.roles || currentUser?.role);
+  const { title } = getPageHeaderInfo(location.pathname, menuItems);
 
   // Đọc avatarUrl từ localStorage và phản ứng khi thay đổi (sau khi upload)
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
