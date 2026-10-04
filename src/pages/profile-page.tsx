@@ -95,7 +95,10 @@ export const ProfilePage: React.FC = () => {
       tokenStorage.setUser(mergedUser);
       setUser(mergedUser);
     } catch {
-      // Giữ nguyên dữ liệu local nếu mạng chập chờn
+      setToast({
+        type: "error",
+        message: "Không thể tải hồ sơ mới nhất từ máy chủ. Thông tin đang hiển thị có thể đã cũ.",
+      });
     } finally {
       setIsFetchingProfile(false);
     }
