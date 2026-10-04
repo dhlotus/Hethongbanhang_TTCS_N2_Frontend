@@ -56,7 +56,7 @@ export const AccountLockedModal: React.FC<AccountLockedModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="locked-modal-title"
-      className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs ${
+      className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/35 backdrop-blur-[2px] ${
         isClosing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"
       }`}
       onClick={(e) => {

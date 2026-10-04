@@ -1032,7 +1032,7 @@ export const ProductsPage: React.FC = () => {
           <div
             role="dialog"
             aria-modal="true"
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-modal-backdrop-in"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/35 backdrop-blur-[2px] animate-modal-backdrop-in"
             onClick={(e) => {
               if (e.target === e.currentTarget) setDeleteModalOpen(false);
             }}
@@ -1100,7 +1100,7 @@ export const ProductsPage: React.FC = () => {
           <div
             role="dialog"
             aria-modal="true"
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-modal-backdrop-in"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/35 backdrop-blur-[2px] animate-modal-backdrop-in"
             onClick={(e) => {
               if (e.target === e.currentTarget) setAdjustModalOpen(false);
             }}

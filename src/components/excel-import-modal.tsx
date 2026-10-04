@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
-  X,
   Upload,
   FileSpreadsheet,
   CheckCircle2,
@@ -10,6 +10,7 @@ import {
   Check,
   RefreshCw,
   Info,
+  Trash2,
 } from 'lucide-react';
 import { usersService } from '../services/users.service';
 import type { ExcelImportReport, ImportRowResult } from '../types/user';
@@ -223,19 +224,28 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [clientError, setClientError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [report, setReport] = useState<ExcelImportReport | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Lắng nghe phím ESC để đóng khi không upload
+  const handleClose = useCallback(() => {
+    if (isUploading) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 220);
+  }, [isUploading, onClose]);
+
+  // Lắng nghe phím ESC để đóng có hiệu ứng khi không upload
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !isUploading) {
-        onClose();
+        handleClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isUploading, onClose]);
+  }, [isUploading, handleClose]);
 
   const validateFile = useCallback((file: File): string | null => {
     const fileName = file.name.toLowerCase();
@@ -331,41 +341,34 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const successItems = report ? report.results.filter((r) => r.status === 'SUCCESS') : [];
   const failedItems = report ? report.results.filter((r) => r.status === 'FAILED') : [];
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="excel-import-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn"
+      onClick={() => handleClose()}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/35 backdrop-blur-[2px] transition-all ${
+        isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
+      }`}
     >
       <div
-        className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
+        className={`w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden ${
+          isClosing ? 'animate-modal-out' : 'animate-modal-in'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+        <div className="flex items-center px-6 py-4.5 border-b border-slate-100 bg-slate-50/60">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100/70 text-emerald-700">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100/80 text-emerald-700 shadow-2xs">
               <FileSpreadsheet className="h-5 w-5" />
             </div>
-            <div>
-              <h2 id="excel-import-modal-title" className="text-base font-bold text-slate-800">
-                Nhập Tài khoản Hàng loạt từ Excel
-              </h2>
-              <p className="text-xs text-slate-500">
-                Tải lên bảng tính nhân sự để tự động kiểm tra và tạo tài khoản
-              </p>
-            </div>
+            <h2 id="excel-import-modal-title" className="text-base font-bold text-slate-800">
+              Tạo tài khoản hàng loạt từ Excel
+            </h2>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isUploading}
-            className="rounded-lg p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50"
-            title="Đóng cửa sổ"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
 
         {/* Body content */}
@@ -380,114 +383,170 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
           {!report ? (
             <>
-              {/* Vùng Dropzone */}
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => !isUploading && fileInputRef.current?.click()}
-                className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-all cursor-pointer ${
-                  isDragging
-                    ? 'border-emerald-500 bg-emerald-50/50 scale-[0.99]'
-                    : selectedFile
-                    ? 'border-emerald-300 bg-emerald-50/20'
-                    : 'border-slate-200 bg-slate-50/40 hover:border-emerald-400 hover:bg-slate-50'
-                } ${isUploading ? 'pointer-events-none opacity-70' : ''}`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx, .xls"
-                  onChange={handleFileInputChange}
-                  className="hidden"
-                  disabled={isUploading}
-                />
-
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 mb-3 shadow-inner">
-                  {isUploading ? (
-                    <RefreshCw className="h-7 w-7 animate-spin" />
-                  ) : (
-                    <Upload className="h-7 w-7" />
-                  )}
+              {/* Vùng Dropzone & Card xem trước tệp */}
+              {selectedFile ? (
+                <div className="rounded-2xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50/70 to-emerald-50/20 p-4 transition-all">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm shadow-emerald-500/20">
+                        <FileSpreadsheet className="h-6 w-6" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-slate-800 truncate" title={selectedFile.name}>
+                            {selectedFile.name}
+                          </p>
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full shrink-0">
+                            <CheckCircle2 className="h-3 w-3" /> Đã chọn
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {(selectedFile.size / 1024).toFixed(1)} KB • Sẵn sàng tải lên và đối soát dữ liệu
+                        </p>
+                      </div>
+                    </div>
+                    {!isUploading && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReset();
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-all shadow-2xs shrink-0 cursor-pointer"
+                        title="Hủy chọn tệp này để chọn tệp khác"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Đổi tệp</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
+              ) : (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => !isUploading && fileInputRef.current?.click()}
+                  className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-7 text-center transition-all cursor-pointer group ${
+                    isDragging
+                      ? 'border-emerald-500 bg-emerald-50/50 scale-[0.99]'
+                      : 'border-slate-200 bg-slate-50/40 hover:border-emerald-400 hover:bg-slate-50/80'
+                  } ${isUploading ? 'pointer-events-none opacity-70' : ''}`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx, .xls"
+                    onChange={handleFileInputChange}
+                    className="hidden"
+                    disabled={isUploading}
+                  />
 
-                {selectedFile ? (
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold text-slate-800 flex items-center justify-center gap-2">
-                      <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-                      {selectedFile.name}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {(selectedFile.size / 1024).toFixed(1)} KB — Bấm vào đây để chọn tệp khác
-                    </p>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100/80 text-emerald-700 mb-3 shadow-2xs group-hover:scale-105 group-hover:bg-emerald-100 transition-all">
+                    {isUploading ? (
+                      <RefreshCw className="h-6 w-6 animate-spin" />
+                    ) : (
+                      <Upload className="h-6 w-6" />
+                    )}
                   </div>
-                ) : (
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold text-slate-700">
-                      Kéo thả tệp Excel vào đây hoặc <span className="text-emerald-600 underline">duyệt tệp</span>
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      Hỗ trợ tệp định dạng .xlsx, .xls dung lượng tối đa 5MB
-                    </p>
-                  </div>
-                )}
-              </div>
+
+                  <p className="text-sm font-semibold text-slate-700">
+                    Kéo thả tệp Excel vào đây hoặc <span className="text-emerald-600 underline underline-offset-2">chọn tệp từ máy tính</span>
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Hỗ trợ định dạng .xlsx, .xls dung lượng tối đa 5MB
+                  </p>
+                </div>
+              )}
 
               {/* Progress bar giả lập khi upload */}
               {isUploading && (
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-                    <span className="flex items-center gap-1.5 text-emerald-700">
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                      Đang phân tích và xử lý từng dòng dữ liệu...
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3.5 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-slate-600 font-medium">
+                    <span className="flex items-center gap-2 text-emerald-800 font-semibold">
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin text-emerald-600" />
+                      Đang đọc và tạo tài khoản từ tệp Excel...
                     </span>
-                    <span>Vui lòng chờ</span>
+                    <span className="text-slate-400">Vui lòng chờ</span>
                   </div>
-                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full bg-emerald-100 rounded-full overflow-hidden">
                     <div className="h-full bg-emerald-500 rounded-full animate-pulse w-3/4" />
                   </div>
                 </div>
               )}
 
-              {/* Hướng dẫn định dạng cột */}
-              <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-                  <Info className="h-4 w-4 text-slate-500" />
-                  <span>Quy chuẩn 7 cột trong file Excel (theo thứ tự):</span>
+              {/* Hướng dẫn định dạng cột - Thiết kế trực quan, rõ ràng */}
+              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 space-y-3">
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                  <div className="flex items-center gap-2">
+                    <Info className="h-4 w-4 text-slate-500" />
+                    <span>Quy chuẩn 7 cột trong file Excel (theo đúng thứ tự):</span>
+                  </div>
+                  <span className="text-[11px] font-normal text-slate-400">Từ cột A đến cột G</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-slate-600">
-                  <div className="bg-white p-2 rounded-lg border border-slate-200/80">
-                    <span className="font-semibold text-slate-800">1. Họ và tên</span>
-                    <span className="text-rose-500 ml-0.5">*</span>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div className="flex flex-col justify-between p-2.5 rounded-xl bg-white border border-slate-200/70 shadow-2xs">
+                    <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">Cột A</span>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="font-semibold text-slate-800 text-[11px]">Họ và tên</span>
+                      <span className="text-[10px] text-rose-600 font-semibold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">Bắt buộc</span>
+                    </div>
                   </div>
-                  <div className="bg-white p-2 rounded-lg border border-slate-200/80">
-                    <span className="font-semibold text-slate-800">2. Username</span>
-                    <span className="text-rose-500 ml-0.5">*</span>
+
+                  <div className="flex flex-col justify-between p-2.5 rounded-xl bg-white border border-slate-200/70 shadow-2xs">
+                    <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">Cột B</span>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="font-semibold text-slate-800 text-[11px]">Username</span>
+                      <span className="text-[10px] text-rose-600 font-semibold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">Bắt buộc</span>
+                    </div>
                   </div>
-                  <div className="bg-white p-2 rounded-lg border border-slate-200/80">
-                    <span className="font-semibold text-slate-800">3. Email</span>
-                    <span className="text-rose-500 ml-0.5">*</span>
+
+                  <div className="flex flex-col justify-between p-2.5 rounded-xl bg-white border border-slate-200/70 shadow-2xs">
+                    <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">Cột C</span>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="font-semibold text-slate-800 text-[11px]">Email</span>
+                      <span className="text-[10px] text-rose-600 font-semibold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">Bắt buộc</span>
+                    </div>
                   </div>
-                  <div className="bg-white p-2 rounded-lg border border-slate-200/80">
-                    <span className="font-semibold text-slate-800">4. Mật khẩu</span>
-                    <span className="text-slate-400 text-[10px] ml-1">(để trống = auto)</span>
+
+                  <div className="flex flex-col justify-between p-2.5 rounded-xl bg-white border border-slate-200/70 shadow-2xs">
+                    <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">Cột D</span>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="font-semibold text-slate-800 text-[11px]">Mật khẩu</span>
+                      <span className="text-[10px] text-slate-500 font-medium bg-slate-100 px-1.5 py-0.5 rounded">Tự sinh</span>
+                    </div>
                   </div>
-                  <div className="bg-white p-2 rounded-lg border border-slate-200/80">
-                    <span className="font-semibold text-slate-800">5. Vai trò</span>
-                    <span className="text-rose-500 ml-0.5">*</span>
+
+                  <div className="flex flex-col justify-between p-2.5 rounded-xl bg-white border border-slate-200/70 shadow-2xs">
+                    <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">Cột E</span>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="font-semibold text-slate-800 text-[11px]">Vai trò</span>
+                      <span className="text-[10px] text-rose-600 font-semibold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">Bắt buộc</span>
+                    </div>
                   </div>
-                  <div className="bg-white p-2 rounded-lg border border-slate-200/80">
-                    <span className="font-semibold text-slate-800">6. Số ĐT</span>
-                    <span className="text-slate-400 text-[10px] ml-1">(tùy chọn)</span>
+
+                  <div className="flex flex-col justify-between p-2.5 rounded-xl bg-white border border-slate-200/70 shadow-2xs">
+                    <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">Cột F</span>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="font-semibold text-slate-800 text-[11px]">Số ĐT</span>
+                      <span className="text-[10px] text-slate-500 font-medium bg-slate-100 px-1.5 py-0.5 rounded">Tùy chọn</span>
+                    </div>
                   </div>
-                  <div className="bg-white p-2 rounded-lg border border-slate-200/80 col-span-2">
-                    <span className="font-semibold text-slate-800">7. Kho phụ trách</span>
-                    <span className="text-slate-400 text-[10px] ml-1">(tùy chọn)</span>
+
+                  <div className="flex flex-col justify-between p-2.5 rounded-xl bg-white border border-slate-200/70 shadow-2xs col-span-2">
+                    <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">Cột G</span>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="font-semibold text-slate-800 text-[11px]">Kho phụ trách</span>
+                      <span className="text-[10px] text-slate-500 font-medium bg-slate-100 px-1.5 py-0.5 rounded">Tùy chọn</span>
+                    </div>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-500 italic pt-1">
-                  * Dòng 1 được quy định là dòng Tiêu đề (Header) và sẽ được tự động bỏ qua.
-                </p>
+
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-500 pt-2 border-t border-slate-200/60">
+                  <span className="font-semibold text-slate-600">Lưu ý:</span>
+                  <span>Dòng 1 trong tệp là dòng tiêu đề cột và sẽ được tự động bỏ qua khi nhập dữ liệu.</span>
+                </div>
               </div>
             </>
           ) : (
@@ -523,14 +582,14 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
         </div>
 
         {/* Footer Buttons */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/60">
           {!report ? (
             <>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 disabled={isUploading}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50"
+                className="px-5 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
               >
                 Hủy bỏ
               </button>
@@ -538,17 +597,17 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 type="button"
                 onClick={handleUpload}
                 disabled={!selectedFile || isUploading}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none"
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] px-6 py-2.5 text-xs font-semibold text-white shadow-sm transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
               >
                 {isUploading ? (
                   <>
                     <RefreshCw className="h-4 w-4 animate-spin" />
-                    Đang xử lý...
+                    <span>Đang xử lý...</span>
                   </>
                 ) : (
                   <>
                     <Upload className="h-4 w-4" />
-                    Bắt đầu Import
+                    <span>Bắt đầu Import</span>
                   </>
                 )}
               </button>
@@ -558,15 +617,15 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 Nhập tiếp tệp khác
               </button>
               <button
                 type="button"
-                onClick={onClose}
-                className="px-5 py-2 text-xs font-semibold text-white bg-slate-900 rounded-xl hover:bg-slate-800 active:scale-[0.98] transition-all shadow-sm"
+                onClick={handleClose}
+                className="px-6 py-2.5 text-xs font-semibold text-white bg-slate-900 rounded-xl hover:bg-slate-800 active:scale-[0.98] transition-all shadow-sm cursor-pointer"
               >
                 Hoàn tất & Đóng
               </button>
@@ -574,6 +633,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
+

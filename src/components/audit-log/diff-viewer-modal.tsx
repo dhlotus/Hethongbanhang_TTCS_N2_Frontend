@@ -413,7 +413,7 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="diff-modal-title"
-      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-xs ${
+      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/35 backdrop-blur-[2px] ${
         isClosing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"
       }`}
       onClick={(e) => {

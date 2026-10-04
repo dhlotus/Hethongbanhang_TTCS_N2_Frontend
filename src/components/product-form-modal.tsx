@@ -409,7 +409,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="product-modal-title"
-      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs ${isClosing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"
+      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/35 backdrop-blur-[2px] ${isClosing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"
         }`}
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();

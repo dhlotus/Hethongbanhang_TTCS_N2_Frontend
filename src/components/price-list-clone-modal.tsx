@@ -46,7 +46,7 @@ export const PriceListCloneModal: React.FC<PriceListCloneModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/35 backdrop-blur-[2px] animate-in fade-in duration-200">
       <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 bg-linear-to-r from-amber-50/70 to-white">

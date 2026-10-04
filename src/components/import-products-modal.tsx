@@ -10,7 +10,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { productsService } from "../services/products.service";
-import type { ImportProductItemDto, PreviewImportResult } from "../types/products";
+import type { PreviewImportResult } from "../types/products";
 
 interface ImportProductsModalProps {
   onClose: () => void;
@@ -116,7 +116,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:p-6 transition-all">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/35 p-4 backdrop-blur-[2px] sm:p-6 transition-all">
       <div className="relative flex max-h-full w-full max-w-5xl flex-col rounded-2xl bg-white shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-6 py-4">
