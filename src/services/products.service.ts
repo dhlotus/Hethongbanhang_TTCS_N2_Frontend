@@ -19,7 +19,17 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
     name: "Sữa & Chế phẩm sữa",
     level: 1,
     subCategories: [
-      { id: "cat-milk-powder", code: "MILK_POWDER", name: "Sữa bột công thức", level: 2, parentId: "cat-milk" },
+      {
+        id: "cat-milk-powder",
+        code: "MILK_POWDER",
+        name: "Sữa bột công thức",
+        level: 2,
+        parentId: "cat-milk",
+        subCategories: [
+          { id: "cat-milk-powder-baby", code: "MILK_POWDER_BABY", name: "Sữa bột cho trẻ em", level: 3, parentId: "cat-milk-powder" },
+          { id: "cat-milk-powder-adult", code: "MILK_POWDER_ADULT", name: "Sữa bột người lớn & cao tuổi", level: 3, parentId: "cat-milk-powder" },
+        ],
+      },
       { id: "cat-milk-nut", code: "MILK_NUT", name: "Sữa hạt organic", level: 2, parentId: "cat-milk" },
       { id: "cat-milk-ready", code: "MILK_READY", name: "Sữa tươi & Tiệt trùng", level: 2, parentId: "cat-milk" },
     ],
@@ -30,7 +40,16 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
     name: "Nước yến & Bổ dưỡng",
     level: 1,
     subCategories: [
-      { id: "cat-nest-ready", code: "NEST_READY", name: "Nước yến chưng sẵn", level: 2, parentId: "cat-nest" },
+      {
+        id: "cat-nest-ready",
+        code: "NEST_READY",
+        name: "Nước yến chưng sẵn",
+        level: 2,
+        parentId: "cat-nest",
+        subCategories: [
+          { id: "cat-nest-ready-sugar", code: "NEST_READY_SUGAR", name: "Nước yến chưng đường phèn", level: 3, parentId: "cat-nest-ready" },
+        ],
+      },
       { id: "cat-nest-pure", code: "NEST_PURE", name: "Tổ yến sào tinh chế", level: 2, parentId: "cat-nest" },
     ],
   },
@@ -322,9 +341,29 @@ const sanitizeProduct = (p: Product, canViewCost: boolean): Product => {
 
 export const productsService = {
   /**
-   * Lấy danh sách nhóm hàng 2 cấp
+   * Lấy danh sách nhóm hàng phân cấp (Tree Structure)
    */
   async getCategories(): Promise<ProductCategory[]> {
+    try {
+      const response = await apiClient.get<any[]>('/categories/tree');
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        const mapTree = (nodes: any[]): ProductCategory[] => {
+          return nodes.map((n) => ({
+            id: n.id,
+            name: n.name,
+            code: n.code,
+            level: n.level,
+            parentId: n.parentId || n.parent_id || null,
+            productCount: n.productCount ?? n.product_count ?? 0,
+            children: n.children ? mapTree(n.children) : [],
+            subCategories: n.children ? mapTree(n.children) : [],
+          }));
+        };
+        return mapTree(response.data);
+      }
+    } catch {
+      // Fallback
+    }
     return PRODUCT_CATEGORIES;
   },
 
@@ -336,6 +375,8 @@ export const productsService = {
       page = 1,
       limit = 20,
       search = "",
+      categoryId,
+      category,
       parentCategory,
       subCategory,
       status,
@@ -350,6 +391,8 @@ export const productsService = {
           page,
           limit,
           search: search || undefined,
+          categoryId: categoryId || undefined,
+          category: category || undefined,
           parentCategory: parentCategory || undefined,
           subCategory: subCategory || undefined,
           status: status && status !== 'ALL' ? status : undefined,
@@ -480,6 +523,15 @@ export const productsService = {
       });
       return sanitizeProduct(response.data, canViewCost);
     } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+        const serverMsg = axiosErr.response?.data?.message;
+        if (serverMsg) {
+          const msg = Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg;
+          throw new Error(msg);
+        }
+      }
+
       // Mock Fallback
       const isDuplicate = MOCK_PRODUCTS.some(
         (p) => p.sku.toUpperCase() === cleanSku
@@ -530,8 +582,34 @@ export const productsService = {
 
     try {
       const response = await apiClient.patch<Product>(`/products/${id}`, payload);
-      return sanitizeProduct(response.data, canViewCost);
-    } catch {
+      const resProduct = response.data;
+
+      // Đồng bộ vào bộ nhớ MOCK_PRODUCTS nếu có sẵn trong danh mục cục bộ
+      const index = MOCK_PRODUCTS.findIndex((p) => p.id === id || p.sku === id);
+      if (index !== -1) {
+        const currentStock = MOCK_PRODUCTS[index].stockQuantity;
+        MOCK_PRODUCTS[index] = {
+          ...MOCK_PRODUCTS[index],
+          ...resProduct,
+          stockQuantity:
+            resProduct.stockQuantity !== undefined && resProduct.stockQuantity !== null
+              ? resProduct.stockQuantity
+              : (payload.stockQuantity !== undefined ? payload.stockQuantity : currentStock),
+        };
+      }
+
+      return sanitizeProduct(resProduct, canViewCost);
+    } catch (err: unknown) {
+      // Nếu máy chủ backend trả về lỗi nghiệp vụ (400, 403, 404, 409...), hiển thị thông báo chính xác từ server
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+        const serverMsg = axiosErr.response?.data?.message;
+        if (serverMsg) {
+          const msg = Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg;
+          throw new Error(msg);
+        }
+      }
+
       const index = MOCK_PRODUCTS.findIndex((p) => p.id === id || p.sku === id);
       if (index === -1) {
         throw new Error("Sản phẩm cần cập nhật không tồn tại!");
@@ -560,9 +638,11 @@ export const productsService = {
       if (payload.price !== undefined) existing.price = Number(payload.price);
       if (payload.costPrice !== undefined) existing.costPrice = Number(payload.costPrice);
       if (payload.status !== undefined) existing.status = payload.status;
-      if (payload.barcode !== undefined) existing.barcode = payload.barcode.trim();
       if (payload.imageUrl !== undefined) existing.imageUrl = payload.imageUrl.trim();
       if (payload.description !== undefined) existing.description = payload.description.trim();
+      if (payload.stockQuantity !== undefined && payload.stockQuantity !== null) {
+        existing.stockQuantity = Number(payload.stockQuantity);
+      }
 
       // Tính lại biên lợi nhuận
       if (existing.price > 0 && existing.costPrice !== undefined) {
@@ -582,7 +662,16 @@ export const productsService = {
     try {
       const response = await apiClient.delete<{ success: boolean; message: string }>(`/products/${id}`);
       return response.data;
-    } catch {
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+        const serverMsg = axiosErr.response?.data?.message;
+        if (serverMsg) {
+          const msg = Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg;
+          throw new Error(msg);
+        }
+      }
+
       const found = MOCK_PRODUCTS.find((p) => p.id === id || p.sku === id);
       if (!found) {
         throw new Error("Không tìm thấy sản phẩm cần xóa!");

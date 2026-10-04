@@ -45,6 +45,9 @@ const getPageHeaderInfo = (
   }
 
   // 3. Các trang nghiệp vụ / chức năng bổ trợ ngoài menu chính
+  if (pathname.startsWith("/catalog/categories")) {
+    return { title: "Danh mục sản phẩm", category: "Sản phẩm & Chính sách" };
+  }
   if (pathname.startsWith("/profile/change-password") || pathname.startsWith("/settings/security")) {
     return { title: "Đổi mật khẩu tài khoản", category: "Bảo mật cá nhân" };
   }
