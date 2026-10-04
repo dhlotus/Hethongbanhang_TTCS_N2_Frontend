@@ -3,6 +3,7 @@ import type {
   AssignedCustomersResponse,
   CreateUserPayload,
   CreateUserResponse,
+  ExcelImportResponse,
   PaginatedUsersResponse,
   UpdateUserPayload,
   UpdateUserStatusPayload,
@@ -126,5 +127,20 @@ export const usersService = {
     });
     return response.data;
   },
-};
 
+  /**
+   * Import tài khoản nhân sự hàng loạt từ file Excel (SN-147)
+   * Gọi POST /users/import-excel với multipart/form-data chứa trường “file”
+   * Server validate từng dòng, tạo tài khoản và trả về báo cáo tổng kết
+   */
+  async importUsersFromExcel(file: File): Promise<ExcelImportResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<ExcelImportResponse>(
+      '/users/import-excel',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return response.data;
+  },
+};

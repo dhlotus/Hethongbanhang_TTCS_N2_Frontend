@@ -426,7 +426,7 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
         }`}
       >
         {/* 1. Header Modal */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 bg-slate-50/70">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shadow-2xs">
               <FileSpreadsheet className="h-5 w-5" />
@@ -470,7 +470,7 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
         </div>
 
         {/* 2. Banner Thông tin Truy vết (Audit Meta Information - 3 cột tinh gọn, chuẩn nghiệp vụ) */}
-        <div className="bg-slate-50/60 px-6 py-3.5 border-b border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs">
+        <div className="bg-slate-50/60 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
           {/* Box 1: Người thực hiện (Chỉ Họ tên & Vai trò / Chức vụ, không email) */}
           <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
             <div className="h-8 w-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-2xs shrink-0">
@@ -519,7 +519,7 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
         </div>
 
         {/* 3. Thân Modal: Bảng Đối chiếu Trực quan (Property Comparison Table) */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-6">
           {changedRows.length === 0 ? (
             <div className="py-16 text-center text-slate-400 space-y-2">
               <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-500" />
@@ -531,7 +531,7 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
               </p>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-slate-200 shadow-2xs bg-white">
+            <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-2xs bg-white">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-semibold">
@@ -647,7 +647,7 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
         </div>
 
         {/* 4. Footer Modal: Tối giản, chỉ giữ lại nút Đóng to rõ */}
-        <div className="flex items-center justify-end px-6 py-3.5 border-t border-slate-100 bg-slate-50/70">
+        <div className="flex items-center justify-end px-4 sm:px-6 py-3 sm:py-3.5 border-t border-slate-100 bg-slate-50/70">
           <button
             type="button"
             onClick={handleClose}
