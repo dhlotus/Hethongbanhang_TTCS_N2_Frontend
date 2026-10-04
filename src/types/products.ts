@@ -109,3 +109,32 @@ export interface StockAdjustmentResponse {
   adjustedBy: string;
   timestamp: string;
 }
+
+export interface ImportProductItemDto {
+  row: number;
+  sku: string;
+  name: string;
+  category: string;
+  baseUnit: string;
+  price: number;
+  costPrice: number;
+  stockQuantity: number;
+  barcode?: string;
+  description?: string;
+  status: "NEW" | "UPDATE";
+  errors: string[];
+  isValid: boolean;
+}
+
+export interface PreviewImportResult {
+  total: number;
+  valid: number;
+  invalid: number;
+  data: ImportProductItemDto[];
+}
+
+export interface ConfirmImportResult {
+  success: number;
+  error: number;
+  errorDetails: string[];
+}

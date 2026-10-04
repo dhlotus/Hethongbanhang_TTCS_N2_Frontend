@@ -7,6 +7,9 @@ import type {
   PaginatedProductsResponse,
   CreateProductPayload,
   UpdateProductPayload,
+  ImportProductItemDto,
+  PreviewImportResult,
+  ConfirmImportResult,
 } from '../types/products';
 
 /**
@@ -335,7 +338,7 @@ const checkCanViewCost = (): boolean => {
  */
 const sanitizeProduct = (p: Product, canViewCost: boolean): Product => {
   if (canViewCost) return p;
-  const { costPrice, margin, ...rest } = p;
+  const { costPrice: _, margin: __, ...rest } = p;
   return rest as Product;
 };
 
@@ -345,18 +348,18 @@ export const productsService = {
    */
   async getCategories(): Promise<ProductCategory[]> {
     try {
-      const response = await apiClient.get<any[]>('/categories/tree');
+      const response = await apiClient.get<Record<string, unknown>[]>('/categories/tree');
       if (Array.isArray(response.data) && response.data.length > 0) {
-        const mapTree = (nodes: any[]): ProductCategory[] => {
+        const mapTree = (nodes: Record<string, unknown>[]): ProductCategory[] => {
           return nodes.map((n) => ({
-            id: n.id,
-            name: n.name,
-            code: n.code,
-            level: n.level,
-            parentId: n.parentId || n.parent_id || null,
-            productCount: n.productCount ?? n.product_count ?? 0,
-            children: n.children ? mapTree(n.children) : [],
-            subCategories: n.children ? mapTree(n.children) : [],
+            id: String(n.id),
+            name: String(n.name),
+            code: String(n.code),
+            level: Number(n.level),
+            parentId: n.parentId ? String(n.parentId) : (n.parent_id ? String(n.parent_id) : null),
+            productCount: Number(n.productCount ?? n.product_count ?? 0),
+            children: Array.isArray(n.children) ? mapTree(n.children as Record<string, unknown>[]) : [],
+            subCategories: Array.isArray(n.children) ? mapTree(n.children as Record<string, unknown>[]) : [],
           }));
         };
         return mapTree(response.data);
@@ -696,5 +699,37 @@ export const productsService = {
    */
   async toggleProductStatus(id: string, newStatus: 'ACTIVE' | 'INACTIVE'): Promise<Product> {
     return this.updateProduct(id, { status: newStatus });
+  },
+
+  /**
+   * Tải file mẫu nhập Excel
+   */
+  async downloadImportTemplate(): Promise<Blob> {
+    const response = await apiClient.get('/products/import-template', {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  /**
+   * Xem trước file nhập Excel (trả về danh sách preview)
+   */
+  async previewImport(file: File): Promise<PreviewImportResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<PreviewImportResult>('/products/import/preview', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  /**
+   * Xác nhận nhập dữ liệu từ file Excel
+   */
+  async confirmImport(items: ImportProductItemDto[]): Promise<ConfirmImportResult> {
+    const response = await apiClient.post<ConfirmImportResult>('/products/import/confirm', { items });
+    return response.data;
   },
 };
