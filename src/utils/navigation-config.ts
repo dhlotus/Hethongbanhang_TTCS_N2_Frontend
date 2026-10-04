@@ -21,7 +21,6 @@ import {
   FileText,
   CreditCard,
   RotateCcw,
-  FolderTree,
 } from "lucide-react";
 import { USER_ROLES, type UserRoleType, type AuthUser } from "../types/auth";
 
@@ -203,13 +202,6 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: "Danh mục sản phẩm",
       path: "/catalog/products",
       icon: Package,
-      category: "Sản phẩm & Chính sách",
-    },
-    {
-      id: "catalog-categories",
-      name: "Cây nhóm hàng",
-      path: "/catalog/categories",
-      icon: FolderTree,
       category: "Sản phẩm & Chính sách",
     },
     {
@@ -408,13 +400,6 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: "Danh mục sản phẩm",
       path: "/catalog/products",
       icon: Package,
-      category: "Sản phẩm & Giá",
-    },
-    {
-      id: "catalog-categories",
-      name: "Cây nhóm hàng",
-      path: "/catalog/categories",
-      icon: FolderTree,
       category: "Sản phẩm & Giá",
     },
     {

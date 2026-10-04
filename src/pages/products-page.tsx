@@ -409,35 +409,35 @@ export const ProductsPage: React.FC = () => {
           </div>
 
           {/* Nhóm nút hành động */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap">
             <button
               type="button"
               onClick={loadProducts}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-all focus:outline-none cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
               title="Làm mới dữ liệu từ server"
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">Làm mới</span>
+              <RefreshCw className={`h-4 w-4 shrink-0 ${loading ? "animate-spin" : ""}`} />
+              <span>Làm mới</span>
             </button>
 
             {canManageProducts && (
               <>
                 <Link
                   to="/catalog/categories"
-                  className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/80 px-3.5 py-2.5 text-xs font-semibold text-indigo-700 shadow-2xs hover:bg-indigo-100 hover:text-indigo-800 transition-all focus:outline-none cursor-pointer"
+                  className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/80 px-3.5 py-2.5 text-xs font-semibold text-indigo-700 shadow-2xs hover:bg-indigo-100 hover:text-indigo-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
                   title="Mở giao diện quản lý Cây nhóm hàng đa cấp"
                 >
-                  <FolderTree className="h-4 w-4 text-indigo-600" />
-                  <span>Cây nhóm hàng (Tree)</span>
+                  <FolderTree className="h-4 w-4 shrink-0 text-indigo-600" />
+                  <span>Cây nhóm hàng</span>
                 </Link>
 
                 <button
                   type="button"
                   onClick={handleOpenCreateModal}
-                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer"
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer whitespace-nowrap"
                 >
-                  <Plus className="h-4 w-4" />
-                  <span>+ Thêm sản phẩm mới</span>
+                  <Plus className="h-4 w-4 shrink-0" />
+                  <span>Thêm sản phẩm mới</span>
                 </button>
               </>
             )}

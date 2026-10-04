@@ -10,11 +10,14 @@ import {
   DollarSign,
   ShieldCheck,
   CheckCircle2,
+  XCircle,
   AlertCircle,
   Image as ImageIcon,
   Sparkles,
   Upload,
   FolderTree,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "./button";
 import { PRODUCT_CATEGORIES } from "../services/products.service";
@@ -169,7 +172,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         };
         setCategoriesList(mapTree(tree));
       }
-    }).catch(() => {});
+    }).catch(() => { });
     return () => {
       isMounted = false;
     };
@@ -339,6 +342,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   if (!isOpen) return null;
   if (typeof document === "undefined") return null;
 
+  // Tăng / giảm giá vốn nhanh (bước nhảy 1.000đ)
+  const handleStepCostPrice = (delta: number) => {
+    const current = Number(watchedCostPrice) || 0;
+    const next = Math.max(0, current + delta);
+    setValue("costPrice", next, { shouldValidate: true, shouldDirty: true });
+  };
+
   // Xử lý submit hợp lệ
   const onValidSubmit = async (formData: ProductFormValues) => {
     try {
@@ -399,17 +409,15 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="product-modal-title"
-      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs ${
-        isClosing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"
-      }`}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs ${isClosing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"
+        }`}
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
       }}
     >
       <div
-        className={`relative w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${
-          isClosing ? "animate-modal-out" : "animate-modal-in"
-        }`}
+        className={`relative w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${isClosing ? "animate-modal-out" : "animate-modal-in"
+          }`}
       >
         {/* Header Modal */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
@@ -481,11 +489,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     },
                   })}
                   placeholder="VD: LH-MILK-900G"
-                  className={`w-full px-3 py-2.5 rounded-xl border text-xs font-mono font-bold tracking-wider uppercase transition-all focus:outline-none focus:ring-2 ${
-                    errors.sku
+                  className={`w-full px-3 py-2.5 rounded-xl border text-xs font-mono font-bold tracking-wider uppercase transition-all focus:outline-none focus:ring-2 ${errors.sku
                       ? "border-rose-300 focus:ring-rose-200 bg-rose-50/30"
                       : "border-slate-200 focus:border-blue-500 focus:ring-blue-100 bg-white"
-                  }`}
+                    }`}
                   disabled={isSubmitting}
                 />
                 {errors.sku && (
@@ -507,11 +514,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   type="text"
                   {...register("name")}
                   placeholder="VD: Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g"
-                  className={`w-full px-3 py-2.5 rounded-xl border text-xs transition-all focus:outline-none focus:ring-2 ${
-                    errors.name
+                  className={`w-full px-3 py-2.5 rounded-xl border text-xs transition-all focus:outline-none focus:ring-2 ${errors.name
                       ? "border-rose-300 focus:ring-rose-200 bg-rose-50/30"
                       : "border-slate-200 focus:border-blue-500 focus:ring-blue-100 bg-white font-medium"
-                  }`}
+                    }`}
                   disabled={isSubmitting}
                 />
                 {errors.name && (
@@ -533,18 +539,18 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             {/* Hàng: Phân cấp Danh mục Nhóm hàng (Cấp 1 > Cấp 2 > Cấp 3) */}
             <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/70 space-y-3">
               <div
-                className={`grid grid-cols-1 ${
-                  availableChildCategories.length > 0 ? "md:grid-cols-3" : "md:grid-cols-2"
-                } gap-4`}
+                className={`grid grid-cols-1 ${availableChildCategories.length > 0 ? "md:grid-cols-3" : "md:grid-cols-2"
+                  } gap-3 sm:gap-4 items-start`}
               >
                 <div>
-                  <label className="block font-semibold text-slate-800 mb-1">
-                    Nhóm hàng Cấp 1 (Ngành chính) <span className="text-rose-500">*</span>
+                  <label className="flex items-center gap-1 text-xs font-semibold text-slate-800 mb-1.5 h-5 truncate" title="Nhóm hàng Cấp 1 (Nhóm chính)">
+                    <span>Cấp 1 - Nhóm chính</span>
+                    <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <select
                     value={selectedParentCategory}
                     onChange={(e) => handleParentCategoryChange(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none cursor-pointer"
+                    className="w-full h-10 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none cursor-pointer"
                     disabled={isSubmitting}
                   >
                     {categoriesList.map((cat) => (
@@ -561,13 +567,14 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-800 mb-1">
-                    Nhóm hàng Cấp 2 (Nhóm phụ) <span className="text-rose-500">*</span>
+                  <label className="flex items-center gap-1 text-xs font-semibold text-slate-800 mb-1.5 h-5 truncate" title="Nhóm hàng Cấp 2 (Nhóm phụ)">
+                    <span>Cấp 2 - Nhóm phụ</span>
+                    <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <select
                     value={watchedSubCategory}
                     onChange={(e) => handleSubCategoryChange(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none cursor-pointer"
+                    className="w-full h-10 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none cursor-pointer"
                     disabled={isSubmitting}
                   >
                     {availableSubCategories.map((sub) => (
@@ -585,13 +592,14 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
                 {availableChildCategories.length > 0 && (
                   <div>
-                    <label className="block font-semibold text-slate-800 mb-1">
-                      Phân loại con Cấp 3 <span className="text-blue-600 font-normal">(Chi tiết)</span>
+                    <label className="flex items-center gap-1 text-xs font-semibold text-slate-800 mb-1.5 h-5 truncate" title="Phân loại con Cấp 3 (Chi tiết)">
+                      <span>Cấp 3 - Phân loại con</span>
+                      <span className="text-blue-600 font-normal text-[11px]">(Chi tiết)</span>
                     </label>
                     <select
                       value={selectedChildCategory}
                       onChange={(e) => setSelectedChildCategory(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-blue-200 bg-white text-xs font-medium text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none cursor-pointer"
+                      className="w-full h-10 px-3 py-2 rounded-xl border border-blue-200 bg-white text-xs font-medium text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none cursor-pointer"
                       disabled={isSubmitting}
                     >
                       <option value="">-- Mặc định theo Cấp 2 --</option>
@@ -628,11 +636,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     type="text"
                     {...register("baseUnit")}
                     placeholder="VD: Lon, Chai, Hộp..."
-                    className={`flex-1 px-3 py-2.5 rounded-xl border text-xs font-medium focus:outline-none focus:ring-2 ${
-                      errors.baseUnit
+                    className={`flex-1 px-3 py-2.5 rounded-xl border text-xs font-medium focus:outline-none focus:ring-2 ${errors.baseUnit
                         ? "border-rose-300 focus:ring-rose-200 bg-rose-50/30"
                         : "border-slate-200 focus:border-blue-500 focus:ring-blue-100 bg-white"
-                    }`}
+                      }`}
                     disabled={isSubmitting}
                   />
                   <select
@@ -691,9 +698,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </div>
 
             <div
-              className={`grid gap-4 ${
-                canManageCostPrice ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
-              }`}
+              className={`grid gap-4 ${canManageCostPrice ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
+                }`}
             >
               {/* RÀNG BUỘC UI QUAN TRỌNG: Giá vốn CHỈ render khi canManageCostPrice = true (ADMIN hoặc SALES_MANAGER) */}
               {canManageCostPrice && (
@@ -708,23 +714,48 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     </span>
                   </div>
 
-                  <div className="relative">
+                  <div className="relative group">
                     <input
                       type="number"
                       min="0"
                       step="1000"
                       {...register("costPrice")}
                       placeholder="Nhập giá vốn sản phẩm"
-                      className={`w-full px-3 py-2.5 rounded-xl border text-xs font-semibold text-emerald-900 focus:outline-none focus:ring-2 ${
-                        errors.costPrice
+                      className={`w-full pl-3.5 pr-16 py-2.5 rounded-xl border text-xs font-semibold text-emerald-900 focus:outline-none focus:ring-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all ${errors.costPrice
                           ? "border-rose-300 focus:ring-rose-200 bg-rose-50/30"
                           : "border-slate-200 bg-white focus:border-emerald-500 focus:ring-emerald-100"
-                      }`}
+                        }`}
                       disabled={isSubmitting}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400 pointer-events-none">
-                      đ
-                    </span>
+
+                    {/* Bộ nút tăng/giảm giá vốn: Chỉ hiện khi hover hoặc focus vào ô và không đè lên chữ đ */}
+                    <div className="absolute right-8 inset-y-1.5 flex items-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">
+                      <div className="flex flex-col border border-slate-200/90 rounded-md bg-white shadow-2xs overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => handleStepCostPrice(1000)}
+                          className="h-3.5 w-5 flex items-center justify-center text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100 border-b border-slate-100 transition-colors cursor-pointer"
+                          title="Tăng 1.000đ"
+                        >
+                          <ChevronUp className="h-3 w-3 stroke-[2.5]" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleStepCostPrice(-1000)}
+                          className="h-3.5 w-5 flex items-center justify-center text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100 transition-colors cursor-pointer"
+                          title="Giảm 1.000đ"
+                        >
+                          <ChevronDown className="h-3 w-3 stroke-[2.5]" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Ký hiệu đơn vị tiền tệ 'đ' cố định riêng biệt không bị đè */}
+                    <div className="absolute right-3.5 inset-y-0 flex items-center pointer-events-none">
+                      <span className="text-xs font-bold text-slate-400 select-none">
+                        đ
+                      </span>
+                    </div>
                   </div>
 
                   {errors.costPrice && (
@@ -751,31 +782,48 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setValue("status", "ACTIVE", { shouldValidate: true })}
-                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-                      selectedStatus === "ACTIVE"
-                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-2xs"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
+                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${selectedStatus === "ACTIVE"
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-2xs ring-1 ring-emerald-500/20"
+                        : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                      }`}
                   >
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    <CheckCircle2
+                      className={`h-4 w-4 ${
+                        selectedStatus === "ACTIVE" ? "text-emerald-600" : "text-slate-400"
+                      }`}
+                    />
                     <span>Đang kinh doanh</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setValue("status", "INACTIVE", { shouldValidate: true })}
-                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-                      selectedStatus === "INACTIVE"
-                        ? "border-slate-400 bg-slate-100 text-slate-800 shadow-2xs font-bold"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
+                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${selectedStatus === "INACTIVE"
+                        ? "border-rose-400 bg-rose-50 text-rose-700 shadow-xs font-bold ring-2 ring-rose-200"
+                        : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                      }`}
                   >
-                    <span className="h-2 w-2 rounded-full bg-slate-400" />
+                    <XCircle
+                      className={`h-4 w-4 ${
+                        selectedStatus === "INACTIVE" ? "text-rose-600" : "text-slate-400"
+                      }`}
+                    />
                     <span>Ngừng kinh doanh</span>
                   </button>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">
-                  Mặc định: Đang kinh doanh
+                <p className="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1.5">
+                  <span>Trạng thái:</span>
+                  {selectedStatus === "ACTIVE" ? (
+                    <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Đang kinh doanh
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 font-bold text-rose-600">
+                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                      Tạm ngừng kinh doanh
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
