@@ -19,12 +19,14 @@ import {
   ChevronLeft,
   ChevronRight,
   FolderTree,
+  FileText,
 } from "lucide-react";
 import { getStoredUser } from "../utils/navigation";
 import { productsService, PRODUCT_CATEGORIES } from "../services/products.service";
 import { categoriesService } from "../services/categories.service";
 import { inventoryService } from "../services/inventory.service";
 import { ProductFormModal } from "../components/product-form-modal";
+import { ImportProductsModal } from "../components/import-products-modal";
 import { Toast, type ToastType } from "../components/toast";
 import type {
   Product,
@@ -82,6 +84,9 @@ export const ProductsPage: React.FC = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Modal Nhập từ Excel
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   // Modal Điều chỉnh tồn kho (Dành cho Thủ kho / Admin)
   const [adjustModalOpen, setAdjustModalOpen] = useState(false);
@@ -430,6 +435,15 @@ export const ProductsPage: React.FC = () => {
                   <FolderTree className="h-4 w-4 shrink-0 text-indigo-600" />
                   <span>Cây nhóm hàng</span>
                 </Link>
+
+                <button
+                  type="button"
+                  onClick={() => setImportModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3.5 py-2.5 text-xs font-semibold text-emerald-700 shadow-2xs hover:bg-emerald-100 hover:text-emerald-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+                >
+                  <FileText className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <span>Nhập từ Excel</span>
+                </button>
 
                 <button
                   type="button"
@@ -1190,6 +1204,22 @@ export const ProductsPage: React.FC = () => {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* 8. Modal Nhập danh mục từ Excel */}
+      {importModalOpen && (
+        <ImportProductsModal
+          onClose={() => setImportModalOpen(false)}
+          onSuccess={() => {
+            setImportModalOpen(false);
+            setToast({
+              type: "success",
+              title: "Nhập Excel thành công",
+              message: "Đã cập nhật danh mục sản phẩm từ tệp Excel.",
+            });
+            loadProducts();
+          }}
+        />
       )}
     </div>
   );
