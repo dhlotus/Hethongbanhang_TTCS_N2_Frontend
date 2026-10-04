@@ -239,12 +239,18 @@ export const AppRoutes: React.FC = () => {
             </Route>
 
             {/* ------------------------------------------------------------- */}
-            {/* PHÂN HỆ NHÀ CUNG CẤP (SN-25) - WAREHOUSE_KEEPER & WAREHOUSE_MANAGER & ADMIN */}
+            {/* PHÂN HỆ QUẢN LÝ NHÀ CUNG CẤP (SN-25)                          */}
             {/* ------------------------------------------------------------- */}
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={["ADMIN", "WAREHOUSE_KEEPER", "WAREHOUSE_MANAGER"]}
+                  allowedRoles={[
+                    "ADMIN",
+                    "WAREHOUSE_MANAGER",
+                    "WAREHOUSE_KEEPER",
+                    "SALES_MANAGER",
+                    "ACCOUNTANT",
+                  ]}
                   moduleName="Quản lý Nhà cung cấp"
                 />
               }
