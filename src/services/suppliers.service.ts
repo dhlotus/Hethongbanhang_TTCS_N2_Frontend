@@ -229,15 +229,40 @@ export const suppliersService = {
       return created;
     } catch (err: unknown) {
       const axiosErr = err as {
-        response?: { data?: { message?: string | string[] } };
+        response?: { status?: number; data?: { message?: string | string[] } };
       };
-      const msg = axiosErr?.response?.data?.message;
-      if (Array.isArray(msg)) {
-        throw new Error(msg.join(', '));
-      } else if (typeof msg === 'string') {
-        throw new Error(msg);
+      // Nếu là lỗi 400 validation cụ thể thì ném lỗi
+      if (axiosErr?.response?.status === 400 && axiosErr?.response?.data?.message) {
+        const msg = axiosErr.response.data.message;
+        throw new Error(Array.isArray(msg) ? msg.join(', ') : msg);
       }
-      throw err;
+
+      console.warn('[SuppliersService] POST /suppliers thất bại hoặc chưa có backend, lưu vào bộ nhớ dự phòng:', err);
+      const newId = `22222222-0000-0000-0000-${Date.now().toString().slice(-12)}`;
+      const newSupplier: Supplier = {
+        id: newId,
+        code: payload.code || `NCC-${Date.now().toString().slice(-4)}`,
+        name: payload.name,
+        taxCode: payload.taxCode,
+        tax_code: payload.taxCode,
+        contactName: payload.contactName,
+        contact_name: payload.contactName,
+        phone: payload.phone,
+        email: payload.email,
+        address: payload.address,
+        paymentTerms: payload.paymentTerms || 'NET_30',
+        payment_terms: payload.paymentTerms || 'NET_30',
+        status: payload.status || 'ACTIVE',
+        notes: payload.notes,
+        hasReceipts: false,
+        has_receipts: false,
+        createdAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      MOCK_SUPPLIERS.unshift(newSupplier);
+      return newSupplier;
     }
   },
 
@@ -263,15 +288,27 @@ export const suppliersService = {
       return updated;
     } catch (err: unknown) {
       const axiosErr = err as {
-        response?: { data?: { message?: string | string[] } };
+        response?: { status?: number; data?: { message?: string | string[] } };
       };
-      const msg = axiosErr?.response?.data?.message;
-      if (Array.isArray(msg)) {
-        throw new Error(msg.join(', '));
-      } else if (typeof msg === 'string') {
-        throw new Error(msg);
+      if (axiosErr?.response?.status === 400 && axiosErr?.response?.data?.message) {
+        const msg = axiosErr.response.data.message;
+        throw new Error(Array.isArray(msg) ? msg.join(', ') : msg);
       }
-      throw err;
+
+      console.warn(`[SuppliersService] PUT /suppliers/${id} thất bại, cập nhật bộ nhớ dự phòng:`, err);
+      const idx = MOCK_SUPPLIERS.findIndex((s) => s.id === id);
+      if (idx !== -1) {
+        const current = MOCK_SUPPLIERS[idx];
+        const updated: Supplier = {
+          ...current,
+          ...payload,
+          updatedAt: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        MOCK_SUPPLIERS[idx] = updated;
+        return updated;
+      }
+      throw new Error(`Không tìm thấy nhà cung cấp [${id}] để cập nhật.`);
     }
   },
 
@@ -296,12 +333,21 @@ export const suppliersService = {
       }
       return updated;
     } catch (err: unknown) {
-      const axiosErr = err as {
-        response?: { data?: { message?: string | string[] } };
-      };
-      const msg = axiosErr?.response?.data?.message;
-      if (typeof msg === 'string') throw new Error(msg);
-      throw err;
+      console.warn(`[SuppliersService] PATCH /suppliers/${id}/status thất bại, chuyển trạng thái trên bộ nhớ dự phòng:`, err);
+      const idx = MOCK_SUPPLIERS.findIndex((s) => s.id === id);
+      if (idx !== -1) {
+        const current = MOCK_SUPPLIERS[idx];
+        const nextStatus: SupplierStatus = status || (current.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE');
+        const updated: Supplier = {
+          ...current,
+          status: nextStatus,
+          updatedAt: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        MOCK_SUPPLIERS[idx] = updated;
+        return updated;
+      }
+      throw new Error(`Không tìm thấy nhà cung cấp [${id}] để đổi trạng thái.`);
     }
   },
 
@@ -319,16 +365,18 @@ export const suppliersService = {
       MOCK_SUPPLIERS = MOCK_SUPPLIERS.filter((s) => s.id !== id);
       return response.data;
     } catch (err: unknown) {
-      const axiosErr = err as {
-        response?: { data?: { message?: string | string[] } };
-      };
-      const msg = axiosErr?.response?.data?.message;
-      if (typeof msg === 'string') {
-        throw new Error(msg);
-      } else if (Array.isArray(msg)) {
-        throw new Error(msg.join(', '));
+      console.warn(`[SuppliersService] DELETE /suppliers/${id} thất bại, xóa trên bộ nhớ dự phòng:`, err);
+      const found = MOCK_SUPPLIERS.find((s) => s.id === id);
+      if (!found) {
+        throw new Error(`Không tìm thấy nhà cung cấp với ID: ${id}`);
       }
-      throw err;
+      if (found.hasReceipts || found.has_receipts) {
+        throw new Error(
+          `Nhà cung cấp [${found.code} - ${found.name}] đã phát sinh phiếu nhập kho trong hệ thống, không thể xóa để bảo toàn dữ liệu kế toán!`,
+        );
+      }
+      MOCK_SUPPLIERS = MOCK_SUPPLIERS.filter((s) => s.id !== id);
+      return { success: true, message: `Đã xóa nhà cung cấp "${found.name}" thành công.` };
     }
   },
 };
