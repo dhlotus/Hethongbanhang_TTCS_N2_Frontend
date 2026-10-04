@@ -7,17 +7,12 @@ import {
   Search,
   CheckCircle2,
   Power,
-  Edit2,
   Trash2,
   X,
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
   Receipt,
-  Phone,
-  Mail,
-  MapPin,
-  FileText,
   AlertCircle,
   ShieldAlert,
   Eye,
@@ -59,6 +54,7 @@ export const SuppliersPage: React.FC = () => {
 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedSupplierForDetail, setSelectedSupplierForDetail] = useState<Supplier | null>(null);
+  const [returnToDetailSupplier, setReturnToDetailSupplier] = useState<Supplier | null>(null);
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
@@ -130,8 +126,9 @@ export const SuppliersPage: React.FC = () => {
   // Create / Update Supplier
   const handleFormSubmit = async (payload: CreateSupplierPayload) => {
     try {
+      let updatedSupplier: Supplier | null = null;
       if (editingSupplier) {
-        await suppliersService.updateSupplier(editingSupplier.id, payload);
+        updatedSupplier = await suppliersService.updateSupplier(editingSupplier.id, payload);
         setToast({
           type: "success",
           title: "Cập nhật thành công",
@@ -147,6 +144,18 @@ export const SuppliersPage: React.FC = () => {
       }
       setEditingSupplier(null);
       fetchSuppliers();
+
+      // Nếu mở từ popup chi tiết, chuẩn bị dữ liệu mới nhất để khi modal đóng thì hiển thị lại popup chi tiết
+      if (returnToDetailSupplier) {
+        const fresh: Supplier = updatedSupplier || {
+          ...returnToDetailSupplier,
+          ...payload,
+          taxCode: payload.taxCode,
+          contactName: payload.contactName,
+          paymentTerms: payload.paymentTerms,
+        };
+        setReturnToDetailSupplier(fresh);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Đã có lỗi xảy ra";
       setToast({
@@ -378,14 +387,12 @@ export const SuppliersPage: React.FC = () => {
           <table className="w-full text-left text-xs text-slate-600">
             <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-100">
               <tr>
-                <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Mã NCC</th>
-                <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Tên nhà cung cấp / Doanh nghiệp</th>
-                <th className="px-4 py-3.5 font-semibold whitespace-nowrap hidden sm:table-cell">Người liên hệ & SĐT</th>
-                <th className="px-4 py-3.5 font-semibold whitespace-nowrap hidden xl:table-cell">Địa chỉ</th>
-                <th className="px-4 py-3.5 font-semibold text-center whitespace-nowrap hidden lg:table-cell">Điều khoản TT</th>
-                <th className="px-4 py-3.5 font-semibold text-center whitespace-nowrap hidden md:table-cell">Phiếu nhập kho</th>
+                <th className="px-4 py-3.5 font-semibold whitespace-nowrap w-28">Mã NCC</th>
+                <th className="px-4 py-3.5 font-semibold">Tên nhà cung cấp / Doanh nghiệp</th>
+                <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Người đại diện</th>
+                <th className="px-4 py-3.5 font-semibold text-center whitespace-nowrap">Phiếu nhập kho</th>
                 <th className="px-4 py-3.5 font-semibold text-center whitespace-nowrap">Trạng thái</th>
-                <th className="px-4 py-3.5 font-semibold text-center whitespace-nowrap w-28">
+                <th className="px-4 py-3.5 font-semibold text-center whitespace-nowrap w-24">
                   Thao tác
                 </th>
               </tr>
@@ -393,14 +400,14 @@ export const SuppliersPage: React.FC = () => {
             <tbody className="divide-y divide-slate-100 font-medium">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-14 text-center text-slate-400">
+                  <td colSpan={6} className="py-14 text-center text-slate-400">
                     <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-500" />
                     <span className="font-medium text-xs">Đang tải danh sách nhà cung cấp...</span>
                   </td>
                 </tr>
               ) : suppliers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-14 text-center text-slate-400">
+                  <td colSpan={6} className="py-14 text-center text-slate-400">
                     <Building2 className="h-8 w-8 mx-auto mb-2 text-slate-300" />
                     <p className="font-semibold text-slate-600 text-sm">Không tìm thấy nhà cung cấp nào</p>
                     <p className="text-xs text-slate-400 mt-1">
@@ -421,7 +428,7 @@ export const SuppliersPage: React.FC = () => {
                       className="hover:bg-slate-50/70 transition-colors"
                     >
                       {/* Mã NCC */}
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => handleViewDetail(supplier)}
@@ -432,66 +439,27 @@ export const SuppliersPage: React.FC = () => {
                         </button>
                       </td>
 
-                      {/* Tên NCC & MST */}
-                      <td className="px-4 py-3">
+                      {/* Tên NCC (Chỉ tên, không kèm MST) */}
+                      <td className="px-4 py-3.5">
                         <button
                           type="button"
                           onClick={() => handleViewDetail(supplier)}
-                          className="text-left font-bold text-slate-800 hover:text-blue-600 transition-colors cursor-pointer"
+                          className="text-left font-bold text-slate-800 hover:text-blue-600 transition-colors cursor-pointer line-clamp-1"
                           title="Bấm để xem chi tiết đối tác"
                         >
                           {supplier.name}
                         </button>
-                        {(supplier.taxCode || supplier.tax_code) && (
-                          <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
-                            <FileText className="h-3 w-3" />
-                            <span>MST: {supplier.taxCode || supplier.tax_code}</span>
-                          </div>
-                        )}
                       </td>
 
-                      {/* Liên hệ - Ẩn trên mobile rất nhỏ, xem ở modal chi tiết */}
-                      <td className="px-4 py-3 whitespace-nowrap hidden sm:table-cell">
-                        <div className="text-slate-700">
+                      {/* Người đại diện (Chỉ tên, không kèm SĐT/Email) */}
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span className="text-slate-700 font-medium">
                           {supplier.contactName || supplier.contact_name || "—"}
-                        </div>
-                        <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-0.5">
-                          {supplier.phone && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="h-3 w-3 text-slate-400" />
-                              {supplier.phone}
-                            </span>
-                          )}
-                          {supplier.email && (
-                            <span className="flex items-center gap-1">
-                              <Mail className="h-3 w-3 text-slate-400" />
-                              {supplier.email}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Địa chỉ - Ẩn trên màn hình < xl, xem ở modal chi tiết */}
-                      <td className="px-4 py-3 max-w-xs truncate text-slate-600 hidden xl:table-cell">
-                        {supplier.address ? (
-                          <div className="flex items-center gap-1" title={supplier.address}>
-                            <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                            <span className="truncate">{supplier.address}</span>
-                          </div>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-
-                      {/* Điều khoản TT - Ẩn trên màn hình < lg */}
-                      <td className="px-4 py-3 text-center whitespace-nowrap hidden lg:table-cell">
-                        <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-[11px] font-semibold">
-                          {supplier.paymentTerms || supplier.payment_terms || "NET_30"}
                         </span>
                       </td>
 
-                      {/* Ràng buộc Phiếu nhập - Ẩn trên màn hình < md */}
-                      <td className="px-4 py-3 text-center whitespace-nowrap hidden md:table-cell">
+                      {/* Ràng buộc Phiếu nhập */}
+                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
                         {hasReceipts ? (
                           <span
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-semibold border border-indigo-100/60"
@@ -507,8 +475,8 @@ export const SuppliersPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Trạng thái & Toggle */}
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      {/* Trạng thái & Nút Toggle */}
+                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-2">
                           <span
                             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
@@ -536,7 +504,7 @@ export const SuppliersPage: React.FC = () => {
                               }
                               className={`p-1 rounded-lg transition-colors cursor-pointer ${
                                 isActive
-                                  ? "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                                  ? "text-slate-400 hover:text-amber-600 hover:bg-amber-50"
                                   : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
                               }`}
                             >
@@ -546,8 +514,8 @@ export const SuppliersPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Thao tác (Xem chi tiết, Sửa, Xóa) */}
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      {/* Thao tác (Xem chi tiết, Xóa - Cây bút sửa nằm trong modal chi tiết) */}
+                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
                           <button
                             type="button"
@@ -559,28 +527,14 @@ export const SuppliersPage: React.FC = () => {
                           </button>
 
                           {canManageSuppliers && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingSupplier(supplier);
-                                  setFormModalOpen(true);
-                                }}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                                title="Chỉnh sửa thông tin"
-                              >
-                                <Edit2 className="h-3.5 w-3.5" />
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteClick(supplier)}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                title="Xóa nhà cung cấp"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteClick(supplier)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Xóa nhà cung cấp"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
                           )}
                         </div>
                       </td>
@@ -639,6 +593,11 @@ export const SuppliersPage: React.FC = () => {
         onClose={() => {
           setFormModalOpen(false);
           setEditingSupplier(null);
+          if (returnToDetailSupplier) {
+            setSelectedSupplierForDetail(returnToDetailSupplier);
+            setDetailModalOpen(true);
+            setReturnToDetailSupplier(null);
+          }
         }}
         onSubmit={handleFormSubmit}
         initialData={editingSupplier}
@@ -653,9 +612,9 @@ export const SuppliersPage: React.FC = () => {
           setSelectedSupplierForDetail(null);
         }}
         onEdit={(supplier) => {
-          setDetailModalOpen(false);
-          setSelectedSupplierForDetail(null);
+          setReturnToDetailSupplier(supplier);
           setEditingSupplier(supplier);
+          setDetailModalOpen(false);
           setFormModalOpen(true);
         }}
         canEdit={canManageSuppliers}

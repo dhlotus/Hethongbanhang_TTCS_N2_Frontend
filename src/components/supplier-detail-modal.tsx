@@ -8,10 +8,7 @@ import {
   MapPin,
   Calendar,
   CreditCard,
-  Receipt,
-  X,
   Edit2,
-  Info,
 } from "lucide-react";
 import type { Supplier } from "../types/supplier";
 
@@ -54,7 +51,6 @@ export const SupplierDetailModal: React.FC<SupplierDetailModalProps> = ({
   if (typeof document === "undefined") return null;
 
   const isActive = supplier.status === "ACTIVE";
-  const hasReceipts = Boolean(supplier.hasReceipts ?? supplier.has_receipts);
   const taxCode = supplier.taxCode || supplier.tax_code;
   const contactName = supplier.contactName || supplier.contact_name;
   const paymentTerms = supplier.paymentTerms || supplier.payment_terms || "NET_30";
@@ -92,84 +88,71 @@ export const SupplierDetailModal: React.FC<SupplierDetailModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 bg-slate-50/60">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 border border-blue-100/60 shadow-2xs">
-              <Building2 className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-md shrink-0">
-                  {supplier.code}
-                </span>
-                <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                    isActive
-                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50"
-                      : "bg-slate-100 text-slate-600 border border-slate-200/50"
-                  }`}
-                >
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      isActive ? "bg-emerald-500" : "bg-slate-400"
-                    }`}
-                  />
-                  {isActive ? "Đang giao dịch" : "Ngừng giao dịch"}
-                </span>
-              </div>
-              <h2 className="text-base font-bold text-slate-900 truncate mt-0.5" title={supplier.name}>
-                {supplier.name}
-              </h2>
-            </div>
+        <div className="flex items-center gap-3 px-6 py-4.5 border-b border-slate-100 bg-slate-50/60">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 border border-blue-100/60 shadow-2xs">
+            <Building2 className="h-5 w-5" />
           </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="rounded-xl p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer shrink-0 ml-2"
-            title="Đóng"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-bold text-slate-900 truncate" title={supplier.name}>
+              {supplier.name}
+            </h2>
+          </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5 text-xs text-slate-700">
           {/* Thông tin pháp lý & thanh toán */}
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 space-y-3">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 space-y-3.5">
             <h3 className="font-bold text-slate-800 text-[13px] flex items-center gap-2">
               <FileText className="h-4 w-4 text-blue-600" />
               Thông tin Doanh nghiệp & Thanh toán
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+              {/* Mã nhà cung cấp */}
+              <div>
+                <span className="text-[11px] text-slate-400 font-medium">Mã nhà cung cấp</span>
+                <div className="mt-1">
+                  <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200/60 px-2.5 py-1 rounded-lg inline-block">
+                    {supplier.code}
+                  </span>
+                </div>
+              </div>
+
+              {/* Trạng thái hoạt động */}
+              <div>
+                <span className="text-[11px] text-slate-400 font-medium">Trạng thái hoạt động</span>
+                <div className="mt-1">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                      isActive
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50"
+                        : "bg-slate-100 text-slate-600 border border-slate-200/50"
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        isActive ? "bg-emerald-500" : "bg-slate-400"
+                      }`}
+                    />
+                    {isActive ? "Đang giao dịch" : "Ngừng giao dịch"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Mã số thuế */}
               <div>
                 <span className="text-[11px] text-slate-400 font-medium">Mã số thuế</span>
-                <p className="font-semibold text-slate-800 text-xs mt-0.5">
+                <p className="font-semibold text-slate-800 text-xs mt-1">
                   {taxCode || <span className="text-slate-400 font-normal">Chưa cập nhật</span>}
                 </p>
               </div>
 
+              {/* Điều khoản thanh toán */}
               <div>
                 <span className="text-[11px] text-slate-400 font-medium">Điều khoản thanh toán</span>
-                <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="flex items-center gap-1.5 mt-1">
                   <CreditCard className="h-3.5 w-3.5 text-slate-400" />
                   <span className="font-semibold text-slate-800 text-xs">{paymentTerms}</span>
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <span className="text-[11px] text-slate-400 font-medium">Lịch sử phiếu nhập kho</span>
-                <div className="mt-1">
-                  {hasReceipts ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-semibold border border-indigo-100">
-                      <Receipt className="h-3.5 w-3.5 text-indigo-600" />
-                      Đã phát sinh chứng từ phiếu nhập kho trong hệ thống
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 text-xs font-medium">
-                      <Info className="h-3.5 w-3.5" />
-                      Chưa phát sinh phiếu nhập kho (có thể xóa an toàn)
-                    </span>
-                  )}
                 </div>
               </div>
             </div>

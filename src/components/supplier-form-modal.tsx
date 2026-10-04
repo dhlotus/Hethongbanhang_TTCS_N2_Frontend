@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
-  X,
   Building2,
   Phone,
   Mail,
@@ -177,31 +176,15 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100/50 shadow-2xs">
-              <Building2 className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-800">
-                {isEditMode
-                  ? "Chỉnh sửa nhà cung cấp"
-                  : "Thêm nhà cung cấp mới"}
-              </h2>
-              <p className="text-xs text-slate-500">
-                {isEditMode
-                  ? `Cập nhật thông tin đối tác ${initialData?.code || ""}`
-                  : "Khai báo đối tác cung ứng hàng hóa cho hệ thống kho"}
-              </p>
-            </div>
+        <div className="flex items-center gap-3 px-6 py-4.5 border-b border-slate-100 bg-slate-50/70">
+          <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100/50 shadow-2xs">
+            <Building2 className="h-5 w-5" />
           </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <h2 className="text-base font-bold text-slate-800">
+            {isEditMode
+              ? "Chỉnh sửa nhà cung cấp"
+              : "Thêm nhà cung cấp mới"}
+          </h2>
         </div>
 
         {/* Body Form */}
