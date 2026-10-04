@@ -6,7 +6,9 @@ import { ResetPasswordPage } from "../pages/reset-password-page";
 import { ChangePasswordPage } from "../pages/change-password-page";
 import { RoleModulePage } from "../pages/role-module-page";
 import { ProductsPage } from "../pages/products-page";
+import { PriceListsPage } from "../pages/price-lists-page";
 import { SuppliersPage } from "../pages/suppliers-page";
+import { CategoriesPage } from "../pages/categories-page";
 import { UsersPage } from "../pages/users-page";
 import { AuditLogsPage } from "../pages/audit-logs-page";
 import { ProfilePage } from "../pages/profile-page";
@@ -196,17 +198,22 @@ export const AppRoutes: React.FC = () => {
                   />
                 }
               />
-              <Route
-                path="/catalog/pricing"
-                element={
-                  <RoleModulePage
-                    title="Bảng giá & Chiết khấu B2B"
-                    subtitle="Cấu hình ma trận bảng giá theo cấp đại lý (Cấp 1, Cấp 2), chiết khấu bậc thang và khuyến mãi"
-                    requiredRole="Quản lý kinh doanh & Admin"
-                  />
-                }
-              />
             </Route>
+
+            {/* ------------------------------------------------------------- */}
+            {/* PHÂN HỆ QUẢN LÝ BẢNG GIÁ & CHIẾT KHẤU B2B (SN-27)              */}
+            {/* ------------------------------------------------------------- */}
+            <Route
+              element={
+                <RoleGuard
+                  allowedRoles={["ADMIN", "SALES_MANAGER", "SALES_REP"]}
+                  moduleName="Quản lý Bảng giá & Chiết khấu B2B"
+                />
+              }
+            >
+              <Route path="/catalog/pricing" element={<PriceListsPage />} />
+            </Route>
+
 
             {/* ------------------------------------------------------------- */}
             {/* PHÂN HỆ 4 & 5: KHO VẬN (WAREHOUSE_KEEPER & WAREHOUSE_MANAGER) */}
@@ -437,6 +444,8 @@ export const AppRoutes: React.FC = () => {
             {/* ------------------------------------------------------------- */}
             {/* Danh mục sản phẩm (giá vốn tự động ẩn trên server theo SN-10) */}
             <Route path="/catalog/products" element={<ProductsPage />} />
+            {/* Quản lý Cây nhóm hàng đa cấp (Tree Structure - SN-150 / SN-22) */}
+            <Route path="/catalog/categories" element={<CategoriesPage />} />
 
             {/* Cài đặt bảo mật & Đổi mật khẩu cá nhân */}
             <Route path="/profile" element={<ProfilePage />} />

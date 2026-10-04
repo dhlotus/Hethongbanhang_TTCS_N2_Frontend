@@ -174,6 +174,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: "Hàng hóa",
     },
     {
+      id: "catalog-pricing",
+      name: "Bảng giá & Chiết khấu",
+      path: "/catalog/pricing",
+      icon: BadgePercent,
+      category: "Hàng hóa",
+    },
+    {
       id: "inventory-stock",
       name: "Tra cứu tồn kho",
       path: "/inventory/stock",
