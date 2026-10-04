@@ -27,7 +27,9 @@ import {
   AlertTriangle,
   Store,
   Eye,
+  FileSpreadsheet,
 } from "lucide-react";
+import { ExcelImportModal } from "../components/excel-import-modal";
 import { usersService } from "../services/users.service";
 import type {
   AssignedCustomerItem,
@@ -182,6 +184,7 @@ export const UsersPage: React.FC = () => {
 
   // Modal Tạo / Chỉnh sửa & Quản lý Lỗi Validate
   const [modalOpen, setModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserManagementItem | null>(null);
   const [formData, setFormData] = useState<CreateUserPayload>({
     fullName: "",
@@ -857,6 +860,17 @@ export const UsersPage: React.FC = () => {
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">Làm mới</span>
+          </button>
+
+          {/* Nút Import hàng loạt từ Excel (SN-147) */}
+          <button
+            type="button"
+            onClick={() => setImportModalOpen(true)}
+            title="Import nhân sự từ file Excel (.xlsx)"
+            className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-[0.98] transition-all shadow-2xs"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            <span className="hidden sm:inline">Import Excel</span>
           </button>
 
           <button
@@ -2178,6 +2192,16 @@ export const UsersPage: React.FC = () => {
           </div>,
           document.body
         )}
+
+      {/* ================================================================= */}
+      {/* EXCEL IMPORT MODAL – SN-147                                        */}
+      {/* ================================================================= */}
+      {importModalOpen && (
+        <ExcelImportModal
+          onClose={() => setImportModalOpen(false)}
+          onImportSuccess={fetchUsers}
+        />
+      )}
     </div>
   );
 };

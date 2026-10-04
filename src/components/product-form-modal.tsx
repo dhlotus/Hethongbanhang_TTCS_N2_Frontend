@@ -351,7 +351,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 <input
                   type="text"
                   {...register("sku", {
-                    onChange: (e) => {
+                    onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
                       const clean = e.target.value
                         .toUpperCase()
                         .replace(/\s+/g, "");

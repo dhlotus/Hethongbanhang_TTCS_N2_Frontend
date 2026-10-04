@@ -88,3 +88,47 @@ export interface UpdateUserStatusResponse extends UserManagementItem {
   assignedCustomersCount?: number;
   handoverWarning?: string;
 }
+
+// ──────────────────────────────────────────────────────────────
+// SN-147: Import tài khoản hàng loạt từ Excel
+// Mapping chính xác với ImportUsersReportDto của BE
+// ──────────────────────────────────────────────────────────────
+
+/** Kết quả xử lý từng dòng (khớp với ImportRowResult của BE) */
+export interface ImportRowResult {
+  row: number;
+  rawData: {
+    fullName?: string;
+    username?: string;
+    email?: string;
+    role?: string;
+    phone?: string;
+    assignedWarehouse?: string;
+  };
+  status: 'SUCCESS' | 'FAILED';
+  createdUser?: {
+    id: string;
+    username: string;
+    fullName: string;
+    email: string;
+    role: string;
+    status: string;
+  };
+  temporaryPassword?: string;
+  errors?: string[];
+}
+
+/** Báo cáo tổng kết (khớp với ImportUsersReportDto của BE) */
+export interface ExcelImportReport {
+  totalRows: number;
+  successCount: number;
+  failedCount: number;
+  results: ImportRowResult[];
+  summary: string;
+}
+
+export interface ExcelImportResponse {
+  statusCode: number;
+  message: string;
+  data: ExcelImportReport;
+}
