@@ -1,12 +1,13 @@
 import React from "react";
 import {
   Clock,
-  ArrowRight,
   Eye,
   RefreshCw,
   ScrollText,
   ChevronLeft,
   ChevronRight,
+  User,
+  Database,
 } from "lucide-react";
 import type { AuditLogItem, AuditActionType } from "../../types/audit-log";
 import {
@@ -66,98 +67,30 @@ const ACTION_BADGES: Record<
 };
 
 /**
- * Render trực quan chi tiết thay đổi (Old Value -> New Value)
- * - Nếu thay đổi đơn giản: ~~Giá trị cũ (đỏ)~~ -> **Giá trị mới (xanh lá)**
- * - Nếu nhiều trường: Hiển thị tóm tắt nghiệp vụ xúc tích
- * (Toàn bộ thao tác mở modal được chuẩn hóa duy nhất tại cột Thao tác)
+ * Trích xuất tóm tắt nghiệp vụ ngắn gọn cho nhật ký
  */
-const RenderDiffCell: React.FC<{
-  item: AuditLogItem;
-}> = ({ item }) => {
-  const { old_values, new_values, summary, action } = item;
-
-  // Case 1: Thao tác Tạo mới (Không có giá trị cũ)
-  if (action === "CREATE" || !old_values) {
-    return (
-      <div className="flex items-center gap-1.5 min-w-0">
-        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md shrink-0 ring-1 ring-inset ring-emerald-600/10">
-          Mới
-        </span>
-        <span className="font-semibold text-emerald-900 truncate" title={summary}>
-          {summary || "Khởi tạo dữ liệu mới vào hệ thống"}
-        </span>
-      </div>
-    );
+function getLogSummary(log: AuditLogItem): string {
+  if (log.summary && log.summary.trim()) {
+    return log.summary.trim();
   }
 
-  // Case 2: Thao tác Xóa dữ liệu (Không có giá trị mới)
-  if (action === "DELETE" || !new_values) {
-    return (
-      <div className="flex items-center gap-1.5 min-w-0">
-        <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md shrink-0 ring-1 ring-inset ring-rose-600/10">
-          Đã xóa
-        </span>
-        <span className="line-through text-rose-600 truncate" title={summary}>
-          {summary || "Dữ liệu đã bị xóa khỏi hệ thống"}
-        </span>
-      </div>
+  if (log.action === "CREATE") return "Khởi tạo dữ liệu mới vào hệ thống";
+  if (log.action === "DELETE") return "Xóa bỏ dữ liệu khỏi hệ thống";
+  if (log.action === "STOCK_ADJUST") return "Điều chỉnh số lượng tồn kho";
+  if (log.action === "APPROVE") return "Phê duyệt giao dịch thành công";
+  if (log.action === "CANCEL") return "Hủy bỏ giao dịch";
+
+  if (log.old_values && log.new_values) {
+    const diffKeys = Object.keys(log.new_values).filter(
+      (k) => JSON.stringify(log.old_values?.[k]) !== JSON.stringify(log.new_values?.[k])
     );
-  }
-
-  // Case 3: Thao tác Cập nhật / Duyệt / Điều chỉnh (So sánh Old -> New)
-  const oldKeys = Object.keys(old_values);
-  const newKeys = Object.keys(new_values);
-  const allKeys = Array.from(new Set([...oldKeys, ...newKeys]));
-
-  const diffKeys = allKeys.filter(
-    (k) => JSON.stringify(old_values[k]) !== JSON.stringify(new_values[k])
-  );
-
-  const isSimpleDiff = diffKeys.length <= 2;
-
-  // Lấy giá trị chuỗi hiển thị gọn gàng
-  const formatVal = (v: unknown): string => {
-    if (v === null || v === undefined) return "null";
-    if (typeof v === "number") {
-      if (v >= 1000) {
-        return new Intl.NumberFormat("vi-VN").format(v);
-      }
-      return v.toString();
+    if (diffKeys.length > 0) {
+      return `Cập nhật ${diffKeys.length} trường thông tin`;
     }
-    if (typeof v === "boolean") return v ? "true" : "false";
-    if (typeof v === "object") return "{...}";
-    return String(v);
-  };
-
-  if (isSimpleDiff && diffKeys.length > 0) {
-    return (
-      <div className="flex items-center gap-2 flex-wrap text-xs">
-        {diffKeys.map((key) => {
-          const oldVal = formatVal(old_values[key]);
-          const newVal = formatVal(new_values[key]);
-          return (
-            <span key={key} className="inline-flex items-center gap-1.5 flex-wrap">
-              <span className="text-slate-400 font-mono text-[11px]">{key}:</span>
-              <span className="line-through text-rose-500 font-medium">{oldVal}</span>
-              <ArrowRight className="h-3 w-3 text-slate-400 shrink-0" />
-              <span className="font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-                {newVal}
-              </span>
-            </span>
-          );
-        })}
-      </div>
-    );
   }
 
-  return (
-    <div className="flex items-center gap-1.5 min-w-0">
-      <span className="text-slate-800 font-medium truncate" title={summary}>
-        {summary || `Cập nhật ${diffKeys.length} trường dữ liệu`}
-      </span>
-    </div>
-  );
-};
+  return "Cập nhật dữ liệu hệ thống";
+}
 
 export const AuditTable: React.FC<AuditTableProps> = ({
   logs,
@@ -172,27 +105,29 @@ export const AuditTable: React.FC<AuditTableProps> = ({
 }) => {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-      {/* Bảng dữ liệu chính */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs text-slate-600">
+      {/* ============================================================== */}
+      {/* 1. GIAO DIỆN DESKTOP / TABLET (Bảng dữ liệu tinh giản, không scroll) */}
+      {/* ============================================================== */}
+      <div className="hidden md:block">
+        <table className="w-full text-left text-xs text-slate-600 border-collapse">
           <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-100">
             <tr>
-              <th className="px-4 py-3.5 font-semibold whitespace-nowrap w-44">
+              <th className="px-4 py-3.5 font-semibold whitespace-nowrap w-36 lg:w-40">
                 Thời gian
               </th>
-              <th className="px-4 py-3.5 font-semibold whitespace-nowrap min-w-[200px]">
+              <th className="px-4 py-3.5 font-semibold whitespace-nowrap">
                 Người thực hiện
               </th>
-              <th className="px-4 py-3.5 font-semibold whitespace-nowrap text-center w-36">
+              <th className="px-3.5 py-3.5 font-semibold whitespace-nowrap text-center w-28">
                 Hành động
               </th>
-              <th className="px-4 py-3.5 font-semibold whitespace-nowrap min-w-[220px]">
+              <th className="px-4 py-3.5 font-semibold whitespace-nowrap">
                 Đối tượng
               </th>
-              <th className="px-4 py-3.5 font-semibold min-w-[320px]">
-                Chi tiết thay đổi (Old Value → New Value)
+              <th className="hidden lg:table-cell px-4 py-3.5 font-semibold">
+                Nội dung thay đổi
               </th>
-              <th className="px-4 py-3.5 font-semibold text-center whitespace-nowrap w-24">
+              <th className="px-3.5 py-3.5 font-semibold text-center whitespace-nowrap w-24">
                 Thao tác
               </th>
             </tr>
@@ -233,6 +168,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                   resolvedCode
                 );
                 const formattedUser = formatUserWithRole(log.user);
+                const summaryText = getLogSummary(log);
 
                 return (
                   <tr
@@ -240,27 +176,25 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                     className="hover:bg-slate-50/70 transition-colors"
                   >
                     {/* Cột 1: Thời gian */}
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-4 py-3.5 whitespace-nowrap">
                       <div className="flex items-center gap-1.5 font-mono text-slate-700">
                         <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                         <span>{formatAuditDateTime(log.created_at)}</span>
                       </div>
                     </td>
 
-                    {/* Cột 2: Người thực hiện (Chỉ Họ tên & Vai trò / Chức vụ, không email/IP) */}
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col">
-                        <span
-                          className="font-semibold text-slate-900 leading-snug"
-                          title={formattedUser}
-                        >
-                          {formattedUser}
-                        </span>
-                      </div>
+                    {/* Cột 2: Người thực hiện (Họ tên & Vai trò) */}
+                    <td className="px-4 py-3.5">
+                      <span
+                        className="font-semibold text-slate-900 leading-snug line-clamp-1"
+                        title={formattedUser}
+                      >
+                        {formattedUser}
+                      </span>
                     </td>
 
                     {/* Cột 3: Hành động */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                    <td className="px-3.5 py-3.5 text-center whitespace-nowrap">
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${badgeInfo.badgeClass}`}
                       >
@@ -271,10 +205,10 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                       </span>
                     </td>
 
-                    {/* Cột 4: Đối tượng (Tên nghiệp vụ & Mã SKU/Code thực tế) */}
-                    <td className="px-4 py-3">
+                    {/* Cột 4: Đối tượng */}
+                    <td className="px-4 py-3.5">
                       <div className="flex flex-col">
-                        <span className="font-semibold text-slate-800 leading-snug">
+                        <span className="font-semibold text-slate-800 leading-snug line-clamp-1">
                           {displayEntityName}
                         </span>
                         <span className="text-[11px] font-mono text-blue-700 font-semibold mt-0.5">
@@ -283,13 +217,18 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                       </div>
                     </td>
 
-                    {/* Cột 5: Chi tiết thay đổi (Old Value -> New Value) */}
-                    <td className="px-4 py-3">
-                      <RenderDiffCell item={log} />
+                    {/* Cột 5: Nội dung thay đổi tóm tắt (Ẩn trên tablet md để tránh tràn thanh cuộn) */}
+                    <td className="hidden lg:table-cell px-4 py-3.5">
+                      <span
+                        className="text-slate-600 line-clamp-2 leading-relaxed"
+                        title={summaryText}
+                      >
+                        {summaryText}
+                      </span>
                     </td>
 
-                    {/* Cột 6: Thao tác (Read-Only - Chuẩn hóa duy nhất 1 nút mở chi tiết) */}
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                    {/* Cột 6: Thao tác (Chi tiết) */}
+                    <td className="px-3.5 py-3.5 text-center whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => onViewDiff(log)}
@@ -308,82 +247,242 @@ export const AuditTable: React.FC<AuditTableProps> = ({
         </table>
       </div>
 
-      {/* Thanh phân trang chuẩn Clean SaaS (Mặc định 20 dòng / trang) */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-100 text-xs text-slate-500 bg-slate-50/40">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div>
-            Hiển thị{" "}
-            <strong>
-              {total === 0 ? 0 : (page - 1) * limit + 1} -{" "}
-              {Math.min(page * limit, total)}
-            </strong>{" "}
-            trong tổng số <strong>{total}</strong> bản ghi nhật ký
+      {/* ============================================================== */}
+      {/* 2. GIAO DIỆN DI ĐỘNG (Mobile Card View - TUYỆT ĐỐI KHÔNG SCROLL NGANG) */}
+      {/* ============================================================== */}
+      <div className="block md:hidden">
+        {loading ? (
+          <div className="py-12 text-center text-slate-400">
+            <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-500" />
+            <span className="font-medium text-xs">
+              Đang tải dữ liệu nhật ký hệ thống...
+            </span>
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="py-12 px-4 text-center text-slate-400">
+            <ScrollText className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+            <p className="font-semibold text-slate-700 text-sm">
+              Không tìm thấy bản ghi nhật ký nào
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              Thử điều chỉnh lại bộ lọc hoặc khoảng thời gian.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100 p-3 sm:p-4 space-y-3">
+            {logs.map((log) => {
+              const badgeInfo = ACTION_BADGES[log.action] || {
+                label: log.action,
+                badgeClass: "bg-slate-100 text-slate-700",
+                dotClass: "bg-slate-400",
+              };
+
+              const resolvedCode = resolveEntityCode(log);
+              const displayEntityName = resolveEntityDisplayName(
+                log.entity_name,
+                resolvedCode
+              );
+              const formattedUser = formatUserWithRole(log.user);
+              const summaryText = getLogSummary(log);
+
+              return (
+                <div
+                  key={log.id}
+                  className="rounded-2xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-2xs hover:shadow-xs transition-all space-y-3"
+                >
+                  {/* Hàng 1: Hành động & Thời gian */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-100">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${badgeInfo.badgeClass}`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full shrink-0 ${badgeInfo.dotClass}`}
+                      />
+                      <span>{badgeInfo.label}</span>
+                    </span>
+
+                    <div className="flex items-center gap-1 font-mono text-[11px] text-slate-500">
+                      <Clock className="h-3.5 w-3.5 text-slate-400" />
+                      <span>{formatAuditDateTime(log.created_at)}</span>
+                    </div>
+                  </div>
+
+                  {/* Hàng 2: Thông tin chi tiết Người thực hiện & Đối tượng */}
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-start gap-2">
+                      <User className="h-3.5 w-3.5 text-slate-400 mt-0.5 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <span className="text-slate-400 text-[11px]">Người thực hiện: </span>
+                        <span className="font-semibold text-slate-800">
+                          {formattedUser}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2">
+                      <Database className="h-3.5 w-3.5 text-blue-500 mt-0.5 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <span className="text-slate-400 text-[11px]">Đối tượng: </span>
+                        <span className="font-medium text-slate-800">{displayEntityName} </span>
+                        <span className="font-mono text-blue-700 font-semibold">
+                          [{resolvedCode}]
+                        </span>
+                      </div>
+                    </div>
+
+                    {summaryText && (
+                      <div className="bg-slate-50 rounded-xl p-2.5 text-[11px] text-slate-600 border border-slate-100 leading-relaxed">
+                        {summaryText}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Hàng 3: Nút xem chi tiết thay đổi (To rõ, dễ bấm trên mobile) */}
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => onViewDiff(log)}
+                      className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-slate-200/90 bg-white hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 text-slate-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+                    >
+                      <Eye className="h-3.5 w-3.5 text-slate-400" />
+                      <span>Xem chi tiết đối chiếu thay đổi</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ============================================================== */}
+      {/* 3. THANH PHÂN TRANG (Responsive đa thiết bị) */}
+      {/* ============================================================== */}
+      <div className="px-4 py-3 border-t border-slate-100 text-xs text-slate-500 bg-slate-50/40">
+        {/* Phân trang cho màn hình lớn (sm trở lên) */}
+        <div className="hidden sm:flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div>
+              Hiển thị{" "}
+              <strong>
+                {total === 0 ? 0 : (page - 1) * limit + 1} -{" "}
+                {Math.min(page * limit, total)}
+              </strong>{" "}
+              trong tổng số <strong>{total}</strong> bản ghi
+            </div>
+
+            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+              <span className="text-slate-400">Số dòng:</span>
+              <select
+                value={limit}
+                onChange={(e) => onLimitChange(Number(e.target.value))}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-semibold text-slate-700 shadow-2xs focus:border-blue-500 focus:outline-none cursor-pointer"
+              >
+                <option value={10}>10 dòng</option>
+                <option value={20}>20 dòng</option>
+                <option value={50}>50 dòng</option>
+                <option value={100}>100 dòng</option>
+              </select>
+            </div>
           </div>
 
-          <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
-            <span className="text-slate-400">Số dòng/trang:</span>
-            <select
-              value={limit}
-              onChange={(e) => onLimitChange(Number(e.target.value))}
-              className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-semibold text-slate-700 shadow-2xs focus:border-blue-500 focus:outline-none cursor-pointer"
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => onPageChange(page - 1)}
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
             >
-              <option value={10}>10 dòng</option>
-              <option value={20}>20 dòng (Chuẩn)</option>
-              <option value={50}>50 dòng</option>
-              <option value={100}>100 dòng</option>
-            </select>
+              <ChevronLeft className="h-4 w-4" />
+              <span>Trước</span>
+            </button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                .map((p, idx, arr) => {
+                  const showEllipsisBefore = idx > 0 && p - arr[idx - 1] > 1;
+                  return (
+                    <React.Fragment key={p}>
+                      {showEllipsisBefore && (
+                        <span className="px-1 text-slate-400 font-bold">...</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => onPageChange(p)}
+                        className={`h-7 min-w-7 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          page === p
+                            ? "bg-blue-600 text-white shadow-2xs shadow-blue-600/30"
+                            : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+            </div>
+
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => onPageChange(page + 1)}
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
+            >
+              <span>Sau</span>
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
 
-        {/* Nút lùi / tiến trang */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => onPageChange(page - 1)}
-            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span>Trước</span>
-          </button>
-
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-              .map((p, idx, arr) => {
-                const showEllipsisBefore = idx > 0 && p - arr[idx - 1] > 1;
-                return (
-                  <React.Fragment key={p}>
-                    {showEllipsisBefore && (
-                      <span className="px-1 text-slate-400 font-bold">...</span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => onPageChange(p)}
-                      className={`h-7 min-w-7 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                        page === p
-                          ? "bg-blue-600 text-white shadow-2xs shadow-blue-600/30"
-                          : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  </React.Fragment>
-                );
-              })}
+        {/* Phân trang tinh gọn cho màn hình di động (dưới sm) */}
+        <div className="flex sm:hidden flex-col gap-2.5">
+          <div className="flex items-center justify-between text-[11px]">
+            <span>
+              Bản ghi <strong>{total === 0 ? 0 : (page - 1) * limit + 1} - {Math.min(page * limit, total)}</strong> / {total}
+            </span>
+            <div className="flex items-center gap-1">
+              <span className="text-slate-400">Dòng:</span>
+              <select
+                value={limit}
+                onChange={(e) => onLimitChange(Number(e.target.value))}
+                className="rounded-lg border border-slate-200 bg-white px-1.5 py-0.5 font-semibold text-slate-700 shadow-2xs focus:outline-none"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
           </div>
 
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => onPageChange(page + 1)}
-            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
-          >
-            <span>Sau</span>
-            <ChevronRight className="h-4 w-4" />
-          </button>
+          <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => onPageChange(page - 1)}
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs text-xs"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span>Trước</span>
+            </button>
+
+            <span className="font-semibold text-slate-700 text-xs">
+              Trang {page} / {totalPages || 1}
+            </span>
+
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => onPageChange(page + 1)}
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs text-xs"
+            >
+              <span>Sau</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
+
