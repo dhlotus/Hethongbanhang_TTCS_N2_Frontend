@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   Camera,
   CheckCircle,
@@ -8,9 +9,11 @@ import {
   Loader2,
   KeyRound,
   LogOut,
+  PencilLine,
 } from "lucide-react";
 import { AvatarUploadModal } from "../components/avatar-upload-modal";
-import { usersService } from "../services/users.service";
+import { ProfileEditModal } from "../components/profile-edit-modal";
+import { usersService, type UpdateMyProfilePayload } from "../services/users.service";
 import { authService } from "../services/auth.service";
 import { tokenStorage } from "../utils/token-storage";
 import { getStoredUser } from "../utils/navigation";
@@ -40,6 +43,7 @@ export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<AuthUser | null>(getStoredUser());
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
+  const [showProfileEditModal, setShowProfileEditModal] = useState<boolean>(false);
   const [showLogoutModal, setShowLogoutModal] = useState<boolean>(false);
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
   const [isExiting, setIsExiting] = useState<boolean>(false);
@@ -122,6 +126,37 @@ export const ProfilePage: React.FC = () => {
       setToast({ type: "success", message: "Ảnh đại diện đã được cập nhật thành công!" });
     } catch {
       setToast({ type: "error", message: "Tải ảnh lên không thành công, vui lòng thử lại." });
+    }
+  };
+
+  const handleProfileSave = async (payload: UpdateMyProfilePayload): Promise<void> => {
+    const currentUser = tokenStorage.getUser() || user;
+    if (!currentUser) {
+      throw new Error("Không tìm thấy thông tin người dùng. Vui lòng tải lại trang.");
+    }
+
+    try {
+      const token = tokenStorage.getAccessToken();
+      const updatedUser = token?.startsWith("demo-jwt-")
+        ? { ...currentUser, ...payload }
+        : await usersService.updateMyProfile(payload);
+      const mergedUser: AuthUser = { ...currentUser, ...updatedUser };
+
+      tokenStorage.setUser(mergedUser);
+      setUser(mergedUser);
+      setShowProfileEditModal(false);
+      setToast({ type: "success", message: "Thông tin cá nhân đã được cập nhật." });
+    } catch (error: unknown) {
+      const responseMessage = axios.isAxiosError<{ message?: string | string[] }>(error)
+        ? error.response?.data?.message
+        : undefined;
+      const message = Array.isArray(responseMessage)
+        ? responseMessage.join(", ")
+        : responseMessage || (error instanceof Error ? error.message : "");
+      throw new Error(
+        message || "Không thể cập nhật hồ sơ. Vui lòng thử lại.",
+        { cause: error },
+      );
     }
   };
 
@@ -215,16 +250,27 @@ export const ProfilePage: React.FC = () => {
 
             {/* Tên người dùng & Tài khoản liên hệ */}
             <div className="space-y-1.5 min-w-0 flex-1">
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                {isFetchingProfile ? (
-                  <span className="inline-flex items-center gap-2 text-slate-400">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Đang đồng bộ hồ sơ...
-                  </span>
-                ) : (
-                  cleanFullName
-                )}
-              </h1>
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                  {isFetchingProfile ? (
+                    <span className="inline-flex items-center gap-2 text-slate-400">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Đang đồng bộ hồ sơ...
+                    </span>
+                  ) : (
+                    cleanFullName
+                  )}
+                </h1>
+                <button
+                  type="button"
+                  id="profile-edit-personal-btn"
+                  onClick={() => setShowProfileEditModal(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  <PencilLine className="h-3.5 w-3.5" />
+                  Chỉnh sửa cá nhân
+                </button>
+              </div>
 
               <p className="text-xs sm:text-sm text-slate-500 font-medium truncate">
                 @{user?.username || "admin"} • {user?.email || "—"}
@@ -355,7 +401,14 @@ export const ProfilePage: React.FC = () => {
           onClose={() => setShowUploadModal(false)}
         />
       )}
+      {showProfileEditModal && (
+        <ProfileEditModal
+          fullName={user?.fullName || cleanFullName}
+          phone={user?.phone || ""}
+          onClose={() => setShowProfileEditModal(false)}
+          onSave={handleProfileSave}
+        />
+      )}
     </div>
   );
 };
-
