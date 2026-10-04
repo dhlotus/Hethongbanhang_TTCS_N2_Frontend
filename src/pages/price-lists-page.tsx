@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
-  BadgePercent,
   Plus,
   RefreshCw,
   Search,
@@ -167,8 +166,9 @@ export const PriceListsPage: React.FC = () => {
       setToast({
         type: 'warning',
         title: 'Khóa sửa an toàn (SN-27)',
-        message: `Bảng giá [${pl.code}] đã phát sinh đơn hàng. Hệ thống khóa sửa trực tiếp để bảo vệ chứng từ, vui lòng sử dụng chức năng "Tạo phiên bản mới (Clone Version)".`,
+        message: `Bảng giá [${pl.code}] đã phát sinh đơn hàng thực tế trong hệ thống. Tuyệt đối không được chỉnh sửa trực tiếp để bảo vệ chứng từ, vui lòng sử dụng chức năng "Tạo phiên bản mới (Clone Version)".`,
       });
+      return;
     }
     setEditingPriceList(pl);
     setIsViewOnly(false);
@@ -348,55 +348,7 @@ export const PriceListsPage: React.FC = () => {
         />
       )}
 
-      {/* 1. Tiêu đề Phân hệ & Thao tác chính */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                <BadgePercent className="h-3.5 w-3.5 text-blue-600" />
-                <span>Chính sách Bảng giá & Chiết khấu B2B (SN-27)</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700 ring-1 ring-inset ring-purple-600/20">
-                <GitBranch className="h-3.5 w-3.5 text-purple-600" />
-                <span>Quản lý Đa phiên bản & Khóa đơn hàng</span>
-              </span>
-            </div>
 
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-              Quản lý Bảng giá & Chiết khấu B2B
-            </h1>
-            <p className="text-sm text-slate-500 max-w-3xl">
-              Cấu hình chính sách giá bán buôn cho Nhà phân phối (Cấp 1), Đại lý (Cấp 2) và Bán lẻ
-              niêm yết. Kiểm soát nghiêm ngặt biên giá sàn và bảo toàn dữ liệu khi đã phát sinh đơn
-              hàng.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={loadPriceLists}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-all cursor-pointer"
-              title="Tải lại danh sách"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Làm mới</span>
-            </button>
-
-            {canManage && (
-              <button
-                type="button"
-                onClick={handleOpenCreateModal}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all cursor-pointer"
-              >
-                <Plus className="h-4 w-4" />
-                <span>+ Thêm mới bảng giá</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* 2. Metrics Header: 4 Thẻ chỉ số tổng quan */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -479,9 +431,9 @@ export const PriceListsPage: React.FC = () => {
           })}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
           {/* Ô Tìm kiếm theo tên / mã */}
-          <div className="sm:col-span-2 relative">
+          <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
@@ -502,7 +454,7 @@ export const PriceListsPage: React.FC = () => {
           </div>
 
           {/* Lọc Trạng thái */}
-          <div className="relative">
+          <div className="sm:w-44">
             <select
               value={selectedStatus}
               onChange={(e) => {
@@ -518,6 +470,30 @@ export const PriceListsPage: React.FC = () => {
               <option value="EXPIRED">Đã hết hạn (Expired)</option>
             </select>
           </div>
+
+          {/* Nút Làm mới */}
+          <button
+            type="button"
+            onClick={loadPriceLists}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer shrink-0 disabled:opacity-50"
+            title="Tải lại danh sách"
+          >
+            <RefreshCw className={`h-4 w-4 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`} />
+            <span className="hidden sm:inline">Làm mới</span>
+          </button>
+
+          {/* Nút Thêm mới bảng giá */}
+          {canManage && (
+            <button
+              type="button"
+              onClick={handleOpenCreateModal}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Thêm mới bảng giá</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -663,12 +639,12 @@ export const PriceListsPage: React.FC = () => {
                               disabled={isLocked}
                               className={`p-1.5 rounded-lg transition-colors ${
                                 isLocked
-                                  ? 'text-slate-300 cursor-not-allowed opacity-60'
+                                  ? 'text-slate-300 cursor-not-allowed opacity-50 bg-slate-50'
                                   : 'text-slate-500 hover:text-amber-600 hover:bg-amber-50 cursor-pointer'
                               }`}
                               title={
                                 isLocked
-                                  ? 'Bảng giá đã có đơn hàng - Không thể sửa trực tiếp'
+                                  ? 'Bảng giá đã có đơn hàng - Tuyệt đối không thể sửa trực tiếp (Vui lòng nhân bản)'
                                   : 'Chỉnh sửa bảng giá'
                               }
                             >
@@ -696,12 +672,12 @@ export const PriceListsPage: React.FC = () => {
                               disabled={isLocked}
                               className={`p-1.5 rounded-lg transition-colors ${
                                 isLocked
-                                  ? 'text-slate-300 cursor-not-allowed opacity-60'
+                                  ? 'text-slate-300 cursor-not-allowed opacity-50 bg-slate-50'
                                   : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'
                               }`}
                               title={
                                 isLocked
-                                  ? 'Bảng giá đã có đơn hàng - Không thể xóa'
+                                  ? 'Bảng giá đã có đơn hàng - Không thể xóa để bảo đảm toàn vẹn dữ liệu'
                                   : 'Xóa bảng giá'
                               }
                             >
@@ -757,6 +733,7 @@ export const PriceListsPage: React.FC = () => {
         onClose={() => setFormModalOpen(false)}
         onSubmit={handleFormSubmit}
         onClone={handleOpenCloneModal}
+        onToast={(type, title, message) => setToast({ type, title, message })}
         initialData={editingPriceList}
         isReadOnly={isViewOnly}
       />

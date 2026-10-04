@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Copy, GitBranch, CheckCircle2 } from 'lucide-react';
+import { Copy, GitBranch, CheckCircle2 } from 'lucide-react';
 import type { PriceList } from '../types/price-list';
 
 interface PriceListCloneModalProps {
@@ -20,13 +20,25 @@ export const PriceListCloneModal: React.FC<PriceListCloneModalProps> = ({
   const [newCode, setNewCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const [isClosing, setIsClosing] = useState(false);
+
   useEffect(() => {
     if (priceList) {
       const nextVer = (priceList.version || 1) + 1;
       setNewName(`${priceList.name} (Bản sao v${nextVer}.0)`);
       setNewCode(`${priceList.code}-V${nextVer}`);
     }
+    setIsClosing(false);
   }, [priceList, isOpen]);
+
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      onClose();
+    }, 200);
+  };
 
   if (!isOpen || !priceList) return null;
 
@@ -37,7 +49,7 @@ export const PriceListCloneModal: React.FC<PriceListCloneModalProps> = ({
     try {
       setSubmitting(true);
       await onConfirm(priceList, newName.trim(), newCode.trim());
-      onClose();
+      handleClose();
     } catch {
       // Toast được hiển thị ở component cha
     } finally {
@@ -46,9 +58,19 @@ export const PriceListCloneModal: React.FC<PriceListCloneModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/35 backdrop-blur-[2px] animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden">
-        {/* Header */}
+    <div
+      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/35 backdrop-blur-[2px] transition-all ${
+        isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
+      }`}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden ${
+          isClosing ? 'animate-modal-out' : 'animate-modal-in'
+        }`}
+      >
+        {/* Header - Không có icon X thừa */}
         <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 bg-linear-to-r from-amber-50/70 to-white">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-500/20">
@@ -59,18 +81,10 @@ export const PriceListCloneModal: React.FC<PriceListCloneModalProps> = ({
                 Tạo Phiên bản Bảng giá Mới (Clone)
               </h2>
               <p className="text-xs text-slate-500">
-                Kế thừa toàn bộ danh sách sản phẩm từ bảng giá gốc đã có đơn hàng
+                Kế thừa danh sách sản phẩm từ bảng giá gốc đã phát sinh đơn hàng
               </p>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
         {/* Nội dung form */}
@@ -132,7 +146,7 @@ export const PriceListCloneModal: React.FC<PriceListCloneModalProps> = ({
           <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
             >
               Hủy
