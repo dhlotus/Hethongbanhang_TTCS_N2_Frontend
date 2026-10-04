@@ -6,6 +6,7 @@ import { ResetPasswordPage } from "../pages/reset-password-page";
 import { ChangePasswordPage } from "../pages/change-password-page";
 import { RoleModulePage } from "../pages/role-module-page";
 import { ProductsPage } from "../pages/products-page";
+import { CategoriesPage } from "../pages/categories-page";
 import { UsersPage } from "../pages/users-page";
 import { AuditLogsPage } from "../pages/audit-logs-page";
 import { ProfilePage } from "../pages/profile-page";
@@ -416,6 +417,8 @@ export const AppRoutes: React.FC = () => {
             {/* ------------------------------------------------------------- */}
             {/* Danh mục sản phẩm (giá vốn tự động ẩn trên server theo SN-10) */}
             <Route path="/catalog/products" element={<ProductsPage />} />
+            {/* Quản lý Cây nhóm hàng đa cấp (Tree Structure - SN-150 / SN-22) */}
+            <Route path="/catalog/categories" element={<CategoriesPage />} />
 
             {/* Cài đặt bảo mật & Đổi mật khẩu cá nhân */}
             <Route path="/profile" element={<ProfilePage />} />

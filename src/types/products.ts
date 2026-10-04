@@ -7,9 +7,14 @@ export interface ProductCategory {
   id: string;
   name: string;
   code: string;
-  level: 1 | 2;
-  parentId?: string;
+  level: number;
+  parentId?: string | null;
+  parent_id?: string | null;
+  description?: string | null;
+  productCount?: number;
+  product_count?: number;
   subCategories?: ProductCategory[];
+  children?: ProductCategory[];
 }
 
 /**
@@ -22,7 +27,7 @@ export interface Product {
   category: string;
   categoryId?: string;
   parentCategory?: string; // Nhóm hàng Cấp 1 (VD: Sữa & Chế phẩm sữa)
-  subCategory?: string;    // Nhóm hàng Cấp 2 (VD: Sữa hạt dinh dưỡng)
+  subCategory?: string;    // Nhóm hàng Cấp 2 hoặc Cấp 3 (VD: Sữa bột công thức / Sữa bột cho trẻ em)
   baseUnit: string;        // ĐVT cơ sở (VD: Lon, Chai, Hộp, Túi, Cái...)
   packagingSpec?: string;  // Quy cách đóng gói (VD: 24 lon/thùng, 12 chai/lốc)
   price: number;           // Giá bán niêm yết
@@ -51,6 +56,7 @@ export interface ProductQueryParams {
   page?: number;
   limit?: number;
   search?: string;
+  categoryId?: string;
   category?: string;
   parentCategory?: string;
   subCategory?: string;
@@ -76,6 +82,7 @@ export interface CreateProductPayload {
   packagingSpec: string;
   price: number;
   costPrice?: number;
+  stockQuantity?: number;
   status: ProductStatus;
   imageUrl?: string;
   barcode?: string;
