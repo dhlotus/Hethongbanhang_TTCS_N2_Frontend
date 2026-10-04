@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { createPortal } from "react-dom";
 import {
   Package,
@@ -17,15 +18,18 @@ import {
   Power,
   ChevronLeft,
   ChevronRight,
+  FolderTree,
 } from "lucide-react";
 import { getStoredUser } from "../utils/navigation";
 import { productsService, PRODUCT_CATEGORIES } from "../services/products.service";
+import { categoriesService } from "../services/categories.service";
 import { inventoryService } from "../services/inventory.service";
 import { ProductFormModal } from "../components/product-form-modal";
 import { Toast, type ToastType } from "../components/toast";
 import type {
   Product,
   ProductStatus,
+  ProductCategory,
   AdjustStockPayload,
   CreateProductPayload,
 } from "../types/products";
@@ -47,11 +51,20 @@ export const ProductsPage: React.FC = () => {
   const [limit, setLimit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
 
+  // URL Query Params (Hỗ trợ mở từ Cây danh mục)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlCategoryId = searchParams.get("categoryId");
+
+  // Danh mục phân cấp động
+  const [categoriesList, setCategoriesList] = useState<ProductCategory[]>(PRODUCT_CATEGORIES);
+
   // Bộ lọc & Tìm kiếm (Debounced)
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(urlCategoryId || "ALL");
   const [selectedParentCategory, setSelectedParentCategory] = useState("ALL");
   const [selectedSubCategory, setSelectedSubCategory] = useState("ALL");
+  const [selectedChildCategory, setSelectedChildCategory] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState<ProductStatus | "ALL">("ALL");
 
   // Toast thông báo nổi góc màn hình
@@ -97,6 +110,41 @@ export const ProductsPage: React.FC = () => {
     userRoles.includes("WAREHOUSE") ||
     userRoles.includes("WH_MANAGER");
 
+  // Tải danh mục phân cấp từ Backend khi mount
+  useEffect(() => {
+    let isMounted = true;
+    categoriesService
+      .getCategoryTree()
+      .then((tree) => {
+        if (isMounted && Array.isArray(tree) && tree.length > 0) {
+          const mapTree = (nodes: any[]): ProductCategory[] => {
+            return nodes.map((n) => ({
+              id: n.id,
+              name: n.name,
+              code: n.code,
+              level: n.level,
+              parentId: n.parentId || n.parent_id || null,
+              productCount: n.productCount ?? n.product_count ?? 0,
+              children: n.children ? mapTree(n.children) : [],
+              subCategories: n.children ? mapTree(n.children) : [],
+            }));
+          };
+          setCategoriesList(mapTree(tree));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Cập nhật selectedCategoryId khi URL query thay đổi
+  useEffect(() => {
+    if (urlCategoryId) {
+      setSelectedCategoryId(urlCategoryId);
+    }
+  }, [urlCategoryId]);
+
   // Debounce tìm kiếm sau 300ms
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -109,9 +157,16 @@ export const ProductsPage: React.FC = () => {
   // Danh sách Nhóm hàng Cấp 2 tương ứng theo Cấp 1 đang chọn
   const subCategoriesForFilter = useMemo(() => {
     if (selectedParentCategory === "ALL") return [];
-    const found = PRODUCT_CATEGORIES.find((c) => c.name === selectedParentCategory);
+    const found = categoriesList.find((c) => c.name === selectedParentCategory);
     return found?.subCategories || [];
-  }, [selectedParentCategory]);
+  }, [selectedParentCategory, categoriesList]);
+
+  // Danh sách Phân loại con Cấp 3 tương ứng theo Cấp 2 đang chọn
+  const childCategoriesForFilter = useMemo(() => {
+    if (selectedSubCategory === "ALL") return [];
+    const found = subCategoriesForFilter.find((s) => s.name === selectedSubCategory);
+    return found?.subCategories || found?.children || [];
+  }, [selectedSubCategory, subCategoriesForFilter]);
 
   // Tải danh sách sản phẩm từ Service
   const loadProducts = useCallback(async () => {
@@ -121,12 +176,18 @@ export const ProductsPage: React.FC = () => {
         page,
         limit,
         search: searchTerm,
+        categoryId: selectedCategoryId !== "ALL" ? selectedCategoryId : (urlCategoryId || undefined),
         parentCategory: selectedParentCategory !== "ALL" ? selectedParentCategory : undefined,
-        subCategory: selectedSubCategory !== "ALL" ? selectedSubCategory : undefined,
+        subCategory:
+          selectedChildCategory !== "ALL"
+            ? selectedChildCategory
+            : selectedSubCategory !== "ALL"
+            ? selectedSubCategory
+            : undefined,
         status: selectedStatus !== "ALL" ? selectedStatus : undefined,
       });
 
-      if ('data' in res && Array.isArray(res.data)) {
+      if ("data" in res && Array.isArray(res.data)) {
         setProducts(res.data);
         setTotal(res.total);
         setTotalPages(res.totalPages);
@@ -145,7 +206,17 @@ export const ProductsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, searchTerm, selectedParentCategory, selectedSubCategory, selectedStatus]);
+  }, [
+    page,
+    limit,
+    searchTerm,
+    selectedCategoryId,
+    urlCategoryId,
+    selectedParentCategory,
+    selectedSubCategory,
+    selectedChildCategory,
+    selectedStatus,
+  ]);
 
   useEffect(() => {
     loadProducts();
@@ -338,26 +409,37 @@ export const ProductsPage: React.FC = () => {
           </div>
 
           {/* Nhóm nút hành động */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap">
             <button
               type="button"
               onClick={loadProducts}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-all focus:outline-none cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
               title="Làm mới dữ liệu từ server"
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">Làm mới</span>
+              <RefreshCw className={`h-4 w-4 shrink-0 ${loading ? "animate-spin" : ""}`} />
+              <span>Làm mới</span>
             </button>
 
             {canManageProducts && (
-              <button
-                type="button"
-                onClick={handleOpenCreateModal}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer"
-              >
-                <Plus className="h-4 w-4" />
-                <span>+ Thêm sản phẩm mới</span>
-              </button>
+              <>
+                <Link
+                  to="/catalog/categories"
+                  className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/80 px-3.5 py-2.5 text-xs font-semibold text-indigo-700 shadow-2xs hover:bg-indigo-100 hover:text-indigo-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+                  title="Mở giao diện quản lý Cây nhóm hàng đa cấp"
+                >
+                  <FolderTree className="h-4 w-4 shrink-0 text-indigo-600" />
+                  <span>Cây nhóm hàng</span>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={handleOpenCreateModal}
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+                >
+                  <Plus className="h-4 w-4 shrink-0" />
+                  <span>Thêm sản phẩm mới</span>
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -416,12 +498,14 @@ export const ProductsPage: React.FC = () => {
               onChange={(e) => {
                 setSelectedParentCategory(e.target.value);
                 setSelectedSubCategory("ALL");
+                setSelectedChildCategory("ALL");
+                setSelectedCategoryId("ALL");
                 setPage(1);
               }}
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
             >
-              <option value="ALL">Tất cả Nhóm hàng (Cấp 1)</option>
-              {PRODUCT_CATEGORIES.map((cat) => (
+              <option value="ALL">Tất cả Nhóm Cấp 1</option>
+              {categoriesList.map((cat) => (
                 <option key={cat.id} value={cat.name}>
                   {cat.name}
                 </option>
@@ -435,6 +519,8 @@ export const ProductsPage: React.FC = () => {
               value={selectedSubCategory}
               onChange={(e) => {
                 setSelectedSubCategory(e.target.value);
+                setSelectedChildCategory("ALL");
+                setSelectedCategoryId("ALL");
                 setPage(1);
               }}
               disabled={selectedParentCategory === "ALL" || subCategoriesForFilter.length === 0}
@@ -443,7 +529,7 @@ export const ProductsPage: React.FC = () => {
               <option value="ALL">
                 {selectedParentCategory === "ALL"
                   ? "Chọn Cấp 1 để lọc Cấp 2"
-                  : "Tất cả chủng loại (Cấp 2)"}
+                  : "Tất cả Nhóm Cấp 2"}
               </option>
               {subCategoriesForFilter.map((sub) => (
                 <option key={sub.id} value={sub.name}>
@@ -452,6 +538,47 @@ export const ProductsPage: React.FC = () => {
               ))}
             </select>
           </div>
+
+          {/* Lọc Phân loại con Cấp 3 (nếu nhóm Cấp 2 có Cấp 3) */}
+          {childCategoriesForFilter.length > 0 && (
+            <div className="relative">
+              <select
+                value={selectedChildCategory}
+                onChange={(e) => {
+                  setSelectedChildCategory(e.target.value);
+                  setSelectedCategoryId("ALL");
+                  setPage(1);
+                }}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-indigo-200 bg-white text-indigo-900 font-medium focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
+              >
+                <option value="ALL">Tất cả Phân loại Cấp 3</option>
+                {childCategoriesForFilter.map((child) => (
+                  <option key={child.id} value={child.name}>
+                    {child.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Chip hiển thị khi đang lọc theo nhánh Cây từ Trang Cây danh mục */}
+          {selectedCategoryId !== "ALL" && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold">
+              <FolderTree className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+              <span>Lọc theo nhánh cây</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategoryId("ALL");
+                  setSearchParams({});
+                }}
+                className="ml-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+                title="Bỏ lọc theo cây"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
 
           {/* Lọc Trạng thái */}
           <div className="relative">
@@ -622,16 +749,20 @@ export const ProductsPage: React.FC = () => {
                       </td>
 
                       {/* Cột 4: Nhóm hàng */}
-                      <td className="px-3 py-2.5 whitespace-nowrap">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="inline-block w-fit rounded-md bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 ring-1 ring-inset ring-purple-700/10">
-                            {p.parentCategory || p.category.split('/')[0]?.trim()}
+                      <td className="px-3 py-2.5">
+                        <div className="flex flex-col gap-0.5 max-w-[220px]">
+                          <span className="inline-block w-fit rounded-md bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 ring-1 ring-inset ring-purple-700/10 truncate">
+                            {p.parentCategory || p.category?.split('/')[0]?.trim() || "Nhóm hàng"}
                           </span>
-                          {p.subCategory && (
-                            <span className="text-[11px] text-slate-500 font-medium pl-0.5">
+                          {p.category && p.category.includes('/') ? (
+                            <span className="text-[11px] text-slate-500 font-medium pl-0.5 truncate" title={p.category}>
+                              ↳ {p.category.split('/').slice(1).map((s) => s.trim()).join(' > ')}
+                            </span>
+                          ) : p.subCategory ? (
+                            <span className="text-[11px] text-slate-500 font-medium pl-0.5 truncate">
                               ↳ {p.subCategory}
                             </span>
-                          )}
+                          ) : null}
                         </div>
                       </td>
 

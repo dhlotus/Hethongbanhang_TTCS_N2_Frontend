@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { NavLink, Link } from "react-router-dom";
+import { NavLink, Link, useLocation } from "react-router-dom";
 import {
   Layers,
   X,
@@ -38,6 +38,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
   isCollapsed = false,
   onToggleCollapse,
 }) => {
+  const location = useLocation();
   const [currentUser, setCurrentUser] = useState(getStoredUser());
 
   useEffect(() => {
@@ -129,47 +130,48 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
             <nav className="space-y-1">
               {menuItems.map((item) => {
                 const Icon = item.icon;
+                const isItemActive =
+                  item.path === "/catalog/products"
+                    ? location.pathname === "/catalog/products" ||
+                      location.pathname.startsWith("/catalog/categories")
+                    : location.pathname === item.path ||
+                      location.pathname.startsWith(item.path + "/");
+
                 return (
                   <NavLink
                     key={item.path}
                     to={item.path}
                     onClick={onItemClick}
                     title={isCollapsed ? item.name : undefined}
-                    className={({ isActive }) =>
-                      `group relative flex items-center ${isCollapsed
-                        ? "justify-center p-2.5"
-                        : "justify-between px-3 py-2.5"
-                      } rounded-xl text-xs sm:text-sm transition-all duration-200 ease-out active:scale-[0.98] ${isActive
-                        ? "bg-blue-50 text-blue-600 font-semibold shadow-xs"
-                        : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
-                      }`
-                    }
+                    className={`group relative flex items-center ${isCollapsed
+                      ? "justify-center p-2.5"
+                      : "justify-between px-3 py-2.5"
+                    } rounded-xl text-xs sm:text-sm transition-all duration-200 ease-out active:scale-[0.98] ${isItemActive
+                      ? "bg-blue-50 text-blue-600 font-semibold shadow-xs"
+                      : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
+                    }`}
                   >
-                    {({ isActive }) => (
-                      <>
-                        <div
-                          className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3 min-w-0"
-                            }`}
-                        >
-                          {/* Thanh định vị Active nhỏ ở bên trái */}
-                          {isActive && (
-                            <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-blue-600" />
-                          )}
-                          <Icon
-                            className={`h-4.5 w-4.5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive
-                              ? "text-blue-600"
-                              : "text-slate-400 group-hover:text-slate-700"
-                              }`}
-                          />
-                          {!isCollapsed && (
-                            <span className="truncate">{item.name}</span>
-                          )}
-                        </div>
+                    <div
+                      className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3 min-w-0"
+                        }`}
+                    >
+                      {/* Thanh định vị Active nhỏ ở bên trái */}
+                      {isItemActive && (
+                        <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-blue-600" />
+                      )}
+                      <Icon
+                        className={`h-4.5 w-4.5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${isItemActive
+                          ? "text-blue-600"
+                          : "text-slate-400 group-hover:text-slate-700"
+                          }`}
+                      />
+                      {!isCollapsed && (
+                        <span className="truncate">{item.name}</span>
+                      )}
+                    </div>
 
-                        {!isCollapsed && isActive && (
-                          <ChevronRight className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                        )}
-                      </>
+                    {!isCollapsed && isItemActive && (
+                      <ChevronRight className="h-3.5 w-3.5 text-blue-500 shrink-0" />
                     )}
                   </NavLink>
                 );
