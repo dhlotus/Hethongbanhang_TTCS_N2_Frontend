@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   X,
@@ -56,34 +56,57 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = useCallback(() => {
+    if (isSubmitting) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+      setIsClosing(false);
+    }, 220);
+  }, [isSubmitting, onClose]);
 
   useEffect(() => {
-    if (initialData) {
-      setCode(initialData.code || "");
-      setName(initialData.name || "");
-      setTaxCode(initialData.taxCode || initialData.tax_code || "");
-      setContactName(initialData.contactName || initialData.contact_name || "");
-      setPhone(initialData.phone || "");
-      setEmail(initialData.email || "");
-      setAddress(initialData.address || "");
-      setPaymentTerms(
-        initialData.paymentTerms || initialData.payment_terms || "NET_30"
-      );
-      setStatus(initialData.status || "ACTIVE");
-      setNotes(initialData.notes || "");
-    } else {
-      setCode("");
-      setName("");
-      setTaxCode("");
-      setContactName("");
-      setPhone("");
-      setEmail("");
-      setAddress("");
-      setPaymentTerms("NET_30");
-      setStatus("ACTIVE");
-      setNotes("");
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen && !isSubmitting) {
+        handleClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isSubmitting, handleClose]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsClosing(false);
+      if (initialData) {
+        setCode(initialData.code || "");
+        setName(initialData.name || "");
+        setTaxCode(initialData.taxCode || initialData.tax_code || "");
+        setContactName(initialData.contactName || initialData.contact_name || "");
+        setPhone(initialData.phone || "");
+        setEmail(initialData.email || "");
+        setAddress(initialData.address || "");
+        setPaymentTerms(
+          initialData.paymentTerms || initialData.payment_terms || "NET_30"
+        );
+        setStatus(initialData.status || "ACTIVE");
+        setNotes(initialData.notes || "");
+      } else {
+        setCode("");
+        setName("");
+        setTaxCode("");
+        setContactName("");
+        setPhone("");
+        setEmail("");
+        setAddress("");
+        setPaymentTerms("NET_30");
+        setStatus("ACTIVE");
+        setNotes("");
+      }
+      setErrors({});
     }
-    setErrors({});
   }, [initialData, isOpen]);
 
   if (!isOpen) return null;
@@ -129,7 +152,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
         status,
         notes: notes.trim() || undefined,
       });
-      onClose();
+      handleClose();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Đã có lỗi xảy ra";
       setErrors((prev) => ({ ...prev, form: message }));
@@ -139,9 +162,18 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-slate-900/35 backdrop-blur-[2px] animate-in fade-in duration-200">
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-slate-900/35 backdrop-blur-[2px] transition-all ${
+        isClosing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"
+      }`}
+    >
       <div
-        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]"
+        className={`relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] ${
+          isClosing ? "animate-modal-out" : "animate-modal-in"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -165,7 +197,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
@@ -388,7 +420,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
           <Button
             type="button"
             variant="outline"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isSubmitting}
             className="py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer"
           >

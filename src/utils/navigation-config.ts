@@ -267,7 +267,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     },
     {
       id: "inventory-suppliers",
-      name: "Nhà cung cấp",
+      name: "Quản lý nhà cung cấp",
       path: "/inventory/suppliers",
       icon: Building2,
       category: "Nhập / Xuất kho",
@@ -341,7 +341,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     },
     {
       id: "inventory-suppliers",
-      name: "Nhà cung cấp",
+      name: "Quản lý nhà cung cấp",
       path: "/inventory/suppliers",
       icon: Building2,
       category: "Kiểm soát Kho",

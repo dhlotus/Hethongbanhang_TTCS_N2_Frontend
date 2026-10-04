@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Building2,
   Plus,
@@ -19,10 +20,11 @@ import {
   FileText,
   AlertCircle,
   ShieldAlert,
+  Eye,
 } from "lucide-react";
-import { Button } from "../components/button";
 import { Toast, type ToastType } from "../components/toast";
 import { SupplierFormModal } from "../components/supplier-form-modal";
+import { SupplierDetailModal } from "../components/supplier-detail-modal";
 import { suppliersService } from "../services/suppliers.service";
 import type {
   Supplier,
@@ -54,6 +56,9 @@ export const SuppliersPage: React.FC = () => {
   // Modals
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedSupplierForDetail, setSelectedSupplierForDetail] = useState<Supplier | null>(null);
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
@@ -240,6 +245,11 @@ export const SuppliersPage: React.FC = () => {
     }
   };
 
+  const handleViewDetail = (supplier: Supplier) => {
+    setSelectedSupplierForDetail(supplier);
+    setDetailModalOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Toast */}
@@ -252,52 +262,7 @@ export const SuppliersPage: React.FC = () => {
         />
       )}
 
-      {/* 1. Header Page */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-2xs">
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-blue-50 text-blue-600 border border-blue-100/50 shadow-2xs">
-            <Building2 className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-slate-800">
-              Quản lý Nhà cung cấp (Suppliers)
-            </h1>
-            <p className="text-xs text-slate-500">
-              Danh mục đối tác cung ứng hàng hóa, quản lý hợp đồng công nợ & phiếu nhập kho
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={fetchSuppliers}
-            disabled={loading}
-            className="px-3 py-2 text-xs font-semibold rounded-xl cursor-pointer"
-          >
-            <RefreshCw
-              className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin text-blue-500" : ""}`}
-            />
-            Làm mới
-          </Button>
-
-          {canManageSuppliers && (
-            <Button
-              variant="primary"
-              onClick={() => {
-                setEditingSupplier(null);
-                setFormModalOpen(true);
-              }}
-              className="px-4 py-2 text-xs font-semibold rounded-xl cursor-pointer shadow-xs hover:shadow-sm"
-            >
-              <Plus className="h-4 w-4 mr-1.5" />
-              Thêm nhà cung cấp
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* 2. Stat Cards */}
+      {/* 1. Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600">
@@ -340,74 +305,102 @@ export const SuppliersPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Search & Filter Bar */}
-      <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+      {/* 2. Search & Actions Bar - Gom các nút thao tác xuống chung thanh tìm kiếm */}
+      <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        {/* Vùng tìm kiếm */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Tìm theo Mã, Tên, MST, SĐT, Email..."
-            className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+            className="w-full pl-9.5 pr-8 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all placeholder:text-slate-400"
           />
           {searchInput && (
             <button
+              type="button"
               onClick={() => setSearchInput("")}
-              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-md transition-colors cursor-pointer"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        {/* Bộ lọc trạng thái & Các nút thao tác (Làm mới, Thêm nhà cung cấp) */}
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <select
             value={selectedStatus}
             onChange={(e) => {
               setSelectedStatus(e.target.value as SupplierStatus | "ALL");
               setPage(1);
             }}
-            className="px-3 py-2 rounded-xl border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all bg-white font-medium text-slate-700"
+            className="px-3 py-2.5 rounded-xl border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all bg-white font-medium text-slate-700 cursor-pointer shadow-2xs"
           >
             <option value="ALL">Tất cả trạng thái</option>
             <option value="ACTIVE">Đang giao dịch (ACTIVE)</option>
             <option value="INACTIVE">Ngừng hoạt động (INACTIVE)</option>
           </select>
+
+          <button
+            type="button"
+            onClick={fetchSuppliers}
+            disabled={loading}
+            title="Làm mới danh sách"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+          >
+            <RefreshCw
+              className={`h-4 w-4 text-slate-500 ${loading ? "animate-spin text-blue-500" : ""}`}
+            />
+            <span className="hidden sm:inline">Làm mới</span>
+          </button>
+
+          {canManageSuppliers && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingSupplier(null);
+                setFormModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] rounded-xl transition-all cursor-pointer shadow-sm shadow-blue-500/20 whitespace-nowrap shrink-0"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Thêm nhà cung cấp</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 4. Table */}
+      {/* 3. Table - Responsive & Tối ưu hiển thị */}
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-600">
             <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-100">
               <tr>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Mã NCC</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Tên nhà cung cấp / Doanh nghiệp</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Người liên hệ & SĐT</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Địa chỉ</th>
-                <th className="px-4 py-3 font-semibold text-center whitespace-nowrap">Điều khoản TT</th>
-                <th className="px-4 py-3 font-semibold text-center whitespace-nowrap">Phiếu nhập kho</th>
-                <th className="px-4 py-3 font-semibold text-center whitespace-nowrap">Trạng thái</th>
-                {canManageSuppliers && (
-                  <th className="px-4 py-3 font-semibold text-center whitespace-nowrap w-24">
-                    Thao tác
-                  </th>
-                )}
+                <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Mã NCC</th>
+                <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Tên nhà cung cấp / Doanh nghiệp</th>
+                <th className="px-4 py-3.5 font-semibold whitespace-nowrap hidden sm:table-cell">Người liên hệ & SĐT</th>
+                <th className="px-4 py-3.5 font-semibold whitespace-nowrap hidden xl:table-cell">Địa chỉ</th>
+                <th className="px-4 py-3.5 font-semibold text-center whitespace-nowrap hidden lg:table-cell">Điều khoản TT</th>
+                <th className="px-4 py-3.5 font-semibold text-center whitespace-nowrap hidden md:table-cell">Phiếu nhập kho</th>
+                <th className="px-4 py-3.5 font-semibold text-center whitespace-nowrap">Trạng thái</th>
+                <th className="px-4 py-3.5 font-semibold text-center whitespace-nowrap w-28">
+                  Thao tác
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
               {loading ? (
                 <tr>
-                  <td colSpan={canManageSuppliers ? 8 : 7} className="py-14 text-center text-slate-400">
+                  <td colSpan={8} className="py-14 text-center text-slate-400">
                     <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-500" />
                     <span className="font-medium text-xs">Đang tải danh sách nhà cung cấp...</span>
                   </td>
                 </tr>
               ) : suppliers.length === 0 ? (
                 <tr>
-                  <td colSpan={canManageSuppliers ? 8 : 7} className="py-14 text-center text-slate-400">
+                  <td colSpan={8} className="py-14 text-center text-slate-400">
                     <Building2 className="h-8 w-8 mx-auto mb-2 text-slate-300" />
                     <p className="font-semibold text-slate-600 text-sm">Không tìm thấy nhà cung cấp nào</p>
                     <p className="text-xs text-slate-400 mt-1">
@@ -429,14 +422,26 @@ export const SuppliersPage: React.FC = () => {
                     >
                       {/* Mã NCC */}
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 font-semibold text-xs border border-blue-100/60">
+                        <button
+                          type="button"
+                          onClick={() => handleViewDetail(supplier)}
+                          className="inline-flex items-center px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs border border-blue-100/60 transition-colors cursor-pointer"
+                          title="Bấm để xem chi tiết đối tác"
+                        >
                           {supplier.code}
-                        </span>
+                        </button>
                       </td>
 
                       {/* Tên NCC & MST */}
                       <td className="px-4 py-3">
-                        <div className="font-bold text-slate-800">{supplier.name}</div>
+                        <button
+                          type="button"
+                          onClick={() => handleViewDetail(supplier)}
+                          className="text-left font-bold text-slate-800 hover:text-blue-600 transition-colors cursor-pointer"
+                          title="Bấm để xem chi tiết đối tác"
+                        >
+                          {supplier.name}
+                        </button>
                         {(supplier.taxCode || supplier.tax_code) && (
                           <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
                             <FileText className="h-3 w-3" />
@@ -445,8 +450,8 @@ export const SuppliersPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Liên hệ */}
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      {/* Liên hệ - Ẩn trên mobile rất nhỏ, xem ở modal chi tiết */}
+                      <td className="px-4 py-3 whitespace-nowrap hidden sm:table-cell">
                         <div className="text-slate-700">
                           {supplier.contactName || supplier.contact_name || "—"}
                         </div>
@@ -466,8 +471,8 @@ export const SuppliersPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Địa chỉ */}
-                      <td className="px-4 py-3 max-w-xs truncate text-slate-600">
+                      {/* Địa chỉ - Ẩn trên màn hình < xl, xem ở modal chi tiết */}
+                      <td className="px-4 py-3 max-w-xs truncate text-slate-600 hidden xl:table-cell">
                         {supplier.address ? (
                           <div className="flex items-center gap-1" title={supplier.address}>
                             <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -478,15 +483,15 @@ export const SuppliersPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Điều khoản TT */}
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      {/* Điều khoản TT - Ẩn trên màn hình < lg */}
+                      <td className="px-4 py-3 text-center whitespace-nowrap hidden lg:table-cell">
                         <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-[11px] font-semibold">
                           {supplier.paymentTerms || supplier.payment_terms || "NET_30"}
                         </span>
                       </td>
 
-                      {/* Ràng buộc Phiếu nhập */}
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      {/* Ràng buộc Phiếu nhập - Ẩn trên màn hình < md */}
+                      <td className="px-4 py-3 text-center whitespace-nowrap hidden md:table-cell">
                         {hasReceipts ? (
                           <span
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-semibold border border-indigo-100/60"
@@ -541,33 +546,44 @@ export const SuppliersPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Thao tác */}
-                      {canManageSuppliers && (
-                        <td className="px-4 py-3 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingSupplier(supplier);
-                                setFormModalOpen(true);
-                              }}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                              title="Chỉnh sửa thông tin"
-                            >
-                              <Edit2 className="h-3.5 w-3.5" />
-                            </button>
+                      {/* Thao tác (Xem chi tiết, Sửa, Xóa) */}
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleViewDetail(supplier)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                            title="Xem chi tiết nhà cung cấp"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
 
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteClick(supplier)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                              title="Xóa nhà cung cấp"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      )}
+                          {canManageSuppliers && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingSupplier(supplier);
+                                  setFormModalOpen(true);
+                                }}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                                title="Chỉnh sửa thông tin"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteClick(supplier)}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Xóa nhà cung cấp"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   );
                 })
@@ -617,7 +633,7 @@ export const SuppliersPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 5. Modal Thêm / Sửa Nhà cung cấp */}
+      {/* 4. Modal Thêm / Sửa Nhà cung cấp */}
       <SupplierFormModal
         isOpen={formModalOpen}
         onClose={() => {
@@ -628,104 +644,134 @@ export const SuppliersPage: React.FC = () => {
         initialData={editingSupplier}
       />
 
+      {/* 5. Modal Xem chi tiết Nhà cung cấp */}
+      <SupplierDetailModal
+        isOpen={detailModalOpen}
+        supplier={selectedSupplierForDetail}
+        onClose={() => {
+          setDetailModalOpen(false);
+          setSelectedSupplierForDetail(null);
+        }}
+        onEdit={(supplier) => {
+          setDetailModalOpen(false);
+          setSelectedSupplierForDetail(null);
+          setEditingSupplier(supplier);
+          setFormModalOpen(true);
+        }}
+        canEdit={canManageSuppliers}
+      />
+
       {/* 6. Modal Xác nhận xóa hoặc Cảnh báo ràng buộc */}
-      {deleteModalOpen && supplierToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-200">
+      {deleteModalOpen &&
+        supplierToDelete &&
+        typeof document !== "undefined" &&
+        createPortal(
           <div
-            className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/35 backdrop-blur-[2px] transition-all animate-modal-backdrop-in"
+            onClick={() => {
+              if (!isDeleting) {
+                setDeleteModalOpen(false);
+                setSupplierToDelete(null);
+              }
+            }}
           >
-            {Boolean(
-              supplierToDelete.hasReceipts ?? supplierToDelete.has_receipts
-            ) ? (
-              // Case A: Đã có phiếu nhập -> KHÔNG CHO PHÉP XÓA VẬT LÝ, gợi ý chuyển sang Inactive
-              <div>
-                <div className="p-6 text-center space-y-3">
-                  <div className="mx-auto w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 shadow-2xs">
-                    <ShieldAlert className="h-6 w-6" />
+            <div
+              className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-modal-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {Boolean(
+                supplierToDelete.hasReceipts ?? supplierToDelete.has_receipts
+              ) ? (
+                // Case A: Đã có phiếu nhập -> KHÔNG CHO PHÉP XÓA VẬT LÝ, gợi ý chuyển sang Inactive
+                <div>
+                  <div className="p-6 text-center space-y-3">
+                    <div className="mx-auto w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 shadow-2xs">
+                      <ShieldAlert className="h-6 w-6" />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-800">
+                      Không thể xóa nhà cung cấp này!
+                    </h3>
+                    <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80 text-left text-xs text-amber-800 space-y-1.5">
+                      <p className="font-semibold flex items-center gap-1.5">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+                        Vi phạm ràng buộc dữ liệu (Import Receipt Constraint):
+                      </p>
+                      <p>
+                        Nhà cung cấp <strong>{supplierToDelete.name}</strong> ({supplierToDelete.code}) đã từng phát sinh chứng từ trong <strong>Phiếu nhập kho</strong>.
+                      </p>
+                      <p className="text-[11px] text-amber-700">
+                        Quy tắc hệ thống ngăn chặn xóa vĩnh viễn nhằm đảm bảo tính toàn vẹn của thẻ kho và lịch sử giao dịch kế toán.
+                      </p>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Bạn có muốn chuyển trạng thái của đối tác sang <strong>Ngừng hoạt động (Inactive)</strong> để không thể chọn khi lập phiếu nhập mới?
+                    </p>
                   </div>
-                  <h3 className="text-base font-bold text-slate-800">
-                    Không thể xóa nhà cung cấp này!
-                  </h3>
-                  <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 text-left text-xs text-amber-800 space-y-1.5">
-                    <p className="font-semibold flex items-center gap-1.5">
-                      <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
-                      Vi phạm ràng buộc dữ liệu (Import Receipt Constraint):
-                    </p>
-                    <p>
-                      Nhà cung cấp <strong>{supplierToDelete.name}</strong> ({supplierToDelete.code}) đã từng phát sinh chứng từ trong <strong>Phiếu nhập kho</strong>.
-                    </p>
-                    <p className="text-[11px] text-amber-700">
-                      Quy tắc hệ thống ngăn chặn xóa vĩnh viễn nhằm đảm bảo tính toàn vẹn của thẻ kho và lịch sử giao dịch kế toán.
-                    </p>
-                  </div>
-                  <p className="text-xs text-slate-500">
-                    Bạn có muốn chuyển trạng thái của đối tác sang <strong>Ngừng hoạt động (Inactive)</strong> để không thể chọn khi lập phiếu nhập mới?
-                  </p>
-                </div>
 
-                <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setDeleteModalOpen(false);
-                      setSupplierToDelete(null);
-                    }}
-                    className="py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer"
-                  >
-                    Đóng lại
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleSwitchToInactive}
-                    className="py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer bg-amber-600 hover:bg-amber-700 border-amber-600 text-white"
-                  >
-                    Chuyển sang Inactive
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              // Case B: Chưa có phiếu nhập -> Cho phép xóa
-              <div>
-                <div className="p-6 text-center space-y-3">
-                  <div className="mx-auto w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 shadow-2xs">
-                    <AlertTriangle className="h-6 w-6" />
+                  <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeleteModalOpen(false);
+                        setSupplierToDelete(null);
+                      }}
+                      className="py-2 px-4 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                    >
+                      Đóng lại
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSwitchToInactive}
+                      className="py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer bg-amber-600 hover:bg-amber-700 text-white transition-colors shadow-xs"
+                    >
+                      Chuyển sang Inactive
+                    </button>
                   </div>
-                  <h3 className="text-base font-bold text-slate-800">
-                    Xác nhận xóa nhà cung cấp?
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Bạn có chắc chắn muốn xóa đối tác <strong>{supplierToDelete.name}</strong> ({supplierToDelete.code}) không? Thao tác này sẽ gỡ bỏ hoàn toàn khỏi danh mục.
-                  </p>
                 </div>
+              ) : (
+                // Case B: Chưa có phiếu nhập -> Cho phép xóa
+                <div>
+                  <div className="p-6 text-center space-y-3">
+                    <div className="mx-auto w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 shadow-2xs">
+                      <AlertTriangle className="h-6 w-6" />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-800">
+                      Xác nhận xóa nhà cung cấp?
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Bạn có chắc chắn muốn xóa đối tác <strong>{supplierToDelete.name}</strong> ({supplierToDelete.code}) không? Thao tác này sẽ gỡ bỏ hoàn toàn khỏi danh mục.
+                    </p>
+                  </div>
 
-                <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setDeleteModalOpen(false);
-                      setSupplierToDelete(null);
-                    }}
-                    disabled={isDeleting}
-                    className="py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer"
-                  >
-                    Hủy bỏ
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleConfirmDelete}
-                    isLoading={isDeleting}
-                    loadingText="Đang xóa..."
-                    className="py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer bg-rose-600 hover:bg-rose-700 active:bg-rose-800 focus:ring-rose-500/25"
-                  >
-                    Xác nhận xóa
-                  </Button>
+                  <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeleteModalOpen(false);
+                        setSupplierToDelete(null);
+                      }}
+                      disabled={isDeleting}
+                      className="py-2 px-4 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmDelete}
+                      disabled={isDeleting}
+                      className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                    >
+                      {isDeleting ? "Đang xóa..." : "Xác nhận xóa"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
