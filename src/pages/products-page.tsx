@@ -857,6 +857,19 @@ export const ProductsPage: React.FC = () => {
                     <p className="text-xs text-slate-400 mt-1">
                       Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc nhóm hàng / trạng thái.
                     </p>
+                    {(searchTerm || activeFilterCount > 0) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchInput("");
+                          handleResetFilters();
+                        }}
+                        className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 shadow-2xs transition-all cursor-pointer active:scale-95"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        <span>Đặt lại bộ lọc</span>
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -1106,6 +1119,19 @@ export const ProductsPage: React.FC = () => {
               <p className="text-xs text-slate-400 mt-1">
                 Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc nhóm hàng / trạng thái.
               </p>
+              {(searchTerm || activeFilterCount > 0) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput("");
+                    handleResetFilters();
+                  }}
+                  className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 shadow-2xs transition-all cursor-pointer active:scale-95"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span>Đặt lại bộ lọc</span>
+                </button>
+              )}
             </div>
           ) : (
             products.map((p) => {

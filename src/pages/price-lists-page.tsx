@@ -19,6 +19,7 @@ import {
   X,
   FileSpreadsheet,
   Calendar,
+  RotateCcw,
 } from 'lucide-react';
 import { getStoredUser } from '../utils/navigation';
 import { priceListsService } from '../services/price-lists.service';
@@ -99,6 +100,15 @@ export const PriceListsPage: React.FC = () => {
     }, 300);
     return () => clearTimeout(handler);
   }, [searchInput]);
+
+  // Đặt lại toàn bộ bộ lọc bảng giá
+  const handleResetFilters = useCallback(() => {
+    setSearchInput('');
+    setSearchTerm('');
+    setSelectedGroup('ALL');
+    setSelectedStatus('ALL');
+    setPage(1);
+  }, []);
 
   // Tải danh sách bảng giá từ Service
   const loadPriceLists = useCallback(async () => {
@@ -529,7 +539,20 @@ export const PriceListsPage: React.FC = () => {
                   <td colSpan={8} className="py-12 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <FileSpreadsheet className="w-8 h-8 text-slate-300" />
-                      <span className="text-xs">Không tìm thấy bảng giá nào phù hợp với bộ lọc.</span>
+                      <p className="font-semibold text-slate-600 text-sm">Không tìm thấy bảng giá nào</p>
+                      <p className="text-xs text-slate-400">
+                        Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc nhóm khách hàng / trạng thái.
+                      </p>
+                      {(searchTerm || selectedGroup !== 'ALL' || selectedStatus !== 'ALL') && (
+                        <button
+                          type="button"
+                          onClick={handleResetFilters}
+                          className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 shadow-2xs transition-all cursor-pointer active:scale-95"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          <span>Đặt lại bộ lọc</span>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

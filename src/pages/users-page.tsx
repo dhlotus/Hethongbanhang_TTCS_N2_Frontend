@@ -28,6 +28,7 @@ import {
   Store,
   Eye,
   FileSpreadsheet,
+  RotateCcw,
 } from "lucide-react";
 import { ExcelImportModal } from "../components/excel-import-modal";
 import { usersService } from "../services/users.service";
@@ -143,6 +144,15 @@ export const UsersPage: React.FC = () => {
     }, 350);
     return () => clearTimeout(handler);
   }, [searchInput]);
+
+  // Đặt lại toàn bộ bộ lọc nhân sự về trạng thái ban đầu
+  const handleResetFilters = useCallback(() => {
+    setSearchInput("");
+    setSearch("");
+    setRoleFilter("");
+    setStatusFilter("");
+    setPage(1);
+  }, []);
 
   // Toast thông báo nổi mượt mà (Fade in & Slide out)
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -918,7 +928,20 @@ export const UsersPage: React.FC = () => {
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-slate-400">
                     <Users className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-                    <span>Không tìm thấy tài khoản phù hợp với điều kiện lọc</span>
+                    <p className="font-semibold text-slate-600 text-sm">Không tìm thấy tài khoản phù hợp</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc vai trò / trạng thái.
+                    </p>
+                    {(search || roleFilter || statusFilter) && (
+                      <button
+                        type="button"
+                        onClick={handleResetFilters}
+                        className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold border border-purple-200 shadow-2xs transition-all cursor-pointer active:scale-95"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        <span>Đặt lại bộ lọc</span>
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -1093,9 +1116,22 @@ export const UsersPage: React.FC = () => {
               <span>Đang tải danh sách nhân sự...</span>
             </div>
           ) : users.length === 0 ? (
-            <div className="py-12 text-center text-slate-400">
+            <div className="py-12 text-center text-slate-400 px-4">
               <Users className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-              <span>Không tìm thấy tài khoản phù hợp</span>
+              <p className="font-semibold text-slate-600 text-sm">Không tìm thấy tài khoản phù hợp</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc vai trò / trạng thái.
+              </p>
+              {(search || roleFilter || statusFilter) && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold border border-purple-200 shadow-2xs transition-all cursor-pointer active:scale-95"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span>Đặt lại bộ lọc</span>
+                </button>
+              )}
             </div>
           ) : (
             users.map((u) => {
