@@ -21,6 +21,8 @@ import {
   FolderTree,
   FileText,
   BookOpen,
+  SlidersHorizontal,
+  RotateCcw,
 } from "lucide-react";
 import { getStoredUser } from "../utils/navigation";
 import { productsService, PRODUCT_CATEGORIES } from "../services/products.service";
@@ -70,6 +72,9 @@ export const ProductsPage: React.FC = () => {
   const [selectedSubCategory, setSelectedSubCategory] = useState("ALL");
   const [selectedChildCategory, setSelectedChildCategory] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState<ProductStatus | "ALL">("ALL");
+
+  // Drawer bộ lọc nâng cao cho Mobile & Tablet (< lg)
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   // Toast thông báo nổi góc màn hình
   const [toast, setToast] = useState<{
@@ -182,6 +187,34 @@ export const ProductsPage: React.FC = () => {
     const found = subCategoriesForFilter.find((s) => s.name === selectedSubCategory);
     return found?.subCategories || found?.children || [];
   }, [selectedSubCategory, subCategoriesForFilter]);
+
+  // Đếm số lượng bộ lọc nâng cao đang được kích hoạt (không tính tìm kiếm văn bản)
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (selectedParentCategory !== "ALL") count++;
+    if (selectedSubCategory !== "ALL") count++;
+    if (selectedChildCategory !== "ALL") count++;
+    if (selectedStatus !== "ALL") count++;
+    if (selectedCategoryId !== "ALL") count++;
+    return count;
+  }, [
+    selectedParentCategory,
+    selectedSubCategory,
+    selectedChildCategory,
+    selectedStatus,
+    selectedCategoryId,
+  ]);
+
+  // Đặt lại toàn bộ bộ lọc về mặc định
+  const handleResetFilters = useCallback(() => {
+    setSelectedParentCategory("ALL");
+    setSelectedSubCategory("ALL");
+    setSelectedChildCategory("ALL");
+    setSelectedStatus("ALL");
+    setSelectedCategoryId("ALL");
+    setSearchParams({});
+    setPage(1);
+  }, [setSearchParams]);
 
   // Tải danh sách sản phẩm từ Service
   const loadProducts = useCallback(async () => {
@@ -535,9 +568,54 @@ export const ProductsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Thanh công cụ lọc & Tìm kiếm (Search with Debounce, Categories Cấp 1, Cấp 2, Status) */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* 2. Thanh công cụ lọc & Tìm kiếm (Responsive: Gọn gàng trên Mobile/Tablet, Đầy đủ trên Desktop) */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 sm:p-4 shadow-xs space-y-3">
+        {/* A. MOBILE & TABLET (< lg): Chỉ hiển thị Ô tìm kiếm nhanh + Nút "Bộ lọc" mở Drawer */}
+        <div className="flex items-center gap-2.5 lg:hidden">
+          {/* Ô Tìm kiếm SKU / Tên / Barcode */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Tìm theo SKU, tên sản phẩm, mã vạch..."
+              className="w-full pl-9 pr-8 py-2.5 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-medium shadow-2xs"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => setSearchInput("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Nút bấm mở Drawer Bộ lọc nâng cao */}
+          <button
+            type="button"
+            id="mobile-filter-drawer-btn"
+            onClick={() => setMobileFilterOpen(true)}
+            className={`inline-flex items-center gap-2 px-3.5 py-2.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer shadow-2xs shrink-0 ${
+              activeFilterCount > 0
+                ? "bg-blue-50 border-blue-300 text-blue-700"
+                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4 text-blue-600" />
+            <span>Bộ lọc</span>
+            {activeFilterCount > 0 && (
+              <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-blue-600 text-white text-[11px] font-bold flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* B. DESKTOP (>= lg): Lưới các ô lọc mở rộng ngang đầy đủ */}
+        <div className="hidden lg:grid lg:grid-cols-4 gap-3">
           {/* Ô Tìm kiếm SKU / Tên / Barcode */}
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -607,47 +685,6 @@ export const ProductsPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Lọc Phân loại con Cấp 3 (nếu nhóm Cấp 2 có Cấp 3) */}
-          {childCategoriesForFilter.length > 0 && (
-            <div className="relative">
-              <select
-                value={selectedChildCategory}
-                onChange={(e) => {
-                  setSelectedChildCategory(e.target.value);
-                  setSelectedCategoryId("ALL");
-                  setPage(1);
-                }}
-                className="w-full px-3 py-2 text-xs rounded-xl border border-indigo-200 bg-white text-indigo-900 font-medium focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
-              >
-                <option value="ALL">Tất cả Phân loại Cấp 3</option>
-                {childCategoriesForFilter.map((child) => (
-                  <option key={child.id} value={child.name}>
-                    {child.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Chip hiển thị khi đang lọc theo nhánh Cây từ Trang Cây danh mục */}
-          {selectedCategoryId !== "ALL" && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold">
-              <FolderTree className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-              <span>Lọc theo nhánh cây</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedCategoryId("ALL");
-                  setSearchParams({});
-                }}
-                className="ml-1 text-slate-400 hover:text-slate-700 cursor-pointer"
-                title="Bỏ lọc theo cây"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          )}
-
           {/* Lọc Trạng thái */}
           <div className="relative">
             <select
@@ -664,6 +701,50 @@ export const ProductsPage: React.FC = () => {
             </select>
           </div>
         </div>
+
+        {/* Lọc Phân loại con Cấp 3 (cho Desktop khi nhóm Cấp 2 có Cấp 3) */}
+        {childCategoriesForFilter.length > 0 && (
+          <div className="hidden lg:flex items-center gap-2 pt-1">
+            <span className="text-xs font-semibold text-indigo-700">Phân loại Cấp 3:</span>
+            <div className="relative max-w-xs">
+              <select
+                value={selectedChildCategory}
+                onChange={(e) => {
+                  setSelectedChildCategory(e.target.value);
+                  setSelectedCategoryId("ALL");
+                  setPage(1);
+                }}
+                className="w-full px-3 py-1.5 text-xs rounded-xl border border-indigo-200 bg-white text-indigo-900 font-medium focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
+              >
+                <option value="ALL">Tất cả Phân loại Cấp 3</option>
+                {childCategoriesForFilter.map((child) => (
+                  <option key={child.id} value={child.name}>
+                    {child.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* Chip hiển thị khi đang lọc theo nhánh Cây từ Trang Cây danh mục (Desktop) */}
+        {selectedCategoryId !== "ALL" && (
+          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold w-fit">
+            <FolderTree className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+            <span>Lọc theo nhánh cây</span>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategoryId("ALL");
+                setSearchParams({});
+              }}
+              className="ml-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+              title="Bỏ lọc theo cây"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Thanh trạng thái bộ lọc đang áp dụng & Tổng kết */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
@@ -1767,6 +1848,188 @@ export const ProductsPage: React.FC = () => {
                   className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold cursor-pointer transition-colors"
                 >
                   Đóng
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+      {/* ========================================================================= */}
+      {/* DRAWER / BOTTOM SHEET BỘ LỌC NÂNG CAO CHO MOBILE & TABLET (< lg)         */}
+      {/* ========================================================================= */}
+      {mobileFilterOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex justify-end">
+            {/* Lớp nền mờ click đóng */}
+            <div
+              className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+              onClick={() => setMobileFilterOpen(false)}
+            />
+
+            {/* Khung Drawer trượt lên từ đáy (Mobile) hoặc từ phải sang (Tablet) */}
+            <div className="relative z-10 w-full sm:max-w-md bg-white shadow-2xl flex flex-col max-h-[88vh] sm:max-h-full sm:h-full mt-auto sm:mt-0 rounded-t-3xl sm:rounded-none sm:rounded-l-3xl animate-in slide-in-from-bottom sm:slide-in-from-right duration-300">
+              {/* Header Drawer */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-3xl sm:rounded-none sm:rounded-tl-3xl">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                    <SlidersHorizontal className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">Bộ lọc nâng cao</h3>
+                    <p className="text-xs text-slate-500">Phân loại ngành hàng & trạng thái SKU</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileFilterOpen(false)}
+                  className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
+                  title="Đóng bộ lọc"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Nội dung các trường lọc */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+                {/* 1. Nhóm hàng Cấp 1 (Ngành hàng) */}
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-slate-700 block">
+                    Nhóm hàng Cấp 1 (Ngành hàng)
+                  </label>
+                  <select
+                    value={selectedParentCategory}
+                    onChange={(e) => {
+                      setSelectedParentCategory(e.target.value);
+                      setSelectedSubCategory("ALL");
+                      setSelectedChildCategory("ALL");
+                      setSelectedCategoryId("ALL");
+                      setPage(1);
+                    }}
+                    className="w-full h-11 px-3.5 text-xs rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+                  >
+                    <option value="ALL">Tất cả Nhóm Cấp 1</option>
+                    {categoriesList.map((cat) => (
+                      <option key={cat.id} value={cat.name}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. Nhóm hàng Cấp 2 (Chủng loại) */}
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-slate-700 block">
+                    Nhóm hàng Cấp 2 (Chủng loại)
+                  </label>
+                  <select
+                    value={selectedSubCategory}
+                    onChange={(e) => {
+                      setSelectedSubCategory(e.target.value);
+                      setSelectedChildCategory("ALL");
+                      setSelectedCategoryId("ALL");
+                      setPage(1);
+                    }}
+                    disabled={selectedParentCategory === "ALL" || subCategoriesForFilter.length === 0}
+                    className="w-full h-11 px-3.5 text-xs rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer"
+                  >
+                    <option value="ALL">
+                      {selectedParentCategory === "ALL"
+                        ? "Chọn Cấp 1 để lọc Cấp 2"
+                        : "Tất cả Nhóm Cấp 2"}
+                    </option>
+                    {subCategoriesForFilter.map((sub) => (
+                      <option key={sub.id} value={sub.name}>
+                        {sub.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 3. Phân loại con Cấp 3 (nếu có) */}
+                {childCategoriesForFilter.length > 0 && (
+                  <div className="space-y-1.5">
+                    <label className="font-semibold text-indigo-700 block">
+                      Phân loại con Cấp 3
+                    </label>
+                    <select
+                      value={selectedChildCategory}
+                      onChange={(e) => {
+                        setSelectedChildCategory(e.target.value);
+                        setSelectedCategoryId("ALL");
+                        setPage(1);
+                      }}
+                      className="w-full h-11 px-3.5 text-xs rounded-xl border border-indigo-200 bg-white text-indigo-900 font-medium focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
+                    >
+                      <option value="ALL">Tất cả Phân loại Cấp 3</option>
+                      {childCategoriesForFilter.map((child) => (
+                        <option key={child.id} value={child.name}>
+                          {child.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* 4. Trạng thái kinh doanh */}
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-slate-700 block">
+                    Trạng thái kinh doanh
+                  </label>
+                  <select
+                    value={selectedStatus}
+                    onChange={(e) => {
+                      setSelectedStatus(e.target.value as ProductStatus | "ALL");
+                      setPage(1);
+                    }}
+                    className="w-full h-11 px-3.5 text-xs rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+                  >
+                    <option value="ALL">Tất cả Trạng thái</option>
+                    <option value="ACTIVE">Đang kinh doanh</option>
+                    <option value="INACTIVE">Ngừng kinh doanh</option>
+                  </select>
+                </div>
+
+                {/* Đang lọc theo nhánh Cây danh mục */}
+                {selectedCategoryId !== "ALL" && (
+                  <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 space-y-1.5">
+                    <div className="font-semibold flex items-center gap-1.5">
+                      <FolderTree className="h-4 w-4 text-blue-600 shrink-0" />
+                      <span>Đang lọc theo nhánh Cây danh mục</span>
+                    </div>
+                    <p className="text-[11px] text-blue-700">
+                      Sản phẩm đang được lọc theo ID danh mục được chọn từ trang Cây nhóm hàng.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategoryId("ALL");
+                        setSearchParams({});
+                      }}
+                      className="inline-flex items-center gap-1 text-xs text-blue-700 underline font-semibold hover:text-blue-900 cursor-pointer pt-1"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      <span>Gỡ bỏ lọc theo cây</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Drawer */}
+              <div className="p-4 border-t border-slate-100 bg-slate-50/60 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 text-slate-500" />
+                  <span>Đặt lại</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileFilterOpen(false)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 py-2.5 text-xs font-semibold text-white shadow-xs active:scale-95 transition-all cursor-pointer"
+                >
+                  <span>Áp dụng ({total})</span>
                 </button>
               </div>
             </div>
