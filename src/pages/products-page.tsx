@@ -20,6 +20,7 @@ import {
   ChevronRight,
   FolderTree,
   FileText,
+  BookOpen,
 } from "lucide-react";
 import { getStoredUser } from "../utils/navigation";
 import { productsService, PRODUCT_CATEGORIES } from "../services/products.service";
@@ -34,6 +35,7 @@ import type {
   ProductCategory,
   AdjustStockPayload,
   CreateProductPayload,
+  InventoryTransaction,
 } from "../types/products";
 
 const formatCurrency = (val?: number): string => {
@@ -88,12 +90,20 @@ export const ProductsPage: React.FC = () => {
   // Modal Nhập từ Excel
   const [importModalOpen, setImportModalOpen] = useState(false);
 
-  // Modal Điều chỉnh tồn kho (Dành cho Thủ kho / Admin)
+  // Modal Điều chỉnh tồn kho (Dành cho Thủ kho / Admin - SN-23)
   const [adjustModalOpen, setAdjustModalOpen] = useState(false);
   const [selectedProductForAdjust, setSelectedProductForAdjust] = useState<Product | null>(null);
-  const [quantityChange, setQuantityChange] = useState<number>(10);
+  const [adjustUnit, setAdjustUnit] = useState<string>("");
+  const [quantityChange, setQuantityChange] = useState<number>(1);
+  const [referenceCode, setReferenceCode] = useState<string>("");
   const [adjustReason, setAdjustReason] = useState<string>("Kiểm kê định kỳ");
   const [adjusting, setAdjusting] = useState(false);
+
+  // Modal Sổ kho & Lịch sử quy đổi giao dịch (SN-23 AC-2 & AC-3)
+  const [ledgerModalOpen, setLedgerModalOpen] = useState(false);
+  const [ledgerSku, setLedgerSku] = useState<string | null>(null);
+  const [ledgerTransactions, setLedgerTransactions] = useState<InventoryTransaction[]>([]);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
 
   // Xác định vai trò của người dùng hiện tại
   const user = getStoredUser();
@@ -323,15 +333,32 @@ export const ProductsPage: React.FC = () => {
     }
   };
 
-  // Mở modal điều chỉnh tồn kho
+  // Mở modal điều chỉnh tồn kho (SN-23)
   const handleOpenAdjustModal = (product: Product) => {
     setSelectedProductForAdjust(product);
-    setQuantityChange(10);
+    setAdjustUnit(product.baseUnit || "Lon");
+    setQuantityChange(1);
+    setReferenceCode(`PK-${Date.now().toString().slice(-6)}`);
     setAdjustReason("Kiểm kê thực tế tại kho");
     setAdjustModalOpen(true);
   };
 
-  // Submit điều chỉnh tồn kho
+  // Hệ số quy đổi của đơn vị đang chọn trong modal
+  const selectedUnitRate = useMemo(() => {
+    if (!selectedProductForAdjust) return 1;
+    if (!adjustUnit || adjustUnit === selectedProductForAdjust.baseUnit) return 1;
+    const found = selectedProductForAdjust.units?.find(
+      (u) => u.unitName.toLowerCase() === adjustUnit.toLowerCase()
+    );
+    return found ? Number(found.conversionRate) : 1;
+  }, [selectedProductForAdjust, adjustUnit]);
+
+  // Số lượng cơ sở quy đổi tự động ghi vào sổ kho
+  const baseCalculatedChange = useMemo(() => {
+    return Number(quantityChange || 0) * selectedUnitRate;
+  }, [quantityChange, selectedUnitRate]);
+
+  // Submit điều chỉnh tồn kho quy về ĐVT cơ sở (SN-23 AC-2)
   const handleAdjustSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProductForAdjust) return;
@@ -341,15 +368,17 @@ export const ProductsPage: React.FC = () => {
       const payload: AdjustStockPayload = {
         productSku: selectedProductForAdjust.sku,
         quantityChange: Number(quantityChange),
+        unit: adjustUnit,
         reason: adjustReason,
+        referenceCode: referenceCode.trim() || undefined,
       };
 
       const result = await inventoryService.adjustStock(payload);
 
       setToast({
         type: "success",
-        title: "Điều chỉnh tồn thành công",
-        message: `Đã điều chỉnh tồn kho cho ${result.sku}: Từ ${result.previousQuantity} -> ${result.newQuantity} (${result.quantityChange > 0 ? "+" : ""}${result.quantityChange})`,
+        title: "Ghi sổ kho thành công (SN-23)",
+        message: `Đã ghi sổ [${result.sku}]: ${Number(quantityChange) > 0 ? "+" : ""}${quantityChange} ${adjustUnit || selectedProductForAdjust.baseUnit} (Quy đổi: ${result.quantityChange > 0 ? "+" : ""}${result.quantityChange} ${result.baseUnit || selectedProductForAdjust.baseUnit}). Tồn mới: ${result.newQuantity} ${result.baseUnit || selectedProductForAdjust.baseUnit}.`,
       });
 
       setAdjustModalOpen(false);
@@ -362,10 +391,25 @@ export const ProductsPage: React.FC = () => {
         message:
           error.response?.data?.message ||
           error.message ||
-          "Không thể điều chỉnh tồn kho. Vui lòng kiểm tra quyền hạn.",
+          "Không thể điều chỉnh tồn kho. Vui lòng kiểm tra quyền hạn và số lượng tồn.",
       });
     } finally {
       setAdjusting(false);
+    }
+  };
+
+  // Mở sổ kho kiểm tra bút toán quy đổi và tính bất biến (SN-23 AC-3)
+  const handleOpenLedgerModal = async (sku?: string) => {
+    try {
+      setLedgerSku(sku || null);
+      setLedgerLoading(true);
+      setLedgerModalOpen(true);
+      const data = await inventoryService.getTransactions(sku);
+      setLedgerTransactions(data);
+    } catch {
+      setLedgerTransactions([]);
+    } finally {
+      setLedgerLoading(false);
     }
   };
 
@@ -435,6 +479,16 @@ export const ProductsPage: React.FC = () => {
                   <FolderTree className="h-4 w-4 shrink-0 text-indigo-600" />
                   <span>Cây nhóm hàng</span>
                 </Link>
+
+                <button
+                  type="button"
+                  onClick={() => handleOpenLedgerModal()}
+                  className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/80 px-3.5 py-2.5 text-xs font-semibold text-blue-700 shadow-2xs hover:bg-blue-100 hover:text-blue-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+                  title="Xem Sổ kho & Lịch sử quy đổi giao dịch (SN-23)"
+                >
+                  <BookOpen className="h-4 w-4 shrink-0 text-blue-600" />
+                  <span>Sổ kho quy đổi</span>
+                </button>
 
                 <button
                   type="button"
@@ -781,11 +835,27 @@ export const ProductsPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Cột 5: ĐVT cơ sở */}
+                      {/* Cột 5: ĐVT cơ sở & Đơn vị quy đổi (SN-23 AC-1) */}
                       <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                          {p.baseUnit}
-                        </span>
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                            {p.baseUnit}
+                          </span>
+                          {p.units && p.units.filter((u) => !u.isBaseUnit).length > 0 && (
+                            <div className="flex flex-wrap items-center justify-center gap-1 max-w-[130px]" title="Các đơn vị quy đổi về ĐVT cơ sở">
+                              {p.units
+                                .filter((u) => !u.isBaseUnit)
+                                .map((u) => (
+                                  <span
+                                    key={u.unitName}
+                                    className="inline-flex items-center text-[10px] font-medium bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded border border-slate-200"
+                                  >
+                                    {u.unitName} (x{u.conversionRate})
+                                  </span>
+                                ))}
+                            </div>
+                          )}
+                        </div>
                       </td>
 
                       {/* Cột 6: Quy cách đóng gói */}
@@ -899,6 +969,16 @@ export const ProductsPage: React.FC = () => {
                               <Warehouse className="h-4 w-4" />
                             </button>
                           )}
+
+                          {/* Sổ kho & Lịch sử quy đổi giao dịch (SN-23) */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenLedgerModal(p.sku)}
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors cursor-pointer"
+                            title="Xem Sổ kho & Lịch sử quy đổi của SKU này"
+                          >
+                            <BookOpen className="h-4 w-4" />
+                          </button>
 
                           {/* Xóa sản phẩm (Có kiểm tra khóa giao dịch) */}
                           {canManageProducts && (
@@ -1021,6 +1101,11 @@ export const ProductsPage: React.FC = () => {
                       </div>
                       <span className="text-[10px] text-slate-400">
                         ĐVT: <strong className="text-slate-600 font-semibold">{p.baseUnit}</strong>
+                        {p.units && p.units.filter((u) => !u.isBaseUnit).length > 0 && (
+                          <span className="text-[10px] text-blue-600 block mt-0.5">
+                            Quy đổi: {p.units.filter((u) => !u.isBaseUnit).map((u) => `${u.unitName} (x${u.conversionRate})`).join(", ")}
+                          </span>
+                        )}
                       </span>
                     </div>
 
@@ -1099,6 +1184,17 @@ export const ProductsPage: React.FC = () => {
                           <span>Kho</span>
                         </button>
                       )}
+
+                      {/* Sổ kho & Lịch sử quy đổi */}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenLedgerModal(p.sku)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                        title="Xem Sổ kho & Lịch sử quy đổi"
+                      >
+                        <BookOpen className="h-3.5 w-3.5 text-blue-600" />
+                        <span>Sổ</span>
+                      </button>
 
                       {/* Bật / Tắt trạng thái kinh doanh */}
                       {canManageProducts && (
@@ -1325,13 +1421,18 @@ export const ProductsPage: React.FC = () => {
               if (e.target === e.currentTarget) setAdjustModalOpen(false);
             }}
           >
-          <div className="relative w-full max-w-md rounded-2xl sm:rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 z-10 space-y-4 animate-modal-in text-slate-800">
+          <div className="relative w-full max-w-lg rounded-2xl sm:rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 z-10 space-y-4 animate-modal-in text-slate-800">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <Warehouse className="h-5 w-5 text-blue-600" />
-                <h3 className="text-base font-bold text-slate-900">
-                  Điều chỉnh Tồn kho Thực tế
-                </h3>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Điều chỉnh / Nhập Xuất Tồn Kho (SN-23)
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Nhập theo Thùng, Lốc — Tự động quy về ĐVT cơ sở để ghi sổ kho
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
@@ -1342,63 +1443,131 @@ export const ProductsPage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleAdjustSubmit} className="space-y-4 text-xs">
+            <form onSubmit={handleAdjustSubmit} className="space-y-3.5 text-xs">
+              {/* Thẻ thông tin SKU */}
               <div className="rounded-xl bg-slate-50 p-3.5 text-xs space-y-1.5 border border-slate-100">
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-slate-500">Mã SKU:</span>
-                  <span className="font-mono font-bold text-slate-800">
+                  <span className="font-mono font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">
                     {selectedProductForAdjust.sku}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Tên hàng:</span>
-                  <span className="font-semibold text-slate-800 truncate max-w-[220px]">
+                  <span className="font-semibold text-slate-800 truncate max-w-[260px]">
                     {selectedProductForAdjust.name}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Tồn kho hiện tại:</span>
-                  <span className="font-bold text-blue-600">
-                    {selectedProductForAdjust.stockQuantity} {selectedProductForAdjust.baseUnit}
+                  <span className="font-extrabold text-blue-700">
+                    {selectedProductForAdjust.stockQuantity.toLocaleString("vi-VN")} {selectedProductForAdjust.baseUnit}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Quy cách:</span>
-                  <span className="font-medium text-slate-700">
-                    {selectedProductForAdjust.packagingSpec || "---"}
-                  </span>
+                {selectedProductForAdjust.units && selectedProductForAdjust.units.length > 0 && (
+                  <div className="flex justify-between items-start pt-1 border-t border-slate-200/60">
+                    <span className="text-slate-500">Đơn vị quy đổi:</span>
+                    <div className="flex flex-wrap justify-end gap-1 max-w-[260px]">
+                      {selectedProductForAdjust.units.map((u) => (
+                        <span
+                          key={u.unitName}
+                          className="text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.2 rounded"
+                        >
+                          1 {u.unitName} = {u.conversionRate} {selectedProductForAdjust.baseUnit}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Hàng chọn Đơn vị tính và Số lượng */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Đơn vị tính nhập/xuất <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={adjustUnit}
+                    onChange={(e) => setAdjustUnit(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-semibold text-slate-800 cursor-pointer"
+                  >
+                    <option value={selectedProductForAdjust.baseUnit}>
+                      {selectedProductForAdjust.baseUnit} (Cơ sở, x1)
+                    </option>
+                    {selectedProductForAdjust.units
+                      ?.filter((u) => !u.isBaseUnit && u.unitName.toLowerCase() !== selectedProductForAdjust.baseUnit.toLowerCase())
+                      .map((u) => (
+                        <option key={u.unitName} value={u.unitName}>
+                          {u.unitName} (Quy đổi x{u.conversionRate} {selectedProductForAdjust.baseUnit})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Số lượng (+ nhập, - xuất) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={quantityChange}
+                    onChange={(e) => setQuantityChange(Number(e.target.value))}
+                    placeholder="VD: 5, -2..."
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-bold"
+                    required
+                  />
                 </div>
               </div>
 
+              {/* Hộp quy đổi trực quan theo thời gian thực (AC-2) */}
+              <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between font-medium">
+                  <span className="text-slate-600">Quy đổi ghi sổ tự động:</span>
+                  <span className="font-mono font-bold text-blue-800">
+                    {Number(quantityChange) > 0 ? "+" : ""}{quantityChange} {adjustUnit} × {selectedUnitRate} ={" "}
+                    <span className="text-blue-900 underline underline-offset-2">
+                      {baseCalculatedChange > 0 ? "+" : ""}{baseCalculatedChange} {selectedProductForAdjust.baseUnit}
+                    </span>
+                  </span>
+                </div>
+                <div className="flex items-center justify-between font-medium text-slate-600">
+                  <span>Tồn kho sau khi ghi sổ:</span>
+                  <span className="font-bold text-slate-900">
+                    {selectedProductForAdjust.stockQuantity + baseCalculatedChange} {selectedProductForAdjust.baseUnit}
+                  </span>
+                </div>
+                {selectedProductForAdjust.stockQuantity + baseCalculatedChange < 0 && (
+                  <p className="text-[11px] text-rose-600 font-bold bg-rose-50 border border-rose-200 p-2 rounded-lg mt-1">
+                    ⚠️ Cảnh báo: Xuất vượt quá tồn hiện tại ({selectedProductForAdjust.stockQuantity} {selectedProductForAdjust.baseUnit}). Nghiệp vụ kho ngăn chặn ghi nhận tồn kho âm!
+                  </p>
+                )}
+              </div>
+
+              {/* Mã chứng từ / Phiếu kho */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Số lượng thay đổi (+ để tăng, - để giảm) <span className="text-rose-500">*</span>
+                  Mã chứng từ / Phiếu kho (Tham chiếu)
                 </label>
                 <input
-                  type="number"
-                  value={quantityChange}
-                  onChange={(e) => setQuantityChange(Number(e.target.value))}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-bold"
-                  required
+                  type="text"
+                  value={referenceCode}
+                  onChange={(e) => setReferenceCode(e.target.value)}
+                  placeholder="Ví dụ: PNK-2026-001, PXK-2026-003..."
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-mono"
                 />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Tồn mới sau điều chỉnh:{" "}
-                  <strong className="text-blue-600">
-                    {Math.max(0, selectedProductForAdjust.stockQuantity + Number(quantityChange))}
-                  </strong>{" "}
-                  {selectedProductForAdjust.baseUnit}
-                </p>
               </div>
 
+              {/* Lý do điều chỉnh */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Lý do điều chỉnh (Bắt buộc cho sổ kho) <span className="text-rose-500">*</span>
+                  Lý do ghi sổ (Bắt buộc cho sổ kho) <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={adjustReason}
                   onChange={(e) => setAdjustReason(e.target.value)}
-                  placeholder="Ví dụ: Kiểm kê định kỳ, bù hao hụt vận chuyển..."
+                  placeholder="Ví dụ: Nhập hàng nhà máy theo Thùng, kiểm kê thực tế..."
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   required
                 />
@@ -1414,10 +1583,10 @@ export const ProductsPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={adjusting}
+                  disabled={adjusting || (selectedProductForAdjust.stockQuantity + baseCalculatedChange < 0)}
                   className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 active:scale-[0.99] shadow-xs cursor-pointer disabled:opacity-50"
                 >
-                  {adjusting ? "Đang xử lý..." : "Xác nhận điều chỉnh"}
+                  {adjusting ? "Đang ghi sổ..." : "Xác nhận ghi sổ kho"}
                 </button>
               </div>
             </form>
@@ -1441,6 +1610,169 @@ export const ProductsPage: React.FC = () => {
           }}
         />
       )}
+
+      {/* 9. Modal Sổ kho & Lịch sử quy đổi giao dịch (SN-23 AC-2 & AC-3) */}
+      {ledgerModalOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/40 backdrop-blur-[2px] animate-modal-backdrop-in"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setLedgerModalOpen(false);
+            }}
+          >
+            <div className="relative w-full max-w-5xl max-h-[90vh] flex flex-col rounded-2xl sm:rounded-3xl bg-white shadow-2xl border border-slate-100 animate-modal-in text-slate-800 overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/70">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 border border-blue-100 text-blue-600 shadow-2xs">
+                    <BookOpen className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">
+                      Sổ Kho & Lịch sử Bút toán Quy đổi Giao dịch (SN-23)
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      {ledgerSku ? (
+                        <>Mã SKU: <span className="font-mono font-bold text-blue-700">{ledgerSku}</span></>
+                      ) : (
+                        "Toàn bộ bút toán phát sinh trong kho"
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLedgerModalOpen(false)}
+                  className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 cursor-pointer transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Banner AC-3: Bất biến lịch sử quy đổi */}
+              <div className="mx-5 mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-start gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Bảo toàn bất biến (Snapshot Immutability - AC-3):</span>{" "}
+                  Hệ thống đóng băng hệ số quy đổi tại thời điểm ghi sổ. Khi thủ kho sửa đổi hệ số quy đổi của SKU (vd: Thùng từ 24 lon lên 30 lon), toàn bộ bút toán lịch sử trước đó không bao giờ bị sai lệch số liệu!
+                </div>
+              </div>
+
+              {/* Table ledger */}
+              <div className="p-5 overflow-y-auto flex-1">
+                {ledgerLoading ? (
+                  <div className="py-12 text-center text-slate-400">
+                    <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-500" />
+                    <span className="font-medium text-xs">Đang tải dữ liệu sổ kho...</span>
+                  </div>
+                ) : ledgerTransactions.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400">
+                    <BookOpen className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                    <p className="font-semibold text-slate-600 text-sm">Chưa có bút toán nào được ghi nhận</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Hãy thực hiện thao tác nhập kho hoặc điều chỉnh tồn theo Thùng/Lốc để kiểm tra ghi sổ tự động.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase text-[10px] tracking-wider">
+                        <tr>
+                          <th className="px-3 py-2.5">Thời gian</th>
+                          <th className="px-3 py-2.5">Mã phiếu</th>
+                          <th className="px-3 py-2.5">Hàng hóa (SKU)</th>
+                          <th className="px-3 py-2.5 text-center">Loại GD</th>
+                          <th className="px-3 py-2.5 text-right">SL Nhập/Xuất</th>
+                          <th className="px-3 py-2.5 text-center">Hệ số QĐ</th>
+                          <th className="px-3 py-2.5 text-right bg-blue-50/50">Ghi sổ (Cơ sở)</th>
+                          <th className="px-3 py-2.5 text-right">Tồn Sau</th>
+                          <th className="px-3 py-2.5">Lý do & Người ghi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {ledgerTransactions.map((tx) => {
+                          const isPositive = (tx.baseQuantityChange ?? 0) >= 0;
+                          return (
+                            <tr key={tx.id} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="px-3 py-2.5 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                                <div>{new Date(tx.createdAt).toLocaleDateString("vi-VN")}</div>
+                                <div className="text-[10px] text-slate-400">{new Date(tx.createdAt).toLocaleTimeString("vi-VN")}</div>
+                              </td>
+                              <td className="px-3 py-2.5 font-mono font-semibold text-blue-700 whitespace-nowrap">
+                                {tx.referenceCode || tx.id.slice(0, 8)}
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <span className="font-mono font-bold text-slate-900 block">{tx.sku}</span>
+                                <span className="text-[11px] text-slate-500 truncate max-w-[160px] block">{tx.productName}</span>
+                              </td>
+                              <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    tx.transactionType === "IMPORT"
+                                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20"
+                                      : tx.transactionType === "EXPORT"
+                                      ? "bg-rose-50 text-rose-700 ring-1 ring-rose-600/20"
+                                      : "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20"
+                                  }`}
+                                >
+                                  {tx.transactionType === "IMPORT"
+                                    ? "Nhập kho"
+                                    : tx.transactionType === "EXPORT"
+                                    ? "Xuất kho"
+                                    : "Điều chỉnh"}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2.5 text-right font-semibold text-slate-800 whitespace-nowrap">
+                                {isPositive ? "+" : ""}{tx.inputQuantity} <span className="text-slate-500 font-normal">{tx.inputUnit}</span>
+                              </td>
+                              <td className="px-3 py-2.5 text-center font-mono text-slate-600 whitespace-nowrap">
+                                <span className="px-1.5 py-0.5 rounded bg-slate-100 font-semibold text-[11px]">
+                                  x{tx.conversionRate}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2.5 text-right font-mono font-bold whitespace-nowrap bg-blue-50/50">
+                                <span className={isPositive ? "text-emerald-600" : "text-rose-600"}>
+                                  {isPositive ? "+" : ""}{tx.baseQuantityChange} {tx.baseUnit}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2.5 text-right font-mono font-semibold text-slate-700 whitespace-nowrap">
+                                {tx.newStock} {tx.baseUnit}
+                              </td>
+                              <td className="px-3 py-2.5 text-[11px] text-slate-600">
+                                <div>{tx.reason}</div>
+                                {tx.performedBy && (
+                                  <div className="text-[10px] text-slate-400">Bởi: {tx.performedBy}</div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50 text-xs">
+                <span className="text-slate-500">
+                  Tổng cộng: <strong>{ledgerTransactions.length}</strong> bút toán giao dịch
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLedgerModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold cursor-pointer transition-colors"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

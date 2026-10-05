@@ -91,7 +91,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
 /**
  * Danh sách sản phẩm mẫu phong phú phục vụ demo / fallback
  */
-let MOCK_PRODUCTS: Product[] = [
+export let MOCK_PRODUCTS: Product[] = [
   {
     id: "prod-001",
     sku: "LH-MILK-900G",
@@ -102,6 +102,11 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-milk-powder",
     baseUnit: "Lon",
     packagingSpec: "24 lon/thùng",
+    units: [
+      { unitName: "Lon", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+    ],
     price: 520000,
     costPrice: 380000,
     margin: 26.92,
@@ -123,6 +128,11 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-milk-nut",
     baseUnit: "Hộp",
     packagingSpec: "48 hộp/thùng (12 lốc x 4 hộp)",
+    units: [
+      { unitName: "Hộp", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Lốc", conversionRate: 4, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 48, isBaseUnit: false },
+    ],
     price: 18000,
     costPrice: 11500,
     margin: 36.11,
@@ -144,6 +154,11 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-nest-ready",
     baseUnit: "Hũ",
     packagingSpec: "30 hũ/thùng (5 hộp x 6 hũ)",
+    units: [
+      { unitName: "Hũ", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Hộp", conversionRate: 6, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 30, isBaseUnit: false },
+    ],
     price: 65000,
     costPrice: 42000,
     margin: 35.38,
@@ -165,6 +180,10 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-cereal-sprout",
     baseUnit: "Túi",
     packagingSpec: "20 túi/thùng",
+    units: [
+      { unitName: "Túi", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Thùng", conversionRate: 20, isBaseUnit: false },
+    ],
     price: 145000,
     costPrice: 95000,
     margin: 34.48,
@@ -186,6 +205,11 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-supp-collagen",
     baseUnit: "Chai",
     packagingSpec: "24 chai/thùng (4 lốc x 6 chai)",
+    units: [
+      { unitName: "Chai", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Hộp", conversionRate: 6, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+    ],
     price: 85000,
     costPrice: 55000,
     margin: 35.29,
@@ -205,8 +229,13 @@ let MOCK_PRODUCTS: Product[] = [
     subCategory: "Trà thảo mộc thanh nhiệt",
     category: "Nước giải khát & Trà / Trà thảo mộc thanh nhiệt",
     categoryId: "cat-bev-tea",
-    baseUnit: "Chai",
-    packagingSpec: "24 chai/thùng",
+    baseUnit: "Lon",
+    packagingSpec: "24 lon/thùng",
+    units: [
+      { unitName: "Lon", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+    ],
     price: 15000,
     costPrice: 9200,
     margin: 38.67,
@@ -228,6 +257,11 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-bev-water",
     baseUnit: "Chai",
     packagingSpec: "24 chai/thùng",
+    units: [
+      { unitName: "Chai", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+    ],
     price: 12000,
     costPrice: 6800,
     margin: 43.33,
@@ -249,6 +283,10 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-milk-ready",
     baseUnit: "Chai",
     packagingSpec: "12 chai/thùng",
+    units: [
+      { unitName: "Chai", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Thùng", conversionRate: 12, isBaseUnit: false },
+    ],
     price: 38000,
     costPrice: 26000,
     margin: 31.58,
@@ -270,6 +308,10 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-nest-pure",
     baseUnit: "Hộp",
     packagingSpec: "10 hộp/thùng",
+    units: [
+      { unitName: "Hộp", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Thùng", conversionRate: 10, isBaseUnit: false },
+    ],
     price: 4200000,
     costPrice: 3100000,
     margin: 26.19,
@@ -291,6 +333,11 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-cereal-nuts",
     baseUnit: "Hũ",
     packagingSpec: "24 hũ/thùng",
+    units: [
+      { unitName: "Hũ", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+    ],
     price: 135000,
     costPrice: 88000,
     margin: 34.81,
@@ -312,6 +359,11 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-bev-tea",
     baseUnit: "Lon",
     packagingSpec: "24 lon/thùng",
+    units: [
+      { unitName: "Lon", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+    ],
     price: 14000,
     costPrice: 9000,
     margin: 35.71,
@@ -559,6 +611,9 @@ export const productsService = {
         categoryId: payload.categoryId,
         baseUnit: payload.baseUnit,
         packagingSpec: payload.packagingSpec,
+        units: payload.units && payload.units.length > 0
+          ? payload.units
+          : [{ unitName: payload.baseUnit, conversionRate: 1, isBaseUnit: true }],
         price: Number(payload.price),
         costPrice: payload.costPrice !== undefined ? Number(payload.costPrice) : undefined,
         margin,
@@ -638,6 +693,7 @@ export const productsService = {
       if (payload.category !== undefined) existing.category = payload.category;
       if (payload.baseUnit !== undefined) existing.baseUnit = payload.baseUnit;
       if (payload.packagingSpec !== undefined) existing.packagingSpec = payload.packagingSpec;
+      if (payload.units !== undefined) existing.units = payload.units;
       if (payload.price !== undefined) existing.price = Number(payload.price);
       if (payload.costPrice !== undefined) existing.costPrice = Number(payload.costPrice);
       if (payload.status !== undefined) existing.status = payload.status;
