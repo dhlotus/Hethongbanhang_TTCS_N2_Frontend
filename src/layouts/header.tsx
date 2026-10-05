@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { useLocation, Link } from "react-router-dom";
-import { Menu, User } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { Menu } from "lucide-react";
 import { getStoredUser } from "../utils/navigation";
 import {
-  getUserContext,
   getNavigationItems,
   ROLE_NAVIGATION_MATRIX,
   type MenuItem,
 } from "../utils/navigation-config";
 import { tokenStorage } from "../utils/token-storage";
-import { resolveAvatarUrl } from "../utils/avatar";
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
@@ -88,38 +86,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     };
   }, []);
 
-  const context = getUserContext(currentUser);
   const menuItems = getNavigationItems(currentUser?.roles || currentUser?.role);
   const { title } = getPageHeaderInfo(location.pathname, menuItems);
-
-  // Lọc bỏ phần vai trò trong ngoặc khỏi tên hiển thị trên Header (ví dụ: "Nguyễn Văn Admin (Quản Trị Viên)" -> "Nguyễn Văn Admin")
-  const cleanFullName =
-    (context.fullName || "").replace(/\s*\([^)]*\)/g, "").trim() ||
-    context.fullName ||
-    "Người dùng";
-
-  // Đọc avatarUrl từ localStorage và phản ứng khi thay đổi (sau khi upload)
-  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
-    tokenStorage.getUser()?.avatarUrl,
-  );
-
-  useEffect(() => {
-    const syncAvatar = () => {
-      setAvatarUrl(tokenStorage.getUser()?.avatarUrl);
-    };
-
-    // Lắng nghe cross-tab storage event
-    window.addEventListener("storage", syncAvatar);
-    // Lắng nghe same-tab custom event (dispatch từ ProfilePage sau khi upload)
-    window.addEventListener("avatar-updated", syncAvatar);
-    // Đọc lại khi route thay đổi
-    syncAvatar();
-
-    return () => {
-      window.removeEventListener("storage", syncAvatar);
-      window.removeEventListener("avatar-updated", syncAvatar);
-    };
-  }, [location.pathname]);
 
   return (
     <header className="sticky top-0 z-20 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 backdrop-blur-xs px-3 sm:px-6">
@@ -149,46 +117,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       </div>
 
       {/* =================================================================== */}
-      {/* 2. BÊN PHẢI: HỒ SƠ NGƯỜI DÙNG KÈM TAG VAI TRÒ                      */}
+      {/* 2. BÊN PHẢI: HỒ SƠ ĐÃ ĐƯỢC CHUYỂN VỀ ĐẦU NAVBAR THEO MẪU LMS        */}
       {/* =================================================================== */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0 mr-1 sm:mr-3 lg:mr-4">
-        <Link
-          to="/profile"
-          title={`Hồ sơ cá nhân: ${context.fullName}`}
-          className="flex items-center gap-3 px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-2xl bg-slate-50/70 hover:bg-slate-100/90 border border-slate-200/80 hover:border-blue-200 hover:shadow-xs transition-all duration-200 focus:outline-none group cursor-pointer"
-          id="header-avatar-btn"
-        >
-          {/* Avatar: ảnh hoặc chữ cái - kích thước h-10 w-10 nổi bật */}
-          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-sm font-bold text-white shadow-xs group-hover:ring-2 group-hover:ring-blue-500/40 group-hover:scale-105 transition-all">
-            {avatarUrl ? (
-              <img
-                src={resolveAvatarUrl(avatarUrl)}
-                alt={`Ảnh đại diện ${cleanFullName}`}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              context.avatarLetter || <User className="h-5 w-5" />
-            )}
-          </div>
-
-          {/* Tên người dùng & Tag vai trò: rõ nét, font-size lớn hơn và dễ đọc */}
-          <div className="hidden sm:flex flex-col items-start text-left min-w-0">
-            <span
-              className="max-w-[170px] sm:max-w-[210px] lg:max-w-[260px] truncate text-xs sm:text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-tight"
-              title={context.fullName}
-            >
-              {cleanFullName}
-            </span>
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold mt-0.5 truncate max-w-[170px] sm:max-w-[200px] ${context.badgeClass}`}
-              title={context.roleLabel}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${context.dotClass}`} />
-              <span className="truncate">{context.roleLabel}</span>
-            </span>
-          </div>
-        </Link>
-      </div>
+      <div className="flex items-center gap-2 shrink-0" />
     </header>
   );
 };
