@@ -26,6 +26,7 @@ import { priceListsService } from '../services/price-lists.service';
 import { PriceListFormModal } from '../components/price-list-form-modal';
 import { PriceListCloneModal } from '../components/price-list-clone-modal';
 import { Toast, type ToastType } from '../components/toast';
+import { PriceListsTableSkeleton } from '../components/skeletons';
 import type {
   PriceList,
   CustomerGroupType,
@@ -526,14 +527,7 @@ export const PriceListsPage: React.FC = () => {
 
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading ? (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                      <span className="text-xs">Đang tải danh sách bảng giá...</span>
-                    </div>
-                  </td>
-                </tr>
+                <PriceListsTableSkeleton count={6} />
               ) : priceLists.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-slate-400">

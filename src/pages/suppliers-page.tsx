@@ -18,6 +18,7 @@ import {
   Eye,
 } from "lucide-react";
 import { Toast, type ToastType } from "../components/toast";
+import { SuppliersTableSkeleton } from "../components/skeletons";
 import { SupplierFormModal } from "../components/supplier-form-modal";
 import { SupplierDetailModal } from "../components/supplier-detail-modal";
 import { suppliersService } from "../services/suppliers.service";
@@ -399,12 +400,7 @@ export const SuppliersPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="py-14 text-center text-slate-400">
-                    <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-500" />
-                    <span className="font-medium text-xs">Đang tải danh sách nhà cung cấp...</span>
-                  </td>
-                </tr>
+                <SuppliersTableSkeleton count={6} />
               ) : suppliers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-14 text-center text-slate-400">

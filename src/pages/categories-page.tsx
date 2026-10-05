@@ -22,6 +22,7 @@ import {
   ExternalLink,
   ArrowLeft,
 } from "lucide-react";
+import { CategoriesTreeSkeleton } from "../components/skeletons";
 import { categoriesService } from "../services/categories.service";
 import { tokenStorage } from "../utils/token-storage";
 import type {
@@ -614,10 +615,7 @@ export const CategoriesPage: React.FC = () => {
       {/* Tree Content */}
       <div className="rounded-3xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-xs min-h-[350px]">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-16 text-slate-400 space-y-3">
-            <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
-            <p className="text-xs">Đang tải cấu trúc cây danh mục...</p>
-          </div>
+          <CategoriesTreeSkeleton />
         ) : filteredTree.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-slate-400 space-y-3">
             <FolderTree className="h-10 w-10 text-slate-300" />

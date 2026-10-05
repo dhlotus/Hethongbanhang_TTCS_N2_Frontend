@@ -31,6 +31,10 @@ import { inventoryService } from "../services/inventory.service";
 import { ProductFormModal } from "../components/product-form-modal";
 import { ImportProductsModal } from "../components/import-products-modal";
 import { Toast, type ToastType } from "../components/toast";
+import {
+  ProductsTableSkeleton,
+  ProductsMobileCardSkeleton,
+} from "../components/skeletons";
 import type {
   Product,
   ProductStatus,
@@ -837,15 +841,7 @@ export const ProductsPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
               {loading ? (
-                <tr>
-                  <td
-                    colSpan={canViewCostPrice ? 12 : 10}
-                    className="py-14 text-center text-slate-400"
-                  >
-                    <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-500" />
-                    <span className="font-medium text-xs">Đang tải danh mục SKU sản phẩm...</span>
-                  </td>
-                </tr>
+                <ProductsTableSkeleton count={6} canViewCostPrice={canViewCostPrice} />
               ) : products.length === 0 ? (
                 <tr>
                   <td
@@ -1108,10 +1104,7 @@ export const ProductsPage: React.FC = () => {
         {/* ===================================================================== */}
         <div className="divide-y divide-slate-100 sm:hidden">
           {loading ? (
-            <div className="py-12 text-center text-slate-400">
-              <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-500" />
-              <span className="font-medium text-xs">Đang tải danh mục SKU sản phẩm...</span>
-            </div>
+            <ProductsMobileCardSkeleton count={4} canViewCostPrice={canViewCostPrice} />
           ) : products.length === 0 ? (
             <div className="py-12 text-center text-slate-400 px-4">
               <Package className="h-8 w-8 mx-auto mb-2 text-slate-300" />

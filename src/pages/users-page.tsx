@@ -30,6 +30,10 @@ import {
   FileSpreadsheet,
   RotateCcw,
 } from "lucide-react";
+import {
+  UsersTableSkeleton,
+  UsersMobileCardSkeleton,
+} from "../components/skeletons";
 import { ExcelImportModal } from "../components/excel-import-modal";
 import { usersService } from "../services/users.service";
 import type {
@@ -918,12 +922,7 @@ export const UsersPage: React.FC = () => {
 
             <tbody className="divide-y divide-slate-100 text-xs">
               {loading ? (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400">
-                    <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-purple-600" />
-                    <span>Đang tải danh sách nhân sự từ hệ thống...</span>
-                  </td>
-                </tr>
+                <UsersTableSkeleton count={6} />
               ) : users.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-slate-400">
@@ -1111,10 +1110,7 @@ export const UsersPage: React.FC = () => {
         {/* ===================================================================== */}
         <div className="divide-y divide-slate-100 sm:hidden">
           {loading ? (
-            <div className="py-12 text-center text-slate-400">
-              <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-purple-600" />
-              <span>Đang tải danh sách nhân sự...</span>
-            </div>
+            <UsersMobileCardSkeleton count={4} />
           ) : users.length === 0 ? (
             <div className="py-12 text-center text-slate-400 px-4">
               <Users className="h-8 w-8 mx-auto mb-2 text-slate-300" />
