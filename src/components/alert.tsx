@@ -17,7 +17,7 @@ export const Alert: React.FC<AlertProps> = ({ type = "error", title, message }) 
     error: {
       wrapperClass: "bg-rose-50/80 border-rose-200/80 text-rose-900",
       icon: <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />,
-      defaultTitle: "Đăng nhập thất bại",
+      defaultTitle: "Thao tác thất bại",
       textColor: "text-rose-700",
     },
     warning: {
