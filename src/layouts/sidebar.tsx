@@ -63,30 +63,46 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
       {/* PHẦN 1: LOGO & BRAND IDENTITY KÈM NÚT ĐÓNG/MỞ THU GỌN                 */}
       {/* ===================================================================== */}
       <div className="flex flex-col min-h-0 flex-1">
-        {/* Header khi mở rộng: Logo + Brand + Nút mũi tên chỉ vào thu gọn */}
-        {!isCollapsed ? (
-          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 px-1">
+        {/* Header Logo + Toggle: Chuyển đổi trạng thái đóng/mở siêu mượt mà không bị nhảy layout */}
+        <div
+          className={`border-b border-slate-100 transition-[height,padding] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden flex flex-col justify-between ${
+            isCollapsed ? "h-[94px] pb-3" : "h-[56px] pb-3.5"
+          }`}
+        >
+          {/* Hàng 1: Logo Icon + Tên LOHA SALES + Nút thu gọn (<) khi mở rộng */}
+          <div className="flex items-center justify-between w-full min-w-0 px-0.5">
             <Link
               to="/"
               onClick={onItemClick}
               className="flex items-center gap-2.5 group focus:outline-none min-w-0"
+              title="LOHA SALES"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xs group-hover:scale-105 transition-transform duration-200">
-                <Layers className="h-4.5 w-4.5" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white shadow-xs group-hover:scale-105 transition-transform duration-200">
+                <Layers className="h-5 w-5" />
               </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-bold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+              <div
+                className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                  isCollapsed
+                    ? "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
+                    : "max-w-[150px] opacity-100 translate-x-0"
+                }`}
+              >
+                <span className="text-base font-bold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
                   LOHA SALES
                 </span>
               </div>
             </Link>
 
-            {/* Nút mũi tên chỉ vào (Thu gọn menu) kèm hiệu ứng hover dịch chuyển */}
+            {/* Nút mũi tên thu gọn (<) khi đang mở rộng */}
             {onToggleCollapse && (
               <button
                 type="button"
                 onClick={onToggleCollapse}
-                className="group/collapse hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 hover:shadow-xs transition-all duration-200 cursor-pointer active:scale-95"
+                className={`group/collapse hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 hover:shadow-xs transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer active:scale-95 ${
+                  isCollapsed
+                    ? "opacity-0 scale-75 max-w-0 pointer-events-none"
+                    : "opacity-100 scale-100 max-w-8"
+                }`}
                 title="Thu gọn menu"
                 aria-label="Thu gọn menu"
               >
@@ -94,20 +110,16 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               </button>
             )}
           </div>
-        ) : (
-          /* Header khi thu gọn: Logo icon căn giữa + Nút mũi tên chỉ ra ngoài mở rộng */
-          <div className="flex flex-col items-center gap-2.5 pb-3 border-b border-slate-100">
-            <Link
-              to="/"
-              onClick={onItemClick}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xs hover:scale-105 transition-transform"
-              title="LOHA SALES"
-            >
-              <Layers className="h-4.5 w-4.5" />
-            </Link>
 
-            {/* Nút mũi tên chỉ ra ngoài (Mở rộng menu) kèm hiệu ứng hover dịch chuyển */}
-            {onToggleCollapse && (
+          {/* Hàng 2: Nút mũi tên mở rộng (>) nằm dưới Logo khi đang thu gọn */}
+          {onToggleCollapse && (
+            <div
+              className={`flex items-center justify-center w-full transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                isCollapsed
+                  ? "opacity-100 scale-100 translate-y-0 h-8 mt-1"
+                  : "opacity-0 scale-75 -translate-y-2 h-0 pointer-events-none overflow-hidden"
+              }`}
+            >
               <button
                 type="button"
                 onClick={onToggleCollapse}
@@ -117,16 +129,16 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               >
                 <ChevronRight className="h-4.5 w-4.5 transition-transform duration-200 group-hover/expand:translate-x-0.5" />
               </button>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
 
         {/* ===================================================================== */}
         {/* PHẦN 2: DANH MỤC MENU ĐIỀU HƯỚNG THEO VAI TRÒ (DYNAMIC NAVIGATION)    */}
         {/* ===================================================================== */}
-        <div className="mt-3 flex-1 flex flex-col min-h-0 overflow-y-auto pr-0.5">
+        <div className="mt-3.5 flex-1 flex flex-col min-h-0 overflow-y-auto pr-0.5">
           <div onClick={(e) => isCollapsed && e.stopPropagation()}>
-            <nav className="space-y-1">
+            <nav className="space-y-1.5">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isItemActive =
@@ -142,36 +154,51 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                     to={item.path}
                     onClick={onItemClick}
                     title={isCollapsed ? item.name : undefined}
-                    className={`group relative flex items-center ${isCollapsed
-                      ? "justify-center p-2.5"
-                      : "justify-between px-3 py-2.5"
-                    } rounded-xl text-xs sm:text-sm transition-all duration-200 ease-out active:scale-[0.98] ${isItemActive
-                      ? "bg-blue-50 text-blue-600 font-semibold shadow-xs"
-                      : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
+                    className={`group relative flex items-center px-2.5 py-2.5 min-h-[46px] rounded-xl text-sm font-semibold transition-colors duration-200 active:scale-[0.98] ${
+                      isItemActive
+                        ? "bg-blue-50/90 text-blue-600 font-bold shadow-2xs"
+                        : "text-slate-700 hover:bg-slate-50/90 hover:text-slate-900"
                     }`}
                   >
-                    <div
-                      className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3 min-w-0"
-                        }`}
-                    >
+                    <div className="flex items-center w-full min-w-0">
                       {/* Thanh định vị Active nhỏ ở bên trái */}
                       {isItemActive && (
-                        <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-blue-600" />
+                        <span className="absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r-full bg-blue-600 shadow-xs" />
                       )}
-                      <Icon
-                        className={`h-4.5 w-4.5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${isItemActive
-                          ? "text-blue-600"
-                          : "text-slate-400 group-hover:text-slate-700"
+
+                      {/* Icon vị trí cố định tuyệt đối mượt mà */}
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center">
+                        <Icon
+                          className={`h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                            isItemActive
+                              ? "text-blue-600"
+                              : "text-slate-500 group-hover:text-slate-800"
                           }`}
-                      />
-                      {!isCollapsed && (
-                        <span className="truncate">{item.name}</span>
-                      )}
+                        />
+                      </div>
+
+                      {/* Tên Menu co giãn mượt mà không bao giờ giật */}
+                      <span
+                        className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] tracking-tight ${
+                          isCollapsed
+                            ? "max-w-0 opacity-0 -translate-x-2.5 pointer-events-none"
+                            : "max-w-[190px] opacity-100 translate-x-0 ml-3"
+                        }`}
+                      >
+                        {item.name}
+                      </span>
                     </div>
 
-                    {!isCollapsed && isItemActive && (
-                      <ChevronRight className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                    )}
+                    {/* Mũi tên bên phải co giãn mượt mà */}
+                    <div
+                      className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] shrink-0 ${
+                        !isCollapsed && isItemActive
+                          ? "max-w-5 opacity-100 ml-1"
+                          : "max-w-0 opacity-0 pointer-events-none"
+                      }`}
+                    >
+                      <ChevronRight className="h-4 w-4 text-blue-500 shrink-0" />
+                    </div>
                   </NavLink>
                 );
               })}
@@ -203,7 +230,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
 
 /**
  * Component Sidebar chính cho AppLayout:
- * - Desktop: Tùy biến thu gọn (w-[72px]) hoặc mở rộng (w-[270px]) mượt mà
+ * - Desktop: Tùy biến thu gọn (w-[76px]) hoặc mở rộng (w-[280px]) mượt mà
  * - Mobile (< 1024px, bao gồm 360px): Drawer trượt off-canvas mượt mà với lớp phủ mờ
  */
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -216,8 +243,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* 1. Desktop Sidebar */}
       <aside
-        className={`hidden h-full shrink-0 border-r border-slate-100 bg-white lg:flex lg:flex-col transition-all duration-300 ease-in-out ${isCollapsed ? "w-[72px]" : "w-[270px]"
-          }`}
+        className={`hidden h-full shrink-0 border-r border-slate-100 bg-white lg:flex lg:flex-col transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          isCollapsed ? "w-[76px]" : "w-[280px]"
+        }`}
       >
         <SidebarNavContent
           isCollapsed={isCollapsed}
