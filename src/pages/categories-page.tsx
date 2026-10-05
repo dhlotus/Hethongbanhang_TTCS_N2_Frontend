@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   FolderTree,
@@ -21,6 +22,7 @@ import {
   Tag,
   ExternalLink,
   ArrowLeft,
+  MoreVertical,
 } from "lucide-react";
 import { CategoriesTreeSkeleton } from "../components/skeletons";
 import { categoriesService } from "../services/categories.service";
@@ -70,6 +72,8 @@ export const CategoriesPage: React.FC = () => {
   const [categoryProducts, setCategoryProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState<boolean>(false);
   const [isProductsModalOpen, setIsProductsModalOpen] = useState<boolean>(false);
+  const [activeActionSheetNode, setActiveActionSheetNode] =
+    useState<CategoryTreeNode | null>(null);
 
   const currentUser = tokenStorage.getUser();
   const userRoles = currentUser?.roles || (currentUser?.role ? [currentUser.role] : []);
@@ -350,20 +354,20 @@ export const CategoriesPage: React.FC = () => {
       <div key={node.id} className="relative flex flex-col">
         {/* Node Row */}
         <div
-          className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 my-1 rounded-2xl border transition-all duration-150 ${node.level === 1
+          className={`group flex items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 my-1 rounded-xl sm:rounded-2xl border transition-all duration-150 ${node.level === 1
             ? "bg-white border-slate-200 shadow-2xs hover:border-blue-300"
             : node.level === 2
-              ? "bg-slate-50/70 border-slate-200/80 ml-4 sm:ml-7 hover:border-indigo-300"
-              : "bg-white border-slate-200/60 ml-8 sm:ml-14 hover:border-purple-300"
+              ? "bg-slate-50/70 border-slate-200/80 hover:border-indigo-300"
+              : "bg-white border-slate-200/60 hover:border-purple-300"
             }`}
         >
           {/* Left: Expander + Icon + Name + Badges */}
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
             {hasChildren ? (
               <button
                 type="button"
                 onClick={() => toggleExpand(node.id)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors focus:outline-none cursor-pointer"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors focus:outline-none cursor-pointer shrink-0"
                 title={isExpanded ? "Thu gọn" : "Mở rộng"}
               >
                 {isExpanded ? (
@@ -373,13 +377,13 @@ export const CategoriesPage: React.FC = () => {
                 )}
               </button>
             ) : (
-              <span className="w-6 h-6 flex items-center justify-center text-slate-300">
+              <span className="w-6 h-6 flex items-center justify-center text-slate-300 shrink-0">
                 •
               </span>
             )}
 
             <div
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${node.level === 1
+              className={`flex h-7.5 w-7.5 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-xl ${node.level === 1
                 ? "bg-blue-100/70 text-blue-700"
                 : node.level === 2
                   ? "bg-indigo-100/70 text-indigo-700"
@@ -397,27 +401,27 @@ export const CategoriesPage: React.FC = () => {
               )}
             </div>
 
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-col min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <span className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
                   {node.name}
                 </span>
-                <span className="font-mono text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">
+                <span className="font-mono text-[10px] sm:text-[11px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium shrink-0">
                   {node.code}
                 </span>
                 <span
-                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${levelBadge.color}`}
+                  className={`hidden md:inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full border ${levelBadge.color} shrink-0`}
                 >
                   {levelBadge.label}
                 </span>
                 {node.status === "INACTIVE" && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                  <span className="text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 shrink-0">
                     Ngừng KD
                   </span>
                 )}
               </div>
               {node.description && (
-                <span className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                <span className="text-[11px] text-slate-400 line-clamp-1 mt-0.5 hidden sm:block">
                   {node.description}
                 </span>
               )}
@@ -425,33 +429,37 @@ export const CategoriesPage: React.FC = () => {
           </div>
 
           {/* Right: Product Count Badge + Action Buttons */}
-          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Product Count Badge - Clickable to view products */}
             <button
               type="button"
               onClick={() => handleViewProducts(node)}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 ${node.productCount > 0
+              className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl text-[11px] sm:text-xs font-semibold border transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 ${node.productCount > 0
                 ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                 : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
                 }`}
               title="Bấm để xem danh sách mặt hàng thuộc nhánh này"
             >
-              <Package className="h-3.5 w-3.5 text-emerald-600" />
-              <span>{node.productCount} sản phẩm</span>
+              <Package className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              <span>
+                {node.productCount} <span className="hidden sm:inline">sản phẩm</span>
+              </span>
             </button>
 
-            {/* Actions (Admins & Sales Managers) */}
+            {/* Desktop Actions Toolbar (>= sm) */}
             {canManageCategories && (
-              <div className="flex items-center gap-1 bg-white/80 p-0.5 rounded-xl border border-slate-200/80 shadow-2xs">
+              <div className="hidden sm:flex items-center gap-1 bg-white/80 p-0.5 rounded-xl border border-slate-200/80 shadow-2xs">
                 {/* + Thêm nhóm con */}
-                <button
-                  type="button"
-                  onClick={() => handleOpenCreateModal(node)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors focus:outline-none cursor-pointer"
-                  title="Thêm nhóm con cấp dưới"
-                >
-                  <FolderPlus className="h-4 w-4" />
-                </button>
+                {node.level < 3 && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCreateModal(node)}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors focus:outline-none cursor-pointer"
+                    title="Thêm nhóm con cấp dưới"
+                  >
+                    <FolderPlus className="h-4 w-4" />
+                  </button>
+                )}
 
                 {/* Sửa thông tin */}
                 <button
@@ -484,12 +492,25 @@ export const CategoriesPage: React.FC = () => {
                 </button>
               </div>
             )}
+
+            {/* Mobile Action Sheet Trigger (...) */}
+            {canManageCategories && (
+              <button
+                type="button"
+                onClick={() => setActiveActionSheetNode(node)}
+                className="sm:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 active:scale-95 transition-all cursor-pointer"
+                title="Tùy chọn thao tác"
+                aria-label="Tùy chọn thao tác"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Children Render */}
+        {/* Children Render: Thụt lề linh hoạt pl-2 sm:pl-6 theo chuẩn Mobile */}
         {hasChildren && isExpanded && (
-          <div className="flex flex-col border-l-2 border-slate-200/60 ml-4 sm:ml-6 pl-1 sm:pl-2">
+          <div className="flex flex-col border-l-2 border-slate-200/60 ml-1.5 sm:ml-4 pl-2 sm:pl-6 space-y-1">
             {node.children.map(renderTreeNode)}
           </div>
         )}
@@ -1020,6 +1041,197 @@ export const CategoriesPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ===================================================================== */}
+      {/* MOBILE ACTION SHEET (MENU 3 CHẤM DẠNG VUỐT GỌN GÀNG TRÊN SMARTPHONE) */}
+      {/* ===================================================================== */}
+      {activeActionSheetNode &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+            {/* Backdrop click to dismiss */}
+            <div
+              className="absolute inset-0"
+              onClick={() => setActiveActionSheetNode(null)}
+            />
+
+            {/* Bottom Sheet Card */}
+            <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl border border-slate-100 z-10 space-y-4 animate-in slide-in-from-bottom-5 duration-200">
+              {/* Handle bar on mobile */}
+              <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
+
+              {/* Header: Thông tin nhóm hàng */}
+              <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                      activeActionSheetNode.level === 1
+                        ? "bg-blue-100 text-blue-700"
+                        : activeActionSheetNode.level === 2
+                        ? "bg-indigo-100 text-indigo-700"
+                        : "bg-purple-100 text-purple-700"
+                    }`}
+                  >
+                    <Folder className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-bold text-slate-900 truncate">
+                      {activeActionSheetNode.name}
+                    </h4>
+                    <p className="text-xs text-slate-500 font-mono">
+                      Mã: {activeActionSheetNode.code} • Cấp {activeActionSheetNode.level}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveActionSheetNode(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Danh sách hành động (Action Buttons) */}
+              <div className="space-y-1 text-sm font-medium">
+                {/* 1. Thêm nhóm con (nếu chưa tới cấp 3) */}
+                {activeActionSheetNode.level < 3 && canManageCategories && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const node = activeActionSheetNode;
+                      setActiveActionSheetNode(null);
+                      handleOpenCreateModal(node);
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-blue-50 text-slate-700 hover:text-blue-700 transition-colors text-left"
+                  >
+                    <div className="p-2 rounded-xl bg-blue-50 text-blue-600 shrink-0">
+                      <FolderPlus className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-800 text-xs sm:text-sm">
+                        Thêm nhóm con cấp {activeActionSheetNode.level + 1}
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Tạo danh mục trực thuộc nhóm này
+                      </p>
+                    </div>
+                  </button>
+                )}
+
+                {/* 2. Sửa thông tin */}
+                {canManageCategories && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const node = activeActionSheetNode;
+                      setActiveActionSheetNode(null);
+                      handleOpenEditModal(node);
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-amber-50 text-slate-700 hover:text-amber-700 transition-colors text-left"
+                  >
+                    <div className="p-2 rounded-xl bg-amber-50 text-amber-600 shrink-0">
+                      <Edit2 className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-800 text-xs sm:text-sm">
+                        Sửa thông tin nhóm hàng
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Đổi tên, mã hoặc trạng thái kinh doanh
+                      </p>
+                    </div>
+                  </button>
+                )}
+
+                {/* 3. Chuyển sản phẩm */}
+                {canManageCategories && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const node = activeActionSheetNode;
+                      setActiveActionSheetNode(null);
+                      handleOpenMoveModal(node);
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 transition-colors text-left"
+                  >
+                    <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+                      <ArrowRightLeft className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-800 text-xs sm:text-sm">
+                        Chuyển sản phẩm sang nhóm khác
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Di chuyển toàn bộ SKU sang danh mục mới
+                      </p>
+                    </div>
+                  </button>
+                )}
+
+                {/* 4. Xem danh sách sản phẩm */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const node = activeActionSheetNode;
+                    setActiveActionSheetNode(null);
+                    handleViewProducts(node);
+                  }}
+                  className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 transition-colors text-left"
+                >
+                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+                    <Package className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-800 text-xs sm:text-sm">
+                      Xem {activeActionSheetNode.productCount} sản phẩm
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      Danh sách SKU hàng hóa thuộc phân cấp này
+                    </p>
+                  </div>
+                </button>
+
+                {/* 5. Xóa nhóm hàng */}
+                {canManageCategories && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const node = activeActionSheetNode;
+                      setActiveActionSheetNode(null);
+                      handleDeleteCategory(node);
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-rose-50 text-rose-600 transition-colors text-left"
+                  >
+                    <div className="p-2 rounded-xl bg-rose-50 text-rose-600 shrink-0">
+                      <Trash2 className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-rose-700 text-xs sm:text-sm">
+                        Xóa nhóm hàng
+                      </p>
+                      <p className="text-[11px] text-rose-400">
+                        Yêu cầu nhóm rỗng và không có nhóm con
+                      </p>
+                    </div>
+                  </button>
+                )}
+              </div>
+
+              {/* Nút đóng */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveActionSheetNode(null)}
+                  className="w-full py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 };

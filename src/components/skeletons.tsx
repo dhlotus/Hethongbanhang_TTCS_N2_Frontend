@@ -383,7 +383,7 @@ export const CategoriesTreeSkeleton: React.FC = () => {
       </div>
 
       {/* Node con Cấp 2 thụt lề */}
-      <div className="pl-6 space-y-2">
+      <div className="pl-2 sm:pl-6 space-y-2">
         <div className="p-3 rounded-xl border border-slate-100 bg-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="h-4 w-4 bg-slate-200 rounded" />
@@ -420,7 +420,7 @@ export const CategoriesTreeSkeleton: React.FC = () => {
       </div>
 
       {/* Node con Cấp 2 */}
-      <div className="pl-6 space-y-2">
+      <div className="pl-2 sm:pl-6 space-y-2">
         <div className="p-3 rounded-xl border border-slate-100 bg-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="h-4 w-4 bg-slate-200 rounded" />
