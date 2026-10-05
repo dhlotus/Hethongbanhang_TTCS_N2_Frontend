@@ -19,6 +19,9 @@ export interface AvatarUploadData {
 export interface UpdateMyProfilePayload {
   fullName: string;
   phone: string;
+  dateOfBirth?: string;
+  gender?: string;
+  isIdentityLocked?: boolean;
 }
 
 export interface AvatarUploadResponse {

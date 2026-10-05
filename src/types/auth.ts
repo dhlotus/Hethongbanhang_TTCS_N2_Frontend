@@ -9,11 +9,15 @@ export interface AuthUser {
   fullName: string;
   email: string;
   phone?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  isIdentityLocked?: boolean;
   roles: string[];
   role?: string;
   status?: string;
   assignedWarehouse?: string;
   avatarUrl?: string;
+  createdAt?: string | Date;
 }
 
 export interface LoginResponse {
