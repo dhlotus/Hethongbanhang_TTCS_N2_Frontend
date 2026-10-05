@@ -18,21 +18,21 @@ export interface ProductCategory {
 }
 
 /**
- * Đơn vị tính quy đổi của Sản phẩm (SN-23):
- * Cho phép 1 SKU khai báo nhiều đơn vị: lon, lốc, thùng kèm hệ số quy đổi về đơn vị cơ sở
+ * Cấu trúc Đơn vị tính quy đổi đa cấp (SN-21 / SN-23)
  */
 export interface ProductUnit {
-  id?: string;
+  id: string;
+  productId: string;
   unitName: string;
-  conversionRate: number; // Hệ số quy đổi về đơn vị cơ sở (e.g. 1 Thùng = 24 Lon -> conversionRate = 24)
-  isBaseUnit?: boolean;    // true nếu là đơn vị cơ sở
+  conversionFactor: number;
+  isBaseUnit: boolean;
   barcode?: string;
-  price?: number;
-  costPrice?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 /**
- * Thực thể Sản phẩm / SKU chuẩn hóa hệ thống LOHA SALES (SN-139, SN-20 & SN-23)
+ * Thực thể Sản phẩm / SKU chuẩn hóa hệ thống LOHA SALES (SN-139, SN-20, SN-21, SN-23)
  */
 export interface Product {
   id: string;
@@ -44,7 +44,7 @@ export interface Product {
   subCategory?: string;    // Nhóm hàng Cấp 2 hoặc Cấp 3 (VD: Sữa bột công thức / Sữa bột cho trẻ em)
   baseUnit: string;        // ĐVT cơ sở (VD: Lon, Chai, Hộp, Túi, Cái...)
   packagingSpec?: string;  // Quy cách đóng gói (VD: 24 lon/thùng, 12 chai/lốc)
-  units?: ProductUnit[];   // Danh sách đơn vị tính quy đổi đa cấp (SN-23)
+  units?: ProductUnit[];   // Danh sách đơn vị tính quy đổi đa cấp (SN-21 / SN-23)
   price: number;           // Giá bán niêm yết
   /**
    * Giá vốn nhạy cảm (Cost Price - SN-10):
@@ -95,7 +95,7 @@ export interface CreateProductPayload {
   subCategory?: string;
   baseUnit: string;
   packagingSpec?: string;
-  units?: ProductUnit[];
+  units?: Partial<ProductUnit>[];
   price: number;
   costPrice?: number;
   stockQuantity?: number;
@@ -109,28 +109,27 @@ export interface UpdateProductPayload extends Partial<CreateProductPayload> {}
 
 export interface AdjustStockPayload {
   productSku: string;
-  quantityChange: number; // Số lượng theo đơn vị gọi hàng (unit)
-  unit?: string;          // Đơn vị gọi hàng (lon, lốc, thùng...). Nếu không truyền, mặc định là đơn vị cơ sở
+  quantityChange: number;
   reason: string;
-  referenceCode?: string; // Mã phiếu kho / chứng từ tham chiếu
   warehouseLocation?: string;
+  unitId?: string;
+  unitName?: string;
+  conversionFactor?: number;
+  baseQuantityChange?: number;
 }
 
 export interface StockAdjustmentResponse {
   success: boolean;
   message: string;
   sku: string;
-  productName?: string;
-  inputQuantity?: number;
-  inputUnit?: string;
-  conversionRate?: number;
-  baseQuantityChange?: number;
-  baseUnit?: string;
   previousQuantity: number;
   newQuantity: number;
   quantityChange: number;
+  unitName?: string;
+  conversionFactor?: number;
+  baseQuantityChange?: number;
+  baseUnit?: string;
   reason: string;
-  referenceCode?: string;
   adjustedBy: string;
   timestamp: string;
 }
@@ -140,20 +139,19 @@ export interface InventoryTransaction {
   productId: string;
   sku: string;
   productName: string;
-  transactionType: 'IMPORT' | 'EXPORT' | 'ADJUSTMENT' | 'TRANSFER' | 'ORDER';
+  type: 'IMPORT' | 'EXPORT' | 'ADJUST';
   inputQuantity: number;
-  inputUnit: string;
-  conversionRate: number;     // Snapshot hệ số quy đổi bất biến tại thời điểm phát sinh
-  baseQuantityChange: number; // Đã quy về đơn vị cơ sở
+  unitName: string;
+  conversionFactor: number;
+  baseQuantityChange: number;
   baseUnit: string;
   previousStock: number;
   newStock: number;
   reason: string;
-  referenceCode: string;
-  warehouse: string;
-  performedBy: string;
+  adjustedBy: string;
   createdAt: string;
 }
+
 
 export interface ImportProductItemDto {
   row: number;
