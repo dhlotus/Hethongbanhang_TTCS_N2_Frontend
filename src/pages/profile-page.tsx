@@ -10,9 +10,15 @@ import {
   KeyRound,
   LogOut,
   PencilLine,
+  Check,
+  Lock,
+  User,
+  Eye,
+  EyeOff,
+  Mail,
+  Building2,
 } from "lucide-react";
 import { AvatarUploadModal } from "../components/avatar-upload-modal";
-import { ProfileEditModal } from "../components/profile-edit-modal";
 import { usersService, type UpdateMyProfilePayload } from "../services/users.service";
 import { authService } from "../services/auth.service";
 import { tokenStorage } from "../utils/token-storage";
@@ -28,27 +34,37 @@ interface ToastState {
   message: string;
 }
 
+const VIETNAM_PHONE_PATTERN = /^(?:0|\+84)(?:[35789]\d{8}|2\d{9})$/;
+
 /**
- * Trang Hồ sơ cá nhân (Profile Page):
- * - Thiết kế tối giản, hiện đại, tinh gọn theo yêu cầu
- * - Bỏ thông tin chức danh trùng lặp trong tên (đã có tag vai trò trên header)
- * - Bỏ huy hiệu "Đang hoạt động"
- * - Nút "Đổi mật khẩu" được bố trí ở phần bên dưới
- * - Bỏ lưới thông số thừa (tên đăng nhập, email, khu vực, mã ID)
- * - Bỏ khối "Bảo mật tài khoản & Xác thực phiên"
- * - Chỗ đăng xuất tinh gọn thành nút "Đăng xuất khỏi hệ thống", không card bọc và mô tả
- * - Bảo toàn 100% chức năng (đổi avatar, đổi mật khẩu, xác nhận đăng xuất)
+ * Trang Hồ sơ cá nhân (Profile Page - SN-17):
+ * - Tag vai trò đặt ngay dưới họ tên, bỏ dòng mô tả phụ
+ * - Đổi tiêu đề thành "Thông tin cá nhân", bỏ dòng mô tả phụ
+ * - Tối giản danh mục thông tin: Họ tên, Số điện thoại, Email, Kho phụ trách
+ * - Bỏ chữ "Cố định", bỏ dấu sao, bỏ tên đăng nhập và vai trò lặp lại
+ * - Chỉnh sửa thông tin trực tiếp (inline edit), yêu cầu nhập mật khẩu để lưu
+ * - Thiết kế chuẩn Clean SaaS, thẩm mỹ cao và tối ưu trải nghiệm người dùng
  */
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<AuthUser | null>(getStoredUser());
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
-  const [showProfileEditModal, setShowProfileEditModal] = useState<boolean>(false);
   const [showLogoutModal, setShowLogoutModal] = useState<boolean>(false);
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
   const [isExiting, setIsExiting] = useState<boolean>(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [isFetchingProfile, setIsFetchingProfile] = useState<boolean>(false);
+
+  // Trạng thái chỉnh sửa trực tiếp (Inline Editing)
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editFullName, setEditFullName] = useState<string>("");
+  const [editPhone, setEditPhone] = useState<string>("");
+  const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [nameError, setNameError] = useState<string>("");
+  const [phoneError, setPhoneError] = useState<string>("");
+  const [passwordError, setPasswordError] = useState<string>("");
+  const [isSaving, setIsSaving] = useState<boolean>(false);
 
   const context = getUserContext(user);
 
@@ -57,6 +73,14 @@ export const ProfilePage: React.FC = () => {
     (context.fullName || "").replace(/\s*\([^)]*\)/g, "").trim() ||
     context.fullName ||
     "Người dùng";
+
+  // Cập nhật giá trị form khi user thay đổi
+  useEffect(() => {
+    if (user) {
+      setEditFullName(user.fullName || cleanFullName);
+      setEditPhone(user.phone || "");
+    }
+  }, [user, cleanFullName]);
 
   // Tự động ẩn toast sau 3.5 giây
   useEffect(() => {
@@ -129,23 +153,118 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const handleProfileSave = async (payload: UpdateMyProfilePayload): Promise<void> => {
-    const currentUser = tokenStorage.getUser() || user;
-    if (!currentUser) {
-      throw new Error("Không tìm thấy thông tin người dùng. Vui lòng tải lại trang.");
+  // Bắt đầu chỉnh sửa
+  const handleStartEdit = () => {
+    setEditFullName(user?.fullName || cleanFullName);
+    setEditPhone(user?.phone || "");
+    setConfirmPassword("");
+    setShowPassword(false);
+    setNameError("");
+    setPhoneError("");
+    setPasswordError("");
+    setIsEditing(true);
+  };
+
+  // Hủy chỉnh sửa
+  const handleCancelEdit = () => {
+    setEditFullName(user?.fullName || cleanFullName);
+    setEditPhone(user?.phone || "");
+    setConfirmPassword("");
+    setShowPassword(false);
+    setNameError("");
+    setPhoneError("");
+    setPasswordError("");
+    setIsEditing(false);
+  };
+
+  // Lưu chỉnh sửa thông tin cá nhân inline (kèm xác thực mật khẩu)
+  const handleSaveInline = async () => {
+    const normalizedName = editFullName.trim();
+    const normalizedPhone = editPhone.trim();
+    const normalizedPassword = confirmPassword.trim();
+
+    let hasError = false;
+
+    if (!normalizedName) {
+      setNameError("Vui lòng nhập họ và tên.");
+      hasError = true;
+    } else if (normalizedName.length > 100) {
+      setNameError("Họ và tên không được vượt quá 100 ký tự.");
+      hasError = true;
+    } else {
+      setNameError("");
     }
 
-    try {
-      const token = tokenStorage.getAccessToken();
-      const updatedUser = token?.startsWith("demo-jwt-")
-        ? { ...currentUser, ...payload }
-        : await usersService.updateMyProfile(payload);
-      const mergedUser: AuthUser = { ...currentUser, ...updatedUser };
+    if (normalizedPhone && !VIETNAM_PHONE_PATTERN.test(normalizedPhone)) {
+      setPhoneError("Nhập số điện thoại Việt Nam hợp lệ (ví dụ: 0912345678 hoặc +84912345678).");
+      hasError = true;
+    } else {
+      setPhoneError("");
+    }
 
+    if (!normalizedPassword) {
+      setPasswordError("Vui lòng nhập mật khẩu tài khoản để lưu thay đổi.");
+      hasError = true;
+    } else {
+      setPasswordError("");
+    }
+
+    if (hasError) return;
+
+    setIsSaving(true);
+    try {
+      // 1. Xác thực mật khẩu trước khi lưu thay đổi
+      try {
+        await authService.login({
+          email: user?.email || user?.username || "",
+          password: normalizedPassword,
+        });
+      } catch (authErr: unknown) {
+        const errorMsg =
+          axios.isAxiosError<{ message?: string }>(authErr) && authErr.response?.data?.message
+            ? authErr.response.data.message
+            : "Mật khẩu xác nhận không chính xác. Vui lòng kiểm tra lại.";
+        setPasswordError(errorMsg);
+        setIsSaving(false);
+        return;
+      }
+
+      // 2. Lưu thông tin hồ sơ
+      const payload: UpdateMyProfilePayload = {
+        fullName: normalizedName,
+        phone: normalizedPhone,
+      };
+
+      const currentUser = tokenStorage.getUser() || user;
+      if (!currentUser) {
+        throw new Error("Không tìm thấy thông tin người dùng. Vui lòng tải lại trang.");
+      }
+
+      const token = tokenStorage.getAccessToken();
+      let updatedUser: Partial<AuthUser> = { ...payload };
+
+      if (!token?.startsWith("demo-jwt-")) {
+        try {
+          updatedUser = await usersService.updateMyProfile(payload);
+        } catch (err: unknown) {
+          // Dự phòng nếu endpoint /users/me chưa được hỗ trợ trên môi trường backend hiện thời
+          if (currentUser.id) {
+            const res = await usersService.updateUser(currentUser.id, payload);
+            updatedUser = { ...res, avatarUrl: res.avatarUrl || undefined };
+          } else {
+            throw err;
+          }
+        }
+      }
+
+      const mergedUser: AuthUser = { ...currentUser, ...updatedUser, ...payload };
       tokenStorage.setUser(mergedUser);
       setUser(mergedUser);
-      setShowProfileEditModal(false);
-      setToast({ type: "success", message: "Thông tin cá nhân đã được cập nhật." });
+      window.dispatchEvent(new CustomEvent("user-updated", { detail: mergedUser }));
+
+      setIsEditing(false);
+      setConfirmPassword("");
+      setToast({ type: "success", message: "Thông tin cá nhân đã được cập nhật thành công!" });
     } catch (error: unknown) {
       const responseMessage = axios.isAxiosError<{ message?: string | string[] }>(error)
         ? error.response?.data?.message
@@ -153,10 +272,12 @@ export const ProfilePage: React.FC = () => {
       const message = Array.isArray(responseMessage)
         ? responseMessage.join(", ")
         : responseMessage || (error instanceof Error ? error.message : "");
-      throw new Error(
-        message || "Không thể cập nhật hồ sơ. Vui lòng thử lại.",
-        { cause: error },
-      );
+      setToast({
+        type: "error",
+        message: message || "Không thể cập nhật hồ sơ. Vui lòng thử lại.",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -165,7 +286,6 @@ export const ProfilePage: React.FC = () => {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
     try {
-      // Đảm bảo đủ thời gian để hiển thị hiệu ứng chuyển cảnh mượt mà
       await Promise.all([
         authService.logout(),
         new Promise((resolve) => setTimeout(resolve, 850)),
@@ -185,7 +305,7 @@ export const ProfilePage: React.FC = () => {
 
   return (
     <div className="min-h-full py-6 sm:py-8 lg:py-10 antialiased">
-      <div className="mx-auto max-w-2xl space-y-6">
+      <div className="mx-auto max-w-3xl space-y-6">
         {/* =============================================================== */}
         {/* 1. TOAST THÔNG BÁO NỔI                                          */}
         {/* =============================================================== */}
@@ -193,7 +313,7 @@ export const ProfilePage: React.FC = () => {
           <div
             role="status"
             aria-live="polite"
-            className={`fixed top-20 right-4 z-50 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold shadow-xl transition-all duration-300 animate-in fade-in slide-in-from-top-3 ${
+            className={`fixed top-20 right-4 z-50 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold shadow-xl transition-all duration-300 animate-in fade-in slide-from-top-3 ${
               toast.type === "success"
                 ? "bg-emerald-600 text-white shadow-emerald-600/20"
                 : "bg-rose-600 text-white shadow-rose-600/20"
@@ -209,11 +329,11 @@ export const ProfilePage: React.FC = () => {
         )}
 
         {/* =============================================================== */}
-        {/* 2. CARD HỒ SƠ CÁ NHÂN (TINH GỌN, HIỆN ĐẠI)                      */}
+        {/* 2. CARD HỒ SƠ CÁ NHÂN (TINH GỌN, HIỆN ĐẠI & RESPONSIVE)         */}
         {/* =============================================================== */}
-        <div className="rounded-3xl bg-white border border-slate-200/80 shadow-[0_10px_30px_rgba(0,0,0,0.03)] p-6 sm:p-8 space-y-6">
-          {/* Phần Avatar & Tên & Email/Username */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 text-center sm:text-left">
+        <div className="rounded-3xl bg-white border border-slate-200/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-6 sm:p-8 space-y-6">
+          {/* Phần Avatar & Tên & Tag vai trò đặt ngay bên dưới tên */}
+          <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-6 text-center sm:text-left pb-6 border-b border-slate-100">
             {/* Avatar tương tác: hover hiển thị overlay mờ icon camera */}
             <button
               type="button"
@@ -248,42 +368,296 @@ export const ProfilePage: React.FC = () => {
               </div>
             </button>
 
-            {/* Tên người dùng & Tài khoản liên hệ */}
+            {/* Tên người dùng & Tag vai trò ngay dưới tên */}
             <div className="space-y-1.5 min-w-0 flex-1">
-              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                  {isFetchingProfile ? (
-                    <span className="inline-flex items-center gap-2 text-slate-400">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      Đang đồng bộ hồ sơ...
-                    </span>
-                  ) : (
-                    cleanFullName
-                  )}
-                </h1>
-                <button
-                  type="button"
-                  id="profile-edit-personal-btn"
-                  onClick={() => setShowProfileEditModal(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                {isFetchingProfile ? (
+                  <span className="inline-flex items-center gap-2 text-slate-400">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Đang đồng bộ hồ sơ...
+                  </span>
+                ) : (
+                  cleanFullName
+                )}
+              </h1>
+              <div>
+                <span
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${context.badgeClass}`}
                 >
-                  <PencilLine className="h-3.5 w-3.5" />
-                  Chỉnh sửa cá nhân
-                </button>
+                  <span className={`w-1.5 h-1.5 rounded-full ${context.dotClass}`} />
+                  {context.roleLabel}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ============================================================= */}
+          {/* 3. KHỐI THÔNG TIN CÁ NHÂN & CHỈNH SỬA TRỰC TIẾP (INLINE)       */}
+          {/* ============================================================= */}
+          <div className="space-y-4">
+            {/* Header thông tin cá nhân kèm nút chỉnh sửa (bỏ mô tả phụ) */}
+            <div className="flex items-center justify-between gap-3 pb-1">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/10 shrink-0">
+                  <User className="w-4 h-4" />
+                </div>
+                <h2 className="text-sm font-bold text-slate-900">Thông tin cá nhân</h2>
               </div>
 
-              <p className="text-xs sm:text-sm text-slate-500 font-medium truncate">
-                @{user?.username || "admin"} • {user?.email || "—"}
-              </p>
+              {/* Nút thao tác: Chỉnh sửa vs Lưu/Hủy */}
+              {!isEditing ? (
+                <button
+                  type="button"
+                  id="profile-edit-inline-btn"
+                  onClick={handleStartEdit}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-slate-700 shadow-2xs transition-all cursor-pointer shrink-0 active:scale-[0.98]"
+                >
+                  <PencilLine className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Chỉnh sửa</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                    className="px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    id="profile-save-inline-btn"
+                    onClick={handleSaveInline}
+                    disabled={isSaving || !confirmPassword.trim()}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Đang lưu...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Lưu thay đổi</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Bố cục lưới thông tin tinh gọn (Họ tên, SĐT, Email, Kho) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
+              {/* 1. Họ và tên (Cho phép sửa, không có dấu sao) */}
+              <div
+                className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
+                  isEditing
+                    ? "bg-blue-50/20 border-blue-200/90 shadow-2xs ring-1 ring-blue-500/10"
+                    : "bg-slate-50/50 border-slate-200/70"
+                }`}
+              >
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-600">Họ và tên</label>
+                  {isEditing && (
+                    <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                      Cho phép sửa
+                    </span>
+                  )}
+                </div>
+
+                {isEditing ? (
+                  <div>
+                    <input
+                      type="text"
+                      value={editFullName}
+                      onChange={(e) => {
+                        setEditFullName(e.target.value);
+                        if (nameError) setNameError("");
+                      }}
+                      maxLength={100}
+                      placeholder="Nhập họ và tên của bạn..."
+                      className={`w-full px-3 py-2 text-xs font-semibold rounded-xl border bg-white text-slate-900 focus:outline-none transition-all ${
+                        nameError
+                          ? "border-rose-400 ring-2 ring-rose-100"
+                          : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      }`}
+                    />
+                    {nameError && (
+                      <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        {nameError}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-xs font-bold text-slate-900 py-1">
+                    {cleanFullName}
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Số điện thoại (Cho phép sửa & Kiểm tra định dạng SĐT Việt Nam) */}
+              <div
+                className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
+                  isEditing
+                    ? "bg-blue-50/20 border-blue-200/90 shadow-2xs ring-1 ring-blue-500/10"
+                    : "bg-slate-50/50 border-slate-200/70"
+                }`}
+              >
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-600">
+                    Số điện thoại liên hệ
+                  </label>
+                  {isEditing && (
+                    <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                      Cho phép sửa
+                    </span>
+                  )}
+                </div>
+
+                {isEditing ? (
+                  <div>
+                    <input
+                      type="tel"
+                      value={editPhone}
+                      onChange={(e) => {
+                        setEditPhone(e.target.value);
+                        if (phoneError) setPhoneError("");
+                      }}
+                      placeholder="Ví dụ: 0912345678"
+                      className={`w-full px-3 py-2 text-xs font-semibold rounded-xl border bg-white text-slate-900 focus:outline-none transition-all ${
+                        phoneError
+                          ? "border-rose-400 ring-2 ring-rose-100"
+                          : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      }`}
+                    />
+                    {phoneError ? (
+                      <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        {phoneError}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-[10px] text-slate-400">
+                        Định dạng 10 chữ số bắt đầu bằng 0 hoặc +84
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-xs font-bold text-slate-900 py-1">
+                    {user?.phone ? (
+                      <span className="font-mono">{user.phone}</span>
+                    ) : (
+                      <span className="text-slate-400 font-normal italic">
+                        Chưa cập nhật số điện thoại
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Địa chỉ Email (Không cho sửa lúc chỉnh sửa) */}
+              <div
+                className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
+                  isEditing
+                    ? "bg-slate-100/70 border-slate-200/50 cursor-not-allowed select-none opacity-80"
+                    : "bg-slate-50/50 border-slate-200/70"
+                }`}
+              >
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                    <Mail className="w-3 h-3 text-slate-400" />
+                    Địa chỉ Email
+                  </span>
+                  {isEditing && (
+                    <span className="text-[10px] font-medium text-slate-400">
+                      Không thể sửa
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs font-medium text-slate-800 py-1 truncate">
+                  {user?.email || "—"}
+                </div>
+              </div>
+
+              {/* 4. Khu vực / Kho phụ trách (Không cho sửa lúc chỉnh sửa) */}
+              <div
+                className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
+                  isEditing
+                    ? "bg-slate-100/70 border-slate-200/50 cursor-not-allowed select-none opacity-80"
+                    : "bg-slate-50/50 border-slate-200/70"
+                }`}
+              >
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                    <Building2 className="w-3 h-3 text-slate-400" />
+                    Khu vực / Kho phụ trách
+                  </span>
+                  {isEditing && (
+                    <span className="text-[10px] font-medium text-slate-400">
+                      Không thể sửa
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs font-semibold text-slate-800 py-1">
+                  {user?.assignedWarehouse || context.locationText || "Toàn hệ thống"}
+                </div>
+              </div>
+
+              {/* 5. Ô nhập Mật khẩu xác nhận khi chỉnh sửa */}
+              {isEditing && (
+                <div className="md:col-span-2 p-3.5 sm:p-4 rounded-2xl border border-amber-200/80 bg-amber-50/40 space-y-1.5 transition-all animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                      <Lock className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Nhập mật khẩu để lưu thay đổi</span>
+                    </label>
+                    <span className="text-[10px] font-semibold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md">
+                      Bắt buộc
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        if (passwordError) setPasswordError("");
+                      }}
+                      placeholder="Nhập mật khẩu tài khoản của bạn để xác nhận..."
+                      className={`w-full pl-3.5 pr-10 py-2.5 text-xs font-semibold rounded-xl border bg-white text-slate-900 focus:outline-none transition-all ${
+                        passwordError
+                          ? "border-rose-400 ring-2 ring-rose-100"
+                          : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer transition-colors"
+                      title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {passwordError && (
+                    <p className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {passwordError}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Phần bên dưới: Đổi mật khẩu */}
           <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-center sm:text-left">
-              <h2 className="text-sm font-bold text-slate-800">Mật khẩu đăng nhập</h2>
+              <h3 className="text-sm font-bold text-slate-800">Mật khẩu đăng nhập</h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Bạn có thể cập nhật mật khẩu mới bất kỳ lúc nào để bảo vệ tài khoản
+                Cập nhật mật khẩu định kỳ để nâng cao bảo mật cho tài khoản của bạn
               </p>
             </div>
 
@@ -299,9 +673,9 @@ export const ProfilePage: React.FC = () => {
         </div>
 
         {/* =============================================================== */}
-        {/* 3. KHU VỰC ĐĂNG XUẤT: CHỈ HIỂN THỊ NÚT ĐĂNG XUẤT KHỎI HỆ THỐNG    */}
+        {/* 4. KHU VỰC ĐĂNG XUẤT: CHỈ HIỂN THỊ NÚT ĐĂNG XUẤT KHỎI HỆ THỐNG    */}
         {/* =============================================================== */}
-        <div className="flex justify-center pt-2">
+        <div className="flex justify-center pt-1">
           <button
             type="button"
             id="profile-logout-btn"
@@ -315,7 +689,7 @@ export const ProfilePage: React.FC = () => {
       </div>
 
       {/* ================================================================= */}
-      {/* 4. MODAL XÁC NHẬN ĐĂNG XUẤT (TINH GỌN + HIỆU ỨNG CHUYỂN CẢNH)     */}
+      {/* 5. MODAL XÁC NHẬN ĐĂNG XUẤT (TINH GỌN + HIỆU ỨNG CHUYỂN CẢNH)     */}
       {/* ================================================================= */}
       {showLogoutModal &&
         typeof document !== "undefined" &&
@@ -347,9 +721,18 @@ export const ProfilePage: React.FC = () => {
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 pt-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                    <span
+                      className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-bounce"
+                      style={{ animationDelay: "0ms" }}
+                    />
+                    <span
+                      className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-bounce"
+                      style={{ animationDelay: "150ms" }}
+                    />
+                    <span
+                      className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-bounce"
+                      style={{ animationDelay: "300ms" }}
+                    />
                   </div>
                 </div>
               ) : (
@@ -388,25 +771,17 @@ export const ProfilePage: React.FC = () => {
               )}
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {/* ================================================================= */}
-      {/* 5. MODAL TẢI LÊN ẢNH ĐẠI DIỆN                                     */}
+      {/* 6. MODAL TẢI LÊN ẢNH ĐẠI DIỆN                                     */}
       {/* ================================================================= */}
       {showUploadModal && (
         <AvatarUploadModal
           currentAvatarUrl={user?.avatarUrl}
           onConfirm={handleAvatarConfirm}
           onClose={() => setShowUploadModal(false)}
-        />
-      )}
-      {showProfileEditModal && (
-        <ProfileEditModal
-          fullName={user?.fullName || cleanFullName}
-          phone={user?.phone || ""}
-          onClose={() => setShowProfileEditModal(false)}
-          onSave={handleProfileSave}
         />
       )}
     </div>
