@@ -686,59 +686,62 @@ export const UsersPage: React.FC = () => {
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       {/* ========================================================================= */}
-      {/* 1. FLOATING TOAST NOTIFICATION (Trượt từ bên phải sang, luôn nổi trên cùng) */}
+      {/* 1. FLOATING TOAST NOTIFICATION (Teleport to document.body, luôn nổi trên Header & Modal) */}
       {/* ========================================================================= */}
-      {toast && (
-        <div
-          className={`fixed top-6 right-6 z-[9999] flex items-start gap-3.5 w-96 max-w-[calc(100vw-2rem)] rounded-2xl bg-white p-4.5 shadow-2xl border border-slate-200/90 ring-1 ring-slate-900/10 transition-all duration-300 ease-out transform ${
-            toastVisible
-              ? "translate-x-0 opacity-100"
-              : "translate-x-full opacity-0 pointer-events-none"
-          } ${
-            toast.type === "success"
-              ? "border-l-4 border-l-emerald-500"
-              : toast.type === "error"
-              ? "border-l-4 border-l-rose-500"
-              : toast.type === "warning"
-              ? "border-l-4 border-l-amber-500"
-              : "border-l-4 border-l-indigo-500"
-          }`}
-        >
+      {toast &&
+        typeof document !== "undefined" &&
+        createPortal(
           <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+            className={`fixed top-4 right-4 sm:top-5 sm:right-6 z-[99999] flex items-start gap-3.5 w-96 max-w-[calc(100vw-2rem)] rounded-2xl bg-white p-4.5 shadow-2xl border border-slate-200/90 ring-1 ring-slate-900/10 transition-all duration-300 ease-out transform ${
+              toastVisible
+                ? "translate-x-0 opacity-100"
+                : "translate-x-full opacity-0 pointer-events-none"
+            } ${
               toast.type === "success"
-                ? "bg-emerald-50 text-emerald-600"
+                ? "border-l-4 border-l-emerald-500"
                 : toast.type === "error"
-                ? "bg-rose-50 text-rose-600"
+                ? "border-l-4 border-l-rose-500"
                 : toast.type === "warning"
-                ? "bg-amber-50 text-amber-600"
-                : "bg-indigo-50 text-indigo-600"
+                ? "border-l-4 border-l-amber-500"
+                : "border-l-4 border-l-indigo-500"
             }`}
           >
-            {toast.type === "success" && <CheckCircle2 className="h-5 w-5" />}
-            {toast.type === "error" && <AlertCircle className="h-5 w-5" />}
-            {toast.type === "warning" && <ShieldAlert className="h-5 w-5" />}
-            {toast.type === "info" && <KeyRound className="h-5 w-5" />}
-          </div>
+            <div
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                toast.type === "success"
+                  ? "bg-emerald-50 text-emerald-600"
+                  : toast.type === "error"
+                  ? "bg-rose-50 text-rose-600"
+                  : toast.type === "warning"
+                  ? "bg-amber-50 text-amber-600"
+                  : "bg-indigo-50 text-indigo-600"
+              }`}
+            >
+              {toast.type === "success" && <CheckCircle2 className="h-5 w-5" />}
+              {toast.type === "error" && <AlertCircle className="h-5 w-5" />}
+              {toast.type === "warning" && <ShieldAlert className="h-5 w-5" />}
+              {toast.type === "info" && <KeyRound className="h-5 w-5" />}
+            </div>
 
-          <div className="flex-1 pr-1">
-            <h4 className="text-sm font-bold text-slate-900 leading-tight">
-              {toast.title}
-            </h4>
-            <p className="mt-1 text-xs text-slate-600 leading-relaxed font-normal">
-              {toast.message}
-            </p>
-          </div>
+            <div className="flex-1 pr-1">
+              <h4 className="text-sm font-bold text-slate-900 leading-tight">
+                {toast.title}
+              </h4>
+              <p className="mt-1 text-xs text-slate-600 leading-relaxed font-normal">
+                {toast.message}
+              </p>
+            </div>
 
-          <button
-            type="button"
-            onClick={hideToast}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
+            <button
+              type="button"
+              onClick={hideToast}
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>,
+          document.body
+        )}
 
       {/* ========================================================================= */}
       {/* 2. STATS CARDS: THỐNG KÊ NHANH TỔNG QUAN                                    */}

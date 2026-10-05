@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
 
 export type ToastType = "error" | "warning" | "success" | "info";
@@ -22,7 +23,7 @@ const STYLES = {
   error: {
     iconBg: "bg-rose-50 text-rose-600 border-rose-100",
     barBg: "bg-rose-500",
-    defaultTitle: "Đăng nhập thất bại",
+    defaultTitle: "Thao tác thất bại",
   },
   warning: {
     iconBg: "bg-amber-50 text-amber-600 border-amber-100",
@@ -76,11 +77,11 @@ export const Toast: React.FC<ToastProps> = ({
   const style = STYLES[type];
   const displayTitle = title || style.defaultTitle;
 
-  return (
+  const toastContent = (
     <div
       role="alert"
       aria-live="assertive"
-      className={`fixed top-4 right-4 sm:top-6 sm:right-6 z-[9999] w-[calc(100%-2rem)] max-w-sm sm:max-w-md bg-white rounded-2xl border border-slate-200/90 shadow-[0_12px_40px_rgba(0,0,0,0.12)] p-4 flex items-start gap-3.5 transition-all ${
+      className={`fixed top-4 right-4 sm:top-5 sm:right-6 z-[99999] w-[calc(100%-2rem)] max-w-sm sm:max-w-md bg-white rounded-2xl border border-slate-200/90 shadow-[0_12px_40px_rgba(0,0,0,0.12)] p-4 flex items-start gap-3.5 transition-all ${
         isClosing ? "animate-toast-out" : "animate-toast-in"
       }`}
     >
@@ -112,5 +113,11 @@ export const Toast: React.FC<ToastProps> = ({
       </button>
     </div>
   );
+
+  if (typeof document === "undefined") {
+    return toastContent;
+  }
+
+  return createPortal(toastContent, document.body);
 };
 
