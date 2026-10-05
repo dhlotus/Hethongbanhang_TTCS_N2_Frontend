@@ -124,9 +124,8 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
         {/* ===================================================================== */}
         {/* PHẦN 2: DANH MỤC MENU ĐIỀU HƯỚNG THEO VAI TRÒ (DYNAMIC NAVIGATION)    */}
         {/* ===================================================================== */}
-        <div className="mt-3 flex-1 overflow-y-auto pr-0.5 space-y-3">
-          <div>
-
+        <div className="mt-3 flex-1 flex flex-col min-h-0 overflow-y-auto pr-0.5">
+          <div onClick={(e) => isCollapsed && e.stopPropagation()}>
             <nav className="space-y-1">
               {menuItems.map((item) => {
                 const Icon = item.icon;
@@ -178,6 +177,24 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               })}
             </nav>
           </div>
+
+          {/* Vùng khoảng trống bên dưới các icon khi thu gọn: Click để mở rộng navbar */}
+          {isCollapsed && onToggleCollapse && (
+            <div
+              onClick={onToggleCollapse}
+              className="flex-1 min-h-[80px] w-full cursor-ew-resize select-none"
+              title="Bấm để mở rộng thanh điều hướng"
+              aria-label="Mở rộng thanh điều hướng"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onToggleCollapse();
+                }
+              }}
+            />
+          )}
         </div>
       </div>
     </div>
