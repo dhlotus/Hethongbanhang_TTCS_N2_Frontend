@@ -15,14 +15,11 @@ import {
   Mail,
   Building2,
   Calendar,
-  ShieldCheck,
   ShieldAlert,
   UserCheck,
   Info,
   Clock,
   Phone,
-  Copy,
-  X,
 } from "lucide-react";
 import { AvatarUploadModal } from "../components/avatar-upload-modal";
 import { usersService, type UpdateMyProfilePayload } from "../services/users.service";
@@ -97,7 +94,6 @@ export const ProfilePage: React.FC = () => {
   const [showIdentityConfirmModal, setShowIdentityConfirmModal] = useState<boolean>(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [isFetchingProfile, setIsFetchingProfile] = useState<boolean>(false);
-  const [copiedId, setCopiedId] = useState<boolean>(false);
 
   // Trạng thái chỉnh sửa trực tiếp (Inline Editing)
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -278,14 +274,6 @@ export const ProfilePage: React.FC = () => {
       setEditDateOfBirth(user.dateOfBirth?.split("T")[0] || "");
       setEditGender(user.gender || "");
     }
-  };
-
-  // Sao chép User ID
-  const handleCopyId = () => {
-    if (!user?.id) return;
-    navigator.clipboard.writeText(user.id);
-    setCopiedId(true);
-    setTimeout(() => setCopiedId(false), 2000);
   };
 
   // Xác thực bước 1 trước khi lưu
@@ -496,112 +484,7 @@ export const ProfilePage: React.FC = () => {
         )}
 
         {/* =============================================================== */}
-        {/* 2. THẺ DANH TÍNH HỒ SƠ NGƯỜI DÙNG HIỆN ĐẠI                      */}
-        {/* =============================================================== */}
-        <div className="rounded-3xl bg-white border border-slate-200/90 p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.03)]">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            {/* Avatar & Thông tin tên */}
-            <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
-              {/* Avatar tương tác: hover hiển thị icon đổi ảnh */}
-              <button
-                type="button"
-                id="avatar-camera-btn"
-                onClick={() => setShowUploadModal(true)}
-                className="relative group/avatar shrink-0 rounded-2xl sm:rounded-3xl overflow-hidden focus:outline-none ring-4 ring-slate-100 shadow-md cursor-pointer bg-white transition-all hover:scale-[1.02]"
-                title="Nhấp để thay đổi ảnh đại diện"
-                aria-label="Thay đổi ảnh đại diện"
-              >
-                <div className="h-24 w-24 sm:h-28 sm:w-28 rounded-2xl sm:rounded-3xl bg-slate-100 overflow-hidden">
-                  {user?.avatarUrl ? (
-                    <img
-                      src={resolveAvatarUrl(user.avatarUrl)}
-                      alt={`Ảnh đại diện của ${cleanFullName}`}
-                      className="h-full w-full object-cover group-hover/avatar:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600">
-                      <span className="text-3xl sm:text-4xl font-extrabold text-white select-none">
-                        {context.avatarLetter}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Lớp overlay đổi ảnh khi hover */}
-                <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center gap-1 text-white">
-                  <Camera className="h-5 w-5 text-white drop-shadow-sm" />
-                  <span className="text-[11px] font-semibold tracking-wide text-white drop-shadow-sm">
-                    Đổi ảnh
-                  </span>
-                </div>
-              </button>
-
-              {/* Tên & Tag vai trò & Mã định danh */}
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                    {isFetchingProfile ? (
-                      <span className="inline-flex items-center gap-2 text-slate-400">
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        Đang đồng bộ...
-                      </span>
-                    ) : (
-                      cleanFullName
-                    )}
-                  </h1>
-
-                  {/* Tag trạng thái hoạt động */}
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Đang hoạt động</span>
-                  </span>
-                </div>
-
-                {/* Tag vai trò chuẩn hệ thống + username */}
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${context.badgeClass}`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${context.dotClass}`} />
-                    {context.roleLabel}
-                  </span>
-
-                  <span className="inline-flex items-center gap-1 text-xs text-slate-500 font-mono bg-slate-100 px-2.5 py-1 rounded-lg">
-                    @{user?.username || "admin"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Nút hành động Chỉnh sửa ở Header */}
-            <div className="flex items-center gap-2">
-              {!isEditing ? (
-                <button
-                  type="button"
-                  id="profile-edit-btn"
-                  onClick={handleStartEdit}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20 transition-all cursor-pointer active:scale-[0.98]"
-                >
-                  <PencilLine className="w-4 h-4" />
-                  <span>Chỉnh sửa thông tin</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  disabled={isSaving}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                  <span>Hủy chỉnh sửa</span>
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* =============================================================== */}
-        {/* 3. THÔNG BÁO YÊU CẦU BỔ SUNG THÔNG TIN CÁ NHÂN                    */}
+        {/* 2. THÔNG BÁO YÊU CẦU BỔ SUNG THÔNG TIN CÁ NHÂN                    */}
         {/* =============================================================== */}
         {!isIdentityLocked && (
           /* Chỉ hiện khi chưa cập nhật đủ Ngày sinh & Giới tính */
@@ -634,9 +517,9 @@ export const ProfilePage: React.FC = () => {
         {/* =============================================================== */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* CỘT TRÁI (4 COLS): TIẾN ĐỘ HỒ SƠ & THÔNG TIN HỆ THỐNG */}
-          <div className="lg:col-span-4 space-y-6">
+          <div className="lg:col-span-4 space-y-6 order-2 lg:order-1">
             {/* Thẻ 1: Tiến độ hoàn thiện hồ sơ */}
-            <div className="rounded-3xl bg-white border border-slate-200/90 p-5 sm:p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
+            <div className="rounded-2xl sm:rounded-3xl bg-white border border-slate-200/80 p-5 sm:p-6 shadow-xs sm:shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-900">Mức độ hoàn thiện</h3>
                 <span className="text-xs font-bold text-blue-600 font-mono">
@@ -694,18 +577,18 @@ export const ProfilePage: React.FC = () => {
                     <span>Ngày sinh & Giới tính</span>
                   </span>
                   <span
-                    className={`font-semibold ${
-                      isIdentityLocked ? "text-emerald-600" : "text-amber-600"
+                    className={`text-xs ${
+                      isIdentityLocked ? "text-slate-400 font-medium" : "text-amber-600 font-semibold"
                     }`}
                   >
-                    {isIdentityLocked ? "Đã xác thực" : "Chưa cập nhật"}
+                    {isIdentityLocked ? "Đã có" : "Chưa cập nhật"}
                   </span>
                 </div>
               </div>
             </div>
 
             {/* Thẻ 2: Thông tin hệ thống & Tài khoản */}
-            <div className="rounded-3xl bg-white border border-slate-200/90 p-5 sm:p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
+            <div className="rounded-2xl sm:rounded-3xl bg-white border border-slate-200/80 p-4 sm:p-6 shadow-xs sm:shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-4">
               <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
                 <Info className="h-4 w-4 text-slate-400" />
                 <span>Chi tiết hệ thống</span>
@@ -713,23 +596,9 @@ export const ProfilePage: React.FC = () => {
 
               <div className="space-y-3.5 text-xs">
                 <div>
-                  <span className="text-slate-400 block mb-1">Mã ID tài khoản</span>
-                  <div className="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-100">
-                    <span className="font-mono text-slate-800 text-[11px] truncate mr-2">
-                      {user?.id || "usr-admin-pduc"}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleCopyId}
-                      className="p-1 hover:bg-slate-200 text-slate-500 rounded-md transition-colors cursor-pointer shrink-0"
-                      title="Sao chép ID"
-                    >
-                      {copiedId ? (
-                        <Check className="h-3.5 w-3.5 text-emerald-600" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
-                    </button>
+                  <span className="text-slate-400 block mb-1">Tên tài khoản</span>
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 font-mono font-bold text-slate-800 text-xs">
+                    {user?.username || "admin"}
                   </div>
                 </div>
 
@@ -775,39 +644,85 @@ export const ProfilePage: React.FC = () => {
           </div>
 
           {/* CỘT PHẢI (8 COLS): FORM CHI TIẾT HỒ SƠ & THÔNG TIN ĐỊNH DANH */}
-          <div className="lg:col-span-8">
-            <div className="rounded-3xl bg-white border border-slate-200/90 p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/10">
-                    <User className="h-5 w-5" />
-                  </div>
+          <div className="lg:col-span-8 order-1 lg:order-2">
+            <div className="rounded-2xl sm:rounded-3xl bg-white border border-slate-200/80 p-5 sm:p-7 shadow-xs sm:shadow-[0_4px_24px_rgba(0,0,0,0.02)] space-y-6">
+              {/* Header card: Tích hợp Avatar tương tác + Họ tên + Nút chỉnh sửa */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+                <div className="flex items-center gap-4 sm:gap-5">
+                  {/* Avatar tương tác: hover hiển thị icon đổi ảnh */}
+                  <button
+                    type="button"
+                    id="avatar-camera-btn"
+                    onClick={() => setShowUploadModal(true)}
+                    className="relative group/avatar shrink-0 rounded-2xl sm:rounded-3xl overflow-hidden focus:outline-none ring-4 ring-slate-100 shadow-sm cursor-pointer bg-white transition-all hover:scale-[1.02]"
+                    title="Nhấp để thay đổi ảnh đại diện"
+                    aria-label="Thay đổi ảnh đại diện"
+                  >
+                    <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl sm:rounded-3xl bg-slate-100 overflow-hidden">
+                      {user?.avatarUrl ? (
+                        <img
+                          src={resolveAvatarUrl(user.avatarUrl)}
+                          alt={`Ảnh đại diện của ${cleanFullName}`}
+                          className="h-full w-full object-cover group-hover/avatar:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600">
+                          <span className="text-xl sm:text-2xl font-extrabold text-white select-none">
+                            {context.avatarLetter}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Lớp overlay đổi ảnh khi hover */}
+                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center gap-0.5 text-white">
+                      <Camera className="h-4 w-4 text-white drop-shadow-sm" />
+                      <span className="text-[10px] font-semibold tracking-wide text-white drop-shadow-sm">
+                        Đổi ảnh
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Họ tên và tiêu đề thông tin */}
                   <div>
-                    <h2 className="text-base font-bold text-slate-900">
+                    <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+                      {isFetchingProfile ? (
+                        <span className="inline-flex items-center gap-2 text-slate-400">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Đang đồng bộ...
+                        </span>
+                      ) : (
+                        cleanFullName
+                      )}
+                    </h1>
+                    <p className="text-xs text-slate-500 mt-1">
                       Thông tin cá nhân & Định danh
-                    </h2>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Dữ liệu cá nhân dùng cho định danh và liên hệ nội bộ doanh nghiệp
                     </p>
                   </div>
                 </div>
 
-                {isIdentityLocked && (
-                  <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    <span>Định danh đã khóa</span>
-                  </span>
+                {/* Nút chỉnh sửa thông tin - màu sắc êm dịu, không gắt; ẩn hoàn toàn khi đang sửa vì đã có nút hủy bên dưới */}
+                {!isEditing && (
+                  <button
+                    type="button"
+                    id="profile-edit-btn"
+                    onClick={handleStartEdit}
+                    className="self-start sm:self-auto shrink-0 inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 shadow-2xs transition-all cursor-pointer active:scale-[0.98]"
+                  >
+                    <PencilLine className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
+                    <span>Chỉnh sửa thông tin</span>
+                  </button>
                 )}
               </div>
 
               {/* Lưới các trường thông tin */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 1. Tên tài khoản (Tên đăng nhập) - Cố định */}
-                <div className="p-4 rounded-2xl border border-slate-200/70 bg-slate-50/60">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
+                {/* 1. Tên tài khoản - Cố định */}
+                <div className="p-4 rounded-2xl border border-slate-200/80 sm:border-slate-200/70 bg-slate-50/60">
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
                       <UserCheck className="h-3.5 w-3.5 text-slate-400" />
-                      <span>Tên tài khoản (Username)</span>
+                      <span>Tên tài khoản</span>
                     </label>
                     <span className="text-[10px] font-medium text-slate-400">Cố định</span>
                   </div>
@@ -954,12 +869,7 @@ export const ProfilePage: React.FC = () => {
                       <span>Ngày sinh</span>
                     </label>
 
-                    {isIdentityLocked ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-md">
-                        <Lock className="h-2.5 w-2.5" />
-                        <span>Đã khóa định danh</span>
-                      </span>
-                    ) : (
+                    {!isIdentityLocked && (
                       <span className="text-[10px] font-semibold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md">
                         Cập nhật 1 lần
                       </span>
@@ -1022,12 +932,7 @@ export const ProfilePage: React.FC = () => {
                       <span>Giới tính</span>
                     </label>
 
-                    {isIdentityLocked ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-md">
-                        <Lock className="h-2.5 w-2.5" />
-                        <span>Đã khóa định danh</span>
-                      </span>
-                    ) : (
+                    {!isIdentityLocked && (
                       <span className="text-[10px] font-semibold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md">
                         Cập nhật 1 lần
                       </span>
