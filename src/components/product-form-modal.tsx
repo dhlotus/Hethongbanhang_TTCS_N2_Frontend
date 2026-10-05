@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
-  X,
   Package,
   Layers,
   DollarSign,
@@ -23,6 +21,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "./button";
+import { ModalLayout } from "./modal-layout";
 import { PRODUCT_CATEGORIES } from "../services/products.service";
 import { categoriesService } from "../services/categories.service";
 import type { Product, ProductCategory, CreateProductPayload, ProductUnit } from "../types/products";
@@ -485,59 +484,52 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     }
   };
 
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="product-modal-title"
-      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/35 backdrop-blur-[2px] ${isClosing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"
-        }`}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) handleClose();
-      }}
-    >
-      <div
-        className={`relative w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${isClosing ? "animate-modal-out" : "animate-modal-in"
-          }`}
-      >
-        {/* Header Modal */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shadow-2xs">
-              <Package className="h-5 w-5" />
-            </div>
-            <div>
-              <h2
-                id="product-modal-title"
-                className="text-base sm:text-lg font-bold text-slate-900 tracking-tight"
-              >
-                {isEditMode
-                  ? "Cập nhật Thông tin Sản phẩm (SKU)"
-                  : "Thêm mới Sản phẩm (SKU)"}
-              </h2>
-              <p className="text-xs text-slate-500">
-                {isEditMode
-                  ? `Mã định danh SKU: ${initialData?.sku}`
-                  : "Chuẩn hóa thông tin SKU hàng hóa (SN-139 / SN-20)"}
-              </p>
-            </div>
-          </div>
-
-          <button
+  return (
+    <ModalLayout
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={
+        isEditMode
+          ? "Cập nhật Thông tin Sản phẩm (SKU)"
+          : "Thêm mới Sản phẩm (SKU)"
+      }
+      subtitle={
+        isEditMode
+          ? `Mã định danh SKU: ${initialData?.sku}`
+          : "Chuẩn hóa thông tin SKU hàng hóa (SN-139 / SN-20)"
+      }
+      icon={<Package className="h-5 w-5" />}
+      maxWidth="max-w-2xl"
+      bodyClassName="p-6 space-y-5 text-xs text-slate-700"
+      footer={
+        <>
+          <Button
             type="button"
+            variant="outline"
             onClick={handleClose}
-            aria-label="Đóng popup"
-            className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer"
+            disabled={isSubmitting}
+            className="py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer"
           >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+            Hủy bỏ
+          </Button>
 
-        {/* Form Body (Scrollable) */}
-        <form
-          onSubmit={handleSubmit(onValidSubmit)}
-          className="flex-1 overflow-y-auto p-6 space-y-5 text-xs text-slate-700"
-        >
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleSubmit(onValidSubmit)}
+            isLoading={isSubmitting}
+            loadingText="Đang lưu..."
+            className="py-2 px-5 rounded-xl text-xs font-semibold cursor-pointer shadow-xs hover:shadow-sm"
+          >
+            {isEditMode ? "Cập nhật sản phẩm" : "Lưu vào danh mục"}
+          </Button>
+        </>
+      }
+    >
+      <form
+        onSubmit={handleSubmit(onValidSubmit)}
+        className="space-y-5 text-xs text-slate-700"
+      >
           {/* Thông báo lỗi máy chủ nếu có */}
           {formServerError && (
             <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs animate-in fade-in">
@@ -1110,32 +1102,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </div>
           </div>
         </form>
-
-        {/* Footer Actions */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={isSubmitting}
-            className="py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer"
-          >
-            Hủy bỏ
-          </Button>
-
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleSubmit(onValidSubmit)}
-            isLoading={isSubmitting}
-            loadingText="Đang lưu..."
-            className="py-2 px-5 rounded-xl text-xs font-semibold cursor-pointer shadow-xs hover:shadow-sm"
-          >
-            {isEditMode ? "Cập nhật sản phẩm" : "Lưu vào danh mục"}
-          </Button>
-        </div>
-      </div>
-    </div>,
-    document.body
+    </ModalLayout>
   );
 };

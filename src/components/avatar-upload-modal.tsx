@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, Check, ImageIcon, RotateCcw, AlertCircle } from 'lucide-react';
 import { resolveAvatarUrl } from '../utils/avatar';
+import { ModalLayout } from './modal-layout';
 
 // ─── Hằng số ────────────────────────────────────────────────────────────────
 const MAX_AVATAR_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
@@ -470,172 +471,162 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 backdrop-blur-[2px] p-4 transition-all duration-200"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="avatar-modal-title"
-    >
-      <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border border-slate-100 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
-        {/* Header: Tinh gọn, đã bỏ nút 'X' thừa vì đã có nút 'Huỷ' ở dưới */}
-        <div className="px-6 py-4.5 border-b border-slate-100">
-          <h2 id="avatar-modal-title" className="text-base font-bold text-slate-900 tracking-tight">
-            Cập nhật ảnh đại diện
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Căn chỉnh vùng hiển thị ảnh đại diện của bạn
-          </p>
-        </div>
+    <>
+      <ModalLayout
+        isOpen={true}
+        onClose={onClose}
+        title="Cập nhật ảnh đại diện"
+        subtitle="Căn chỉnh vùng hiển thị ảnh đại diện của bạn"
+        icon={<ImageIcon className="h-5 w-5" />}
+        maxWidth="max-w-md"
+        bodyClassName="px-6 py-5 space-y-4"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isUploading}
+              className="rounded-xl border border-slate-200/90 bg-white px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 transition-all cursor-pointer disabled:opacity-50"
+            >
+              Huỷ
+            </button>
+            <button
+              type="button"
+              id="avatar-upload-confirm-btn"
+              onClick={handleConfirm}
+              disabled={!imageSrc || isUploading}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm hover:bg-blue-700 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isUploading ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  <span>Đang lưu…</span>
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4" />
+                  <span>Lưu ảnh đại diện</span>
+                </>
+              )}
+            </button>
+          </>
+        }
+      >
+        {/* Trạng thái 1: Chưa chọn ảnh mới -> Hiển thị avatar hiện tại & Box upload */}
+        {!imageSrc && (
+          <div className="flex flex-col items-center gap-4 py-2">
+            <div className="relative">
+              {previewUrl ? (
+                <img
+                  src={resolveAvatarUrl(previewUrl)}
+                  alt="Ảnh đại diện hiện tại"
+                  className="h-28 w-28 rounded-2xl object-cover ring-4 ring-blue-50 shadow-md"
+                />
+              ) : (
+                <div className="flex h-28 w-28 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-50 to-indigo-100 ring-4 ring-blue-50/60">
+                  <ImageIcon className="h-12 w-12 text-blue-400" />
+                </div>
+              )}
+            </div>
 
-        {/* Body */}
-        <div className="px-6 py-5 space-y-4">
-          {/* Trạng thái 1: Chưa chọn ảnh mới -> Hiển thị avatar hiện tại & Box upload */}
-          {!imageSrc && (
-            <div className="flex flex-col items-center gap-4 py-2">
-              <div className="relative">
-                {previewUrl ? (
-                  <img
-                    src={resolveAvatarUrl(previewUrl)}
-                    alt="Ảnh đại diện hiện tại"
-                    className="h-28 w-28 rounded-2xl object-cover ring-4 ring-blue-50 shadow-md"
-                  />
-                ) : (
-                  <div className="flex h-28 w-28 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-50 to-indigo-100 ring-4 ring-blue-50/60">
-                    <ImageIcon className="h-12 w-12 text-blue-400" />
-                  </div>
-                )}
+            {/* Khu vực chọn ảnh */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-slate-200/90 bg-slate-50/60 px-4 py-7 text-center text-slate-600 transition-all hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-600 cursor-pointer group"
+            >
+              <div className="p-3 rounded-xl bg-white shadow-2xs group-hover:bg-blue-100/60 transition-colors">
+                <Upload className="h-6 w-6 text-blue-600" />
               </div>
+              <span className="font-semibold text-sm text-slate-800 group-hover:text-blue-600">
+                Nhấn để chọn ảnh mới từ thiết bị
+              </span>
+              <span className="text-xs text-slate-400">
+                Hỗ trợ JPEG, PNG, WebP — Tối đa 2 MB
+              </span>
+            </button>
+          </div>
+        )}
 
-              {/* Khu vực chọn ảnh */}
+        {/* Trạng thái 2: Đã nạp ảnh -> Canvas crop với 4 góc kéo to nhỏ mượt mà */}
+        {imageSrc && (
+          <div className="space-y-3.5">
+            {/* Vùng Canvas hiển thị ảnh */}
+            <div className="flex justify-center">
+              <canvas
+                ref={canvasRef}
+                width={CANVAS_SIZE}
+                height={CANVAS_SIZE}
+                className="rounded-2xl shadow-inner border border-slate-200/80 bg-slate-950 touch-none select-none"
+                style={{ width: '100%', maxWidth: `${CANVAS_SIZE}px`, aspectRatio: '1' }}
+                onMouseDown={(e) => startDrag(e.clientX, e.clientY)}
+                onMouseMove={(e) => processDrag(e.clientX, e.clientY)}
+                onMouseUp={endDrag}
+                onMouseLeave={endDrag}
+                onTouchStart={(e) => {
+                  const t = e.touches[0];
+                  if (t) startDrag(t.clientX, t.clientY);
+                }}
+                onTouchMove={(e) => {
+                  const t = e.touches[0];
+                  if (t) processDrag(t.clientX, t.clientY);
+                }}
+                onTouchEnd={endDrag}
+                onWheel={handleWheel}
+              />
+            </div>
+
+            {/* Hướng dẫn thao tác trực quan */}
+            <div className="flex items-center justify-center py-1.5 px-3 rounded-xl bg-slate-50 border border-slate-100 text-center">
+              <p className="text-[11px] text-slate-500 font-medium select-none">
+                Kéo <strong className="text-blue-600">4 góc tròn</strong> để thu phóng • Kéo <strong className="text-slate-700">ở giữa</strong> để căn góc ảnh
+              </p>
+            </div>
+
+            {/* Hàng nút tác vụ phụ (Chọn ảnh khác / Đặt lại vị trí) */}
+            <div className="flex items-center justify-between pt-1">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-slate-200/90 bg-slate-50/60 px-4 py-7 text-center text-slate-600 transition-all hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-600 cursor-pointer group"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 hover:text-blue-600 transition-all cursor-pointer"
               >
-                <div className="p-3 rounded-xl bg-white shadow-2xs group-hover:bg-blue-100/60 transition-colors">
-                  <Upload className="h-6 w-6 text-blue-600" />
-                </div>
-                <span className="font-semibold text-sm text-slate-800 group-hover:text-blue-600">
-                  Nhấn để chọn ảnh mới từ thiết bị
-                </span>
-                <span className="text-xs text-slate-400">
-                  Hỗ trợ JPEG, PNG, WebP — Tối đa 2 MB
-                </span>
+                <Upload className="h-3.5 w-3.5" />
+                <span>Chọn ảnh khác</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 shadow-2xs hover:bg-slate-50 hover:text-slate-800 transition-all cursor-pointer"
+              >
+                <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
+                <span>Đặt lại</span>
               </button>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Trạng thái 2: Đã nạp ảnh -> Canvas crop với 4 góc kéo to nhỏ mượt mà */}
-          {imageSrc && (
-            <div className="space-y-3.5">
-              {/* Vùng Canvas hiển thị ảnh */}
-              <div className="flex justify-center">
-                <canvas
-                  ref={canvasRef}
-                  width={CANVAS_SIZE}
-                  height={CANVAS_SIZE}
-                  className="rounded-2xl shadow-inner border border-slate-200/80 bg-slate-950 touch-none select-none"
-                  style={{ width: '100%', maxWidth: `${CANVAS_SIZE}px`, aspectRatio: '1' }}
-                  onMouseDown={(e) => startDrag(e.clientX, e.clientY)}
-                  onMouseMove={(e) => processDrag(e.clientX, e.clientY)}
-                  onMouseUp={endDrag}
-                  onMouseLeave={endDrag}
-                  onTouchStart={(e) => {
-                    const t = e.touches[0];
-                    if (t) startDrag(t.clientX, t.clientY);
-                  }}
-                  onTouchMove={(e) => {
-                    const t = e.touches[0];
-                    if (t) processDrag(t.clientX, t.clientY);
-                  }}
-                  onTouchEnd={endDrag}
-                  onWheel={handleWheel}
-                />
-              </div>
-
-              {/* Hướng dẫn thao tác trực quan */}
-              <div className="flex items-center justify-center py-1.5 px-3 rounded-xl bg-slate-50 border border-slate-100 text-center">
-                <p className="text-[11px] text-slate-500 font-medium select-none">
-                  Kéo <strong className="text-blue-600">4 góc tròn</strong> để thu phóng • Kéo <strong className="text-slate-700">ở giữa</strong> để căn góc ảnh
-                </p>
-              </div>
-
-              {/* Hàng nút tác vụ phụ (Chọn ảnh khác / Đặt lại vị trí) */}
-              <div className="flex items-center justify-between pt-1">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 hover:text-blue-600 transition-all cursor-pointer"
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                  <span>Chọn ảnh khác</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 shadow-2xs hover:bg-slate-50 hover:text-slate-800 transition-all cursor-pointer"
-                >
-                  <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
-                  <span>Đặt lại</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Thông báo lỗi khi tải ảnh */}
-          {error && (
-            <div
-              role="alert"
-              className="flex items-start gap-2.5 rounded-xl bg-rose-50 border border-rose-200/80 px-4 py-3 text-xs sm:text-sm text-rose-700 font-medium"
-            >
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Footer: Nút Huỷ và Lưu ảnh đại diện */}
-        <div className="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-slate-100 bg-slate-50/70">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isUploading}
-            className="rounded-xl border border-slate-200/90 bg-white px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 transition-all cursor-pointer disabled:opacity-50"
+        {/* Thông báo lỗi khi tải ảnh */}
+        {error && (
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 rounded-xl bg-rose-50 border border-rose-200/80 px-4 py-3 text-xs sm:text-sm text-rose-700 font-medium"
           >
-            Huỷ
-          </button>
-          <button
-            type="button"
-            id="avatar-upload-confirm-btn"
-            onClick={handleConfirm}
-            disabled={!imageSrc || isUploading}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm hover:bg-blue-700 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isUploading ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                <span>Đang lưu…</span>
-              </>
-            ) : (
-              <>
-                <Check className="h-4 w-4" />
-                <span>Lưu ảnh đại diện</span>
-              </>
-            )}
-          </button>
-        </div>
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+      </ModalLayout>
 
-        {/* File input ẩn */}
-        <input
-          ref={fileInputRef}
-          id="avatar-file-input"
-          type="file"
-          accept={ALLOWED_MIME_TYPES.join(',')}
-          className="sr-only"
-          onChange={handleFileChange}
-          aria-label="Chọn file ảnh đại diện"
-        />
-      </div>
-    </div>
+      {/* File input ẩn */}
+      <input
+        ref={fileInputRef}
+        id="avatar-file-input"
+        type="file"
+        accept={ALLOWED_MIME_TYPES.join(',')}
+        className="sr-only"
+        onChange={handleFileChange}
+        aria-label="Chọn file ảnh đại diện"
+      />
+    </>
   );
 };

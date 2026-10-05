@@ -1,5 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   Upload,
   FileSpreadsheet,
@@ -12,6 +11,7 @@ import {
   Info,
   Trash2,
 } from 'lucide-react';
+import { ModalLayout } from './modal-layout';
 import { usersService } from '../services/users.service';
 import type { ExcelImportReport, ImportRowResult } from '../types/user';
 
@@ -224,28 +224,13 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [clientError, setClientError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [report, setReport] = useState<ExcelImportReport | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleClose = useCallback(() => {
     if (isUploading) return;
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-    }, 220);
+    onClose();
   }, [isUploading, onClose]);
-
-  // Lắng nghe phím ESC để đóng có hiệu ứng khi không upload
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isUploading) {
-        handleClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isUploading, handleClose]);
 
   const validateFile = useCallback((file: File): string | null => {
     const fileName = file.name.toLowerCase();
@@ -343,36 +328,68 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
 
   if (typeof document === 'undefined') return null;
 
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="excel-import-modal-title"
-      onClick={() => handleClose()}
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/35 backdrop-blur-[2px] transition-all ${
-        isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
-      }`}
-    >
-      <div
-        className={`w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden ${
-          isClosing ? 'animate-modal-out' : 'animate-modal-in'
-        }`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center px-6 py-4.5 border-b border-slate-100 bg-slate-50/60">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100/80 text-emerald-700 shadow-2xs">
-              <FileSpreadsheet className="h-5 w-5" />
-            </div>
-            <h2 id="excel-import-modal-title" className="text-base font-bold text-slate-800">
-              Tạo tài khoản hàng loạt từ Excel
-            </h2>
-          </div>
+  return (
+    <ModalLayout
+      isOpen={true}
+      onClose={handleClose}
+      title="Tạo tài khoản hàng loạt từ Excel"
+      subtitle="Nhập nhân sự từ file bảng tính Excel (.xlsx, .xls)"
+      icon={<FileSpreadsheet className="h-5 w-5 text-emerald-700" />}
+      maxWidth="max-w-2xl"
+      bodyClassName="p-6 space-y-5"
+      footer={
+        <div className="flex items-center justify-between w-full">
+          {!report ? (
+            <>
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={isUploading}
+                className="px-5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleUpload}
+                disabled={!selectedFile || isUploading}
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] px-6 py-2.5 text-xs font-semibold text-white shadow-sm transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+              >
+                {isUploading ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>Đang xử lý...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    <span>Bắt đầu Import</span>
+                  </>
+                )}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Nhập tiếp tệp khác
+              </button>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="px-6 py-2.5 text-xs font-semibold text-white bg-slate-900 rounded-xl hover:bg-slate-800 active:scale-[0.98] transition-all shadow-sm cursor-pointer"
+              >
+                Hoàn tất & Đóng
+              </button>
+            </>
+          )}
         </div>
-
-        {/* Body content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+      }
+    >
           {/* Thông báo lỗi client / server nếu có */}
           {clientError && (
             <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50/80 p-3.5 text-xs text-rose-700">
@@ -579,62 +596,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
               <ErrorTable items={failedItems} />
             </div>
           )}
-        </div>
-
-        {/* Footer Buttons */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/60">
-          {!report ? (
-            <>
-              <button
-                type="button"
-                onClick={handleClose}
-                disabled={isUploading}
-                className="px-5 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={handleUpload}
-                disabled={!selectedFile || isUploading}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] px-6 py-2.5 text-xs font-semibold text-white shadow-sm transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
-              >
-                {isUploading ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Đang xử lý...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4" />
-                    <span>Bắt đầu Import</span>
-                  </>
-                )}
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={handleReset}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Nhập tiếp tệp khác
-              </button>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="px-6 py-2.5 text-xs font-semibold text-white bg-slate-900 rounded-xl hover:bg-slate-800 active:scale-[0.98] transition-all shadow-sm cursor-pointer"
-              >
-                Hoàn tất & Đóng
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body
+    </ModalLayout>
   );
 };
 

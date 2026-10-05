@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   Lock,
@@ -12,6 +11,7 @@ import {
   FileSpreadsheet,
   AlertCircle,
 } from 'lucide-react';
+import { ModalLayout } from './modal-layout';
 import type {
   PriceList,
   PriceListItem,
@@ -292,90 +292,147 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
 
   if (!isOpen) return null;
 
-  return createPortal(
-    <div
-      onClick={handleClose}
-      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/35 backdrop-blur-[2px] transition-all ${
-        isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
-      }`}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className={`relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden ${
-          isClosing ? 'animate-modal-out' : 'animate-modal-in'
-        }`}
-      >
-        {/* Header Modal - Gọn gàng, loại bỏ dấu X và chữ mô tả dài */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/20">
-              <FileSpreadsheet className="w-5 h-5" />
-            </div>
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-base font-bold text-slate-800">
-                {initialData
-                  ? effectiveReadOnly
-                    ? `Chi tiết Bảng giá: ${initialData.name}`
-                    : `Chỉnh sửa Bảng giá: ${initialData.name}`
-                  : 'Thiết lập Bảng giá mới'}
-              </h2>
-              {initialData && (
-                <span className="px-2 py-0.5 text-[11px] font-mono font-semibold rounded-md bg-slate-100 text-slate-700">
-                  v{initialData.version}.0
-                </span>
-              )}
+  const modalBanner = (hasOrders || localError) ? (
+    <div className="space-y-3 px-6 pt-4">
+      {/* Banner cảnh báo vàng khi hasOrders == true */}
+      {hasOrders && (
+        <div className="p-3.5 rounded-xl bg-amber-50/90 border border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <Lock className="w-5 h-5 text-amber-600 shrink-0" />
+            <div className="text-xs">
+              <strong className="font-semibold block text-amber-950 sm:inline">
+                Đã phát sinh đơn hàng:
+              </strong>{' '}
+              Bảng giá này đã có đơn hàng nên không thể chỉnh sửa trực tiếp nhằm bảo toàn chứng từ.
             </div>
           </div>
-        </div>
 
-        {/* Banner cảnh báo vàng khi hasOrders == true */}
-        {hasOrders && (
-          <div className="mx-6 mt-4 p-3.5 rounded-xl bg-amber-50/90 border border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 animate-in fade-in">
-            <div className="flex items-center gap-2.5">
-              <Lock className="w-5 h-5 text-amber-600 shrink-0" />
-              <div className="text-xs">
-                <strong className="font-semibold block text-amber-950 sm:inline">
-                  Đã phát sinh đơn hàng:
-                </strong>{' '}
-                Bảng giá này đã có đơn hàng nên không thể chỉnh sửa trực tiếp nhằm bảo toàn chứng từ.
-              </div>
-            </div>
-
-            {onClone && initialData && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClone(initialData);
-                  handleClose();
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs shadow-xs transition-all cursor-pointer shrink-0"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                <span>Tạo phiên bản mới (Clone Version)</span>
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Banner cảnh báo đỏ khi có lỗi form */}
-        {localError && (
-          <div className="mx-6 mt-3.5 p-3 rounded-xl bg-rose-50 border border-rose-200/80 flex items-center justify-between gap-3 text-rose-900 animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
-              <div className="text-xs font-semibold">{localError}</div>
-            </div>
+          {onClone && initialData && (
             <button
               type="button"
-              onClick={() => setLocalError(null)}
-              className="text-xs font-semibold text-rose-600 hover:text-rose-800 underline cursor-pointer"
+              onClick={() => {
+                onClone(initialData);
+                handleClose();
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs shadow-xs transition-all cursor-pointer shrink-0"
             >
-              Đóng
+              <Copy className="w-3.5 h-3.5" />
+              <span>Tạo phiên bản mới (Clone Version)</span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-        {/* Body Form cuộn linh hoạt */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+      {/* Banner cảnh báo đỏ khi có lỗi form */}
+      {localError && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200/80 flex items-center justify-between gap-3 text-rose-900 animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
+            <div className="text-xs font-semibold">{localError}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLocalError(null)}
+            className="text-xs font-semibold text-rose-600 hover:text-rose-800 underline cursor-pointer"
+          >
+            Đóng
+          </button>
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  const modalFooter = (
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
+      <div className="text-xs text-slate-500 font-medium">
+        {hasPricingErrors ? (
+          <span className="text-rose-600 flex items-center gap-1">
+            <AlertTriangle className="w-4 h-4 text-rose-500" />
+            Có {Object.keys(pricingErrors).length} sản phẩm vi phạm ràng buộc giá sàn.
+          </span>
+        ) : items.length === 0 ? (
+          <span className="text-amber-600 flex items-center gap-1">
+            <AlertCircle className="w-4 h-4 text-amber-500" />
+            Chưa có sản phẩm nào trong bảng giá này.
+          </span>
+        ) : (
+          <span className="text-emerald-700 flex items-center gap-1">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            Dữ liệu hợp lệ, sẵn sàng lưu vào hệ thống.
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2.5 ml-auto">
+        <button
+          type="button"
+          onClick={handleClose}
+          className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+        >
+          {effectiveReadOnly ? 'Đóng' : 'Hủy bỏ'}
+        </button>
+
+        {!effectiveReadOnly && (
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting || hasPricingErrors || items.length === 0}
+            title={
+              hasPricingErrors
+                ? `Không thể lưu: Có ${Object.keys(pricingErrors).length} mặt hàng có Giá bán nhỏ hơn Giá sàn`
+                : items.length === 0
+                ? 'Bảng giá chưa có sản phẩm nào'
+                : 'Lưu cấu hình Bảng giá'
+            }
+            className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white shadow-xs transition-all cursor-pointer"
+          >
+            {submitting ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Đang lưu...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Lưu Bảng giá</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <ModalLayout
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={
+        initialData
+          ? effectiveReadOnly
+            ? `Chi tiết Bảng giá: ${initialData.name}`
+            : `Chỉnh sửa Bảng giá: ${initialData.name}`
+          : 'Thiết lập Bảng giá mới'
+      }
+      subtitle={
+        initialData
+          ? `Mã: ${initialData.code} • Cập nhật giá theo thời vụ và nhóm đối tác`
+          : 'Cấu hình đơn giá, giá sàn và thời gian áp dụng'
+      }
+      icon={<FileSpreadsheet className="w-5 h-5 text-blue-600" />}
+      badge={
+        initialData ? (
+          <span className="px-2 py-0.5 text-[11px] font-mono font-semibold rounded-md bg-slate-100 text-slate-700">
+            v{initialData.version}.0
+          </span>
+        ) : undefined
+      }
+      maxWidth="max-w-4xl"
+      banner={modalBanner}
+      footer={modalFooter}
+      bodyClassName="p-6 space-y-5"
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
           {/* Nhóm thông tin cơ bản */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {/* Tên bảng giá */}
@@ -703,68 +760,6 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
             </div>
           </div>
         </form>
-
-        {/* Footer Actions */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/70">
-          <div className="text-xs text-slate-500 flex items-center gap-2">
-            {hasPricingErrors ? (
-              <span className="text-rose-600 font-semibold flex items-center gap-1">
-                <AlertCircle className="w-4 h-4" />
-                Vui lòng điều chỉnh các dòng giá bị vi phạm giá sàn trước khi lưu.
-              </span>
-            ) : items.length === 0 ? (
-              <span className="text-amber-700 flex items-center gap-1">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
-                Cần thêm ít nhất một sản phẩm vào bảng giá.
-              </span>
-            ) : (
-              <span className="text-emerald-700 flex items-center gap-1">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                Dữ liệu hợp lệ, sẵn sàng lưu vào hệ thống.
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-            >
-              {effectiveReadOnly ? 'Đóng' : 'Hủy bỏ'}
-            </button>
-
-            {!effectiveReadOnly && (
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={submitting || hasPricingErrors || items.length === 0}
-                title={
-                  hasPricingErrors
-                    ? `Không thể lưu: Có ${Object.keys(pricingErrors).length} mặt hàng có Giá bán nhỏ hơn Giá sàn`
-                    : items.length === 0
-                    ? 'Bảng giá chưa có sản phẩm nào'
-                    : 'Lưu cấu hình Bảng giá'
-                }
-                className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white shadow-xs transition-all cursor-pointer"
-              >
-                {submitting ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Đang lưu...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Lưu Bảng giá</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body,
+    </ModalLayout>
   );
 };
