@@ -92,6 +92,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const menuItems = getNavigationItems(currentUser?.roles || currentUser?.role);
   const { title } = getPageHeaderInfo(location.pathname, menuItems);
 
+  // Lọc bỏ phần vai trò trong ngoặc khỏi tên hiển thị trên Header (ví dụ: "Nguyễn Văn Admin (Quản Trị Viên)" -> "Nguyễn Văn Admin")
+  const cleanFullName =
+    (context.fullName || "").replace(/\s*\([^)]*\)/g, "").trim() ||
+    context.fullName ||
+    "Người dùng";
+
   // Đọc avatarUrl từ localStorage và phản ứng khi thay đổi (sau khi upload)
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
     tokenStorage.getUser()?.avatarUrl,
@@ -145,38 +151,39 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       {/* =================================================================== */}
       {/* 2. BÊN PHẢI: HỒ SƠ NGƯỜI DÙNG KÈM TAG VAI TRÒ                      */}
       {/* =================================================================== */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0 mr-1 sm:mr-3 lg:mr-4">
         <Link
           to="/profile"
-          title="Xem hồ sơ cá nhân"
-          className="flex items-center gap-2.5 p-1 sm:px-2.5 sm:py-1 rounded-xl hover:bg-slate-100/80 border border-transparent hover:border-slate-200/60 transition-all focus:outline-none group cursor-pointer"
+          title={`Hồ sơ cá nhân: ${context.fullName}`}
+          className="flex items-center gap-3 px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-2xl bg-slate-50/70 hover:bg-slate-100/90 border border-slate-200/80 hover:border-blue-200 hover:shadow-xs transition-all duration-200 focus:outline-none group cursor-pointer"
           id="header-avatar-btn"
         >
-          {/* Avatar: ảnh hoặc chữ cái */}
-          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-gradient-to-tr from-blue-600 to-indigo-600 text-xs font-bold text-white shadow-xs group-hover:ring-2 group-hover:ring-blue-500/30 transition-all">
+          {/* Avatar: ảnh hoặc chữ cái - kích thước h-10 w-10 nổi bật */}
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-sm font-bold text-white shadow-xs group-hover:ring-2 group-hover:ring-blue-500/40 group-hover:scale-105 transition-all">
             {avatarUrl ? (
               <img
                 src={resolveAvatarUrl(avatarUrl)}
-                alt={`Ảnh đại diện ${context.fullName}`}
+                alt={`Ảnh đại diện ${cleanFullName}`}
                 className="h-full w-full object-cover"
               />
             ) : (
-              context.avatarLetter || <User className="h-4 w-4" />
+              context.avatarLetter || <User className="h-5 w-5" />
             )}
           </div>
 
-          {/* Tên người dùng & Tag vai trò */}
+          {/* Tên người dùng & Tag vai trò: rõ nét, font-size lớn hơn và dễ đọc */}
           <div className="hidden sm:flex flex-col items-start text-left min-w-0">
             <span
-              className="max-w-[140px] truncate text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors leading-tight"
+              className="max-w-[170px] sm:max-w-[210px] lg:max-w-[260px] truncate text-xs sm:text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-tight"
               title={context.fullName}
             >
-              {context.fullName}
+              {cleanFullName}
             </span>
             <span
-              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold mt-0.5 truncate max-w-[130px] ${context.badgeClass}`}
+              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold mt-0.5 truncate max-w-[170px] sm:max-w-[200px] ${context.badgeClass}`}
+              title={context.roleLabel}
             >
-              <span className={`h-1 w-1 rounded-full shrink-0 ${context.dotClass}`} />
+              <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${context.dotClass}`} />
               <span className="truncate">{context.roleLabel}</span>
             </span>
           </div>
