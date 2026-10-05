@@ -662,9 +662,10 @@ export const ProductsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Bảng dữ liệu Sản phẩm (Data Table chuẩn Clean SaaS) */}
+      {/* 3. Dữ liệu Sản phẩm (Data Table cho Desktop & Card View thích ứng cho Mobile) */}
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-        <div className="overflow-x-auto">
+        {/* A. BẢNG DỮ LIỆU CHO TABLET & DESKTOP (>=640px) */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-600">
             <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-100">
               <tr>
@@ -926,6 +927,225 @@ export const ProductsPage: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* ===================================================================== */}
+        {/* B. GIAO DIỆN THẺ (CARD VIEW) CHO MOBILE (<640px) KHÔNG CẦN CUỘN NGANG */}
+        {/* ===================================================================== */}
+        <div className="divide-y divide-slate-100 sm:hidden">
+          {loading ? (
+            <div className="py-12 text-center text-slate-400">
+              <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-500" />
+              <span className="font-medium text-xs">Đang tải danh mục SKU sản phẩm...</span>
+            </div>
+          ) : products.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 px-4">
+              <Package className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+              <p className="font-semibold text-slate-600 text-sm">Không tìm thấy sản phẩm nào</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc nhóm hàng / trạng thái.
+              </p>
+            </div>
+          ) : (
+            products.map((p) => {
+              const isLowStock = p.stockQuantity <= 100 && p.stockQuantity > 0;
+              const isOutOfStock = p.stockQuantity === 0;
+
+              return (
+                <div key={p.id} className="p-4 space-y-3 hover:bg-slate-50/50 transition-colors">
+                  {/* Hàng 1: Thumbnail nổi bật + SKU & Trạng thái + Tên + Phân cấp ngành hàng */}
+                  <div className="flex items-start gap-3.5">
+                    {/* Thumbnail nổi bật */}
+                    <div className="h-16 w-16 rounded-xl border border-slate-200/90 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
+                      {p.imageUrl ? (
+                        <img
+                          src={p.imageUrl}
+                          alt={p.name}
+                          className="h-full w-full object-cover object-center"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <Package className="h-7 w-7 text-slate-300" />
+                      )}
+                    </div>
+
+                    {/* Tiêu đề & Thông tin cơ bản */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                        <span className="font-bold text-slate-900 tracking-wider text-xs bg-slate-100 px-2 py-0.5 rounded-md">
+                          {p.sku}
+                        </span>
+                        {p.status === "ACTIVE" ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                            <span>Đang KD</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-500/20">
+                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
+                            <span>Ngừng KD</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <h4 className="font-bold text-slate-900 text-sm leading-snug line-clamp-2 mt-1" title={p.name}>
+                        {p.name}
+                      </h4>
+
+                      {/* Phân cấp danh mục */}
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap text-[11px]">
+                        <span className="rounded-md bg-purple-50 px-1.5 py-0.5 font-semibold text-purple-700 ring-1 ring-inset ring-purple-700/10 truncate max-w-[140px]">
+                          {p.parentCategory || p.category?.split("/")[0]?.trim() || "Nhóm hàng"}
+                        </span>
+                        {p.category && p.category.includes("/") ? (
+                          <span className="text-slate-400 font-medium truncate max-w-[140px]">
+                            ↳ {p.category.split("/").slice(1).map((s) => s.trim()).join(" > ")}
+                          </span>
+                        ) : p.subCategory ? (
+                          <span className="text-slate-400 font-medium truncate max-w-[140px]">
+                            ↳ {p.subCategory}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Hàng 2: Khung số liệu Giá niêm yết, Tồn kho khả dụng, Quy cách & Giá vốn */}
+                  <div className="grid grid-cols-2 gap-2.5 p-3 rounded-xl bg-slate-50/80 border border-slate-100 text-xs">
+                    <div>
+                      <span className="text-[11px] font-medium text-slate-400 block mb-0.5">Giá niêm yết</span>
+                      <div className="font-extrabold text-blue-700 text-sm tracking-tight">
+                        {formatCurrency(p.price)}
+                      </div>
+                      <span className="text-[10px] text-slate-400">
+                        ĐVT: <strong className="text-slate-600 font-semibold">{p.baseUnit}</strong>
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] font-medium text-slate-400 block mb-0.5">Tồn kho khả dụng</span>
+                      <div className="flex items-center gap-1">
+                        <span
+                          className={`inline-flex items-center gap-1 font-extrabold text-sm tracking-tight ${
+                            isOutOfStock
+                              ? "text-rose-600"
+                              : isLowStock
+                              ? "text-amber-600"
+                              : "text-emerald-600"
+                          }`}
+                        >
+                          <Warehouse className="h-3.5 w-3.5" />
+                          <span>{p.stockQuantity.toLocaleString("vi-VN")}</span>
+                        </span>
+                        {isOutOfStock && <span className="text-[10px] font-bold text-rose-500">(Hết)</span>}
+                        {isLowStock && <span className="text-[10px] font-bold text-amber-500">(Ít)</span>}
+                      </div>
+                      <span className="text-[10px] text-slate-400">
+                        Quy cách: <span className="text-slate-600 font-medium">{p.packagingSpec || "Chuẩn"}</span>
+                      </span>
+                    </div>
+
+                    {/* Hiển thị Giá vốn & Biên LN nếu có quyền */}
+                    {canViewCostPrice && (
+                      <>
+                        <div className="pt-2 border-t border-slate-200/60">
+                          <span className="text-[10px] font-medium text-slate-400 block">Giá vốn</span>
+                          <span className="font-bold text-slate-700 text-xs tracking-tight">
+                            {formatCurrency(p.costPrice)}
+                          </span>
+                        </div>
+                        <div className="pt-2 border-t border-slate-200/60">
+                          <span className="text-[10px] font-medium text-slate-400 block">Biên lợi nhuận</span>
+                          {p.margin !== undefined ? (
+                            <span className="inline-flex items-center rounded-md bg-emerald-100 px-1.5 py-0.2 text-[10px] font-bold text-emerald-800">
+                              +{p.margin}%
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">---</span>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Hàng 3: Các nút thao tác nhanh gọn gàng, vùng chạm thoải mái */}
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-50">
+                    <span className="text-[11px] text-slate-400 font-medium">Thao tác:</span>
+                    <div className="flex items-center gap-1.5">
+                      {/* Sửa thông tin */}
+                      {canManageProducts && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(p)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                          title="Sửa thông tin SKU"
+                        >
+                          <Edit2 className="h-3.5 w-3.5 text-blue-600" />
+                          <span>Sửa</span>
+                        </button>
+                      )}
+
+                      {/* Điều chỉnh tồn kho */}
+                      {canAdjustStock && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAdjustModal(p)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                          title="Điều chỉnh tồn kho"
+                        >
+                          <Warehouse className="h-3.5 w-3.5 text-indigo-600" />
+                          <span>Kho</span>
+                        </button>
+                      )}
+
+                      {/* Bật / Tắt trạng thái kinh doanh */}
+                      {canManageProducts && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStatus(p)}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 text-xs font-medium ${
+                            p.status === "ACTIVE"
+                              ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                              : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                          }`}
+                          title={
+                            p.status === "ACTIVE"
+                              ? "Chuyển sang Ngừng kinh doanh"
+                              : "Kích hoạt Đang kinh doanh"
+                          }
+                        >
+                          <Power className="h-3.5 w-3.5" />
+                          <span>{p.status === "ACTIVE" ? "Tắt" : "Bật"}</span>
+                        </button>
+                      )}
+
+                      {/* Xóa sản phẩm */}
+                      {canManageProducts && (
+                        <button
+                          type="button"
+                          onClick={() => handlePromptDelete(p)}
+                          className={`p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 ${
+                            p.hasTransactions
+                              ? "border-slate-200 text-slate-300 hover:text-amber-600 hover:bg-amber-50"
+                              : "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
+                          }`}
+                          title={
+                            p.hasTransactions
+                              ? "Không thể xóa: SKU đã phát sinh giao dịch xuất/nhập"
+                              : "Xóa sản phẩm"
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* 4. Thanh phân trang chuẩn Clean SaaS (Mặc định 20 dòng / trang) */}
