@@ -195,10 +195,10 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
           /* Trạng thái mở rộng: Thẻ card bo góc, hiển thị Avatar, Họ tên, Tag vai trò và nút 3 gạch */
           <div className="mt-3 px-0.5">
             <div
-              className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
+              className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
                 isUserMenuOpen
-                  ? "border-blue-200 bg-slate-50/95 shadow-xs ring-2 ring-blue-500/10"
-                  : "border-slate-200/90 bg-slate-50/60 hover:bg-slate-50 hover:border-slate-300"
+                  ? "border-slate-300/90 bg-white"
+                  : "border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-slate-300/80"
               }`}
             >
               {/* Header card: Avatar + Tên + Tag vai trò + Nút 3 gạch */}
@@ -218,7 +218,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   {/* Avatar: Ảnh hoặc chữ cái đại diện */}
-                  <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-sm font-bold text-white shadow-xs group-hover:scale-105 transition-transform duration-200">
+                  <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-sm font-bold text-white shadow-2xs group-hover:scale-105 transition-transform duration-200">
                     {avatarUrl ? (
                       <img
                         src={resolveAvatarUrl(avatarUrl)}
@@ -248,7 +248,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                   </div>
                 </div>
 
-                {/* Nút 3 gạch mở rộng menu theo chuẩn giao diện mẫu LMS */}
+                {/* Nút 3 gạch mở rộng menu nhẹ nhàng, không shadow */}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -257,8 +257,8 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                   }}
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all duration-200 cursor-pointer ${
                     isUserMenuOpen
-                      ? "bg-blue-100/80 text-blue-600 shadow-2xs"
-                      : "text-slate-500 group-hover:bg-slate-200/70 group-hover:text-slate-800"
+                      ? "bg-slate-100 text-blue-600"
+                      : "text-slate-500 group-hover:bg-slate-100 group-hover:text-slate-800"
                   }`}
                   aria-label="Tùy chọn tài khoản"
                 >
@@ -288,8 +288,8 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                 }`}
               >
                 <div className="overflow-hidden">
-                  <div className="border-t border-slate-200/80 p-1.5 space-y-1">
-                    {/* 1. Hồ sơ - Chỉ active khi đúng chính xác đường dẫn /profile (dùng end) */}
+                  <div className="border-t border-slate-100 p-1.5 space-y-1">
+                    {/* 1. Hồ sơ - Dễ nhìn, dễ bấm, không shadow chói mắt */}
                     <NavLink
                       to="/profile"
                       end
@@ -299,8 +299,8 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                       className={({ isActive }) =>
                         `flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
                           isActive
-                            ? "bg-blue-50 text-blue-600 font-bold shadow-2xs"
-                            : "text-slate-700 hover:bg-slate-100/90 hover:text-slate-900"
+                            ? "bg-blue-50/90 text-blue-600 font-bold"
+                            : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                         }`
                       }
                     >
@@ -316,7 +316,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                       )}
                     </NavLink>
 
-                    {/* 2. Cập nhật mật khẩu - Chỉ active khi đúng /profile/change-password */}
+                    {/* 2. Cập nhật mật khẩu - Dễ nhìn, dễ bấm */}
                     <NavLink
                       to="/profile/change-password"
                       end
@@ -326,8 +326,8 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                       className={({ isActive }) =>
                         `flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
                           isActive
-                            ? "bg-blue-50 text-blue-600 font-bold shadow-2xs"
-                            : "text-slate-700 hover:bg-slate-100/90 hover:text-slate-900"
+                            ? "bg-blue-50/90 text-blue-600 font-bold"
+                            : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                         }`
                       }
                     >
@@ -349,7 +349,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                       onClick={() => {
                         setShowLogoutModal(true);
                       }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-rose-600 hover:bg-rose-50/90 transition-colors cursor-pointer"
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-rose-600 hover:bg-rose-50/80 transition-colors cursor-pointer"
                     >
                       <Power className="h-4.5 w-4.5 shrink-0 text-rose-600" />
                       <span>Đăng xuất</span>
@@ -365,7 +365,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
             <button
               type="button"
               onClick={() => setIsCollapsedPopoverOpen((prev) => !prev)}
-              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-sm font-bold text-white shadow-xs hover:ring-2 hover:ring-blue-500/40 hover:scale-105 transition-all cursor-pointer"
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-sm font-bold text-white shadow-2xs hover:ring-2 hover:ring-blue-500/30 hover:scale-105 transition-all cursor-pointer"
               title={`Tài khoản: ${cleanFullName}`}
               aria-label="Tùy chọn tài khoản"
             >
@@ -380,7 +380,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               )}
             </button>
 
-            {/* Popover trôi nổi xuất hiện uyển chuyển từ Avatar khi Navbar thu gọn - KHÔNG DÙNG OVERLAY TỐI MÀN HÌNH */}
+            {/* Popover trôi nổi xuất hiện uyển chuyển từ Avatar khi Navbar thu gọn - DÙNG SHADOW NHẸ NHÀNG, KHÔNG OVERLAY */}
             {isCollapsedPopoverOpen && (
               <>
                 {/* Vùng click ra ngoài hoàn toàn trong suốt, không làm tối hay mờ trang */}
@@ -388,7 +388,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                   className="fixed inset-0 z-40"
                   onClick={() => setIsCollapsedPopoverOpen(false)}
                 />
-                <div className="fixed left-[78px] top-28 z-50 w-64 rounded-2xl bg-white shadow-2xl border border-slate-200/90 p-2.5 space-y-1 animate-popover-from-avatar">
+                <div className="fixed left-[78px] top-28 z-50 w-64 rounded-2xl bg-white shadow-md border border-slate-200/90 p-2 space-y-1 animate-popover-from-avatar">
                   {/* Mũi tên nhỏ tinh tế trỏ về avatar */}
                   <div className="absolute -left-1.5 top-5 h-3 w-3 rotate-45 border-l border-b border-slate-200/90 bg-white" />
 
@@ -412,8 +412,8 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                     className={({ isActive }) =>
                       `flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors relative z-10 ${
                         isActive
-                          ? "bg-blue-50 text-blue-600 font-bold shadow-2xs"
-                          : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                          ? "bg-blue-50/90 text-blue-600 font-bold"
+                          : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                       }`
                     }
                   >
@@ -436,8 +436,8 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                     className={({ isActive }) =>
                       `flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors relative z-10 ${
                         isActive
-                          ? "bg-blue-50 text-blue-600 font-bold shadow-2xs"
-                          : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                          ? "bg-blue-50/90 text-blue-600 font-bold"
+                          : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                       }`
                     }
                   >
@@ -459,7 +459,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                       setIsCollapsedPopoverOpen(false);
                       setShowLogoutModal(true);
                     }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-rose-600 hover:bg-rose-50/90 transition-colors cursor-pointer relative z-10"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-rose-600 hover:bg-rose-50/80 transition-colors cursor-pointer relative z-10"
                   >
                     <Power className="h-4.5 w-4.5 shrink-0 text-rose-600" />
                     <span>Đăng xuất</span>
