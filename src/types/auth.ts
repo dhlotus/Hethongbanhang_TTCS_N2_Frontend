@@ -8,6 +8,7 @@ export interface AuthUser {
   username: string;
   fullName: string;
   email: string;
+  phone?: string;
   roles: string[];
   role?: string;
   status?: string;

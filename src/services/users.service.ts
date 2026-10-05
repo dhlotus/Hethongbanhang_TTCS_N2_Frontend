@@ -16,6 +16,11 @@ export interface AvatarUploadData {
   avatarUrl: string;
 }
 
+export interface UpdateMyProfilePayload {
+  fullName: string;
+  phone: string;
+}
+
 export interface AvatarUploadResponse {
   statusCode: number;
   message: string;
@@ -111,6 +116,14 @@ export const usersService = {
    */
   async getMe(): Promise<AuthUser> {
     const response = await apiClient.get<AuthUser>('/users/me');
+    return response.data;
+  },
+
+  /**
+   * Cập nhật họ tên và số điện thoại của chính mình (SN-17)
+   */
+  async updateMyProfile(payload: UpdateMyProfilePayload): Promise<AuthUser> {
+    const response = await apiClient.patch<AuthUser>('/users/me', payload);
     return response.data;
   },
 
