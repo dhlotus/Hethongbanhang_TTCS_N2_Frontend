@@ -715,29 +715,29 @@ export const ProductsPage: React.FC = () => {
       {/* 3. Dữ liệu Sản phẩm (Data Table cho Desktop & Card View thích ứng cho Mobile) */}
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
         {/* A. BẢNG DỮ LIỆU CHO TABLET & DESKTOP (>=640px) */}
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-600">
-            <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-100">
+        <div className="hidden sm:block overflow-auto max-h-[calc(100vh-270px)] relative">
+          <table className="w-full text-left text-xs text-slate-600 border-separate border-spacing-0">
+            <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
               <tr>
-                <th className="px-3 py-3 font-semibold text-center w-12 whitespace-nowrap">Ảnh</th>
-                <th className="px-3 py-3 font-semibold whitespace-nowrap">Mã SKU</th>
-                <th className="px-3 py-3 font-semibold whitespace-nowrap">Tên sản phẩm</th>
-                <th className="px-3 py-3 font-semibold whitespace-nowrap">Nhóm hàng</th>
-                <th className="px-3 py-3 font-semibold text-center whitespace-nowrap w-16">ĐVT</th>
-                <th className="px-3 py-3 font-semibold whitespace-nowrap">Quy cách</th>
-                <th className="px-3 py-3 font-semibold text-right whitespace-nowrap">Giá niêm yết</th>
-                <th className="px-3 py-3 font-semibold text-right whitespace-nowrap">Tồn kho</th>
+                <th className="sticky top-0 left-0 z-30 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold text-center w-12 min-w-12 whitespace-nowrap">Ảnh</th>
+                <th className="sticky top-0 left-12 z-30 bg-slate-50 border-b border-slate-200 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] px-3 py-3 font-semibold whitespace-nowrap">Mã SKU</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold whitespace-nowrap">Tên sản phẩm</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold whitespace-nowrap">Nhóm hàng</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold text-center whitespace-nowrap w-16">ĐVT</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold whitespace-nowrap">Quy cách</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold text-right whitespace-nowrap">Giá niêm yết</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold text-right whitespace-nowrap">Tồn kho</th>
 
-                {/* Cột nhạy cảm: Chỉ render nếu canViewCostPrice = TRUE (SN-10) */}
+                {/* Cột nhạy cảm: Chỉ render nếu canViewCostPrice = TRUE */}
                 {canViewCostPrice && (
                   <>
-                    <th className="px-3 py-3 font-semibold text-right text-emerald-800 bg-emerald-50/50 whitespace-nowrap">
+                    <th className="sticky top-0 z-20 px-3 py-3 font-semibold text-right text-emerald-800 bg-emerald-50/90 border-b border-slate-200 whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1">
                         <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
                         <span>Giá vốn</span>
                       </div>
                     </th>
-                    <th className="px-3 py-3 font-semibold text-right text-emerald-800 bg-emerald-50/50 whitespace-nowrap">
+                    <th className="sticky top-0 z-20 px-3 py-3 font-semibold text-right text-emerald-800 bg-emerald-50/90 border-b border-slate-200 whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1">
                         <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
                         <span>Biên LN</span>
@@ -746,8 +746,8 @@ export const ProductsPage: React.FC = () => {
                   </>
                 )}
 
-                <th className="px-3 py-3 font-semibold text-center whitespace-nowrap">Trạng thái</th>
-                <th className="px-3 py-3 font-semibold text-center whitespace-nowrap w-24">Thao tác</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold text-center whitespace-nowrap">Trạng thái</th>
+                <th className="sticky top-0 right-0 z-30 bg-slate-50 border-b border-slate-200 shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] px-3 py-3 font-semibold text-center whitespace-nowrap w-24 min-w-24">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
@@ -757,7 +757,7 @@ export const ProductsPage: React.FC = () => {
                 <tr>
                   <td
                     colSpan={canViewCostPrice ? 12 : 10}
-                    className="py-14 text-center text-slate-400"
+                    className="py-14 text-center text-slate-400 border-b border-slate-100"
                   >
                     <Package className="h-8 w-8 mx-auto mb-2 text-slate-300" />
                     <p className="font-semibold text-slate-600 text-sm">Không tìm thấy sản phẩm nào</p>
@@ -785,9 +785,9 @@ export const ProductsPage: React.FC = () => {
                   const isOutOfStock = p.stockQuantity === 0;
 
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
-                      {/* Cột 1: Ảnh Thumbnail */}
-                      <td className="px-3 py-2.5 text-center">
+                    <tr key={p.id} className="group hover:bg-slate-50/70 transition-colors">
+                      {/* Cột 1: Ảnh Thumbnail (Sticky Left) */}
+                      <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors border-b border-slate-100 px-3 py-2.5 text-center w-12 min-w-12">
                         <div className="h-9 w-9 mx-auto rounded-xl border border-slate-200/90 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
                           {p.imageUrl ? (
                             <img
@@ -804,22 +804,22 @@ export const ProductsPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Cột 2: Mã SKU */}
-                      <td className="px-3 py-2.5 whitespace-nowrap">
+                      {/* Cột 2: Mã SKU (Sticky Left với shadow) */}
+                      <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 px-3 py-2.5 whitespace-nowrap">
                         <span className="font-mono font-bold text-slate-900 tracking-wider">
                           {p.sku}
                         </span>
                       </td>
 
                       {/* Cột 3: Tên sản phẩm */}
-                      <td className="px-3 py-2.5">
+                      <td className="border-b border-slate-100 px-3 py-2.5">
                         <div className="font-semibold text-slate-900 leading-snug max-w-[240px] truncate" title={p.name}>
                           {p.name}
                         </div>
                       </td>
 
                       {/* Cột 4: Nhóm hàng */}
-                      <td className="px-3 py-2.5">
+                      <td className="border-b border-slate-100 px-3 py-2.5">
                         <div className="flex flex-col gap-0.5 max-w-[220px]">
                           <span className="inline-block w-fit rounded-md bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 ring-1 ring-inset ring-purple-700/10 truncate">
                             {p.parentCategory || p.category?.split('/')[0]?.trim() || "Nhóm hàng"}
@@ -836,8 +836,8 @@ export const ProductsPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Cột 5: ĐVT cơ sở & Đơn vị quy đổi (SN-23 AC-1) */}
-                      <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                      {/* Cột 5: ĐVT cơ sở & Đơn vị quy đổi */}
+                      <td className="border-b border-slate-100 px-3 py-2.5 text-center whitespace-nowrap">
                         <div className="flex flex-col items-center gap-1">
                           <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
                             {p.baseUnit}
@@ -847,7 +847,7 @@ export const ProductsPage: React.FC = () => {
                               {p.units
                                 .filter((u) => !u.isBaseUnit)
                                 .map((u) => (
-                                  <span
+                                   <span
                                     key={u.unitName}
                                     className="inline-flex items-center text-[10px] font-medium bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded border border-slate-200"
                                   >
@@ -860,17 +860,17 @@ export const ProductsPage: React.FC = () => {
                       </td>
 
                       {/* Cột 6: Quy cách đóng gói */}
-                      <td className="px-3 py-2.5 whitespace-nowrap text-slate-600">
+                      <td className="border-b border-slate-100 px-3 py-2.5 whitespace-nowrap text-slate-600">
                         {p.packagingSpec || "---"}
                       </td>
 
                       {/* Cột 7: Giá niêm yết */}
-                      <td className="px-3 py-2.5 text-right font-semibold text-slate-900 font-mono whitespace-nowrap">
+                      <td className="border-b border-slate-100 px-3 py-2.5 text-right font-semibold text-slate-900 font-mono whitespace-nowrap">
                         {formatCurrency(p.price)}
                       </td>
 
                       {/* Cột 8: Tồn kho khả dụng */}
-                      <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                      <td className="border-b border-slate-100 px-3 py-2.5 text-right whitespace-nowrap">
                         <span
                           className={`inline-flex items-center gap-1 font-bold ${
                             isOutOfStock
@@ -894,10 +894,10 @@ export const ProductsPage: React.FC = () => {
                       {/* CỘT GIÁ VỐN & BIÊN LỢI NHUẬN (Chỉ hiển thị cho ADMIN & SALES_MANAGER) */}
                       {canViewCostPrice && (
                         <>
-                          <td className="px-3 py-2.5 text-right font-mono font-medium text-slate-700 bg-emerald-50/20 whitespace-nowrap">
+                          <td className="border-b border-slate-100 px-3 py-2.5 text-right font-mono font-medium text-slate-700 bg-emerald-50/20 whitespace-nowrap">
                             {formatCurrency(p.costPrice)}
                           </td>
-                          <td className="px-3 py-2.5 text-right bg-emerald-50/20 whitespace-nowrap">
+                          <td className="border-b border-slate-100 px-3 py-2.5 text-right bg-emerald-50/20 whitespace-nowrap">
                             {p.margin !== undefined ? (
                               <span className="inline-flex items-center rounded-md bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold text-emerald-800 font-mono">
                                 +{p.margin}%
@@ -910,7 +910,7 @@ export const ProductsPage: React.FC = () => {
                       )}
 
                       {/* Cột 9: Trạng thái */}
-                      <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                      <td className="border-b border-slate-100 px-3 py-2.5 text-center whitespace-nowrap">
                         {p.status === "ACTIVE" ? (
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
@@ -924,8 +924,8 @@ export const ProductsPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Cột 10: Thao tác */}
-                      <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                      {/* Cột 10: Thao tác (Sticky Right với shadow) */}
+                      <td className="sticky right-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 px-3 py-2.5 text-center whitespace-nowrap w-24 min-w-24">
                         <div className="inline-flex items-center gap-1">
                           {/* Sửa thông tin */}
                           {canManageProducts && (
@@ -971,7 +971,7 @@ export const ProductsPage: React.FC = () => {
                             </button>
                           )}
 
-                          {/* Sổ kho & Lịch sử quy đổi giao dịch (SN-23) */}
+                          {/* Sổ kho & Lịch sử quy đổi giao dịch */}
                           <button
                             type="button"
                             onClick={() => handleOpenLedgerModal(p.sku)}

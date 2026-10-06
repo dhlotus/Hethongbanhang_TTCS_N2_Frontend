@@ -446,18 +446,18 @@ export const PriceListsPage: React.FC = () => {
 
       {/* 4. Table: Danh sách Bảng giá */}
       <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+        <div className="overflow-auto max-h-[calc(100vh-270px)] relative">
+          <table className="w-full text-left text-xs border-separate border-spacing-0">
             <thead>
-              <tr className="bg-slate-50/90 border-b border-slate-200/80 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-4 w-12 text-center">STT</th>
-                <th className="py-3 px-4 min-w-[200px]">Mã & Phiên bản</th>
-                <th className="py-3 px-4 min-w-[240px]">Tên Bảng giá</th>
-                <th className="py-3 px-4 w-40">Nhóm áp dụng</th>
-                <th className="py-3 px-4 w-48">Thời gian hiệu lực</th>
-                <th className="py-3 px-4 w-36">Trạng thái</th>
-                <th className="py-3 px-4 w-44 text-center">Ràng buộc Đơn hàng</th>
-                <th className="py-3 px-4 w-36 text-center">Thao tác</th>
+              <tr className="text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                <th className="sticky top-0 left-0 z-30 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-12 min-w-12 text-center">STT</th>
+                <th className="sticky top-0 left-12 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 min-w-[200px]">Mã & Phiên bản</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 min-w-[240px]">Tên Bảng giá</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-40">Nhóm áp dụng</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-48">Thời gian hiệu lực</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36">Trạng thái</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-44 text-center">Ràng buộc Đơn hàng</th>
+                <th className="sticky top-0 right-0 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 w-36 min-w-36 text-center">Thao tác</th>
               </tr>
             </thead>
 
@@ -466,7 +466,7 @@ export const PriceListsPage: React.FC = () => {
                 <PriceListsTableSkeleton count={6} />
               ) : priceLists.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400 border-b border-slate-100">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <FileSpreadsheet className="w-8 h-8 text-slate-300" />
                       <p className="font-semibold text-slate-600 text-sm">Không tìm thấy bảng giá nào</p>
@@ -496,12 +496,12 @@ export const PriceListsPage: React.FC = () => {
                       className="hover:bg-slate-50/70 transition-colors group"
                     >
                       {/* STT */}
-                      <td className="py-3.5 px-4 text-center text-slate-400 font-mono text-[11px]">
+                      <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors border-b border-slate-100 py-3.5 px-4 text-center text-slate-400 font-mono text-[11px] w-12 min-w-12">
                         {(page - 1) * limit + idx + 1}
                       </td>
 
                       {/* Mã bảng giá & Badge Version */}
-                      <td className="py-3.5 px-4">
+                      <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 py-3.5 px-4">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-mono font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
                             {pl.code}
@@ -519,7 +519,7 @@ export const PriceListsPage: React.FC = () => {
                       </td>
 
                       {/* Tên bảng giá & Mô tả */}
-                      <td className="py-3.5 px-4">
+                      <td className="border-b border-slate-100 py-3.5 px-4">
                         <div className="font-semibold text-slate-900 leading-snug">
                           {pl.name}
                         </div>
@@ -534,12 +534,12 @@ export const PriceListsPage: React.FC = () => {
                       </td>
 
                       {/* Nhóm áp dụng */}
-                      <td className="py-3.5 px-4">
+                      <td className="border-b border-slate-100 py-3.5 px-4">
                         {renderCustomerGroupBadge(pl.customerGroup)}
                       </td>
 
                       {/* Thời gian hiệu lực */}
-                      <td className="py-3.5 px-4 text-slate-600 font-medium">
+                      <td className="border-b border-slate-100 py-3.5 px-4 text-slate-600 font-medium">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span>
@@ -549,12 +549,12 @@ export const PriceListsPage: React.FC = () => {
                       </td>
 
                       {/* Trạng thái */}
-                      <td className="py-3.5 px-4">
+                      <td className="border-b border-slate-100 py-3.5 px-4">
                         {renderStatusBadge(pl.status)}
                       </td>
 
                       {/* Ràng buộc đơn hàng */}
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="border-b border-slate-100 py-3.5 px-4 text-center">
                         {isLocked ? (
                           <div
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 text-[11px] font-semibold ring-1 ring-inset ring-amber-600/30"
@@ -572,7 +572,7 @@ export const PriceListsPage: React.FC = () => {
                       </td>
 
                       {/* Thao tác (Xem, Sửa, Clone, Xóa) */}
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="sticky right-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 py-3.5 px-4 text-center w-36 min-w-36">
                         <div className="flex items-center justify-center gap-1.5">
                           {/* Xem chi tiết */}
                           <button
