@@ -131,7 +131,7 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium text-slate-400">Cơ chế điều hướng</p>
-              <p className="text-sm font-bold text-slate-800">Dynamic Navigation (SN-11)</p>
+              <p className="text-sm font-bold text-slate-800">Điều hướng theo phân quyền</p>
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">

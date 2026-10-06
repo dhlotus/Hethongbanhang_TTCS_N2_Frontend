@@ -408,18 +408,18 @@ export const ProductsPage: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
                 <Package className="h-3.5 w-3.5 text-blue-600" />
-                <span>Danh mục SKU Hàng hóa (SN-139 / SN-20)</span>
+                <span>Danh mục Sản phẩm & SKU Phân phối</span>
               </span>
 
               {canViewCostPrice ? (
                 <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
                   <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>Quyền xem Giá vốn & Biên LN: MỞ (SN-10)</span>
+                  <span>Quyền xem Giá vốn & Biên LN: Đầy đủ</span>
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">
                   <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
-                  <span>Giá vốn bảo mật máy chủ (SN-10)</span>
+                  <span>Giá vốn bảo mật theo vai trò</span>
                 </span>
               )}
             </div>
@@ -459,7 +459,7 @@ export const ProductsPage: React.FC = () => {
                   type="button"
                   onClick={() => handleOpenLedgerModal()}
                   className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/80 px-3.5 py-2.5 text-xs font-semibold text-blue-700 shadow-2xs hover:bg-blue-100 hover:text-blue-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-                  title="Xem Sổ kho & Lịch sử quy đổi giao dịch (SN-23)"
+                  title="Xem Sổ kho & Lịch sử quy đổi giao dịch"
                 >
                   <BookOpen className="h-4 w-4 shrink-0 text-blue-600" />
                   <span>Sổ kho quy đổi</span>
@@ -1465,7 +1465,7 @@ export const ProductsPage: React.FC = () => {
                 <Warehouse className="h-5 w-5 text-blue-600" />
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
-                    Điều chỉnh / Nhập Xuất Tồn Kho (SN-23)
+                    Điều chỉnh / Nhập Xuất Tồn Kho
                   </h3>
                   <p className="text-[11px] text-slate-500">
                     Nhập theo Thùng, Lốc — Tự động quy về ĐVT cơ sở để ghi sổ kho
@@ -1666,7 +1666,7 @@ export const ProductsPage: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-slate-900">
-                      Sổ Kho & Lịch sử Bút toán Quy đổi Giao dịch (SN-23)
+                      Sổ Kho & Lịch sử Bút toán Quy đổi Giao dịch
                     </h3>
                     <p className="text-xs text-slate-500">
                       {ledgerSku ? (
@@ -1686,11 +1686,11 @@ export const ProductsPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Banner AC-3: Bất biến lịch sử quy đổi */}
+              {/* Banner bảo toàn lịch sử quy đổi */}
               <div className="mx-5 mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-start gap-2.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold">Bảo toàn bất biến (Snapshot Immutability - AC-3):</span>{" "}
+                  <span className="font-bold">Bảo toàn dữ liệu lịch sử:</span>{" "}
                   Hệ thống đóng băng hệ số quy đổi tại thời điểm ghi sổ. Khi thủ kho sửa đổi hệ số quy đổi của SKU (vd: Thùng từ 24 lon lên 30 lon), toàn bộ bút toán lịch sử trước đó không bao giờ bị sai lệch số liệu!
                 </div>
               </div>

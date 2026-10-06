@@ -498,7 +498,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       subtitle={
         isEditMode
           ? `Mã định danh SKU: ${initialData?.sku}`
-          : "Chuẩn hóa thông tin SKU hàng hóa (SN-139 / SN-20)"
+          : "Chuẩn hóa thông tin SKU hàng hóa phân phối"
       }
       icon={<Package className="h-5 w-5" />}
       maxWidth="max-w-2xl"
