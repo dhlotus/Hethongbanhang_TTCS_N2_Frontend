@@ -490,61 +490,58 @@ export const CategoriesPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-7 shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-600/20">
-                <FolderTree className="h-3.5 w-3.5 text-blue-600" />
-                <span>Phân cấp Ngành hàng đa cấp</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                <span>Ràng buộc toàn vẹn dữ liệu cứng</span>
-              </span>
+      {/* 1. Header Toolbar (Tinh gọn 1 hàng, không lặp thẻ h1, tiết kiệm 150px chiều cao) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 sm:px-5 sm:py-3 rounded-2xl border border-slate-200/80 shadow-2xs">
+        {/* Bên trái: Icon + Tiêu đề phụ + Badge */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+              <FolderTree className="h-4 w-4" />
             </div>
-
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-              Quản lý Cây Nhóm Hàng & Ngành Hàng
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
-              Phân cấp nhóm hàng hóa tối thiểu 3 cấp (Nhóm chính → Nhóm phụ → Phân loại con), quản lý sản phẩm liên kết, hỗ trợ chuyển sản phẩm và ngăn chặn xóa nhóm chưa dọn sạch.
-            </p>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+              Phân cấp Nhóm hàng & Ngành hàng
+            </h2>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap">
-            <Link
-              to="/catalog/products"
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all focus:outline-none cursor-pointer group"
-              title="Quay lại Danh mục sản phẩm"
-            >
-              <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
-              <span>Danh mục sản phẩm</span>
-            </Link>
+          <span className="text-slate-300 hidden sm:inline">|</span>
 
+          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+            <ShieldCheck className="h-3 w-3 text-emerald-600" />
+            <span>Toàn vẹn dữ liệu</span>
+          </span>
+        </div>
+
+        {/* Bên phải: Nút hành động */}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+          <Link
+            to="/catalog/products"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all focus:outline-none cursor-pointer group"
+            title="Quay lại Danh mục sản phẩm"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
+            <span>Danh mục sản phẩm</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={loadData}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none cursor-pointer"
+            title="Làm mới cây danh mục"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span>Làm mới</span>
+          </button>
+
+          {canManageCategories && (
             <button
               type="button"
-              onClick={loadData}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none cursor-pointer"
-              title="Làm mới cây danh mục"
+              onClick={() => handleOpenCreateModal()}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer whitespace-nowrap"
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">Làm mới</span>
+              <Plus className="h-3.5 w-3.5" />
+              <span>Thêm ngành hàng cha</span>
             </button>
-
-            {canManageCategories && (
-              <button
-                type="button"
-                onClick={() => handleOpenCreateModal()}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Thêm ngành hàng cha</span>
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
