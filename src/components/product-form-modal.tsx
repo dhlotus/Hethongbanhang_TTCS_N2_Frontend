@@ -14,14 +14,13 @@ import {
   Sparkles,
   Upload,
   FolderTree,
-  ChevronUp,
-  ChevronDown,
   Scale,
   Plus,
   Trash2,
 } from "lucide-react";
 import { Button } from "./button";
 import { ModalLayout } from "./modal-layout";
+import { CurrencyInput } from "./currency-input";
 import { PRODUCT_CATEGORIES } from "../services/products.service";
 import { categoriesService } from "../services/categories.service";
 import type { Product, ProductCategory, CreateProductPayload, ProductUnit } from "../types/products";
@@ -82,6 +81,7 @@ export interface ProductFormValues {
   subCategory: string;
   baseUnit: string;
   packagingSpec?: string;
+  price?: number;
   costPrice?: number;
   status: "ACTIVE" | "INACTIVE";
   imageUrl?: string;
@@ -104,6 +104,11 @@ const productSchema = z.object({
   subCategory: z.string().min(1, "Vui lòng chọn nhóm hàng Cấp 2"),
   baseUnit: z.string().min(1, "Đơn vị tính cơ sở bắt buộc phải nhập"),
   packagingSpec: z.string().optional(),
+  price: z
+    .preprocess(
+      (val) => (val === "" || val === undefined || val === null ? undefined : Number(val)),
+      z.number().min(0, "Giá niêm yết không được là số âm").optional()
+    ),
   costPrice: z
     .preprocess(
       (val) => (val === "" || val === undefined || val === null ? undefined : Number(val)),
@@ -148,6 +153,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       subCategory: PRODUCT_CATEGORIES[0].subCategories?.[0]?.name || "",
       baseUnit: "Lon",
       packagingSpec: "",
+      price: 0,
       costPrice: canManageCostPrice ? 0 : undefined,
       status: "ACTIVE",
       imageUrl: "",
@@ -158,6 +164,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const selectedParentCategory = watch("parentCategory");
   const watchedSubCategory = watch("subCategory");
   const selectedStatus = watch("status");
+  const watchedPrice = watch("price");
   const watchedCostPrice = watch("costPrice");
   const watchedImageUrl = watch("imageUrl");
 
@@ -256,6 +263,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           subCategory: fallbackSCat,
           baseUnit: initialData.baseUnit || "Lon",
           packagingSpec: initialData.packagingSpec || "",
+          price: initialData.price ?? 0,
           costPrice: canManageCostPrice ? (initialData.costPrice ?? 0) : undefined,
           status: initialData.status || "ACTIVE",
           imageUrl: initialData.imageUrl || "",
@@ -288,6 +296,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           subCategory: defaultSubCat,
           baseUnit: "Lon",
           packagingSpec: "",
+          price: 0,
           costPrice: canManageCostPrice ? 0 : undefined,
           status: "ACTIVE",
           imageUrl: "",
@@ -366,13 +375,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
   if (!isOpen) return null;
   if (typeof document === "undefined") return null;
-
-  // Tăng / giảm giá vốn nhanh (bước nhảy 1.000đ)
-  const handleStepCostPrice = (delta: number) => {
-    const current = Number(watchedCostPrice) || 0;
-    const next = Math.max(0, current + delta);
-    setValue("costPrice", next, { shouldValidate: true, shouldDirty: true });
-  };
 
   // Quản lý đơn vị quy đổi (SN-23 AC-1)
   const handleAddConversionUnit = () => {
@@ -466,8 +468,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         category: fullCategory,
         baseUnit: formData.baseUnit.trim(),
         packagingSpec: formData.packagingSpec?.trim() || "",
-        price: initialData?.price ?? (canManageCostPrice ? Number(formData.costPrice || 0) : 0),
-        costPrice: canManageCostPrice ? Number(formData.costPrice) : undefined,
+        price: Number(formData.price ?? initialData?.price ?? 0),
+        costPrice: canManageCostPrice ? (formData.costPrice !== undefined ? Number(formData.costPrice) : undefined) : undefined,
         status: formData.status,
         imageUrl: formData.imageUrl?.trim() || undefined,
         stockQuantity: initialData ? initialData.stockQuantity : undefined,
@@ -898,9 +900,46 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </div>
 
             <div
-              className={`grid gap-4 ${canManageCostPrice ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
-                }`}
+              className={`grid gap-4 ${
+                canManageCostPrice ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 md:grid-cols-2"
+              }`}
             >
+              {/* Ô Giá niêm yết (Giá bán cơ sở của SKU) */}
+              <div className="p-3.5 rounded-xl bg-blue-50/30 border border-blue-100/80">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="font-semibold text-slate-800 flex items-center gap-1.5">
+                    <span>Giá niêm yết <span className="text-rose-500">*</span></span>
+                  </label>
+                  <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md ring-1 ring-blue-600/20">
+                    Giá bán chuẩn
+                  </span>
+                </div>
+
+                <CurrencyInput
+                  value={watchedPrice}
+                  onChange={(val) =>
+                    setValue("price", val, { shouldValidate: true, shouldDirty: true })
+                  }
+                  placeholder="0"
+                  disabled={isSubmitting}
+                  showWordsBadge={true}
+                  className={`w-full px-3 py-2.5 rounded-xl border text-xs font-semibold text-blue-900 focus:outline-none focus:ring-2 bg-white transition-all ${
+                    errors.price
+                      ? "border-rose-300 focus:ring-rose-200 bg-rose-50/30"
+                      : "border-slate-200 focus:border-blue-500 focus:ring-blue-100"
+                  }`}
+                />
+
+                {errors.price && (
+                  <p className="text-[11px] text-rose-500 mt-1 font-medium">
+                    {errors.price.message}
+                  </p>
+                )}
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Giá bán cơ sở trước chiết khấu bảng giá
+                </p>
+              </div>
+
               {/* RÀNG BUỘC UI QUAN TRỌNG: Giá vốn CHỈ render khi canManageCostPrice = true (ADMIN hoặc SALES_MANAGER) */}
               {canManageCostPrice && (
                 <div className="p-3.5 rounded-xl bg-emerald-50/30 border border-emerald-100/80">
@@ -914,61 +953,28 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     </span>
                   </div>
 
-                  <div className="relative group">
-                    <input
-                      type="number"
-                      min="0"
-                      step="1000"
-                      {...register("costPrice")}
-                      placeholder="Nhập giá vốn sản phẩm"
-                      className={`w-full pl-3.5 pr-16 py-2.5 rounded-xl border text-xs font-semibold text-emerald-900 focus:outline-none focus:ring-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all ${errors.costPrice
-                          ? "border-rose-300 focus:ring-rose-200 bg-rose-50/30"
-                          : "border-slate-200 bg-white focus:border-emerald-500 focus:ring-emerald-100"
-                        }`}
-                      disabled={isSubmitting}
-                    />
-
-                    {/* Bộ nút tăng/giảm giá vốn: Chỉ hiện khi hover hoặc focus vào ô và không đè lên chữ đ */}
-                    <div className="absolute right-8 inset-y-1.5 flex items-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">
-                      <div className="flex flex-col border border-slate-200/90 rounded-md bg-white shadow-2xs overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => handleStepCostPrice(1000)}
-                          className="h-3.5 w-5 flex items-center justify-center text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100 border-b border-slate-100 transition-colors cursor-pointer"
-                          title="Tăng 1.000đ"
-                        >
-                          <ChevronUp className="h-3 w-3 stroke-[2.5]" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleStepCostPrice(-1000)}
-                          className="h-3.5 w-5 flex items-center justify-center text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100 transition-colors cursor-pointer"
-                          title="Giảm 1.000đ"
-                        >
-                          <ChevronDown className="h-3 w-3 stroke-[2.5]" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Ký hiệu đơn vị tiền tệ 'đ' cố định riêng biệt không bị đè */}
-                    <div className="absolute right-3.5 inset-y-0 flex items-center pointer-events-none">
-                      <span className="text-xs font-bold text-slate-400 select-none">
-                        đ
-                      </span>
-                    </div>
-                  </div>
+                  <CurrencyInput
+                    value={watchedCostPrice}
+                    onChange={(val) =>
+                      setValue("costPrice", val, { shouldValidate: true, shouldDirty: true })
+                    }
+                    placeholder="0"
+                    disabled={isSubmitting}
+                    showWordsBadge={true}
+                    className={`w-full px-3 py-2.5 rounded-xl border text-xs font-semibold text-emerald-900 focus:outline-none focus:ring-2 bg-white transition-all ${
+                      errors.costPrice
+                        ? "border-rose-300 focus:ring-rose-200 bg-rose-50/30"
+                        : "border-slate-200 focus:border-emerald-500 focus:ring-emerald-100"
+                    }`}
+                  />
 
                   {errors.costPrice && (
                     <p className="text-[11px] text-rose-500 mt-1 font-medium">
                       {errors.costPrice.message}
                     </p>
                   )}
-
-                  <p className="text-[11px] text-emerald-700 font-semibold mt-1">
-                    {new Intl.NumberFormat("vi-VN", {
-                      style: "currency",
-                      currency: "VND",
-                    }).format(Number(watchedCostPrice) || 0)}
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Giá nhập vốn (chỉ Quản lý được thấy)
                   </p>
                 </div>
               )}

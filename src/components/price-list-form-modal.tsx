@@ -12,6 +12,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { ModalLayout } from './modal-layout';
+import { CurrencyInput } from './currency-input';
 import type {
   PriceList,
   PriceListItem,
@@ -679,55 +680,41 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
 
                           {/* Ô nhập Giá sàn */}
                           <td className="py-2.5 px-3">
-                            <div className="relative">
-                              <input
-                                type="number"
-                                min={0}
-                                step={1000}
-                                value={item.minPrice}
-                                onChange={(e) =>
-                                  handleUpdateItem(
-                                    item.id,
-                                    'minPrice',
-                                    Math.max(0, Number(e.target.value) || 0),
-                                  )
-                                }
-                                disabled={effectiveReadOnly}
-                                className="w-full px-2.5 py-1.5 text-xs font-mono font-semibold rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-slate-50"
-                              />
-                              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-mono pointer-events-none">
-                                đ
-                              </span>
-                            </div>
+                            <CurrencyInput
+                              value={item.minPrice}
+                              onChange={(val) =>
+                                handleUpdateItem(
+                                  item.id,
+                                  'minPrice',
+                                  val ?? 0,
+                                )
+                              }
+                              disabled={effectiveReadOnly}
+                              placeholder="0"
+                              className="w-full px-2.5 py-1.5 text-xs font-mono font-semibold rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-slate-50"
+                            />
                           </td>
 
                           {/* Ô nhập Giá bán + Báo lỗi Realtime */}
                           <td className="py-2.5 px-3">
                             <div>
-                              <div className="relative">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={1000}
-                                  value={item.price}
-                                  onChange={(e) =>
-                                    handleUpdateItem(
-                                      item.id,
-                                      'price',
-                                      Math.max(0, Number(e.target.value) || 0),
-                                    )
-                                  }
-                                  disabled={effectiveReadOnly}
-                                  className={`w-full px-2.5 py-1.5 text-xs font-mono font-bold rounded-lg border focus:outline-none transition-colors disabled:bg-slate-50 ${
-                                    isItemError
-                                      ? 'border-rose-500 bg-rose-50/70 text-rose-700 ring-2 ring-rose-200/90 focus:ring-rose-300'
-                                      : 'border-slate-200 bg-white text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100'
-                                  }`}
-                                />
-                                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-mono pointer-events-none">
-                                  đ
-                                </span>
-                              </div>
+                              <CurrencyInput
+                                value={item.price}
+                                onChange={(val) =>
+                                  handleUpdateItem(
+                                    item.id,
+                                    'price',
+                                    val ?? 0,
+                                  )
+                                }
+                                disabled={effectiveReadOnly}
+                                placeholder="0"
+                                className={`w-full px-2.5 py-1.5 text-xs font-mono font-bold rounded-lg border focus:outline-none transition-colors disabled:bg-slate-50 ${
+                                  isItemError
+                                    ? 'border-rose-500 bg-rose-50/70 text-rose-700 ring-2 ring-rose-200/90 focus:ring-rose-300'
+                                    : 'border-slate-200 bg-white text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100'
+                                }`}
+                              />
 
                               {isItemError && (
                                 <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-rose-600 leading-tight">
