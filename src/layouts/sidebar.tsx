@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import {
-  Layers,
   X,
   ChevronRight,
   ChevronLeft,
 } from "lucide-react";
+import logoImg from "../assets/logo.png";
 import { getStoredUser } from "../utils/navigation";
 import { tokenStorage } from "../utils/token-storage";
 import {
@@ -79,8 +79,12 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               className="flex items-center gap-2.5 group focus:outline-none min-w-0"
               title="LOHA SALES"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white shadow-xs group-hover:scale-105 transition-transform duration-200">
-                <Layers className="h-5 w-5" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-xs group-hover:scale-105 transition-transform duration-200">
+                <img
+                  src={logoImg}
+                  alt="LOHA SALES"
+                  className="h-full w-full object-cover"
+                />
               </div>
               <div
                 className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${

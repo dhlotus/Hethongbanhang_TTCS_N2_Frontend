@@ -8,8 +8,8 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  Layers,
 } from "lucide-react";
+import logoImg from "../assets/logo.png";
 import { Input } from "../components/input";
 import { Button } from "../components/button";
 import { showToast } from "../components/toast";
@@ -273,8 +273,8 @@ export const LoginPage: React.FC = () => {
 
           {/* Badge thương hiệu góc trên */}
           <div className="relative z-10 p-5 xl:p-6 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white shadow-md flex items-center justify-center">
-              <Layers className="w-4.5 h-4.5" />
+            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md flex items-center justify-center shrink-0">
+              <img src={logoImg} alt="LOHA SALES" className="w-full h-full object-cover" />
             </div>
             <div>
               <span className="text-base font-bold text-white block leading-tight tracking-tight drop-shadow-xs">
@@ -298,8 +298,8 @@ export const LoginPage: React.FC = () => {
         <div className="w-full h-full flex flex-col justify-center p-6 sm:p-8 lg:p-8 xl:p-10 bg-white overflow-y-auto">
           {/* Header Card */}
           <div className="text-center mb-4 sm:mb-5">
-            <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 mb-2 shadow-2xs">
-              <Layers className="w-5 h-5 text-blue-600" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl overflow-hidden shadow-xs mb-2.5">
+              <img src={logoImg} alt="LOHA SALES" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               Đăng nhập
