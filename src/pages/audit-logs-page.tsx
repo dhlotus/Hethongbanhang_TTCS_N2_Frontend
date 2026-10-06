@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { AuditFilterBar } from "../components/audit-log/audit-filter-bar";
 import { AuditTable } from "../components/audit-log/audit-table";
 import { DiffViewerModal } from "../components/audit-log/diff-viewer-modal";
-import { Toast, type ToastType } from "../components/toast";
+import { showToast } from "../components/toast";
 import { auditLogService } from "../services/audit-log.service";
 import type {
   AuditLogItem,
@@ -32,13 +32,6 @@ export const AuditLogsPage: React.FC = () => {
   const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
   const [isDiffModalOpen, setIsDiffModalOpen] = useState<boolean>(false);
 
-  // Toast thông báo
-  const [toast, setToast] = useState<{
-    type: ToastType;
-    title?: string;
-    message: string;
-  } | null>(null);
-
   // Tải danh sách nhật ký
   const loadAuditLogs = useCallback(async () => {
     try {
@@ -52,13 +45,8 @@ export const AuditLogsPage: React.FC = () => {
       setLogs(res.data);
       setTotal(res.total);
       setTotalPages(res.totalPages);
-    } catch (err: unknown) {
-      const error = err as Error;
-      setToast({
-        type: "error",
-        title: "Không thể tải nhật ký",
-        message: error.message || "Đã xảy ra lỗi khi lấy dữ liệu nhật ký hệ thống.",
-      });
+    } catch {
+      showToast("error", "Không thể tải nhật ký hệ thống");
     } finally {
       setLoading(false);
     }
@@ -95,15 +83,6 @@ export const AuditLogsPage: React.FC = () => {
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* Toast thông báo */}
-      {toast && (
-        <Toast
-          type={toast.type}
-          title={toast.title}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
 
       {/* Khu vực Bộ lọc và thao tác (FilterBar) */}
       <AuditFilterBar

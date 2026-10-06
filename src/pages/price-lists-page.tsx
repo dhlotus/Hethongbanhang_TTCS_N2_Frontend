@@ -25,7 +25,7 @@ import { getStoredUser } from '../utils/navigation';
 import { priceListsService } from '../services/price-lists.service';
 import { PriceListFormModal } from '../components/price-list-form-modal';
 import { PriceListCloneModal } from '../components/price-list-clone-modal';
-import { Toast, type ToastType } from '../components/toast';
+import { showToast } from '../components/toast';
 import { PriceListsTableSkeleton } from '../components/skeletons';
 import type {
   PriceList,
@@ -65,13 +65,6 @@ export const PriceListsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<PriceListStatusType | 'ALL'>('ALL');
-
-  // Toast thông báo nổi
-  const [toast, setToast] = useState<{
-    type: ToastType;
-    title?: string;
-    message: string;
-  } | null>(null);
 
   // Modals state
   const [formModalOpen, setFormModalOpen] = useState(false);
@@ -126,13 +119,8 @@ export const PriceListsPage: React.FC = () => {
       setPriceLists(res.data);
       setTotal(res.total);
       setTotalPages(res.totalPages || 1);
-    } catch (err: unknown) {
-      const error = err as Error;
-      setToast({
-        type: 'error',
-        title: 'Lỗi tải dữ liệu',
-        message: error.message || 'Không thể nạp danh sách bảng giá.',
-      });
+    } catch {
+      showToast('error', 'Không thể nạp danh sách bảng giá');
     } finally {
       setLoading(false);
     }
@@ -174,11 +162,7 @@ export const PriceListsPage: React.FC = () => {
   // Mở modal chỉnh sửa
   const handleOpenEditModal = (pl: PriceList) => {
     if (pl.hasOrders) {
-      setToast({
-        type: 'warning',
-        title: 'Khóa sửa an toàn (SN-27)',
-        message: `Bảng giá [${pl.code}] đã phát sinh đơn hàng thực tế trong hệ thống. Tuyệt đối không được chỉnh sửa trực tiếp để bảo vệ chứng từ, vui lòng sử dụng chức năng "Tạo phiên bản mới (Clone Version)".`,
-      });
+      showToast('error', 'Không thể chỉnh sửa bảng giá đã phát sinh đơn hàng');
       return;
     }
     setEditingPriceList(pl);
@@ -195,26 +179,16 @@ export const PriceListsPage: React.FC = () => {
   // Thực hiện Clone Version
   const handleConfirmClone = async (source: PriceList, newName: string, newCode: string) => {
     try {
-      const cloned = await priceListsService.clonePriceList(source.id, {
+      await priceListsService.clonePriceList(source.id, {
         name: newName,
         code: newCode,
       });
 
-      setToast({
-        type: 'success',
-        title: 'Nhân bản thành công (SN-27)',
-        message: `Đã tạo phiên bản mới v${cloned.version}.0: "${cloned.name}" [${cloned.code}] ở trạng thái Bản nháp.`,
-      });
-
+      showToast('success', 'Nhân bản bảng giá thành công');
       await loadPriceLists();
-    } catch (err: unknown) {
-      const error = err as Error;
-      setToast({
-        type: 'error',
-        title: 'Nhân bản thất bại',
-        message: error.message || 'Không thể tạo phiên bản mới.',
-      });
-      throw err;
+    } catch {
+      showToast('error', 'Nhân bản bảng giá thất bại');
+      throw new Error('Clone failed');
     }
   };
 
@@ -223,39 +197,22 @@ export const PriceListsPage: React.FC = () => {
     try {
       if (editingPriceList) {
         await priceListsService.updatePriceList(editingPriceList.id, payload);
-        setToast({
-          type: 'success',
-          title: 'Cập nhật thành công',
-          message: `Đã lưu thay đổi cho bảng giá "${payload.name}".`,
-        });
+        showToast('success', 'Cập nhật bảng giá thành công');
       } else {
         await priceListsService.createPriceList(payload);
-        setToast({
-          type: 'success',
-          title: 'Tạo mới thành công',
-          message: `Đã thêm bảng giá mới "${payload.name}" vào hệ thống.`,
-        });
+        showToast('success', 'Tạo mới bảng giá thành công');
       }
       await loadPriceLists();
-    } catch (err: unknown) {
-      const error = err as Error;
-      setToast({
-        type: 'error',
-        title: 'Thao tác thất bại',
-        message: error.message || 'Không thể lưu bảng giá.',
-      });
-      throw err;
+    } catch {
+      showToast('error', 'Không thể lưu bảng giá');
+      throw new Error('Submit failed');
     }
   };
 
   // Xác nhận xóa bảng giá
   const handlePromptDelete = (pl: PriceList) => {
     if (pl.hasOrders) {
-      setToast({
-        type: 'warning',
-        title: 'Khóa xóa an toàn (SN-27)',
-        message: `Bảng giá [${pl.code}] đã phát sinh đơn hàng trong hệ thống. Không thể xóa để bảo đảm tính toàn vẹn dữ liệu đơn hàng!`,
-      });
+      showToast('error', 'Không thể xóa bảng giá đã phát sinh đơn hàng');
       return;
     }
     setPriceListToDelete(pl);
@@ -268,21 +225,12 @@ export const PriceListsPage: React.FC = () => {
     try {
       setDeleting(true);
       await priceListsService.deletePriceList(priceListToDelete.id);
-      setToast({
-        type: 'success',
-        title: 'Đã xóa bảng giá',
-        message: `Bảng giá "${priceListToDelete.name}" đã được xóa khỏi hệ thống.`,
-      });
+      showToast('success', 'Xóa bảng giá thành công');
       setDeleteModalOpen(false);
       setPriceListToDelete(null);
       await loadPriceLists();
-    } catch (err: unknown) {
-      const error = err as Error;
-      setToast({
-        type: 'error',
-        title: 'Xóa thất bại',
-        message: error.message || 'Không thể xóa bảng giá.',
-      });
+    } catch {
+      showToast('error', 'Không thể xóa bảng giá');
     } finally {
       setDeleting(false);
     }
@@ -349,18 +297,6 @@ export const PriceListsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Toast thông báo nổi */}
-      {toast && (
-        <Toast
-          type={toast.type}
-          title={toast.title}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
-
-
-
       {/* 2. Metrics Header: 4 Thẻ chỉ số tổng quan */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1: Tổng số bảng giá */}
@@ -750,7 +686,7 @@ export const PriceListsPage: React.FC = () => {
         onClose={() => setFormModalOpen(false)}
         onSubmit={handleFormSubmit}
         onClone={handleOpenCloneModal}
-        onToast={(type, title, message) => setToast({ type, title, message })}
+        onToast={(type, title, message) => showToast(type, title || message)}
         initialData={editingPriceList}
         isReadOnly={isViewOnly}
       />

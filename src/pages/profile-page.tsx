@@ -24,14 +24,8 @@ import { tokenStorage } from "../utils/token-storage";
 import { getStoredUser } from "../utils/navigation";
 import { getUserContext, ROLE_CONFIGS } from "../utils/navigation-config";
 import { resolveAvatarUrl } from "../utils/avatar";
+import { showToast } from "../components/toast";
 import type { AuthUser, UserRoleType } from "../types/auth";
-
-type ToastType = "success" | "error";
-
-interface ToastState {
-  type: ToastType;
-  message: string;
-}
 
 const VIETNAM_PHONE_PATTERN = /^(?:0|\+84)(?:[35789]\d{8}|2\d{9})$/;
 
@@ -88,7 +82,6 @@ export const ProfilePage: React.FC = () => {
   const [user, setUser] = useState<AuthUser | null>(getStoredUser());
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [showIdentityConfirmModal, setShowIdentityConfirmModal] = useState<boolean>(false);
-  const [toast, setToast] = useState<ToastState | null>(null);
   const [isFetchingProfile, setIsFetchingProfile] = useState<boolean>(false);
 
   // Trạng thái chỉnh sửa trực tiếp (Inline Editing)
@@ -142,13 +135,6 @@ export const ProfilePage: React.FC = () => {
       );
     }
   }, [user, cleanFullName]);
-
-  // Tự động ẩn toast sau 3.5 giây
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   // Đồng bộ thông tin profile mới nhất từ backend khi vào trang
   const fetchProfile = useCallback(async () => {
@@ -209,7 +195,7 @@ export const ProfilePage: React.FC = () => {
       tokenStorage.setUser(updatedUser);
       setUser(updatedUser);
       setShowUploadModal(false);
-      setToast({ type: "success", message: "Ảnh đại diện đã được cập nhật thành công!" });
+      showToast("success", "Cập nhật ảnh đại diện thành công");
       window.dispatchEvent(new CustomEvent("avatar-updated", { detail: demoUrl }));
       return;
     }
@@ -230,15 +216,12 @@ export const ProfilePage: React.FC = () => {
       }
 
       setShowUploadModal(false);
-      setToast({ type: "success", message: "Ảnh đại diện đã được cập nhật thành công!" });
+      showToast("success", "Cập nhật ảnh đại diện thành công");
     } catch (err: unknown) {
       const responseMessage = axios.isAxiosError<{ message?: string }>(err)
         ? err.response?.data?.message
         : undefined;
-      setToast({
-        type: "error",
-        message: responseMessage || "Không thể cập nhật ảnh đại diện. Vui lòng thử lại!",
-      });
+      showToast("error", responseMessage || "Không thể cập nhật ảnh đại diện");
     }
   };
 
@@ -385,12 +368,12 @@ export const ProfilePage: React.FC = () => {
       window.dispatchEvent(new CustomEvent("user-updated", { detail: mergedUser }));
 
       setIsEditing(false);
-      setToast({
-        type: "success",
-        message: willLockIdentity
-          ? "Đã lưu hồ sơ và xác thực định danh (Ngày sinh & Giới tính) thành công!"
-          : "Thông tin cá nhân đã được cập nhật thành công!",
-      });
+      showToast(
+        "success",
+        willLockIdentity
+          ? "Xác thực định danh và lưu hồ sơ thành công"
+          : "Cập nhật thông tin cá nhân thành công"
+      );
     } catch (error: unknown) {
       const responseMessage = axios.isAxiosError<{ message?: string | string[] }>(error)
         ? error.response?.data?.message
@@ -398,10 +381,7 @@ export const ProfilePage: React.FC = () => {
       const message = Array.isArray(responseMessage)
         ? responseMessage.join(", ")
         : responseMessage || (error instanceof Error ? error.message : "");
-      setToast({
-        type: "error",
-        message: message || "Không thể cập nhật hồ sơ. Vui lòng thử lại.",
-      });
+      showToast("error", message || "Không thể cập nhật hồ sơ");
     } finally {
       setIsSaving(false);
     }
@@ -421,27 +401,6 @@ export const ProfilePage: React.FC = () => {
   const completionPercent = calculateCompletionPercent();
   return (
     <div className="space-y-6 w-full max-w-[1520px] mx-auto antialiased">
-      {/* =============================================================== */}
-      {/* 1. TOAST THÔNG BÁO NỔI                                          */}
-      {/* =============================================================== */}
-      {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`fixed top-20 right-4 z-50 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold shadow-xl transition-all duration-300 animate-in fade-in slide-from-top-3 ${toast.type === "success"
-              ? "bg-emerald-600 text-white shadow-emerald-600/20"
-              : "bg-rose-600 text-white shadow-rose-600/20"
-            }`}
-        >
-          {toast.type === "success" ? (
-            <CheckCircle className="h-5 w-5 shrink-0" />
-          ) : (
-            <AlertCircle className="h-5 w-5 shrink-0" />
-          )}
-          <span>{toast.message}</span>
-        </div>
-      )}
-
       {/* =============================================================== */}
       {/* 2. THÔNG BÁO YÊU CẦU BỔ SUNG THÔNG TIN CÁ NHÂN                    */}
       {/* =============================================================== */}

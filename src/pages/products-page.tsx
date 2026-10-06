@@ -30,7 +30,7 @@ import { categoriesService } from "../services/categories.service";
 import { inventoryService } from "../services/inventory.service";
 import { ProductFormModal } from "../components/product-form-modal";
 import { ImportProductsModal } from "../components/import-products-modal";
-import { Toast, type ToastType } from "../components/toast";
+import { showToast } from "../components/toast";
 import {
   ProductsTableSkeleton,
   ProductsMobileCardSkeleton,
@@ -79,13 +79,6 @@ export const ProductsPage: React.FC = () => {
 
   // Drawer bộ lọc nâng cao cho Mobile & Tablet (< lg)
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-
-  // Toast thông báo nổi góc màn hình
-  const [toast, setToast] = useState<{
-    type: ToastType;
-    title?: string;
-    message: string;
-  } | null>(null);
 
   // Modal Thêm / Sửa sản phẩm
   const [formModalOpen, setFormModalOpen] = useState(false);
@@ -248,13 +241,8 @@ export const ProductsPage: React.FC = () => {
         setTotal(res.length);
         setTotalPages(Math.ceil(res.length / limit) || 1);
       }
-    } catch (err: unknown) {
-      const error = err as Error;
-      setToast({
-        type: "error",
-        title: "Tải danh mục thất bại",
-        message: error.message || "Không thể tải danh sách sản phẩm từ máy chủ.",
-      });
+    } catch {
+      showToast("error", "Không thể tải danh sách sản phẩm");
     } finally {
       setLoading(false);
     }
@@ -290,18 +278,10 @@ export const ProductsPage: React.FC = () => {
   const handleFormSubmit = async (payload: CreateProductPayload) => {
     if (editingProduct) {
       await productsService.updateProduct(editingProduct.id, payload);
-      setToast({
-        type: "success",
-        title: "Cập nhật thành công",
-        message: `Đã lưu các thay đổi cho sản phẩm [${payload.sku} - ${payload.name}].`,
-      });
+      showToast("success", "Cập nhật sản phẩm thành công");
     } else {
       await productsService.createProduct(payload);
-      setToast({
-        type: "success",
-        title: "Tạo sản phẩm thành công",
-        message: `Đã thêm sản phẩm mới [${payload.sku} - ${payload.name}] vào danh mục.`,
-      });
+      showToast("success", "Tạo sản phẩm mới thành công");
     }
     await loadProducts();
   };
@@ -312,32 +292,22 @@ export const ProductsPage: React.FC = () => {
     const newStatus: ProductStatus = p.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
     try {
       await productsService.toggleProductStatus(p.id, newStatus);
-      setToast({
-        type: "success",
-        title: newStatus === "ACTIVE" ? "Đã kích hoạt kinh doanh" : "Đã chuyển ngừng kinh doanh",
-        message: `Sản phẩm [${p.sku}] hiện đang ở trạng thái: ${
-          newStatus === "ACTIVE" ? "Đang kinh doanh" : "Ngừng kinh doanh"
-        }.`,
-      });
+      showToast(
+        "success",
+        newStatus === "ACTIVE"
+          ? "Kích hoạt kinh doanh sản phẩm thành công"
+          : "Chuyển ngừng kinh doanh sản phẩm thành công"
+      );
       await loadProducts();
-    } catch (err: unknown) {
-      const error = err as Error;
-      setToast({
-        type: "error",
-        title: "Thao tác thất bại",
-        message: error.message || "Không thể cập nhật trạng thái sản phẩm.",
-      });
+    } catch {
+      showToast("error", "Không thể cập nhật trạng thái sản phẩm");
     }
   };
 
   // Mở modal xác nhận xóa
   const handlePromptDelete = (p: Product) => {
     if (p.hasTransactions) {
-      setToast({
-        type: "warning",
-        title: "Khóa xóa an toàn (SN-139)",
-        message: `Sản phẩm [${p.sku}] đã có phát sinh giao dịch kho/đơn hàng. Hệ thống chặn xóa để bảo đảm dữ liệu kế toán, bạn chỉ có thể chuyển sang trạng thái Ngừng kinh doanh!`,
-      });
+      showToast("error", "Không thể xóa sản phẩm đã phát sinh giao dịch");
       return;
     }
     setProductToDelete(p);
@@ -350,21 +320,12 @@ export const ProductsPage: React.FC = () => {
     try {
       setIsDeleting(true);
       await productsService.deleteProduct(productToDelete.id);
-      setToast({
-        type: "success",
-        title: "Đã xóa sản phẩm",
-        message: `Sản phẩm [${productToDelete.sku}] đã được xóa vĩnh viễn khỏi danh mục.`,
-      });
+      showToast("success", "Xóa sản phẩm thành công");
       setDeleteModalOpen(false);
       setProductToDelete(null);
       await loadProducts();
-    } catch (err: unknown) {
-      const error = err as Error;
-      setToast({
-        type: "error",
-        title: "Xóa thất bại",
-        message: error.message || "Không thể xóa sản phẩm.",
-      });
+    } catch {
+      showToast("error", "Không thể xóa sản phẩm");
     } finally {
       setIsDeleting(false);
     }
@@ -410,26 +371,12 @@ export const ProductsPage: React.FC = () => {
         referenceCode: referenceCode.trim() || undefined,
       };
 
-      const result = await inventoryService.adjustStock(payload);
-
-      setToast({
-        type: "success",
-        title: "Ghi sổ kho thành công (SN-23)",
-        message: `Đã ghi sổ [${result.sku}]: ${Number(quantityChange) > 0 ? "+" : ""}${quantityChange} ${adjustUnit || selectedProductForAdjust.baseUnit} (Quy đổi: ${result.quantityChange > 0 ? "+" : ""}${result.quantityChange} ${result.baseUnit || selectedProductForAdjust.baseUnit}). Tồn mới: ${result.newQuantity} ${result.baseUnit || selectedProductForAdjust.baseUnit}.`,
-      });
-
+      await inventoryService.adjustStock(payload);
+      showToast("success", "Điều chỉnh tồn kho thành công");
       setAdjustModalOpen(false);
       await loadProducts();
-    } catch (err: unknown) {
-      const error = err as Error & { response?: { data?: { message?: string } } };
-      setToast({
-        type: "error",
-        title: "Điều chỉnh thất bại",
-        message:
-          error.response?.data?.message ||
-          error.message ||
-          "Không thể điều chỉnh tồn kho. Vui lòng kiểm tra quyền hạn và số lượng tồn.",
-      });
+    } catch {
+      showToast("error", "Không thể điều chỉnh tồn kho");
     } finally {
       setAdjusting(false);
     }
@@ -452,15 +399,6 @@ export const ProductsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Toast thông báo trượt mượt mà từ góc phải */}
-      {toast && (
-        <Toast
-          type={toast.type}
-          title={toast.title}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
 
       {/* 1. Header Banner & RBAC Status Badge */}
       <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xs">
@@ -1701,11 +1639,7 @@ export const ProductsPage: React.FC = () => {
           onClose={() => setImportModalOpen(false)}
           onSuccess={() => {
             setImportModalOpen(false);
-            setToast({
-              type: "success",
-              title: "Nhập Excel thành công",
-              message: "Đã cập nhật danh mục sản phẩm từ tệp Excel.",
-            });
+            showToast("success", "Nhập danh mục từ Excel thành công");
             loadProducts();
           }}
         />

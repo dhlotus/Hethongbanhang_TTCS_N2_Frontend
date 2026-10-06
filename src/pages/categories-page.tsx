@@ -16,7 +16,6 @@ import {
   RefreshCw,
   Search,
   AlertCircle,
-  CheckCircle2,
   X,
   ShieldCheck,
   Tag,
@@ -26,6 +25,7 @@ import {
 } from "lucide-react";
 import { CategoriesTreeSkeleton } from "../components/skeletons";
 import { categoriesService } from "../services/categories.service";
+import { showToast } from "../components/toast";
 import { tokenStorage } from "../utils/token-storage";
 import type {
   CategoryTreeNode,
@@ -59,12 +59,6 @@ export const CategoriesPage: React.FC = () => {
   const [moveTargetId, setMoveTargetId] = useState<string>("");
   const [moveSubmitting, setMoveSubmitting] = useState<boolean>(false);
   const [moveError, setMoveError] = useState<string | null>(null);
-
-  // Toast State
-  const [toast, setToast] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
 
   // Modal State: View Products in Category Branch
   const [selectedCategoryForProducts, setSelectedCategoryForProducts] =
@@ -101,9 +95,8 @@ export const CategoriesPage: React.FC = () => {
       };
       addExp(tree);
       setExpandedNodes(initialExpanded);
-    } catch (err: unknown) {
-      const error = err as Error;
-      setToast({ type: "error", message: error.message });
+    } catch {
+      showToast("error", "Không thể tải danh mục sản phẩm");
     } finally {
       setLoading(false);
     }
@@ -112,14 +105,6 @@ export const CategoriesPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  // Toast Auto-dismiss
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 4500);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
 
   // Toggle Node Expand/Collapse
   const toggleExpand = (nodeId: string) => {
@@ -223,10 +208,7 @@ export const CategoriesPage: React.FC = () => {
           status: formStatus,
         };
         await categoriesService.updateCategory(editingCategory.id, payload);
-        setToast({
-          type: "success",
-          message: `Đã cập nhật nhóm hàng [${formName.trim()}] thành công!`,
-        });
+        showToast("success", "Cập nhật nhóm hàng thành công");
       } else {
         const payload: CreateCategoryPayload = {
           name: formName.trim(),
@@ -236,10 +218,7 @@ export const CategoriesPage: React.FC = () => {
           status: formStatus,
         };
         await categoriesService.createCategory(payload);
-        setToast({
-          type: "success",
-          message: `Đã tạo mới nhóm hàng [${formName.trim()}] thành công!`,
-        });
+        showToast("success", "Tạo mới nhóm hàng thành công");
       }
       setIsModalOpen(false);
       await loadData();
@@ -271,11 +250,8 @@ export const CategoriesPage: React.FC = () => {
         sourceCategoryId: moveSourceId,
         targetCategoryId: moveTargetId,
       };
-      const res = await categoriesService.moveProducts(payload);
-      setToast({
-        type: "success",
-        message: res.message,
-      });
+      await categoriesService.moveProducts(payload);
+      showToast("success", "Di chuyển sản phẩm thành công");
       setIsMoveModalOpen(false);
       await loadData();
     } catch (err: unknown) {
@@ -297,18 +273,12 @@ export const CategoriesPage: React.FC = () => {
     }
 
     try {
-      const res = await categoriesService.deleteCategory(cat.id);
-      setToast({
-        type: "success",
-        message: res.message,
-      });
+      await categoriesService.deleteCategory(cat.id);
+      showToast("success", "Xóa nhóm hàng thành công");
       await loadData();
     } catch (err: unknown) {
       const error = err as Error;
-      setToast({
-        type: "error",
-        message: error.message,
-      });
+      showToast("error", error.message || "Không thể xóa nhóm hàng");
     }
   };
 
@@ -520,30 +490,6 @@ export const CategoriesPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Toast Notification */}
-      {toast && (
-        <div
-          className={`fixed bottom-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border text-xs sm:text-sm animate-bounce ${toast.type === "success"
-            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-            : "bg-rose-50 border-rose-200 text-rose-800"
-            }`}
-        >
-          {toast.type === "success" ? (
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-          ) : (
-            <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />
-          )}
-          <span className="font-medium">{toast.message}</span>
-          <button
-            type="button"
-            onClick={() => setToast(null)}
-            className="p-1 text-slate-400 hover:text-slate-600"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-
       {/* Header Banner */}
       <div className="rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-7 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

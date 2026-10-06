@@ -17,7 +17,7 @@ import {
   ShieldAlert,
   Eye,
 } from "lucide-react";
-import { Toast, type ToastType } from "../components/toast";
+import { showToast } from "../components/toast";
 import { SuppliersTableSkeleton } from "../components/skeletons";
 import { SupplierFormModal } from "../components/supplier-form-modal";
 import { SupplierDetailModal } from "../components/supplier-detail-modal";
@@ -41,13 +41,6 @@ export const SuppliersPage: React.FC = () => {
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<SupplierStatus | "ALL">("ALL");
-
-  // Toast
-  const [toast, setToast] = useState<{
-    type: ToastType;
-    title?: string;
-    message: string;
-  } | null>(null);
 
   // Modals
   const [formModalOpen, setFormModalOpen] = useState(false);
@@ -95,11 +88,7 @@ export const SuppliersPage: React.FC = () => {
       setTotal(res.total);
       setTotalPages(res.totalPages);
     } catch {
-      setToast({
-        type: "error",
-        title: "Lỗi tải dữ liệu",
-        message: "Không thể kết nối đến máy chủ. Đang sử dụng dữ liệu offline.",
-      });
+      showToast("error", "Không thể tải danh sách nhà cung cấp");
     } finally {
       setLoading(false);
     }
@@ -130,18 +119,10 @@ export const SuppliersPage: React.FC = () => {
       let updatedSupplier: Supplier | null = null;
       if (editingSupplier) {
         updatedSupplier = await suppliersService.updateSupplier(editingSupplier.id, payload);
-        setToast({
-          type: "success",
-          title: "Cập nhật thành công",
-          message: `Đã cập nhật thông tin nhà cung cấp ${payload.name}`,
-        });
+        showToast("success", "Cập nhật nhà cung cấp thành công");
       } else {
         await suppliersService.createSupplier(payload);
-        setToast({
-          type: "success",
-          title: "Thêm mới thành công",
-          message: `Đã thêm mới nhà cung cấp ${payload.name}`,
-        });
+        showToast("success", "Thêm nhà cung cấp mới thành công");
       }
       setEditingSupplier(null);
       fetchSuppliers();
@@ -158,12 +139,8 @@ export const SuppliersPage: React.FC = () => {
         setReturnToDetailSupplier(fresh);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Đã có lỗi xảy ra";
-      setToast({
-        type: "error",
-        title: "Thao tác thất bại",
-        message: msg,
-      });
+      const msg = err instanceof Error ? err.message : "Thao tác thất bại";
+      showToast("error", msg);
       throw err;
     }
   };
@@ -174,21 +151,15 @@ export const SuppliersPage: React.FC = () => {
       supplier.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
     try {
       await suppliersService.toggleSupplierStatus(supplier.id, newStatus);
-      setToast({
-        type: "success",
-        title: "Đổi trạng thái",
-        message: `Đã chuyển đối tác '${supplier.name}' sang ${
-          newStatus === "ACTIVE" ? "Đang giao dịch" : "Ngừng giao dịch"
-        }`,
-      });
+      showToast(
+        "success",
+        newStatus === "ACTIVE"
+          ? "Mở giao dịch nhà cung cấp thành công"
+          : "Ngừng giao dịch nhà cung cấp thành công"
+      );
       fetchSuppliers();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Đã có lỗi xảy ra";
-      setToast({
-        type: "error",
-        title: "Lỗi chuyển trạng thái",
-        message: msg,
-      });
+    } catch {
+      showToast("error", "Lỗi chuyển trạng thái nhà cung cấp");
     }
   };
 
@@ -203,27 +174,13 @@ export const SuppliersPage: React.FC = () => {
 
     setIsDeleting(true);
     try {
-      const res = await suppliersService.deleteSupplier(supplierToDelete.id);
-      setToast({
-        type: "success",
-        title: "Xóa thành công",
-        message:
-          res.message ||
-          `Đã xóa nhà cung cấp ${supplierToDelete.name} thành công.`,
-      });
+      await suppliersService.deleteSupplier(supplierToDelete.id);
+      showToast("success", "Xóa nhà cung cấp thành công");
       setDeleteModalOpen(false);
       setSupplierToDelete(null);
       fetchSuppliers();
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Không thể xóa nhà cung cấp do vi phạm ràng buộc dữ liệu";
-      setToast({
-        type: "error",
-        title: "Chặn thao tác xóa",
-        message: msg,
-      });
+    } catch {
+      showToast("error", "Không thể xóa nhà cung cấp do ràng buộc dữ liệu");
     } finally {
       setIsDeleting(false);
     }
@@ -237,21 +194,12 @@ export const SuppliersPage: React.FC = () => {
         supplierToDelete.id,
         "INACTIVE"
       );
-      setToast({
-        type: "success",
-        title: "Đã chuyển sang Inactive",
-        message: `Nhà cung cấp '${supplierToDelete.name}' đã được chuyển sang trạng thái Ngừng hoạt động.`,
-      });
+      showToast("success", "Đã chuyển nhà cung cấp sang ngừng hoạt động");
       setDeleteModalOpen(false);
       setSupplierToDelete(null);
       fetchSuppliers();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Đã có lỗi xảy ra";
-      setToast({
-        type: "error",
-        title: "Thao tác thất bại",
-        message: msg,
-      });
+    } catch {
+      showToast("error", "Chuyển trạng thái thất bại");
     }
   };
 
@@ -262,15 +210,6 @@ export const SuppliersPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Toast */}
-      {toast && (
-        <Toast
-          type={toast.type}
-          title={toast.title}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
 
       {/* 1. Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">

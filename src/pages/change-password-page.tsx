@@ -17,19 +17,13 @@ import {
 } from "lucide-react";
 import { Input } from "../components/input";
 import { Button } from "../components/button";
-import { Toast, type ToastType } from "../components/toast";
+import { showToast } from "../components/toast";
 import {
   changePasswordSchema,
   type ChangePasswordFormData,
 } from "../utils/validation";
 import { authService } from "../services/auth.service";
 import { tokenStorage } from "../utils/token-storage";
-
-interface ToastState {
-  type: ToastType;
-  title: string;
-  message: string;
-}
 
 /**
  * Trang Đổi mật khẩu (Change Password Page):
@@ -44,7 +38,6 @@ export const ChangePasswordPage: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [successModalOpen, setSuccessModalOpen] = useState(false);
   const [countdown, setCountdown] = useState(3);
-  const [toast, setToast] = useState<ToastState | null>(null);
 
   const navigate = useNavigate();
 
@@ -135,8 +128,6 @@ export const ChangePasswordPage: React.FC = () => {
   }
 
   const onSubmit = async (data: ChangePasswordFormData) => {
-    setToast(null);
-
     try {
       await authService.changePassword({
         currentPassword: data.currentPassword,
@@ -160,26 +151,12 @@ export const ChangePasswordPage: React.FC = () => {
         });
       }
 
-      setToast({
-        type: "error",
-        title: "Đổi mật khẩu thất bại",
-        message,
-      });
+      showToast("error", message);
     }
   };
 
   return (
     <div className="w-full max-w-[1520px] mx-auto py-2 sm:py-4 antialiased">
-      {/* Toast thông báo nổi ở góc phải trên màn hình */}
-      {toast && (
-        <Toast
-          type={toast.type}
-          title={toast.title}
-          message={toast.message}
-          onClose={() => setToast(null)}
-          duration={toast.type === "success" ? 3000 : 4000}
-        />
-      )}
 
       {/* Modal thông báo đếm ngược 3 giây lịch sự khi đổi mật khẩu thành công */}
       {successModalOpen &&

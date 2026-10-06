@@ -8,7 +8,6 @@ import {
   Lock,
   Unlock,
   Edit2,
-  CheckCircle2,
   AlertCircle,
   X,
   Warehouse,
@@ -35,6 +34,7 @@ import {
   UsersMobileCardSkeleton,
 } from "../components/skeletons";
 import { ExcelImportModal } from "../components/excel-import-modal";
+import { showToast } from "../components/toast";
 import { usersService } from "../services/users.service";
 import type {
   AssignedCustomerItem,
@@ -117,13 +117,6 @@ const LOCK_REASON_PRESETS = [
   "Nhân sự đã nghỉ việc / Chấm dứt hợp đồng",
 ];
 
-interface ToastState {
-  id: string;
-  type: "success" | "error" | "info" | "warning";
-  title: string;
-  message: string;
-}
-
 export const UsersPage: React.FC = () => {
   const currentAdmin = getStoredUser();
 
@@ -157,44 +150,6 @@ export const UsersPage: React.FC = () => {
     setStatusFilter("");
     setPage(1);
   }, []);
-
-  // Toast thông báo nổi mượt mà (Fade in & Slide out)
-  const [toast, setToast] = useState<ToastState | null>(null);
-  const [toastVisible, setToastVisible] = useState(false);
-
-  const hideToast = useCallback(() => {
-    setToastVisible(false);
-    setTimeout(() => {
-      setToast(null);
-    }, 300);
-  }, []);
-
-  const showToast = useCallback(
-    (
-      type: "success" | "error" | "info" | "warning",
-      title: string,
-      message: string,
-    ) => {
-      setToast({
-        id: Math.random().toString(),
-        type,
-        title,
-        message,
-      });
-      requestAnimationFrame(() => {
-        setTimeout(() => setToastVisible(true), 20);
-      });
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => {
-      hideToast();
-    }, 4500);
-    return () => clearTimeout(timer);
-  }, [toast, hideToast]);
 
   // Modal Tạo / Chỉnh sửa & Quản lý Lỗi Validate
   const [modalOpen, setModalOpen] = useState(false);
@@ -248,11 +203,7 @@ export const UsersPage: React.FC = () => {
 
     // Chặn tuyệt đối tự thu hồi quyền ADMIN của chính mình
     if (isSelected && isEditingCurrentSelf && roleKey === USER_ROLES.ADMIN) {
-      showToast(
-        "warning",
-        "Quyền Quản trị được bảo vệ",
-        "Bạn không thể tự thu hồi quyền Quản trị hệ thống (ADMIN) của chính mình.",
-      );
+      showToast("error", "Không thể tự thu hồi quyền Quản trị");
       return;
     }
 
@@ -325,16 +276,12 @@ export const UsersPage: React.FC = () => {
       setUsers(res.data);
       setTotal(res.total);
       setTotalPages(res.totalPages);
-    } catch (err: any) {
-      showToast(
-        "error",
-        "Lỗi tải dữ liệu",
-        err.response?.data?.message || "Không thể tải danh sách người dùng từ máy chủ.",
-      );
+    } catch {
+      showToast("error", "Không thể tải danh sách người dùng");
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, roleFilter, statusFilter, showToast]);
+  }, [page, limit, search, roleFilter, statusFilter]);
 
   useEffect(() => {
     fetchUsers();
@@ -359,7 +306,7 @@ export const UsersPage: React.FC = () => {
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
-    showToast("info", "Đã sao chép", `Đã sao chép mã "${code}" vào bộ nhớ tạm.`);
+    showToast("success", "Sao chép mã thành công");
     setTimeout(() => setCopiedCode(null), 2500);
   };
 
@@ -379,17 +326,9 @@ export const UsersPage: React.FC = () => {
         prev.map((u) => (u.id === userId ? { ...u, resetCode: res.resetCode } : u)),
       );
 
-      showToast(
-        "success",
-        "Cấp mã thành công",
-        `Đã tạo mã đổi mật khẩu "${res.resetCode}". Mã sẽ duy trì hiển thị đến khi nhân sự sử dụng.`,
-      );
-    } catch (err: any) {
-      showToast(
-        "error",
-        "Lỗi cấp mã",
-        err.response?.data?.message || "Không thể cấp mã đổi mật khẩu.",
-      );
+      showToast("success", "Cấp mã đổi mật khẩu thành công");
+    } catch {
+      showToast("error", "Không thể cấp mã đổi mật khẩu");
     } finally {
       setGeneratingCode(false);
     }
@@ -518,11 +457,7 @@ export const UsersPage: React.FC = () => {
     e.preventDefault();
 
     if (!validateForm()) {
-      showToast(
-        "warning",
-        "Thông tin chưa hợp lệ",
-        "Vui lòng kiểm tra và sửa lại các trường thông tin đang báo lỗi trên biểu mẫu.",
-      );
+      showToast("error", "Vui lòng kiểm tra lại thông tin");
       return;
     }
 
@@ -545,15 +480,11 @@ export const UsersPage: React.FC = () => {
           password: formData.password ? formData.password.trim() : undefined,
         };
 
-        const updated = await usersService.updateUser(editingUser.id, updatePayload);
-        showToast(
-          "success",
-          "Cập nhật thành công",
-          `Thông tin tài khoản "${updated.fullName}" đã được lưu thành công.`,
-        );
+        await usersService.updateUser(editingUser.id, updatePayload);
+        showToast("success", "Cập nhật tài khoản thành công");
       } else {
         // Tạo người dùng mới
-        const res = await usersService.createUser({
+        await usersService.createUser({
           ...formData,
           fullName: formData.fullName.trim(),
           username: formData.username.trim(),
@@ -565,15 +496,7 @@ export const UsersPage: React.FC = () => {
           password: formData.password ? formData.password.trim() : undefined,
         });
 
-        const tempPassMsg = res.temporaryPassword
-          ? `Mật khẩu khởi tạo: ${res.temporaryPassword}. Thư kích hoạt kèm hướng dẫn đã được gửi tới ${res.user.email}.`
-          : `Thư kích hoạt tài khoản đã được gửi tới ${res.user.email}.`;
-
-        showToast(
-          "success",
-          "Thêm nhân sự mới thành công",
-          `Tài khoản "${res.user.fullName}" (${res.user.username}) đã được tạo. ${tempPassMsg}`,
-        );
+        showToast("success", "Thêm nhân sự mới thành công");
       }
 
       setModalOpen(false);
@@ -599,7 +522,7 @@ export const UsersPage: React.FC = () => {
         }
       }
 
-      showToast("error", "Thao tác thất bại", serverMsg);
+      showToast("error", typeof serverMsg === "string" ? serverMsg : "Thao tác thất bại");
     } finally {
       setSubmitting(false);
     }
@@ -642,51 +565,27 @@ export const UsersPage: React.FC = () => {
     if (!selectedUserForStatus) return;
 
     if (targetStatus === "LOCKED" && !statusReason.trim()) {
-      showToast(
-        "warning",
-        "Thiếu lý do khóa",
-        "Vui lòng nhập lý do khóa tài khoản để lưu nhật ký kiểm toán hệ thống.",
-      );
+      showToast("error", "Vui lòng nhập lý do khóa tài khoản");
       return;
     }
 
     try {
       setStatusSubmitting(true);
-      const res = await usersService.updateUserStatus(selectedUserForStatus.id, {
+      await usersService.updateUserStatus(selectedUserForStatus.id, {
         status: targetStatus,
         reason: statusReason.trim(),
       });
 
       if (targetStatus === "LOCKED") {
-        if (res.handoverWarning) {
-          showToast(
-            "warning",
-            "Đã khóa tài khoản - Cần bàn giao",
-            res.handoverWarning,
-          );
-        } else {
-          showToast(
-            "success",
-            "Đã khóa tài khoản",
-            `Tài khoản "${selectedUserForStatus.fullName}" đã bị khóa. Toàn bộ phiên làm việc của nhân sự đã bị chấm dứt ngay lập tức.`,
-          );
-        }
+        showToast("success", "Khóa tài khoản thành công");
       } else {
-        showToast(
-          "success",
-          "Mở khóa thành công",
-          `Tài khoản "${selectedUserForStatus.fullName}" đã được khôi phục quyền hoạt động.`,
-        );
+        showToast("success", "Mở tài khoản thành công");
       }
 
       setStatusModalOpen(false);
       fetchUsers();
-    } catch (err: any) {
-      showToast(
-        "error",
-        "Không thể cập nhật trạng thái",
-        err.response?.data?.message || "Có lỗi xảy ra khi cập nhật trạng thái tài khoản.",
-      );
+    } catch {
+      showToast("error", "Không thể cập nhật trạng thái");
     } finally {
       setStatusSubmitting(false);
     }
@@ -701,62 +600,6 @@ export const UsersPage: React.FC = () => {
     <div className="space-y-5 animate-in fade-in duration-200">
       {/* ========================================================================= */}
       {/* 1. FLOATING TOAST NOTIFICATION (Teleport to document.body, luôn nổi trên Header & Modal) */}
-      {/* ========================================================================= */}
-      {toast &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <div
-            className={`fixed top-4 right-4 sm:top-5 sm:right-6 z-[99999] flex items-start gap-3.5 w-96 max-w-[calc(100vw-2rem)] rounded-2xl bg-white p-4.5 shadow-2xl border border-slate-200/90 ring-1 ring-slate-900/10 transition-all duration-300 ease-out transform ${
-              toastVisible
-                ? "translate-x-0 opacity-100"
-                : "translate-x-full opacity-0 pointer-events-none"
-            } ${
-              toast.type === "success"
-                ? "border-l-4 border-l-emerald-500"
-                : toast.type === "error"
-                ? "border-l-4 border-l-rose-500"
-                : toast.type === "warning"
-                ? "border-l-4 border-l-amber-500"
-                : "border-l-4 border-l-indigo-500"
-            }`}
-          >
-            <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                toast.type === "success"
-                  ? "bg-emerald-50 text-emerald-600"
-                  : toast.type === "error"
-                  ? "bg-rose-50 text-rose-600"
-                  : toast.type === "warning"
-                  ? "bg-amber-50 text-amber-600"
-                  : "bg-indigo-50 text-indigo-600"
-              }`}
-            >
-              {toast.type === "success" && <CheckCircle2 className="h-5 w-5" />}
-              {toast.type === "error" && <AlertCircle className="h-5 w-5" />}
-              {toast.type === "warning" && <ShieldAlert className="h-5 w-5" />}
-              {toast.type === "info" && <KeyRound className="h-5 w-5" />}
-            </div>
-
-            <div className="flex-1 pr-1">
-              <h4 className="text-sm font-bold text-slate-900 leading-tight">
-                {toast.title}
-              </h4>
-              <p className="mt-1 text-xs text-slate-600 leading-relaxed font-normal">
-                {toast.message}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={hideToast}
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>,
-          document.body
-        )}
-
       {/* ========================================================================= */}
       {/* 2. STATS CARDS: THỐNG KÊ NHANH TỔNG QUAN                                    */}
       {/* ========================================================================= */}
