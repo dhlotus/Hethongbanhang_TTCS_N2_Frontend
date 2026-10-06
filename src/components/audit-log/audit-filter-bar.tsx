@@ -9,7 +9,9 @@ import {
   RefreshCw,
   ArrowRight,
   Filter,
+  AlertCircle,
 } from "lucide-react";
+import { DateInput, formatVietnameseDate } from "../date-input";
 import type {
   AuditEntityType,
   AuditActionType,
@@ -40,6 +42,11 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
       filters.searchUser ||
       (filters.entity && filters.entity !== "ALL") ||
       (filters.action && filters.action !== "ALL")
+  );
+
+  // Kiểm tra logic khoảng ngày hợp lệ
+  const isDateRangeInvalid = Boolean(
+    filters.startDate && filters.endDate && filters.endDate < filters.startDate
   );
 
   // Helper format YYYY-MM-DD theo giờ địa phương
@@ -190,38 +197,74 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
         {/* Khoảng ngày & Phím tắt chọn nhanh */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
           {/* Ô chọn khoảng ngày liên kết */}
-          <div className="inline-flex items-center rounded-xl border border-slate-200/90 bg-slate-50/60 px-2.5 py-1.5 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-            <Calendar className="h-3.5 w-3.5 text-blue-600 mr-2 shrink-0" />
-            <input
-              type="date"
-              value={filters.startDate || ""}
-              onChange={(e) =>
-                onFilterChange({ startDate: e.target.value, page: 1 })
-              }
-              className="bg-transparent text-xs text-slate-800 font-medium focus:outline-none cursor-pointer w-[115px]"
-              title="Từ ngày"
-            />
-            <ArrowRight className="h-3 w-3 text-slate-400 mx-1 shrink-0" />
-            <input
-              type="date"
-              value={filters.endDate || ""}
-              onChange={(e) =>
-                onFilterChange({ endDate: e.target.value, page: 1 })
-              }
-              className="bg-transparent text-xs text-slate-800 font-medium focus:outline-none cursor-pointer w-[115px]"
-              title="Đến ngày"
-            />
-            {(filters.startDate || filters.endDate) && (
-              <button
-                type="button"
-                onClick={() =>
-                  onFilterChange({ startDate: "", endDate: "", page: 1 })
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <div
+              className={`inline-flex items-center rounded-xl border px-3 py-1.5 transition-all ${
+                isDateRangeInvalid
+                  ? "border-rose-400 bg-rose-50/80 text-rose-900 ring-2 ring-rose-200"
+                  : "border-slate-200/90 bg-slate-50/60 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100"
+              }`}
+            >
+              <Calendar
+                className={`h-3.5 w-3.5 mr-2 shrink-0 ${
+                  isDateRangeInvalid ? "text-rose-500" : "text-blue-600"
+                }`}
+              />
+
+              {/* Từ ngày */}
+              <DateInput
+                compact
+                value={filters.startDate || ""}
+                max={filters.endDate || undefined}
+                onChange={(val) =>
+                  onFilterChange({ startDate: val, page: 1 })
                 }
-                className="ml-1 p-0.5 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-200/60 transition-colors"
-                title="Xóa khoảng ngày"
-              >
-                <X className="h-3 w-3" />
-              </button>
+                placeholder="Từ ngày"
+                title="Từ ngày (dd/mm/yyyy)"
+                className="min-w-[80px]"
+              />
+
+              <ArrowRight
+                className={`h-3 w-3 mx-1.5 shrink-0 ${
+                  isDateRangeInvalid ? "text-rose-400" : "text-slate-400"
+                }`}
+              />
+
+              {/* Đến ngày */}
+              <DateInput
+                compact
+                value={filters.endDate || ""}
+                min={filters.startDate || undefined}
+                onChange={(val) =>
+                  onFilterChange({ endDate: val, page: 1 })
+                }
+                placeholder="Đến ngày"
+                title="Đến ngày (dd/mm/yyyy)"
+                className="min-w-[80px]"
+              />
+
+              {(filters.startDate || filters.endDate) && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onFilterChange({ startDate: "", endDate: "", page: 1 })
+                  }
+                  className="ml-1.5 p-0.5 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-200/60 transition-colors cursor-pointer"
+                  title="Xóa khoảng ngày"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Thông báo lỗi đỏ nếu ngày kết thúc < ngày bắt đầu */}
+            {isDateRangeInvalid && (
+              <div className="flex items-center gap-1 text-[11px] font-semibold text-rose-600 animate-in fade-in">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+                <span>
+                  Đến ngày ({formatVietnameseDate(filters.endDate)}) trước Từ ngày ({formatVietnameseDate(filters.startDate)})
+                </span>
+              </div>
             )}
           </div>
 

@@ -6,13 +6,13 @@ import {
   Plus,
   Trash2,
   CheckCircle2,
-  Calendar,
   Layers,
   FileSpreadsheet,
   AlertCircle,
 } from 'lucide-react';
 import { ModalLayout } from './modal-layout';
 import { CurrencyInput } from './currency-input';
+import { DateInput, formatVietnameseDate } from './date-input';
 import type {
   PriceList,
   PriceListItem,
@@ -158,6 +158,12 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
   }, [items]);
 
   const hasPricingErrors = Object.keys(pricingErrors).length > 0;
+
+  // Kiểm tra tính hợp lệ của khoảng ngày áp dụng
+  const isDateRangeInvalid = Boolean(startDate && endDate && endDate < startDate);
+  const dateRangeErrorMessage = isDateRangeInvalid
+    ? `Ngày kết thúc (${formatVietnameseDate(endDate)}) không được nhỏ hơn ngày bắt đầu (${formatVietnameseDate(startDate)})`
+    : null;
 
   // Thêm một sản phẩm vào bảng giá
   const handleAddProduct = () => {
@@ -346,7 +352,12 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
   const modalFooter = (
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
       <div className="text-xs text-slate-500 font-medium">
-        {hasPricingErrors ? (
+        {isDateRangeInvalid ? (
+          <span className="text-rose-600 flex items-center gap-1 font-semibold">
+            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+            {dateRangeErrorMessage}
+          </span>
+        ) : hasPricingErrors ? (
           <span className="text-rose-600 flex items-center gap-1">
             <AlertTriangle className="w-4 h-4 text-rose-500" />
             Có {Object.keys(pricingErrors).length} sản phẩm vi phạm ràng buộc giá sàn.
@@ -377,9 +388,11 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={submitting || hasPricingErrors || items.length === 0}
+            disabled={submitting || hasPricingErrors || isDateRangeInvalid || items.length === 0}
             title={
-              hasPricingErrors
+              isDateRangeInvalid
+                ? dateRangeErrorMessage || undefined
+                : hasPricingErrors
                 ? `Không thể lưu: Có ${Object.keys(pricingErrors).length} mặt hàng có Giá bán nhỏ hơn Giá sàn`
                 : items.length === 0
                 ? 'Bảng giá chưa có sản phẩm nào'
@@ -484,38 +497,36 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
             </div>
 
             {/* Ngày bắt đầu */}
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">
-                Ngày bắt đầu <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  disabled={effectiveReadOnly}
-                  className="w-full pl-9 pr-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
-                />
-              </div>
-            </div>
+            <DateInput
+              label="Ngày bắt đầu"
+              required
+              value={startDate}
+              max={endDate || undefined}
+              onChange={(val) => {
+                setStartDate(val);
+                setLocalError(null);
+              }}
+              disabled={effectiveReadOnly}
+              placeholder="dd/mm/yyyy"
+              helperText="Định dạng dd/mm/yyyy"
+            />
 
             {/* Ngày kết thúc */}
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">
-                Ngày kết thúc <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  disabled={effectiveReadOnly}
-                  className="w-full pl-9 pr-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
-                />
-              </div>
-            </div>
+            <DateInput
+              label="Ngày kết thúc"
+              required
+              value={endDate}
+              min={startDate || undefined}
+              onChange={(val) => {
+                setEndDate(val);
+                setLocalError(null);
+              }}
+              disabled={effectiveReadOnly}
+              placeholder="dd/mm/yyyy"
+              error={dateRangeErrorMessage}
+              hasError={isDateRangeInvalid}
+              helperText={!isDateRangeInvalid ? (startDate ? `Tự động chặn ngày trước ${formatVietnameseDate(startDate)}` : undefined) : undefined}
+            />
 
             {/* Trạng thái */}
             <div className="space-y-1">
