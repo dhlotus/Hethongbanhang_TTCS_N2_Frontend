@@ -298,9 +298,9 @@ export const PriceListsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* 2. Metrics Header: 4 Thẻ chỉ số tổng quan */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Tổng số bảng giá */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3.5">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
           <div className="p-3 rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/10 shrink-0">
             <FileSpreadsheet className="w-5 h-5" />
           </div>
@@ -326,7 +326,7 @@ export const PriceListsPage: React.FC = () => {
         </div>
 
         {/* Card 3: Bản nháp */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3.5">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
           <div className="p-3 rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-500/10 shrink-0">
             <FileEdit className="w-5 h-5" />
           </div>
@@ -339,7 +339,7 @@ export const PriceListsPage: React.FC = () => {
         </div>
 
         {/* Card 4: Đã hết hạn */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3.5">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
           <div className="p-3 rounded-xl bg-rose-50 text-rose-600 ring-1 ring-rose-500/10 shrink-0">
             <Clock className="w-5 h-5" />
           </div>
@@ -353,7 +353,7 @@ export const PriceListsPage: React.FC = () => {
       </div>
 
       {/* 3. Filter Toolbar: Tabs nhóm khách hàng, Search Box, Dropdown Trạng thái */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-3.5">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-4">
         {/* Tabs Nhóm khách hàng */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100 text-xs">
           {CUSTOMER_GROUP_TABS.map((tab) => {

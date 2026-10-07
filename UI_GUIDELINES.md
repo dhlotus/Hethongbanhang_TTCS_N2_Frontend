@@ -334,3 +334,94 @@ Cỡ chữ phải được quản lý tập trung:
 --font-size-2xl: 24px;
 --font-size-3xl: 30px;
 
+
+## 4. Spacing — Hệ thống khoảng cách
+
+### 4.1. Nguyên tắc chung
+
+- Toàn bộ LOHA SALES phải sử dụng một hệ thống khoảng cách thống nhất.
+- Không tự ý đặt margin/padding tùy ý cho từng component.
+- Khoảng cách phải tạo ra thứ bậc rõ ràng giữa các thành phần.
+- Các thành phần có quan hệ gần nhau phải có khoảng cách nhỏ hơn các nhóm nội dung độc lập.
+- Ưu tiên giao diện thoáng, dễ đọc nhưng không để khoảng trống gây lãng phí diện tích.
+
+### 4.2. Spacing Scale
+
+Sử dụng hệ khoảng cách theo bội số của **4px**:
+
+| Token | Giá trị | Sử dụng |
+|---|---:|---|
+| `space-1` | 4px | Khoảng cách rất nhỏ, icon/text |
+| `space-2` | 8px | Thành phần liên quan trực tiếp |
+| `space-3` | 12px | Nội dung trong component |
+| `space-4` | 16px | Khoảng cách tiêu chuẩn |
+| `space-5` | 20px | Khoảng cách giữa các thành phần |
+| `space-6` | 24px | Khoảng cách giữa các nhóm |
+| `space-8` | 32px | Khoảng cách section |
+| `space-10` | 40px | Khoảng cách lớn |
+| `space-12` | 48px | Khoảng cách giữa các khu vực lớn |
+| `space-16` | 64px | Khoảng cách đặc biệt lớn |
+
+Không tạo thêm giá trị spacing mới nếu có token phù hợp.
+
+### 4.3. Quy tắc khoảng cách
+
+**Trong component:**
+- Icon ↔ Text: `4–8px`
+- Label ↔ Input: `8px`
+- Input ↔ Input: `16px`
+- Nội dung trong Button: `8–12px`
+- Nội dung trong Card: `16–24px`
+
+**Giữa các nhóm:**
+- Các thành phần cùng nhóm: `8–16px`
+- Các nhóm nội dung: `24–32px`
+- Các Section lớn: `32–48px`
+
+**Layout:**
+- Padding của khu vực chính phải được thống nhất.
+- Sidebar, Header và Main Content phải sử dụng hệ spacing chung.
+- Không để một màn hình có khoảng cách lớn/nhỏ bất thường so với các màn hình khác.
+
+### 4.4. Quy tắc phân cấp
+
+> **Khoảng cách nhỏ = có quan hệ gần.**  
+> **Khoảng cách lớn = bắt đầu một nhóm/thông tin mới.**
+
+Ví dụ:
+
+```text
+Tiêu đề
+  ↓ 8px
+Mô tả
+
+  ↓ 24px
+
+Section tiếp theo
+````
+
+Không sử dụng cùng một khoảng cách cho mọi thành phần.
+
+### 4.5. Design Tokens
+
+Spacing phải được quản lý tập trung:
+
+```css
+--space-1: 4px;
+--space-2: 8px;
+--space-3: 12px;
+--space-4: 16px;
+--space-5: 20px;
+--space-6: 24px;
+--space-8: 32px;
+--space-10: 40px;
+--space-12: 48px;
+--space-16: 64px;
+```
+
+### 4.6. Nguyên tắc cốt lõi
+
+> **Spacing phải tạo ra cấu trúc, không phải khoảng trống ngẫu nhiên.**
+
+Mọi khoảng cách trong LOHA SALES phải có lý do về **quan hệ, nhóm nội dung hoặc thứ bậc thông tin**.
+

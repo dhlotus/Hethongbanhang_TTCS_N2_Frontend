@@ -427,7 +427,7 @@ export const ProductsPage: React.FC = () => {
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
               Quản lý Danh mục Sản phẩm & SKU Phân phối
             </h1>
-            <p className="text-sm text-slate-500 max-w-2xl">
+            <p className="text-sm text-slate-500 max-w-2xl mt-2">
               Quản lý mã định danh SKU, phân loại nhóm hàng đa cấp, quy cách đóng gói xuất buôn B2B và kiểm soát an toàn bảo mật giá vốn kinh doanh.
             </p>
           </div>
