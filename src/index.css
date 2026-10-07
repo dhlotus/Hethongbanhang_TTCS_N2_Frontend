@@ -53,13 +53,14 @@
   /* ========================================================================= */
   --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
-  /* 2.4. Font Sizes */
-  --font-size-xs: 0.75rem;    /* 12px - Caption, Helper, Tags */
-  --font-size-sm: 0.875rem;   /* 14px - Body small, Table, Navigation, Label */
-  --font-size-md: 1rem;       /* 16px - Body default, Button */
-  --font-size-lg: 1.125rem;   /* 18px - Subheading, Card Title */
-  --font-size-xl: 1.25rem;    /* 20px - Section Heading */
-  --font-size-2xl: 1.5rem;    /* 24px - Page Title / Display */
+  /* 3.5. Thang cỡ chữ Tokens (UI_GUIDELINES) */
+  --font-size-xs: 12px;   /* 12px - Caption, thông tin phụ */
+  --font-size-sm: 14px;   /* 14px - Label, helper text, metadata, table, button */
+  --font-size-md: 16px;   /* 16px - Nội dung chính, input, table, button */
+  --font-size-lg: 18px;   /* 18px - Subheading, nội dung cần nhấn mạnh */
+  --font-size-xl: 20px;   /* 20px - Section Heading */
+  --font-size-2xl: 24px;  /* 24px - Page Title */
+  --font-size-3xl: 30px;  /* 30px - Tiêu đề lớn / Dashboard */
 
   /* 2.3. Font Weights */
   --font-weight-regular: 400;  /* 400 - Nội dung thông thường */
@@ -93,14 +94,15 @@
   --color-text-muted: #94a3b8;
   --color-text-disabled: #cbd5e1;
 
-  /* 2.6 Typography Design Tokens */
+  /* 3.5 Cỡ chữ & Cấp độ chữ Tokens */
   --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-md: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
 
   --font-weight-regular: 400;
   --font-weight-medium: 500;
@@ -116,9 +118,17 @@
 }
 
 /* ========================================================================= */
-/* 2.2 TYPOGRAPHY HIERARCHY UTILITY CLASSES (UI_GUIDELINES)                  */
+/* 3.3 CẤP ĐỘ SỬ DỤNG TYPOGRAPHY (UI_GUIDELINES)                             */
 /* ========================================================================= */
 .typography-display {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.typography-page-title {
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
   line-height: var(--line-height-tight);
@@ -126,7 +136,7 @@
   letter-spacing: -0.02em;
 }
 
-.typography-heading {
+.typography-section-heading {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-tight);
@@ -134,7 +144,7 @@
   letter-spacing: -0.015em;
 }
 
-.typography-subheading {
+.typography-sub-heading {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-tight);
@@ -142,14 +152,14 @@
 }
 
 .typography-body {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-regular);
   line-height: var(--line-height-normal);
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
 }
 
 .typography-label {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-tight);
   color: var(--color-text-secondary);
@@ -160,6 +170,23 @@
   font-weight: var(--font-weight-regular);
   line-height: var(--line-height-normal);
   color: var(--color-text-muted);
+}
+
+.typography-button {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+}
+
+.typography-input {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-normal);
+}
+
+.typography-table {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
 }
 
 body, button, input, select, textarea {

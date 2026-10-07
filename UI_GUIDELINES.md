@@ -189,3 +189,61 @@ Ví dụ:
 --line-height-tight: ...;
 --line-height-normal: ...;
 --line-height-relaxed: ...;
+
+## 3. Cỡ chữ & Cấp độ chữ
+
+### 3.1. Nguyên tắc chung
+
+- Toàn bộ hệ thống phải sử dụng một thang cỡ chữ thống nhất.
+- Cỡ chữ phải thể hiện rõ **thứ bậc thông tin**.
+- Không tự ý tạo cỡ chữ riêng cho từng màn hình/component.
+- Ưu tiên khả năng đọc và sự cân đối thay vì sử dụng chữ quá lớn hoặc quá nhỏ.
+
+### 3.2. Thang cỡ chữ
+
+Sử dụng các cấp độ sau:
+
+| Cấp độ | Cỡ chữ | Mục đích |
+|---|---:|---|
+| `xs` | 12px | Caption, thông tin phụ |
+| `sm` | 14px | Label, helper text, metadata |
+| `md` | 16px | Nội dung chính, input, table |
+| `lg` | 18px | Nội dung cần nhấn mạnh |
+| `xl` | 20px | Tiêu đề section |
+| `2xl` | 24px | Tiêu đề trang |
+| `3xl` | 30px | Tiêu đề lớn / Dashboard |
+
+> Đây là thang chuẩn cơ sở. Nếu codebase hiện tại đã có Typography Token, ưu tiên chuẩn hóa về thang này thay vì tạo thêm nhiều cấp mới.
+
+### 3.3. Cấp độ sử dụng
+
+- **Page Title:** `2xl` hoặc `3xl`
+- **Section Heading:** `xl`
+- **Sub Heading:** `lg`
+- **Body:** `md`
+- **Label:** `sm`
+- **Caption / Metadata:** `xs` hoặc `sm`
+- **Button:** `sm` hoặc `md`
+- **Input / Select:** `md`
+- **Table:** `sm` hoặc `md`
+
+### 3.4. Quy tắc phân cấp
+
+- Tiêu đề cấp cao phải lớn hơn và nổi bật hơn tiêu đề cấp thấp.
+- Nội dung chính phải dễ đọc hơn metadata/thông tin phụ.
+- Không dùng `3xl` hoặc cỡ chữ lớn cho các nội dung thông thường.
+- Không dùng `xs` cho nội dung người dùng cần đọc hoặc thao tác thường xuyên.
+- Không dùng nhiều cấp độ chữ khác nhau trong cùng một khu vực nếu không có mục đích rõ ràng.
+
+### 3.5. Design Tokens
+
+Cỡ chữ phải được quản lý tập trung:
+
+```css
+--font-size-xs: 12px;
+--font-size-sm: 14px;
+--font-size-md: 16px;
+--font-size-lg: 18px;
+--font-size-xl: 20px;
+--font-size-2xl: 24px;
+--font-size-3xl: 30px;
