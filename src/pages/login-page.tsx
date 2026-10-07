@@ -359,14 +359,14 @@ export const LoginPage: React.FC = () => {
                   type="checkbox"
                   defaultChecked
                   disabled={isSubmitting}
-                  className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500/20 cursor-pointer"
+                  className="w-4 h-4 rounded border-slate-300 text-[var(--color-primary)] focus:ring-[var(--color-primary-ring)] cursor-pointer"
                 />
                 <span>Ghi nhớ đăng nhập</span>
               </label>
 
               <Link
                 to="/auth/forgot-password"
-                className="text-purple-600 hover:text-purple-700 font-medium hover:underline focus:outline-none transition-colors cursor-pointer"
+                className="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] font-medium hover:underline focus:outline-none transition-colors cursor-pointer"
               >
                 Quên mật khẩu?
               </Link>

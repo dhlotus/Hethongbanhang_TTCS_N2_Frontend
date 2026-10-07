@@ -32,83 +32,151 @@ Mục tiêu cốt lõi: "Sáng sủa, sạch sẽ, hiện đại, dễ thao tác
 
 ## 1. Color System — Hệ thống màu sắc
 
-### 1.1. Nguyên tắc chung
+### 1.1. Nguyên tắc thương hiệu
 
-- Toàn bộ giao diện LOHA SALES phải sử dụng một hệ thống màu thống nhất.
-- Tone màu thương hiệu chính: **Tím + Xanh Lavi (Lavender/Blue)** theo hướng hiện đại, sạch, chuyên nghiệp và phù hợp phần mềm SaaS.
-- Không sử dụng màu tùy ý tại từng màn hình/component.
-- Mọi màu được sử dụng trong UI phải thuộc một trong các nhóm màu đã được định nghĩa bên dưới.
-- Không dùng màu chỉ để trang trí; màu phải có mục đích về thương hiệu, trạng thái hoặc phân cấp thông tin.
-- Ưu tiên nền sáng, bề mặt trắng/sáng và màu thương hiệu làm điểm nhấn, tránh giao diện quá sặc sỡ.
+- **Logo là nguồn tham chiếu màu chuẩn của LOHA SALES.**
+- Toàn bộ giao diện phải sử dụng hệ màu được xây dựng dựa trên màu thực tế của Logo.
+- Màu thương hiệu chủ đạo của LOHA SALES là **Blue-Purple / Indigo Purple**.
+- Không sử dụng hệ Tím-Magenta hoặc Lavender làm màu thương hiệu chính.
+- Không để giao diện có sắc xanh hoặc tím khác biệt rõ rệt so với Logo.
 
-### 1.2. Màu thương hiệu
+> Nguyên tắc cốt lõi:
+> **Logo → Brand Color → UI Components → Toàn bộ giao diện phải đồng nhất.**
 
-**Primary — Tím**
-- Là màu thương hiệu chính.
-- Dùng cho: Primary Button, Link, Active Navigation, Focus, Selected State và các điểm nhấn chính.
+### 1.2. Brand Color
 
-**Secondary — Xanh Lavi**
-- Là màu hỗ trợ cho màu Tím.
-- Dùng cho: Secondary Highlight, Background Accent, Selected/Active nhẹ và các khu vực cần tạo sự phân biệt nhưng không cạnh tranh với Primary.
+**Primary Brand — Blue-Purple / Indigo Purple**
 
-> Tím là màu nhận diện chính. Xanh Lavi là màu hỗ trợ, không được sử dụng để thay thế Primary một cách tùy tiện.
+Đây là màu nhận diện chính của LOHA SALES.
 
-### 1.3. Semantic Colors
+Sử dụng cho:
 
-Chỉ sử dụng màu semantic khi truyền đạt trạng thái:
+- Primary Button
+- Active Navigation
+- Selected State
+- Link quan trọng
+- Focus State
+- Icon chính
+- Các điểm nhấn thương hiệu
 
-- **Success — Xanh lá:** thao tác thành công, trạng thái tốt.
-- **Error/Danger — Đỏ:** lỗi, thất bại, hành động nguy hiểm/xóa.
-- **Warning — Vàng/Cam:** cảnh báo, cần chú ý.
-- **Info — Xanh dương:** thông tin hoặc trạng thái trung lập cần chú ý.
+Màu Primary phải giữ được đặc trưng **tím pha xanh / xanh tím đậm** giống Logo.
 
-Semantic color phải được sử dụng nhất quán trên toàn hệ thống.
+Không sử dụng màu tím thiên hồng/magenta làm Primary.
 
-### 1.4. Neutral Colors
+### 1.3. Brand Gradient
 
-Neutral Colors dùng cho phần lớn giao diện:
+Logo sử dụng chuyển sắc giữa các vùng **Blue-Purple / Indigo / Purple**.
+
+Gradient thương hiệu chỉ được sử dụng cho:
+
+- Logo
+- Khu vực nhận diện thương hiệu
+- Hero hoặc điểm nhấn đặc biệt
+
+Không sử dụng gradient đại trà cho:
+
+- Button thông thường
+- Input
+- Table
+- Badge
+- Sidebar
+- Card
+- Toast
+
+UI chức năng phải ưu tiên **màu Primary dạng solid** để đảm bảo sự rõ ràng và chuyên nghiệp.
+
+### 1.4. Brand Color Variants
+
+Màu Primary phải có các cấp độ được tạo từ **cùng một màu thương hiệu**, không tạo màu mới tùy ý:
+
+- `Primary`
+- `Primary Hover`
+- `Primary Active`
+- `Primary Light`
+- `Primary Subtle`
+- `Primary Disabled`
+
+Các màu Light/Subtle được dùng làm background nhẹ cho:
+
+- Active Menu
+- Selected Row
+- Selected Item
+- Highlight
+- Focus Background
+
+Các biến thể nhẹ phải vẫn giữ được sắc **Blue-Purple/Indigo**, không chuyển thành Lavender hồng hoặc xanh Lavi thuần.
+
+### 1.5. Semantic Colors
+
+Semantic Color không phụ thuộc vào Brand Color:
+
+- **Success — Green:** thao tác thành công.
+- **Error / Danger — Red:** lỗi, thất bại, xóa hoặc hành động nguy hiểm.
+- **Warning — Yellow/Orange:** cảnh báo.
+- **Info — Blue:** thông tin.
+
+Quy tắc:
+
+- Không dùng Primary Purple để biểu thị Success.
+- Không dùng Primary Purple để biểu thị Error.
+- Không dùng Brand Color thay thế Semantic Color.
+- Cùng một trạng thái phải luôn sử dụng cùng một màu trên toàn hệ thống.
+
+### 1.6. Neutral Colors
+
+Giao diện ưu tiên nền sáng và Neutral Colors:
 
 - Background
-- Surface/Card
-- Border/Divider
+- Surface
+- Card
+- Border
+- Divider
 - Text Primary
 - Text Secondary
-- Placeholder
-- Disabled
+- Text Muted
+- Text Disabled
 
-Không dùng Tím hoặc Xanh Lavi cho toàn bộ text, border hoặc background chỉ để tạo màu sắc.
+Neutral Colors phải giúp màu thương hiệu nổi bật nhưng không làm giao diện quá sặc sỡ.
 
-### 1.5. Quy tắc sử dụng màu
+### 1.7. Quy tắc sử dụng màu
 
-- Không tạo thêm màu mới nếu đã có màu tương đương trong Design System.
-- Không thay đổi màu của cùng một component giữa các màn hình nếu không có lý do về trạng thái.
-- Hover, Active, Focus, Disabled phải sử dụng các biến thể được định nghĩa từ màu gốc.
-- Text phải đảm bảo đủ độ tương phản với background.
-- Không dùng nhiều màu nổi bật cạnh nhau nếu chúng không có ý nghĩa rõ ràng.
-- Một component chỉ nên có **một màu hành động chính** tại một thời điểm.
-- Màu trạng thái không được dùng thay cho màu thương hiệu.
+- Không tự ý chọn màu tại từng màn hình.
+- Không hard-code màu nếu đã có Design Token tương ứng.
+- Không sử dụng nhiều sắc tím khác nhau cho cùng một mục đích.
+- Không sử dụng màu Lavender/Pastel Purple làm Primary.
+- Không sử dụng màu xanh Lavi làm màu thương hiệu chính.
+- Không dùng màu thương hiệu chỉ để trang trí.
+- Primary Color phải luôn có cùng nhận diện thị giác với Logo.
+- Hover/Active/Focus phải được tạo từ hệ màu Primary.
+- Background của Active/Selected State có thể sử dụng phiên bản Primary Light/Subtle.
+- Các màu trong giao diện phải tạo cảm giác rằng chúng thuộc **cùng một thương hiệu với Logo**.
 
-### 1.6. Design Tokens
+### 1.8. Design Tokens
 
-Màu sắc phải được định nghĩa tập trung bằng Design Tokens/CSS Variables/Theme.
-
-Ví dụ:
+Màu phải được quản lý tập trung:
 
 ```css
+/* Brand */
 --color-primary: ...;
 --color-primary-hover: ...;
---color-secondary: ...;
---color-secondary-hover: ...;
+--color-primary-active: ...;
+--color-primary-light: ...;
+--color-primary-subtle: ...;
+--color-primary-disabled: ...;
 
+/* Brand Gradient */
+--color-brand-gradient: ...;
+
+/* Semantic */
 --color-success: ...;
 --color-warning: ...;
 --color-error: ...;
 --color-info: ...;
 
+/* Neutral */
 --color-background: ...;
 --color-surface: ...;
 --color-border: ...;
-
 --color-text-primary: ...;
 --color-text-secondary: ...;
 --color-text-muted: ...;
@@ -247,3 +315,4 @@ Cỡ chữ phải được quản lý tập trung:
 --font-size-xl: 20px;
 --font-size-2xl: 24px;
 --font-size-3xl: 30px;
+

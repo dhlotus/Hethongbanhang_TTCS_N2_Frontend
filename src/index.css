@@ -4,23 +4,21 @@
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
   /* ========================================================================= */
-  /* COLOR SYSTEM TOKENS - HỆ THỐNG MÀU SẮC CHUẨN LOHA SALES (UI_GUIDELINES)  */
+  /* COLOR SYSTEM TOKENS - HỆ THỐNG MÀU THƯƠNG HIỆU THEO LOGO (UI_GUIDELINES)*/
   /* ========================================================================= */
-  /* 1.2. Màu thương hiệu */
-  --color-primary: #7c3aed; /* Tím - Primary */
-  --color-primary-hover: #6d28d9;
-  --color-primary-active: #5b21b6;
-  --color-primary-light: #f5f3ff;
-  --color-primary-subtle: #ede9fe;
-  --color-primary-ring: rgba(124, 58, 237, 0.2);
+  /* 1.2 & 1.8. Brand Color: Blue-Purple / Indigo Purple lấy từ Logo thực tế */
+  --color-primary: #4825e3; /* Blue-Purple / Indigo Purple - Primary */
+  --color-primary-hover: #3b1bcc;
+  --color-primary-active: #3014b3;
+  --color-primary-light: #f2f0fe;
+  --color-primary-subtle: #e5e1fc;
+  --color-primary-disabled: #a99cf4;
+  --color-primary-ring: rgba(72, 37, 227, 0.2);
 
-  --color-secondary: #6366f1; /* Xanh Lavi (Lavender/Blue) - Secondary */
-  --color-secondary-hover: #4f46e5;
-  --color-secondary-active: #4338ca;
-  --color-secondary-light: #eef2ff;
-  --color-secondary-subtle: #e0e7ff;
+  /* 1.3. Brand Gradient: Chuyển sắc Blue-Purple / Indigo / Purple chuẩn theo Logo */
+  --color-brand-gradient: linear-gradient(135deg, #4825e3 0%, #361bdb 50%, #2544e8 100%);
 
-  /* 1.3. Semantic Colors */
+  /* 1.5. Semantic Colors */
   --color-success: #16a34a; /* Xanh lá */
   --color-success-hover: #15803d;
   --color-success-light: #f0fdf4;
@@ -37,7 +35,7 @@
   --color-info-hover: #0369a1;
   --color-info-light: #f0f9ff;
 
-  /* 1.4. Neutral Colors */
+  /* 1.6. Neutral Colors */
   --color-background: #f8fafc;
   --color-surface: #ffffff;
   --color-border: #e2e8f0;
@@ -75,16 +73,24 @@
 }
 
 :root {
-  --color-primary: #7c3aed;
-  --color-primary-hover: #6d28d9;
-  --color-secondary: #6366f1;
-  --color-secondary-hover: #4f46e5;
+  /* 1.8 Brand Color Design Tokens (Blue-Purple / Indigo Purple theo Logo) */
+  --color-primary: #4825e3;
+  --color-primary-hover: #3b1bcc;
+  --color-primary-active: #3014b3;
+  --color-primary-light: #f2f0fe;
+  --color-primary-subtle: #e5e1fc;
+  --color-primary-disabled: #a99cf4;
+  --color-primary-ring: rgba(72, 37, 227, 0.2);
 
+  --color-brand-gradient: linear-gradient(135deg, #4825e3 0%, #361bdb 50%, #2544e8 100%);
+
+  /* 1.5 Semantic Colors */
   --color-success: #16a34a;
   --color-warning: #d97706;
   --color-error: #dc2626;
   --color-info: #0284c7;
 
+  /* 1.6 Neutral Colors */
   --color-background: #f8fafc;
   --color-surface: #ffffff;
   --color-border: #e2e8f0;

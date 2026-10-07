@@ -511,7 +511,7 @@ export const PriceListsPage: React.FC = () => {
                           </span>
                         </div>
                         {pl.parentVersionId && (
-                          <div className="flex items-center gap-1 text-[11px] text-purple-600 mt-0.5">
+                          <div className="flex items-center gap-1 text-[11px] text-[var(--color-primary)] mt-0.5">
                             <GitBranch className="w-3 h-3" />
                             <span>Nhân bản từ v{pl.version - 1}.0</span>
                           </div>
@@ -610,7 +610,7 @@ export const PriceListsPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleOpenCloneModal(pl)}
-                              className="p-1.5 text-slate-500 hover:text-purple-600 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer"
+                              className="p-1.5 text-slate-500 hover:text-[var(--color-primary)] rounded-lg hover:bg-[var(--color-primary-light)] transition-colors cursor-pointer"
                               title="Tạo phiên bản mới (Clone Version)"
                             >
                               <Copy className="w-4 h-4" />

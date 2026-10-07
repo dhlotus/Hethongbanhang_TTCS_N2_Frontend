@@ -699,7 +699,7 @@ export const ProductsPage: React.FC = () => {
               </span>
             )}
             {selectedParentCategory !== "ALL" && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-purple-50 text-purple-700 font-medium text-[11px]">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary)] font-medium text-[11px]">
                 Cấp 1: {selectedParentCategory}
                 <X
                   className="h-3 w-3 cursor-pointer"
@@ -848,7 +848,7 @@ export const ProductsPage: React.FC = () => {
                       {/* Cột 4: Nhóm hàng */}
                       <td className="px-3 py-2.5">
                         <div className="flex flex-col gap-0.5 max-w-[220px]">
-                          <span className="inline-block w-fit rounded-md bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 ring-1 ring-inset ring-purple-700/10 truncate">
+                          <span className="inline-block w-fit rounded-md bg-[var(--color-primary-light)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-primary)] ring-1 ring-inset ring-[var(--color-primary-subtle)] truncate">
                             {p.parentCategory || p.category?.split('/')[0]?.trim() || "Nhóm hàng"}
                           </span>
                           {p.category && p.category.includes('/') ? (
@@ -1114,7 +1114,7 @@ export const ProductsPage: React.FC = () => {
 
                       {/* Phân cấp danh mục */}
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap text-[11px]">
-                        <span className="rounded-md bg-purple-50 px-1.5 py-0.5 font-semibold text-purple-700 ring-1 ring-inset ring-purple-700/10 truncate max-w-[140px]">
+                        <span className="rounded-md bg-[var(--color-primary-light)] px-1.5 py-0.5 font-semibold text-[var(--color-primary)] ring-1 ring-inset ring-[var(--color-primary-subtle)] truncate max-w-[140px]">
                           {p.parentCategory || p.category?.split("/")[0]?.trim() || "Nhóm hàng"}
                         </span>
                         {p.category && p.category.includes("/") ? (

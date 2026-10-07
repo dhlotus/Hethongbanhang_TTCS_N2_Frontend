@@ -93,7 +93,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                     : "max-w-[150px] opacity-100 translate-x-0"
                 }`}
               >
-                <span className="text-base font-bold tracking-tight text-slate-900 group-hover:text-purple-600 transition-colors">
+                <span className="text-base font-bold tracking-tight text-slate-900 group-hover:text-[var(--color-primary)] transition-colors">
                   LOHA SALES
                 </span>
               </div>
@@ -104,7 +104,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               <button
                 type="button"
                 onClick={onToggleCollapse}
-                className={`group/collapse hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 hover:shadow-xs transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer active:scale-95 ${
+                className={`group/collapse hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] hover:shadow-xs transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer active:scale-95 ${
                   isCollapsed
                     ? "opacity-0 scale-75 max-w-0 pointer-events-none"
                     : "opacity-100 scale-100 max-w-8"
@@ -129,7 +129,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               <button
                 type="button"
                 onClick={onToggleCollapse}
-                className="group/expand h-8 w-8 flex items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 hover:shadow-xs transition-all duration-200 cursor-pointer active:scale-95"
+                className="group/expand h-8 w-8 flex items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] hover:shadow-xs transition-all duration-200 cursor-pointer active:scale-95"
                 title="Mở rộng menu"
                 aria-label="Mở rộng menu"
               >
@@ -162,14 +162,14 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                     title={isCollapsed ? item.name : undefined}
                     className={`group relative flex items-center px-2.5 py-2.5 min-h-[46px] rounded-xl text-sm font-semibold transition-colors duration-200 active:scale-[0.98] ${
                       isItemActive
-                        ? "bg-purple-50 text-purple-700 font-bold shadow-2xs"
+                        ? "bg-[var(--color-primary-light)] text-[var(--color-primary)] font-bold shadow-2xs"
                         : "text-slate-700 hover:bg-slate-50/90 hover:text-slate-900"
                     }`}
                   >
                     <div className="flex items-center w-full min-w-0">
                       {/* Thanh định vị Active nhỏ ở bên trái */}
                       {isItemActive && (
-                        <span className="absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r-full bg-purple-600 shadow-xs" />
+                        <span className="absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r-full bg-[var(--color-primary)] shadow-xs" />
                       )}
 
                       {/* Icon vị trí cố định tuyệt đối mượt mà */}
@@ -177,7 +177,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                         <Icon
                           className={`h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
                             isItemActive
-                              ? "text-purple-600"
+                              ? "text-[var(--color-primary)]"
                               : "text-slate-500 group-hover:text-slate-800"
                           }`}
                         />
@@ -203,7 +203,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                           : "max-w-0 opacity-0 pointer-events-none"
                       }`}
                     >
-                      <ChevronRight className="h-4 w-4 text-purple-500 shrink-0" />
+                      <ChevronRight className="h-4 w-4 text-[var(--color-primary)] shrink-0" />
                     </div>
                   </NavLink>
                 );
