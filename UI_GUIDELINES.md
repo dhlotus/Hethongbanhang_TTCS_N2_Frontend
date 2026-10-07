@@ -27,3 +27,90 @@ Mục tiêu cốt lõi: "Sáng sủa, sạch sẽ, hiện đại, dễ thao tác
 5. THÍCH NGHI ĐA THIẾT BỊ (Responsive Design)
 - Luôn code theo tư duy Mobile-First (Ưu tiên thiết bị di động).
 - Bố cục phải tự động co giãn, ẩn/hiện thông minh để trên màn hình điện thoại vuốt chạm dễ dàng như dùng App, còn trên Desktop thì dàn trang rộng rãi, tối ưu không gian hiển thị.
+
+# ------------- bộ quy tắc UI/UX cho toàn hệ thống ------------------
+
+## 1. Color System — Hệ thống màu sắc
+
+### 1.1. Nguyên tắc chung
+
+- Toàn bộ giao diện LOHA SALES phải sử dụng một hệ thống màu thống nhất.
+- Tone màu thương hiệu chính: **Tím + Xanh Lavi (Lavender/Blue)** theo hướng hiện đại, sạch, chuyên nghiệp và phù hợp phần mềm SaaS.
+- Không sử dụng màu tùy ý tại từng màn hình/component.
+- Mọi màu được sử dụng trong UI phải thuộc một trong các nhóm màu đã được định nghĩa bên dưới.
+- Không dùng màu chỉ để trang trí; màu phải có mục đích về thương hiệu, trạng thái hoặc phân cấp thông tin.
+- Ưu tiên nền sáng, bề mặt trắng/sáng và màu thương hiệu làm điểm nhấn, tránh giao diện quá sặc sỡ.
+
+### 1.2. Màu thương hiệu
+
+**Primary — Tím**
+- Là màu thương hiệu chính.
+- Dùng cho: Primary Button, Link, Active Navigation, Focus, Selected State và các điểm nhấn chính.
+
+**Secondary — Xanh Lavi**
+- Là màu hỗ trợ cho màu Tím.
+- Dùng cho: Secondary Highlight, Background Accent, Selected/Active nhẹ và các khu vực cần tạo sự phân biệt nhưng không cạnh tranh với Primary.
+
+> Tím là màu nhận diện chính. Xanh Lavi là màu hỗ trợ, không được sử dụng để thay thế Primary một cách tùy tiện.
+
+### 1.3. Semantic Colors
+
+Chỉ sử dụng màu semantic khi truyền đạt trạng thái:
+
+- **Success — Xanh lá:** thao tác thành công, trạng thái tốt.
+- **Error/Danger — Đỏ:** lỗi, thất bại, hành động nguy hiểm/xóa.
+- **Warning — Vàng/Cam:** cảnh báo, cần chú ý.
+- **Info — Xanh dương:** thông tin hoặc trạng thái trung lập cần chú ý.
+
+Semantic color phải được sử dụng nhất quán trên toàn hệ thống.
+
+### 1.4. Neutral Colors
+
+Neutral Colors dùng cho phần lớn giao diện:
+
+- Background
+- Surface/Card
+- Border/Divider
+- Text Primary
+- Text Secondary
+- Placeholder
+- Disabled
+
+Không dùng Tím hoặc Xanh Lavi cho toàn bộ text, border hoặc background chỉ để tạo màu sắc.
+
+### 1.5. Quy tắc sử dụng màu
+
+- Không tạo thêm màu mới nếu đã có màu tương đương trong Design System.
+- Không thay đổi màu của cùng một component giữa các màn hình nếu không có lý do về trạng thái.
+- Hover, Active, Focus, Disabled phải sử dụng các biến thể được định nghĩa từ màu gốc.
+- Text phải đảm bảo đủ độ tương phản với background.
+- Không dùng nhiều màu nổi bật cạnh nhau nếu chúng không có ý nghĩa rõ ràng.
+- Một component chỉ nên có **một màu hành động chính** tại một thời điểm.
+- Màu trạng thái không được dùng thay cho màu thương hiệu.
+
+### 1.6. Design Tokens
+
+Màu sắc phải được định nghĩa tập trung bằng Design Tokens/CSS Variables/Theme.
+
+Ví dụ:
+
+```css
+--color-primary: ...;
+--color-primary-hover: ...;
+--color-secondary: ...;
+--color-secondary-hover: ...;
+
+--color-success: ...;
+--color-warning: ...;
+--color-error: ...;
+--color-info: ...;
+
+--color-background: ...;
+--color-surface: ...;
+--color-border: ...;
+
+--color-text-primary: ...;
+--color-text-secondary: ...;
+--color-text-muted: ...;
+--color-text-disabled: ...;
+

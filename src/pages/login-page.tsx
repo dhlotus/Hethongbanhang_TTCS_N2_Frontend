@@ -280,7 +280,7 @@ export const LoginPage: React.FC = () => {
               <span className="text-base font-bold text-white block leading-tight tracking-tight drop-shadow-xs">
                 LOHA SALES
               </span>
-              <span className="text-[10px] text-blue-100 font-medium block drop-shadow-xs">
+              <span className="text-[10px] text-purple-100 font-medium block drop-shadow-xs">
                 Hệ thống Quản lý Bán hàng & Kho B2B
               </span>
             </div>
@@ -359,14 +359,14 @@ export const LoginPage: React.FC = () => {
                   type="checkbox"
                   defaultChecked
                   disabled={isSubmitting}
-                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 cursor-pointer"
+                  className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500/20 cursor-pointer"
                 />
                 <span>Ghi nhớ đăng nhập</span>
               </label>
 
               <Link
                 to="/auth/forgot-password"
-                className="text-blue-600 hover:text-blue-700 font-medium hover:underline focus:outline-none transition-colors cursor-pointer"
+                className="text-purple-600 hover:text-purple-700 font-medium hover:underline focus:outline-none transition-colors cursor-pointer"
               >
                 Quên mật khẩu?
               </Link>

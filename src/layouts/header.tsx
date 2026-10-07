@@ -237,7 +237,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           {/* Tên & Tag vai trò (Ẩn trên mobile siêu nhỏ, hiện từ sm trở lên) */}
           <div className="hidden sm:flex flex-col text-left min-w-0">
             <span
-              className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate max-w-[140px] leading-tight"
+              className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-purple-600 transition-colors truncate max-w-[140px] leading-tight"
               title={context.fullName}
             >
               {cleanFullName}
@@ -254,7 +254,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           {/* Mũi tên xoay biểu thị đóng/mở */}
           <ChevronDown
             className={`h-4 w-4 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 shrink-0 ${
-              isDropdownOpen ? "rotate-180 text-blue-600" : ""
+              isDropdownOpen ? "rotate-180 text-purple-600" : ""
             }`}
           />
         </button>
@@ -273,7 +273,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                 onClick={() => setIsDropdownOpen(false)}
                 className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group/user"
               >
-                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-sm font-bold text-white shadow-xs">
+                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-gradient-to-tr from-purple-600 via-indigo-600 to-purple-600 text-sm font-bold text-white shadow-xs">
                   {avatarUrl ? (
                     <img
                       src={resolveAvatarUrl(avatarUrl)}
@@ -285,7 +285,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                   )}
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[15px] font-semibold text-slate-900 group-hover/user:text-blue-600 transition-colors truncate">
+                  <span className="text-[15px] font-semibold text-slate-900 group-hover/user:text-purple-600 transition-colors truncate">
                     {cleanFullName}
                   </span>
                   <span className="text-xs text-slate-500 truncate">
