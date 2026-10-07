@@ -32,87 +32,173 @@ Mục tiêu cốt lõi: "Sáng sủa, sạch sẽ, hiện đại, dễ thao tác
 
 ## 1. Color System — Hệ thống màu sắc
 
-### 1.1. Nguyên tắc chung
+### 1.1. Nguyên tắc thương hiệu
 
-- Toàn bộ giao diện LOHA SALES phải sử dụng một hệ thống màu thống nhất.
-- Tone màu thương hiệu chính: **Tím + Xanh Lavi (Lavender/Blue)** theo hướng hiện đại, sạch, chuyên nghiệp và phù hợp phần mềm SaaS.
-- Không sử dụng màu tùy ý tại từng màn hình/component.
-- Mọi màu được sử dụng trong UI phải thuộc một trong các nhóm màu đã được định nghĩa bên dưới.
-- Không dùng màu chỉ để trang trí; màu phải có mục đích về thương hiệu, trạng thái hoặc phân cấp thông tin.
-- Ưu tiên nền sáng, bề mặt trắng/sáng và màu thương hiệu làm điểm nhấn, tránh giao diện quá sặc sỡ.
+- **Logo là nguồn tham chiếu màu chuẩn của LOHA SALES.**
+- Toàn bộ giao diện phải sử dụng hệ màu được xây dựng dựa trên màu thực tế của Logo.
+- Màu thương hiệu chủ đạo của LOHA SALES là **Blue-Purple / Indigo Purple**.
+- Không sử dụng hệ Tím-Magenta hoặc Lavender làm màu thương hiệu chính.
+- Không để giao diện có sắc xanh hoặc tím khác biệt rõ rệt so với Logo.
 
-### 1.2. Màu thương hiệu
+> Nguyên tắc cốt lõi:
+> **Logo → Brand Color → UI Components → Toàn bộ giao diện phải đồng nhất.**
 
-**Primary — Tím**
-- Là màu thương hiệu chính.
-- Dùng cho: Primary Button, Link, Active Navigation, Focus, Selected State và các điểm nhấn chính.
+### 1.2. Brand Color
 
-**Secondary — Xanh Lavi**
-- Là màu hỗ trợ cho màu Tím.
-- Dùng cho: Secondary Highlight, Background Accent, Selected/Active nhẹ và các khu vực cần tạo sự phân biệt nhưng không cạnh tranh với Primary.
+**Primary Brand — Blue-Purple / Indigo Purple**
 
-> Tím là màu nhận diện chính. Xanh Lavi là màu hỗ trợ, không được sử dụng để thay thế Primary một cách tùy tiện.
+Đây là màu nhận diện chính của LOHA SALES.
 
-### 1.3. Semantic Colors
+Sử dụng cho:
 
-Chỉ sử dụng màu semantic khi truyền đạt trạng thái:
+- Primary Button
+- Active Navigation
+- Selected State
+- Link quan trọng
+- Focus State
+- Icon chính
+- Các điểm nhấn thương hiệu
 
-- **Success — Xanh lá:** thao tác thành công, trạng thái tốt.
-- **Error/Danger — Đỏ:** lỗi, thất bại, hành động nguy hiểm/xóa.
-- **Warning — Vàng/Cam:** cảnh báo, cần chú ý.
-- **Info — Xanh dương:** thông tin hoặc trạng thái trung lập cần chú ý.
+Màu Primary phải giữ được đặc trưng **tím pha xanh / xanh tím đậm** giống Logo.
 
-Semantic color phải được sử dụng nhất quán trên toàn hệ thống.
+Không sử dụng màu tím thiên hồng/magenta làm Primary.
 
-### 1.4. Neutral Colors
+### 1.3. Brand Gradient
 
-Neutral Colors dùng cho phần lớn giao diện:
+Logo sử dụng chuyển sắc giữa các vùng **Blue-Purple / Indigo / Purple**.
+
+Gradient thương hiệu chỉ được sử dụng cho:
+
+- Logo
+- Khu vực nhận diện thương hiệu
+- Hero hoặc điểm nhấn đặc biệt
+
+Không sử dụng gradient đại trà cho:
+
+- Button thông thường
+- Input
+- Table
+- Badge
+- Sidebar
+- Card
+- Toast
+
+UI chức năng phải ưu tiên **màu Primary dạng solid** để đảm bảo sự rõ ràng và chuyên nghiệp.
+
+### 1.4. Brand Color Variants
+
+Màu Primary phải có các cấp độ được tạo từ **cùng một màu thương hiệu**, không tạo màu mới tùy ý:
+
+- `Primary`
+- `Primary Hover`
+- `Primary Active`
+- `Primary Light`
+- `Primary Subtle`
+- `Primary Disabled`
+
+Các màu Light/Subtle được dùng làm background nhẹ cho:
+
+- Active Menu
+- Selected Row
+- Selected Item
+- Highlight
+- Focus Background
+
+Các biến thể nhẹ phải vẫn giữ được sắc **Blue-Purple/Indigo**, không chuyển thành Lavender hồng hoặc xanh Lavi thuần.
+
+### 1.5. Semantic Colors
+
+Semantic Color không phụ thuộc vào Brand Color:
+
+- **Success — Green:** thao tác thành công.
+- **Error / Danger — Red:** lỗi, thất bại, xóa hoặc hành động nguy hiểm.
+- **Warning — Yellow/Orange:** cảnh báo.
+- **Info — Blue:** thông tin.
+
+Quy tắc:
+
+- Không dùng Primary Purple để biểu thị Success.
+- Không dùng Primary Purple để biểu thị Error.
+- Không dùng Brand Color thay thế Semantic Color.
+- Cùng một trạng thái phải luôn sử dụng cùng một màu trên toàn hệ thống.
+
+### 1.6. Neutral Colors
+
+Giao diện ưu tiên nền sáng và Neutral Colors:
 
 - Background
-- Surface/Card
-- Border/Divider
+- Surface
+- Card
+- Border
+- Divider
 - Text Primary
 - Text Secondary
-- Placeholder
-- Disabled
+- Text Muted
+- Text Disabled
 
-Không dùng Tím hoặc Xanh Lavi cho toàn bộ text, border hoặc background chỉ để tạo màu sắc.
+Neutral Colors phải giúp màu thương hiệu nổi bật nhưng không làm giao diện quá sặc sỡ.
 
-### 1.5. Quy tắc sử dụng màu
+### 1.7. Quy tắc sử dụng màu
 
-- Không tạo thêm màu mới nếu đã có màu tương đương trong Design System.
-- Không thay đổi màu của cùng một component giữa các màn hình nếu không có lý do về trạng thái.
-- Hover, Active, Focus, Disabled phải sử dụng các biến thể được định nghĩa từ màu gốc.
-- Text phải đảm bảo đủ độ tương phản với background.
-- Không dùng nhiều màu nổi bật cạnh nhau nếu chúng không có ý nghĩa rõ ràng.
-- Một component chỉ nên có **một màu hành động chính** tại một thời điểm.
-- Màu trạng thái không được dùng thay cho màu thương hiệu.
+- Không tự ý chọn màu tại từng màn hình.
+- Không hard-code màu nếu đã có Design Token tương ứng.
+- Không sử dụng nhiều sắc tím khác nhau cho cùng một mục đích.
+- Không sử dụng màu Lavender/Pastel Purple làm Primary.
+- Không sử dụng màu xanh Lavi làm màu thương hiệu chính.
+- Không dùng màu thương hiệu chỉ để trang trí.
+- Primary Color phải luôn có cùng nhận diện thị giác với Logo.
+- Hover/Active/Focus phải được tạo từ hệ màu Primary.
+- Background của Active/Selected State có thể sử dụng phiên bản Primary Light/Subtle.
+- Các màu trong giao diện phải tạo cảm giác rằng chúng thuộc **cùng một thương hiệu với Logo**.
 
-### 1.6. Design Tokens
+### 1.8. Design Tokens
 
-Màu sắc phải được định nghĩa tập trung bằng Design Tokens/CSS Variables/Theme.
-
-Ví dụ:
+Màu phải được quản lý tập trung:
 
 ```css
+/* Brand */
 --color-primary: ...;
 --color-primary-hover: ...;
---color-secondary: ...;
---color-secondary-hover: ...;
+--color-primary-active: ...;
+--color-primary-light: ...;
+--color-primary-subtle: ...;
+--color-primary-disabled: ...;
 
+/* Brand Gradient */
+--color-brand-gradient: ...;
+
+/* Semantic */
 --color-success: ...;
 --color-warning: ...;
 --color-error: ...;
 --color-info: ...;
 
+/* Neutral */
 --color-background: ...;
 --color-surface: ...;
 --color-border: ...;
-
 --color-text-primary: ...;
 --color-text-secondary: ...;
 --color-text-muted: ...;
 --color-text-disabled: ...;
+1.9. Quy tắc quan trọng nhất
+
+Không thiết kế màu giao diện độc lập với Logo.
+
+Khi lựa chọn hoặc điều chỉnh một màu mới, phải kiểm tra:
+
+Màu đó có cùng sắc độ và nhận diện với Logo không?
+
+Nếu không → không sử dụng.
+
+LOHA SALES phải tạo cảm giác:
+
+Nhìn Logo và nhìn giao diện → người dùng nhận ra ngay đây là cùng một thương hiệu.
+
+
+**Điểm mình đã sửa quan trọng nhất:** bỏ tư duy **“Tím + Xanh Lavi”** và chuyển thành **“Blue-Purple / Indigo Purple là màu thương hiệu duy nhất”**. Xanh/lavender chỉ là **biến thể phụ**, không được phép lấn át màu logo.
+
+Như ảnh bạn gửi, màu menu **“Quản lý người dùng”** hiện đang hơi **tím hồng**, nên theo luật mới Agent sẽ phải kéo nó về gần **xanh-tím của logo** hơn.
 
 ## 2. Typography / Font chữ
 
@@ -247,3 +333,279 @@ Cỡ chữ phải được quản lý tập trung:
 --font-size-xl: 20px;
 --font-size-2xl: 24px;
 --font-size-3xl: 30px;
+
+
+## 4. Spacing — Hệ thống khoảng cách
+
+### 4.1. Nguyên tắc chung
+
+- Toàn bộ LOHA SALES phải sử dụng một hệ thống khoảng cách thống nhất.
+- Không tự ý đặt margin/padding tùy ý cho từng component.
+- Khoảng cách phải tạo ra thứ bậc rõ ràng giữa các thành phần.
+- Các thành phần có quan hệ gần nhau phải có khoảng cách nhỏ hơn các nhóm nội dung độc lập.
+- Ưu tiên giao diện thoáng, dễ đọc nhưng không để khoảng trống gây lãng phí diện tích.
+
+### 4.2. Spacing Scale
+
+Sử dụng hệ khoảng cách theo bội số của **4px**:
+
+| Token | Giá trị | Sử dụng |
+|---|---:|---|
+| `space-1` | 4px | Khoảng cách rất nhỏ, icon/text |
+| `space-2` | 8px | Thành phần liên quan trực tiếp |
+| `space-3` | 12px | Nội dung trong component |
+| `space-4` | 16px | Khoảng cách tiêu chuẩn |
+| `space-5` | 20px | Khoảng cách giữa các thành phần |
+| `space-6` | 24px | Khoảng cách giữa các nhóm |
+| `space-8` | 32px | Khoảng cách section |
+| `space-10` | 40px | Khoảng cách lớn |
+| `space-12` | 48px | Khoảng cách giữa các khu vực lớn |
+| `space-16` | 64px | Khoảng cách đặc biệt lớn |
+
+Không tạo thêm giá trị spacing mới nếu có token phù hợp.
+
+### 4.3. Quy tắc khoảng cách
+
+**Trong component:**
+- Icon ↔ Text: `4–8px`
+- Label ↔ Input: `8px`
+- Input ↔ Input: `16px`
+- Nội dung trong Button: `8–12px`
+- Nội dung trong Card: `16–24px`
+
+**Giữa các nhóm:**
+- Các thành phần cùng nhóm: `8–16px`
+- Các nhóm nội dung: `24–32px`
+- Các Section lớn: `32–48px`
+
+**Layout:**
+- Padding của khu vực chính phải được thống nhất.
+- Sidebar, Header và Main Content phải sử dụng hệ spacing chung.
+- Không để một màn hình có khoảng cách lớn/nhỏ bất thường so với các màn hình khác.
+
+### 4.4. Quy tắc phân cấp
+
+> **Khoảng cách nhỏ = có quan hệ gần.**  
+> **Khoảng cách lớn = bắt đầu một nhóm/thông tin mới.**
+
+Ví dụ:
+
+```text
+Tiêu đề
+  ↓ 8px
+Mô tả
+
+  ↓ 24px
+
+Section tiếp theo
+````
+
+Không sử dụng cùng một khoảng cách cho mọi thành phần.
+
+### 4.5. Design Tokens
+
+Spacing phải được quản lý tập trung:
+
+```css
+--space-1: 4px;
+--space-2: 8px;
+--space-3: 12px;
+--space-4: 16px;
+--space-5: 20px;
+--space-6: 24px;
+--space-8: 32px;
+--space-10: 40px;
+--space-12: 48px;
+--space-16: 64px;
+```
+
+### 4.6. Nguyên tắc cốt lõi
+
+> **Spacing phải tạo ra cấu trúc, không phải khoảng trống ngẫu nhiên.**
+
+Mọi khoảng cách trong LOHA SALES phải có lý do về **quan hệ, nhóm nội dung hoặc thứ bậc thông tin**.
+
+
+## 5. Grid / Bố cục
+
+### 5.1. Nguyên tắc chung
+
+- Toàn bộ LOHA SALES phải sử dụng một hệ thống bố cục thống nhất.
+- Bố cục phải rõ ràng, cân đối và ưu tiên nội dung chính.
+- Không căn chỉnh từng màn hình theo cách riêng nếu không có lý do UX rõ ràng.
+- Ưu tiên bố cục **đơn giản, thoáng, dễ quét thông tin**.
+- Header, Sidebar và Main Content phải tuân theo cùng một hệ thống layout.
+
+### 5.2. Cấu trúc Layout chính
+
+LOHA SALES sử dụng cấu trúc:
+
+```text
+┌─────────────────────────────────────────────┐
+│                    Header                   │
+├──────────────┬──────────────────────────────┤
+│              │                              │
+│   Sidebar    │        Main Content          │
+│              │                              │
+│              │                              │
+└──────────────┴──────────────────────────────┘
+````
+
+* **Header:** khu vực điều hướng và thông tin hệ thống.
+* **Sidebar:** điều hướng chính.
+* **Main Content:** khu vực hiển thị nội dung/chức năng.
+* Không để nội dung chính bị che bởi Header hoặc Sidebar.
+
+### 5.3. Main Content
+
+* Main Content phải có giới hạn chiều rộng hợp lý để tránh nội dung trải quá rộng.
+* Nội dung phải được căn chỉnh theo một trục thẳng đứng nhất quán.
+* Các Page Title, Filter, Table, Card và Section phải tuân theo cùng một vùng nội dung.
+* Không để các component quan trọng sát mép màn hình.
+* Khoảng cách hai bên phải sử dụng Spacing Token.
+
+### 5.4. Grid
+
+* Sử dụng Grid/Flexbox để xây dựng bố cục.
+* Các cột phải có quy tắc rõ ràng và responsive.
+* Không sử dụng các giá trị width/position tùy ý chỉ để ép giao diện khớp với một màn hình.
+* Các thành phần cùng cấp nên được căn theo cùng một đường Grid.
+* Khi thay đổi kích thước màn hình, bố cục phải tự điều chỉnh thay vì phá vỡ cấu trúc.
+
+### 5.5. Responsive Layout
+
+Bố cục phải thích ứng với:
+
+* Desktop
+* Laptop
+* Tablet
+* Mobile
+
+Quy tắc:
+
+* Desktop: Sidebar đầy đủ, nội dung sử dụng bố cục nhiều cột khi phù hợp.
+* Tablet: giảm số cột và điều chỉnh khoảng cách.
+* Mobile: ưu tiên bố cục một cột, Sidebar có thể chuyển thành dạng thu gọn/menu.
+* Không để xuất hiện horizontal scroll không cần thiết.
+* Không thu nhỏ nội dung đến mức khó đọc chỉ để giữ nguyên số cột.
+
+### 5.6. Quy tắc phân cấp bố cục
+
+Bố cục phải thể hiện rõ:
+
+```text
+Page
+ ├── Page Header
+ │    ├── Title
+ │    └── Actions
+ │
+ ├── Filter / Search
+ │
+ ├── Main Content
+ │    ├── Section
+ │    └── Data / Components
+ │
+ └── Pagination / Additional Actions
+```
+
+Không đặt quá nhiều nhóm nội dung ngang hàng trong cùng một khu vực nếu chúng có mức độ ưu tiên khác nhau.
+
+### 5.7. Nguyên tắc cốt lõi
+
+> **Grid tạo ra sự nhất quán.
+> Layout tạo ra thứ bậc.
+> Responsive đảm bảo khả năng sử dụng.**
+
+Mọi màn hình của LOHA SALES phải có cảm giác thuộc về **cùng một hệ thống**, thay vì mỗi màn hình có một cách bố cục riêng.
+
+
+## 6. Border — Hệ thống đường viền
+
+### 6.1. Nguyên tắc chung
+
+- Border phải được sử dụng để **phân tách, định hướng và tạo cấu trúc**, không dùng để trang trí.
+- Toàn bộ hệ thống phải sử dụng một quy tắc Border thống nhất.
+- Không tự ý thay đổi màu, độ dày hoặc kiểu Border giữa các màn hình.
+- Ưu tiên Border **mảnh, nhẹ và tinh tế**, phù hợp với phong cách SaaS hiện đại của LOHA SALES.
+
+### 6.2. Border Width
+
+Chỉ sử dụng các độ dày cần thiết:
+
+- **1px:** Border tiêu chuẩn.
+- **2px:** Focus, Active hoặc trạng thái cần nhấn mạnh.
+- Không sử dụng Border quá dày cho các component thông thường.
+
+### 6.3. Border Color
+
+Border tiêu chuẩn phải sử dụng **Neutral Color**:
+
+- Border mặc định → Neutral Border.
+- Hover → Border đậm hơn nhẹ.
+- Focus → Primary Brand Color.
+- Error → Error Color.
+- Disabled → Border Disabled.
+
+Không sử dụng màu thương hiệu cho Border mặc định của mọi component.
+
+### 6.4. Border Radius
+
+Border Radius phải được chuẩn hóa:
+
+- `sm`: Component nhỏ, Input, Button.
+- `md`: Card, Dropdown, Modal.
+- `lg`: Container hoặc khu vực lớn.
+- Không tự ý sử dụng nhiều mức Radius khác nhau.
+
+Các component cùng loại phải có Radius giống nhau trên toàn hệ thống.
+
+### 6.5. Quy tắc sử dụng
+
+**Input / Select:**
+```text
+Default → Neutral Border
+Hover   → Neutral Border đậm hơn
+Focus   → Primary Border
+Error   → Error Border
+Disabled → Disabled Border
+````
+
+**Card:**
+
+* Có thể sử dụng Border 1px rất nhẹ.
+* Không bắt buộc Border nếu Card đã được phân tách rõ bằng Background/Shadow.
+
+**Table:**
+
+* Border/Divider phải nhẹ.
+* Không sử dụng đường viền quá đậm giữa mọi ô nếu không cần thiết.
+
+**Modal / Dropdown:**
+
+* Có thể sử dụng Border nhẹ để xác định ranh giới.
+* Ưu tiên kết hợp Border với Shadow thay vì Border quá đậm.
+
+### 6.6. Design Tokens
+
+```css
+--border-width-default: 1px;
+--border-width-focus: 2px;
+
+--color-border: ...;
+--color-border-hover: ...;
+--color-border-focus: var(--color-primary);
+--color-border-error: var(--color-error);
+--color-border-disabled: ...;
+
+--radius-sm: ...;
+--radius-md: ...;
+--radius-lg: ...;
+```
+
+### 6.7. Nguyên tắc cốt lõi
+
+> **Border phải giúp người dùng nhận biết cấu trúc và trạng thái, không làm giao diện nặng nề.**
+
+Ưu tiên:
+
+**Mỏng → Nhẹ → Đồng nhất → Có mục đích.**

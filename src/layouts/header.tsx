@@ -178,11 +178,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     "Người dùng";
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 backdrop-blur-xs px-3 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 backdrop-blur-xs px-4 sm:px-6">
       {/* =================================================================== */}
       {/* 1. BÊN TRÁI: NÚT ĐÓNG MỞ NAVBAR & TIÊU ĐỀ TRANG                     */}
       {/* =================================================================== */}
-      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         {/* Nút Hamburger chỉ cho Mobile (<1024px) */}
         <button
           type="button"
@@ -212,7 +212,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         <button
           type="button"
           onClick={() => setIsDropdownOpen((prev) => !prev)}
-          className={`flex items-center gap-2.5 sm:gap-3 p-1.5 sm:px-3 sm:py-2 rounded-2xl border transition-all duration-200 cursor-pointer select-none group focus:outline-none ${
+          className={`flex items-center gap-2 sm:gap-3 p-2 sm:px-3 sm:py-2 rounded-2xl border transition-all duration-200 cursor-pointer select-none group focus:outline-none ${
             isDropdownOpen
               ? "bg-slate-50 border-slate-300 shadow-2xs"
               : "bg-white border-slate-200/80 hover:bg-slate-50 hover:border-slate-300/90"
@@ -222,7 +222,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           title={`Tài khoản: ${cleanFullName}`}
         >
           {/* Avatar: Ảnh hoặc Chữ cái viết tắt */}
-          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-xs sm:text-sm font-bold text-white shadow-2xs group-hover:scale-105 transition-transform duration-200">
+          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-[var(--color-brand-gradient)] text-xs sm:text-sm font-bold text-white shadow-2xs group-hover:scale-105 transition-transform duration-200">
             {avatarUrl ? (
               <img
                 src={resolveAvatarUrl(avatarUrl)}
@@ -237,7 +237,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           {/* Tên & Tag vai trò (Ẩn trên mobile siêu nhỏ, hiện từ sm trở lên) */}
           <div className="hidden sm:flex flex-col text-left min-w-0">
             <span
-              className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-purple-600 transition-colors truncate max-w-[140px] leading-tight"
+              className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors truncate max-w-[140px] leading-tight"
               title={context.fullName}
             >
               {cleanFullName}
@@ -254,7 +254,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           {/* Mũi tên xoay biểu thị đóng/mở */}
           <ChevronDown
             className={`h-4 w-4 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 shrink-0 ${
-              isDropdownOpen ? "rotate-180 text-purple-600" : ""
+              isDropdownOpen ? "rotate-180 text-[var(--color-primary)]" : ""
             }`}
           />
         </button>
@@ -262,7 +262,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         {/* Menu Dropdown xổ xuống kiểu Facebook */}
         {isDropdownOpen && (
           <div
-            className="absolute right-0 top-full mt-2 w-80 rounded-2xl bg-white shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-1.5"
+            className="absolute right-0 top-full mt-2 w-80 rounded-2xl bg-white shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-2"
             role="menu"
             aria-orientation="vertical"
           >
@@ -273,7 +273,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                 onClick={() => setIsDropdownOpen(false)}
                 className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group/user"
               >
-                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-gradient-to-tr from-purple-600 via-indigo-600 to-purple-600 text-sm font-bold text-white shadow-xs">
+                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-sm font-bold text-white shadow-xs">
                   {avatarUrl ? (
                     <img
                       src={resolveAvatarUrl(avatarUrl)}
@@ -285,7 +285,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                   )}
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[15px] font-semibold text-slate-900 group-hover/user:text-purple-600 transition-colors truncate">
+                  <span className="text-[15px] font-semibold text-slate-900 group-hover/user:text-[var(--color-primary)] transition-colors truncate">
                     {cleanFullName}
                   </span>
                   <span className="text-xs text-slate-500 truncate">
@@ -355,7 +355,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
             </div>
 
             {/* Dòng chữ chân trang phong cách Facebook căn giữa */}
-            <div className="px-3 pt-2.5 pb-1 border-t border-slate-100 mt-1 text-center">
+            <div className="px-3 pt-3 pb-2 border-t border-slate-100 mt-2 text-center">
               <p className="text-[11px] font-medium text-slate-400">
                 LOHA SALES • Hệ thống quản lý bán hàng
               </p>

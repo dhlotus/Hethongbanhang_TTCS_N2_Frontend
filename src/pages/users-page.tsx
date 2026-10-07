@@ -59,9 +59,9 @@ const ROLE_CONFIG: Record<
 > = {
   ADMIN: {
     label: "Quản trị hệ thống",
-    bgClass: "bg-purple-50",
-    textClass: "text-purple-700",
-    ringClass: "ring-purple-700/20",
+    bgClass: "bg-[var(--color-primary-light)]",
+    textClass: "text-[var(--color-primary)]",
+    ringClass: "ring-[var(--color-primary-subtle)]",
   },
   SALES_MANAGER: {
     label: "Quản lý kinh doanh",
@@ -597,25 +597,25 @@ export const UsersPage: React.FC = () => {
   const codePendingCount = users.filter((u) => Boolean(u.resetCode)).length;
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200">
+    <div className="space-y-6 animate-in fade-in duration-200">
       {/* ========================================================================= */}
       {/* 1. FLOATING TOAST NOTIFICATION (Teleport to document.body, luôn nổi trên Header & Modal) */}
       {/* ========================================================================= */}
       {/* 2. STATS CARDS: THỐNG KÊ NHANH TỔNG QUAN                                    */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="rounded-2xl bg-white p-4.5 border border-slate-100 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">Tổng nhân sự</span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary)]">
               <Users className="h-4 w-4" />
             </div>
           </div>
           <div className="text-2xl font-bold tracking-tight text-slate-900">{total}</div>
         </div>
 
-        <div className="rounded-2xl bg-white p-4.5 border border-slate-100 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+        <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">Đang hoạt động</span>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -624,8 +624,8 @@ export const UsersPage: React.FC = () => {
           <div className="text-2xl font-bold tracking-tight text-emerald-700">{activeCount}</div>
         </div>
 
-        <div className="rounded-2xl bg-white p-4.5 border border-slate-100 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+        <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">Đang bị khóa</span>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
               <Lock className="h-4 w-4" />
@@ -634,8 +634,8 @@ export const UsersPage: React.FC = () => {
           <div className="text-2xl font-bold tracking-tight text-rose-600">{lockedCount}</div>
         </div>
 
-        <div className="rounded-2xl bg-white p-4.5 border border-slate-100 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+        <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">Chờ đổi mật khẩu</span>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
               <KeyRound className="h-4 w-4" />
@@ -650,7 +650,7 @@ export const UsersPage: React.FC = () => {
       {/* ========================================================================= */}
       <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between rounded-2xl bg-white p-4 border border-slate-100 shadow-2xs">
         {/* Nhóm tìm kiếm và bộ lọc bên trái */}
-        <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center flex-1">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center flex-1">
           {/* Ô tìm kiếm có debounce mượt mà */}
           <div className="relative flex-1 min-w-[260px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -659,7 +659,7 @@ export const UsersPage: React.FC = () => {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Tìm theo họ tên, username, email, số điện thoại..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-9 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-9 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] transition-all"
             />
             {searchInput && (
               <button
@@ -778,7 +778,7 @@ export const UsersPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={handleResetFilters}
-                        className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold border border-purple-200 shadow-2xs transition-all cursor-pointer active:scale-95"
+                        className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold border border-[var(--color-primary-subtle)] shadow-2xs transition-all cursor-pointer active:scale-95"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
                         <span>Đặt lại bộ lọc</span>
@@ -808,7 +808,7 @@ export const UsersPage: React.FC = () => {
                       {/* Nhân sự: Avatar + Họ tên sạch sẽ (Không role thừa, không ID rườm rà) */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-purple-50 font-bold text-purple-700 text-xs shadow-2xs">
+                          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-[var(--color-primary-light)] font-bold text-[var(--color-primary)] text-xs shadow-2xs">
                             {userAvatar ? (
                               <img
                                 src={resolveAvatarUrl(userAvatar)}
@@ -822,7 +822,7 @@ export const UsersPage: React.FC = () => {
                           <div className="font-semibold text-slate-900 flex items-center gap-1.5 truncate">
                             <span className="truncate">{cleanName}</span>
                             {isCurrentSelf && (
-                              <span className="rounded-md bg-purple-100 px-1.5 py-0.2 text-[10px] font-bold text-purple-700 shrink-0">
+                              <span className="rounded-md bg-[var(--color-primary-subtle)] px-1.5 py-0.2 text-[10px] font-bold text-[var(--color-primary)] shrink-0">
                                 Bạn
                               </span>
                             )}
@@ -965,7 +965,7 @@ export const UsersPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold border border-purple-200 shadow-2xs transition-all cursor-pointer active:scale-95"
+                  className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold border border-[var(--color-primary-subtle)] shadow-2xs transition-all cursor-pointer active:scale-95"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   <span>Đặt lại bộ lọc</span>
@@ -990,7 +990,7 @@ export const UsersPage: React.FC = () => {
                 <div key={u.id} className="p-4 space-y-3 hover:bg-slate-50/50 transition-colors">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-purple-50 font-bold text-purple-700 text-sm shadow-2xs">
+                      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-[var(--color-primary-light)] font-bold text-[var(--color-primary)] text-sm shadow-2xs">
                         {userAvatar ? (
                           <img
                             src={resolveAvatarUrl(userAvatar)}
@@ -1005,7 +1005,7 @@ export const UsersPage: React.FC = () => {
                         <div className="font-semibold text-slate-900 flex items-center gap-1.5 truncate">
                           <span className="truncate">{cleanName}</span>
                           {isCurrentSelf && (
-                            <span className="rounded-md bg-purple-100 px-1.5 py-0.2 text-[10px] font-bold text-purple-700 shrink-0">
+                            <span className="rounded-md bg-[var(--color-primary-subtle)] px-1.5 py-0.2 text-[10px] font-bold text-[var(--color-primary)] shrink-0">
                               Bạn
                             </span>
                           )}
@@ -1193,7 +1193,7 @@ export const UsersPage: React.FC = () => {
             {/* Header Modal */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 shadow-2xs">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary)] shadow-2xs">
                   {editingUser ? (
                     <Edit2 className="h-5 w-5" />
                   ) : (
@@ -1342,7 +1342,7 @@ export const UsersPage: React.FC = () => {
                   </label>
                   <span className="text-[11px] text-slate-500 font-medium">
                     Đã chọn:{" "}
-                    <strong className="text-purple-700">
+                    <strong className="text-[var(--color-primary)]">
                       {formData.roles?.length || 0}
                     </strong>{" "}
                     vai trò
@@ -1351,8 +1351,8 @@ export const UsersPage: React.FC = () => {
 
                 {/* Cảnh báo an toàn khi Admin sửa tài khoản chính mình */}
                 {isEditingCurrentSelf && (
-                  <div className="flex items-start gap-2.5 rounded-xl border border-purple-200/80 bg-purple-50/70 p-3 text-xs text-purple-900 shadow-2xs">
-                    <Shield className="h-4 w-4 text-purple-600 shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-2.5 rounded-xl border border-[var(--color-primary-subtle)] bg-[var(--color-primary-light)]/80 p-3 text-xs text-slate-800 shadow-2xs">
+                    <Shield className="h-4 w-4 text-[var(--color-primary)] shrink-0 mt-0.5" />
                     <div>
                       <span className="font-bold">Bảo vệ quyền Quản trị viên:</span> Bạn đang chỉnh sửa tài khoản Quản trị của chính mình. Quyền <strong>Quản trị hệ thống (ADMIN)</strong> được khóa cố định để đảm bảo bạn không bị mất quyền truy cập.
                     </div>
@@ -1374,9 +1374,9 @@ export const UsersPage: React.FC = () => {
                         }}
                         className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
                           isAdminLocked
-                            ? "bg-purple-50/40 border-purple-200 cursor-not-allowed"
+                            ? "bg-[var(--color-primary-light)]/40 border-[var(--color-primary-subtle)] cursor-not-allowed"
                             : isSelected
-                            ? "bg-purple-50/60 border-purple-300 shadow-2xs"
+                            ? "bg-[var(--color-primary-light)] border-[var(--color-primary)] shadow-2xs"
                             : "bg-white border-slate-200 hover:bg-slate-50/80"
                         }`}
                       >
@@ -1388,7 +1388,7 @@ export const UsersPage: React.FC = () => {
                             onChange={() => {
                               if (!isAdminLocked) handleToggleRole(roleKey);
                             }}
-                            className="h-4 w-4 rounded text-purple-600 focus:ring-purple-500 border-slate-300 cursor-pointer disabled:cursor-not-allowed"
+                            className="h-4 w-4 rounded text-[var(--color-primary)] focus:ring-[var(--color-primary-ring)] border-slate-300 cursor-pointer disabled:cursor-not-allowed"
                           />
                           <div className="truncate">
                             <span className="font-semibold text-slate-800">{cfg.label}</span>
@@ -1402,7 +1402,7 @@ export const UsersPage: React.FC = () => {
                           {isAdminLocked ? (
                             <span
                               title="Quyền quản trị của chính bạn được bảo vệ"
-                              className="inline-flex items-center gap-1 rounded-md bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-700"
+                              className="inline-flex items-center gap-1 rounded-md bg-[var(--color-primary-subtle)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--color-primary)]"
                             >
                               <Lock className="h-2.5 w-2.5" />
                               Khóa
@@ -1687,7 +1687,7 @@ export const UsersPage: React.FC = () => {
               <>
                 {loadingAssignedCustomers ? (
                   <div className="mb-3.5 rounded-xl bg-slate-50 border border-slate-200/80 p-3 text-xs text-slate-500 flex items-center gap-2">
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-purple-600" />
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-[var(--color-primary)]" />
                     <span>Đang kiểm tra danh sách đại lý phụ trách...</span>
                   </div>
                 ) : assignedCustomers.length > 0 ? (

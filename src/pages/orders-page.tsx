@@ -790,8 +790,8 @@ export const OrdersPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-4">
+    <>
+      <div className="space-y-6">
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -800,7 +800,7 @@ export const OrdersPage: React.FC = () => {
               <ShoppingCart className="w-6 h-6 text-blue-600" />
               Quản lý Đơn hàng
             </h1>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <p className="text-sm text-slate-500 mt-2">
               Tạo và theo dõi đơn hàng bán buôn cho đại lý
             </p>
           </div>
@@ -1110,6 +1110,6 @@ export const OrdersPage: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };

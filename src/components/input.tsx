@@ -20,7 +20,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       <div className="w-full text-left">
         <label
           htmlFor={inputId}
-          className="block text-sm font-medium text-slate-700 mb-1.5"
+          className="block text-sm font-medium text-slate-700 mb-2"
         >
           {label} {required && <span className="text-rose-500">*</span>}
         </label>
@@ -33,12 +33,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <input
             id={inputId}
             ref={ref}
-            className={`w-full h-10.5 sm:h-11 rounded-xl text-base bg-white border text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none focus:ring-4 focus:ring-purple-500/15 focus:border-purple-600 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${
+            className={`w-full h-10.5 sm:h-11 rounded-xl text-base bg-white border text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none focus:ring-4 focus:ring-[var(--color-primary-ring)] focus:border-[var(--color-border-focus)] disabled:bg-slate-100 disabled:text-slate-400 disabled:border-[var(--color-border-disabled)] disabled:cursor-not-allowed ${
               leftIcon ? "pl-10.5" : "pl-4"
             } ${rightElement ? "pr-10.5" : "pr-4"} ${
               error
-                ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/10"
-                : "border-slate-200 hover:border-slate-300"
+                ? "border-[var(--color-border-error)] focus:border-[var(--color-border-error)] focus:ring-rose-500/10"
+                : "border-[var(--color-border)] hover:border-[var(--color-border-hover)]"
             } ${className}`}
             {...props}
           />
@@ -49,7 +49,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
         </div>
         {error && (
-          <p className="mt-1.5 text-xs text-rose-600 flex items-center gap-1 font-medium">
+          <p className="mt-2 text-xs text-rose-600 flex items-center gap-2 font-medium">
             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
             <span>{error}</span>
           </p>

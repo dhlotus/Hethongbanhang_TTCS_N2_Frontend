@@ -24,11 +24,11 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantStyles = {
     primary:
-      "bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white shadow-sm hover:shadow focus:ring-purple-500/25",
+      "bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-active)] text-white shadow-sm hover:shadow focus:ring-[var(--color-primary-ring)]",
     secondary:
-      "bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 text-indigo-700 focus:ring-indigo-400/20",
+      "bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] active:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] focus:ring-[var(--color-primary-ring)]",
     outline:
-      "border border-slate-200 hover:bg-slate-50 active:bg-slate-100 text-slate-700 focus:ring-slate-300/30",
+      "border border-[var(--color-border)] hover:border-[var(--color-border-hover)] hover:bg-slate-50 active:bg-slate-100 text-slate-700 focus:ring-slate-300/30",
   }[variant];
 
   return (
