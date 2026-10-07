@@ -135,8 +135,8 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
         onClick={(e) => e.stopPropagation()}
         className={`relative w-full ${maxWidth} bg-white ${
           fullScreenOnMobile
-            ? "h-[100dvh] md:h-auto max-h-[100dvh] md:max-h-[calc(100dvh-3.5rem)] rounded-none md:rounded-3xl border-0 md:border border-slate-200/90 shadow-2xl flex flex-col"
-            : "rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xl flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3.5rem)]"
+            ? "h-[100dvh] md:h-auto max-h-[100dvh] md:max-h-[calc(100dvh-3.5rem)] rounded-none md:rounded-xl border-0 md:border border-slate-200/90 shadow-2xl flex flex-col"
+            : "rounded-xl border border-slate-200/90 shadow-2xl flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3.5rem)]"
         } ${
           fullScreenOnMobile
             ? isClosing
@@ -148,14 +148,14 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
         } ${containerClassName}`}
       >
         {/* 1. Header cố định */}
-        <div className="sticky top-0 z-20 flex flex-col px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-t-none md:rounded-t-3xl">
+        <div className="sticky top-0 z-20 flex flex-col px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-t-none md:rounded-t-xl">
           {fullScreenOnMobile && (
             <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto md:hidden mb-2 -mt-0.5 shrink-0" />
           )}
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               {icon && (
-                <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/20 shadow-2xs">
+                <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-500/20 shadow-2xs">
                   {icon}
                 </div>
               )}
@@ -183,7 +183,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
                 type="button"
                 onClick={handleClose}
                 aria-label="Đóng popup"
-                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
+                className="rounded-md p-1.5 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -206,7 +206,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
 
         {/* 4. Footer Action bar ghim cố định ở đáy với safe-area-inset-bottom */}
         {footer && (
-          <div className="sticky bottom-0 z-20 flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-b-none md:rounded-b-3xl pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-4">
+          <div className="sticky bottom-0 z-20 flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-b-none md:rounded-b-xl pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-4">
             {footer}
           </div>
         )}

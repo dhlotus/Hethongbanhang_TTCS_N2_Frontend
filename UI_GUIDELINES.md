@@ -609,3 +609,67 @@ Disabled → Disabled Border
 Ưu tiên:
 
 **Mỏng → Nhẹ → Đồng nhất → Có mục đích.**
+
+
+## 7. Border Radius — Hệ thống độ bo góc
+
+### 7.1. Nguyên tắc chung
+
+- Toàn bộ LOHA SALES phải sử dụng hệ thống Border Radius thống nhất.
+- Không tự ý đặt `border-radius` riêng cho từng component.
+- Độ bo góc phải phù hợp với kích thước và vai trò của component.
+- Ưu tiên phong cách **bo góc vừa phải, hiện đại và chuyên nghiệp**; không bo quá tròn toàn bộ giao diện.
+
+### 7.2. Radius Scale
+
+Sử dụng các mức Radius chuẩn:
+
+| Token | Giá trị | Sử dụng |
+|---|---:|---|
+| `radius-sm` | 4px | Badge, trạng thái nhỏ |
+| `radius-md` | 8px | Input, Button, Select |
+| `radius-lg` | 12px | Card, Dropdown, Modal |
+| `radius-xl` | 16px | Container hoặc khu vực lớn |
+| `radius-full` | 9999px | Avatar, Pill, trạng thái dạng viên |
+
+Không tạo thêm mức Radius mới nếu không có lý do UX rõ ràng.
+
+### 7.3. Quy tắc theo Component
+
+- **Button:** `radius-md`
+- **Input / Select:** `radius-md`
+- **Card:** `radius-lg`
+- **Modal / Dialog:** `radius-lg`
+- **Dropdown / Popover:** `radius-lg`
+- **Badge / Tag:** `radius-sm` hoặc `radius-full`
+- **Avatar:** `radius-full`
+- **Toast:** `radius-md`
+- **Table:** sử dụng Radius ở container, không bo từng ô.
+- **Image:** sử dụng Radius phù hợp với container chứa ảnh.
+
+### 7.4. Quy tắc nhất quán
+
+- Các component cùng loại phải có cùng Border Radius.
+- Không sử dụng nhiều kiểu bo góc khác nhau trong cùng một khu vực nếu không có mục đích.
+- Không dùng `radius-full` cho Button, Card hoặc Container thông thường.
+- Không bo góc quá lớn khiến component có cảm giác như giao diện mobile/game.
+- Các component nằm trong cùng một nhóm phải có Radius và ngôn ngữ hình học tương đồng.
+
+### 7.5. Design Tokens
+
+```css
+--radius-sm: 4px;
+--radius-md: 8px;
+--radius-lg: 12px;
+--radius-xl: 16px;
+--radius-full: 9999px;
+````
+
+### 7.6. Nguyên tắc cốt lõi
+
+> **Kích thước và vai trò của component quyết định độ bo góc.**
+
+LOHA SALES phải duy trì một ngôn ngữ hình học thống nhất:
+
+**Bo vừa phải → Sạch → Hiện đại → Chuyên nghiệp → Không lạm dụng bo tròn.**
+

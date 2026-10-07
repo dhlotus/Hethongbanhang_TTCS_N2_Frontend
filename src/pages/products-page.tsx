@@ -1391,17 +1391,17 @@ export const ProductsPage: React.FC = () => {
               if (e.target === e.currentTarget) setDeleteModalOpen(false);
             }}
           >
-          <div className="relative w-full max-w-md rounded-2xl sm:rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 animate-modal-in text-slate-800">
+          <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-2xl border border-slate-100 animate-modal-in text-slate-800">
             <button
               type="button"
               onClick={() => setDeleteModalOpen(false)}
-              className="absolute top-4 right-4 rounded-xl p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
+              className="absolute top-4 right-4 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
 
             <div className="flex items-center gap-3.5 mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 shadow-2xs shrink-0">
+              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-rose-50 border border-rose-100 text-rose-600 shadow-2xs shrink-0">
                 <Trash2 className="h-6 w-6 stroke-[2.2]" />
               </div>
               <div>
@@ -1459,7 +1459,7 @@ export const ProductsPage: React.FC = () => {
               if (e.target === e.currentTarget) setAdjustModalOpen(false);
             }}
           >
-          <div className="relative w-full max-w-lg rounded-2xl sm:rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 z-10 space-y-4 animate-modal-in text-slate-800">
+          <div className="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl border border-slate-100 z-10 space-y-4 animate-modal-in text-slate-800">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <Warehouse className="h-5 w-5 text-blue-600" />
@@ -1657,11 +1657,11 @@ export const ProductsPage: React.FC = () => {
               if (e.target === e.currentTarget) setLedgerModalOpen(false);
             }}
           >
-            <div className="relative w-full max-w-5xl max-h-[90vh] flex flex-col rounded-2xl sm:rounded-3xl bg-white shadow-2xl border border-slate-100 animate-modal-in text-slate-800 overflow-hidden">
+            <div className="relative w-full max-w-5xl max-h-[90vh] flex flex-col rounded-xl bg-white shadow-2xl border border-slate-100 animate-modal-in text-slate-800 overflow-hidden">
               {/* Header */}
               <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/70">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 border border-blue-100 text-blue-600 shadow-2xs">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 border border-blue-100 text-blue-600 shadow-2xs">
                     <BookOpen className="h-5 w-5" />
                   </div>
                   <div>

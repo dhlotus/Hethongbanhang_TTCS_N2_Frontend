@@ -604,40 +604,40 @@ export const UsersPage: React.FC = () => {
       {/* 2. STATS CARDS: THỐNG KÊ NHANH TỔNG QUAN                                    */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-2xs">
+        <div className="rounded-xl bg-white p-5 border border-slate-100 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">Tổng nhân sự</span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary)]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary)]">
               <Users className="h-4 w-4" />
             </div>
           </div>
           <div className="text-2xl font-bold tracking-tight text-slate-900">{total}</div>
         </div>
 
-        <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-2xs">
+        <div className="rounded-xl bg-white p-5 border border-slate-100 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">Đang hoạt động</span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-50 text-emerald-600">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
             </div>
           </div>
           <div className="text-2xl font-bold tracking-tight text-emerald-700">{activeCount}</div>
         </div>
 
-        <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-2xs">
+        <div className="rounded-xl bg-white p-5 border border-slate-100 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">Đang bị khóa</span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-rose-50 text-rose-600">
               <Lock className="h-4 w-4" />
             </div>
           </div>
           <div className="text-2xl font-bold tracking-tight text-rose-600">{lockedCount}</div>
         </div>
 
-        <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-2xs">
+        <div className="rounded-xl bg-white p-5 border border-slate-100 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">Chờ đổi mật khẩu</span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
               <KeyRound className="h-4 w-4" />
             </div>
           </div>
@@ -648,7 +648,7 @@ export const UsersPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* 3. TOOLBAR: TÌM KIẾM, BỘ LỌC & THAO TÁC HỆ THỐNG                          */}
       {/* ========================================================================= */}
-      <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between rounded-2xl bg-white p-4 border border-slate-100 shadow-2xs">
+      <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between rounded-xl bg-white p-4 border border-slate-100 shadow-2xs">
         {/* Nhóm tìm kiếm và bộ lọc bên trái */}
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center flex-1">
           {/* Ô tìm kiếm có debounce mượt mà */}
@@ -659,7 +659,7 @@ export const UsersPage: React.FC = () => {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Tìm theo họ tên, username, email, số điện thoại..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-9 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] transition-all"
+              className="w-full rounded-md border border-slate-200 bg-slate-50/50 pl-10 pr-9 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] transition-all"
             />
             {searchInput && (
               <button
@@ -684,7 +684,7 @@ export const UsersPage: React.FC = () => {
               setRoleFilter(e.target.value);
               setPage(1);
             }}
-            className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs font-medium text-slate-700 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+            className="rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs font-medium text-slate-700 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
           >
             <option value="">Tất cả vai trò (7)</option>
             {Object.keys(ROLE_CONFIG).map((roleKey) => (
@@ -701,7 +701,7 @@ export const UsersPage: React.FC = () => {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs font-medium text-slate-700 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+            className="rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs font-medium text-slate-700 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
           >
             <option value="">Tất cả trạng thái</option>
             <option value="ACTIVE">Đang hoạt động</option>
@@ -716,7 +716,7 @@ export const UsersPage: React.FC = () => {
             onClick={() => fetchUsers()}
             disabled={loading}
             title="Làm mới danh sách"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-2xs"
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-2xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">Làm mới</span>
@@ -727,7 +727,7 @@ export const UsersPage: React.FC = () => {
             type="button"
             onClick={() => setImportModalOpen(true)}
             title="Import nhân sự từ file Excel (.xlsx)"
-            className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-[0.98] transition-all shadow-2xs"
+            className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-[0.98] transition-all shadow-2xs"
           >
             <FileSpreadsheet className="h-4 w-4" />
             <span className="hidden sm:inline">Import Excel</span>
@@ -736,7 +736,7 @@ export const UsersPage: React.FC = () => {
           <button
             type="button"
             onClick={handleOpenCreateModal}
-            className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-purple-700 active:scale-[0.98] transition-all shadow-sm shadow-purple-600/20"
+            className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-purple-700 active:scale-[0.98] transition-all shadow-sm shadow-purple-600/20"
           >
             <UserPlus className="h-4 w-4" />
             <span>Thêm nhân sự mới</span>
@@ -747,7 +747,7 @@ export const UsersPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* 4. DATA TABLE: BẢNG DỮ LIỆU NGƯỜI DÙNG                                    */}
       {/* ========================================================================= */}
-      <div className="rounded-2xl bg-white border border-slate-100 shadow-sm overflow-hidden">
+      <div className="rounded-xl bg-white border border-slate-100 shadow-sm overflow-hidden">
         {/* ===================================================================== */}
         {/* A. BẢNG DỮ LIỆU GỌN GÀNG CHO TABLET & DESKTOP (KHÔNG CÒN THANH CUỘN)  */}
         {/* ===================================================================== */}
@@ -808,7 +808,7 @@ export const UsersPage: React.FC = () => {
                       {/* Nhân sự: Avatar + Họ tên sạch sẽ (Không role thừa, không ID rườm rà) */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-[var(--color-primary-light)] font-bold text-[var(--color-primary)] text-xs shadow-2xs">
+                          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-primary-light)] font-bold text-[var(--color-primary)] text-xs shadow-2xs">
                             {userAvatar ? (
                               <img
                                 src={resolveAvatarUrl(userAvatar)}
@@ -990,7 +990,7 @@ export const UsersPage: React.FC = () => {
                 <div key={u.id} className="p-4 space-y-3 hover:bg-slate-50/50 transition-colors">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-[var(--color-primary-light)] font-bold text-[var(--color-primary)] text-sm shadow-2xs">
+                      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-primary-light)] font-bold text-[var(--color-primary)] text-sm shadow-2xs">
                         {userAvatar ? (
                           <img
                             src={resolveAvatarUrl(userAvatar)}
@@ -1812,13 +1812,13 @@ export const UsersPage: React.FC = () => {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-lg rounded-3xl bg-white shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] animate-modal-in"
+              className="relative w-full max-w-lg rounded-xl bg-white shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] animate-modal-in"
             >
               {/* Body */}
               <div className="flex-1 overflow-y-auto p-6 space-y-5">
                 {/* Profile card */}
-                <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/80 border border-slate-100">
-                  <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl overflow-hidden bg-gradient-to-tr from-purple-500 to-indigo-600 font-bold text-white text-lg shadow-sm">
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50/80 border border-slate-100">
+                  <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full overflow-hidden bg-gradient-to-tr from-purple-500 to-indigo-600 font-bold text-white text-lg shadow-sm">
                     {selectedUserForDetail.avatarUrl ? (
                       <img
                         src={resolveAvatarUrl(selectedUserForDetail.avatarUrl)}

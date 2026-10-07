@@ -436,7 +436,7 @@ export const ProfilePage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-7 items-start">
         {/* CỘT TRÁI (8 COLS): CARD THÔNG TIN CÁ NHÂN & ĐỊNH DANH (CARD LỚN) */}
         <div className="lg:col-span-8 order-1">
-          <div className="rounded-2xl sm:rounded-3xl bg-white border border-slate-200/80 p-6 sm:p-8 lg:p-9 shadow-xs transition-all duration-300">
+          <div className="rounded-xl bg-white border border-slate-200/80 p-6 sm:p-8 lg:p-9 shadow-xs transition-all duration-300">
             {/* Header card: Tích hợp Avatar tương tác + Họ tên + Nút chỉnh sửa */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 pb-6 border-b border-slate-100">
               <div className="flex items-center gap-5 sm:gap-6">
@@ -445,11 +445,11 @@ export const ProfilePage: React.FC = () => {
                   type="button"
                   id="avatar-camera-btn"
                   onClick={() => setShowUploadModal(true)}
-                  className="relative group/avatar shrink-0 rounded-2xl sm:rounded-3xl overflow-hidden focus:outline-none ring-4 ring-slate-100/90 shadow-sm cursor-pointer bg-white transition-all hover:scale-[1.02]"
+                  className="relative group/avatar shrink-0 rounded-full overflow-hidden focus:outline-none ring-4 ring-slate-100/90 shadow-sm cursor-pointer bg-white transition-all hover:scale-[1.02]"
                   title="Nhấp để thay đổi ảnh đại diện"
                   aria-label="Thay đổi ảnh đại diện"
                 >
-                  <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl sm:rounded-3xl bg-slate-100 overflow-hidden">
+                  <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-slate-100 overflow-hidden">
                     {user?.avatarUrl ? (
                       <img
                         src={resolveAvatarUrl(user.avatarUrl)}
@@ -826,7 +826,7 @@ export const ProfilePage: React.FC = () => {
         {/* CỘT PHẢI (4 COLS): 2 CARD NHỎ (TIẾN ĐỘ HỒ SƠ & THÔNG TIN HỆ THỐNG) */}
         <div className="lg:col-span-4 space-y-6 order-2">
           {/* Thẻ 1: Tiến độ hoàn thiện hồ sơ */}
-          <div className="rounded-2xl sm:rounded-3xl bg-white border border-slate-200/80 p-6 sm:p-7 shadow-xs space-y-5 transition-all">
+          <div className="rounded-xl bg-white border border-slate-200/80 p-6 sm:p-7 shadow-xs space-y-5 transition-all">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900">Mức độ hoàn thiện</h3>
               <span className="text-base font-extrabold text-blue-600 tracking-tight">
@@ -895,7 +895,7 @@ export const ProfilePage: React.FC = () => {
           </div>
 
           {/* Thẻ 2: Thông tin hệ thống & Tài khoản */}
-          <div className="rounded-2xl sm:rounded-3xl bg-white border border-slate-200/80 p-6 sm:p-7 shadow-xs space-y-5 transition-all">
+          <div className="rounded-xl bg-white border border-slate-200/80 p-6 sm:p-7 shadow-xs space-y-5 transition-all">
             <h3 className="text-base font-bold text-slate-900 pb-3 border-b border-slate-100 flex items-center gap-2.5">
               <Info className="h-5 w-5 text-slate-400" />
               <span>Chi tiết hệ thống</span>
@@ -972,11 +972,11 @@ export const ProfilePage: React.FC = () => {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-md rounded-3xl bg-white p-6 sm:p-7 shadow-2xl border border-slate-100 transition-all duration-300 animate-modal-in space-y-5"
+              className="relative w-full max-w-md rounded-xl bg-white p-6 sm:p-7 shadow-2xl border border-slate-100 transition-all duration-300 animate-modal-in space-y-5"
             >
               {/* Header Popup */}
               <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 ring-4 ring-amber-100/60 shadow-xs">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-600 ring-4 ring-amber-100/60 shadow-xs">
                   <ShieldAlert className="h-6 w-6" />
                 </div>
                 <div>
@@ -1003,7 +1003,7 @@ export const ProfilePage: React.FC = () => {
               </div>
 
               {/* Bảng đối chiếu thông tin */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-2.5 text-xs">
+              <div className="rounded-md border border-slate-200 bg-slate-50/60 p-4 space-y-2.5 text-xs">
                 <div className="flex justify-between items-center py-0.5 border-b border-slate-100">
                   <span className="text-slate-500">Họ và tên:</span>
                   <span className="font-bold text-slate-900">{editFullName}</span>
@@ -1032,7 +1032,7 @@ export const ProfilePage: React.FC = () => {
                   type="button"
                   onClick={() => setShowIdentityConfirmModal(false)}
                   disabled={isSaving}
-                  className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                  className="w-full rounded-md border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
                 >
                   Kiểm tra lại
                 </button>
@@ -1040,7 +1040,7 @@ export const ProfilePage: React.FC = () => {
                   type="button"
                   onClick={handleSaveProfile}
                   disabled={isSaving}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 py-2.5 text-xs font-semibold text-white shadow-sm shadow-blue-600/20 transition-all cursor-pointer active:scale-98"
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 hover:bg-blue-700 py-2.5 text-xs font-semibold text-white shadow-sm shadow-blue-600/20 transition-all cursor-pointer active:scale-98"
                 >
                   {isSaving ? (
                     <>

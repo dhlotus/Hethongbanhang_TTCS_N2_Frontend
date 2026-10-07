@@ -8,7 +8,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /**
- * Component Button chuẩn thiết kế LOHA SALES (h-12, rounded-xl, smooth transition)
+ * Component Button chuẩn thiết kế LOHA SALES (h-10.5/h-11, radius-md: 8px, smooth transition)
  */
 export const Button: React.FC<ButtonProps> = ({
   children,
@@ -20,7 +20,7 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    "w-full h-10.5 sm:h-11 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus:ring-4 select-none disabled:opacity-60 disabled:cursor-not-allowed";
+    "w-full h-10.5 sm:h-11 rounded-md font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus:ring-4 select-none disabled:opacity-60 disabled:cursor-not-allowed";
 
   const variantStyles = {
     primary:

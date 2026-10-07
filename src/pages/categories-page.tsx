@@ -587,7 +587,7 @@ export const CategoriesPage: React.FC = () => {
       </div>
 
       {/* Tree Content */}
-      <div className="rounded-3xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-xs min-h-[350px]">
+      <div className="rounded-xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-xs min-h-[350px]">
         {loading ? (
           <CategoriesTreeSkeleton />
         ) : filteredTree.length === 0 ? (
@@ -612,7 +612,7 @@ export const CategoriesPage: React.FC = () => {
       {/* ===================================================================== */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="w-full max-w-lg bg-white rounded-none sm:rounded-3xl border-0 sm:border border-slate-200 shadow-2xl flex flex-col h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[90vh]">
+          <div className="w-full max-w-lg bg-white rounded-none sm:rounded-xl border-0 sm:border border-slate-200 shadow-2xl flex flex-col h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[90vh]">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 bg-slate-50/70 shrink-0">
               <div className="flex items-center gap-3">
@@ -781,7 +781,7 @@ export const CategoriesPage: React.FC = () => {
       {/* ===================================================================== */}
       {isMoveModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white rounded-none sm:rounded-3xl border-0 sm:border border-slate-200 shadow-2xl flex flex-col h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[90vh]">
+          <div className="w-full max-w-md bg-white rounded-none sm:rounded-xl border-0 sm:border border-slate-200 shadow-2xl flex flex-col h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[90vh]">
             <div className="sticky top-0 z-10 flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 bg-slate-50/70 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
@@ -887,7 +887,7 @@ export const CategoriesPage: React.FC = () => {
       {/* ===================================================================== */}
       {isProductsModalOpen && selectedCategoryForProducts && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="w-full max-w-2xl bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+          <div className="w-full max-w-2xl bg-white rounded-xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
@@ -1008,7 +1008,7 @@ export const CategoriesPage: React.FC = () => {
             />
 
             {/* Bottom Sheet Card */}
-            <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl border border-slate-100 z-10 space-y-4 animate-in slide-in-from-bottom-5 duration-200">
+            <div className="relative w-full sm:max-w-md bg-white rounded-t-xl sm:rounded-xl p-5 shadow-2xl border border-slate-100 z-10 space-y-4 animate-in slide-in-from-bottom-5 duration-200">
               {/* Handle bar on mobile */}
               <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
 

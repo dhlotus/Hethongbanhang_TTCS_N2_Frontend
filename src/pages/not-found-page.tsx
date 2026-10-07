@@ -43,7 +43,7 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({ standalone = false }
   const content = (
     <div className="w-full max-w-lg mx-auto py-8 sm:py-12 px-4 text-center">
       {/* Card chứa nội dung thông báo lỗi */}
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-10 shadow-sm">
+      <div className="relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-6 sm:p-10 shadow-sm">
         {/* Vệt sáng gradient trang trí mờ nhẹ */}
         <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-blue-50/70 blur-2xl pointer-events-none" />
         <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-indigo-50/60 blur-2xl pointer-events-none" />
@@ -55,7 +55,7 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({ standalone = false }
         </div>
 
         {/* 2. Biểu tượng minh họa trực quan */}
-        <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-50 to-indigo-50 text-blue-600 ring-8 ring-blue-50/50 shadow-2xs">
+        <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-md bg-gradient-to-tr from-blue-50 to-indigo-50 text-blue-600 ring-8 ring-blue-50/50 shadow-2xs">
           <FileQuestion className="h-10 w-10 text-blue-600" />
         </div>
 

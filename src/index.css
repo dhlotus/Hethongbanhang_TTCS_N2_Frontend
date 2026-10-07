@@ -97,9 +97,16 @@
   --color-border-error: #dc2626;    /* Error -> Error Color */
   --color-border-disabled: #f1f5f9; /* Disabled -> Border Disabled */
 
-  --radius-sm: 12px;  /* Component nhỏ, Input, Button (rounded-xl) */
-  --radius-md: 16px;  /* Card, Dropdown, Modal (rounded-2xl) */
-  --radius-lg: 24px;  /* Container hoặc khu vực lớn (rounded-3xl) */
+  /* ========================================================================= */
+  /* 7.5 BORDER RADIUS DESIGN TOKENS (UI_GUIDELINES)                           */
+  /* ========================================================================= */
+  --radius-sm: 4px;     /* Badge, trạng thái nhỏ */
+  --radius-md: 8px;     /* Input, Button, Select, Toast */
+  --radius-lg: 12px;    /* Card, Dropdown, Modal */
+  --radius-xl: 16px;    /* Container hoặc khu vực lớn */
+  --radius-2xl: 16px;   /* Giới hạn trần 16px, ngăn chặn bo góc quá tròn kiểu mobile/game */
+  --radius-3xl: 16px;   /* Giới hạn trần 16px, ngăn chặn bo góc quá tròn kiểu mobile/game */
+  --radius-full: 9999px;/* Avatar, Pill, trạng thái dạng viên */
 }
 
 :root {
@@ -171,9 +178,12 @@
   --color-border-error: #dc2626;    /* Error -> Error Color */
   --color-border-disabled: #f1f5f9; /* Disabled -> Border Disabled */
 
-  --radius-sm: 12px;  /* Component nhỏ, Input, Button (rounded-xl) */
-  --radius-md: 16px;  /* Card, Dropdown, Modal (rounded-2xl) */
-  --radius-lg: 24px;  /* Container hoặc khu vực lớn (rounded-3xl) */
+  /* 7.5 Border Radius Design Tokens (UI_GUIDELINES) */
+  --radius-sm: 4px;     /* Badge, trạng thái nhỏ */
+  --radius-md: 8px;     /* Input, Button, Select, Toast */
+  --radius-lg: 12px;    /* Card, Dropdown, Modal */
+  --radius-xl: 16px;    /* Container hoặc khu vực lớn */
+  --radius-full: 9999px;/* Avatar, Pill, trạng thái dạng viên */
 
   font-family: var(--font-family);
   color-scheme: light;
@@ -340,7 +350,7 @@
 .border-input-default {
   border-width: var(--border-width-default);
   border-color: var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md); /* 8px - radius-md */
   transition: all 0.2s ease;
 }
 
@@ -369,7 +379,7 @@
 .border-card-subtle {
   border-width: var(--border-width-default);
   border-color: var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg); /* 12px - radius-lg */
 }
 
 /* Table: Divider nhẹ giữa các hàng */
@@ -381,7 +391,55 @@
 .border-surface-shell {
   border-width: var(--border-width-default);
   border-color: var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg); /* 12px - radius-lg */
+}
+
+/* ========================================================================= */
+/* 7.3 QUY TẮC BORDER RADIUS THEO COMPONENT (UI_GUIDELINES)                  */
+/* ========================================================================= */
+.radius-btn,
+.radius-button {
+  border-radius: var(--radius-md); /* 8px: Button */
+}
+
+.radius-input,
+.radius-select {
+  border-radius: var(--radius-md); /* 8px: Input / Select */
+}
+
+.radius-card {
+  border-radius: var(--radius-lg); /* 12px: Card */
+}
+
+.radius-modal,
+.radius-dialog {
+  border-radius: var(--radius-lg); /* 12px: Modal / Dialog */
+}
+
+.radius-dropdown,
+.radius-popover {
+  border-radius: var(--radius-lg); /* 12px: Dropdown / Popover */
+}
+
+.radius-badge,
+.radius-tag {
+  border-radius: var(--radius-sm); /* 4px: Badge / Tag */
+}
+
+.radius-pill {
+  border-radius: var(--radius-full); /* 9999px: Pill, trạng thái dạng viên */
+}
+
+.radius-avatar {
+  border-radius: var(--radius-full); /* 9999px: Avatar */
+}
+
+.radius-toast {
+  border-radius: var(--radius-md); /* 8px: Toast */
+}
+
+.radius-container-lg {
+  border-radius: var(--radius-xl); /* 16px: Container hoặc khu vực lớn */
 }
 
 body, button, input, select, textarea {

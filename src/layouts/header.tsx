@@ -212,7 +212,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         <button
           type="button"
           onClick={() => setIsDropdownOpen((prev) => !prev)}
-          className={`flex items-center gap-2 sm:gap-3 p-2 sm:px-3 sm:py-2 rounded-2xl border transition-all duration-200 cursor-pointer select-none group focus:outline-none ${
+          className={`flex items-center gap-2 sm:gap-3 p-1.5 sm:px-3 sm:py-2 rounded-lg border transition-all duration-200 cursor-pointer select-none group focus:outline-none ${
             isDropdownOpen
               ? "bg-slate-50 border-slate-300 shadow-2xs"
               : "bg-white border-slate-200/80 hover:bg-slate-50 hover:border-slate-300/90"
@@ -221,8 +221,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           aria-haspopup="true"
           title={`Tài khoản: ${cleanFullName}`}
         >
-          {/* Avatar: Ảnh hoặc Chữ cái viết tắt */}
-          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-[var(--color-brand-gradient)] text-xs sm:text-sm font-bold text-white shadow-2xs group-hover:scale-105 transition-transform duration-200">
+          {/* Avatar: Ảnh hoặc Chữ cái viết tắt (radius-full) */}
+          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-xs sm:text-sm font-bold text-white shadow-2xs group-hover:scale-105 transition-transform duration-200">
             {avatarUrl ? (
               <img
                 src={resolveAvatarUrl(avatarUrl)}
@@ -243,7 +243,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               {cleanFullName}
             </span>
             <span
-              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.2 text-[10px] font-semibold mt-0.5 w-fit max-w-[140px] truncate ${context.badgeClass}`}
+              className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-0.2 text-[10px] font-semibold mt-0.5 w-fit max-w-[140px] truncate ${context.badgeClass}`}
               title={context.roleLabel}
             >
               <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${context.dotClass}`} />
@@ -259,19 +259,19 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           />
         </button>
 
-        {/* Menu Dropdown xổ xuống kiểu Facebook */}
+        {/* Menu Dropdown xổ xuống (radius-lg: 12px) */}
         {isDropdownOpen && (
           <div
-            className="absolute right-0 top-full mt-2 w-80 rounded-2xl bg-white shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-2"
+            className="absolute right-0 top-full mt-2 w-80 rounded-xl bg-white shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-2"
             role="menu"
             aria-orientation="vertical"
           >
-            {/* Thẻ người dùng trên cùng kiểu Facebook */}
-            <div className="p-1 rounded-2xl bg-white border border-slate-100 shadow-2xs">
+            {/* Thẻ người dùng trên cùng */}
+            <div className="p-1 rounded-lg bg-white border border-slate-100 shadow-2xs">
               <Link
                 to="/profile"
                 onClick={() => setIsDropdownOpen(false)}
-                className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group/user"
+                className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-50 transition-colors group/user"
               >
                 <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-sm font-bold text-white shadow-xs">
                   {avatarUrl ? (
@@ -295,13 +295,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               </Link>
             </div>
 
-            {/* Danh sách các nút kiểu Facebook: rõ ràng, icon tròn xám, chữ đen đậm vừa, hover nền xám rõ nét */}
+            {/* Danh sách các nút: radius-md */}
             <div className="space-y-0.5 pt-0.5">
               {/* Mục 1: Hồ sơ cá nhân */}
               <Link
                 to="/profile"
                 onClick={() => setIsDropdownOpen(false)}
-                className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer group"
+                className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group"
                 role="menuitem"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -319,7 +319,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               <Link
                 to="/profile/change-password"
                 onClick={() => setIsDropdownOpen(false)}
-                className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer group"
+                className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group"
                 role="menuitem"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -340,7 +340,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                   setIsDropdownOpen(false);
                   setShowLogoutModal(true);
                 }}
-                className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer group text-left"
+                className="w-full flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group text-left"
                 role="menuitem"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -365,7 +365,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       </div>
 
       {/* =================================================================== */}
-      {/* 3. MODAL XÁC NHẬN ĐĂNG XUẤT (PORTAL CHUẨN)                         */}
+      {/* 3. MODAL XÁC NHẬN ĐĂNG XUẤT (radius-lg: 12px)                       */}
       {/* =================================================================== */}
       {showLogoutModal &&
         typeof document !== "undefined" &&
@@ -378,13 +378,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className={`relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 transition-all duration-300 ${
+              className={`relative w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl border border-slate-100 transition-all duration-300 ${
                 isExiting ? "scale-95 opacity-0" : "animate-modal-in"
               }`}
             >
               {isLoggingOut ? (
                 <div className="py-4 flex flex-col items-center justify-center text-center space-y-3">
-                  <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 ring-4 ring-rose-100/70 shadow-sm animate-pulse">
+                  <div className="relative flex h-14 w-14 items-center justify-center rounded-md bg-rose-50 text-rose-600 ring-4 ring-rose-100/70 shadow-sm animate-pulse">
                     <Loader2 className="h-6 w-6 animate-spin text-rose-600" />
                   </div>
                   <div>
@@ -398,7 +398,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                 </div>
               ) : (
                 <div className="text-center space-y-4">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 ring-1 ring-rose-100 shadow-2xs">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-rose-50 text-rose-600 ring-1 ring-rose-100 shadow-2xs">
                     <Power className="h-5 w-5" />
                   </div>
 
@@ -415,14 +415,14 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                     <button
                       type="button"
                       onClick={() => setShowLogoutModal(false)}
-                      className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                      className="w-full rounded-md border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
                     >
                       Hủy
                     </button>
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full rounded-xl bg-rose-600 hover:bg-rose-700 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-600/20 transition-all cursor-pointer active:scale-98"
+                      className="w-full rounded-md bg-rose-600 hover:bg-rose-700 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-600/20 transition-all cursor-pointer active:scale-98"
                     >
                       Đăng xuất
                     </button>

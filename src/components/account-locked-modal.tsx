@@ -64,7 +64,7 @@ export const AccountLockedModal: React.FC<AccountLockedModalProps> = ({
       }}
     >
       <div
-        className={`relative w-full max-w-md bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xl p-6 sm:p-7 overflow-hidden text-slate-800 ${
+        className={`relative w-full max-w-md bg-white rounded-xl border border-slate-200/90 shadow-2xl p-6 sm:p-7 overflow-hidden text-slate-800 ${
           isClosing ? "animate-modal-out" : "animate-modal-in"
         }`}
       >
@@ -73,14 +73,14 @@ export const AccountLockedModal: React.FC<AccountLockedModalProps> = ({
           type="button"
           onClick={handleClose}
           aria-label="Đóng popup thông báo"
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-md hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Icon & Tiêu đề */}
         <div className="flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shadow-xs mb-3.5">
+          <div className="w-14 h-14 rounded-md bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shadow-xs mb-3.5">
             <Lock className="w-7 h-7 text-rose-600 stroke-[2.2]" />
           </div>
 
@@ -96,7 +96,7 @@ export const AccountLockedModal: React.FC<AccountLockedModalProps> = ({
         </div>
 
         {/* Khung lý do khóa từ Quản trị viên */}
-        <div className="mt-5 p-4 rounded-xl bg-rose-50/70 border border-rose-100 text-left">
+        <div className="mt-5 p-4 rounded-md bg-rose-50/70 border border-rose-100 text-left">
           <div className="flex items-center gap-2 text-xs font-semibold text-rose-800 uppercase tracking-wider">
             <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
             <span>Lý do khóa từ Quản trị viên</span>
@@ -107,7 +107,7 @@ export const AccountLockedModal: React.FC<AccountLockedModalProps> = ({
         </div>
 
         {/* Hướng dẫn liên hệ hỗ trợ ngắn gọn, không chứa email/hotline theo yêu cầu */}
-        <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs text-slate-600 text-center leading-relaxed">
+        <div className="mt-4 p-3.5 rounded-md bg-slate-50 border border-slate-200/70 text-xs text-slate-600 text-center leading-relaxed">
           Nếu bạn cho rằng đây là một sự nhầm lẫn hoặc cần mở lại tài khoản, vui lòng liên hệ trực tiếp với Quản trị viên hệ thống để được hỗ trợ.
         </div>
 
@@ -117,7 +117,7 @@ export const AccountLockedModal: React.FC<AccountLockedModalProps> = ({
             type="button"
             variant="primary"
             onClick={handleClose}
-            className="w-full py-2.5 rounded-xl font-medium cursor-pointer shadow-xs hover:shadow-sm active:scale-[0.99] transition-all"
+            className="w-full py-2.5 rounded-md font-medium cursor-pointer shadow-xs hover:shadow-sm active:scale-[0.99] transition-all"
           >
             Đã hiểu
           </Button>

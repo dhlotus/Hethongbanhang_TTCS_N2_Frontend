@@ -10,7 +10,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 /**
- * Component Input chuẩn UI/UX cao cấp cho hệ thống LOHA SALES (h-12, rounded-xl, clean focus)
+ * Component Input chuẩn UI/UX cao cấp cho hệ thống LOHA SALES (h-10.5/h-11, radius-md: 8px, clean focus)
  */
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, leftIcon, rightElement, required, id, className = "", ...props }, ref) => {
@@ -33,7 +33,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <input
             id={inputId}
             ref={ref}
-            className={`w-full h-10.5 sm:h-11 rounded-xl text-base bg-white border text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none focus:ring-4 focus:ring-[var(--color-primary-ring)] focus:border-[var(--color-border-focus)] disabled:bg-slate-100 disabled:text-slate-400 disabled:border-[var(--color-border-disabled)] disabled:cursor-not-allowed ${
+            className={`w-full h-10.5 sm:h-11 rounded-md text-base bg-white border text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none focus:ring-4 focus:ring-[var(--color-primary-ring)] focus:border-[var(--color-border-focus)] disabled:bg-slate-100 disabled:text-slate-400 disabled:border-[var(--color-border-disabled)] disabled:cursor-not-allowed ${
               leftIcon ? "pl-10.5" : "pl-4"
             } ${rightElement ? "pr-10.5" : "pr-4"} ${
               error

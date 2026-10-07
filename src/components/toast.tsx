@@ -124,7 +124,7 @@ const ToastItem: React.FC<ToastItemProps> = ({
       aria-live="assertive"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className={`pointer-events-auto relative flex items-center gap-3.5 w-[390px] sm:w-[420px] max-w-[calc(100vw-2rem)] min-h-[52px] rounded-[4px] px-4 py-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] border overflow-hidden transition-all duration-200 ease-out transform ${
+      className={`pointer-events-auto relative flex items-center gap-3.5 w-[390px] sm:w-[420px] max-w-[calc(100vw-2rem)] min-h-[52px] rounded-md px-4 py-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] border overflow-hidden transition-all duration-200 ease-out transform ${
         style.containerBg
       } ${style.borderLeft} ${
         isClosing || !isVisible
@@ -148,7 +148,7 @@ const ToastItem: React.FC<ToastItemProps> = ({
         type="button"
         onClick={handleClose}
         aria-label="Đóng thông báo"
-        className="text-slate-400 hover:text-slate-700 hover:bg-black/5 w-7 h-7 rounded-[4px] transition-colors cursor-pointer shrink-0 ml-1 flex items-center justify-center"
+        className="text-slate-400 hover:text-slate-700 hover:bg-black/5 w-7 h-7 rounded-sm transition-colors cursor-pointer shrink-0 ml-1 flex items-center justify-center"
       >
         <X className="w-4 h-4" />
       </button>

@@ -79,7 +79,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               className="flex items-center gap-2 group focus:outline-none min-w-0"
               title="LOHA SALES"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-xs group-hover:scale-105 transition-transform duration-200">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md overflow-hidden shadow-xs group-hover:scale-105 transition-transform duration-200">
                 <img
                   src={logoImg}
                   alt="LOHA SALES"
@@ -104,7 +104,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               <button
                 type="button"
                 onClick={onToggleCollapse}
-                className={`group/collapse hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] hover:shadow-xs transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer active:scale-95 ${
+                className={`group/collapse hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] hover:shadow-xs transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer active:scale-95 ${
                   isCollapsed
                     ? "opacity-0 scale-75 max-w-0 pointer-events-none"
                     : "opacity-100 scale-100 max-w-8"
@@ -129,7 +129,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               <button
                 type="button"
                 onClick={onToggleCollapse}
-                className="group/expand h-8 w-8 flex items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] hover:shadow-xs transition-all duration-200 cursor-pointer active:scale-95"
+                className="group/expand h-8 w-8 flex items-center justify-center rounded-md border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] hover:shadow-xs transition-all duration-200 cursor-pointer active:scale-95"
                 title="Mở rộng menu"
                 aria-label="Mở rộng menu"
               >
@@ -160,7 +160,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                     to={item.path}
                     onClick={onItemClick}
                     title={isCollapsed ? item.name : undefined}
-                    className={`group relative flex items-center px-3 py-2 min-h-[44px] rounded-xl text-sm font-semibold transition-colors duration-200 active:scale-[0.98] ${
+                    className={`group relative flex items-center px-3 py-2 min-h-[44px] rounded-md text-sm font-semibold transition-colors duration-200 active:scale-[0.98] ${
                       isItemActive
                         ? "bg-[var(--color-primary-light)] text-[var(--color-primary)] font-bold shadow-2xs"
                         : "text-slate-700 hover:bg-slate-50/90 hover:text-slate-900"
@@ -276,7 +276,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none transition-colors"
+                className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none transition-colors"
                 aria-label="Đóng thanh điều hướng"
               >
                 <X className="h-5 w-5" />
