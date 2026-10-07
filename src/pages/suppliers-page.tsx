@@ -238,7 +238,7 @@ export const SuppliersPage: React.FC = () => {
             <Power className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs text-slate-500 font-medium">Ngừng hoạt động</p>
+            <p className="text-xs text-slate-500 font-medium">Ngừng giao dịch</p>
             <p className="text-lg font-bold text-slate-600">{metrics.inactive}</p>
           </div>
         </div>
