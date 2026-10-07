@@ -375,11 +375,11 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
         )}
       </div>
 
-      <div className="flex items-center gap-2.5 ml-auto">
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
         <button
           type="button"
           onClick={handleClose}
-          className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+          className="flex-1 sm:flex-initial px-4 py-2.5 sm:py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
         >
           {effectiveReadOnly ? 'Đóng' : 'Hủy bỏ'}
         </button>
@@ -398,7 +398,7 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
                 ? 'Bảng giá chưa có sản phẩm nào'
                 : 'Lưu cấu hình Bảng giá'
             }
-            className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white shadow-xs transition-all cursor-pointer"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 sm:py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white shadow-xs transition-all cursor-pointer"
           >
             {submitting ? (
               <>
@@ -444,9 +444,9 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
       maxWidth="max-w-4xl"
       banner={modalBanner}
       footer={modalFooter}
-      bodyClassName="p-6 space-y-5"
+      bodyClassName="p-4 sm:p-6 space-y-4 sm:space-y-5"
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 pb-2">
           {/* Nhóm thông tin cơ bản */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {/* Tên bảng giá */}
@@ -585,11 +585,11 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
                     <span>Nạp tất cả SKU</span>
                   </button>
 
-                  <div className="flex items-center gap-1.5 flex-1 sm:flex-initial">
+                  <div className="flex items-center gap-1.5 flex-1 w-full sm:w-auto">
                     <select
                       value={selectedProductToAdd}
                       onChange={(e) => setSelectedProductToAdd(e.target.value)}
-                      className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 max-w-[220px] cursor-pointer"
+                      className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 flex-1 sm:max-w-[220px] cursor-pointer"
                     >
                       <option value="">-- Chọn sản phẩm --</option>
                       {availableProducts.map((p) => (
@@ -603,7 +603,7 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
                       type="button"
                       onClick={handleAddProduct}
                       disabled={!selectedProductToAdd}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap shrink-0"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Thêm</span>
@@ -630,7 +630,7 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
             )}
 
             {/* Bảng Dòng Sản phẩm */}
-            <div className="rounded-xl border border-slate-200/90 overflow-hidden shadow-2xs">
+            <div className="rounded-xl border border-slate-200/90 overflow-x-auto shadow-2xs">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-semibold text-[11px] uppercase tracking-wider">

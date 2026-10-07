@@ -502,15 +502,15 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       }
       icon={<Package className="h-5 w-5" />}
       maxWidth="max-w-2xl"
-      bodyClassName="p-6 space-y-5 text-xs text-slate-700"
+      bodyClassName="p-4 sm:p-6 space-y-4 sm:space-y-5 text-xs text-slate-700"
       footer={
-        <>
+        <div className="flex items-center justify-end gap-2.5 sm:gap-3 w-full sm:w-auto">
           <Button
             type="button"
             variant="outline"
             onClick={handleClose}
             disabled={isSubmitting}
-            className="py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer"
+            className="flex-1 sm:flex-initial py-2.5 sm:py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer"
           >
             Hủy bỏ
           </Button>
@@ -521,16 +521,16 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             onClick={handleSubmit(onValidSubmit)}
             isLoading={isSubmitting}
             loadingText="Đang lưu..."
-            className="py-2 px-5 rounded-xl text-xs font-semibold cursor-pointer shadow-xs hover:shadow-sm"
+            className="flex-1 sm:flex-initial py-2.5 sm:py-2 px-5 rounded-xl text-xs font-semibold cursor-pointer shadow-xs hover:shadow-sm"
           >
             {isEditMode ? "Cập nhật sản phẩm" : "Lưu vào danh mục"}
           </Button>
-        </>
+        </div>
       }
     >
       <form
         onSubmit={handleSubmit(onValidSubmit)}
-        className="space-y-5 text-xs text-slate-700"
+        className="space-y-4 sm:space-y-5 text-xs text-slate-700 pb-2"
       >
           {/* Thông báo lỗi máy chủ nếu có */}
           {formServerError && (
@@ -854,7 +854,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                       if (unitError) setUnitError(null);
                     }}
                     disabled={isSubmitting}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-100 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-100 focus:outline-none"
                   />
                 </div>
                 <div className="w-full sm:w-48 flex items-center gap-1.5">
@@ -870,7 +870,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                       if (unitError) setUnitError(null);
                     }}
                     disabled={isSubmitting}
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-100 focus:outline-none"
+                    className="w-full px-2.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-100 focus:outline-none"
                   />
                   <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">
                     {watch("baseUnit") || "Lon"}
@@ -880,7 +880,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   type="button"
                   onClick={handleAddConversionUnit}
                   disabled={isSubmitting}
-                  className="w-full sm:w-auto px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-colors whitespace-nowrap shadow-xs cursor-pointer"
+                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-colors whitespace-nowrap shadow-xs cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Thêm</span>

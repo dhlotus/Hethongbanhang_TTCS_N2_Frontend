@@ -611,10 +611,10 @@ export const CategoriesPage: React.FC = () => {
       {/* MODAL: THÊM MỚI / CHỈNH SỬA NHÓM HÀNG                                 */}
       {/* ===================================================================== */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="w-full max-w-lg bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="w-full max-w-lg bg-white rounded-none sm:rounded-3xl border-0 sm:border border-slate-200 shadow-2xl flex flex-col h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[90vh]">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
+            <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 bg-slate-50/70 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                   <FolderPlus className="h-5 w-5" />
@@ -642,7 +642,7 @@ export const CategoriesPage: React.FC = () => {
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSubmitCategory} className="p-6 space-y-4 overflow-y-auto">
+            <form onSubmit={handleSubmitCategory} className="flex-1 min-h-0 p-5 sm:p-6 space-y-4 overflow-y-auto overscroll-contain">
               {formError && (
                 <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
                   <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
@@ -754,18 +754,18 @@ export const CategoriesPage: React.FC = () => {
               </div>
 
               {/* Modal Footer */}
-              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+              <div className="sticky bottom-0 z-10 flex items-center justify-end gap-2.5 px-5 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-4">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                  className="flex-1 sm:flex-initial px-4 py-2.5 sm:py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
                 >
                   Hủy bỏ
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                  className="flex-1 sm:flex-initial px-5 py-2.5 sm:py-2 rounded-xl bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
                 >
                   {submitting && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
                   <span>{editingCategory ? "Lưu thay đổi" : "Tạo nhóm hàng"}</span>
@@ -780,9 +780,9 @@ export const CategoriesPage: React.FC = () => {
       {/* MODAL: DI CHUYỂN SẢN PHẨM GIỮA CÁC NHÓM                              */}
       {/* ===================================================================== */}
       {isMoveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-white rounded-none sm:rounded-3xl border-0 sm:border border-slate-200 shadow-2xl flex flex-col h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[90vh]">
+            <div className="sticky top-0 z-10 flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 bg-slate-50/70 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                   <ArrowRightLeft className="h-5 w-5" />
@@ -805,7 +805,7 @@ export const CategoriesPage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitMove} className="p-6 space-y-4">
+            <form onSubmit={handleSubmitMove} className="flex-1 min-h-0 p-5 sm:p-6 space-y-4 overflow-y-auto overscroll-contain">
               {moveError && (
                 <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
                   <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
@@ -860,18 +860,18 @@ export const CategoriesPage: React.FC = () => {
                 </span>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+              <div className="sticky bottom-0 z-10 flex items-center justify-end gap-2.5 px-5 sm:px-6 py-3 sm:py-4 -mx-5 sm:-mx-6 -mb-5 sm:-mb-6 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-4">
                 <button
                   type="button"
                   onClick={() => setIsMoveModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                  className="flex-1 sm:flex-initial px-4 py-2.5 sm:py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
                 >
                   Hủy bỏ
                 </button>
                 <button
                   type="submit"
                   disabled={moveSubmitting}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                  className="flex-1 sm:flex-initial px-5 py-2.5 sm:py-2 rounded-xl bg-indigo-600 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
                 >
                   {moveSubmitting && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
                   <span>Thực hiện chuyển</span>

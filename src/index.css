@@ -91,6 +91,36 @@ body {
   animation: modalOut 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+@keyframes sheetIn {
+  0% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheetOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+
+.animate-sheet-in {
+  animation: sheetIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-sheet-out {
+  animation: sheetOut 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 @keyframes toastIn {
   from {
     opacity: 0;
