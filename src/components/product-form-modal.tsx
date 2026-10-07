@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
-  X,
   Package,
   Layers,
   DollarSign,
@@ -16,23 +14,16 @@ import {
   Sparkles,
   Upload,
   FolderTree,
-  ChevronUp,
-  ChevronDown,
+  Scale,
   Plus,
   Trash2,
 } from "lucide-react";
 import { Button } from "./button";
+import { ModalLayout } from "./modal-layout";
+import { CurrencyInput } from "./currency-input";
 import { PRODUCT_CATEGORIES } from "../services/products.service";
 import { categoriesService } from "../services/categories.service";
 import type { Product, ProductCategory, CreateProductPayload, ProductUnit } from "../types/products";
-
-export interface ConversionUnitRow {
-  id: string;
-  unitName: string;
-  conversionFactor: number;
-  barcode?: string;
-}
-
 
 export interface ProductFormModalProps {
   isOpen: boolean;
@@ -90,6 +81,7 @@ export interface ProductFormValues {
   subCategory: string;
   baseUnit: string;
   packagingSpec?: string;
+  price?: number;
   costPrice?: number;
   status: "ACTIVE" | "INACTIVE";
   imageUrl?: string;
@@ -112,6 +104,11 @@ const productSchema = z.object({
   subCategory: z.string().min(1, "Vui lòng chọn nhóm hàng Cấp 2"),
   baseUnit: z.string().min(1, "Đơn vị tính cơ sở bắt buộc phải nhập"),
   packagingSpec: z.string().optional(),
+  price: z
+    .preprocess(
+      (val) => (val === "" || val === undefined || val === null ? undefined : Number(val)),
+      z.number().min(0, "Giá niêm yết không được là số âm").optional()
+    ),
   costPrice: z
     .preprocess(
       (val) => (val === "" || val === undefined || val === null ? undefined : Number(val)),
@@ -134,6 +131,12 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [categoriesList, setCategoriesList] = useState<ProductCategory[]>(PRODUCT_CATEGORIES);
   const [selectedChildCategory, setSelectedChildCategory] = useState<string>("");
 
+  // Quản lý danh sách đơn vị quy đổi (SN-23 AC-1)
+  const [conversionUnits, setConversionUnits] = useState<Array<{ unitName: string; conversionRate: number }>>([]);
+  const [newUnitName, setNewUnitName] = useState("");
+  const [newUnitRate, setNewUnitRate] = useState<number | "">("");
+  const [unitError, setUnitError] = useState<string | null>(null);
+
   const {
     register,
     handleSubmit,
@@ -150,6 +153,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       subCategory: PRODUCT_CATEGORIES[0].subCategories?.[0]?.name || "",
       baseUnit: "Lon",
       packagingSpec: "",
+      price: 0,
       costPrice: canManageCostPrice ? 0 : undefined,
       status: "ACTIVE",
       imageUrl: "",
@@ -160,36 +164,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const selectedParentCategory = watch("parentCategory");
   const watchedSubCategory = watch("subCategory");
   const selectedStatus = watch("status");
+  const watchedPrice = watch("price");
   const watchedCostPrice = watch("costPrice");
   const watchedImageUrl = watch("imageUrl");
-  const watchedBaseUnit = watch("baseUnit");
-
-  // Danh sách các đơn vị quy đổi bổ sung (SN-21 / SN-23)
-  const [conversionUnits, setConversionUnits] = useState<ConversionUnitRow[]>([]);
-
-  // Thêm đơn vị quy đổi mới
-  const handleAddConversionUnit = (presetName?: string, presetFactor?: number) => {
-    const newRow: ConversionUnitRow = {
-      id: `u-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      unitName: presetName || "",
-      conversionFactor: presetFactor || 24,
-      barcode: "",
-    };
-    setConversionUnits((prev) => [...prev, newRow]);
-  };
-
-  // Cập nhật đơn vị quy đổi
-  const handleUpdateConversionUnit = (id: string, field: keyof ConversionUnitRow, value: unknown) => {
-    setConversionUnits((prev) =>
-      prev.map((row) => (row.id === id ? { ...row, [field]: value } : row)),
-    );
-  };
-
-  // Xóa đơn vị quy đổi
-  const handleRemoveConversionUnit = (id: string) => {
-    setConversionUnits((prev) => prev.filter((row) => row.id !== id));
-  };
-
 
   // Tải danh mục động từ Backend khi mount
   useEffect(() => {
@@ -286,25 +263,24 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           subCategory: fallbackSCat,
           baseUnit: initialData.baseUnit || "Lon",
           packagingSpec: initialData.packagingSpec || "",
+          price: initialData.price ?? 0,
           costPrice: canManageCostPrice ? (initialData.costPrice ?? 0) : undefined,
           status: initialData.status || "ACTIVE",
           imageUrl: initialData.imageUrl || "",
         });
 
-        if (initialData.units && initialData.units.length > 0) {
-          setConversionUnits(
-            initialData.units
-              .filter((u) => !u.isBaseUnit)
-              .map((u) => ({
-                id: u.id,
-                unitName: u.unitName,
-                conversionFactor: u.conversionFactor,
-                barcode: u.barcode || "",
-              })),
-          );
+        if (initialData.units && Array.isArray(initialData.units)) {
+          const currentBase = (initialData.baseUnit || "Lon").trim().toLowerCase();
+          const convs = initialData.units
+            .filter((u) => !u.isBaseUnit && u.unitName.trim().toLowerCase() !== currentBase)
+            .map((u) => ({ unitName: u.unitName, conversionRate: u.conversionRate }));
+          setConversionUnits(convs);
         } else {
           setConversionUnits([]);
         }
+        setNewUnitName("");
+        setNewUnitRate("");
+        setUnitError(null);
       } else {
         const defaultPCat = categoriesList[0]?.name || "Sữa & Chế phẩm sữa";
         const defaultSubCat =
@@ -320,16 +296,19 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           subCategory: defaultSubCat,
           baseUnit: "Lon",
           packagingSpec: "",
+          price: 0,
           costPrice: canManageCostPrice ? 0 : undefined,
           status: "ACTIVE",
           imageUrl: "",
         });
         setConversionUnits([]);
+        setNewUnitName("");
+        setNewUnitRate("");
+        setUnitError(null);
       }
       setFormServerError(null);
     }
   }, [initialData, isOpen, canManageCostPrice, reset, categoriesList]);
-
 
   // Xử lý đổi Cấp 1 -> cập nhật Cấp 2 và Cấp 3 tự động
   const handleParentCategoryChange = (newParent: string) => {
@@ -397,11 +376,43 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   if (!isOpen) return null;
   if (typeof document === "undefined") return null;
 
-  // Tăng / giảm giá vốn nhanh (bước nhảy 1.000đ)
-  const handleStepCostPrice = (delta: number) => {
-    const current = Number(watchedCostPrice) || 0;
-    const next = Math.max(0, current + delta);
-    setValue("costPrice", next, { shouldValidate: true, shouldDirty: true });
+  // Quản lý đơn vị quy đổi (SN-23 AC-1)
+  const handleAddConversionUnit = () => {
+    const name = newUnitName.trim();
+    const rate = Number(newUnitRate);
+    const currentBase = (watch("baseUnit") || "Lon").trim();
+
+    if (!name) {
+      setUnitError("Vui lòng nhập tên đơn vị quy đổi (vd: Lốc, Thùng)");
+      return;
+    }
+    if (!rate || rate <= 1) {
+      setUnitError("Hệ số quy đổi phải lớn hơn 1 đơn vị cơ sở");
+      return;
+    }
+    if (name.toLowerCase() === currentBase.toLowerCase()) {
+      setUnitError(`Tên đơn vị quy đổi không được trùng với ĐVT cơ sở (${currentBase})`);
+      return;
+    }
+    if (conversionUnits.some((u) => u.unitName.toLowerCase() === name.toLowerCase())) {
+      setUnitError(`Đơn vị "${name}" đã có trong danh sách quy đổi`);
+      return;
+    }
+
+    setConversionUnits((prev) => [...prev, { unitName: name, conversionRate: rate }]);
+    setNewUnitName("");
+    setNewUnitRate("");
+    setUnitError(null);
+  };
+
+  const handleRemoveConversionUnit = (index: number) => {
+    setConversionUnits((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleQuickAddUnit = (name: string, defaultRate: number) => {
+    setNewUnitName(name);
+    setNewUnitRate(defaultRate);
+    setUnitError(null);
   };
 
   // Xử lý submit hợp lệ
@@ -433,24 +444,19 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         finalSub = formData.parentCategory;
       }
 
-      const unitsPayload: ProductUnit[] = [
+      // Chuẩn hóa toàn bộ danh sách đơn vị (BaseUnit + ConversionUnits)
+      const baseUnitName = formData.baseUnit.trim();
+      const allUnits: ProductUnit[] = [
         {
-          id: `u-base-${Date.now()}`,
-          productId: initialData?.id || '',
-          unitName: formData.baseUnit.trim(),
-          conversionFactor: 1,
+          unitName: baseUnitName,
+          conversionRate: 1,
           isBaseUnit: true,
         },
-        ...conversionUnits
-          .filter((u) => u.unitName.trim().length > 0)
-          .map((u) => ({
-            id: u.id,
-            productId: initialData?.id || '',
-            unitName: u.unitName.trim(),
-            conversionFactor: Number(u.conversionFactor) || 1,
-            isBaseUnit: false,
-            barcode: u.barcode?.trim() || undefined,
-          })),
+        ...conversionUnits.map((u) => ({
+          unitName: u.unitName.trim(),
+          conversionRate: Number(u.conversionRate),
+          isBaseUnit: false,
+        })),
       ];
 
       const payload: CreateProductPayload = {
@@ -462,14 +468,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         category: fullCategory,
         baseUnit: formData.baseUnit.trim(),
         packagingSpec: formData.packagingSpec?.trim() || "",
-        units: unitsPayload,
-        price: initialData?.price ?? (canManageCostPrice ? Number(formData.costPrice || 0) : 0),
-        costPrice: canManageCostPrice ? Number(formData.costPrice) : undefined,
+        price: Number(formData.price ?? initialData?.price ?? 0),
+        costPrice: canManageCostPrice ? (formData.costPrice !== undefined ? Number(formData.costPrice) : undefined) : undefined,
         status: formData.status,
         imageUrl: formData.imageUrl?.trim() || undefined,
         stockQuantity: initialData ? initialData.stockQuantity : undefined,
+        units: allUnits,
       };
-
 
       await onSubmit(payload);
       handleClose();
@@ -481,59 +486,52 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     }
   };
 
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="product-modal-title"
-      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/35 backdrop-blur-[2px] ${isClosing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"
-        }`}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) handleClose();
-      }}
-    >
-      <div
-        className={`relative w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${isClosing ? "animate-modal-out" : "animate-modal-in"
-          }`}
-      >
-        {/* Header Modal */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shadow-2xs">
-              <Package className="h-5 w-5" />
-            </div>
-            <div>
-              <h2
-                id="product-modal-title"
-                className="text-base sm:text-lg font-bold text-slate-900 tracking-tight"
-              >
-                {isEditMode
-                  ? "Cập nhật Thông tin Sản phẩm (SKU)"
-                  : "Thêm mới Sản phẩm (SKU)"}
-              </h2>
-              <p className="text-xs text-slate-500">
-                {isEditMode
-                  ? `Mã định danh SKU: ${initialData?.sku}`
-                  : "Chuẩn hóa thông tin SKU hàng hóa (SN-139 / SN-20)"}
-              </p>
-            </div>
-          </div>
-
-          <button
+  return (
+    <ModalLayout
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={
+        isEditMode
+          ? "Cập nhật Thông tin Sản phẩm (SKU)"
+          : "Thêm mới Sản phẩm (SKU)"
+      }
+      subtitle={
+        isEditMode
+          ? `Mã định danh SKU: ${initialData?.sku}`
+          : "Chuẩn hóa thông tin SKU hàng hóa phân phối"
+      }
+      icon={<Package className="h-5 w-5" />}
+      maxWidth="max-w-2xl"
+      bodyClassName="p-4 sm:p-6 space-y-4 sm:space-y-5 text-xs text-slate-700"
+      footer={
+        <div className="flex items-center justify-end gap-2.5 sm:gap-3 w-full sm:w-auto">
+          <Button
             type="button"
+            variant="outline"
             onClick={handleClose}
-            aria-label="Đóng popup"
-            className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer"
+            disabled={isSubmitting}
+            className="flex-1 sm:flex-initial py-2.5 sm:py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer"
           >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+            Hủy bỏ
+          </Button>
 
-        {/* Form Body (Scrollable) */}
-        <form
-          onSubmit={handleSubmit(onValidSubmit)}
-          className="flex-1 overflow-y-auto p-6 space-y-5 text-xs text-slate-700"
-        >
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleSubmit(onValidSubmit)}
+            isLoading={isSubmitting}
+            loadingText="Đang lưu..."
+            className="flex-1 sm:flex-initial py-2.5 sm:py-2 px-5 rounded-xl text-xs font-semibold cursor-pointer shadow-xs hover:shadow-sm"
+          >
+            {isEditMode ? "Cập nhật sản phẩm" : "Lưu vào danh mục"}
+          </Button>
+        </div>
+      }
+    >
+      <form
+        onSubmit={handleSubmit(onValidSubmit)}
+        className="space-y-4 sm:space-y-5 text-xs text-slate-700 pb-2"
+      >
           {/* Thông báo lỗi máy chủ nếu có */}
           {formServerError && (
             <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs animate-in fade-in">
@@ -766,127 +764,133 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               </div>
             </div>
 
-            {/* BẢNG ĐƠN VỊ TÍNH QUY ĐỔI ĐA CẤP (SN-21 / SN-23) */}
-            <div className="pt-3 border-t border-slate-100 space-y-2.5">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Layers className="h-3.5 w-3.5 text-blue-600" />
-                    <span>Đơn vị tính quy đổi đa cấp (SN-21 / SN-23)</span>
-                  </label>
-                  <p className="text-[10px] text-slate-500">
-                    Khai báo quy cách để kho nhập/xuất theo Thùng mà sổ sách vẫn ghi đúng số {watchedBaseUnit || "Lon"}.
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleAddConversionUnit("Lốc 6", 6)}
-                    className="px-2 py-1 text-[10px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer transition-colors"
-                  >
-                    + Lốc 6
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleAddConversionUnit("Thùng 24", 24)}
-                    className="px-2 py-1 text-[10px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer transition-colors"
-                  >
-                    + Thùng 24
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleAddConversionUnit()}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs cursor-pointer transition-all active:scale-95"
-                  >
-                    <Plus className="h-3 w-3" />
-                    <span>Thêm đơn vị</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2 bg-slate-50/70 p-3 rounded-xl border border-slate-200/80">
-                {/* Dòng 1: Đơn vị cơ sở (luôn cố định = 1) */}
-                <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 text-xs">
-                  <div className="w-28 font-bold text-slate-700 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-                    <span>{watchedBaseUnit || "Lon"}</span>
-                  </div>
-                  <div className="flex-1 text-slate-500 font-mono text-[11px]">
-                    Hệ số: <strong>1.00</strong> (Đơn vị cơ sở nhỏ nhất để ghi sổ kho)
-                  </div>
-                  <span className="px-2 py-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 rounded-md border border-emerald-200">
-                    ĐVT Cơ sở
+            {/* Đơn vị quy đổi kho (Lon / Lốc / Thùng) - SN-23 AC-1 */}
+            <div className="p-3.5 rounded-xl bg-blue-50/40 border border-blue-200/80 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <div className="flex items-center gap-2">
+                  <Scale className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-bold text-slate-900">
+                    Khai báo đơn vị tính quy đổi kho (Lon / Lốc / Thùng)
                   </span>
                 </div>
+                <span className="text-[10px] font-semibold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-md inline-block self-start sm:self-auto">
+                  Tự động quy về ĐVT cơ sở: {watch("baseUnit") || "Lon"}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Nhập xuất theo Thùng, Lốc nhưng sổ kho và thẻ kho luôn quy đổi chính xác theo đơn vị cơ sở ({watch("baseUnit") || "Lon"}).
+              </p>
 
-                {/* Danh sách các đơn vị quy đổi phụ */}
-                {conversionUnits.map((u) => (
+              {/* Danh sách các đơn vị quy đổi hiện tại */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {/* Đơn vị cơ sở luôn hiển thị cố định */}
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 text-slate-700 text-xs font-medium rounded-lg shadow-2xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                  <span>1 {watch("baseUnit") || "Lon"} = 1 {watch("baseUnit") || "Lon"}</span>
+                  <span className="text-[10px] bg-slate-100 text-slate-500 px-1 rounded font-semibold">(Cơ sở)</span>
+                </div>
+
+                {conversionUnits.map((u, idx) => (
                   <div
-                    key={u.id}
-                    className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 text-xs hover:border-blue-200 transition-colors"
+                    key={`${u.unitName}-${idx}`}
+                    className="inline-flex items-center gap-2 px-2.5 py-1 bg-white border border-blue-200 text-blue-900 text-xs font-semibold rounded-lg shadow-2xs group"
                   >
-                    <div className="w-full sm:w-32">
-                      <input
-                        type="text"
-                        value={u.unitName}
-                        onChange={(e) =>
-                          handleUpdateConversionUnit(u.id, "unitName", e.target.value)
-                        }
-                        placeholder="VD: Thùng 24"
-                        className="w-full px-2 py-1 text-xs rounded-md border border-slate-200 focus:border-blue-500 focus:outline-none font-semibold text-slate-800"
-                      />
-                    </div>
-                    <div className="flex items-center gap-1.5 text-slate-500">
-                      <span className="text-[11px] font-medium">=</span>
-                      <input
-                        type="number"
-                        min="0.01"
-                        step="any"
-                        value={u.conversionFactor}
-                        onChange={(e) =>
-                          handleUpdateConversionUnit(
-                            u.id,
-                            "conversionFactor",
-                            Number(e.target.value)
-                          )
-                        }
-                        className="w-16 px-2 py-1 text-xs rounded-md border border-slate-200 focus:border-blue-500 focus:outline-none font-bold text-blue-600 text-center"
-                      />
-                      <span className="text-[11px] font-medium text-slate-700">
-                        {watchedBaseUnit || "Lon"}
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        value={u.barcode || ""}
-                        onChange={(e) =>
-                          handleUpdateConversionUnit(u.id, "barcode", e.target.value)
-                        }
-                        placeholder="Mã vạch riêng (tùy chọn)..."
-                        className="w-full px-2 py-1 text-[11px] rounded-md border border-slate-200 focus:border-blue-500 focus:outline-none font-mono text-slate-600"
-                      />
-                    </div>
+                    <span>1 {u.unitName} = {u.conversionRate} {watch("baseUnit") || "Lon"}</span>
                     <button
                       type="button"
-                      onClick={() => handleRemoveConversionUnit(u.id)}
-                      className="self-end sm:self-center p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                      onClick={() => handleRemoveConversionUnit(idx)}
+                      className="text-slate-400 hover:text-rose-600 transition-colors p-0.5"
                       title="Xóa đơn vị quy đổi này"
+                      disabled={isSubmitting}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
-
-                {conversionUnits.length === 0 && (
-                  <p className="text-[11px] text-slate-400 italic text-center py-1">
-                    Chưa khai báo đơn vị quy đổi phụ. Bấm nút "+ Thêm đơn vị" để nhập theo Thùng / Lốc.
-                  </p>
-                )}
               </div>
+
+              {/* Thêm nhanh gợi ý phổ biến */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[11px] text-slate-400 font-medium">Gợi ý nhanh:</span>
+                <button
+                  type="button"
+                  onClick={() => handleQuickAddUnit("Lốc", 6)}
+                  className="px-2 py-0.5 text-[11px] font-medium bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-700 border border-slate-200 rounded-md transition-colors cursor-pointer"
+                >
+                  + Lốc (x6)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickAddUnit("Lốc", 4)}
+                  className="px-2 py-0.5 text-[11px] font-medium bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-700 border border-slate-200 rounded-md transition-colors cursor-pointer"
+                >
+                  + Lốc (x4)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickAddUnit("Thùng", 24)}
+                  className="px-2 py-0.5 text-[11px] font-medium bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-700 border border-slate-200 rounded-md transition-colors cursor-pointer"
+                >
+                  + Thùng (x24)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickAddUnit("Thùng", 30)}
+                  className="px-2 py-0.5 text-[11px] font-medium bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-700 border border-slate-200 rounded-md transition-colors cursor-pointer"
+                >
+                  + Thùng (x30)
+                </button>
+              </div>
+
+              {/* Form thêm đơn vị quy đổi mới */}
+              <div className="flex flex-col sm:flex-row gap-2 pt-1 items-start sm:items-center">
+                <div className="flex-1 w-full">
+                  <input
+                    type="text"
+                    placeholder="Tên đơn vị (vd: Thùng, Lốc)"
+                    value={newUnitName}
+                    onChange={(e) => {
+                      setNewUnitName(e.target.value);
+                      if (unitError) setUnitError(null);
+                    }}
+                    disabled={isSubmitting}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-100 focus:outline-none"
+                  />
+                </div>
+                <div className="w-full sm:w-48 flex items-center gap-1.5">
+                  <span className="text-xs text-slate-500 font-medium whitespace-nowrap">=</span>
+                  <input
+                    type="number"
+                    min="2"
+                    step="1"
+                    placeholder="Hệ số (vd: 24)"
+                    value={newUnitRate}
+                    onChange={(e) => {
+                      setNewUnitRate(e.target.value === "" ? "" : Number(e.target.value));
+                      if (unitError) setUnitError(null);
+                    }}
+                    disabled={isSubmitting}
+                    className="w-full px-2.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-100 focus:outline-none"
+                  />
+                  <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">
+                    {watch("baseUnit") || "Lon"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddConversionUnit}
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-colors whitespace-nowrap shadow-xs cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Thêm</span>
+                </button>
+              </div>
+              {unitError && (
+                <p className="text-[11px] text-rose-500 font-medium">{unitError}</p>
+              )}
             </div>
           </div>
-
 
           {/* 3. Nhóm Giá & Trạng thái */}
           <div className="space-y-3">
@@ -896,9 +900,46 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </div>
 
             <div
-              className={`grid gap-4 ${canManageCostPrice ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
-                }`}
+              className={`grid gap-4 ${
+                canManageCostPrice ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 md:grid-cols-2"
+              }`}
             >
+              {/* Ô Giá niêm yết (Giá bán cơ sở của SKU) */}
+              <div className="p-3.5 rounded-xl bg-blue-50/30 border border-blue-100/80">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="font-semibold text-slate-800 flex items-center gap-1.5">
+                    <span>Giá niêm yết <span className="text-rose-500">*</span></span>
+                  </label>
+                  <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md ring-1 ring-blue-600/20">
+                    Giá bán chuẩn
+                  </span>
+                </div>
+
+                <CurrencyInput
+                  value={watchedPrice}
+                  onChange={(val) =>
+                    setValue("price", val, { shouldValidate: true, shouldDirty: true })
+                  }
+                  placeholder="0"
+                  disabled={isSubmitting}
+                  showWordsBadge={true}
+                  className={`w-full px-3 py-2.5 rounded-xl border text-xs font-semibold text-blue-900 focus:outline-none focus:ring-2 bg-white transition-all ${
+                    errors.price
+                      ? "border-rose-300 focus:ring-rose-200 bg-rose-50/30"
+                      : "border-slate-200 focus:border-blue-500 focus:ring-blue-100"
+                  }`}
+                />
+
+                {errors.price && (
+                  <p className="text-[11px] text-rose-500 mt-1 font-medium">
+                    {errors.price.message}
+                  </p>
+                )}
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Giá bán cơ sở trước chiết khấu bảng giá
+                </p>
+              </div>
+
               {/* RÀNG BUỘC UI QUAN TRỌNG: Giá vốn CHỈ render khi canManageCostPrice = true (ADMIN hoặc SALES_MANAGER) */}
               {canManageCostPrice && (
                 <div className="p-3.5 rounded-xl bg-emerald-50/30 border border-emerald-100/80">
@@ -912,61 +953,28 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     </span>
                   </div>
 
-                  <div className="relative group">
-                    <input
-                      type="number"
-                      min="0"
-                      step="1000"
-                      {...register("costPrice")}
-                      placeholder="Nhập giá vốn sản phẩm"
-                      className={`w-full pl-3.5 pr-16 py-2.5 rounded-xl border text-xs font-semibold text-emerald-900 focus:outline-none focus:ring-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all ${errors.costPrice
-                          ? "border-rose-300 focus:ring-rose-200 bg-rose-50/30"
-                          : "border-slate-200 bg-white focus:border-emerald-500 focus:ring-emerald-100"
-                        }`}
-                      disabled={isSubmitting}
-                    />
-
-                    {/* Bộ nút tăng/giảm giá vốn: Chỉ hiện khi hover hoặc focus vào ô và không đè lên chữ đ */}
-                    <div className="absolute right-8 inset-y-1.5 flex items-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">
-                      <div className="flex flex-col border border-slate-200/90 rounded-md bg-white shadow-2xs overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => handleStepCostPrice(1000)}
-                          className="h-3.5 w-5 flex items-center justify-center text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100 border-b border-slate-100 transition-colors cursor-pointer"
-                          title="Tăng 1.000đ"
-                        >
-                          <ChevronUp className="h-3 w-3 stroke-[2.5]" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleStepCostPrice(-1000)}
-                          className="h-3.5 w-5 flex items-center justify-center text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100 transition-colors cursor-pointer"
-                          title="Giảm 1.000đ"
-                        >
-                          <ChevronDown className="h-3 w-3 stroke-[2.5]" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Ký hiệu đơn vị tiền tệ 'đ' cố định riêng biệt không bị đè */}
-                    <div className="absolute right-3.5 inset-y-0 flex items-center pointer-events-none">
-                      <span className="text-xs font-bold text-slate-400 select-none">
-                        đ
-                      </span>
-                    </div>
-                  </div>
+                  <CurrencyInput
+                    value={watchedCostPrice}
+                    onChange={(val) =>
+                      setValue("costPrice", val, { shouldValidate: true, shouldDirty: true })
+                    }
+                    placeholder="0"
+                    disabled={isSubmitting}
+                    showWordsBadge={true}
+                    className={`w-full px-3 py-2.5 rounded-xl border text-xs font-semibold text-emerald-900 focus:outline-none focus:ring-2 bg-white transition-all ${
+                      errors.costPrice
+                        ? "border-rose-300 focus:ring-rose-200 bg-rose-50/30"
+                        : "border-slate-200 focus:border-emerald-500 focus:ring-emerald-100"
+                    }`}
+                  />
 
                   {errors.costPrice && (
                     <p className="text-[11px] text-rose-500 mt-1 font-medium">
                       {errors.costPrice.message}
                     </p>
                   )}
-
-                  <p className="text-[11px] text-emerald-700 font-semibold mt-1">
-                    {new Intl.NumberFormat("vi-VN", {
-                      style: "currency",
-                      currency: "VND",
-                    }).format(Number(watchedCostPrice) || 0)}
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Giá nhập vốn (chỉ Quản lý được thấy)
                   </p>
                 </div>
               )}
@@ -1100,32 +1108,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </div>
           </div>
         </form>
-
-        {/* Footer Actions */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={isSubmitting}
-            className="py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer"
-          >
-            Hủy bỏ
-          </Button>
-
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleSubmit(onValidSubmit)}
-            isLoading={isSubmitting}
-            loadingText="Đang lưu..."
-            className="py-2 px-5 rounded-xl text-xs font-semibold cursor-pointer shadow-xs hover:shadow-sm"
-          >
-            {isEditMode ? "Cập nhật sản phẩm" : "Lưu vào danh mục"}
-          </Button>
-        </div>
-      </div>
-    </div>,
-    document.body
+    </ModalLayout>
   );
 };

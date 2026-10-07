@@ -126,7 +126,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-800">
-                Nhập danh mục từ Excel (SN-24)
+                Nhập danh mục từ Excel
               </h2>
               <p className="text-xs text-slate-500">
                 Tải lên tệp danh sách để tạo mới hoặc cập nhật hàng loạt.

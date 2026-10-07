@@ -101,9 +101,12 @@ apiClient.interceptors.response.use(
     const isAuthEndpoint =
       requestUrl.includes("/auth/login") ||
       requestUrl.includes("/auth/refresh") ||
-      requestUrl.includes("/auth/logout");
+      requestUrl.includes("/auth/logout") ||
+      requestUrl.includes("/auth/change-password") ||
+      requestUrl.includes("/auth/forgot-password") ||
+      requestUrl.includes("/auth/reset-password");
 
-    // Nếu endpoint xác thực bị 401, trả lỗi trực tiếp để UI xử lý (tránh lặp vô hạn)
+    // Nếu endpoint xác thực bị 401, trả lỗi trực tiếp để UI xử lý (tránh lặp vô hạn và tránh timeout nhầm)
     if (isAuthEndpoint) {
       return Promise.reject(error);
     }

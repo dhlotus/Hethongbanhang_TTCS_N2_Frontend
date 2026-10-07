@@ -2,7 +2,6 @@ import { apiClient } from './api';
 import { tokenStorage } from '../utils/token-storage';
 import type {
   Product,
-  ProductUnit,
   ProductCategory,
   ProductQueryParams,
   PaginatedProductsResponse,
@@ -90,9 +89,9 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
 ];
 
 /**
- * Danh sách sản phẩm mẫu phong phú phục vụ demo / fallback kèm đa đơn vị tính (SN-21 / SN-23)
+ * Danh sách sản phẩm mẫu phong phú phục vụ demo / fallback
  */
-let MOCK_PRODUCTS: Product[] = [
+export let MOCK_PRODUCTS: Product[] = [
   {
     id: "prod-001",
     sku: "LH-MILK-900G",
@@ -104,9 +103,9 @@ let MOCK_PRODUCTS: Product[] = [
     baseUnit: "Lon",
     packagingSpec: "24 lon/thùng",
     units: [
-      { id: "u-001-1", productId: "prod-001", unitName: "Lon", conversionFactor: 1, isBaseUnit: true },
-      { id: "u-001-2", productId: "prod-001", unitName: "Lốc 6", conversionFactor: 6, isBaseUnit: false, barcode: "8935001100012" },
-      { id: "u-001-3", productId: "prod-001", unitName: "Thùng 24", conversionFactor: 24, isBaseUnit: false, barcode: "8935001100029" },
+      { unitName: "Lon", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
     ],
     price: 520000,
     costPrice: 380000,
@@ -130,9 +129,9 @@ let MOCK_PRODUCTS: Product[] = [
     baseUnit: "Hộp",
     packagingSpec: "48 hộp/thùng (12 lốc x 4 hộp)",
     units: [
-      { id: "u-002-1", productId: "prod-002", unitName: "Hộp", conversionFactor: 1, isBaseUnit: true },
-      { id: "u-002-2", productId: "prod-002", unitName: "Lốc 4", conversionFactor: 4, isBaseUnit: false },
-      { id: "u-002-3", productId: "prod-002", unitName: "Thùng 48", conversionFactor: 48, isBaseUnit: false },
+      { unitName: "Hộp", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Lốc", conversionRate: 4, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 48, isBaseUnit: false },
     ],
     price: 18000,
     costPrice: 11500,
@@ -145,7 +144,6 @@ let MOCK_PRODUCTS: Product[] = [
     description: "Sữa hạt thuần chay ít đường, giàu omega-3 tốt cho tim mạch và trí não",
     createdAt: "2026-01-18T09:30:00Z",
   },
-
   {
     id: "prod-003",
     sku: "LH-NEST-70ML",
@@ -156,6 +154,11 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-nest-ready",
     baseUnit: "Hũ",
     packagingSpec: "30 hũ/thùng (5 hộp x 6 hũ)",
+    units: [
+      { unitName: "Hũ", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Hộp", conversionRate: 6, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 30, isBaseUnit: false },
+    ],
     price: 65000,
     costPrice: 42000,
     margin: 35.38,
@@ -177,6 +180,10 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-cereal-sprout",
     baseUnit: "Túi",
     packagingSpec: "20 túi/thùng",
+    units: [
+      { unitName: "Túi", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Thùng", conversionRate: 20, isBaseUnit: false },
+    ],
     price: 145000,
     costPrice: 95000,
     margin: 34.48,
@@ -198,6 +205,11 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-supp-collagen",
     baseUnit: "Chai",
     packagingSpec: "24 chai/thùng (4 lốc x 6 chai)",
+    units: [
+      { unitName: "Chai", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Hộp", conversionRate: 6, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+    ],
     price: 85000,
     costPrice: 55000,
     margin: 35.29,
@@ -217,8 +229,13 @@ let MOCK_PRODUCTS: Product[] = [
     subCategory: "Trà thảo mộc thanh nhiệt",
     category: "Nước giải khát & Trà / Trà thảo mộc thanh nhiệt",
     categoryId: "cat-bev-tea",
-    baseUnit: "Chai",
-    packagingSpec: "24 chai/thùng",
+    baseUnit: "Lon",
+    packagingSpec: "24 lon/thùng",
+    units: [
+      { unitName: "Lon", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+    ],
     price: 15000,
     costPrice: 9200,
     margin: 38.67,
@@ -240,6 +257,11 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-bev-water",
     baseUnit: "Chai",
     packagingSpec: "24 chai/thùng",
+    units: [
+      { unitName: "Chai", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+    ],
     price: 12000,
     costPrice: 6800,
     margin: 43.33,
@@ -261,6 +283,10 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-milk-ready",
     baseUnit: "Chai",
     packagingSpec: "12 chai/thùng",
+    units: [
+      { unitName: "Chai", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Thùng", conversionRate: 12, isBaseUnit: false },
+    ],
     price: 38000,
     costPrice: 26000,
     margin: 31.58,
@@ -282,6 +308,10 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-nest-pure",
     baseUnit: "Hộp",
     packagingSpec: "10 hộp/thùng",
+    units: [
+      { unitName: "Hộp", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Thùng", conversionRate: 10, isBaseUnit: false },
+    ],
     price: 4200000,
     costPrice: 3100000,
     margin: 26.19,
@@ -303,6 +333,11 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-cereal-nuts",
     baseUnit: "Hũ",
     packagingSpec: "24 hũ/thùng",
+    units: [
+      { unitName: "Hũ", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+    ],
     price: 135000,
     costPrice: 88000,
     margin: 34.81,
@@ -324,6 +359,11 @@ let MOCK_PRODUCTS: Product[] = [
     categoryId: "cat-bev-tea",
     baseUnit: "Lon",
     packagingSpec: "24 lon/thùng",
+    units: [
+      { unitName: "Lon", conversionRate: 1, isBaseUnit: true },
+      { unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
+      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+    ],
     price: 14000,
     costPrice: 9000,
     margin: 35.71,
@@ -571,6 +611,9 @@ export const productsService = {
         categoryId: payload.categoryId,
         baseUnit: payload.baseUnit,
         packagingSpec: payload.packagingSpec,
+        units: payload.units && payload.units.length > 0
+          ? payload.units
+          : [{ unitName: payload.baseUnit, conversionRate: 1, isBaseUnit: true }],
         price: Number(payload.price),
         costPrice: payload.costPrice !== undefined ? Number(payload.costPrice) : undefined,
         margin,
@@ -650,6 +693,7 @@ export const productsService = {
       if (payload.category !== undefined) existing.category = payload.category;
       if (payload.baseUnit !== undefined) existing.baseUnit = payload.baseUnit;
       if (payload.packagingSpec !== undefined) existing.packagingSpec = payload.packagingSpec;
+      if (payload.units !== undefined) existing.units = payload.units;
       if (payload.price !== undefined) existing.price = Number(payload.price);
       if (payload.costPrice !== undefined) existing.costPrice = Number(payload.costPrice);
       if (payload.status !== undefined) existing.status = payload.status;
@@ -744,78 +788,4 @@ export const productsService = {
     const response = await apiClient.post<ConfirmImportResult>('/products/import/confirm', { items });
     return response.data;
   },
-
-  /**
-   * Lấy danh sách đơn vị quy đổi của sản phẩm (SN-21 / SN-23)
-   */
-  async getProductUnits(productId: string): Promise<ProductUnit[]> {
-    try {
-      const response = await apiClient.get<ProductUnit[]>(`/products/${productId}/units`);
-      if (Array.isArray(response.data)) {
-        return response.data;
-      }
-    } catch {
-      // Fallback to mock
-    }
-    const product = MOCK_PRODUCTS.find((p) => p.id === productId || p.sku === productId);
-    return product?.units || [];
-  },
-
-  /**
-   * Thêm đơn vị tính quy đổi mới (SN-21 / SN-23)
-   */
-  async addProductUnit(productId: string, data: Partial<ProductUnit>): Promise<ProductUnit> {
-    try {
-      const response = await apiClient.post<ProductUnit>(`/products/${productId}/units`, data);
-      return response.data;
-    } catch {
-      const product = MOCK_PRODUCTS.find((p) => p.id === productId || p.sku === productId);
-      if (!product) throw new Error("Không tìm thấy sản phẩm");
-      if (!product.units) product.units = [];
-      const newUnit: ProductUnit = {
-        id: `u-${Date.now()}`,
-        productId: product.id,
-        unitName: data.unitName || '',
-        conversionFactor: Number(data.conversionFactor) || 1,
-        isBaseUnit: Boolean(data.isBaseUnit),
-        barcode: data.barcode,
-      };
-      product.units.push(newUnit);
-      return newUnit;
-    }
-  },
-
-  /**
-   * Cập nhật đơn vị tính quy đổi (SN-21 / SN-23)
-   */
-  async updateProductUnit(productId: string, unitId: string, data: Partial<ProductUnit>): Promise<ProductUnit> {
-    try {
-      const response = await apiClient.put<ProductUnit>(`/products/${productId}/units/${unitId}`, data);
-      return response.data;
-    } catch {
-      const product = MOCK_PRODUCTS.find((p) => p.id === productId || p.sku === productId);
-      if (!product || !product.units) throw new Error("Không tìm thấy đơn vị tính");
-      const unit = product.units.find((u) => u.id === unitId);
-      if (!unit) throw new Error("Không tìm thấy đơn vị tính");
-      if (data.unitName) unit.unitName = data.unitName;
-      if (data.conversionFactor !== undefined) unit.conversionFactor = Number(data.conversionFactor);
-      if (data.barcode !== undefined) unit.barcode = data.barcode;
-      return unit;
-    }
-  },
-
-  /**
-   * Xóa đơn vị tính quy đổi (SN-21 / SN-23)
-   */
-  async deleteProductUnit(productId: string, unitId: string): Promise<void> {
-    try {
-      await apiClient.delete(`/products/${productId}/units/${unitId}`);
-    } catch {
-      const product = MOCK_PRODUCTS.find((p) => p.id === productId || p.sku === productId);
-      if (product && product.units) {
-        product.units = product.units.filter((u) => u.id !== unitId);
-      }
-    }
-  },
 };
-

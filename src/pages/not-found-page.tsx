@@ -5,9 +5,9 @@ import {
   Home,
   ArrowLeft,
   Compass,
-  Layers,
   Search,
 } from "lucide-react";
+import logoImg from "../assets/logo.png";
 import { getStoredUser, getRedirectPathByUser, getRedirectPathByRole } from "../utils/navigation";
 import { tokenStorage } from "../utils/token-storage";
 
@@ -114,8 +114,8 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({ standalone = false }
         {/* Header thương hiệu tối giản */}
         <header className="w-full max-w-7xl mx-auto flex items-center justify-between py-4">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs">
-              <Layers className="h-4.5 w-4.5" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden shadow-xs">
+              <img src={logoImg} alt="LOHA SALES" className="w-full h-full object-cover" />
             </div>
             <span className="text-base font-bold text-slate-900 tracking-tight">
               LOHA SALES

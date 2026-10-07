@@ -4,7 +4,6 @@ import {
   RefreshCw,
   Search,
   CheckCircle2,
-  AlertTriangle,
   Clock,
   FileEdit,
   Eye,
@@ -19,12 +18,15 @@ import {
   X,
   FileSpreadsheet,
   Calendar,
+  RotateCcw,
 } from 'lucide-react';
 import { getStoredUser } from '../utils/navigation';
 import { priceListsService } from '../services/price-lists.service';
 import { PriceListFormModal } from '../components/price-list-form-modal';
 import { PriceListCloneModal } from '../components/price-list-clone-modal';
-import { Toast, type ToastType } from '../components/toast';
+import { showToast } from '../components/toast';
+import { PriceListsTableSkeleton } from '../components/skeletons';
+import { ConfirmDeleteModal } from '../components/confirm-delete-modal';
 import type {
   PriceList,
   CustomerGroupType,
@@ -64,13 +66,6 @@ export const PriceListsPage: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<PriceListStatusType | 'ALL'>('ALL');
 
-  // Toast thông báo nổi
-  const [toast, setToast] = useState<{
-    type: ToastType;
-    title?: string;
-    message: string;
-  } | null>(null);
-
   // Modals state
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [editingPriceList, setEditingPriceList] = useState<PriceList | null>(null);
@@ -100,6 +95,15 @@ export const PriceListsPage: React.FC = () => {
     return () => clearTimeout(handler);
   }, [searchInput]);
 
+  // Đặt lại toàn bộ bộ lọc bảng giá
+  const handleResetFilters = useCallback(() => {
+    setSearchInput('');
+    setSearchTerm('');
+    setSelectedGroup('ALL');
+    setSelectedStatus('ALL');
+    setPage(1);
+  }, []);
+
   // Tải danh sách bảng giá từ Service
   const loadPriceLists = useCallback(async () => {
     try {
@@ -115,13 +119,8 @@ export const PriceListsPage: React.FC = () => {
       setPriceLists(res.data);
       setTotal(res.total);
       setTotalPages(res.totalPages || 1);
-    } catch (err: unknown) {
-      const error = err as Error;
-      setToast({
-        type: 'error',
-        title: 'Lỗi tải dữ liệu',
-        message: error.message || 'Không thể nạp danh sách bảng giá.',
-      });
+    } catch {
+      showToast('error', 'Không thể nạp danh sách bảng giá');
     } finally {
       setLoading(false);
     }
@@ -163,11 +162,7 @@ export const PriceListsPage: React.FC = () => {
   // Mở modal chỉnh sửa
   const handleOpenEditModal = (pl: PriceList) => {
     if (pl.hasOrders) {
-      setToast({
-        type: 'warning',
-        title: 'Khóa sửa an toàn (SN-27)',
-        message: `Bảng giá [${pl.code}] đã phát sinh đơn hàng thực tế trong hệ thống. Tuyệt đối không được chỉnh sửa trực tiếp để bảo vệ chứng từ, vui lòng sử dụng chức năng "Tạo phiên bản mới (Clone Version)".`,
-      });
+      showToast('error', 'Không thể chỉnh sửa bảng giá đã phát sinh đơn hàng');
       return;
     }
     setEditingPriceList(pl);
@@ -184,26 +179,16 @@ export const PriceListsPage: React.FC = () => {
   // Thực hiện Clone Version
   const handleConfirmClone = async (source: PriceList, newName: string, newCode: string) => {
     try {
-      const cloned = await priceListsService.clonePriceList(source.id, {
+      await priceListsService.clonePriceList(source.id, {
         name: newName,
         code: newCode,
       });
 
-      setToast({
-        type: 'success',
-        title: 'Nhân bản thành công (SN-27)',
-        message: `Đã tạo phiên bản mới v${cloned.version}.0: "${cloned.name}" [${cloned.code}] ở trạng thái Bản nháp.`,
-      });
-
+      showToast('success', 'Nhân bản bảng giá thành công');
       await loadPriceLists();
-    } catch (err: unknown) {
-      const error = err as Error;
-      setToast({
-        type: 'error',
-        title: 'Nhân bản thất bại',
-        message: error.message || 'Không thể tạo phiên bản mới.',
-      });
-      throw err;
+    } catch {
+      showToast('error', 'Nhân bản bảng giá thất bại');
+      throw new Error('Clone failed');
     }
   };
 
@@ -212,39 +197,22 @@ export const PriceListsPage: React.FC = () => {
     try {
       if (editingPriceList) {
         await priceListsService.updatePriceList(editingPriceList.id, payload);
-        setToast({
-          type: 'success',
-          title: 'Cập nhật thành công',
-          message: `Đã lưu thay đổi cho bảng giá "${payload.name}".`,
-        });
+        showToast('success', 'Cập nhật bảng giá thành công');
       } else {
         await priceListsService.createPriceList(payload);
-        setToast({
-          type: 'success',
-          title: 'Tạo mới thành công',
-          message: `Đã thêm bảng giá mới "${payload.name}" vào hệ thống.`,
-        });
+        showToast('success', 'Tạo mới bảng giá thành công');
       }
       await loadPriceLists();
-    } catch (err: unknown) {
-      const error = err as Error;
-      setToast({
-        type: 'error',
-        title: 'Thao tác thất bại',
-        message: error.message || 'Không thể lưu bảng giá.',
-      });
-      throw err;
+    } catch {
+      showToast('error', 'Không thể lưu bảng giá');
+      throw new Error('Submit failed');
     }
   };
 
   // Xác nhận xóa bảng giá
   const handlePromptDelete = (pl: PriceList) => {
     if (pl.hasOrders) {
-      setToast({
-        type: 'warning',
-        title: 'Khóa xóa an toàn (SN-27)',
-        message: `Bảng giá [${pl.code}] đã phát sinh đơn hàng trong hệ thống. Không thể xóa để bảo đảm tính toàn vẹn dữ liệu đơn hàng!`,
-      });
+      showToast('error', 'Không thể xóa bảng giá đã phát sinh đơn hàng');
       return;
     }
     setPriceListToDelete(pl);
@@ -257,21 +225,12 @@ export const PriceListsPage: React.FC = () => {
     try {
       setDeleting(true);
       await priceListsService.deletePriceList(priceListToDelete.id);
-      setToast({
-        type: 'success',
-        title: 'Đã xóa bảng giá',
-        message: `Bảng giá "${priceListToDelete.name}" đã được xóa khỏi hệ thống.`,
-      });
+      showToast('success', 'Xóa bảng giá thành công');
       setDeleteModalOpen(false);
       setPriceListToDelete(null);
       await loadPriceLists();
-    } catch (err: unknown) {
-      const error = err as Error;
-      setToast({
-        type: 'error',
-        title: 'Xóa thất bại',
-        message: error.message || 'Không thể xóa bảng giá.',
-      });
+    } catch {
+      showToast('error', 'Không thể xóa bảng giá');
     } finally {
       setDeleting(false);
     }
@@ -338,18 +297,6 @@ export const PriceListsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Toast thông báo nổi */}
-      {toast && (
-        <Toast
-          type={toast.type}
-          title={toast.title}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
-
-
-
       {/* 2. Metrics Header: 4 Thẻ chỉ số tổng quan */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1: Tổng số bảng giá */}
@@ -499,37 +446,43 @@ export const PriceListsPage: React.FC = () => {
 
       {/* 4. Table: Danh sách Bảng giá */}
       <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+        <div className="overflow-auto max-h-[calc(100vh-270px)] relative">
+          <table className="w-full text-left text-xs border-separate border-spacing-0">
             <thead>
-              <tr className="bg-slate-50/90 border-b border-slate-200/80 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-4 w-12 text-center">STT</th>
-                <th className="py-3 px-4 min-w-[200px]">Mã & Phiên bản</th>
-                <th className="py-3 px-4 min-w-[240px]">Tên Bảng giá</th>
-                <th className="py-3 px-4 w-40">Nhóm áp dụng</th>
-                <th className="py-3 px-4 w-48">Thời gian hiệu lực</th>
-                <th className="py-3 px-4 w-36">Trạng thái</th>
-                <th className="py-3 px-4 w-44 text-center">Ràng buộc Đơn hàng</th>
-                <th className="py-3 px-4 w-36 text-center">Thao tác</th>
+              <tr className="text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                <th className="sticky top-0 left-0 z-30 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-12 min-w-12 text-center">STT</th>
+                <th className="sticky top-0 left-12 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 min-w-[200px]">Mã & Phiên bản</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 min-w-[240px]">Tên Bảng giá</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-40">Nhóm áp dụng</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-48">Thời gian hiệu lực</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36">Trạng thái</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-44 text-center">Ràng buộc Đơn hàng</th>
+                <th className="sticky top-0 right-0 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 w-36 min-w-36 text-center">Thao tác</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading ? (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                      <span className="text-xs">Đang tải danh sách bảng giá...</span>
-                    </div>
-                  </td>
-                </tr>
+                <PriceListsTableSkeleton count={6} />
               ) : priceLists.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400 border-b border-slate-100">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <FileSpreadsheet className="w-8 h-8 text-slate-300" />
-                      <span className="text-xs">Không tìm thấy bảng giá nào phù hợp với bộ lọc.</span>
+                      <p className="font-semibold text-slate-600 text-sm">Không tìm thấy bảng giá nào</p>
+                      <p className="text-xs text-slate-400">
+                        Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc nhóm khách hàng / trạng thái.
+                      </p>
+                      {(searchTerm || selectedGroup !== 'ALL' || selectedStatus !== 'ALL') && (
+                        <button
+                          type="button"
+                          onClick={handleResetFilters}
+                          className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 shadow-2xs transition-all cursor-pointer active:scale-95"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          <span>Đặt lại bộ lọc</span>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -543,12 +496,12 @@ export const PriceListsPage: React.FC = () => {
                       className="hover:bg-slate-50/70 transition-colors group"
                     >
                       {/* STT */}
-                      <td className="py-3.5 px-4 text-center text-slate-400 font-mono text-[11px]">
+                      <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors border-b border-slate-100 py-3.5 px-4 text-center text-slate-400 font-mono text-[11px] w-12 min-w-12">
                         {(page - 1) * limit + idx + 1}
                       </td>
 
                       {/* Mã bảng giá & Badge Version */}
-                      <td className="py-3.5 px-4">
+                      <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 py-3.5 px-4">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-mono font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
                             {pl.code}
@@ -566,7 +519,7 @@ export const PriceListsPage: React.FC = () => {
                       </td>
 
                       {/* Tên bảng giá & Mô tả */}
-                      <td className="py-3.5 px-4">
+                      <td className="border-b border-slate-100 py-3.5 px-4">
                         <div className="font-semibold text-slate-900 leading-snug">
                           {pl.name}
                         </div>
@@ -581,12 +534,12 @@ export const PriceListsPage: React.FC = () => {
                       </td>
 
                       {/* Nhóm áp dụng */}
-                      <td className="py-3.5 px-4">
+                      <td className="border-b border-slate-100 py-3.5 px-4">
                         {renderCustomerGroupBadge(pl.customerGroup)}
                       </td>
 
                       {/* Thời gian hiệu lực */}
-                      <td className="py-3.5 px-4 text-slate-600 font-medium">
+                      <td className="border-b border-slate-100 py-3.5 px-4 text-slate-600 font-medium">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span>
@@ -596,12 +549,12 @@ export const PriceListsPage: React.FC = () => {
                       </td>
 
                       {/* Trạng thái */}
-                      <td className="py-3.5 px-4">
+                      <td className="border-b border-slate-100 py-3.5 px-4">
                         {renderStatusBadge(pl.status)}
                       </td>
 
                       {/* Ràng buộc đơn hàng */}
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="border-b border-slate-100 py-3.5 px-4 text-center">
                         {isLocked ? (
                           <div
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 text-[11px] font-semibold ring-1 ring-inset ring-amber-600/30"
@@ -619,7 +572,7 @@ export const PriceListsPage: React.FC = () => {
                       </td>
 
                       {/* Thao tác (Xem, Sửa, Clone, Xóa) */}
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="sticky right-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 py-3.5 px-4 text-center w-36 min-w-36">
                         <div className="flex items-center justify-center gap-1.5">
                           {/* Xem chi tiết */}
                           <button
@@ -733,7 +686,7 @@ export const PriceListsPage: React.FC = () => {
         onClose={() => setFormModalOpen(false)}
         onSubmit={handleFormSubmit}
         onClone={handleOpenCloneModal}
-        onToast={(type, title, message) => setToast({ type, title, message })}
+        onToast={(type, title, message) => showToast(type, title || message)}
         initialData={editingPriceList}
         isReadOnly={isViewOnly}
       />
@@ -747,42 +700,30 @@ export const PriceListsPage: React.FC = () => {
       />
 
       {/* 7. Modal Xác nhận Xóa */}
-      {deleteModalOpen && priceListToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center gap-3 text-rose-600">
-              <div className="p-2.5 rounded-xl bg-rose-50 ring-1 ring-rose-500/20">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">Xác nhận xóa Bảng giá</h3>
-            </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed">
+      <ConfirmDeleteModal
+        isOpen={deleteModalOpen && Boolean(priceListToDelete)}
+        onCancel={() => {
+          setDeleteModalOpen(false);
+          setPriceListToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Xác nhận xóa Bảng giá"
+        itemName={priceListToDelete?.name}
+        itemCode={priceListToDelete?.code}
+        message={
+          priceListToDelete ? (
+            <p>
               Bạn có chắc chắn muốn xóa bảng giá{' '}
-              <strong className="text-slate-900 font-semibold">{priceListToDelete.name}</strong> [
-              {priceListToDelete.code}] không? Thao tác này không thể hoàn tác sau khi thực hiện.
+              <strong className="text-slate-900 font-bold">&quot;{priceListToDelete.name}&quot;</strong> [
+              {priceListToDelete.code}] không?
             </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setDeleteModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={deleting}
-                className="px-4 py-2 text-xs font-semibold rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-xs cursor-pointer"
-              >
-                {deleting ? 'Đang xóa...' : 'Đồng ý xóa'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          ) : undefined
+        }
+        warningText="Thao tác này mang tính vĩnh viễn và không thể hoàn tác sau khi thực hiện."
+        confirmText="Đồng ý xóa"
+        cancelText="Hủy bỏ"
+        isDeleting={deleting}
+      />
     </div>
   );
 };

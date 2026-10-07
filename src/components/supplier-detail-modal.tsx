@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
+import React from "react";
 import {
   Building2,
   FileText,
@@ -10,6 +9,7 @@ import {
   CreditCard,
   Edit2,
 } from "lucide-react";
+import { ModalLayout } from "./modal-layout";
 import type { Supplier } from "../types/supplier";
 
 export interface SupplierDetailModalProps {
@@ -27,28 +27,7 @@ export const SupplierDetailModal: React.FC<SupplierDetailModalProps> = ({
   onEdit,
   canEdit = false,
 }) => {
-  const [isClosing, setIsClosing] = useState(false);
-
-  const handleClose = useCallback(() => {
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-      setIsClosing(false);
-    }, 220);
-  }, [onClose]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        handleClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, handleClose]);
-
   if (!isOpen || !supplier) return null;
-  if (typeof document === "undefined") return null;
 
   const isActive = supplier.status === "ACTIVE";
   const taxCode = supplier.taxCode || supplier.tax_code;
@@ -72,35 +51,43 @@ export const SupplierDetailModal: React.FC<SupplierDetailModalProps> = ({
     }
   };
 
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      onClick={handleClose}
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/35 backdrop-blur-[2px] transition-all ${
-        isClosing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"
-      }`}
-    >
-      <div
-        className={`relative w-full max-w-xl rounded-2xl sm:rounded-3xl bg-white shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] ${
-          isClosing ? "animate-modal-out" : "animate-modal-in"
-        }`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center gap-3 px-6 py-4.5 border-b border-slate-100 bg-slate-50/60">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 border border-blue-100/60 shadow-2xs">
-            <Building2 className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base font-bold text-slate-900 truncate" title={supplier.name}>
-              {supplier.name}
-            </h2>
-          </div>
-        </div>
+  return (
+    <ModalLayout
+      isOpen={isOpen}
+      onClose={onClose}
+      title={supplier.name}
+      subtitle={`Mã đối tác: ${supplier.code} • Hồ sơ chi tiết`}
+      icon={<Building2 className="h-5 w-5" />}
+      maxWidth="max-w-xl"
+      bodyClassName="p-6 space-y-5 text-xs text-slate-700"
+      footer={
+        <div className="flex items-center justify-between w-full">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
+          >
+            Đóng
+          </button>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5 text-xs text-slate-700">
+          {canEdit && onEdit && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                setTimeout(() => {
+                  onEdit(supplier);
+                }, 220);
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-xs cursor-pointer"
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+              <span>Chỉnh sửa đối tác</span>
+            </button>
+          )}
+        </div>
+      }
+    >
           {/* Thông tin pháp lý & thanh toán */}
           <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 space-y-3.5">
             <h3 className="font-bold text-slate-800 text-[13px] flex items-center gap-2">
@@ -241,36 +228,6 @@ export const SupplierDetailModal: React.FC<SupplierDetailModalProps> = ({
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/60">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="px-5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
-          >
-            Đóng
-          </button>
-
-          {canEdit && onEdit && (
-            <button
-              type="button"
-              onClick={() => {
-                handleClose();
-                setTimeout(() => {
-                  onEdit(supplier);
-                }, 220);
-              }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-xs cursor-pointer"
-            >
-              <Edit2 className="h-3.5 w-3.5" />
-              <span>Chỉnh sửa đối tác</span>
-            </button>
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body
+    </ModalLayout>
   );
 };

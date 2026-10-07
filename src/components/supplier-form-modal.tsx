@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
 import {
   Building2,
   Phone,
@@ -12,6 +11,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Button } from "./button";
+import { ModalLayout } from "./modal-layout";
 import type {
   Supplier,
   CreateSupplierPayload,
@@ -55,30 +55,14 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
 
   const handleClose = useCallback(() => {
     if (isSubmitting) return;
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-      setIsClosing(false);
-    }, 220);
+    onClose();
   }, [isSubmitting, onClose]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen && !isSubmitting) {
-        handleClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, isSubmitting, handleClose]);
-
-  useEffect(() => {
     if (isOpen) {
-      setIsClosing(false);
       if (initialData) {
         setCode(initialData.code || "");
         setName(initialData.name || "");
@@ -160,35 +144,46 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
     }
   };
 
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      onClick={handleClose}
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-slate-900/35 backdrop-blur-[2px] transition-all ${
-        isClosing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"
-      }`}
-    >
-      <div
-        className={`relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] ${
-          isClosing ? "animate-modal-out" : "animate-modal-in"
-        }`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center gap-3 px-6 py-4.5 border-b border-slate-100 bg-slate-50/70">
-          <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100/50 shadow-2xs">
-            <Building2 className="h-5 w-5" />
-          </div>
-          <h2 className="text-base font-bold text-slate-800">
-            {isEditMode
-              ? "Chỉnh sửa nhà cung cấp"
-              : "Thêm nhà cung cấp mới"}
-          </h2>
-        </div>
+  return (
+    <ModalLayout
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={isEditMode ? "Chỉnh sửa nhà cung cấp" : "Thêm nhà cung cấp mới"}
+      subtitle={
+        isEditMode
+          ? (initialData?.code ? `Mã NCC: ${initialData.code}` : "Cập nhật hồ sơ đối tác")
+          : "Thêm đối tác cung ứng hàng hóa mới vào hệ thống"
+      }
+      icon={<Building2 className="h-5 w-5" />}
+      maxWidth="max-w-2xl"
+      bodyClassName="p-6 space-y-4"
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            disabled={isSubmitting}
+            className="py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer"
+          >
+            Hủy bỏ
+          </Button>
 
-        {/* Body Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleSubmit}
+            isLoading={isSubmitting}
+            loadingText="Đang lưu..."
+            className="py-2 px-5 rounded-xl text-xs font-semibold cursor-pointer shadow-xs hover:shadow-sm"
+          >
+            <CheckCircle2 className="h-4 w-4 mr-1.5" />
+            {isEditMode ? "Lưu thay đổi" : "Tạo nhà cung cấp"}
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
           {errors.form && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
@@ -397,33 +392,6 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
             />
           </div>
         </form>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={isSubmitting}
-            className="py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer"
-          >
-            Hủy bỏ
-          </Button>
-
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleSubmit}
-            isLoading={isSubmitting}
-            loadingText="Đang lưu..."
-            className="py-2 px-5 rounded-xl text-xs font-semibold cursor-pointer shadow-xs hover:shadow-sm"
-          >
-            <CheckCircle2 className="h-4 w-4 mr-1.5" />
-            {isEditMode ? "Lưu thay đổi" : "Tạo nhà cung cấp"}
-          </Button>
-        </div>
-      </div>
-    </div>,
-    document.body
+    </ModalLayout>
   );
 };

@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   Lock,
@@ -7,11 +6,13 @@ import {
   Plus,
   Trash2,
   CheckCircle2,
-  Calendar,
   Layers,
   FileSpreadsheet,
   AlertCircle,
 } from 'lucide-react';
+import { ModalLayout } from './modal-layout';
+import { CurrencyInput } from './currency-input';
+import { DateInput, formatVietnameseDate } from './date-input';
 import type {
   PriceList,
   PriceListItem,
@@ -158,6 +159,12 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
 
   const hasPricingErrors = Object.keys(pricingErrors).length > 0;
 
+  // Kiểm tra tính hợp lệ của khoảng ngày áp dụng
+  const isDateRangeInvalid = Boolean(startDate && endDate && endDate < startDate);
+  const dateRangeErrorMessage = isDateRangeInvalid
+    ? `Ngày kết thúc (${formatVietnameseDate(endDate)}) không được nhỏ hơn ngày bắt đầu (${formatVietnameseDate(startDate)})`
+    : null;
+
   // Thêm một sản phẩm vào bảng giá
   const handleAddProduct = () => {
     if (!selectedProductToAdd) return;
@@ -292,90 +299,154 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
 
   if (!isOpen) return null;
 
-  return createPortal(
-    <div
-      onClick={handleClose}
-      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/35 backdrop-blur-[2px] transition-all ${
-        isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
-      }`}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className={`relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden ${
-          isClosing ? 'animate-modal-out' : 'animate-modal-in'
-        }`}
-      >
-        {/* Header Modal - Gọn gàng, loại bỏ dấu X và chữ mô tả dài */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/20">
-              <FileSpreadsheet className="w-5 h-5" />
-            </div>
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-base font-bold text-slate-800">
-                {initialData
-                  ? effectiveReadOnly
-                    ? `Chi tiết Bảng giá: ${initialData.name}`
-                    : `Chỉnh sửa Bảng giá: ${initialData.name}`
-                  : 'Thiết lập Bảng giá mới'}
-              </h2>
-              {initialData && (
-                <span className="px-2 py-0.5 text-[11px] font-mono font-semibold rounded-md bg-slate-100 text-slate-700">
-                  v{initialData.version}.0
-                </span>
-              )}
+  const modalBanner = (hasOrders || localError) ? (
+    <div className="space-y-3 px-6 pt-4">
+      {/* Banner cảnh báo vàng khi hasOrders == true */}
+      {hasOrders && (
+        <div className="p-3.5 rounded-xl bg-amber-50/90 border border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <Lock className="w-5 h-5 text-amber-600 shrink-0" />
+            <div className="text-xs">
+              <strong className="font-semibold block text-amber-950 sm:inline">
+                Đã phát sinh đơn hàng:
+              </strong>{' '}
+              Bảng giá này đã có đơn hàng nên không thể chỉnh sửa trực tiếp nhằm bảo toàn chứng từ.
             </div>
           </div>
-        </div>
 
-        {/* Banner cảnh báo vàng khi hasOrders == true */}
-        {hasOrders && (
-          <div className="mx-6 mt-4 p-3.5 rounded-xl bg-amber-50/90 border border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 animate-in fade-in">
-            <div className="flex items-center gap-2.5">
-              <Lock className="w-5 h-5 text-amber-600 shrink-0" />
-              <div className="text-xs">
-                <strong className="font-semibold block text-amber-950 sm:inline">
-                  Đã phát sinh đơn hàng:
-                </strong>{' '}
-                Bảng giá này đã có đơn hàng nên không thể chỉnh sửa trực tiếp nhằm bảo toàn chứng từ.
-              </div>
-            </div>
-
-            {onClone && initialData && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClone(initialData);
-                  handleClose();
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs shadow-xs transition-all cursor-pointer shrink-0"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                <span>Tạo phiên bản mới (Clone Version)</span>
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Banner cảnh báo đỏ khi có lỗi form */}
-        {localError && (
-          <div className="mx-6 mt-3.5 p-3 rounded-xl bg-rose-50 border border-rose-200/80 flex items-center justify-between gap-3 text-rose-900 animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
-              <div className="text-xs font-semibold">{localError}</div>
-            </div>
+          {onClone && initialData && (
             <button
               type="button"
-              onClick={() => setLocalError(null)}
-              className="text-xs font-semibold text-rose-600 hover:text-rose-800 underline cursor-pointer"
+              onClick={() => {
+                onClone(initialData);
+                handleClose();
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs shadow-xs transition-all cursor-pointer shrink-0"
             >
-              Đóng
+              <Copy className="w-3.5 h-3.5" />
+              <span>Tạo phiên bản mới (Clone Version)</span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-        {/* Body Form cuộn linh hoạt */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+      {/* Banner cảnh báo đỏ khi có lỗi form */}
+      {localError && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200/80 flex items-center justify-between gap-3 text-rose-900 animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
+            <div className="text-xs font-semibold">{localError}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLocalError(null)}
+            className="text-xs font-semibold text-rose-600 hover:text-rose-800 underline cursor-pointer"
+          >
+            Đóng
+          </button>
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  const modalFooter = (
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
+      <div className="text-xs text-slate-500 font-medium">
+        {isDateRangeInvalid ? (
+          <span className="text-rose-600 flex items-center gap-1 font-semibold">
+            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+            {dateRangeErrorMessage}
+          </span>
+        ) : hasPricingErrors ? (
+          <span className="text-rose-600 flex items-center gap-1">
+            <AlertTriangle className="w-4 h-4 text-rose-500" />
+            Có {Object.keys(pricingErrors).length} sản phẩm vi phạm ràng buộc giá sàn.
+          </span>
+        ) : items.length === 0 ? (
+          <span className="text-amber-600 flex items-center gap-1">
+            <AlertCircle className="w-4 h-4 text-amber-500" />
+            Chưa có sản phẩm nào trong bảng giá này.
+          </span>
+        ) : (
+          <span className="text-emerald-700 flex items-center gap-1">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            Dữ liệu hợp lệ, sẵn sàng lưu vào hệ thống.
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+        <button
+          type="button"
+          onClick={handleClose}
+          className="flex-1 sm:flex-initial px-4 py-2.5 sm:py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+        >
+          {effectiveReadOnly ? 'Đóng' : 'Hủy bỏ'}
+        </button>
+
+        {!effectiveReadOnly && (
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting || hasPricingErrors || isDateRangeInvalid || items.length === 0}
+            title={
+              isDateRangeInvalid
+                ? dateRangeErrorMessage || undefined
+                : hasPricingErrors
+                ? `Không thể lưu: Có ${Object.keys(pricingErrors).length} mặt hàng có Giá bán nhỏ hơn Giá sàn`
+                : items.length === 0
+                ? 'Bảng giá chưa có sản phẩm nào'
+                : 'Lưu cấu hình Bảng giá'
+            }
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 sm:py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white shadow-xs transition-all cursor-pointer"
+          >
+            {submitting ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Đang lưu...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Lưu Bảng giá</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <ModalLayout
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={
+        initialData
+          ? effectiveReadOnly
+            ? `Chi tiết Bảng giá: ${initialData.name}`
+            : `Chỉnh sửa Bảng giá: ${initialData.name}`
+          : 'Thiết lập Bảng giá mới'
+      }
+      subtitle={
+        initialData
+          ? `Mã: ${initialData.code} • Cập nhật giá theo thời vụ và nhóm đối tác`
+          : 'Cấu hình đơn giá, giá sàn và thời gian áp dụng'
+      }
+      icon={<FileSpreadsheet className="w-5 h-5 text-blue-600" />}
+      badge={
+        initialData ? (
+          <span className="px-2 py-0.5 text-[11px] font-mono font-semibold rounded-md bg-slate-100 text-slate-700">
+            v{initialData.version}.0
+          </span>
+        ) : undefined
+      }
+      maxWidth="max-w-4xl"
+      banner={modalBanner}
+      footer={modalFooter}
+      bodyClassName="p-4 sm:p-6 space-y-4 sm:space-y-5"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 pb-2">
           {/* Nhóm thông tin cơ bản */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {/* Tên bảng giá */}
@@ -426,38 +497,36 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
             </div>
 
             {/* Ngày bắt đầu */}
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">
-                Ngày bắt đầu <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  disabled={effectiveReadOnly}
-                  className="w-full pl-9 pr-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
-                />
-              </div>
-            </div>
+            <DateInput
+              label="Ngày bắt đầu"
+              required
+              value={startDate}
+              max={endDate || undefined}
+              onChange={(val) => {
+                setStartDate(val);
+                setLocalError(null);
+              }}
+              disabled={effectiveReadOnly}
+              placeholder="dd/mm/yyyy"
+              helperText="Định dạng dd/mm/yyyy"
+            />
 
             {/* Ngày kết thúc */}
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">
-                Ngày kết thúc <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  disabled={effectiveReadOnly}
-                  className="w-full pl-9 pr-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
-                />
-              </div>
-            </div>
+            <DateInput
+              label="Ngày kết thúc"
+              required
+              value={endDate}
+              min={startDate || undefined}
+              onChange={(val) => {
+                setEndDate(val);
+                setLocalError(null);
+              }}
+              disabled={effectiveReadOnly}
+              placeholder="dd/mm/yyyy"
+              error={dateRangeErrorMessage}
+              hasError={isDateRangeInvalid}
+              helperText={!isDateRangeInvalid ? (startDate ? `Tự động chặn ngày trước ${formatVietnameseDate(startDate)}` : undefined) : undefined}
+            />
 
             {/* Trạng thái */}
             <div className="space-y-1">
@@ -516,11 +585,11 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
                     <span>Nạp tất cả SKU</span>
                   </button>
 
-                  <div className="flex items-center gap-1.5 flex-1 sm:flex-initial">
+                  <div className="flex items-center gap-1.5 flex-1 w-full sm:w-auto">
                     <select
                       value={selectedProductToAdd}
                       onChange={(e) => setSelectedProductToAdd(e.target.value)}
-                      className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 max-w-[220px] cursor-pointer"
+                      className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 flex-1 sm:max-w-[220px] cursor-pointer"
                     >
                       <option value="">-- Chọn sản phẩm --</option>
                       {availableProducts.map((p) => (
@@ -534,7 +603,7 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
                       type="button"
                       onClick={handleAddProduct}
                       disabled={!selectedProductToAdd}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap shrink-0"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Thêm</span>
@@ -561,7 +630,7 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
             )}
 
             {/* Bảng Dòng Sản phẩm */}
-            <div className="rounded-xl border border-slate-200/90 overflow-hidden shadow-2xs">
+            <div className="rounded-xl border border-slate-200/90 overflow-x-auto shadow-2xs">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-semibold text-[11px] uppercase tracking-wider">
@@ -622,55 +691,41 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
 
                           {/* Ô nhập Giá sàn */}
                           <td className="py-2.5 px-3">
-                            <div className="relative">
-                              <input
-                                type="number"
-                                min={0}
-                                step={1000}
-                                value={item.minPrice}
-                                onChange={(e) =>
-                                  handleUpdateItem(
-                                    item.id,
-                                    'minPrice',
-                                    Math.max(0, Number(e.target.value) || 0),
-                                  )
-                                }
-                                disabled={effectiveReadOnly}
-                                className="w-full px-2.5 py-1.5 text-xs font-mono font-semibold rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-slate-50"
-                              />
-                              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-mono pointer-events-none">
-                                đ
-                              </span>
-                            </div>
+                            <CurrencyInput
+                              value={item.minPrice}
+                              onChange={(val) =>
+                                handleUpdateItem(
+                                  item.id,
+                                  'minPrice',
+                                  val ?? 0,
+                                )
+                              }
+                              disabled={effectiveReadOnly}
+                              placeholder="0"
+                              className="w-full px-2.5 py-1.5 text-xs font-mono font-semibold rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-slate-50"
+                            />
                           </td>
 
                           {/* Ô nhập Giá bán + Báo lỗi Realtime */}
                           <td className="py-2.5 px-3">
                             <div>
-                              <div className="relative">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={1000}
-                                  value={item.price}
-                                  onChange={(e) =>
-                                    handleUpdateItem(
-                                      item.id,
-                                      'price',
-                                      Math.max(0, Number(e.target.value) || 0),
-                                    )
-                                  }
-                                  disabled={effectiveReadOnly}
-                                  className={`w-full px-2.5 py-1.5 text-xs font-mono font-bold rounded-lg border focus:outline-none transition-colors disabled:bg-slate-50 ${
-                                    isItemError
-                                      ? 'border-rose-500 bg-rose-50/70 text-rose-700 ring-2 ring-rose-200/90 focus:ring-rose-300'
-                                      : 'border-slate-200 bg-white text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100'
-                                  }`}
-                                />
-                                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-mono pointer-events-none">
-                                  đ
-                                </span>
-                              </div>
+                              <CurrencyInput
+                                value={item.price}
+                                onChange={(val) =>
+                                  handleUpdateItem(
+                                    item.id,
+                                    'price',
+                                    val ?? 0,
+                                  )
+                                }
+                                disabled={effectiveReadOnly}
+                                placeholder="0"
+                                className={`w-full px-2.5 py-1.5 text-xs font-mono font-bold rounded-lg border focus:outline-none transition-colors disabled:bg-slate-50 ${
+                                  isItemError
+                                    ? 'border-rose-500 bg-rose-50/70 text-rose-700 ring-2 ring-rose-200/90 focus:ring-rose-300'
+                                    : 'border-slate-200 bg-white text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100'
+                                }`}
+                              />
 
                               {isItemError && (
                                 <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-rose-600 leading-tight">
@@ -703,68 +758,6 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
             </div>
           </div>
         </form>
-
-        {/* Footer Actions */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/70">
-          <div className="text-xs text-slate-500 flex items-center gap-2">
-            {hasPricingErrors ? (
-              <span className="text-rose-600 font-semibold flex items-center gap-1">
-                <AlertCircle className="w-4 h-4" />
-                Vui lòng điều chỉnh các dòng giá bị vi phạm giá sàn trước khi lưu.
-              </span>
-            ) : items.length === 0 ? (
-              <span className="text-amber-700 flex items-center gap-1">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
-                Cần thêm ít nhất một sản phẩm vào bảng giá.
-              </span>
-            ) : (
-              <span className="text-emerald-700 flex items-center gap-1">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                Dữ liệu hợp lệ, sẵn sàng lưu vào hệ thống.
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-            >
-              {effectiveReadOnly ? 'Đóng' : 'Hủy bỏ'}
-            </button>
-
-            {!effectiveReadOnly && (
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={submitting || hasPricingErrors || items.length === 0}
-                title={
-                  hasPricingErrors
-                    ? `Không thể lưu: Có ${Object.keys(pricingErrors).length} mặt hàng có Giá bán nhỏ hơn Giá sàn`
-                    : items.length === 0
-                    ? 'Bảng giá chưa có sản phẩm nào'
-                    : 'Lưu cấu hình Bảng giá'
-                }
-                className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white shadow-xs transition-all cursor-pointer"
-              >
-                {submitting ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Đang lưu...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Lưu Bảng giá</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body,
+    </ModalLayout>
   );
 };

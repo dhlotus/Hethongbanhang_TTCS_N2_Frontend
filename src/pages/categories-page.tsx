@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   FolderTree,
@@ -15,14 +16,17 @@ import {
   RefreshCw,
   Search,
   AlertCircle,
-  CheckCircle2,
   X,
   ShieldCheck,
   Tag,
   ExternalLink,
   ArrowLeft,
+  MoreVertical,
 } from "lucide-react";
+import { CategoriesTreeSkeleton } from "../components/skeletons";
 import { categoriesService } from "../services/categories.service";
+import { showToast } from "../components/toast";
+import { ConfirmDeleteModal } from "../components/confirm-delete-modal";
 import { tokenStorage } from "../utils/token-storage";
 import type {
   CategoryTreeNode,
@@ -57,18 +61,20 @@ export const CategoriesPage: React.FC = () => {
   const [moveSubmitting, setMoveSubmitting] = useState<boolean>(false);
   const [moveError, setMoveError] = useState<string | null>(null);
 
-  // Toast State
-  const [toast, setToast] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
-
   // Modal State: View Products in Category Branch
   const [selectedCategoryForProducts, setSelectedCategoryForProducts] =
     useState<CategoryTreeNode | null>(null);
   const [categoryProducts, setCategoryProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState<boolean>(false);
   const [isProductsModalOpen, setIsProductsModalOpen] = useState<boolean>(false);
+  const [activeActionSheetNode, setActiveActionSheetNode] =
+    useState<CategoryTreeNode | null>(null);
+
+  // Modal State: Delete Category
+  const [categoryToDelete, setCategoryToDelete] =
+    useState<CategoryTreeNode | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const currentUser = tokenStorage.getUser();
   const userRoles = currentUser?.roles || (currentUser?.role ? [currentUser.role] : []);
@@ -96,9 +102,8 @@ export const CategoriesPage: React.FC = () => {
       };
       addExp(tree);
       setExpandedNodes(initialExpanded);
-    } catch (err: unknown) {
-      const error = err as Error;
-      setToast({ type: "error", message: error.message });
+    } catch {
+      showToast("error", "Không thể tải danh mục sản phẩm");
     } finally {
       setLoading(false);
     }
@@ -107,14 +112,6 @@ export const CategoriesPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  // Toast Auto-dismiss
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 4500);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
 
   // Toggle Node Expand/Collapse
   const toggleExpand = (nodeId: string) => {
@@ -218,10 +215,7 @@ export const CategoriesPage: React.FC = () => {
           status: formStatus,
         };
         await categoriesService.updateCategory(editingCategory.id, payload);
-        setToast({
-          type: "success",
-          message: `Đã cập nhật nhóm hàng [${formName.trim()}] thành công!`,
-        });
+        showToast("success", "Cập nhật nhóm hàng thành công");
       } else {
         const payload: CreateCategoryPayload = {
           name: formName.trim(),
@@ -231,10 +225,7 @@ export const CategoriesPage: React.FC = () => {
           status: formStatus,
         };
         await categoriesService.createCategory(payload);
-        setToast({
-          type: "success",
-          message: `Đã tạo mới nhóm hàng [${formName.trim()}] thành công!`,
-        });
+        showToast("success", "Tạo mới nhóm hàng thành công");
       }
       setIsModalOpen(false);
       await loadData();
@@ -266,11 +257,8 @@ export const CategoriesPage: React.FC = () => {
         sourceCategoryId: moveSourceId,
         targetCategoryId: moveTargetId,
       };
-      const res = await categoriesService.moveProducts(payload);
-      setToast({
-        type: "success",
-        message: res.message,
-      });
+      await categoriesService.moveProducts(payload);
+      showToast("success", "Di chuyển sản phẩm thành công");
       setIsMoveModalOpen(false);
       await loadData();
     } catch (err: unknown) {
@@ -281,29 +269,26 @@ export const CategoriesPage: React.FC = () => {
     }
   };
 
-  // Delete Category (Verifies constraints)
-  const handleDeleteCategory = async (cat: CategoryTreeNode) => {
-    if (
-      !window.confirm(
-        `Bạn có chắc chắn muốn xóa nhóm hàng [${cat.code} - ${cat.name}]?\n\nHệ thống sẽ kiểm tra nghiêm ngặt xem nhóm có chứa nhóm con hoặc sản phẩm không trước khi xóa.`
-      )
-    ) {
-      return;
-    }
+  // Delete Category Flow
+  const handleDeleteCategory = (cat: CategoryTreeNode) => {
+    setCategoryToDelete(cat);
+    setDeleteModalOpen(true);
+  };
 
+  const handleConfirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+    setIsDeleting(true);
     try {
-      const res = await categoriesService.deleteCategory(cat.id);
-      setToast({
-        type: "success",
-        message: res.message,
-      });
+      await categoriesService.deleteCategory(categoryToDelete.id);
+      showToast("success", "Xóa nhóm hàng thành công");
+      setDeleteModalOpen(false);
+      setCategoryToDelete(null);
       await loadData();
     } catch (err: unknown) {
       const error = err as Error;
-      setToast({
-        type: "error",
-        message: error.message,
-      });
+      showToast("error", error.message || "Không thể xóa nhóm hàng");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -349,20 +334,20 @@ export const CategoriesPage: React.FC = () => {
       <div key={node.id} className="relative flex flex-col">
         {/* Node Row */}
         <div
-          className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 my-1 rounded-2xl border transition-all duration-150 ${node.level === 1
+          className={`group flex items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3.5 my-1 rounded-xl sm:rounded-2xl border transition-all duration-150 ${node.level === 1
             ? "bg-white border-slate-200 shadow-2xs hover:border-blue-300"
             : node.level === 2
-              ? "bg-slate-50/70 border-slate-200/80 ml-4 sm:ml-7 hover:border-indigo-300"
-              : "bg-white border-slate-200/60 ml-8 sm:ml-14 hover:border-purple-300"
+              ? "bg-slate-50/70 border-slate-200/80 hover:border-indigo-300"
+              : "bg-white border-slate-200/60 hover:border-purple-300"
             }`}
         >
           {/* Left: Expander + Icon + Name + Badges */}
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
             {hasChildren ? (
               <button
                 type="button"
                 onClick={() => toggleExpand(node.id)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors focus:outline-none cursor-pointer"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors focus:outline-none cursor-pointer shrink-0"
                 title={isExpanded ? "Thu gọn" : "Mở rộng"}
               >
                 {isExpanded ? (
@@ -372,13 +357,13 @@ export const CategoriesPage: React.FC = () => {
                 )}
               </button>
             ) : (
-              <span className="w-6 h-6 flex items-center justify-center text-slate-300">
+              <span className="w-6 h-6 flex items-center justify-center text-slate-300 shrink-0">
                 •
               </span>
             )}
 
             <div
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${node.level === 1
+              className={`flex h-7.5 w-7.5 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-xl ${node.level === 1
                 ? "bg-blue-100/70 text-blue-700"
                 : node.level === 2
                   ? "bg-indigo-100/70 text-indigo-700"
@@ -396,27 +381,27 @@ export const CategoriesPage: React.FC = () => {
               )}
             </div>
 
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-col min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <span className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
                   {node.name}
                 </span>
-                <span className="font-mono text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">
+                <span className="font-mono text-[10px] sm:text-[11px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium shrink-0">
                   {node.code}
                 </span>
                 <span
-                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${levelBadge.color}`}
+                  className={`hidden md:inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full border ${levelBadge.color} shrink-0`}
                 >
                   {levelBadge.label}
                 </span>
                 {node.status === "INACTIVE" && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                  <span className="text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 shrink-0">
                     Ngừng KD
                   </span>
                 )}
               </div>
               {node.description && (
-                <span className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                <span className="text-[11px] text-slate-400 line-clamp-1 mt-0.5 hidden sm:block">
                   {node.description}
                 </span>
               )}
@@ -424,33 +409,37 @@ export const CategoriesPage: React.FC = () => {
           </div>
 
           {/* Right: Product Count Badge + Action Buttons */}
-          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Product Count Badge - Clickable to view products */}
             <button
               type="button"
               onClick={() => handleViewProducts(node)}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 ${node.productCount > 0
+              className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl text-[11px] sm:text-xs font-semibold border transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 ${node.productCount > 0
                 ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                 : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
                 }`}
               title="Bấm để xem danh sách mặt hàng thuộc nhánh này"
             >
-              <Package className="h-3.5 w-3.5 text-emerald-600" />
-              <span>{node.productCount} sản phẩm</span>
+              <Package className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              <span>
+                {node.productCount} <span className="hidden sm:inline">sản phẩm</span>
+              </span>
             </button>
 
-            {/* Actions (Admins & Sales Managers) */}
+            {/* Desktop Actions Toolbar (>= sm) */}
             {canManageCategories && (
-              <div className="flex items-center gap-1 bg-white/80 p-0.5 rounded-xl border border-slate-200/80 shadow-2xs">
+              <div className="hidden sm:flex items-center gap-1 bg-white/80 p-0.5 rounded-xl border border-slate-200/80 shadow-2xs">
                 {/* + Thêm nhóm con */}
-                <button
-                  type="button"
-                  onClick={() => handleOpenCreateModal(node)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors focus:outline-none cursor-pointer"
-                  title="Thêm nhóm con cấp dưới"
-                >
-                  <FolderPlus className="h-4 w-4" />
-                </button>
+                {node.level < 3 && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCreateModal(node)}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors focus:outline-none cursor-pointer"
+                    title="Thêm nhóm con cấp dưới"
+                  >
+                    <FolderPlus className="h-4 w-4" />
+                  </button>
+                )}
 
                 {/* Sửa thông tin */}
                 <button
@@ -483,12 +472,25 @@ export const CategoriesPage: React.FC = () => {
                 </button>
               </div>
             )}
+
+            {/* Mobile Action Sheet Trigger (...) */}
+            {canManageCategories && (
+              <button
+                type="button"
+                onClick={() => setActiveActionSheetNode(node)}
+                className="sm:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 active:scale-95 transition-all cursor-pointer"
+                title="Tùy chọn thao tác"
+                aria-label="Tùy chọn thao tác"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Children Render */}
+        {/* Children Render: Thụt lề linh hoạt pl-2 sm:pl-6 theo chuẩn Mobile */}
         {hasChildren && isExpanded && (
-          <div className="flex flex-col border-l-2 border-slate-200/60 ml-4 sm:ml-6 pl-1 sm:pl-2">
+          <div className="flex flex-col border-l-2 border-slate-200/60 ml-1.5 sm:ml-4 pl-2 sm:pl-6 space-y-1">
             {node.children.map(renderTreeNode)}
           </div>
         )}
@@ -498,85 +500,58 @@ export const CategoriesPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Toast Notification */}
-      {toast && (
-        <div
-          className={`fixed bottom-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border text-xs sm:text-sm animate-bounce ${toast.type === "success"
-            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-            : "bg-rose-50 border-rose-200 text-rose-800"
-            }`}
-        >
-          {toast.type === "success" ? (
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-          ) : (
-            <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />
-          )}
-          <span className="font-medium">{toast.message}</span>
+      {/* 1. Header Toolbar (Tinh gọn 1 hàng, không lặp thẻ h1, tiết kiệm 150px chiều cao) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 sm:px-5 sm:py-3 rounded-2xl border border-slate-200/80 shadow-2xs">
+        {/* Bên trái: Icon + Tiêu đề phụ + Badge */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+              <FolderTree className="h-4 w-4" />
+            </div>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+              Phân cấp Nhóm hàng & Ngành hàng
+            </h2>
+          </div>
+
+          <span className="text-slate-300 hidden sm:inline">|</span>
+
+          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+            <ShieldCheck className="h-3 w-3 text-emerald-600" />
+            <span>Toàn vẹn dữ liệu</span>
+          </span>
+        </div>
+
+        {/* Bên phải: Nút hành động */}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+          <Link
+            to="/catalog/products"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all focus:outline-none cursor-pointer group"
+            title="Quay lại Danh mục sản phẩm"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
+            <span>Danh mục sản phẩm</span>
+          </Link>
+
           <button
             type="button"
-            onClick={() => setToast(null)}
-            className="p-1 text-slate-400 hover:text-slate-600"
+            onClick={loadData}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none cursor-pointer"
+            title="Làm mới cây danh mục"
           >
-            <X className="h-4 w-4" />
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span>Làm mới</span>
           </button>
-        </div>
-      )}
 
-      {/* Header Banner */}
-      <div className="rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-7 shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-600/20">
-                <FolderTree className="h-3.5 w-3.5 text-blue-600" />
-                <span>Cấu trúc Cây Đa Cấp (Tree Structure - SN-150 / SN-22)</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                <span>Ràng buộc toàn vẹn dữ liệu cứng</span>
-              </span>
-            </div>
-
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-              Quản lý Cây Nhóm Hàng & Ngành Hàng
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
-              Phân cấp nhóm hàng hóa tối thiểu 3 cấp (Nhóm chính → Nhóm phụ → Phân loại con), quản lý sản phẩm liên kết, hỗ trợ chuyển sản phẩm và ngăn chặn xóa nhóm chưa dọn sạch.
-            </p>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap">
-            <Link
-              to="/catalog/products"
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all focus:outline-none cursor-pointer group"
-              title="Quay lại Danh mục sản phẩm"
-            >
-              <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
-              <span>Danh mục sản phẩm</span>
-            </Link>
-
+          {canManageCategories && (
             <button
               type="button"
-              onClick={loadData}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none cursor-pointer"
-              title="Làm mới cây danh mục"
+              onClick={() => handleOpenCreateModal()}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer whitespace-nowrap"
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">Làm mới</span>
+              <Plus className="h-3.5 w-3.5" />
+              <span>Thêm ngành hàng cha</span>
             </button>
-
-            {canManageCategories && (
-              <button
-                type="button"
-                onClick={() => handleOpenCreateModal()}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Thêm ngành hàng cha</span>
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
@@ -614,10 +589,7 @@ export const CategoriesPage: React.FC = () => {
       {/* Tree Content */}
       <div className="rounded-3xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-xs min-h-[350px]">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-16 text-slate-400 space-y-3">
-            <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
-            <p className="text-xs">Đang tải cấu trúc cây danh mục...</p>
-          </div>
+          <CategoriesTreeSkeleton />
         ) : filteredTree.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-slate-400 space-y-3">
             <FolderTree className="h-10 w-10 text-slate-300" />
@@ -639,10 +611,10 @@ export const CategoriesPage: React.FC = () => {
       {/* MODAL: THÊM MỚI / CHỈNH SỬA NHÓM HÀNG                                 */}
       {/* ===================================================================== */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="w-full max-w-lg bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="w-full max-w-lg bg-white rounded-none sm:rounded-3xl border-0 sm:border border-slate-200 shadow-2xl flex flex-col h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[90vh]">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
+            <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 bg-slate-50/70 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                   <FolderPlus className="h-5 w-5" />
@@ -670,7 +642,7 @@ export const CategoriesPage: React.FC = () => {
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSubmitCategory} className="p-6 space-y-4 overflow-y-auto">
+            <form onSubmit={handleSubmitCategory} className="flex-1 min-h-0 p-5 sm:p-6 space-y-4 overflow-y-auto overscroll-contain">
               {formError && (
                 <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
                   <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
@@ -782,18 +754,18 @@ export const CategoriesPage: React.FC = () => {
               </div>
 
               {/* Modal Footer */}
-              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+              <div className="sticky bottom-0 z-10 flex items-center justify-end gap-2.5 px-5 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-4">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                  className="flex-1 sm:flex-initial px-4 py-2.5 sm:py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
                 >
                   Hủy bỏ
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                  className="flex-1 sm:flex-initial px-5 py-2.5 sm:py-2 rounded-xl bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
                 >
                   {submitting && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
                   <span>{editingCategory ? "Lưu thay đổi" : "Tạo nhóm hàng"}</span>
@@ -808,9 +780,9 @@ export const CategoriesPage: React.FC = () => {
       {/* MODAL: DI CHUYỂN SẢN PHẨM GIỮA CÁC NHÓM                              */}
       {/* ===================================================================== */}
       {isMoveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-white rounded-none sm:rounded-3xl border-0 sm:border border-slate-200 shadow-2xl flex flex-col h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[90vh]">
+            <div className="sticky top-0 z-10 flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 bg-slate-50/70 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                   <ArrowRightLeft className="h-5 w-5" />
@@ -833,7 +805,7 @@ export const CategoriesPage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitMove} className="p-6 space-y-4">
+            <form onSubmit={handleSubmitMove} className="flex-1 min-h-0 p-5 sm:p-6 space-y-4 overflow-y-auto overscroll-contain">
               {moveError && (
                 <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
                   <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
@@ -888,18 +860,18 @@ export const CategoriesPage: React.FC = () => {
                 </span>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+              <div className="sticky bottom-0 z-10 flex items-center justify-end gap-2.5 px-5 sm:px-6 py-3 sm:py-4 -mx-5 sm:-mx-6 -mb-5 sm:-mb-6 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-4">
                 <button
                   type="button"
                   onClick={() => setIsMoveModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                  className="flex-1 sm:flex-initial px-4 py-2.5 sm:py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
                 >
                   Hủy bỏ
                 </button>
                 <button
                   type="submit"
                   disabled={moveSubmitting}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                  className="flex-1 sm:flex-initial px-5 py-2.5 sm:py-2 rounded-xl bg-indigo-600 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
                 >
                   {moveSubmitting && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
                   <span>Thực hiện chuyển</span>
@@ -1022,6 +994,227 @@ export const CategoriesPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ===================================================================== */}
+      {/* MOBILE ACTION SHEET (MENU 3 CHẤM DẠNG VUỐT GỌN GÀNG TRÊN SMARTPHONE) */}
+      {/* ===================================================================== */}
+      {activeActionSheetNode &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+            {/* Backdrop click to dismiss */}
+            <div
+              className="absolute inset-0"
+              onClick={() => setActiveActionSheetNode(null)}
+            />
+
+            {/* Bottom Sheet Card */}
+            <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl border border-slate-100 z-10 space-y-4 animate-in slide-in-from-bottom-5 duration-200">
+              {/* Handle bar on mobile */}
+              <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
+
+              {/* Header: Thông tin nhóm hàng */}
+              <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                      activeActionSheetNode.level === 1
+                        ? "bg-blue-100 text-blue-700"
+                        : activeActionSheetNode.level === 2
+                        ? "bg-indigo-100 text-indigo-700"
+                        : "bg-purple-100 text-purple-700"
+                    }`}
+                  >
+                    <Folder className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-bold text-slate-900 truncate">
+                      {activeActionSheetNode.name}
+                    </h4>
+                    <p className="text-xs text-slate-500 font-mono">
+                      Mã: {activeActionSheetNode.code} • Cấp {activeActionSheetNode.level}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveActionSheetNode(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Danh sách hành động (Action Buttons) */}
+              <div className="space-y-1 text-sm font-medium">
+                {/* 1. Thêm nhóm con (nếu chưa tới cấp 3) */}
+                {activeActionSheetNode.level < 3 && canManageCategories && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const node = activeActionSheetNode;
+                      setActiveActionSheetNode(null);
+                      handleOpenCreateModal(node);
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-blue-50 text-slate-700 hover:text-blue-700 transition-colors text-left"
+                  >
+                    <div className="p-2 rounded-xl bg-blue-50 text-blue-600 shrink-0">
+                      <FolderPlus className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-800 text-xs sm:text-sm">
+                        Thêm nhóm con cấp {activeActionSheetNode.level + 1}
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Tạo danh mục trực thuộc nhóm này
+                      </p>
+                    </div>
+                  </button>
+                )}
+
+                {/* 2. Sửa thông tin */}
+                {canManageCategories && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const node = activeActionSheetNode;
+                      setActiveActionSheetNode(null);
+                      handleOpenEditModal(node);
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-amber-50 text-slate-700 hover:text-amber-700 transition-colors text-left"
+                  >
+                    <div className="p-2 rounded-xl bg-amber-50 text-amber-600 shrink-0">
+                      <Edit2 className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-800 text-xs sm:text-sm">
+                        Sửa thông tin nhóm hàng
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Đổi tên, mã hoặc trạng thái kinh doanh
+                      </p>
+                    </div>
+                  </button>
+                )}
+
+                {/* 3. Chuyển sản phẩm */}
+                {canManageCategories && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const node = activeActionSheetNode;
+                      setActiveActionSheetNode(null);
+                      handleOpenMoveModal(node);
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 transition-colors text-left"
+                  >
+                    <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+                      <ArrowRightLeft className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-800 text-xs sm:text-sm">
+                        Chuyển sản phẩm sang nhóm khác
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Di chuyển toàn bộ SKU sang danh mục mới
+                      </p>
+                    </div>
+                  </button>
+                )}
+
+                {/* 4. Xem danh sách sản phẩm */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const node = activeActionSheetNode;
+                    setActiveActionSheetNode(null);
+                    handleViewProducts(node);
+                  }}
+                  className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 transition-colors text-left"
+                >
+                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+                    <Package className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-800 text-xs sm:text-sm">
+                      Xem {activeActionSheetNode.productCount} sản phẩm
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      Danh sách SKU hàng hóa thuộc phân cấp này
+                    </p>
+                  </div>
+                </button>
+
+                {/* 5. Xóa nhóm hàng */}
+                {canManageCategories && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const node = activeActionSheetNode;
+                      setActiveActionSheetNode(null);
+                      handleDeleteCategory(node);
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-rose-50 text-rose-600 transition-colors text-left"
+                  >
+                    <div className="p-2 rounded-xl bg-rose-50 text-rose-600 shrink-0">
+                      <Trash2 className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-rose-700 text-xs sm:text-sm">
+                        Xóa nhóm hàng
+                      </p>
+                      <p className="text-[11px] text-rose-400">
+                        Yêu cầu nhóm rỗng và không có nhóm con
+                      </p>
+                    </div>
+                  </button>
+                )}
+              </div>
+
+              {/* Nút đóng */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveActionSheetNode(null)}
+                  className="w-full py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {/* MODAL: XÁC NHẬN XÓA NHÓM HÀNG */}
+      <ConfirmDeleteModal
+        isOpen={deleteModalOpen && Boolean(categoryToDelete)}
+        onCancel={() => {
+          setDeleteModalOpen(false);
+          setCategoryToDelete(null);
+        }}
+        onConfirm={handleConfirmDeleteCategory}
+        title="Xác nhận xóa Nhóm Hàng"
+        itemName={categoryToDelete?.name}
+        itemCode={categoryToDelete?.code}
+        message={
+          categoryToDelete ? (
+            <div className="space-y-1.5">
+              <p>
+                Bạn có chắc chắn muốn xóa nhóm hàng{" "}
+                <strong className="text-slate-900 font-bold">&quot;{categoryToDelete.name}&quot;</strong> khỏi hệ thống?
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Hệ thống yêu cầu nhóm hàng phải rỗng (không chứa sản phẩm) và không có nhóm hàng con trực thuộc.
+              </p>
+            </div>
+          ) : undefined
+        }
+        warningText="Thao tác này mang tính vĩnh viễn và không thể hoàn tác sau khi thực hiện."
+        confirmText="Xác nhận xóa"
+        cancelText="Hủy bỏ"
+        isDeleting={isDeleting}
+      />
     </div>
   );
 };

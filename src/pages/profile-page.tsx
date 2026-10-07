@@ -8,10 +8,7 @@ import {
   Loader2,
   PencilLine,
   Check,
-  Lock,
   User,
-  Eye,
-  EyeOff,
   Mail,
   Building2,
   Calendar,
@@ -23,19 +20,12 @@ import {
 } from "lucide-react";
 import { AvatarUploadModal } from "../components/avatar-upload-modal";
 import { usersService, type UpdateMyProfilePayload } from "../services/users.service";
-import { authService } from "../services/auth.service";
 import { tokenStorage } from "../utils/token-storage";
 import { getStoredUser } from "../utils/navigation";
 import { getUserContext, ROLE_CONFIGS } from "../utils/navigation-config";
 import { resolveAvatarUrl } from "../utils/avatar";
+import { showToast } from "../components/toast";
 import type { AuthUser, UserRoleType } from "../types/auth";
-
-type ToastType = "success" | "error";
-
-interface ToastState {
-  type: ToastType;
-  message: string;
-}
 
 const VIETNAM_PHONE_PATTERN = /^(?:0|\+84)(?:[35789]\d{8}|2\d{9})$/;
 
@@ -92,7 +82,6 @@ export const ProfilePage: React.FC = () => {
   const [user, setUser] = useState<AuthUser | null>(getStoredUser());
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [showIdentityConfirmModal, setShowIdentityConfirmModal] = useState<boolean>(false);
-  const [toast, setToast] = useState<ToastState | null>(null);
   const [isFetchingProfile, setIsFetchingProfile] = useState<boolean>(false);
 
   // Trạng thái chỉnh sửa trực tiếp (Inline Editing)
@@ -101,15 +90,12 @@ export const ProfilePage: React.FC = () => {
   const [editPhone, setEditPhone] = useState<string>("");
   const [editDateOfBirth, setEditDateOfBirth] = useState<string>("");
   const [editGender, setEditGender] = useState<string>("");
-  const [confirmPassword, setConfirmPassword] = useState<string>("");
-  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   // Lỗi xác thực form
   const [nameError, setNameError] = useState<string>("");
   const [phoneError, setPhoneError] = useState<string>("");
   const [dobError, setDobError] = useState<string>("");
   const [genderError, setGenderError] = useState<string>("");
-  const [passwordError, setPasswordError] = useState<string>("");
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
   const context = getUserContext(user);
@@ -149,13 +135,6 @@ export const ProfilePage: React.FC = () => {
       );
     }
   }, [user, cleanFullName]);
-
-  // Tự động ẩn toast sau 3.5 giây
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   // Đồng bộ thông tin profile mới nhất từ backend khi vào trang
   const fetchProfile = useCallback(async () => {
@@ -216,7 +195,7 @@ export const ProfilePage: React.FC = () => {
       tokenStorage.setUser(updatedUser);
       setUser(updatedUser);
       setShowUploadModal(false);
-      setToast({ type: "success", message: "Ảnh đại diện đã được cập nhật thành công!" });
+      showToast("success", "Cập nhật ảnh đại diện thành công");
       window.dispatchEvent(new CustomEvent("avatar-updated", { detail: demoUrl }));
       return;
     }
@@ -237,15 +216,12 @@ export const ProfilePage: React.FC = () => {
       }
 
       setShowUploadModal(false);
-      setToast({ type: "success", message: "Ảnh đại diện đã được cập nhật thành công!" });
+      showToast("success", "Cập nhật ảnh đại diện thành công");
     } catch (err: unknown) {
       const responseMessage = axios.isAxiosError<{ message?: string }>(err)
         ? err.response?.data?.message
         : undefined;
-      setToast({
-        type: "error",
-        message: responseMessage || "Không thể cập nhật ảnh đại diện. Vui lòng thử lại!",
-      });
+      showToast("error", responseMessage || "Không thể cập nhật ảnh đại diện");
     }
   };
 
@@ -254,9 +230,6 @@ export const ProfilePage: React.FC = () => {
     setPhoneError("");
     setDobError("");
     setGenderError("");
-    setPasswordError("");
-    setConfirmPassword("");
-    setShowPassword(false);
     setIsEditing(true);
   };
 
@@ -266,8 +239,6 @@ export const ProfilePage: React.FC = () => {
     setPhoneError("");
     setDobError("");
     setGenderError("");
-    setPasswordError("");
-    setConfirmPassword("");
     if (user) {
       setEditFullName(user.fullName || cleanFullName);
       setEditPhone(user.phone || "");
@@ -280,7 +251,6 @@ export const ProfilePage: React.FC = () => {
   const handlePreSave = () => {
     const normalizedName = editFullName.trim();
     const normalizedPhone = editPhone.trim();
-    const normalizedPassword = confirmPassword.trim();
 
     let hasError = false;
 
@@ -325,13 +295,6 @@ export const ProfilePage: React.FC = () => {
       }
     }
 
-    if (!normalizedPassword) {
-      setPasswordError("Vui lòng nhập mật khẩu tài khoản để lưu thay đổi.");
-      hasError = true;
-    } else {
-      setPasswordError("");
-    }
-
     if (hasError) return;
 
     // Nếu người dùng đang cập nhật Ngày sinh & Giới tính lần đầu: Mở Popup Modal xác nhận thông tin!
@@ -349,26 +312,9 @@ export const ProfilePage: React.FC = () => {
 
     const normalizedName = editFullName.trim();
     const normalizedPhone = editPhone.trim();
-    const normalizedPassword = confirmPassword.trim();
 
     try {
-      // 1. Xác thực mật khẩu tài khoản
-      try {
-        await authService.login({
-          email: user?.email || user?.username || "",
-          password: normalizedPassword,
-        });
-      } catch (authErr: unknown) {
-        const errorMsg =
-          axios.isAxiosError<{ message?: string }>(authErr) && authErr.response?.data?.message
-            ? authErr.response.data.message
-            : "Mật khẩu xác nhận không chính xác. Vui lòng kiểm tra lại.";
-        setPasswordError(errorMsg);
-        setIsSaving(false);
-        return;
-      }
-
-      // 2. Tạo payload cập nhật
+      // 1. Tạo payload cập nhật
       const willLockIdentity = !isIdentityLocked && Boolean(editDateOfBirth && editGender);
 
       const payload: UpdateMyProfilePayload = {
@@ -422,13 +368,12 @@ export const ProfilePage: React.FC = () => {
       window.dispatchEvent(new CustomEvent("user-updated", { detail: mergedUser }));
 
       setIsEditing(false);
-      setConfirmPassword("");
-      setToast({
-        type: "success",
-        message: willLockIdentity
-          ? "Đã lưu hồ sơ và xác thực định danh (Ngày sinh & Giới tính) thành công!"
-          : "Thông tin cá nhân đã được cập nhật thành công!",
-      });
+      showToast(
+        "success",
+        willLockIdentity
+          ? "Xác thực định danh và lưu hồ sơ thành công"
+          : "Cập nhật thông tin cá nhân thành công"
+      );
     } catch (error: unknown) {
       const responseMessage = axios.isAxiosError<{ message?: string | string[] }>(error)
         ? error.response?.data?.message
@@ -436,10 +381,7 @@ export const ProfilePage: React.FC = () => {
       const message = Array.isArray(responseMessage)
         ? responseMessage.join(", ")
         : responseMessage || (error instanceof Error ? error.message : "");
-      setToast({
-        type: "error",
-        message: message || "Không thể cập nhật hồ sơ. Vui lòng thử lại.",
-      });
+      showToast("error", message || "Không thể cập nhật hồ sơ");
     } finally {
       setIsSaving(false);
     }
@@ -459,27 +401,6 @@ export const ProfilePage: React.FC = () => {
   const completionPercent = calculateCompletionPercent();
   return (
     <div className="space-y-6 w-full max-w-[1520px] mx-auto antialiased">
-      {/* =============================================================== */}
-      {/* 1. TOAST THÔNG BÁO NỔI                                          */}
-      {/* =============================================================== */}
-      {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`fixed top-20 right-4 z-50 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold shadow-xl transition-all duration-300 animate-in fade-in slide-from-top-3 ${toast.type === "success"
-              ? "bg-emerald-600 text-white shadow-emerald-600/20"
-              : "bg-rose-600 text-white shadow-rose-600/20"
-            }`}
-        >
-          {toast.type === "success" ? (
-            <CheckCircle className="h-5 w-5 shrink-0" />
-          ) : (
-            <AlertCircle className="h-5 w-5 shrink-0" />
-          )}
-          <span>{toast.message}</span>
-        </div>
-      )}
-
       {/* =============================================================== */}
       {/* 2. THÔNG BÁO YÊU CẦU BỔ SUNG THÔNG TIN CÁ NHÂN                    */}
       {/* =============================================================== */}
@@ -858,7 +779,7 @@ export const ProfilePage: React.FC = () => {
               </div>
             </div>
 
-            {/* VÙNG CHỈNH SỬA MỞ RỘNG (MẬT KHẨU & NÚT HÀNH ĐỘNG) - HIỆU ỨNG ACCORDION MƯỢT MÀ KHÔNG BỊ GIẬT */}
+            {/* VÙNG NÚT HÀNH ĐỘNG - HIỆU ỨNG ACCORDION MƯỢT MÀ */}
             <div
               className={`grid transition-all duration-300 ease-in-out ${
                 isEditing
@@ -866,52 +787,9 @@ export const ProfilePage: React.FC = () => {
                   : "grid-rows-[0fr] opacity-0 pointer-events-none"
               }`}
             >
-              <div className="overflow-hidden space-y-6">
-                {/* Ô nhập mật khẩu xác nhận */}
-                <div className="p-5 rounded-2xl border border-blue-200 bg-blue-50/50 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                      <Lock className="w-4 h-4 text-blue-600" />
-                      <span>Nhập mật khẩu tài khoản để lưu thay đổi</span>
-                    </label>
-                    <span className="text-xs font-semibold text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-md">
-                      Bắt buộc
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(e) => {
-                        setConfirmPassword(e.target.value);
-                        if (passwordError) setPasswordError("");
-                      }}
-                      placeholder="Nhập mật khẩu hiện tại để xác nhận chính chủ..."
-                      className={`w-full h-12 pl-4 pr-11 text-sm sm:text-[15px] font-semibold rounded-xl border bg-white text-slate-900 focus:outline-none transition-all ${
-                        passwordError
-                          ? "border-rose-400 ring-2 ring-rose-100"
-                          : "border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer transition-colors"
-                      title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                    >
-                      {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
-                    </button>
-                  </div>
-                  {passwordError && (
-                    <p className="mt-1 text-xs font-medium text-rose-600 flex items-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                      {passwordError}
-                    </p>
-                  )}
-                </div>
-
-                {/* Nút hành động Lưu thay đổi / Hủy nằm ở DƯỚI CÙNG */}
-                <div className="flex flex-col sm:flex-row items-center justify-end gap-3.5 pt-2">
+              <div className="overflow-hidden">
+                {/* Nút hành động Lưu thay đổi / Hủy */}
+                <div className="flex flex-col sm:flex-row items-center justify-end gap-3.5">
                   <button
                     type="button"
                     onClick={handleCancelEdit}
@@ -924,7 +802,7 @@ export const ProfilePage: React.FC = () => {
                     type="button"
                     id="profile-save-btn"
                     onClick={handlePreSave}
-                    disabled={isSaving || !confirmPassword.trim()}
+                    disabled={isSaving}
                     className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 h-12 text-sm font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
                   >
                     {isSaving ? (
