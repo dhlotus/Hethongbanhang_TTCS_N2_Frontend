@@ -263,6 +263,46 @@
   margin-top: var(--space-6); /* 24px */
 }
 
+/* ========================================================================= */
+/* 5. GRID & BỐ CỤC HỆ THỐNG (UI_GUIDELINES)                                 */
+/* ========================================================================= */
+/* 5.3 Main Content container chuẩn */
+.layout-content-container {
+  width: 100%;
+  max-width: 1600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* 5.6 Phân cấp bố cục trang tiêu chuẩn (Page Hierarchy) */
+.layout-page-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6); /* 24px */
+}
+
+.layout-page-header {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-3); /* 12px */
+}
+
+@media (min-width: 640px) {
+  .layout-page-header {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.layout-filter-toolbar {
+  border-radius: 1rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: var(--space-4); /* 16px */
+  gap: var(--space-3); /* 12px */
+}
+
 body, button, input, select, textarea {
   font-family: var(--font-sans);
   letter-spacing: -0.01em;

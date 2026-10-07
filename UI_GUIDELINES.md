@@ -425,3 +425,96 @@ Spacing phải được quản lý tập trung:
 
 Mọi khoảng cách trong LOHA SALES phải có lý do về **quan hệ, nhóm nội dung hoặc thứ bậc thông tin**.
 
+
+## 5. Grid / Bố cục
+
+### 5.1. Nguyên tắc chung
+
+- Toàn bộ LOHA SALES phải sử dụng một hệ thống bố cục thống nhất.
+- Bố cục phải rõ ràng, cân đối và ưu tiên nội dung chính.
+- Không căn chỉnh từng màn hình theo cách riêng nếu không có lý do UX rõ ràng.
+- Ưu tiên bố cục **đơn giản, thoáng, dễ quét thông tin**.
+- Header, Sidebar và Main Content phải tuân theo cùng một hệ thống layout.
+
+### 5.2. Cấu trúc Layout chính
+
+LOHA SALES sử dụng cấu trúc:
+
+```text
+┌─────────────────────────────────────────────┐
+│                    Header                   │
+├──────────────┬──────────────────────────────┤
+│              │                              │
+│   Sidebar    │        Main Content          │
+│              │                              │
+│              │                              │
+└──────────────┴──────────────────────────────┘
+````
+
+* **Header:** khu vực điều hướng và thông tin hệ thống.
+* **Sidebar:** điều hướng chính.
+* **Main Content:** khu vực hiển thị nội dung/chức năng.
+* Không để nội dung chính bị che bởi Header hoặc Sidebar.
+
+### 5.3. Main Content
+
+* Main Content phải có giới hạn chiều rộng hợp lý để tránh nội dung trải quá rộng.
+* Nội dung phải được căn chỉnh theo một trục thẳng đứng nhất quán.
+* Các Page Title, Filter, Table, Card và Section phải tuân theo cùng một vùng nội dung.
+* Không để các component quan trọng sát mép màn hình.
+* Khoảng cách hai bên phải sử dụng Spacing Token.
+
+### 5.4. Grid
+
+* Sử dụng Grid/Flexbox để xây dựng bố cục.
+* Các cột phải có quy tắc rõ ràng và responsive.
+* Không sử dụng các giá trị width/position tùy ý chỉ để ép giao diện khớp với một màn hình.
+* Các thành phần cùng cấp nên được căn theo cùng một đường Grid.
+* Khi thay đổi kích thước màn hình, bố cục phải tự điều chỉnh thay vì phá vỡ cấu trúc.
+
+### 5.5. Responsive Layout
+
+Bố cục phải thích ứng với:
+
+* Desktop
+* Laptop
+* Tablet
+* Mobile
+
+Quy tắc:
+
+* Desktop: Sidebar đầy đủ, nội dung sử dụng bố cục nhiều cột khi phù hợp.
+* Tablet: giảm số cột và điều chỉnh khoảng cách.
+* Mobile: ưu tiên bố cục một cột, Sidebar có thể chuyển thành dạng thu gọn/menu.
+* Không để xuất hiện horizontal scroll không cần thiết.
+* Không thu nhỏ nội dung đến mức khó đọc chỉ để giữ nguyên số cột.
+
+### 5.6. Quy tắc phân cấp bố cục
+
+Bố cục phải thể hiện rõ:
+
+```text
+Page
+ ├── Page Header
+ │    ├── Title
+ │    └── Actions
+ │
+ ├── Filter / Search
+ │
+ ├── Main Content
+ │    ├── Section
+ │    └── Data / Components
+ │
+ └── Pagination / Additional Actions
+```
+
+Không đặt quá nhiều nhóm nội dung ngang hàng trong cùng một khu vực nếu chúng có mức độ ưu tiên khác nhau.
+
+### 5.7. Nguyên tắc cốt lõi
+
+> **Grid tạo ra sự nhất quán.
+> Layout tạo ra thứ bậc.
+> Responsive đảm bảo khả năng sử dụng.**
+
+Mọi màn hình của LOHA SALES phải có cảm giác thuộc về **cùng một hệ thống**, thay vì mỗi màn hình có một cách bố cục riêng.
+
