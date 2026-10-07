@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Warehouse,
   Boxes,
+  CheckCircle2,
   X,
   Edit2,
   Trash2,
@@ -29,7 +30,6 @@ import { categoriesService } from "../services/categories.service";
 import { inventoryService } from "../services/inventory.service";
 import { ProductFormModal } from "../components/product-form-modal";
 import { ImportProductsModal } from "../components/import-products-modal";
-import { ConfirmDeleteModal } from "../components/confirm-delete-modal";
 import { showToast } from "../components/toast";
 import {
   ProductsTableSkeleton,
@@ -400,87 +400,113 @@ export const ProductsPage: React.FC = () => {
   return (
     <div className="space-y-6">
 
-      {/* 1. Header Toolbar & Phân quyền (Tinh gọn 1 hàng, không lặp thẻ h1, tối ưu không gian làm việc) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-3.5 sm:px-5 sm:py-3 rounded-2xl border border-slate-200/80 shadow-2xs">
-        {/* Bên trái: Tiêu đề phụ + Badge trạng thái quyền hạn */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-              <Package className="h-4 w-4" />
+      {/* 1. Header Banner & RBAC Status Badge */}
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xs">
+        <div className="absolute -top-12 -right-12 h-44 w-44 rounded-full bg-blue-50/70 blur-2xl pointer-events-none" />
+        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                <Package className="h-3.5 w-3.5 text-blue-600" />
+                <span>Danh mục SKU Hàng hóa (SN-139 / SN-20)</span>
+              </span>
+
+              {canViewCostPrice ? (
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Quyền xem Giá vốn & Biên LN: MỞ (SN-10)</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">
+                  <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
+                  <span>Giá vốn bảo mật máy chủ (SN-10)</span>
+                </span>
+              )}
             </div>
-            <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
-              Danh mục SKU Hàng hóa
-            </h2>
+
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+              Quản lý Danh mục Sản phẩm & SKU Phân phối
+            </h1>
+            <p className="text-sm text-slate-500 max-w-2xl">
+              Quản lý mã định danh SKU, phân loại nhóm hàng đa cấp, quy cách đóng gói xuất buôn B2B và kiểm soát an toàn bảo mật giá vốn kinh doanh.
+            </p>
           </div>
 
-          <span className="text-slate-300 hidden sm:inline">|</span>
+          {/* Nhóm nút hành động */}
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap">
+            <button
+              type="button"
+              onClick={loadProducts}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+              title="Làm mới dữ liệu từ server"
+            >
+              <RefreshCw className={`h-4 w-4 shrink-0 ${loading ? "animate-spin" : ""}`} />
+              <span>Làm mới</span>
+            </button>
 
-          {canViewCostPrice ? (
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-              <ShieldCheck className="h-3 w-3 text-emerald-600" />
-              <span>Giá vốn & Biên LN: Đầy đủ</span>
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">
-              <ShieldAlert className="h-3 w-3 text-amber-600" />
-              <span>Giá vốn bảo mật</span>
-            </span>
-          )}
+            {canManageProducts && (
+              <>
+                <Link
+                  to="/catalog/categories"
+                  className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/80 px-3.5 py-2.5 text-xs font-semibold text-indigo-700 shadow-2xs hover:bg-indigo-100 hover:text-indigo-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+                  title="Mở giao diện quản lý Cây nhóm hàng đa cấp"
+                >
+                  <FolderTree className="h-4 w-4 shrink-0 text-indigo-600" />
+                  <span>Cây nhóm hàng</span>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => handleOpenLedgerModal()}
+                  className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/80 px-3.5 py-2.5 text-xs font-semibold text-blue-700 shadow-2xs hover:bg-blue-100 hover:text-blue-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+                  title="Xem Sổ kho & Lịch sử quy đổi giao dịch (SN-23)"
+                >
+                  <BookOpen className="h-4 w-4 shrink-0 text-blue-600" />
+                  <span>Sổ kho quy đổi</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setImportModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3.5 py-2.5 text-xs font-semibold text-emerald-700 shadow-2xs hover:bg-emerald-100 hover:text-emerald-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+                >
+                  <FileText className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <span>Nhập từ Excel</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenCreateModal}
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+                >
+                  <Plus className="h-4 w-4 shrink-0" />
+                  <span>Thêm sản phẩm mới</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Bên phải: Nhóm nút hành động */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
-          <button
-            type="button"
-            onClick={loadProducts}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-            title="Làm mới dữ liệu từ server"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${loading ? "animate-spin" : ""}`} />
-            <span>Làm mới</span>
-          </button>
-
-          {canManageProducts && (
-            <>
-              <Link
-                to="/catalog/categories"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/80 px-3 py-2 text-xs font-semibold text-indigo-700 shadow-2xs hover:bg-indigo-100 hover:text-indigo-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-                title="Mở giao diện quản lý Cây nhóm hàng đa cấp"
-              >
-                <FolderTree className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
-                <span>Cây nhóm hàng</span>
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => handleOpenLedgerModal()}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/80 px-3 py-2 text-xs font-semibold text-blue-700 shadow-2xs hover:bg-blue-100 hover:text-blue-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-                title="Xem Sổ kho & Lịch sử quy đổi giao dịch"
-              >
-                <BookOpen className="h-3.5 w-3.5 shrink-0 text-blue-600" />
-                <span>Sổ kho</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setImportModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-2xs hover:bg-emerald-100 hover:text-emerald-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-                title="Nhập danh sách sản phẩm hàng loạt từ Excel"
-              >
-                <FileText className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                <span>Nhập Excel</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleOpenCreateModal}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-              >
-                <Plus className="h-3.5 w-3.5 shrink-0" />
-                <span>Thêm sản phẩm</span>
-              </button>
-            </>
+        {/* Thông báo quyền hạn người dùng */}
+        <div className="mt-5 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs gap-2">
+          {canViewCostPrice ? (
+            <div className="flex items-center gap-2 text-emerald-700">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+              <span>
+                <strong>Chế độ Quản lý:</strong> Tài khoản của bạn được cấp phép xem và thiết lập Giá vốn (Cost Price) cùng Biên lợi nhuận (Margin %).
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-slate-600">
+              <ShieldAlert className="h-4 w-4 shrink-0 text-amber-500" />
+              <span>
+                <strong>Bảo mật bí mật kinh doanh:</strong> Cột Giá vốn và Biên lợi nhuận được ẩn tự động ở tầng máy chủ đối với vai trò hiện tại.
+              </span>
+            </div>
           )}
+          <span className="text-slate-400 font-mono text-[11px]">
+            Tài khoản: {user?.username} ({userRoles.join(", ")})
+          </span>
         </div>
       </div>
 
@@ -716,29 +742,29 @@ export const ProductsPage: React.FC = () => {
       {/* 3. Dữ liệu Sản phẩm (Data Table cho Desktop & Card View thích ứng cho Mobile) */}
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
         {/* A. BẢNG DỮ LIỆU CHO TABLET & DESKTOP (>=640px) */}
-        <div className="hidden sm:block overflow-auto max-h-[calc(100vh-270px)] relative">
-          <table className="w-full text-left text-xs text-slate-600 border-separate border-spacing-0">
-            <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="w-full text-left text-xs text-slate-600">
+            <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-100">
               <tr>
-                <th className="sticky top-0 left-0 z-30 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold text-center w-12 min-w-12 whitespace-nowrap">Ảnh</th>
-                <th className="sticky top-0 left-12 z-30 bg-slate-50 border-b border-slate-200 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] px-3 py-3 font-semibold whitespace-nowrap">Mã SKU</th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold whitespace-nowrap">Tên sản phẩm</th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold whitespace-nowrap">Nhóm hàng</th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold text-center whitespace-nowrap w-16">ĐVT</th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold whitespace-nowrap">Quy cách</th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold text-right whitespace-nowrap">Giá niêm yết</th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold text-right whitespace-nowrap">Tồn kho</th>
+                <th className="px-3 py-3 font-semibold text-center w-12 whitespace-nowrap">Ảnh</th>
+                <th className="px-3 py-3 font-semibold whitespace-nowrap">Mã SKU</th>
+                <th className="px-3 py-3 font-semibold whitespace-nowrap">Tên sản phẩm</th>
+                <th className="px-3 py-3 font-semibold whitespace-nowrap">Nhóm hàng</th>
+                <th className="px-3 py-3 font-semibold text-center whitespace-nowrap w-16">ĐVT</th>
+                <th className="px-3 py-3 font-semibold whitespace-nowrap">Quy cách</th>
+                <th className="px-3 py-3 font-semibold text-right whitespace-nowrap">Giá niêm yết</th>
+                <th className="px-3 py-3 font-semibold text-right whitespace-nowrap">Tồn kho</th>
 
-                {/* Cột nhạy cảm: Chỉ render nếu canViewCostPrice = TRUE */}
+                {/* Cột nhạy cảm: Chỉ render nếu canViewCostPrice = TRUE (SN-10) */}
                 {canViewCostPrice && (
                   <>
-                    <th className="sticky top-0 z-20 px-3 py-3 font-semibold text-right text-emerald-800 bg-emerald-50/90 border-b border-slate-200 whitespace-nowrap">
+                    <th className="px-3 py-3 font-semibold text-right text-emerald-800 bg-emerald-50/50 whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1">
                         <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
                         <span>Giá vốn</span>
                       </div>
                     </th>
-                    <th className="sticky top-0 z-20 px-3 py-3 font-semibold text-right text-emerald-800 bg-emerald-50/90 border-b border-slate-200 whitespace-nowrap">
+                    <th className="px-3 py-3 font-semibold text-right text-emerald-800 bg-emerald-50/50 whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1">
                         <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
                         <span>Biên LN</span>
@@ -747,8 +773,8 @@ export const ProductsPage: React.FC = () => {
                   </>
                 )}
 
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 px-3 py-3 font-semibold text-center whitespace-nowrap">Trạng thái</th>
-                <th className="sticky top-0 right-0 z-30 bg-slate-50 border-b border-slate-200 shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] px-3 py-3 font-semibold text-center whitespace-nowrap w-24 min-w-24">Thao tác</th>
+                <th className="px-3 py-3 font-semibold text-center whitespace-nowrap">Trạng thái</th>
+                <th className="px-3 py-3 font-semibold text-center whitespace-nowrap w-24">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
@@ -758,7 +784,7 @@ export const ProductsPage: React.FC = () => {
                 <tr>
                   <td
                     colSpan={canViewCostPrice ? 12 : 10}
-                    className="py-14 text-center text-slate-400 border-b border-slate-100"
+                    className="py-14 text-center text-slate-400"
                   >
                     <Package className="h-8 w-8 mx-auto mb-2 text-slate-300" />
                     <p className="font-semibold text-slate-600 text-sm">Không tìm thấy sản phẩm nào</p>
@@ -786,9 +812,9 @@ export const ProductsPage: React.FC = () => {
                   const isOutOfStock = p.stockQuantity === 0;
 
                   return (
-                    <tr key={p.id} className="group hover:bg-slate-50/70 transition-colors">
-                      {/* Cột 1: Ảnh Thumbnail (Sticky Left) */}
-                      <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors border-b border-slate-100 px-3 py-2.5 text-center w-12 min-w-12">
+                    <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
+                      {/* Cột 1: Ảnh Thumbnail */}
+                      <td className="px-3 py-2.5 text-center">
                         <div className="h-9 w-9 mx-auto rounded-xl border border-slate-200/90 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
                           {p.imageUrl ? (
                             <img
@@ -805,22 +831,22 @@ export const ProductsPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Cột 2: Mã SKU (Sticky Left với shadow) */}
-                      <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 px-3 py-2.5 whitespace-nowrap">
+                      {/* Cột 2: Mã SKU */}
+                      <td className="px-3 py-2.5 whitespace-nowrap">
                         <span className="font-mono font-bold text-slate-900 tracking-wider">
                           {p.sku}
                         </span>
                       </td>
 
                       {/* Cột 3: Tên sản phẩm */}
-                      <td className="border-b border-slate-100 px-3 py-2.5">
+                      <td className="px-3 py-2.5">
                         <div className="font-semibold text-slate-900 leading-snug max-w-[240px] truncate" title={p.name}>
                           {p.name}
                         </div>
                       </td>
 
                       {/* Cột 4: Nhóm hàng */}
-                      <td className="border-b border-slate-100 px-3 py-2.5">
+                      <td className="px-3 py-2.5">
                         <div className="flex flex-col gap-0.5 max-w-[220px]">
                           <span className="inline-block w-fit rounded-md bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 ring-1 ring-inset ring-purple-700/10 truncate">
                             {p.parentCategory || p.category?.split('/')[0]?.trim() || "Nhóm hàng"}
@@ -837,8 +863,8 @@ export const ProductsPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Cột 5: ĐVT cơ sở & Đơn vị quy đổi */}
-                      <td className="border-b border-slate-100 px-3 py-2.5 text-center whitespace-nowrap">
+                      {/* Cột 5: ĐVT cơ sở & Đơn vị quy đổi (SN-23 AC-1) */}
+                      <td className="px-3 py-2.5 text-center whitespace-nowrap">
                         <div className="flex flex-col items-center gap-1">
                           <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
                             {p.baseUnit}
@@ -848,7 +874,7 @@ export const ProductsPage: React.FC = () => {
                               {p.units
                                 .filter((u) => !u.isBaseUnit)
                                 .map((u) => (
-                                   <span
+                                  <span
                                     key={u.unitName}
                                     className="inline-flex items-center text-[10px] font-medium bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded border border-slate-200"
                                   >
@@ -861,17 +887,17 @@ export const ProductsPage: React.FC = () => {
                       </td>
 
                       {/* Cột 6: Quy cách đóng gói */}
-                      <td className="border-b border-slate-100 px-3 py-2.5 whitespace-nowrap text-slate-600">
+                      <td className="px-3 py-2.5 whitespace-nowrap text-slate-600">
                         {p.packagingSpec || "---"}
                       </td>
 
                       {/* Cột 7: Giá niêm yết */}
-                      <td className="border-b border-slate-100 px-3 py-2.5 text-right font-semibold text-slate-900 font-mono whitespace-nowrap">
+                      <td className="px-3 py-2.5 text-right font-semibold text-slate-900 font-mono whitespace-nowrap">
                         {formatCurrency(p.price)}
                       </td>
 
                       {/* Cột 8: Tồn kho khả dụng */}
-                      <td className="border-b border-slate-100 px-3 py-2.5 text-right whitespace-nowrap">
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap">
                         <span
                           className={`inline-flex items-center gap-1 font-bold ${
                             isOutOfStock
@@ -895,10 +921,10 @@ export const ProductsPage: React.FC = () => {
                       {/* CỘT GIÁ VỐN & BIÊN LỢI NHUẬN (Chỉ hiển thị cho ADMIN & SALES_MANAGER) */}
                       {canViewCostPrice && (
                         <>
-                          <td className="border-b border-slate-100 px-3 py-2.5 text-right font-mono font-medium text-slate-700 bg-emerald-50/20 whitespace-nowrap">
+                          <td className="px-3 py-2.5 text-right font-mono font-medium text-slate-700 bg-emerald-50/20 whitespace-nowrap">
                             {formatCurrency(p.costPrice)}
                           </td>
-                          <td className="border-b border-slate-100 px-3 py-2.5 text-right bg-emerald-50/20 whitespace-nowrap">
+                          <td className="px-3 py-2.5 text-right bg-emerald-50/20 whitespace-nowrap">
                             {p.margin !== undefined ? (
                               <span className="inline-flex items-center rounded-md bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold text-emerald-800 font-mono">
                                 +{p.margin}%
@@ -911,7 +937,7 @@ export const ProductsPage: React.FC = () => {
                       )}
 
                       {/* Cột 9: Trạng thái */}
-                      <td className="border-b border-slate-100 px-3 py-2.5 text-center whitespace-nowrap">
+                      <td className="px-3 py-2.5 text-center whitespace-nowrap">
                         {p.status === "ACTIVE" ? (
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
@@ -925,8 +951,8 @@ export const ProductsPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Cột 10: Thao tác (Sticky Right với shadow) */}
-                      <td className="sticky right-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 px-3 py-2.5 text-center whitespace-nowrap w-24 min-w-24">
+                      {/* Cột 10: Thao tác */}
+                      <td className="px-3 py-2.5 text-center whitespace-nowrap">
                         <div className="inline-flex items-center gap-1">
                           {/* Sửa thông tin */}
                           {canManageProducts && (
@@ -972,7 +998,7 @@ export const ProductsPage: React.FC = () => {
                             </button>
                           )}
 
-                          {/* Sổ kho & Lịch sử quy đổi giao dịch */}
+                          {/* Sổ kho & Lịch sử quy đổi giao dịch (SN-23) */}
                           <button
                             type="button"
                             onClick={() => handleOpenLedgerModal(p.sku)}
@@ -1353,29 +1379,72 @@ export const ProductsPage: React.FC = () => {
       />
 
       {/* 6. Modal Xác nhận xóa sản phẩm */}
-      <ConfirmDeleteModal
-        isOpen={deleteModalOpen && Boolean(productToDelete)}
-        onCancel={() => {
-          setDeleteModalOpen(false);
-          setProductToDelete(null);
-        }}
-        onConfirm={handleConfirmDelete}
-        title="Xác nhận Xóa Sản phẩm"
-        itemName={productToDelete?.name}
-        itemCode={productToDelete?.sku}
-        message={
-          productToDelete ? (
-            <p>
-              Bạn có chắc chắn muốn xóa sản phẩm{" "}
-              <strong className="text-slate-900 font-bold">&quot;{productToDelete.name}&quot;</strong> khỏi danh mục hàng hóa?
-            </p>
-          ) : undefined
-        }
-        warningText="Thao tác này mang tính vĩnh viễn và không thể hoàn tác sau khi xác nhận."
-        confirmText="Xác nhận xóa"
-        cancelText="Hủy bỏ"
-        isDeleting={isDeleting}
-      />
+      {deleteModalOpen &&
+        productToDelete &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/35 backdrop-blur-[2px] animate-modal-backdrop-in"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setDeleteModalOpen(false);
+            }}
+          >
+          <div className="relative w-full max-w-md rounded-2xl sm:rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 animate-modal-in text-slate-800">
+            <button
+              type="button"
+              onClick={() => setDeleteModalOpen(false)}
+              className="absolute top-4 right-4 rounded-xl p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-3.5 mb-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 shadow-2xs shrink-0">
+                <Trash2 className="h-6 w-6 stroke-[2.2]" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  Xác nhận Xóa Sản phẩm
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Mã SKU: <span className="font-mono font-bold text-slate-800">{productToDelete.sku}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 text-xs text-slate-600 space-y-1 mb-5">
+              <p>
+                Bạn có chắc chắn muốn xóa sản phẩm <strong>"{productToDelete.name}"</strong> khỏi danh mục hàng hóa?
+              </p>
+              <p className="text-[11px] text-rose-600 font-medium">
+                * Thao tác này không thể hoàn tác sau khi xác nhận.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setDeleteModalOpen(false)}
+                disabled={isDeleting}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-[0.99] text-xs font-semibold text-white shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                {isDeleting ? "Đang xóa..." : "Xác nhận xóa"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* 7. Modal Điều chỉnh tồn kho (Chỉ Thủ kho & Admin) */}
       {adjustModalOpen &&
@@ -1396,7 +1465,7 @@ export const ProductsPage: React.FC = () => {
                 <Warehouse className="h-5 w-5 text-blue-600" />
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
-                    Điều chỉnh / Nhập Xuất Tồn Kho
+                    Điều chỉnh / Nhập Xuất Tồn Kho (SN-23)
                   </h3>
                   <p className="text-[11px] text-slate-500">
                     Nhập theo Thùng, Lốc — Tự động quy về ĐVT cơ sở để ghi sổ kho
@@ -1597,7 +1666,7 @@ export const ProductsPage: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-slate-900">
-                      Sổ Kho & Lịch sử Bút toán Quy đổi Giao dịch
+                      Sổ Kho & Lịch sử Bút toán Quy đổi Giao dịch (SN-23)
                     </h3>
                     <p className="text-xs text-slate-500">
                       {ledgerSku ? (
@@ -1617,11 +1686,11 @@ export const ProductsPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Banner bảo toàn lịch sử quy đổi */}
+              {/* Banner AC-3: Bất biến lịch sử quy đổi */}
               <div className="mx-5 mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-start gap-2.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold">Bảo toàn dữ liệu lịch sử:</span>{" "}
+                  <span className="font-bold">Bảo toàn bất biến (Snapshot Immutability - AC-3):</span>{" "}
                   Hệ thống đóng băng hệ số quy đổi tại thời điểm ghi sổ. Khi thủ kho sửa đổi hệ số quy đổi của SKU (vd: Thùng từ 24 lon lên 30 lon), toàn bộ bút toán lịch sử trước đó không bao giờ bị sai lệch số liệu!
                 </div>
               </div>
