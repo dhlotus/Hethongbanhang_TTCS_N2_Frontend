@@ -181,6 +181,24 @@ Màu phải được quản lý tập trung:
 --color-text-secondary: ...;
 --color-text-muted: ...;
 --color-text-disabled: ...;
+1.9. Quy tắc quan trọng nhất
+
+Không thiết kế màu giao diện độc lập với Logo.
+
+Khi lựa chọn hoặc điều chỉnh một màu mới, phải kiểm tra:
+
+Màu đó có cùng sắc độ và nhận diện với Logo không?
+
+Nếu không → không sử dụng.
+
+LOHA SALES phải tạo cảm giác:
+
+Nhìn Logo và nhìn giao diện → người dùng nhận ra ngay đây là cùng một thương hiệu.
+
+
+**Điểm mình đã sửa quan trọng nhất:** bỏ tư duy **“Tím + Xanh Lavi”** và chuyển thành **“Blue-Purple / Indigo Purple là màu thương hiệu duy nhất”**. Xanh/lavender chỉ là **biến thể phụ**, không được phép lấn át màu logo.
+
+Như ảnh bạn gửi, màu menu **“Quản lý người dùng”** hiện đang hơi **tím hồng**, nên theo luật mới Agent sẽ phải kéo nó về gần **xanh-tím của logo** hơn.
 
 ## 2. Typography / Font chữ
 
@@ -316,66 +334,3 @@ Cỡ chữ phải được quản lý tập trung:
 --font-size-2xl: 24px;
 --font-size-3xl: 30px;
 
-## 4. Spacing — Hệ thống khoảng cách
-
-### 4.1. Nguyên tắc chung
-
-- Toàn bộ LOHA SALES phải sử dụng một hệ thống khoảng cách thống nhất.
-- Không tự ý đặt margin/padding tùy ý cho từng component.
-- Khoảng cách phải tạo ra thứ bậc rõ ràng giữa các thành phần.
-- Các thành phần có quan hệ gần nhau phải có khoảng cách nhỏ hơn các nhóm nội dung độc lập.
-- Ưu tiên giao diện thoáng, dễ đọc nhưng không để khoảng trống gây lãng phí diện tích.
-
-### 4.2. Spacing Scale
-
-Sử dụng hệ khoảng cách theo bội số của **4px**:
-
-| Token | Giá trị | Sử dụng |
-|---|---:|---|
-| `space-1` | 4px | Khoảng cách rất nhỏ, icon/text |
-| `space-2` | 8px | Thành phần liên quan trực tiếp |
-| `space-3` | 12px | Nội dung trong component |
-| `space-4` | 16px | Khoảng cách tiêu chuẩn |
-| `space-5` | 20px | Khoảng cách giữa các thành phần |
-| `space-6` | 24px | Khoảng cách giữa các nhóm |
-| `space-8` | 32px | Khoảng cách section |
-| `space-10` | 40px | Khoảng cách lớn |
-| `space-12` | 48px | Khoảng cách giữa các khu vực lớn |
-| `space-16` | 64px | Khoảng cách đặc biệt lớn |
-
-Không tạo thêm giá trị spacing mới nếu có token phù hợp.
-
-### 4.3. Quy tắc khoảng cách
-
-**Trong component:**
-- Icon ↔ Text: `4–8px`
-- Label ↔ Input: `8px`
-- Input ↔ Input: `16px`
-- Nội dung trong Button: `8–12px`
-- Nội dung trong Card: `16–24px`
-
-**Giữa các nhóm:**
-- Các thành phần cùng nhóm: `8–16px`
-- Các nhóm nội dung: `24–32px`
-- Các Section lớn: `32–48px`
-
-**Layout:**
-- Padding của khu vực chính phải được thống nhất.
-- Sidebar, Header và Main Content phải sử dụng hệ spacing chung.
-- Không để một màn hình có khoảng cách lớn/nhỏ bất thường so với các màn hình khác.
-
-### 4.4. Quy tắc phân cấp
-
-> **Khoảng cách nhỏ = có quan hệ gần.**  
-> **Khoảng cách lớn = bắt đầu một nhóm/thông tin mới.**
-
-Ví dụ:
-
-```text
-Tiêu đề
-  ↓ 8px
-Mô tả
-
-  ↓ 24px
-
-Section tiếp theo
