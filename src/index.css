@@ -84,6 +84,22 @@
   --space-10: 40px; /* 40px - Khoảng cách lớn */
   --space-12: 48px; /* 48px - Khoảng cách giữa các khu vực lớn */
   --space-16: 64px; /* 64px - Khoảng cách đặc biệt lớn */
+
+  /* ========================================================================= */
+  /* BORDER SYSTEM TOKENS - HỆ THỐNG ĐƯỜNG VIỀN & BO GÓC (UI_GUIDELINES 6.6)   */
+  /* ========================================================================= */
+  --border-width-default: 1px;
+  --border-width-focus: 2px;
+
+  --color-border: #e2e8f0;          /* Neutral Border tiêu chuẩn */
+  --color-border-hover: #cbd5e1;    /* Hover -> Neutral Border đậm hơn nhẹ */
+  --color-border-focus: var(--color-primary); /* Focus -> Primary Brand Color (#371cdb) */
+  --color-border-error: #dc2626;    /* Error -> Error Color */
+  --color-border-disabled: #f1f5f9; /* Disabled -> Border Disabled */
+
+  --radius-sm: 12px;  /* Component nhỏ, Input, Button (rounded-xl) */
+  --radius-md: 16px;  /* Card, Dropdown, Modal (rounded-2xl) */
+  --radius-lg: 24px;  /* Container hoặc khu vực lớn (rounded-3xl) */
 }
 
 :root {
@@ -144,6 +160,20 @@
   --space-10: 40px;
   --space-12: 48px;
   --space-16: 64px;
+
+  /* 6.6 Border Design Tokens (UI_GUIDELINES) */
+  --border-width-default: 1px;
+  --border-width-focus: 2px;
+
+  --color-border: #e2e8f0;          /* Neutral Border tiêu chuẩn */
+  --color-border-hover: #cbd5e1;    /* Hover -> Neutral Border đậm hơn nhẹ */
+  --color-border-focus: var(--color-primary); /* Focus -> Primary Brand Color (#371cdb) */
+  --color-border-error: #dc2626;    /* Error -> Error Color */
+  --color-border-disabled: #f1f5f9; /* Disabled -> Border Disabled */
+
+  --radius-sm: 12px;  /* Component nhỏ, Input, Button (rounded-xl) */
+  --radius-md: 16px;  /* Card, Dropdown, Modal (rounded-2xl) */
+  --radius-lg: 24px;  /* Container hoặc khu vực lớn (rounded-3xl) */
 
   font-family: var(--font-family);
   color-scheme: light;
@@ -301,6 +331,57 @@
   border: 1px solid var(--color-border);
   padding: var(--space-4); /* 16px */
   gap: var(--space-3); /* 12px */
+}
+
+/* ========================================================================= */
+/* 6.5 QUY TẮC SỬ DỤNG BORDER (UI_GUIDELINES)                                */
+/* ========================================================================= */
+/* Input / Select: Default -> Hover -> Focus -> Error -> Disabled */
+.border-input-default {
+  border-width: var(--border-width-default);
+  border-color: var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.border-input-default:hover {
+  border-color: var(--color-border-hover);
+}
+
+.border-input-default:focus,
+.border-input-default:focus-visible {
+  border-color: var(--color-border-focus);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+}
+
+.border-input-error {
+  border-color: var(--color-border-error);
+}
+
+.border-input-error:focus,
+.border-input-error:focus-visible {
+  border-color: var(--color-border-error);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+/* Card: 1px Border nhẹ nhàng */
+.border-card-subtle {
+  border-width: var(--border-width-default);
+  border-color: var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* Table: Divider nhẹ giữa các hàng */
+.border-table-divider {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* Modal / Dropdown Shell */
+.border-surface-shell {
+  border-width: var(--border-width-default);
+  border-color: var(--color-border);
+  border-radius: var(--radius-md);
 }
 
 body, button, input, select, textarea {

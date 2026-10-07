@@ -518,3 +518,94 @@ Không đặt quá nhiều nhóm nội dung ngang hàng trong cùng một khu v�
 
 Mọi màn hình của LOHA SALES phải có cảm giác thuộc về **cùng một hệ thống**, thay vì mỗi màn hình có một cách bố cục riêng.
 
+
+## 6. Border — Hệ thống đường viền
+
+### 6.1. Nguyên tắc chung
+
+- Border phải được sử dụng để **phân tách, định hướng và tạo cấu trúc**, không dùng để trang trí.
+- Toàn bộ hệ thống phải sử dụng một quy tắc Border thống nhất.
+- Không tự ý thay đổi màu, độ dày hoặc kiểu Border giữa các màn hình.
+- Ưu tiên Border **mảnh, nhẹ và tinh tế**, phù hợp với phong cách SaaS hiện đại của LOHA SALES.
+
+### 6.2. Border Width
+
+Chỉ sử dụng các độ dày cần thiết:
+
+- **1px:** Border tiêu chuẩn.
+- **2px:** Focus, Active hoặc trạng thái cần nhấn mạnh.
+- Không sử dụng Border quá dày cho các component thông thường.
+
+### 6.3. Border Color
+
+Border tiêu chuẩn phải sử dụng **Neutral Color**:
+
+- Border mặc định → Neutral Border.
+- Hover → Border đậm hơn nhẹ.
+- Focus → Primary Brand Color.
+- Error → Error Color.
+- Disabled → Border Disabled.
+
+Không sử dụng màu thương hiệu cho Border mặc định của mọi component.
+
+### 6.4. Border Radius
+
+Border Radius phải được chuẩn hóa:
+
+- `sm`: Component nhỏ, Input, Button.
+- `md`: Card, Dropdown, Modal.
+- `lg`: Container hoặc khu vực lớn.
+- Không tự ý sử dụng nhiều mức Radius khác nhau.
+
+Các component cùng loại phải có Radius giống nhau trên toàn hệ thống.
+
+### 6.5. Quy tắc sử dụng
+
+**Input / Select:**
+```text
+Default → Neutral Border
+Hover   → Neutral Border đậm hơn
+Focus   → Primary Border
+Error   → Error Border
+Disabled → Disabled Border
+````
+
+**Card:**
+
+* Có thể sử dụng Border 1px rất nhẹ.
+* Không bắt buộc Border nếu Card đã được phân tách rõ bằng Background/Shadow.
+
+**Table:**
+
+* Border/Divider phải nhẹ.
+* Không sử dụng đường viền quá đậm giữa mọi ô nếu không cần thiết.
+
+**Modal / Dropdown:**
+
+* Có thể sử dụng Border nhẹ để xác định ranh giới.
+* Ưu tiên kết hợp Border với Shadow thay vì Border quá đậm.
+
+### 6.6. Design Tokens
+
+```css
+--border-width-default: 1px;
+--border-width-focus: 2px;
+
+--color-border: ...;
+--color-border-hover: ...;
+--color-border-focus: var(--color-primary);
+--color-border-error: var(--color-error);
+--color-border-disabled: ...;
+
+--radius-sm: ...;
+--radius-md: ...;
+--radius-lg: ...;
+```
+
+### 6.7. Nguyên tắc cốt lõi
+
+> **Border phải giúp người dùng nhận biết cấu trúc và trạng thái, không làm giao diện nặng nề.**
+
+Ưu tiên:
+
+**Mỏng → Nhẹ → Đồng nhất → Có mục đích.**
