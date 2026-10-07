@@ -29,6 +29,7 @@ import { categoriesService } from "../services/categories.service";
 import { inventoryService } from "../services/inventory.service";
 import { ProductFormModal } from "../components/product-form-modal";
 import { ImportProductsModal } from "../components/import-products-modal";
+import { ConfirmDeleteModal } from "../components/confirm-delete-modal";
 import { showToast } from "../components/toast";
 import {
   ProductsTableSkeleton,
@@ -1352,72 +1353,29 @@ export const ProductsPage: React.FC = () => {
       />
 
       {/* 6. Modal Xác nhận xóa sản phẩm */}
-      {deleteModalOpen &&
-        productToDelete &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/35 backdrop-blur-[2px] animate-modal-backdrop-in"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setDeleteModalOpen(false);
-            }}
-          >
-          <div className="relative w-full max-w-md rounded-2xl sm:rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 animate-modal-in text-slate-800">
-            <button
-              type="button"
-              onClick={() => setDeleteModalOpen(false)}
-              className="absolute top-4 right-4 rounded-xl p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <div className="flex items-center gap-3.5 mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 shadow-2xs shrink-0">
-                <Trash2 className="h-6 w-6 stroke-[2.2]" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900">
-                  Xác nhận Xóa Sản phẩm
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Mã SKU: <span className="font-mono font-bold text-slate-800">{productToDelete.sku}</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 text-xs text-slate-600 space-y-1 mb-5">
-              <p>
-                Bạn có chắc chắn muốn xóa sản phẩm <strong>"{productToDelete.name}"</strong> khỏi danh mục hàng hóa?
-              </p>
-              <p className="text-[11px] text-rose-600 font-medium">
-                * Thao tác này không thể hoàn tác sau khi xác nhận.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setDeleteModalOpen(false)}
-                disabled={isDeleting}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={isDeleting}
-                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-[0.99] text-xs font-semibold text-white shadow-xs cursor-pointer disabled:opacity-50"
-              >
-                {isDeleting ? "Đang xóa..." : "Xác nhận xóa"}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <ConfirmDeleteModal
+        isOpen={deleteModalOpen && Boolean(productToDelete)}
+        onCancel={() => {
+          setDeleteModalOpen(false);
+          setProductToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Xác nhận Xóa Sản phẩm"
+        itemName={productToDelete?.name}
+        itemCode={productToDelete?.sku}
+        message={
+          productToDelete ? (
+            <p>
+              Bạn có chắc chắn muốn xóa sản phẩm{" "}
+              <strong className="text-slate-900 font-bold">&quot;{productToDelete.name}&quot;</strong> khỏi danh mục hàng hóa?
+            </p>
+          ) : undefined
+        }
+        warningText="Thao tác này mang tính vĩnh viễn và không thể hoàn tác sau khi xác nhận."
+        confirmText="Xác nhận xóa"
+        cancelText="Hủy bỏ"
+        isDeleting={isDeleting}
+      />
 
       {/* 7. Modal Điều chỉnh tồn kho (Chỉ Thủ kho & Admin) */}
       {adjustModalOpen &&

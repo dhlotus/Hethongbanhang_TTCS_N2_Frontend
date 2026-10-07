@@ -26,6 +26,7 @@ import {
 import { CategoriesTreeSkeleton } from "../components/skeletons";
 import { categoriesService } from "../services/categories.service";
 import { showToast } from "../components/toast";
+import { ConfirmDeleteModal } from "../components/confirm-delete-modal";
 import { tokenStorage } from "../utils/token-storage";
 import type {
   CategoryTreeNode,
@@ -68,6 +69,12 @@ export const CategoriesPage: React.FC = () => {
   const [isProductsModalOpen, setIsProductsModalOpen] = useState<boolean>(false);
   const [activeActionSheetNode, setActiveActionSheetNode] =
     useState<CategoryTreeNode | null>(null);
+
+  // Modal State: Delete Category
+  const [categoryToDelete, setCategoryToDelete] =
+    useState<CategoryTreeNode | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const currentUser = tokenStorage.getUser();
   const userRoles = currentUser?.roles || (currentUser?.role ? [currentUser.role] : []);
@@ -262,23 +269,26 @@ export const CategoriesPage: React.FC = () => {
     }
   };
 
-  // Delete Category (Verifies constraints)
-  const handleDeleteCategory = async (cat: CategoryTreeNode) => {
-    if (
-      !window.confirm(
-        `Bạn có chắc chắn muốn xóa nhóm hàng [${cat.code} - ${cat.name}]?\n\nHệ thống sẽ kiểm tra nghiêm ngặt xem nhóm có chứa nhóm con hoặc sản phẩm không trước khi xóa.`
-      )
-    ) {
-      return;
-    }
+  // Delete Category Flow
+  const handleDeleteCategory = (cat: CategoryTreeNode) => {
+    setCategoryToDelete(cat);
+    setDeleteModalOpen(true);
+  };
 
+  const handleConfirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+    setIsDeleting(true);
     try {
-      await categoriesService.deleteCategory(cat.id);
+      await categoriesService.deleteCategory(categoryToDelete.id);
       showToast("success", "Xóa nhóm hàng thành công");
+      setDeleteModalOpen(false);
+      setCategoryToDelete(null);
       await loadData();
     } catch (err: unknown) {
       const error = err as Error;
       showToast("error", error.message || "Không thể xóa nhóm hàng");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1175,6 +1185,36 @@ export const CategoriesPage: React.FC = () => {
           </div>,
           document.body,
         )}
+
+      {/* MODAL: XÁC NHẬN XÓA NHÓM HÀNG */}
+      <ConfirmDeleteModal
+        isOpen={deleteModalOpen && Boolean(categoryToDelete)}
+        onCancel={() => {
+          setDeleteModalOpen(false);
+          setCategoryToDelete(null);
+        }}
+        onConfirm={handleConfirmDeleteCategory}
+        title="Xác nhận xóa Nhóm Hàng"
+        itemName={categoryToDelete?.name}
+        itemCode={categoryToDelete?.code}
+        message={
+          categoryToDelete ? (
+            <div className="space-y-1.5">
+              <p>
+                Bạn có chắc chắn muốn xóa nhóm hàng{" "}
+                <strong className="text-slate-900 font-bold">&quot;{categoryToDelete.name}&quot;</strong> khỏi hệ thống?
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Hệ thống yêu cầu nhóm hàng phải rỗng (không chứa sản phẩm) và không có nhóm hàng con trực thuộc.
+              </p>
+            </div>
+          ) : undefined
+        }
+        warningText="Thao tác này mang tính vĩnh viễn và không thể hoàn tác sau khi thực hiện."
+        confirmText="Xác nhận xóa"
+        cancelText="Hủy bỏ"
+        isDeleting={isDeleting}
+      />
     </div>
   );
 };

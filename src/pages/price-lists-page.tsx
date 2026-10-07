@@ -4,7 +4,6 @@ import {
   RefreshCw,
   Search,
   CheckCircle2,
-  AlertTriangle,
   Clock,
   FileEdit,
   Eye,
@@ -27,6 +26,7 @@ import { PriceListFormModal } from '../components/price-list-form-modal';
 import { PriceListCloneModal } from '../components/price-list-clone-modal';
 import { showToast } from '../components/toast';
 import { PriceListsTableSkeleton } from '../components/skeletons';
+import { ConfirmDeleteModal } from '../components/confirm-delete-modal';
 import type {
   PriceList,
   CustomerGroupType,
@@ -700,42 +700,30 @@ export const PriceListsPage: React.FC = () => {
       />
 
       {/* 7. Modal Xác nhận Xóa */}
-      {deleteModalOpen && priceListToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center gap-3 text-rose-600">
-              <div className="p-2.5 rounded-xl bg-rose-50 ring-1 ring-rose-500/20">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">Xác nhận xóa Bảng giá</h3>
-            </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed">
+      <ConfirmDeleteModal
+        isOpen={deleteModalOpen && Boolean(priceListToDelete)}
+        onCancel={() => {
+          setDeleteModalOpen(false);
+          setPriceListToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Xác nhận xóa Bảng giá"
+        itemName={priceListToDelete?.name}
+        itemCode={priceListToDelete?.code}
+        message={
+          priceListToDelete ? (
+            <p>
               Bạn có chắc chắn muốn xóa bảng giá{' '}
-              <strong className="text-slate-900 font-semibold">{priceListToDelete.name}</strong> [
-              {priceListToDelete.code}] không? Thao tác này không thể hoàn tác sau khi thực hiện.
+              <strong className="text-slate-900 font-bold">&quot;{priceListToDelete.name}&quot;</strong> [
+              {priceListToDelete.code}] không?
             </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setDeleteModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={deleting}
-                className="px-4 py-2 text-xs font-semibold rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-xs cursor-pointer"
-              >
-                {deleting ? 'Đang xóa...' : 'Đồng ý xóa'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          ) : undefined
+        }
+        warningText="Thao tác này mang tính vĩnh viễn và không thể hoàn tác sau khi thực hiện."
+        confirmText="Đồng ý xóa"
+        cancelText="Hủy bỏ"
+        isDeleting={deleting}
+      />
     </div>
   );
 };
