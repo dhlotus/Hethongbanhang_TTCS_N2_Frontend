@@ -70,6 +70,20 @@
   --line-height-tight: 1.25;   /* Tiêu đề, Button, Label ngắn */
   --line-height-normal: 1.5;   /* Body, Navigation, Table */
   --line-height-relaxed: 1.625;/* Đoạn văn dài, Mô tả */
+
+  /* ========================================================================= */
+  /* SPACING SYSTEM TOKENS - HỆ THỐNG KHOẢNG CÁCH (UI_GUIDELINES 4.2)          */
+  /* ========================================================================= */
+  --space-1: 4px;   /* 4px - Khoảng cách rất nhỏ, icon/text */
+  --space-2: 8px;   /* 8px - Thành phần liên quan trực tiếp */
+  --space-3: 12px;  /* 12px - Nội dung trong component */
+  --space-4: 16px;  /* 16px - Khoảng cách tiêu chuẩn */
+  --space-5: 20px;  /* 20px - Khoảng cách giữa các thành phần */
+  --space-6: 24px;  /* 24px - Khoảng cách giữa các nhóm */
+  --space-8: 32px;  /* 32px - Khoảng cách section */
+  --space-10: 40px; /* 40px - Khoảng cách lớn */
+  --space-12: 48px; /* 48px - Khoảng cách giữa các khu vực lớn */
+  --space-16: 64px; /* 64px - Khoảng cách đặc biệt lớn */
 }
 
 :root {
@@ -118,6 +132,18 @@
   --line-height-tight: 1.25;
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.625;
+
+  /* 4.2 Spacing Scale Tokens (Bội số của 4px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
 
   font-family: var(--font-family);
   color-scheme: light;
@@ -193,6 +219,48 @@
 .typography-table {
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
+}
+
+/* ========================================================================= */
+/* 4.3 & 4.4 QUY TẮC KHOẢNG CÁCH & PHÂN CẤP SPACING (UI_GUIDELINES)           */
+/* ========================================================================= */
+/* Trong component */
+.space-icon-text {
+  gap: var(--space-2); /* 8px: Icon ↔ Text (4–8px) */
+}
+
+.space-label-input {
+  margin-bottom: var(--space-2); /* 8px: Label ↔ Input */
+}
+
+.space-input-gap {
+  gap: var(--space-4); /* 16px: Input ↔ Input */
+}
+
+.space-card-content {
+  padding: var(--space-5); /* 20px: Nội dung trong Card (16–24px) */
+}
+
+/* Giữa các nhóm & Section */
+.space-group-gap {
+  gap: var(--space-4); /* 16px: Các thành phần cùng nhóm (8–16px) */
+}
+
+.space-groups-between {
+  margin-bottom: var(--space-6); /* 24px: Các nhóm nội dung (24–32px) */
+}
+
+.space-section-gap {
+  margin-bottom: var(--space-8); /* 32px: Các Section lớn (32–48px) */
+}
+
+/* 4.4 Phân cấp: Tiêu đề -> 8px -> Mô tả -> 24px -> Section tiếp theo */
+.space-heading-to-desc {
+  margin-top: var(--space-2); /* 8px */
+}
+
+.space-desc-to-next {
+  margin-top: var(--space-6); /* 24px */
 }
 
 body, button, input, select, textarea {

@@ -297,20 +297,20 @@ export const LoginPage: React.FC = () => {
         {/* ===================================================================== */}
         <div className="w-full h-full flex flex-col justify-center p-6 sm:p-8 lg:p-8 xl:p-10 bg-white overflow-y-auto">
           {/* Header Card */}
-          <div className="text-center mb-4 sm:mb-5">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl overflow-hidden shadow-xs mb-2.5">
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl overflow-hidden shadow-xs mb-2">
               <img src={logoImg} alt="LOHA SALES" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               Đăng nhập
             </h1>
-            <p className="text-slate-500 text-xs mt-1">
+            <p className="text-slate-500 text-xs mt-2">
               Nhập email và mật khẩu của bạn để tiếp tục
             </p>
           </div>
 
           {/* Form đăng nhập */}
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-3 sm:space-y-3.5">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
             {/* Input Tên đăng nhập / Email */}
             <Input
               label="Tên đăng nhập / Email"

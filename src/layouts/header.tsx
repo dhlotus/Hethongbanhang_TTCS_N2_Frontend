@@ -178,11 +178,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     "Người dùng";
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 backdrop-blur-xs px-3 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 backdrop-blur-xs px-4 sm:px-6">
       {/* =================================================================== */}
       {/* 1. BÊN TRÁI: NÚT ĐÓNG MỞ NAVBAR & TIÊU ĐỀ TRANG                     */}
       {/* =================================================================== */}
-      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         {/* Nút Hamburger chỉ cho Mobile (<1024px) */}
         <button
           type="button"
@@ -212,7 +212,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         <button
           type="button"
           onClick={() => setIsDropdownOpen((prev) => !prev)}
-          className={`flex items-center gap-2.5 sm:gap-3 p-1.5 sm:px-3 sm:py-2 rounded-2xl border transition-all duration-200 cursor-pointer select-none group focus:outline-none ${
+          className={`flex items-center gap-2 sm:gap-3 p-2 sm:px-3 sm:py-2 rounded-2xl border transition-all duration-200 cursor-pointer select-none group focus:outline-none ${
             isDropdownOpen
               ? "bg-slate-50 border-slate-300 shadow-2xs"
               : "bg-white border-slate-200/80 hover:bg-slate-50 hover:border-slate-300/90"
@@ -262,7 +262,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         {/* Menu Dropdown xổ xuống kiểu Facebook */}
         {isDropdownOpen && (
           <div
-            className="absolute right-0 top-full mt-2 w-80 rounded-2xl bg-white shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-1.5"
+            className="absolute right-0 top-full mt-2 w-80 rounded-2xl bg-white shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-2"
             role="menu"
             aria-orientation="vertical"
           >
@@ -355,7 +355,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
             </div>
 
             {/* Dòng chữ chân trang phong cách Facebook căn giữa */}
-            <div className="px-3 pt-2.5 pb-1 border-t border-slate-100 mt-1 text-center">
+            <div className="px-3 pt-3 pb-2 border-t border-slate-100 mt-2 text-center">
               <p className="text-[11px] font-medium text-slate-400">
                 LOHA SALES • Hệ thống quản lý bán hàng
               </p>

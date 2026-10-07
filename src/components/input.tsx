@@ -20,7 +20,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       <div className="w-full text-left">
         <label
           htmlFor={inputId}
-          className="block text-sm font-medium text-slate-700 mb-1.5"
+          className="block text-sm font-medium text-slate-700 mb-2"
         >
           {label} {required && <span className="text-rose-500">*</span>}
         </label>
@@ -49,7 +49,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
         </div>
         {error && (
-          <p className="mt-1.5 text-xs text-rose-600 flex items-center gap-1 font-medium">
+          <p className="mt-2 text-xs text-rose-600 flex items-center gap-2 font-medium">
             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
             <span>{error}</span>
           </p>

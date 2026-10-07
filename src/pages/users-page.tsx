@@ -597,15 +597,15 @@ export const UsersPage: React.FC = () => {
   const codePendingCount = users.filter((u) => Boolean(u.resetCode)).length;
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200">
+    <div className="space-y-6 animate-in fade-in duration-200">
       {/* ========================================================================= */}
       {/* 1. FLOATING TOAST NOTIFICATION (Teleport to document.body, luôn nổi trên Header & Modal) */}
       {/* ========================================================================= */}
       {/* 2. STATS CARDS: THỐNG KÊ NHANH TỔNG QUAN                                    */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="rounded-2xl bg-white p-4.5 border border-slate-100 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">Tổng nhân sự</span>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--color-primary-light)] text-[var(--color-primary)]">
               <Users className="h-4 w-4" />
@@ -614,8 +614,8 @@ export const UsersPage: React.FC = () => {
           <div className="text-2xl font-bold tracking-tight text-slate-900">{total}</div>
         </div>
 
-        <div className="rounded-2xl bg-white p-4.5 border border-slate-100 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+        <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">Đang hoạt động</span>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -624,8 +624,8 @@ export const UsersPage: React.FC = () => {
           <div className="text-2xl font-bold tracking-tight text-emerald-700">{activeCount}</div>
         </div>
 
-        <div className="rounded-2xl bg-white p-4.5 border border-slate-100 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+        <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">Đang bị khóa</span>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
               <Lock className="h-4 w-4" />
@@ -634,8 +634,8 @@ export const UsersPage: React.FC = () => {
           <div className="text-2xl font-bold tracking-tight text-rose-600">{lockedCount}</div>
         </div>
 
-        <div className="rounded-2xl bg-white p-4.5 border border-slate-100 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+        <div className="rounded-2xl bg-white p-5 border border-slate-100 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">Chờ đổi mật khẩu</span>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
               <KeyRound className="h-4 w-4" />
@@ -650,7 +650,7 @@ export const UsersPage: React.FC = () => {
       {/* ========================================================================= */}
       <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between rounded-2xl bg-white p-4 border border-slate-100 shadow-2xs">
         {/* Nhóm tìm kiếm và bộ lọc bên trái */}
-        <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center flex-1">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center flex-1">
           {/* Ô tìm kiếm có debounce mượt mà */}
           <div className="relative flex-1 min-w-[260px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -659,7 +659,7 @@ export const UsersPage: React.FC = () => {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Tìm theo họ tên, username, email, số điện thoại..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-9 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-9 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] transition-all"
             />
             {searchInput && (
               <button
