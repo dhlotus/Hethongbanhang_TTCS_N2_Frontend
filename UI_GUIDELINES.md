@@ -114,3 +114,78 @@ Ví dụ:
 --color-text-muted: ...;
 --color-text-disabled: ...;
 
+## 2. Typography / Font chữ
+
+### 2.1. Nguyên tắc chung
+
+- Toàn bộ LOHA SALES phải sử dụng hệ thống Typography thống nhất.
+- Chỉ sử dụng **font chữ đã được định nghĩa trong Design System**.
+- Không tự ý thay đổi font giữa các màn hình hoặc component.
+- Ưu tiên font có khả năng hiển thị tiếng Việt tốt, rõ ràng và dễ đọc trên màn hình.
+
+### 2.2. Typography Hierarchy
+
+Font chữ phải được phân cấp rõ ràng theo vai trò:
+
+- **Display / Page Title:** tiêu đề lớn của trang.
+- **Heading:** tiêu đề section/khu vực.
+- **Body:** nội dung thông thường.
+- **Label:** nhãn của input, form và thông tin phụ.
+- **Caption / Helper:** thông tin phụ, mô tả ngắn.
+- **Button:** chữ trên các nút thao tác.
+- **Table:** dữ liệu trong bảng.
+- **Navigation:** Sidebar, Header và các thành phần điều hướng.
+
+Không tạo thêm cấp chữ mới nếu có cấp Typography tương đương.
+
+### 2.3. Font Weight
+
+Chỉ sử dụng các mức font-weight cần thiết:
+
+- **Regular (400):** nội dung thông thường.
+- **Medium (500):** label, navigation, button hoặc nội dung cần nhấn nhẹ.
+- **Semibold (600):** heading, tiêu đề, thông tin quan trọng.
+- **Bold (700):** chỉ sử dụng khi thực sự cần nhấn mạnh.
+
+Không lạm dụng Bold để tạo sự nổi bật.
+
+### 2.4. Font Size & Line Height
+
+- Font size phải được định nghĩa theo Design Tokens.
+- Không đặt font-size tùy ý trực tiếp trong từng component.
+- Line-height phải phù hợp với từng cấp Typography.
+- Nội dung dài phải ưu tiên khả năng đọc, không dùng font quá nhỏ để cố nhồi thông tin.
+
+### 2.5. Màu chữ
+
+- **Primary Text:** nội dung chính.
+- **Secondary Text:** nội dung phụ.
+- **Muted Text:** thông tin ít quan trọng.
+- **Disabled Text:** thành phần không thể thao tác.
+
+Không sử dụng màu thương hiệu Tím/Xanh Lavi cho text chỉ để trang trí.
+
+### 2.6. Design Tokens
+
+Typography phải được định nghĩa tập trung bằng Design Tokens/CSS Variables/Theme.
+
+Ví dụ:
+
+```css
+--font-family: ...;
+
+--font-size-xs: ...;
+--font-size-sm: ...;
+--font-size-md: ...;
+--font-size-lg: ...;
+--font-size-xl: ...;
+--font-size-2xl: ...;
+
+--font-weight-regular: 400;
+--font-weight-medium: 500;
+--font-weight-semibold: 600;
+--font-weight-bold: 700;
+
+--line-height-tight: ...;
+--line-height-normal: ...;
+--line-height-relaxed: ...;

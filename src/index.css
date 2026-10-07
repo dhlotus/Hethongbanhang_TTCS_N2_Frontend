@@ -47,6 +47,30 @@
   --color-text-secondary: #475569;
   --color-text-muted: #94a3b8;
   --color-text-disabled: #cbd5e1;
+
+  /* ========================================================================= */
+  /* TYPOGRAPHY SYSTEM TOKENS - HỆ THỐNG FONT CHỮ CHUẨN LOHA SALES            */
+  /* ========================================================================= */
+  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* 2.4. Font Sizes */
+  --font-size-xs: 0.75rem;    /* 12px - Caption, Helper, Tags */
+  --font-size-sm: 0.875rem;   /* 14px - Body small, Table, Navigation, Label */
+  --font-size-md: 1rem;       /* 16px - Body default, Button */
+  --font-size-lg: 1.125rem;   /* 18px - Subheading, Card Title */
+  --font-size-xl: 1.25rem;    /* 20px - Section Heading */
+  --font-size-2xl: 1.5rem;    /* 24px - Page Title / Display */
+
+  /* 2.3. Font Weights */
+  --font-weight-regular: 400;  /* 400 - Nội dung thông thường */
+  --font-weight-medium: 500;   /* 500 - Label, Navigation, Button, Nhấn nhẹ */
+  --font-weight-semibold: 600; /* 600 - Heading, Tiêu đề, Thông tin quan trọng */
+  --font-weight-bold: 700;     /* 700 - Chỉ dùng khi thực sự cần nhấn mạnh */
+
+  /* 2.4. Line Heights */
+  --line-height-tight: 1.25;   /* Tiêu đề, Button, Label ngắn */
+  --line-height-normal: 1.5;   /* Body, Navigation, Table */
+  --line-height-relaxed: 1.625;/* Đoạn văn dài, Mô tả */
 }
 
 :root {
@@ -69,8 +93,73 @@
   --color-text-muted: #94a3b8;
   --color-text-disabled: #cbd5e1;
 
-  font-family: var(--font-sans);
+  /* 2.6 Typography Design Tokens */
+  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+
+  font-family: var(--font-family);
   color-scheme: light;
+}
+
+/* ========================================================================= */
+/* 2.2 TYPOGRAPHY HIERARCHY UTILITY CLASSES (UI_GUIDELINES)                  */
+/* ========================================================================= */
+.typography-display {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.typography-heading {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+  letter-spacing: -0.015em;
+}
+
+.typography-subheading {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+}
+
+.typography-body {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+}
+
+.typography-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-secondary);
+}
+
+.typography-caption {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-muted);
 }
 
 body, button, input, select, textarea {

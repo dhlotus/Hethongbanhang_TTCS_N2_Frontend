@@ -20,7 +20,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       <div className="w-full text-left">
         <label
           htmlFor={inputId}
-          className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5"
+          className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5"
         >
           {label} {required && <span className="text-rose-500">*</span>}
         </label>
