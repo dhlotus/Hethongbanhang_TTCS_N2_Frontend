@@ -155,8 +155,12 @@ export const usersService = {
     const response = await apiClient.post<ExcelImportResponse>(
       '/users/import-excel',
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000, // 2 phút cho tác vụ import hàng loạt từ file Excel
+      },
     );
     return response.data;
   },
+
 };
