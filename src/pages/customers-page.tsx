@@ -16,28 +16,32 @@ import {
   ShieldCheck,
   AlertCircle,
   ChevronRight,
+  UserCheck,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
-import { customersService } from '../services/customers.service';
-import type { Customer, CreateCustomerPayload, DeliveryPoint } from '../types/customer';
+import { customerService } from '../services/customer.service';
+import type { Customer, CreateCustomerPayload, DeliveryPoint } from '../types/customer.types';
+import { getStoredUser } from '../utils/navigation';
 
 /**
- * Trang Quản lý Đại lý & Hạn mức (SN-31, SN-32 & Đồng bộ dữ liệu)
+ * Trang Quản lý Đại lý & Hạn mức tín dụng (SN-31, SN-32, SN-37 & Đồng bộ dữ liệu)
  * Tuân thủ triệt để UI_GUIDELINES.md và CODE_CONVENTION.md
  */
 export const CustomersPage: React.FC = () => {
   const navigate = useNavigate();
+  const currentUser = getStoredUser();
 
   // State danh sách đại lý & tải dữ liệu
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  // Bộ lọc & tìm kiếm
+  // Bộ lọc & tìm kiếm (Hỗ trợ SN-37 đa tiêu chí)
   const [searchInput, setSearchInput] = useState<string>('');
   const [selectedGroup, setSelectedGroup] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [selectedRegion, setSelectedRegion] = useState<string>('ALL');
 
   // Modal quản lý điểm giao hàng (SN-31 & SN-32)
   const [selectedCustomerForDelivery, setSelectedCustomerForDelivery] = useState<Customer | null>(null);
@@ -65,8 +69,11 @@ export const CustomersPage: React.FC = () => {
   const loadCustomers = useCallback(async (keyword?: string) => {
     try {
       setLoading(true);
-      const data = await customersService.getCustomers(keyword);
-      setCustomers(data);
+      const res = await customerService.getCustomers({
+        search: keyword,
+        limit: 100,
+      });
+      setCustomers(res.data || []);
     } catch {
       showToast('error', 'Lỗi tải dữ liệu', 'Không thể nạp danh sách đại lý từ hệ thống.');
     } finally {
@@ -86,7 +93,7 @@ export const CustomersPage: React.FC = () => {
     showToast('success', 'Đồng bộ hoàn tất', 'Dữ liệu đại lý và điểm giao hàng đã được cập nhật mới nhất.');
   };
 
-  // Lọc dữ liệu đại lý theo từ khóa, nhóm và trạng thái
+  // Lọc dữ liệu đại lý theo từ khóa, nhóm, vùng và trạng thái
   const filteredCustomers = useMemo(() => {
     return customers.filter((c) => {
       const matchSearch =
@@ -97,10 +104,11 @@ export const CustomersPage: React.FC = () => {
 
       const matchGroup = selectedGroup === 'ALL' || c.customerGroup === selectedGroup;
       const matchStatus = selectedStatus === 'ALL' || c.status === selectedStatus;
+      const matchRegion = selectedRegion === 'ALL' || c.region === selectedRegion;
 
-      return matchSearch && matchGroup && matchStatus;
+      return matchSearch && matchGroup && matchStatus && matchRegion;
     });
-  }, [customers, searchInput, selectedGroup, selectedStatus]);
+  }, [customers, searchInput, selectedGroup, selectedStatus, selectedRegion]);
 
   // Thống kê nhanh KPI
   const stats = useMemo(() => {
@@ -130,7 +138,7 @@ export const CustomersPage: React.FC = () => {
 
     try {
       setSubmitting(true);
-      const newCustomer = await customersService.createCustomer({
+      const newCustomer = await customerService.createCustomer({
         ...formData,
         code: formData.code?.trim() || undefined,
         creditLimit: Number(formData.creditLimit) || 50000000,
@@ -206,6 +214,8 @@ export const CustomersPage: React.FC = () => {
         return 'Đại lý Cấp 2';
       case 'WHOLESALE':
         return 'Bán buôn';
+      case 'RETAIL':
+        return 'Bán lẻ';
       default:
         return 'Đại lý chuẩn';
     }
@@ -300,9 +310,9 @@ export const CustomersPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── THANH TÌM KIẾM & BỘ LỌC ── */}
-      <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full sm:max-w-md">
+      {/* ── THANH TÌM KIẾM & BỘ LỌC ĐA TIÊU CHÍ (SN-37) ── */}
+      <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col lg:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full lg:max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -313,33 +323,47 @@ export const CustomersPage: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
             <Filter className="w-3.5 h-3.5 text-slate-400" />
             <span className="hidden md:inline">Lọc:</span>
           </div>
 
           <select
+            value={selectedRegion}
+            onChange={(e) => setSelectedRegion(e.target.value)}
+            aria-label="Lọc theo khu vực"
+            className="text-xs sm:text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:border-[var(--color-primary)]"
+          >
+            <option value="ALL">Tất cả khu vực</option>
+            <option value="Miền Nam">Miền Nam</option>
+            <option value="Miền Trung">Miền Trung</option>
+            <option value="Miền Bắc">Miền Bắc</option>
+          </select>
+
+          <select
             value={selectedGroup}
             onChange={(e) => setSelectedGroup(e.target.value)}
             aria-label="Lọc theo nhóm đại lý"
-            className="flex-1 sm:flex-none text-xs sm:text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:border-[var(--color-primary)]"
+            className="text-xs sm:text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:border-[var(--color-primary)]"
           >
             <option value="ALL">Tất cả phân nhóm</option>
             <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
             <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
             <option value="WHOLESALE">Bán buôn</option>
+            <option value="RETAIL">Bán lẻ</option>
           </select>
 
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
             aria-label="Lọc theo trạng thái hoạt động"
-            className="flex-1 sm:flex-none text-xs sm:text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:border-[var(--color-primary)]"
+            className="text-xs sm:text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:border-[var(--color-primary)]"
           >
             <option value="ALL">Tất cả trạng thái</option>
             <option value="ACTIVE">Đang hoạt động</option>
             <option value="LOCKED">Tạm khóa</option>
+            <option value="INACTIVE">Ngừng hoạt động</option>
           </select>
         </div>
       </div>
@@ -361,6 +385,7 @@ export const CustomersPage: React.FC = () => {
                 setSearchInput('');
                 setSelectedGroup('ALL');
                 setSelectedStatus('ALL');
+                setSelectedRegion('ALL');
               }}
               className="text-xs text-[var(--color-primary)] hover:underline font-medium"
             >
@@ -374,7 +399,7 @@ export const CustomersPage: React.FC = () => {
                 <tr>
                   <th className="px-4 py-3.5">Mã & Tên Đại Lý</th>
                   <th className="px-4 py-3.5">Liên Hệ</th>
-                  <th className="px-4 py-3.5">Phân Nhóm</th>
+                  <th className="px-4 py-3.5">Phân Nhóm & Phụ Trách</th>
                   <th className="px-4 py-3.5">Hạn Mức & Dư Nợ</th>
                   <th className="px-4 py-3.5">Điểm Giao Hàng (SN-31)</th>
                   <th className="px-4 py-3.5">Trạng Thái</th>
@@ -422,17 +447,25 @@ export const CustomersPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Cột 3: Phân nhóm */}
+                      {/* Cột 3: Phân nhóm & Phụ trách */}
                       <td className="px-4 py-3.5">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            customer.customerGroup === 'AGENT_LEVEL_1'
-                              ? 'bg-indigo-50 text-[var(--color-primary)] border border-indigo-100'
-                              : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                          }`}
-                        >
-                          {getGroupLabel(customer.customerGroup)}
-                        </span>
+                        <div>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              customer.customerGroup === 'AGENT_LEVEL_1'
+                                ? 'bg-indigo-50 text-[var(--color-primary)] border border-indigo-100'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                            }`}
+                          >
+                            {getGroupLabel(customer.customerGroup)}
+                          </span>
+                        </div>
+                        {(customer.salesRepName || customer.salesRep?.name) && (
+                          <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-1">
+                            <UserCheck className="w-3 h-3 text-slate-400" />
+                            <span>{customer.salesRepName || customer.salesRep?.name}</span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Cột 4: Hạn mức & Công nợ */}
@@ -601,6 +634,7 @@ export const CustomersPage: React.FC = () => {
                     <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
                     <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
                     <option value="WHOLESALE">Bán buôn</option>
+                    <option value="RETAIL">Bán lẻ</option>
                   </select>
                 </div>
 

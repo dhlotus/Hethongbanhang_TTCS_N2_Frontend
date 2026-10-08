@@ -312,7 +312,7 @@ export const SuppliersPage: React.FC = () => {
                 setEditingSupplier(null);
                 setFormModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] rounded-xl transition-all cursor-pointer shadow-sm shadow-blue-500/20 whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0"
             >
               <Plus className="h-4 w-4" />
               <span>Thêm nhà cung cấp</span>
@@ -455,20 +455,20 @@ export const SuppliersPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleViewDetail(supplier)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                            className="btn-icon text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                             title="Xem chi tiết nhà cung cấp"
                           >
-                            <Eye className="h-3.5 w-3.5" />
+                            <Eye className="h-4 w-4" />
                           </button>
 
                           {canManageSuppliers && (
                             <button
                               type="button"
                               onClick={() => handleDeleteClick(supplier)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              className="btn-icon text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                               title="Xóa nhà cung cấp"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           )}
                         </div>

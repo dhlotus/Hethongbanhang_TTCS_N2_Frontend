@@ -117,7 +117,7 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative w-full ${maxWidth} bg-white rounded-xl border border-slate-200/90 shadow-2xl overflow-hidden flex flex-col text-slate-800 ${
+        className={`relative w-full ${maxWidth} bg-white rounded-xl border border-slate-200/90 shadow-lg overflow-hidden flex flex-col text-slate-800 ${
           isClosing ? "animate-modal-out" : "animate-modal-in"
         }`}
       >
@@ -127,14 +127,14 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
           onClick={handleClose}
           disabled={deleting}
           aria-label="Đóng popup"
-          className="absolute top-4 right-4 rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer disabled:opacity-40"
+          className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer disabled:opacity-40"
         >
           <X className="h-5 w-5" />
         </button>
 
         {/* Header với Icon cảnh báo/thùng rác nổi bật */}
         <div className="p-5 sm:p-6 pb-0 flex items-start gap-3.5">
-          <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-md bg-rose-50 text-rose-600 ring-1 ring-rose-500/20 shadow-2xs">
+          <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-md bg-rose-50 text-rose-600 ring-1 ring-rose-500/20">
             {icon === "warning" ? (
               <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6" />
             ) : (

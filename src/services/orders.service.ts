@@ -1,5 +1,7 @@
 import { apiClient } from './api';
+import { tokenStorage } from '../utils/token-storage';
 import { MOCK_PRODUCTS } from './products.service';
+import { customerService } from './customer.service';
 import type {
   CreateOrderPayload,
   CustomerOption,
@@ -7,27 +9,402 @@ import type {
   OrderQueryParams,
   OrderStatus,
   PaginatedOrdersResponse,
-  UpdateOrderPayload,
 } from '../types/order';
 import type { Product } from '../types/products';
-import { customersService } from './customers.service';
 
 /** Key lưu draft đơn hàng vào localStorage */
 const DRAFT_ORDERS_KEY = 'loha_draft_orders';
+/** Key lưu danh sách đơn hàng demo */
+const DEMO_ORDERS_KEY = 'loha_demo_orders';
+
+// ──────────────────────────────────────────────────────────────────────────
+// DỮ LIỆU MẪU — Đại lý Demo (SN-38 & SN-37)
+// ──────────────────────────────────────────────────────────────────────────
+
+
+export const DEMO_CUSTOMERS: CustomerOption[] = [
+  // 5 Đại lý Cấp 1 (DL-0001 -> DL-0005)
+  {
+    id: 'cust-dl-0001',
+    code: 'DL-0001',
+    name: 'Công Ty TNHH Thương Mại & Phân Phối Minh Khang',
+    group: 'AGENT_LEVEL_1',
+    phone: '0901234561',
+    address: '123 Nguyễn Trọng Tuyển, P.8, Q.Phú Nhuận, TP.HCM',
+    creditLimit: 500000000,
+    currentDebt: 45000000,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0001-1',
+        name: 'Kho Tổng Phú Nhuận',
+        address: '123 Nguyễn Trọng Tuyển, P.8, Q.Phú Nhuận, TP.HCM',
+        phone: '0901234561',
+        contactPerson: 'Anh Nguyễn Minh Khang',
+      },
+    ],
+  },
+  {
+    id: 'cust-dl-0002',
+    code: 'DL-0002',
+    name: 'Tổng Đại Lý Phân Phối Thực Phẩm Toàn Cầu',
+    group: 'AGENT_LEVEL_1',
+    phone: '0901234562',
+    address: '456 Lê Văn Sỹ, P.14, Q.3, TP.HCM',
+    creditLimit: 400000000,
+    currentDebt: 28000000,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0002-1',
+        name: 'Kho Phân Phối Quận 3',
+        address: '456 Lê Văn Sỹ, P.14, Q.3, TP.HCM',
+        phone: '0901234562',
+        contactPerson: 'Chị Lê Thanh Hương',
+      },
+    ],
+  },
+  {
+    id: 'cust-dl-0003',
+    code: 'DL-0003',
+    name: 'Nhà Phân Phối Hàng Tiêu Dùng Hoàng Long',
+    group: 'AGENT_LEVEL_1',
+    phone: '0901234563',
+    address: '789 Quang Trung, P.10, Q.Gò Vấp, TP.HCM',
+    creditLimit: 350000000,
+    currentDebt: 62000000,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0003-1',
+        name: 'Tổng Kho Gò Vấp',
+        address: '789 Quang Trung, P.10, Q.Gò Vấp, TP.HCM',
+        phone: '0901234563',
+        contactPerson: 'Anh Vũ Hoàng Long',
+      },
+    ],
+  },
+  {
+    id: 'cust-dl-0004',
+    code: 'DL-0004',
+    name: 'Công Ty Cổ Phần Thương Mại Miền Đông',
+    group: 'AGENT_LEVEL_1',
+    phone: '0901234564',
+    address: '321 Võ Thị Sáu, P.Võ Thị Sáu, Q.3, TP.HCM',
+    creditLimit: 450000000,
+    currentDebt: 15000000,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0004-1',
+        name: 'Kho Trung Chuyển Võ Thị Sáu',
+        address: '321 Võ Thị Sáu, P.Võ Thị Sáu, Q.3, TP.HCM',
+        phone: '0901234564',
+        contactPerson: 'Anh Đỗ Văn Đông',
+      },
+    ],
+  },
+  {
+    id: 'cust-dl-0005',
+    code: 'DL-0005',
+    name: 'Nhà Phân Phối Dinh Dưỡng Phương Đông',
+    group: 'AGENT_LEVEL_1',
+    phone: '0901234565',
+    address: '654 Điện Biên Phủ, P.25, Q.Bình Thạnh, TP.HCM',
+    creditLimit: 300000000,
+    currentDebt: 35000000,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0005-1',
+        name: 'Kho Bình Thạnh',
+        address: '654 Điện Biên Phủ, P.25, Q.Bình Thạnh, TP.HCM',
+        phone: '0901234565',
+        contactPerson: 'Chị Đinh Phương Thảo',
+      },
+    ],
+  },
+
+  // 5 Đại lý Cấp 2 (DL-0006 -> DL-0010)
+  {
+    id: 'cust-dl-0006',
+    code: 'DL-0006',
+    name: 'Đại Lý Bách Hóa Thực Phẩm Bảo Châu',
+    group: 'AGENT_LEVEL_2',
+    phone: '0912345671',
+    address: '456 Lê Văn Việt, P.Tăng Nhơn Phú A, TP.Thủ Đức, TP.HCM',
+    creditLimit: 150000000,
+    currentDebt: 18000000,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0006-1',
+        name: 'Cửa Hàng Bảo Châu Lê Văn Việt',
+        address: '456 Lê Văn Việt, TP.Thủ Đức, TP.HCM',
+        phone: '0912345671',
+        contactPerson: 'Chị Trần Bảo Châu',
+      },
+    ],
+  },
+  {
+    id: 'cust-dl-0007',
+    code: 'DL-0007',
+    name: 'Cửa Hàng Bách Hóa Tổng Hợp Khánh An',
+    group: 'AGENT_LEVEL_2',
+    phone: '0912345672',
+    address: '12 Đỗ Xuân Hợp, P.Phước Long B, TP.Thủ Đức, TP.HCM',
+    creditLimit: 120000000,
+    currentDebt: 9500000,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0007-1',
+        name: 'Showroom Bán Lẻ Khánh An',
+        address: '12 Đỗ Xuân Hợp, TP.Thủ Đức, TP.HCM',
+        phone: '0912345672',
+        contactPerson: 'Anh Lê Khánh An',
+      },
+    ],
+  },
+  {
+    id: 'cust-dl-0008',
+    code: 'DL-0008',
+    name: 'Đại Lý Tiêu Dùng Nhanh Thịnh Vượng',
+    group: 'AGENT_LEVEL_2',
+    phone: '0912345673',
+    address: '88 Nguyễn Oanh, P.7, Q.Gò Vấp, TP.HCM',
+    creditLimit: 100000000,
+    currentDebt: 12000000,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0008-1',
+        name: 'Điểm Phân Phối Thịnh Vượng Gò Vấp',
+        address: '88 Nguyễn Oanh, P.7, Q.Gò Vấp, TP.HCM',
+        phone: '0912345673',
+        contactPerson: 'Anh Phạm Thịnh Vượng',
+      },
+    ],
+  },
+  {
+    id: 'cust-dl-0009',
+    code: 'DL-0009',
+    name: 'Cửa Hàng Bán Buôn Dinh Dưỡng An Bình',
+    group: 'AGENT_LEVEL_2',
+    phone: '0912345674',
+    address: '150 Tân Kỳ Tân Quý, P.Tân Sơn Nhì, Q.Tân Phú, TP.HCM',
+    creditLimit: 110000000,
+    currentDebt: 14500000,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0009-1',
+        name: 'Kho Hàng Tân Phú',
+        address: '150 Tân Kỳ Tân Quý, Q.Tân Phú, TP.HCM',
+        phone: '0912345674',
+        contactPerson: 'Chị Nguyễn An Bình',
+      },
+    ],
+  },
+  {
+    id: 'cust-dl-0010',
+    code: 'DL-0010',
+    name: 'Đại Lý Phân Phối Sỉ Hưng Thịnh',
+    group: 'AGENT_LEVEL_2',
+    phone: '0912345675',
+    address: '205 Lý Thường Kiệt, P.6, Q.Tân Bình, TP.HCM',
+    creditLimit: 130000000,
+    currentDebt: 22000000,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0010-1',
+        name: 'Kho Sỉ Tân Bình',
+        address: '205 Lý Thường Kiệt, Q.Tân Bình, TP.HCM',
+        phone: '0912345675',
+        contactPerson: 'Anh Huỳnh Hưng Thịnh',
+      },
+    ],
+  },
+
+  // 5 Bán lẻ Niêm yết (DL-0011 -> DL-0015)
+  {
+    id: 'cust-dl-0011',
+    code: 'DL-0011',
+    name: 'Siêu Thị Mini Phương Nam Mart',
+    group: 'RETAIL',
+    phone: '0923456781',
+    address: '789 Hoàng Văn Thụ, P.4, Q.Tân Bình, TP.HCM',
+    creditLimit: 50000000,
+    currentDebt: 0,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0011-1',
+        name: 'Điểm Bán Tân Bình (Mặt Tiền)',
+        address: '789 Hoàng Văn Thụ, Q.Tân Bình, TP.HCM',
+        phone: '0923456781',
+        contactPerson: 'Chị Đỗ Thu Phương',
+      },
+    ],
+  },
+  {
+    id: 'cust-dl-0012',
+    code: 'DL-0012',
+    name: 'Cửa Hàng Tiện Lợi Xanh Organic',
+    group: 'RETAIL',
+    phone: '0923456782',
+    address: '56 Nguyễn Thị Thập, P.Tân Hưng, Q.7, TP.HCM',
+    creditLimit: 40000000,
+    currentDebt: 3200000,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0012-1',
+        name: 'Cửa Hàng Quận 7',
+        address: '56 Nguyễn Thị Thập, Q.7, TP.HCM',
+        phone: '0923456782',
+        contactPerson: 'Chị Mai Lan',
+      },
+    ],
+  },
+  {
+    id: 'cust-dl-0013',
+    code: 'DL-0013',
+    name: 'Siêu Thị Tiêu Dùng Gia Đình Mart',
+    group: 'RETAIL',
+    phone: '0923456783',
+    address: '102 Hậu Giang, P.6, Q.6, TP.HCM',
+    creditLimit: 45000000,
+    currentDebt: 0,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0013-1',
+        name: 'Điểm Bán Quận 6',
+        address: '102 Hậu Giang, Q.6, TP.HCM',
+        phone: '0923456783',
+        contactPerson: 'Anh Trần Trọng Gia',
+      },
+    ],
+  },
+  {
+    id: 'cust-dl-0014',
+    code: 'DL-0014',
+    name: 'Điểm Bán Lẻ Thực Phẩm Sạch Bình An',
+    group: 'RETAIL',
+    phone: '0923456784',
+    address: '34 Ung Văn Khiêm, P.25, Q.Bình Thạnh, TP.HCM',
+    creditLimit: 30000000,
+    currentDebt: 1200000,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0014-1',
+        name: 'Cửa Hàng Bình An Bình Thạnh',
+        address: '34 Ung Văn Khiêm, Q.Bình Thạnh, TP.HCM',
+        phone: '0923456784',
+        contactPerson: 'Anh Lý Bình An',
+      },
+    ],
+  },
+  {
+    id: 'cust-dl-0015',
+    code: 'DL-0015',
+    name: 'Cửa Hàng Bán Lẻ Dinh Dưỡng Vina Mart',
+    group: 'RETAIL',
+    phone: '0923456785',
+    address: '85 Tô Hiến Thành, P.13, Q.10, TP.HCM',
+    creditLimit: 35000000,
+    currentDebt: 0,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0015-1',
+        name: 'Cửa Hàng Quận 10',
+        address: '85 Tô Hiến Thành, Q.10, TP.HCM',
+        phone: '0923456785',
+        contactPerson: 'Chị Hoàng Thùy Trang',
+      },
+    ],
+  },
+];
+
+// ──────────────────────────────────────────────────────────────────────────
+// HELPERS — localStorage Demo
+// ──────────────────────────────────────────────────────────────────────────
+
+const getStoredDemoOrders = (): Order[] => {
+  try {
+    const raw = localStorage.getItem(DEMO_ORDERS_KEY);
+    if (raw) return JSON.parse(raw) as Order[];
+  } catch (e) {
+    void e;
+  }
+  return [];
+};
+
+const saveStoredDemoOrders = (list: Order[]): void => {
+  try {
+    localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(list));
+  } catch (e) {
+    void e;
+  }
+};
+
+/** Tính tổng đơn hàng từ danh sách dòng hàng */
+const calcOrderTotals = (
+  lines: Order['lines'],
+): { subtotal: number; totalDiscount: number; grandTotal: number } => {
+  let subtotal = 0;
+  let totalDiscount = 0;
+
+  for (const line of lines) {
+    const listLineTotal = line.quantity * line.listPrice;
+    const lineTotal = line.quantity * line.unitPrice;
+    subtotal += listLineTotal;
+    totalDiscount += listLineTotal - lineTotal;
+  }
+
+  return { subtotal, totalDiscount, grandTotal: subtotal - totalDiscount };
+};
+
+/** Tạo mã đơn hàng tự động */
+const generateOrderCode = (): string => {
+  const now = new Date();
+  const yy = now.getFullYear().toString().slice(-2);
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const seq = Date.now().toString().slice(-5);
+  return `DH${yy}${mm}-${seq}`;
+};
+
+// ──────────────────────────────────────────────────────────────────────────
+// SERVICE
+// ──────────────────────────────────────────────────────────────────────────
 
 export const ordersService = {
   /**
-   * Lấy danh sách đại lý để chọn trong form tạo đơn hàng (SN-38)
+   * Lấy danh sách đại lý để chọn trong form tạo đơn hàng (SN-37 & SN-38)
    */
   async getCustomers(search?: string): Promise<CustomerOption[]> {
     try {
-      const customers = await customersService.getCustomers(search);
-      return customers.map((c) => ({
-        ...c,
-        group: c.customerGroup,
+      const res = await customerService.getCustomers({
+        search: search?.trim() || undefined,
+        limit: 100,
+      });
+
+      const list = res?.data || [];
+      return list.map((c) => ({
+        id: c.id,
+        code: c.code,
+        name: c.name,
+        group: c.customerGroup || 'AGENT_LEVEL_1',
+        phone: c.phone,
+        address: c.address,
+        creditLimit: c.creditLimit,
+        currentDebt: c.currentDebt,
+        deliveryPoints: (c.deliveryPoints || []).map((dp) => ({
+          id: dp.id,
+          name: dp.name,
+          address: dp.address,
+          phone: dp.phone,
+          contactPerson: dp.receiverName,
+        })),
       }));
     } catch {
-      return [];
+      if (!search) return DEMO_CUSTOMERS;
+      const q = search.toLowerCase().trim();
+      return DEMO_CUSTOMERS.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.code.toLowerCase().includes(q) ||
+          (c.phone && c.phone.includes(q)),
+      );
     }
   },
 
@@ -35,43 +412,32 @@ export const ordersService = {
    * Lấy danh sách đơn hàng phân trang (SN-38)
    */
   async getOrders(params: OrderQueryParams = {}): Promise<PaginatedOrdersResponse> {
-    try {
-      const cleanParams: Record<string, unknown> = { ...params };
-      if (cleanParams.status === 'ALL') {
-        delete cleanParams.status;
-      }
-      const res = await apiClient.get<PaginatedOrdersResponse>('/orders', { params: cleanParams });
-      const apiOrders = res.data?.data || [];
-      const localOrders = this.getLocalOrders();
-      // Kết hợp đơn hàng từ API và đơn hàng đã lưu offline
-      const mergedMap = new Map<string, Order>();
-      for (const o of [...localOrders, ...apiOrders]) {
-        const key = o.id || o.orderCode || `temp-${Math.random()}`;
-        mergedMap.set(key, o);
-      }
-      let combined = Array.from(mergedMap.values());
-      if (cleanParams.status) {
-        combined = combined.filter((o) => o.status === cleanParams.status);
-      }
-      if (cleanParams.search) {
-        const q = String(cleanParams.search).toLowerCase();
-        combined = combined.filter(
-          (o) =>
-            (o.orderCode || '').toLowerCase().includes(q) ||
-            (o.customerName || '').toLowerCase().includes(q) ||
-            (o.deliveryPoint?.receiverName && o.deliveryPoint.receiverName.toLowerCase().includes(q)),
-        );
-      }
+    const token = tokenStorage.getAccessToken();
+    if (token?.startsWith('demo-jwt-')) {
+      const all = getStoredDemoOrders();
+      const filtered = params.status && params.status !== 'ALL'
+        ? all.filter((o) => o.status === params.status)
+        : all;
+
+      const page = params.page ?? 1;
+      const limit = params.limit ?? 10;
+      const start = (page - 1) * limit;
+      const data = filtered.slice(start, start + limit);
+
       return {
-        data: combined,
-        total: combined.length,
-        page: res.data?.page || 1,
-        limit: res.data?.limit || 10,
-        totalPages: Math.ceil(combined.length / 10) || 1,
+        data,
+        total: filtered.length,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(filtered.length / limit)),
       };
+    }
+
+    try {
+      const res = await apiClient.get<PaginatedOrdersResponse>('/orders', { params });
+      return res.data;
     } catch {
-      const localOrders = this.getLocalOrders();
-      return { data: localOrders, total: localOrders.length, page: 1, limit: 10, totalPages: 1 };
+      return { data: [], total: 0, page: 1, limit: 10, totalPages: 1 };
     }
   },
 
@@ -79,6 +445,13 @@ export const ordersService = {
    * Lấy chi tiết 1 đơn hàng theo ID
    */
   async getOrderById(id: string): Promise<Order> {
+    const token = tokenStorage.getAccessToken();
+    if (token?.startsWith('demo-jwt-')) {
+      const all = getStoredDemoOrders();
+      const found = all.find((o) => o.id === id);
+      if (!found) throw new Error(`Không tìm thấy đơn hàng ${id}`);
+      return found;
+    }
     const res = await apiClient.get<Order>(`/orders/${id}`);
     return res.data;
   },
@@ -87,149 +460,56 @@ export const ordersService = {
    * Tạo đơn hàng mới (SN-38 & SN-39)
    */
   async createOrder(payload: CreateOrderPayload): Promise<Order> {
-    try {
-      const res = await apiClient.post<Order>('/orders', payload);
-      this.saveLocalOrder(res.data);
-      return res.data;
-    } catch (apiError) {
-      console.warn('Backend API /orders unavailable, creating order locally:', apiError);
-      const customers = await this.getCustomers();
-      const customer = customers.find((c) => c.id === payload.customerId);
-      const subtotal = payload.lines.reduce(
-        (sum, l) => sum + (l.unitPrice || 0) * (l.quantity || 1),
-        0,
-      );
-      const totalDiscount = payload.lines.reduce(
-        (sum, l) =>
-          sum +
-          Math.round(
-            ((l.unitPrice || 0) * (l.quantity || 1) * (l.discountPercent || 0)) / 100,
-          ),
-        0,
-      );
-      const grandTotal = subtotal - totalDiscount;
+    const token = tokenStorage.getAccessToken();
+    if (token?.startsWith('demo-jwt-')) {
+      const customer = DEMO_CUSTOMERS.find((c) => c.id === payload.customerId);
+      if (!customer) throw new Error('Không tìm thấy thông tin đại lý');
+
+      const user = tokenStorage.getUser();
+
+      // Tính lineTotal từng dòng
+      const lines = payload.lines.map((l) => ({
+        ...l,
+        id: `line-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        baseQuantity: Math.round(l.quantity * l.conversionRate),
+        lineTotal: l.quantity * l.unitPrice,
+      }));
+
+      const totals = calcOrderTotals(lines);
 
       const newOrder: Order = {
-        id: `ord-local-${Date.now()}`,
-        orderCode: `DH${new Date().getFullYear().toString().slice(-2)}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(10000 + Math.random() * 90000)}`,
-        customerId: payload.customerId,
-        customerCode: customer?.code || 'DL-HCM-001',
-        customerName: customer?.name || 'Đại Lý Phân Phối',
-        customerGroup: customer?.customerGroup || 'AGENT_LEVEL_1',
-        deliveryPoint: payload.deliveryPoint,
+        id: `order-${Date.now()}`,
+        orderCode: generateOrderCode(),
+        customerId: customer.id,
+        customerCode: customer.code,
+        customerName: customer.name,
+        customerGroup: customer.group,
+        salesRepId: user?.id,
+        salesRepName: user?.fullName || user?.username,
+        deliveryPoint: payload.deliveryPoint as Order['deliveryPoint'],
         deliveryDate: payload.deliveryDate,
-        lines: payload.lines.map((l, idx) => ({
-          id: `line-${idx}-${Date.now()}`,
-          productId: l.productId,
-          productSku: l.productSku,
-          productName: l.productName,
-          unit: l.unit,
-          baseUnit: l.baseUnit,
-          conversionRate: l.conversionRate,
-          quantity: l.quantity,
-          baseQuantity: l.quantity * l.conversionRate,
-          unitPrice: l.unitPrice,
-          listPrice: l.listPrice,
-          discountPercent: l.discountPercent,
-          lineTotal: Math.round(l.unitPrice * l.quantity * (1 - l.discountPercent / 100)),
-          stockAvailable: l.stockAvailable,
-        })),
-        subtotal,
-        totalDiscount,
-        grandTotal,
+        lines,
+        ...totals,
         note: payload.note,
-        status: payload.status || 'DRAFT',
+        status: 'PENDING',
         paymentStatus: 'UNPAID',
+        priceListId: payload.priceListId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      this.saveLocalOrder(newOrder);
+      const all = getStoredDemoOrders();
+      all.unshift(newOrder);
+      saveStoredDemoOrders(all);
       return newOrder;
     }
+
+    const res = await apiClient.post<Order>('/orders', payload);
+    return res.data;
   },
 
   /**
-   * Cập nhật đơn hàng (Lưu nháp & tiếp tục gõ)
-   */
-  async updateOrder(id: string, payload: UpdateOrderPayload): Promise<Order> {
-    try {
-      const res = await apiClient.put<Order>(`/orders/${id}`, payload);
-      this.saveLocalOrder(res.data);
-      return res.data;
-    } catch (apiError) {
-      console.warn('Backend API PUT /orders/:id unavailable, updating locally:', apiError);
-      const localOrders = this.getLocalOrders();
-      const existing = localOrders.find((o) => o.id === id);
-      if (existing) {
-        if (payload.status) existing.status = payload.status;
-        if (payload.deliveryPoint) existing.deliveryPoint = payload.deliveryPoint;
-        if (payload.deliveryDate) existing.deliveryDate = payload.deliveryDate;
-        if (payload.note !== undefined) existing.note = payload.note;
-        if (payload.lines) {
-          existing.lines = payload.lines.map((l, idx) => ({
-            id: `line-${idx}-${Date.now()}`,
-            productId: l.productId,
-            productSku: l.productSku,
-            productName: l.productName,
-            unit: l.unit,
-            baseUnit: l.baseUnit,
-            conversionRate: l.conversionRate,
-            quantity: l.quantity,
-            baseQuantity: l.quantity * l.conversionRate,
-            unitPrice: l.unitPrice,
-            listPrice: l.listPrice,
-            discountPercent: l.discountPercent,
-            lineTotal: Math.round(l.unitPrice * l.quantity * (1 - l.discountPercent / 100)),
-            stockAvailable: l.stockAvailable,
-          }));
-          existing.subtotal = existing.lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
-          existing.totalDiscount = existing.lines.reduce(
-            (s, l) => s + Math.round((l.unitPrice * l.quantity * l.discountPercent) / 100),
-            0,
-          );
-          existing.grandTotal = existing.subtotal - existing.totalDiscount;
-        }
-        existing.updatedAt = new Date().toISOString();
-        this.saveLocalOrder(existing);
-        return existing;
-      }
-      throw apiError;
-    }
-  },
-
-  /**
-   * Lấy danh sách đơn hàng đã lưu cục bộ
-   */
-  getLocalOrders(): Order[] {
-    try {
-      const raw = localStorage.getItem('loha_saved_orders');
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  },
-
-  /**
-   * Lưu hoặc cập nhật đơn hàng vào danh sách cục bộ
-   */
-  saveLocalOrder(order: Order): void {
-    try {
-      const current = this.getLocalOrders();
-      const existingIdx = current.findIndex((o) => o.id === order.id || o.orderCode === order.orderCode);
-      if (existingIdx >= 0) {
-        current[existingIdx] = order;
-      } else {
-        current.unshift(order);
-      }
-      localStorage.setItem('loha_saved_orders', JSON.stringify(current));
-    } catch (e) {
-      console.debug('Không thể lưu order vào localStorage:', e);
-    }
-  },
-
-  /**
-   * Lưu nháp đơn hàng vào localStorage (SN-39 — Draft client fallback)
+   * Lưu nháp đơn hàng vào localStorage (SN-39 — Draft)
    */
   saveDraft(draftKey: string, draftData: Partial<Order>): void {
     try {
@@ -237,13 +517,13 @@ export const ordersService = {
       const drafts: Record<string, Partial<Order>> = raw ? JSON.parse(raw) : {};
       drafts[draftKey] = { ...draftData, updatedAt: new Date().toISOString() };
       localStorage.setItem(DRAFT_ORDERS_KEY, JSON.stringify(drafts));
-    } catch (error) {
-      console.debug('Không thể lưu nháp vào localStorage:', error);
+    } catch (e) {
+      void e;
     }
   },
 
   /**
-   * Lấy lại nháp đã lưu từ localStorage
+   * Lấy lại nháp đã lưu
    */
   getDraft(draftKey: string): Partial<Order> | null {
     try {
@@ -251,8 +531,7 @@ export const ordersService = {
       if (!raw) return null;
       const drafts: Record<string, Partial<Order>> = JSON.parse(raw);
       return drafts[draftKey] ?? null;
-    } catch (error) {
-      console.debug('Không thể đọc nháp từ localStorage:', error);
+    } catch {
       return null;
     }
   },
@@ -267,8 +546,8 @@ export const ordersService = {
       const drafts: Record<string, Partial<Order>> = JSON.parse(raw);
       delete drafts[draftKey];
       localStorage.setItem(DRAFT_ORDERS_KEY, JSON.stringify(drafts));
-    } catch (error) {
-      console.debug('Không thể xóa nháp khỏi localStorage:', error);
+    } catch (e) {
+      void e;
     }
   },
 
@@ -276,38 +555,39 @@ export const ordersService = {
    * Cập nhật trạng thái đơn hàng (APPROVED, CANCELLED...)
    */
   async updateOrderStatus(id: string, status: OrderStatus): Promise<Order> {
+    const token = tokenStorage.getAccessToken();
+    if (token?.startsWith('demo-jwt-')) {
+      const all = getStoredDemoOrders();
+      const idx = all.findIndex((o) => o.id === id);
+      if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${id}`);
+      all[idx] = { ...all[idx], status, updatedAt: new Date().toISOString() };
+      saveStoredDemoOrders(all);
+      return all[idx];
+    }
     const res = await apiClient.patch<Order>(`/orders/${id}/status`, { status });
     return res.data;
   },
 
   /**
-   * Xóa đơn hàng (chỉ áp dụng đơn Nháp hoặc Đã hủy)
-   */
-  async deleteOrder(id: string): Promise<{ success: boolean; message: string }> {
-    const res = await apiClient.delete<{ success: boolean; message: string }>(`/orders/${id}`);
-    return res.data;
-  },
-
-  /**
-   * Tìm kiếm sản phẩm để thêm vào dòng hàng
+   * Tìm kiếm sản phẩm để thêm vào dòng hàng (dùng mock hoặc API)
    */
   async searchProducts(query: string): Promise<Product[]> {
+    const token = tokenStorage.getAccessToken();
+    if (token?.startsWith('demo-jwt-')) {
+      if (!query.trim()) return MOCK_PRODUCTS.slice(0, 8);
+      const q = query.toLowerCase();
+      return MOCK_PRODUCTS.filter(
+        (p: Product) =>
+          p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q),
+      ).slice(0, 10);
+    }
     try {
       const res = await apiClient.get<{ data: Product[] }>('/products', {
         params: { search: query, limit: 10, status: 'ACTIVE' },
       });
-      if (res.data?.data && res.data.data.length > 0) {
-        return res.data.data;
-      }
-    } catch (error) {
-      console.debug('Không thể tìm sản phẩm từ API, sử dụng dữ liệu dự phòng:', error);
+      return res.data.data ?? [];
+    } catch {
+      return [];
     }
-
-    // Fallback nếu server trả rỗng hoặc đang offline
-    if (!query.trim()) return MOCK_PRODUCTS.slice(0, 8);
-    const q = query.toLowerCase();
-    return MOCK_PRODUCTS.filter(
-      (p: Product) => p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q),
-    ).slice(0, 10);
   },
 };

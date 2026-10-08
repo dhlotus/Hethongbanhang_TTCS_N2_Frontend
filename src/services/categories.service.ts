@@ -51,6 +51,21 @@ export const categoriesService = {
   },
 
   /**
+   * Lấy tổng doanh số bán được của nhóm hàng
+   * GET /api/categories/:id/revenue
+   */
+  async getCategoryRevenue(id: string): Promise<number> {
+    try {
+      const response = await apiClient.get<{ categoryId: string; totalRevenue: number }>(
+        `/categories/${id}/revenue`
+      );
+      return response.data?.totalRevenue || 0;
+    } catch {
+      return 0;
+    }
+  },
+
+  /**
    * Tạo nhóm hàng mới
    * POST /api/categories
    */

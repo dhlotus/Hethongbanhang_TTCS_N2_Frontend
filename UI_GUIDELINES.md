@@ -673,3 +673,122 @@ LOHA SALES phải duy trì một ngôn ngữ hình học thống nhất:
 
 **Bo vừa phải → Sạch → Hiện đại → Chuyên nghiệp → Không lạm dụng bo tròn.**
 
+
+## 8. Shadow — Hệ thống đổ bóng
+
+### 8.1. Nguyên tắc chung
+
+- Shadow dùng để tạo **chiều sâu và phân cấp**, không dùng để trang trí.
+- Ưu tiên Shadow nhẹ, mềm và tinh tế theo phong cách SaaS hiện đại.
+- Không sử dụng Shadow đậm hoặc quá lớn cho các component thông thường.
+- Không để mọi component đều có Shadow.
+
+### 8.2. Shadow Scale
+
+Chỉ sử dụng các cấp Shadow được định nghĩa:
+
+| Token | Mức độ | Sử dụng |
+|---|---|---|
+| `shadow-sm` | Rất nhẹ | Card, Input, component nhỏ |
+| `shadow-md` | Nhẹ | Dropdown, Popover |
+| `shadow-lg` | Rõ hơn | Modal, Dialog |
+| `shadow-xl` | Mạnh | Layer đặc biệt / Overlay |
+
+### 8.3. Quy tắc theo Component
+
+- **Card:** ưu tiên Border; chỉ dùng `shadow-sm` khi cần tạo phân lớp.
+- **Button:** không dùng Shadow mặc định.
+- **Input / Select:** không dùng Shadow mặc định; Focus sử dụng Primary Border/Focus Ring.
+- **Dropdown / Popover:** `shadow-md`.
+- **Modal / Dialog:** `shadow-lg`.
+- **Toast:** Shadow nhẹ để tách khỏi nội dung phía sau.
+- **Sidebar / Header:** chỉ sử dụng Shadow khi cần thể hiện sự tách lớp.
+- **Overlay:** có thể sử dụng Shadow kết hợp với nền Overlay.
+
+### 8.4. Trạng thái tương tác
+
+- Không tạo Shadow quá mạnh khi Hover.
+- Focus ưu tiên sử dụng **Primary Color + Focus Ring** thay vì Shadow đậm.
+- Active/Pressed không được tạo cảm giác component đang nổi lên quá mức.
+- Disabled không sử dụng Shadow nổi bật.
+
+### 8.5. Design Tokens
+
+```css
+--shadow-sm: ...;
+--shadow-md: ...;
+--shadow-lg: ...;
+--shadow-xl: ...;
+````
+
+Shadow phải được quản lý tập trung và tái sử dụng thông qua Design Tokens.
+
+### 8.6. Nguyên tắc phân lớp
+
+Shadow phải giúp người dùng hiểu thứ tự của các Layer:
+
+```text
+Page
+  ↓
+Card
+  ↓
+Dropdown / Popover
+  ↓
+Modal / Dialog
+  ↓
+Overlay / Critical Layer
+```
+
+Layer càng nổi trên giao diện → Shadow có thể càng rõ.
+
+### 8.7. Nguyên tắc cốt lõi
+
+> **Shadow dùng để thể hiện chiều sâu, không phải để làm component nổi bật một cách tùy tiện.**
+
+LOHA SALES ưu tiên:
+
+**Nhẹ → Mềm → Tinh tế → Có phân cấp → Không lạm dụng.**
+ 
+## 9. Icon — Hệ thống biểu tượng
+
+* Dùng **một Icon Library thống nhất** cho toàn hệ thống.
+* Không tự ý trộn nhiều bộ icon có phong cách khác nhau.
+* Icon phải cùng phong cách, cùng độ dày nét và kích thước tương ứng.
+
+### Kích thước chuẩn
+
+| Token     | Size | Sử dụng               |
+| --------- | ---: | --------------------- |
+| `icon-xs` | 14px | phụ, metadata         |
+| `icon-sm` | 16px | Button, Input, Table  |
+| `icon-md` | 20px | Navigation, Action    |
+| `icon-lg` | 24px | Header, Section       |
+| `icon-xl` | 32px | Empty State, đặc biệt |
+
+### Quy tắc sử dụng
+
+* Icon + Text: khoảng cách **4–8px**.
+* Icon trong Button phải căn giữa theo chiều dọc.
+* Icon Button phải có vùng click đủ lớn, tối thiểu khoảng **36–40px**.
+* Icon có chức năng phải có ý nghĩa rõ ràng.
+* Không dùng icon chỉ để trang trí nếu không cần thiết.
+* Các hành động phổ biến phải dùng icon thống nhất:
+
+  * Thêm → `Plus`
+  * Sửa → `Edit`
+  * Xóa → `Trash`
+  * Tìm kiếm → `Search`
+  * Lọc → `Filter`
+  * Đóng → `X`
+  * Xem → `Eye`
+  * Khóa → `Lock`
+  * Mở khóa → `Unlock`
+  * Cài đặt → `Settings`
+* Icon **Danger/Delete** dùng màu Error khi cần thể hiện hành động nguy hiểm.
+* Icon trạng thái phải tuân theo **Semantic Color System**.
+* Không đổi icon tùy ý giữa các màn hình cho cùng một chức năng.
+
+### Nguyên tắc
+
+> **Cùng một chức năng → cùng một icon → cùng một cách hiển thị trong toàn hệ thống.**
+

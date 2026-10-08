@@ -122,15 +122,13 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={["SALES_REP", "SALES_MANAGER", "ACCOUNTANT"]}
+                  allowedRoles={["SALES_REP", "SALES_MANAGER", "ACCOUNTANT", "ADMIN"]}
                   moduleName="Quản lý Đại lý & Hạn mức Tín dụng"
                 />
               }
             >
-              <Route
-                path="/sales/customers"
-                element={<CustomersPage />}
-              />
+              <Route path="/sales/customers" element={<CustomersPage />} />
+              <Route path="/customers" element={<Navigate to="/sales/customers" replace />} />
             </Route>
 
             <Route
