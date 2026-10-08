@@ -13,7 +13,6 @@ import {
   Truck,
   ChevronLeft,
   ChevronRight,
-  Filter,
   CheckCircle2,
   Lock,
   MinusCircle,
@@ -72,8 +71,21 @@ const STATUS_CONFIG: Record<
 };
 
 /**
+ * Danh sách người phụ trách mẫu trong hệ thống
+ */
+const SALES_REP_OPTIONS = [
+  { id: '', label: 'Tất cả người phụ trách' },
+  { id: 'usr-sale-01', label: 'Trần Văn Long' },
+  { id: 'usr-sale-02', label: 'Nguyễn Thị Hằng' },
+  { id: 'usr-sale-03', label: 'Phạm Minh Tuấn' },
+];
+
+/**
  * Trang Tìm kiếm & Lọc Danh sách Đại lý theo tuyến (SN-37)
- * Tối ưu responsive, giao diện thân thiện trên thiết bị di động khi đứng ngoài đường
+ * Tuân thủ tiêu chí:
+ * 1. Lọc theo khu vực (region), nhóm khách hàng (customerGroup), người phụ trách (salesRepId), trạng thái (status)
+ * 2. Tìm nhanh theo mã đại lý, tên hoặc số điện thoại
+ * 3. Trải nghiệm mượt mà, cuộn tự nhiên không bị chồng đè giao diện
  */
 export const CustomersPage: React.FC = () => {
   const navigate = useNavigate();
@@ -97,10 +109,12 @@ export const CustomersPage: React.FC = () => {
     searchInput,
     region,
     customerGroup,
+    salesRepId,
     status,
     setSearchInput,
     setRegion,
     setCustomerGroup,
+    setSalesRepId,
     setStatus,
     setPage,
     resetFilters,
@@ -110,213 +124,221 @@ export const CustomersPage: React.FC = () => {
   // State cho Modal Quản lý Điểm Giao Hàng
   const [selectedCustomerForPoints, setSelectedCustomerForPoints] = useState<Customer | null>(null);
 
-  // Bộ lọc mở rộng trên mobile
-  const [showMobileFilters, setShowMobileFilters] = useState<boolean>(false);
-
   const hasActiveFilters = Boolean(
-    searchInput.trim() || region || customerGroup || status,
+    searchInput.trim() || region || customerGroup || salesRepId || status,
   );
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-16">
+    <div className="space-y-5 animate-in fade-in duration-200 pb-12">
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* 1. HEADER SECTION & TỔNG QUAN                                       */}
+      {/* 1. HEADER SECTION & TIÊU ĐỀ TRANG                                   */}
       {/* ─────────────────────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-slate-200/80 sticky top-0 z-20 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/20 shrink-0">
-                <Users className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">
-                    Quản lý Đại lý Tuyến
-                  </h1>
-                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                    {loading ? '...' : `${total} đại lý`}
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm text-slate-500">
-                  {isManagerOrAdmin
-                    ? 'Toàn bộ đại lý trên toàn hệ thống phân phối'
-                    : 'Danh sách đại lý trong tuyến bán hàng được phân công'}
-                </p>
-              </div>
+      <div className="rounded-2xl bg-white p-5 border border-slate-200/80 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/20 shrink-0">
+              <Users className="w-6 h-6" />
             </div>
-
-            <div className="flex items-center gap-2 self-end sm:self-auto">
-              <button
-                type="button"
-                onClick={() => void refresh()}
-                disabled={loading}
-                aria-label="Tải lại dữ liệu"
-                className="inline-flex items-center justify-center h-10 px-3.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 active:scale-95 transition-all shadow-2xs disabled:opacity-50"
-              >
-                <RotateCcw className={`w-4 h-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
-                Làm mới
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigate('/sales/orders')}
-                className="inline-flex items-center justify-center h-10 px-4 text-xs sm:text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all shadow-sm shadow-indigo-600/20"
-              >
-                <PlusCircle className="w-4 h-4 mr-1.5" />
-                Lên đơn hàng
-              </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold text-slate-900 leading-tight">
+                  Quản lý Đại lý Tuyến
+                </h1>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                  {loading ? '...' : `${total} đại lý`}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                {isManagerOrAdmin
+                  ? 'Toàn bộ đại lý trên toàn hệ thống phân phối'
+                  : 'Danh sách đại lý trong tuyến bán hàng được phân công'}
+              </p>
             </div>
           </div>
 
-          {/* ─────────────────────────────────────────────────────────────── */}
-          {/* 2. THANH TÌM KIẾM NHANH TỐI ƯU CHO MOBILE                      */}
-          {/* ─────────────────────────────────────────────────────────────── */}
-          <div className="mt-3.5 flex flex-col sm:flex-row gap-2">
-            <div className="relative flex-1">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <Search className="w-5 h-5 text-indigo-500" />
-              </div>
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Tìm nhanh: Mã đại lý, tên hoặc SĐT (VD: 090..., DL-HN)..."
-                className="block w-full h-11 sm:h-12 pl-10 pr-10 text-sm bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-xl focus:border-indigo-600 focus:ring-3 focus:ring-indigo-600/15 transition-all placeholder:text-slate-400 font-medium text-slate-900 shadow-inner"
-              />
-              {searchInput && (
-                <button
-                  type="button"
-                  onClick={() => setSearchInput('')}
-                  aria-label="Xóa từ khóa tìm kiếm"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
-            </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              disabled={loading}
+              aria-label="Tải lại dữ liệu"
+              className="inline-flex items-center justify-center h-10 px-3.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 active:scale-95 transition-all shadow-2xs disabled:opacity-50 cursor-pointer"
+            >
+              <RotateCcw className={`w-4 h-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+              Làm mới
+            </button>
 
             <button
               type="button"
-              onClick={() => setShowMobileFilters(!showMobileFilters)}
-              className={`sm:hidden inline-flex items-center justify-center h-11 px-4 text-xs font-semibold rounded-xl border transition-all ${
-                hasActiveFilters
-                  ? 'bg-indigo-50 text-indigo-700 border-indigo-300'
-                  : 'bg-white text-slate-700 border-slate-200'
+              onClick={() => navigate('/sales/orders')}
+              className="inline-flex items-center justify-center h-10 px-4 text-xs sm:text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all shadow-sm shadow-indigo-600/20 cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4 mr-1.5" />
+              Lên đơn hàng
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* 2. CARD TÌM KIẾM NHANH & BỘ LỌC ĐA TIÊU CHÍ (AC1 & AC2)            */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      <div className="rounded-2xl bg-white p-5 border border-slate-200/80 shadow-2xs space-y-4">
+        {/* HÀNG 1: TÌM KIẾM NHANH THEO MÃ, TÊN, SỐ ĐIỆN THOẠI (AC2) */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            Tìm nhanh theo mã, tên, số điện thoại:
+          </label>
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-500 pointer-events-none" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Nhập mã đại lý (VD: DL-HCM-001), tên đại lý hoặc số điện thoại (VD: 090...)..."
+              className="block w-full h-11 sm:h-12 pl-11 pr-10 text-sm bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-xl focus:border-indigo-600 focus:ring-3 focus:ring-indigo-600/15 transition-all placeholder:text-slate-400 font-medium text-slate-900 shadow-2xs"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => setSearchInput('')}
+                aria-label="Xóa từ khóa tìm kiếm"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* HÀNG 2: BỘ LỌC 4 TIÊU CHÍ: TRẠNG THÁI, KHU VỰC, NHÓM KHÁCH HÀNG, NGƯỜI PHỤ TRÁCH (AC1) */}
+        <div className="pt-3 border-t border-slate-100 space-y-3">
+          {/* Lọc Trạng thái (status) */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-slate-500 font-semibold whitespace-nowrap mr-1">
+              Trạng thái:
+            </span>
+            <button
+              type="button"
+              onClick={() => setStatus('')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
+                status === ''
+                  ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              <Filter className="w-4 h-4 mr-1.5" />
-              Bộ lọc
-              {hasActiveFilters && (
-                <span className="ml-1.5 w-2 h-2 rounded-full bg-indigo-600" />
-              )}
+              Tất cả
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatus(CustomerStatus.ACTIVE)}
+              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
+                status === CustomerStatus.ACTIVE
+                  ? 'bg-emerald-600 text-white shadow-2xs font-semibold'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Đang hoạt động
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatus(CustomerStatus.LOCKED)}
+              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
+                status === CustomerStatus.LOCKED
+                  ? 'bg-rose-600 text-white shadow-2xs font-semibold'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <Lock className="w-3.5 h-3.5" />
+              Tạm khóa nợ
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatus(CustomerStatus.INACTIVE)}
+              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
+                status === CustomerStatus.INACTIVE
+                  ? 'bg-slate-600 text-white shadow-2xs font-semibold'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <MinusCircle className="w-3.5 h-3.5" />
+              Ngừng kinh doanh
             </button>
           </div>
 
-          {/* ─────────────────────────────────────────────────────────────── */}
-          {/* 3. BỘ LỌC CHIP NHANH (QUICK FILTER CHIPS)                      */}
-          {/* ─────────────────────────────────────────────────────────────── */}
-          <div
-            className={`mt-3 pt-3 border-t border-slate-100 flex flex-col gap-2.5 ${
-              showMobileFilters ? 'block' : 'hidden sm:flex'
-            }`}
-          >
-            {/* Lọc Trạng thái */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
-              <span className="text-slate-400 font-medium whitespace-nowrap mr-1">
-                Trạng thái:
-              </span>
-              <button
-                type="button"
-                onClick={() => setStatus('')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-all whitespace-nowrap ${
-                  status === ''
-                    ? 'bg-indigo-600 text-white shadow-2xs font-semibold'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
+          {/* Lọc 3 dropdowns: Khu vực (region), Nhóm khách hàng (customerGroup), Người phụ trách (salesRepId) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1 text-xs">
+            {/* 1. Khu vực (region) */}
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                Khu vực:
+              </label>
+              <select
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                aria-label="Lọc theo khu vực địa bàn"
+                className="w-full h-9 px-3 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-lg text-slate-800 font-medium focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-xs"
               >
-                Tất cả
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatus(CustomerStatus.ACTIVE)}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-all whitespace-nowrap ${
-                  status === CustomerStatus.ACTIVE
-                    ? 'bg-emerald-600 text-white shadow-2xs font-semibold'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                Đang hoạt động
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatus(CustomerStatus.LOCKED)}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-all whitespace-nowrap ${
-                  status === CustomerStatus.LOCKED
-                    ? 'bg-rose-600 text-white shadow-2xs font-semibold'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                Tạm khóa nợ
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatus(CustomerStatus.INACTIVE)}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-all whitespace-nowrap ${
-                  status === CustomerStatus.INACTIVE
-                    ? 'bg-slate-600 text-white shadow-2xs font-semibold'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                Ngừng kinh doanh
-              </button>
+                <option value="">Tất cả khu vực</option>
+                <option value="Miền Bắc">Miền Bắc</option>
+                <option value="Miền Trung">Miền Trung</option>
+                <option value="Miền Nam">Miền Nam</option>
+              </select>
             </div>
 
-            {/* Lọc Khu vực & Nhóm đại lý */}
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-400 font-medium whitespace-nowrap">
-                  Khu vực:
-                </span>
-                <select
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value)}
-                  aria-label="Lọc theo khu vực địa bàn"
-                  className="h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs"
-                >
-                  <option value="">Tất cả khu vực</option>
-                  <option value="Miền Bắc">Miền Bắc</option>
-                  <option value="Miền Trung">Miền Trung</option>
-                  <option value="Miền Nam">Miền Nam</option>
-                </select>
-              </div>
+            {/* 2. Nhóm khách hàng (customerGroup) */}
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                Nhóm khách hàng:
+              </label>
+              <select
+                value={customerGroup}
+                onChange={(e) => setCustomerGroup(e.target.value)}
+                aria-label="Lọc theo nhóm đại lý"
+                className="w-full h-9 px-3 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-lg text-slate-800 font-medium focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-xs"
+              >
+                <option value="">Tất cả nhóm</option>
+                <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
+                <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
+                <option value="RETAIL">Khách sỉ / Lẻ</option>
+              </select>
+            </div>
 
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-400 font-medium whitespace-nowrap">
-                  Nhóm đại lý:
-                </span>
-                <select
-                  value={customerGroup}
-                  onChange={(e) => setCustomerGroup(e.target.value)}
-                  aria-label="Lọc theo nhóm đại lý"
-                  className="h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs"
-                >
-                  <option value="">Tất cả nhóm</option>
-                  <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
-                  <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
-                  <option value="RETAIL">Khách sỉ / Lẻ</option>
-                </select>
-              </div>
+            {/* 3. Người phụ trách (salesRepId) */}
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                Người phụ trách:
+              </label>
+              <select
+                value={salesRepId}
+                onChange={(e) => setSalesRepId(e.target.value)}
+                aria-label="Lọc theo người phụ trách"
+                className="w-full h-9 px-3 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-lg text-slate-800 font-medium focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-xs"
+              >
+                {SALES_REP_OPTIONS.map((rep) => (
+                  <option key={rep.id} value={rep.id}>
+                    {rep.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-              {hasActiveFilters && (
+            {/* 4. Nút Đặt lại bộ lọc */}
+            <div className="flex items-end">
+              {hasActiveFilters ? (
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="ml-auto inline-flex items-center gap-1 text-xs text-rose-600 hover:text-rose-700 font-medium py-1 px-2 rounded-md hover:bg-rose-50"
+                  className="w-full h-9 inline-flex items-center justify-center gap-1.5 text-xs text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg font-semibold transition-all cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                   Xóa bộ lọc
                 </button>
+              ) : (
+                <div className="h-9 flex items-center text-[11px] text-slate-400 italic">
+                  Chưa áp dụng bộ lọc
+                </div>
               )}
             </div>
           </div>
@@ -324,9 +346,9 @@ export const CustomersPage: React.FC = () => {
       </div>
 
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* 4. MAIN CONTENT AREA                                                */}
+      {/* 3. MAIN DATA SECTION: DANH SÁCH ĐẠI LÝ                              */}
       {/* ─────────────────────────────────────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-5">
+      <div>
         {/* Lỗi cảnh báo nếu có */}
         {error && (
           <div className="mb-4 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-center justify-between">
@@ -337,7 +359,7 @@ export const CustomersPage: React.FC = () => {
             <button
               type="button"
               onClick={() => void refresh()}
-              className="text-xs font-semibold text-rose-700 underline hover:text-rose-900"
+              className="text-xs font-semibold text-rose-700 underline hover:text-rose-900 cursor-pointer"
             >
               Thử lại
             </button>
@@ -395,7 +417,7 @@ export const CustomersPage: React.FC = () => {
               <button
                 type="button"
                 onClick={resetFilters}
-                className="inline-flex items-center px-4 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 active:scale-95 transition-all"
+                className="inline-flex items-center px-4 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 active:scale-95 transition-all cursor-pointer"
               >
                 Đặt lại bộ lọc
               </button>
@@ -406,7 +428,6 @@ export const CustomersPage: React.FC = () => {
           <>
             {/* ───────────────────────────────────────────────────────────── */}
             {/* VIEW A: DẠNG CARD CHO THIẾT BỊ DI ĐỘNG (< 768px)               */}
-            {/* Tối ưu một tay vuốt chạm, nút gọi điện thoại trực tiếp        */}
             {/* ───────────────────────────────────────────────────────────── */}
             <div className="grid grid-cols-1 md:hidden gap-3.5">
               {customers.map((cust) => {
@@ -455,7 +476,7 @@ export const CustomersPage: React.FC = () => {
                           <span className="line-clamp-2">{cust.address}</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-2 pt-1">
+                      <div className="flex items-center gap-2 pt-1 flex-wrap">
                         <span
                           className={`px-2 py-0.5 rounded text-[11px] font-medium border ${groupInfo.badgeClass}`}
                         >
@@ -520,7 +541,7 @@ export const CustomersPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setSelectedCustomerForPoints(cust)}
-                        className="inline-flex items-center justify-center h-10 px-3 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-95 font-medium text-xs transition-all border border-slate-200/60"
+                        className="inline-flex items-center justify-center h-10 px-3 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-95 font-medium text-xs transition-all border border-slate-200/60 cursor-pointer"
                         title="Xem các điểm giao hàng"
                       >
                         <Truck className="w-4 h-4" />
@@ -529,7 +550,7 @@ export const CustomersPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => navigate('/sales/orders')}
-                        className="inline-flex items-center justify-center h-10 px-3.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 font-semibold text-xs transition-all shadow-xs shadow-indigo-600/20"
+                        className="inline-flex items-center justify-center h-10 px-3.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 font-semibold text-xs transition-all shadow-xs shadow-indigo-600/20 cursor-pointer"
                       >
                         Lên đơn
                       </button>
@@ -542,7 +563,7 @@ export const CustomersPage: React.FC = () => {
             {/* ───────────────────────────────────────────────────────────── */}
             {/* VIEW B: DẠNG BẢNG CHO DESKTOP (>= 768px)                       */}
             {/* ───────────────────────────────────────────────────────────── */}
-            <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-slate-700">
                   <thead className="bg-slate-50/80 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200/80">
@@ -650,7 +671,7 @@ export const CustomersPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => setSelectedCustomerForPoints(cust)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 font-medium text-xs transition-all border border-slate-200/60"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 font-medium text-xs transition-all border border-slate-200/60 cursor-pointer"
                                 title="Khai báo & Quản lý điểm giao hàng"
                               >
                                 <Truck className="w-3.5 h-3.5 text-slate-600" />
@@ -659,7 +680,7 @@ export const CustomersPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => navigate('/sales/orders')}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 font-semibold text-xs transition-all shadow-2xs"
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 font-semibold text-xs transition-all shadow-2xs cursor-pointer"
                               >
                                 Lên đơn
                               </button>
@@ -674,9 +695,9 @@ export const CustomersPage: React.FC = () => {
             </div>
 
             {/* ───────────────────────────────────────────────────────────── */}
-            {/* 5. PHÂN TRANG (PAGINATION)                                    */}
+            {/* 4. PHÂN TRANG (PAGINATION)                                    */}
             {/* ───────────────────────────────────────────────────────────── */}
-            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
               <div className="text-xs text-slate-500">
                 Hiển thị{' '}
                 <span className="font-semibold text-slate-800">
@@ -695,7 +716,7 @@ export const CustomersPage: React.FC = () => {
                   type="button"
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page <= 1}
-                  className="inline-flex items-center justify-center min-h-[36px] min-w-[36px] sm:min-h-[40px] sm:min-w-[40px] px-3 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  className="inline-flex items-center justify-center min-h-[36px] min-w-[36px] sm:min-h-[40px] sm:min-w-[40px] px-3 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4 mr-1" />
                   Trước
@@ -709,7 +730,7 @@ export const CustomersPage: React.FC = () => {
                   type="button"
                   onClick={() => setPage(Math.min(totalPages, page + 1))}
                   disabled={page >= totalPages}
-                  className="inline-flex items-center justify-center min-h-[36px] min-w-[36px] sm:min-h-[40px] sm:min-w-[40px] px-3 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  className="inline-flex items-center justify-center min-h-[36px] min-w-[36px] sm:min-h-[40px] sm:min-w-[40px] px-3 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
                 >
                   Sau
                   <ChevronRight className="w-4 h-4 ml-1" />
@@ -721,7 +742,7 @@ export const CustomersPage: React.FC = () => {
       </div>
 
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* 6. MODAL QUẢN LÝ ĐIỂM GIAO HÀNG (SN-31 & SN-32)                    */}
+      {/* 5. MODAL QUẢN LÝ ĐIỂM GIAO HÀNG (SN-31 & SN-32)                    */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       {selectedCustomerForPoints && (
         <DeliveryPointModal
@@ -729,7 +750,6 @@ export const CustomersPage: React.FC = () => {
           customer={selectedCustomerForPoints}
           onClose={() => setSelectedCustomerForPoints(null)}
           onUpdated={(points) => {
-            // Cập nhật lại deliveryPoints cho đại lý đang chọn
             setSelectedCustomerForPoints((prev) =>
               prev ? { ...prev, deliveryPoints: points } : null,
             );

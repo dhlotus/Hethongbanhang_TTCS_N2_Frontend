@@ -217,7 +217,11 @@ function filterDemoCustomers(
 
   if (params.salesRepId) {
     list = list.filter(
-      (c) => c.salesRepId === params.salesRepId || c.salesRep?.id === params.salesRepId,
+      (c) =>
+        c.salesRepId === params.salesRepId ||
+        c.salesRep?.id === params.salesRepId ||
+        ((params.salesRepId === 'usr-sales-002' || params.salesRepId === 'usr-sale-01') &&
+          (c.salesRepId === 'usr-sale-01' || c.salesRepId === 'usr-sales-002')),
     );
   }
 
