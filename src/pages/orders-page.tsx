@@ -866,7 +866,7 @@ export const OrdersPage: React.FC = () => {
     try {
       const approvedOrder = await ordersService.updateOrderStatus(order.id, 'APPROVED');
       setOrders((current) => current.map((item) => item.id === approvedOrder.id ? approvedOrder : item));
-      setViewOrder(approvedOrder);
+      setViewOrder((current) => current?.id === approvedOrder.id ? approvedOrder : current);
       showToast('success', `Đã duyệt đơn ${approvedOrder.orderCode || ''}`.trim());
     } catch (error: unknown) {
       showToast('error', error instanceof Error ? error.message : 'Không thể duyệt đơn hàng');
@@ -1015,6 +1015,18 @@ export const OrdersPage: React.FC = () => {
                           <OrderStatusBadge status={order.status} />
                         </td>
                         <td className="px-4 py-3 text-center">
+                          {(isAdmin || isSalesManager) && order.status === 'PENDING' && (
+                            <button
+                              type="button"
+                              onClick={() => void handleApproveOrder(order)}
+                              disabled={approvingOrder}
+                              className="mr-1.5 inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Duyệt đơn"
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                              Duyệt
+                            </button>
+                          )}
                           <button
                             onClick={() => setViewOrder(order)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
