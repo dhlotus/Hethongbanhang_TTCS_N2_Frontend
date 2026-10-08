@@ -13,6 +13,9 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  AlertTriangle,
+  ShieldAlert,
+  CreditCard,
   Package,
   FileText,
   Truck,
@@ -36,6 +39,7 @@ import type {
   OrderStatus,
   CustomerOption,
   DeliveryPoint,
+  CustomerDebtStatus,
 } from '../types/order';
 import type { Product, ProductUnit } from '../types/products';
 
@@ -154,6 +158,12 @@ const ORDER_STATUS_CONFIG: Record<
     bgClass: 'bg-amber-50',
     textClass: 'text-amber-700',
     icon: <Clock className="w-3 h-3" />,
+  },
+  PENDING_APPROVAL: {
+    label: 'Chờ duyệt hạn mức',
+    bgClass: 'bg-amber-100 ring-1 ring-amber-300',
+    textClass: 'text-amber-800',
+    icon: <AlertTriangle className="w-3 h-3" />,
   },
   PENDING_INVENTORY_APPROVAL: {
     label: 'Chờ duyệt tồn kho',
@@ -319,6 +329,11 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       });
   }, [open]);
 
+  // Trạng thái kiểm soát hạn mức công nợ thời gian thực (Task SN-41)
+  const [debtStatus, setDebtStatus] = useState<CustomerDebtStatus | null>(null);
+  const [isLoadingDebt, setIsLoadingDebt] = useState<boolean>(false);
+  const [showCreditApprovalModal, setShowCreditApprovalModal] = useState<boolean>(false);
+
   // Khôi phục nháp
   useEffect(() => {
     if (!open) return;
@@ -475,6 +490,49 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     };
   }, [productQuery, step]);
 
+  // Tự động truy vấn thông tin công nợ thời gian thực khi chọn đại lý (Task SN-41)
+  useEffect(() => {
+    let active = true;
+    if (!selectedCustomer) {
+      setDebtStatus(null);
+      return;
+    }
+
+    const fetchDebt = async () => {
+      setIsLoadingDebt(true);
+      try {
+        const res = await ordersService.getDebtStatus(selectedCustomer.id);
+        if (active) setDebtStatus(res);
+      } catch {
+        if (active) {
+          const cLimit = selectedCustomer.creditLimit || 0;
+          const cDebt = selectedCustomer.currentDebt || 0;
+          setDebtStatus({
+            customerId: selectedCustomer.id,
+            customerCode: selectedCustomer.code,
+            customerName: selectedCustomer.name,
+            creditLimit: cLimit,
+            currentDebt: cDebt,
+            availableLimit: Math.max(0, cLimit - cDebt),
+            maxDebtDays: selectedCustomer.maxDebtDays || 30,
+            overdueAmount: selectedCustomer.overdueAmount || 0,
+            overdueDays: selectedCustomer.overdueDays || 0,
+            canCreateOrder: !(
+              (selectedCustomer.overdueDays || 0) > (selectedCustomer.maxDebtDays || 30) &&
+              (selectedCustomer.overdueAmount || 0) > 0
+            ),
+          });
+        }
+      } finally {
+        if (active) setIsLoadingDebt(false);
+      }
+    };
+
+    fetchDebt();
+    return () => {
+      active = false;
+    };
+  }, [selectedCustomer]);
   /** Thêm sản phẩm vào dòng hàng */
   const handleAddProduct = useCallback(
     (product: Product) => {
@@ -585,8 +643,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     return { subtotal, totalDiscount, grandTotal: subtotal - totalDiscount };
   }, [lines]);
 
-  /** Submit tạo đơn hàng */
-  const handleSubmit = async () => {
+  /** Submit tạo đơn hàng (Hỗ trợ luồng kiểm soát công nợ SN-41) */
+  const handleSubmit = async (forceApproval = false) => {
     if (!selectedCustomer) {
       showToast('error', 'Vui lòng chọn đại lý trước khi tạo đơn');
       return;
@@ -596,6 +654,25 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       return;
     }
 
+    // Trường hợp 1 (Hard Block): Chặn tạo đơn nếu nợ quá hạn vượt quá số ngày cho phép
+    if (debtStatus && !debtStatus.canCreateOrder) {
+      showToast('error', debtStatus.blockReason || 'Đại lý bị khóa tạo đơn do có khoản nợ quá hạn');
+      return;
+    }
+
+    // Trường hợp 2 (Approval Flow): Nếu tổng đơn + nợ hiện tại vượt hạn mức công nợ
+    const currentDebt = debtStatus?.currentDebt ?? (selectedCustomer.currentDebt || 0);
+    const creditLimit = debtStatus?.creditLimit ?? (selectedCustomer.creditLimit || 0);
+    const projectedDebt = currentDebt + totals.grandTotal;
+    const isExceeded = creditLimit > 0 && projectedDebt > creditLimit;
+
+    if (isExceeded && !forceApproval) {
+      // Hiển thị modal xác nhận thông minh chuyển sang trạng thái chờ phê duyệt
+      setShowCreditApprovalModal(true);
+      return;
+    }
+
+    setShowCreditApprovalModal(false);
     setIsSubmitting(true);
     try {
       const created = await ordersService.createOrder({
@@ -619,8 +696,15 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       });
 
       ordersService.clearDraft(DRAFT_KEY);
-      
-      if (created.status === 'PENDING_INVENTORY_APPROVAL') {
+
+      if (created.status === 'PENDING_APPROVAL' || created.isCreditLimitExceeded) {
+        showToast(
+          'warning',
+          `Đơn hàng ${created.orderCode} đã tạo và chuyển trạng thái "Cần phê duyệt" do vượt hạn mức công nợ!`,
+        );
+        onCreated?.(created);
+        handleClose();
+      } else if (created.status === 'PENDING_INVENTORY_APPROVAL') {
         setCreatedOrder(created);
         setShowWarningModal(true);
       } else {
@@ -639,6 +723,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const handleClose = () => {
     setStep(1);
     setSelectedCustomer(null);
+    setDebtStatus(null);
+    setShowCreditApprovalModal(false);
     setLines([]);
     setCustomerSearch('');
     setProductQuery('');
@@ -726,63 +812,211 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                       )}
                     </div>
                   ) : (
-                    customers.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCustomer(c);
-                          if (c.deliveryPoints?.[0]) {
-                            setDeliveryPoint(c.deliveryPoints[0]);
-                          } else {
-                            setDeliveryPoint({ address: c.address || '' });
-                          }
-                        }}
-                        className={`w-full text-left p-3 rounded-xl border transition-all ${
-                          selectedCustomer?.id === c.id
-                            ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-400'
-                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-800 truncate">{c.name}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                              {c.code} · {c.phone || 'Chưa có SĐT'}
-                            </p>
-                          </div>
-                          <span
-                            className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
-                              c.group === 'AGENT_LEVEL_1'
-                                ? 'bg-purple-50 text-purple-700'
+                    customers.map((c) => {
+                      const isOverdue =
+                        (c.overdueDays || 0) > (c.maxDebtDays || 30) && (c.overdueAmount || 0) > 0;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCustomer(c);
+                            if (c.deliveryPoints?.[0]) {
+                              setDeliveryPoint(c.deliveryPoints[0]);
+                            } else {
+                              setDeliveryPoint({ address: c.address || '' });
+                            }
+                          }}
+                          className={`w-full text-left p-3 rounded-xl border transition-all ${
+                            selectedCustomer?.id === c.id
+                              ? 'border-blue-500 bg-blue-50/70 ring-1 ring-blue-400'
+                              : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-sm font-semibold text-slate-800 truncate">{c.name}</p>
+                                {isOverdue && (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">
+                                    <ShieldAlert className="w-3 h-3" /> Nợ quá hạn
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                {c.code} · {c.phone || 'Chưa có SĐT'}
+                              </p>
+                            </div>
+                            <span
+                              className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
+                                c.group === 'AGENT_LEVEL_1'
+                                  ? 'bg-purple-50 text-purple-700'
+                                  : c.group === 'AGENT_LEVEL_2'
+                                  ? 'bg-blue-50 text-blue-700'
+                                  : c.group === 'RETAIL'
+                                  ? 'bg-emerald-50 text-emerald-700'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}
+                            >
+                              {c.group === 'AGENT_LEVEL_1'
+                                ? 'Đại lý Cấp 1'
                                 : c.group === 'AGENT_LEVEL_2'
-                                ? 'bg-blue-50 text-blue-700'
+                                ? 'Đại lý Cấp 2'
                                 : c.group === 'RETAIL'
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            {c.group === 'AGENT_LEVEL_1'
-                              ? 'Đại lý Cấp 1'
-                              : c.group === 'AGENT_LEVEL_2'
-                              ? 'Đại lý Cấp 2'
-                              : c.group === 'RETAIL'
-                              ? 'Bán lẻ'
-                              : c.group || 'Đại lý'}
-                          </span>
-                        </div>
-                        {c.creditLimit !== undefined && (
-                          <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
-                            <span>Hạn mức: {formatCurrency(c.creditLimit)}</span>
-                            <span>·</span>
-                            <span>Công nợ: {formatCurrency(c.currentDebt ?? 0)}</span>
+                                ? 'Bán lẻ'
+                                : c.group || 'Đại lý'}
+                            </span>
                           </div>
-                        )}
-                      </button>
-                    ))
+                          {c.creditLimit !== undefined && (
+                            <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+                              <span>Hạn mức: {formatCurrency(c.creditLimit)}</span>
+                              <span>Công nợ: {formatCurrency(c.currentDebt ?? 0)}</span>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })
                   )}
                 </div>
               </div>
+
+              {/* Widget thông tin công nợ thời gian thực (Task SN-41) */}
+              {selectedCustomer && (
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3 transition-all">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-[var(--color-primary)]" />
+                      <h4 className="text-sm font-semibold text-slate-800">
+                        Kiểm Soát Hạn Mức & Công Nợ Đại Lý
+                      </h4>
+                    </div>
+                    {isLoadingDebt ? (
+                      <span className="text-xs text-slate-400 inline-flex items-center gap-1">
+                        <RefreshCw className="w-3 h-3 animate-spin" /> Đang kiểm tra...
+                      </span>
+                    ) : debtStatus ? (
+                      !debtStatus.canCreateOrder ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                          <ShieldAlert className="w-3.5 h-3.5" />
+                          Khóa tạo đơn ({debtStatus.overdueDays} ngày quá hạn)
+                        </span>
+                      ) : debtStatus.currentDebt >= debtStatus.creditLimit ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          Hết hạn mức (Cần duyệt)
+                        </span>
+                      ) : debtStatus.availableLimit < debtStatus.creditLimit * 0.2 ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                          <Clock className="w-3.5 h-3.5" />
+                          Sắp chạm trần
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Hạn mức an toàn
+                        </span>
+                      )
+                    ) : null}
+                  </div>
+
+                  {debtStatus && (
+                    <>
+                      {/* 3 Thẻ Metric Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                        <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 flex flex-col">
+                          <span className="text-xs text-slate-500 font-medium">Hạn mức được cấp</span>
+                          <span className="text-sm sm:text-base font-bold text-slate-900 mt-0.5">
+                            {formatCurrency(debtStatus.creditLimit)}
+                          </span>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 flex flex-col">
+                          <span className="text-xs text-slate-500 font-medium">Công nợ hiện tại</span>
+                          <span className="text-sm sm:text-base font-bold text-slate-900 mt-0.5">
+                            {formatCurrency(debtStatus.currentDebt)}
+                          </span>
+                        </div>
+                        <div
+                          className={`p-3 rounded-lg border flex flex-col ${
+                            !debtStatus.canCreateOrder
+                              ? 'bg-rose-50/70 border-rose-200'
+                              : debtStatus.availableLimit < debtStatus.creditLimit * 0.2
+                              ? 'bg-amber-50/70 border-amber-200'
+                              : 'bg-emerald-50/70 border-emerald-200'
+                          }`}
+                        >
+                          <span className="text-xs text-slate-600 font-medium">Hạn mức khả dụng</span>
+                          <span
+                            className={`text-sm sm:text-base font-bold mt-0.5 ${
+                              !debtStatus.canCreateOrder
+                                ? 'text-rose-700'
+                                : debtStatus.availableLimit < debtStatus.creditLimit * 0.2
+                                ? 'text-amber-800'
+                                : 'text-emerald-700'
+                            }`}
+                          >
+                            {formatCurrency(debtStatus.availableLimit)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Thanh phần trăm sử dụng hạn mức */}
+                      {debtStatus.creditLimit > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex justify-between text-xs text-slate-500 font-medium">
+                            <span>Tỷ lệ sử dụng hạn mức</span>
+                            <span className="font-semibold text-slate-700">
+                              {Math.round((debtStatus.currentDebt / debtStatus.creditLimit) * 100)}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                !debtStatus.canCreateOrder
+                                  ? 'bg-rose-500'
+                                  : debtStatus.currentDebt / debtStatus.creditLimit >= 0.9
+                                  ? 'bg-rose-500'
+                                  : debtStatus.currentDebt / debtStatus.creditLimit >= 0.7
+                                  ? 'bg-amber-500'
+                                  : 'bg-emerald-500'
+                              }`}
+                              style={{
+                                width: `${Math.min(
+                                  100,
+                                  Math.round((debtStatus.currentDebt / debtStatus.creditLimit) * 100),
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Hard Block Banner nếu có nợ quá hạn vượt quá số ngày cho phép */}
+                      {!debtStatus.canCreateOrder && (
+                        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-rose-900 text-xs sm:text-sm">
+                          <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold text-rose-800">
+                              Hệ thống khóa quyền tạo đơn hàng (Hard Block)
+                            </p>
+                            <p className="mt-0.5 text-rose-700 leading-relaxed">
+                              {debtStatus.blockReason ||
+                                `Đại lý đang có khoản nợ quá hạn ${debtStatus.overdueDays} ngày (vượt quá ${debtStatus.maxDebtDays} ngày cho phép) với số tiền ${formatCurrency(debtStatus.overdueAmount)}. Vui lòng thu hồi công nợ trước khi tiếp tục.`}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Cảnh báo nợ nếu canCreateOrder = true nhưng có warningMessage */}
+                      {debtStatus.canCreateOrder && debtStatus.warningMessage && (
+                        <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-amber-900 text-xs">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          <span className="leading-relaxed">{debtStatus.warningMessage}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* Điểm giao hàng */}
               {selectedCustomer && (
@@ -991,6 +1225,89 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 </div>
               )}
 
+              {/* Khung đối soát công nợ thời gian thực (Task SN-41) */}
+              {debtStatus && (
+                <div
+                  className={`rounded-xl border p-3.5 space-y-2.5 transition-all ${
+                    !debtStatus.canCreateOrder
+                      ? 'bg-rose-50/80 border-rose-200 text-rose-900'
+                      : debtStatus.creditLimit > 0 &&
+                        debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit
+                      ? 'bg-amber-50/80 border-amber-200 text-amber-900'
+                      : 'bg-slate-50 border-slate-200/80 text-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <span className="flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-slate-600" />
+                      Kiểm soát hạn mức công nợ sau đơn
+                    </span>
+                    {!debtStatus.canCreateOrder ? (
+                      <span className="text-rose-700 font-bold flex items-center gap-1">
+                        <ShieldAlert className="w-3.5 h-3.5" /> Chặn tạo đơn (Quá hạn)
+                      </span>
+                    ) : debtStatus.creditLimit > 0 &&
+                      debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit ? (
+                      <span className="text-amber-800 font-bold flex items-center gap-1">
+                        <AlertTriangle className="w-3.5 h-3.5" /> Cần phê duyệt (Vượt hạn mức)
+                      </span>
+                    ) : (
+                      <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Trong hạn mức an toàn
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-500 block">Hạn mức cấp:</span>
+                      <span className="font-semibold">{formatCurrency(debtStatus.creditLimit)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Công nợ hiện tại:</span>
+                      <span className="font-semibold">{formatCurrency(debtStatus.currentDebt)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Đơn hàng này:</span>
+                      <span className="font-semibold text-blue-700">
+                        + {formatCurrency(totals.grandTotal)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Dự kiến sau đơn:</span>
+                      <span
+                        className={`font-bold ${
+                          debtStatus.creditLimit > 0 &&
+                          debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit
+                            ? 'text-rose-600'
+                            : 'text-slate-800'
+                        }`}
+                      >
+                        {formatCurrency(debtStatus.currentDebt + totals.grandTotal)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Cảnh báo vượt hạn mức công nợ */}
+                  {debtStatus.creditLimit > 0 &&
+                    debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit && (
+                      <div className="pt-2 border-t border-amber-200/80 text-xs text-amber-900 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <p className="leading-relaxed">
+                          Đơn hàng khiến tổng công nợ vượt hạn mức{' '}
+                          <strong>
+                            {formatCurrency(
+                              debtStatus.currentDebt + totals.grandTotal - debtStatus.creditLimit,
+                            )}
+                          </strong>
+                          . Hệ thống sẽ tự động chuyển đơn sang trạng thái{' '}
+                          <strong className="underline">Cần phê duyệt (Pending Approval)</strong> khi gửi.
+                        </p>
+                      </div>
+                    )}
+                </div>
+              )}
+
               {/* Tổng kết đơn hàng */}
               {lines.length > 0 && (
                 <div className="border border-blue-100 rounded-xl p-4 bg-blue-50/50 space-y-2">
@@ -1016,7 +1333,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 flex-shrink-0 gap-3">
           <button
             onClick={step === 1 ? handleClose : () => setStep(1)}
-            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
+            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
           >
             {step === 1 ? 'Hủy' : '← Quay lại'}
           </button>
@@ -1028,24 +1345,135 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             {step === 1 ? (
               <button
                 onClick={() => setStep(2)}
-                disabled={!selectedCustomer}
-                className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors"
+                disabled={!selectedCustomer || (debtStatus !== null && !debtStatus.canCreateOrder)}
+                className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors cursor-pointer"
+                title={debtStatus && !debtStatus.canCreateOrder ? debtStatus.blockReason : undefined}
               >
                 Tiếp theo →
               </button>
             ) : (
               <button
-                onClick={handleSubmit}
-                disabled={isSubmitting || lines.length === 0}
-                className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors inline-flex items-center gap-2"
+                onClick={() => handleSubmit(false)}
+                disabled={
+                  isSubmitting ||
+                  lines.length === 0 ||
+                  (debtStatus !== null && !debtStatus.canCreateOrder)
+                }
+                className={`px-5 py-2 text-sm font-medium text-white rounded-xl transition-colors inline-flex items-center gap-2 cursor-pointer ${
+                  debtStatus &&
+                  debtStatus.creditLimit > 0 &&
+                  debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit
+                    ? 'bg-amber-600 hover:bg-amber-700 shadow-sm shadow-amber-600/20'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
               >
                 {isSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
-                {isSubmitting ? 'Đang tạo...' : 'Tạo Đơn hàng'}
+                {isSubmitting
+                  ? 'Đang xử lý...'
+                  : debtStatus &&
+                    debtStatus.creditLimit > 0 &&
+                    debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit
+                  ? 'Gửi Duyệt Đơn hàng'
+                  : 'Tạo Đơn hàng'}
               </button>
             )}
           </div>
         </div>
       </div>
+
+      {/* Modal Xác nhận gửi duyệt khi vượt hạn mức công nợ (SN-41) */}
+      {showCreditApprovalModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl w-full max-w-lg flex flex-col shadow-2xl p-6 relative border border-slate-100">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center ring-4 ring-amber-100 shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                  Đơn hàng vượt hạn mức công nợ
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                  Khách hàng: <span className="font-semibold text-slate-800">{selectedCustomer?.name}</span> ({selectedCustomer?.code})
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCreditApprovalModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Bảng đối chiếu số liệu tài chính */}
+            <div className="my-4 p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2.5 text-xs sm:text-sm">
+              <div className="flex justify-between items-center text-slate-600">
+                <span>Hạn mức công nợ được cấp:</span>
+                <span className="font-semibold text-slate-900">
+                  {formatCurrency(debtStatus?.creditLimit || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-600">
+                <span>Công nợ hiện tại:</span>
+                <span className="font-medium text-slate-800">
+                  {formatCurrency(debtStatus?.currentDebt || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-600">
+                <span>Giá trị đơn hàng mới:</span>
+                <span className="font-semibold text-blue-700">+ {formatCurrency(totals.grandTotal)}</span>
+              </div>
+              <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+                <span className="font-bold text-slate-800">Dự kiến công nợ sau đơn:</span>
+                <span className="font-bold text-rose-600">
+                  {formatCurrency((debtStatus?.currentDebt || 0) + totals.grandTotal)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-rose-600 font-medium">
+                <span>Số tiền vượt hạn mức:</span>
+                <span className="font-bold">
+                  +{' '}
+                  {formatCurrency(
+                    Math.max(
+                      0,
+                      (debtStatus?.currentDebt || 0) + totals.grandTotal - (debtStatus?.creditLimit || 0),
+                    ),
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm leading-relaxed mb-5">
+              <p className="font-semibold flex items-center gap-1.5 mb-1 text-amber-800">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                Cơ chế kiểm soát công nợ tự động (Task SN-41)
+              </p>
+              Đơn hàng này khiến tổng công nợ vượt hạn mức cho phép. Hệ thống sẽ ghi nhận đơn ở trạng thái{' '}
+              <strong className="text-amber-900 underline">Cần phê duyệt (Pending Approval)</strong> và gửi thông báo tới Kế toán / Quản lý kinh doanh duyệt trước khi soạn hàng. Bạn có muốn tiếp tục gửi đơn?
+            </div>
+
+            {/* Hành động */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCreditApprovalModal(false)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+              >
+                Xem lại đơn hàng
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSubmit(true)}
+                disabled={isSubmitting}
+                className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-semibold shadow-sm shadow-amber-600/20 transition-all cursor-pointer flex items-center gap-2"
+              >
+                {isSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
+                Xác nhận gửi duyệt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showWarningModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm">
@@ -1217,6 +1645,7 @@ const STATUS_TABS: { key: OrderStatus | 'ALL'; label: string }[] = [
   { key: 'ALL', label: 'Tất cả' },
   { key: 'DRAFT', label: 'Nháp' },
   { key: 'PENDING', label: 'Chờ duyệt' },
+  { key: 'PENDING_APPROVAL', label: 'Cần duyệt hạn mức' },
   { key: 'APPROVED', label: 'Đã duyệt' },
   { key: 'PROCESSING', label: 'Đang soạn' },
   { key: 'DELIVERED', label: 'Giao thành công' },
@@ -1586,6 +2015,17 @@ export const OrdersPage: React.FC = () => {
                   <span className="text-slate-500">Trạng thái:</span>
                   <OrderStatusBadge status={viewOrder.status} />
                 </div>
+                {viewOrder.isCreditLimitExceeded && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-start gap-2 mt-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Đơn hàng vượt hạn mức công nợ</p>
+                      <p className="mt-0.5 text-amber-800">
+                        Đơn hàng làm vượt hạn mức {formatCurrency(viewOrder.creditLimitExceededAmount || 0)}. Đang ở trạng thái chờ Quản lý kinh doanh / Kế toán phê duyệt.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Danh sách dòng hàng */}

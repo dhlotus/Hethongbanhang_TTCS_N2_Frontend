@@ -4,6 +4,7 @@ import { MOCK_PRODUCTS } from './products.service';
 import { customerService } from './customer.service';
 import type {
   CreateOrderPayload,
+  CustomerDebtStatus,
   CustomerOption,
   Order,
   OrderQueryParams,
@@ -33,6 +34,9 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
     address: '123 Nguyễn Trọng Tuyển, P.8, Q.Phú Nhuận, TP.HCM',
     creditLimit: 500000000,
     currentDebt: 45000000,
+    maxDebtDays: 30,
+    overdueAmount: 0,
+    overdueDays: 0,
     deliveryPoints: [
       {
         id: 'dp-dl-0001-1',
@@ -52,6 +56,9 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
     address: '456 Lê Văn Sỹ, P.14, Q.3, TP.HCM',
     creditLimit: 400000000,
     currentDebt: 28000000,
+    maxDebtDays: 30,
+    overdueAmount: 0,
+    overdueDays: 0,
     deliveryPoints: [
       {
         id: 'dp-dl-0002-1',
@@ -70,7 +77,10 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
     phone: '0901234563',
     address: '789 Quang Trung, P.10, Q.Gò Vấp, TP.HCM',
     creditLimit: 350000000,
-    currentDebt: 62000000,
+    currentDebt: 345000000,
+    maxDebtDays: 30,
+    overdueAmount: 0,
+    overdueDays: 0,
     deliveryPoints: [
       {
         id: 'dp-dl-0003-1',
@@ -90,6 +100,9 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
     address: '321 Võ Thị Sáu, P.Võ Thị Sáu, Q.3, TP.HCM',
     creditLimit: 450000000,
     currentDebt: 15000000,
+    maxDebtDays: 30,
+    overdueAmount: 18000000,
+    overdueDays: 45,
     deliveryPoints: [
       {
         id: 'dp-dl-0004-1',
@@ -109,6 +122,9 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
     address: '654 Điện Biên Phủ, P.25, Q.Bình Thạnh, TP.HCM',
     creditLimit: 300000000,
     currentDebt: 35000000,
+    maxDebtDays: 30,
+    overdueAmount: 0,
+    overdueDays: 0,
     deliveryPoints: [
       {
         id: 'dp-dl-0005-1',
@@ -130,6 +146,9 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
     address: '456 Lê Văn Việt, P.Tăng Nhơn Phú A, TP.Thủ Đức, TP.HCM',
     creditLimit: 150000000,
     currentDebt: 18000000,
+    maxDebtDays: 20,
+    overdueAmount: 0,
+    overdueDays: 0,
     deliveryPoints: [
       {
         id: 'dp-dl-0006-1',
@@ -149,6 +168,9 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
     address: '12 Đỗ Xuân Hợp, P.Phước Long B, TP.Thủ Đức, TP.HCM',
     creditLimit: 120000000,
     currentDebt: 9500000,
+    maxDebtDays: 20,
+    overdueAmount: 0,
+    overdueDays: 0,
     deliveryPoints: [
       {
         id: 'dp-dl-0007-1',
@@ -168,6 +190,9 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
     address: '88 Nguyễn Oanh, P.7, Q.Gò Vấp, TP.HCM',
     creditLimit: 100000000,
     currentDebt: 12000000,
+    maxDebtDays: 20,
+    overdueAmount: 0,
+    overdueDays: 0,
     deliveryPoints: [
       {
         id: 'dp-dl-0008-1',
@@ -187,6 +212,9 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
     address: '150 Tân Kỳ Tân Quý, P.Tân Sơn Nhì, Q.Tân Phú, TP.HCM',
     creditLimit: 110000000,
     currentDebt: 14500000,
+    maxDebtDays: 20,
+    overdueAmount: 0,
+    overdueDays: 0,
     deliveryPoints: [
       {
         id: 'dp-dl-0009-1',
@@ -206,6 +234,9 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
     address: '205 Lý Thường Kiệt, P.6, Q.Tân Bình, TP.HCM',
     creditLimit: 130000000,
     currentDebt: 22000000,
+    maxDebtDays: 20,
+    overdueAmount: 0,
+    overdueDays: 0,
     deliveryPoints: [
       {
         id: 'dp-dl-0010-1',
@@ -227,6 +258,9 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
     address: '789 Hoàng Văn Thụ, P.4, Q.Tân Bình, TP.HCM',
     creditLimit: 50000000,
     currentDebt: 0,
+    maxDebtDays: 15,
+    overdueAmount: 0,
+    overdueDays: 0,
     deliveryPoints: [
       {
         id: 'dp-dl-0011-1',
@@ -246,6 +280,9 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
     address: '56 Nguyễn Thị Thập, P.Tân Hưng, Q.7, TP.HCM',
     creditLimit: 40000000,
     currentDebt: 3200000,
+    maxDebtDays: 15,
+    overdueAmount: 0,
+    overdueDays: 0,
     deliveryPoints: [
       {
         id: 'dp-dl-0012-1',
@@ -265,6 +302,9 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
     address: '102 Hậu Giang, P.6, Q.6, TP.HCM',
     creditLimit: 45000000,
     currentDebt: 0,
+    maxDebtDays: 15,
+    overdueAmount: 0,
+    overdueDays: 0,
     deliveryPoints: [
       {
         id: 'dp-dl-0013-1',
@@ -284,6 +324,9 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
     address: '34 Ung Văn Khiêm, P.25, Q.Bình Thạnh, TP.HCM',
     creditLimit: 30000000,
     currentDebt: 1200000,
+    maxDebtDays: 15,
+    overdueAmount: 0,
+    overdueDays: 0,
     deliveryPoints: [
       {
         id: 'dp-dl-0014-1',
@@ -303,6 +346,9 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
     address: '85 Tô Hiến Thành, P.13, Q.10, TP.HCM',
     creditLimit: 35000000,
     currentDebt: 0,
+    maxDebtDays: 15,
+    overdueAmount: 0,
+    overdueDays: 0,
     deliveryPoints: [
       {
         id: 'dp-dl-0015-1',
@@ -388,6 +434,9 @@ export const ordersService = {
         address: c.address,
         creditLimit: c.creditLimit,
         currentDebt: c.currentDebt,
+        maxDebtDays: c.maxDebtDays,
+        overdueAmount: (c as unknown as { overdueAmount?: number }).overdueAmount,
+        overdueDays: (c as unknown as { overdueDays?: number }).overdueDays,
         deliveryPoints: (c.deliveryPoints || []).map((dp) => ({
           id: dp.id,
           name: dp.name,
@@ -405,6 +454,82 @@ export const ordersService = {
           c.code.toLowerCase().includes(q) ||
           (c.phone && c.phone.includes(q)),
       );
+    }
+  },
+
+  /**
+   * Lấy thông tin & trạng thái công nợ thời gian thực của đại lý (SN-41)
+   */
+  async getDebtStatus(customerId: string): Promise<CustomerDebtStatus> {
+    const token = tokenStorage.getAccessToken();
+    if (token?.startsWith('demo-jwt-')) {
+      const c = DEMO_CUSTOMERS.find((x) => x.id === customerId);
+      if (!c) throw new Error('Không tìm thấy thông tin đại lý');
+      const creditLimit = c.creditLimit || 0;
+      const currentDebt = c.currentDebt || 0;
+      const maxDebtDays = c.maxDebtDays || 30;
+      const overdueAmount = c.overdueAmount || 0;
+      const overdueDays = c.overdueDays || 0;
+      const availableLimit = Math.max(0, creditLimit - currentDebt);
+      const canCreateOrder = !(overdueDays > maxDebtDays && overdueAmount > 0);
+      let blockReason: string | undefined;
+      let warningMessage: string | undefined;
+
+      if (!canCreateOrder) {
+        blockReason = `Đại lý đang có khoản nợ quá hạn ${overdueDays} ngày (vượt quá ${maxDebtDays} ngày cho phép) với số tiền ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(overdueAmount)}. Hệ thống tạm khóa quyền tạo đơn hàng mới cho đại lý này.`;
+      } else if (overdueAmount > 0) {
+        warningMessage = `Đại lý đang có khoản nợ quá hạn ${overdueDays}/${maxDebtDays} ngày (${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(overdueAmount)}). Vui lòng lưu ý đôn đốc thanh toán.`;
+      } else if (currentDebt >= creditLimit) {
+        warningMessage = `Đại lý đã sử dụng hết hạn mức công nợ được cấp. Đơn hàng mới sẽ được chuyển sang trạng thái chờ phê duyệt.`;
+      } else if (availableLimit < creditLimit * 0.2) {
+        warningMessage = `Hạn mức công nợ khả dụng của đại lý chỉ còn ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(availableLimit)} (dưới 20%). Lưu ý kiểm tra giá trị đơn hàng.`;
+      }
+
+      return {
+        customerId: c.id,
+        customerCode: c.code,
+        customerName: c.name,
+        creditLimit,
+        currentDebt,
+        availableLimit,
+        maxDebtDays,
+        overdueAmount,
+        overdueDays,
+        canCreateOrder,
+        blockReason,
+        warningMessage,
+      };
+    }
+
+    try {
+      const res = await apiClient.get<CustomerDebtStatus>(`/customers/${customerId}/debt-status`);
+      return res.data;
+    } catch {
+      // Fallback nếu không gọi được API
+      const c = DEMO_CUSTOMERS.find((x) => x.id === customerId);
+      const creditLimit = c?.creditLimit || 0;
+      const currentDebt = c?.currentDebt || 0;
+      const maxDebtDays = c?.maxDebtDays || 30;
+      const overdueAmount = c?.overdueAmount || 0;
+      const overdueDays = c?.overdueDays || 0;
+      const availableLimit = Math.max(0, creditLimit - currentDebt);
+      const canCreateOrder = !(overdueDays > maxDebtDays && overdueAmount > 0);
+
+      return {
+        customerId,
+        customerCode: c?.code || 'DL-UNKNOWN',
+        customerName: c?.name || 'Đại lý',
+        creditLimit,
+        currentDebt,
+        availableLimit,
+        maxDebtDays,
+        overdueAmount,
+        overdueDays,
+        canCreateOrder,
+        blockReason: !canCreateOrder
+          ? `Đại lý đang có khoản nợ quá hạn ${overdueDays} ngày (vượt quá ${maxDebtDays} ngày cho phép). Hệ thống khóa tạo đơn.`
+          : undefined,
+      };
     }
   },
 
@@ -467,6 +592,16 @@ export const ordersService = {
 
       const user = tokenStorage.getUser();
 
+      // Kiểm tra công nợ theo Task SN-41 (Demo fallback)
+      const overdueDays = customer.overdueDays || 0;
+      const maxDebtDays = customer.maxDebtDays || 30;
+      const overdueAmount = customer.overdueAmount || 0;
+      if (overdueDays > maxDebtDays && overdueAmount > 0) {
+        throw new Error(
+          `Đại lý đang có khoản nợ quá hạn ${overdueDays} ngày (vượt quá ${maxDebtDays} ngày cho phép). Hệ thống tạm khóa quyền tạo đơn hàng mới cho đại lý này.`,
+        );
+      }
+
       // Tính lineTotal từng dòng
       const lines = payload.lines.map((l) => ({
         ...l,
@@ -476,6 +611,23 @@ export const ordersService = {
       }));
 
       const totals = calcOrderTotals(lines);
+
+      // Kiểm tra vượt hạn mức công nợ (SN-41)
+      const creditLimit = customer.creditLimit || 0;
+      const currentDebt = customer.currentDebt || 0;
+      const projectedDebt = currentDebt + totals.grandTotal;
+      const isCreditLimitExceeded = creditLimit > 0 && projectedDebt > creditLimit;
+      const creditLimitExceededAmount = isCreditLimitExceeded
+        ? projectedDebt - creditLimit
+        : 0;
+
+      const orderStatus: OrderStatus = isCreditLimitExceeded
+        ? 'PENDING_APPROVAL'
+        : 'PENDING';
+
+      const warningNote = isCreditLimitExceeded
+        ? `[SN-41 CẢNH BÁO: Đơn hàng làm tổng công nợ đạt ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(projectedDebt)}, vượt hạn mức ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(creditLimit)}. Chờ phê duyệt]`
+        : undefined;
 
       const newOrder: Order = {
         id: `order-${Date.now()}`,
@@ -490,10 +642,14 @@ export const ordersService = {
         deliveryDate: payload.deliveryDate,
         lines,
         ...totals,
-        note: payload.note,
-        status: 'PENDING',
+        note: payload.note
+          ? (warningNote ? `${payload.note}\n${warningNote}` : payload.note)
+          : warningNote,
+        status: orderStatus,
         paymentStatus: 'UNPAID',
         priceListId: payload.priceListId,
+        isCreditLimitExceeded,
+        creditLimitExceededAmount,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

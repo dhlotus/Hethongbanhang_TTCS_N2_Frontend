@@ -5,6 +5,7 @@
 export type OrderStatus =
   | 'DRAFT'       // Nháp
   | 'PENDING'     // Chờ duyệt
+  | 'PENDING_APPROVAL' // Cần phê duyệt (do vượt hạn mức công nợ - SN-41)
   | 'PENDING_INVENTORY_APPROVAL' // Chờ duyệt do thiếu tồn kho
   | 'APPROVED'    // Đã duyệt
   | 'PROCESSING'  // Đang xử lý / soạn hàng
@@ -62,6 +63,8 @@ export interface Order {
   status: OrderStatus;
   paymentStatus?: PaymentStatus;
   priceListId?: string;      // Bảng giá áp dụng
+  isCreditLimitExceeded?: boolean; // Cờ vượt hạn mức công nợ (SN-41)
+  creditLimitExceededAmount?: number; // Số tiền vượt hạn mức (VND)
   createdAt?: string;
   updatedAt?: string;
 }
@@ -112,5 +115,25 @@ export interface CustomerOption {
   address?: string;
   creditLimit?: number;
   currentDebt?: number;
+  maxDebtDays?: number;
+  overdueAmount?: number;
+  overdueDays?: number;
   deliveryPoints?: DeliveryPoint[];
 }
+
+/** Trạng thái công nợ thời gian thực của đại lý (Task SN-41) */
+export interface CustomerDebtStatus {
+  customerId: string;
+  customerCode: string;
+  customerName: string;
+  creditLimit: number;
+  currentDebt: number;
+  availableLimit: number;
+  maxDebtDays: number;
+  overdueAmount: number;
+  overdueDays: number;
+  canCreateOrder: boolean;
+  blockReason?: string;
+  warningMessage?: string;
+}
+
