@@ -8,6 +8,7 @@ import {
   type CreateDeliveryPointPayload,
   type DeliveryPoint,
   type UpdateDeliveryPointPayload,
+  type CreateCustomerPayload,
 } from '../types/customer.types';
 
 export const DEMO_CUSTOMERS_DATA: Customer[] = [
@@ -367,6 +368,49 @@ function filterDemoCustomers(
  * Service Quản lý Đại lý & Tìm kiếm Lọc theo tuyến (SN-37 & SN-31)
  */
 export const customerService = {
+  /**
+   * Thêm mới đại lý (SN-31 & SN-38)
+   */
+  async createCustomer(payload: CreateCustomerPayload): Promise<Customer> {
+    try {
+      const res = await apiClient.post<Customer>('/customers', payload);
+      if (res.data) {
+        DEMO_CUSTOMERS_DATA.unshift(res.data);
+      }
+      return res.data;
+    } catch {
+      // Fallback offline / demo
+      const newCust: Customer = {
+        id: `cust-${Date.now().toString().slice(-6)}`,
+        code: payload.code || `DL-${Date.now().toString().slice(-4)}`,
+        name: payload.name,
+        phone: payload.phone,
+        address: payload.address,
+        region: payload.region || 'Miền Nam',
+        customerGroup: payload.customerGroup || 'AGENT_LEVEL_2',
+        creditLimit: payload.creditLimit || 50000000,
+        currentDebt: 0,
+        maxDebtDays: payload.maxDebtDays || 30,
+        status: CustomerStatus.ACTIVE,
+        taxCode: payload.taxCode,
+        email: payload.email,
+        deliveryPoints: [
+          {
+            id: `dp-${Date.now().toString().slice(-4)}`,
+            customerId: `cust-${Date.now().toString().slice(-6)}`,
+            name: payload.deliveryPointName || 'Trụ sở chính / Kho đại lý',
+            address: payload.address,
+            receiverName: payload.receiverName || payload.name,
+            phone: payload.phone,
+            isDefault: true,
+          },
+        ],
+      };
+      DEMO_CUSTOMERS_DATA.unshift(newCust);
+      return newCust;
+    }
+  },
+
   /**
    * Lấy danh sách đại lý có hỗ trợ tìm kiếm nhanh & lọc đa tiêu chí phân trang (SN-37)
    */
