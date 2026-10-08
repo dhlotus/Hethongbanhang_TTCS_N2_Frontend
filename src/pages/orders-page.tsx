@@ -74,6 +74,12 @@ const ORDER_STATUS_CONFIG: Record<
     textClass: 'text-amber-700',
     icon: <Clock className="w-3 h-3" />,
   },
+  PENDING_INVENTORY_APPROVAL: {
+    label: 'Chờ duyệt tồn kho',
+    bgClass: 'bg-rose-50',
+    textClass: 'text-rose-700',
+    icon: <AlertCircle className="w-3 h-3" />,
+  },
   APPROVED: {
     label: 'Đã duyệt',
     bgClass: 'bg-blue-50',
@@ -161,6 +167,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
 
   // Khôi phục nháp
   useEffect(() => {
@@ -278,10 +287,21 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             };
           } else if (field === 'quantity') {
             const qty = Math.max(1, Number(value) || 1);
+            
+            // Auto calculate discount based on qty (Mock)
+            let autoDiscount = 0;
+            if (qty >= 100) autoDiscount = 10;
+            else if (qty >= 50) autoDiscount = 5;
+            else if (qty >= 10) autoDiscount = 2;
+            
+            const discPrice = updated.listPrice * (1 - autoDiscount / 100);
+
             updated = {
               ...updated,
               quantity: qty,
               baseQuantity: Math.round(qty * updated.conversionRate),
+              discountPercent: autoDiscount,
+              unitPrice: Math.round(discPrice),
             };
           } else if (field === 'discountPercent') {
             const disc = Math.min(100, Math.max(0, Number(value) || 0));
@@ -351,9 +371,15 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       });
 
       ordersService.clearDraft(DRAFT_KEY);
-      showToast('success', `Tạo đơn hàng ${created.orderCode} thành công!`);
-      onCreated(created);
-      handleClose();
+      
+      if (created.status === 'PENDING_INVENTORY_APPROVAL') {
+        setCreatedOrder(created);
+        setShowWarningModal(true);
+      } else {
+        showToast('success', `Tạo đơn hàng ${created.orderCode} thành công!`);
+        onCreated(created);
+        handleClose();
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Không thể tạo đơn hàng';
       showToast('error', msg);
@@ -715,6 +741,47 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           </div>
         </div>
       </div>
+
+      {showWarningModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-md flex flex-col shadow-2xl p-6 relative">
+            <div className="absolute top-4 right-4">
+              <button
+                onClick={() => {
+                  setShowWarningModal(false);
+                  onCreated(createdOrder!);
+                  handleClose();
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex flex-col items-center text-center space-y-4 pt-4">
+              <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 mb-1">Cảnh báo tồn kho</h3>
+                <p className="text-sm text-slate-500">
+                  Đơn hàng <span className="font-semibold text-slate-700">{createdOrder?.orderCode}</span> có số lượng vượt quá tồn kho khả dụng. 
+                  Đơn hàng đã được ghi nhận với trạng thái chờ phê duyệt tồn kho.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowWarningModal(false);
+                  onCreated(createdOrder!);
+                  handleClose();
+                }}
+                className="w-full mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                Đã hiểu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
