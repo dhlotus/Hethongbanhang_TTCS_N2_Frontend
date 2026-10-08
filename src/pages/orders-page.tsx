@@ -19,6 +19,7 @@ import {
 import { showToast } from '../components/toast';
 import { ordersService, DEMO_CUSTOMERS } from '../services/orders.service';
 import { getStoredUser } from '../utils/navigation';
+import { Sn40OrderPricingModal } from '../components/sn40-order-pricing-modal';
 import type {
   Order,
   OrderLine,
@@ -813,9 +814,11 @@ export const OrdersPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isSn40ModalOpen, setIsSn40ModalOpen] = useState(false);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
 
   const user = getStoredUser();
+  const isAdmin = user?.roles?.includes('ADMIN');
   const isSalesRep = user?.roles?.includes('SALES_REP');
   const isSalesManager = user?.roles?.includes('SALES_MANAGER');
 
@@ -871,14 +874,24 @@ export const OrdersPage: React.FC = () => {
               Tạo và theo dõi đơn hàng bán buôn cho đại lý
             </p>
           </div>
-          {(isSalesRep || isSalesManager) && (
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              Tạo Đơn hàng
-            </button>
+          {(isSalesRep || isSalesManager || isAdmin) && (
+            <div className="flex flex-wrap gap-2">
+              {(isSalesRep || isSalesManager) && (
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  Tạo Đơn hàng
+                </button>
+              )}
+              <button
+                onClick={() => setIsSn40ModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors shadow-sm"
+              >
+                Tạo đơn tự áp giá · SN-40
+              </button>
+            </div>
           )}
         </div>
 
@@ -1067,6 +1080,12 @@ export const OrdersPage: React.FC = () => {
       <CreateOrderModal
         open={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+        onCreated={handleOrderCreated}
+      />
+
+      <Sn40OrderPricingModal
+        isOpen={isSn40ModalOpen}
+        onClose={() => setIsSn40ModalOpen(false)}
         onCreated={handleOrderCreated}
       />
 
