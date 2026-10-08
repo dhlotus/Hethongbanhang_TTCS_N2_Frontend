@@ -170,7 +170,7 @@ export const CustomersPage: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => navigate('/sales/orders')}
+              onClick={() => navigate('/sales/orders?createOrder=true')}
               className="inline-flex items-center justify-center h-10 px-4 text-xs sm:text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all shadow-sm shadow-indigo-600/20 cursor-pointer"
             >
               <PlusCircle className="w-4 h-4 mr-1.5" />
@@ -549,7 +549,7 @@ export const CustomersPage: React.FC = () => {
 
                       <button
                         type="button"
-                        onClick={() => navigate('/sales/orders')}
+                        onClick={() => navigate(`/sales/orders?customerId=${cust.id}&createOrder=true`)}
                         className="inline-flex items-center justify-center h-10 px-3.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 font-semibold text-xs transition-all shadow-xs shadow-indigo-600/20 cursor-pointer"
                       >
                         Lên đơn
@@ -679,7 +679,7 @@ export const CustomersPage: React.FC = () => {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => navigate('/sales/orders')}
+                                onClick={() => navigate(`/sales/orders?customerId=${cust.id}&createOrder=true`)}
                                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 font-semibold text-xs transition-all shadow-2xs cursor-pointer"
                               >
                                 Lên đơn

@@ -1,6 +1,7 @@
 import { apiClient } from './api';
 import { tokenStorage } from '../utils/token-storage';
 import { MOCK_PRODUCTS } from './products.service';
+import { customerService, DEMO_CUSTOMERS_DATA } from './customer.service';
 import type {
   CreateOrderPayload,
   CustomerOption,
@@ -17,68 +18,26 @@ const DRAFT_ORDERS_KEY = 'loha_draft_orders';
 const DEMO_ORDERS_KEY = 'loha_demo_orders';
 
 // ──────────────────────────────────────────────────────────────────────────
-// DỮ LIỆU MẪU — Đại lý Demo (SN-38)
+// DỮ LIỆU MẪU — Đại lý Demo (SN-38 & SN-37)
 // ──────────────────────────────────────────────────────────────────────────
 
-export const DEMO_CUSTOMERS: CustomerOption[] = [
-  {
-    id: 'cust-001',
-    code: 'DL-SGN-001',
-    name: 'Cửa Hàng Thực Phẩm Minh Khang',
-    group: 'AGENT_LEVEL_1',
-    phone: '0901234567',
-    address: '123 Nguyễn Trãi, Q.1, TP.HCM',
-    creditLimit: 50000000,
-    currentDebt: 12500000,
-    deliveryPoints: [
-      {
-        id: 'dp-001-1',
-        name: 'Kho chính Minh Khang',
-        address: '123 Nguyễn Trãi, Q.1, TP.HCM',
-        phone: '0901234567',
-        contactPerson: 'Anh Minh',
-      },
-    ],
-  },
-  {
-    id: 'cust-002',
-    code: 'DL-SGN-002',
-    name: 'Đại Lý Thực Phẩm Bảo Châu',
-    group: 'AGENT_LEVEL_2',
-    phone: '0912345678',
-    address: '456 Lê Văn Việt, Q.9, TP.HCM',
-    creditLimit: 30000000,
-    currentDebt: 8000000,
-    deliveryPoints: [
-      {
-        id: 'dp-002-1',
-        name: 'Kho Bảo Châu - Q9',
-        address: '456 Lê Văn Việt, Q.9, TP.HCM',
-        phone: '0912345678',
-        contactPerson: 'Chị Châu',
-      },
-    ],
-  },
-  {
-    id: 'cust-003',
-    code: 'DL-HAN-001',
-    name: 'Siêu Thị Mini Phương Nam',
-    group: 'RETAIL',
-    phone: '0923456789',
-    address: '789 Hoàng Văn Thụ, Q.Phú Nhuận, TP.HCM',
-    creditLimit: 20000000,
-    currentDebt: 0,
-    deliveryPoints: [
-      {
-        id: 'dp-003-1',
-        name: 'Siêu Thị Phương Nam',
-        address: '789 Hoàng Văn Thụ, Q.Phú Nhuận, TP.HCM',
-        phone: '0923456789',
-        contactPerson: 'Chị Phương',
-      },
-    ],
-  },
-];
+export const DEMO_CUSTOMERS: CustomerOption[] = DEMO_CUSTOMERS_DATA.map((c) => ({
+  id: c.id,
+  code: c.code,
+  name: c.name,
+  group: c.customerGroup || 'AGENT_LEVEL_1',
+  phone: c.phone,
+  address: c.address,
+  creditLimit: c.creditLimit,
+  currentDebt: c.currentDebt,
+  deliveryPoints: (c.deliveryPoints || []).map((dp) => ({
+    id: dp.id,
+    name: dp.name,
+    address: dp.address,
+    phone: dp.phone,
+    contactPerson: dp.receiverName,
+  })),
+}));
 
 // ──────────────────────────────────────────────────────────────────────────
 // HELPERS — localStorage Demo
@@ -88,14 +47,18 @@ const getStoredDemoOrders = (): Order[] => {
   try {
     const raw = localStorage.getItem(DEMO_ORDERS_KEY);
     if (raw) return JSON.parse(raw) as Order[];
-  } catch {}
+  } catch (e) {
+    void e;
+  }
   return [];
 };
 
 const saveStoredDemoOrders = (list: Order[]): void => {
   try {
     localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(list));
-  } catch {}
+  } catch (e) {
+    void e;
+  }
 };
 
 /** Tính tổng đơn hàng từ danh sách dòng hàng */
@@ -130,40 +93,42 @@ const generateOrderCode = (): string => {
 
 export const ordersService = {
   /**
-   * Lấy danh sách đại lý để chọn trong form tạo đơn hàng
+   * Lấy danh sách đại lý để chọn trong form tạo đơn hàng (SN-37 & SN-38)
    */
   async getCustomers(search?: string): Promise<CustomerOption[]> {
-    const token = tokenStorage.getAccessToken();
-    if (token?.startsWith('demo-jwt-')) {
+    try {
+      const res = await customerService.getCustomers({
+        search: search?.trim() || undefined,
+        limit: 100,
+      });
+
+      const list = res?.data || [];
+      return list.map((c) => ({
+        id: c.id,
+        code: c.code,
+        name: c.name,
+        group: c.customerGroup || 'AGENT_LEVEL_1',
+        phone: c.phone,
+        address: c.address,
+        creditLimit: c.creditLimit,
+        currentDebt: c.currentDebt,
+        deliveryPoints: (c.deliveryPoints || []).map((dp) => ({
+          id: dp.id,
+          name: dp.name,
+          address: dp.address,
+          phone: dp.phone,
+          contactPerson: dp.receiverName,
+        })),
+      }));
+    } catch {
       if (!search) return DEMO_CUSTOMERS;
-      const q = search.toLowerCase();
+      const q = search.toLowerCase().trim();
       return DEMO_CUSTOMERS.filter(
         (c) =>
           c.name.toLowerCase().includes(q) ||
           c.code.toLowerCase().includes(q) ||
-          c.phone?.includes(q),
+          (c.phone && c.phone.includes(q)),
       );
-    }
-
-    try {
-      const res = await apiClient.get<CustomerOption[] | { data: CustomerOption[] }>('/customers', {
-        params: search ? { search } : undefined,
-      });
-      if (Array.isArray(res.data)) {
-        return res.data;
-      }
-      if (res.data && Array.isArray(res.data.data)) {
-        return res.data.data.map((c) => {
-          const item = c as CustomerOption & { customerGroup?: string };
-          return {
-            ...item,
-            group: item.group || item.customerGroup || 'Đại lý',
-          };
-        });
-      }
-      return DEMO_CUSTOMERS;
-    } catch {
-      return DEMO_CUSTOMERS;
     }
   },
 
@@ -276,7 +241,9 @@ export const ordersService = {
       const drafts: Record<string, Partial<Order>> = raw ? JSON.parse(raw) : {};
       drafts[draftKey] = { ...draftData, updatedAt: new Date().toISOString() };
       localStorage.setItem(DRAFT_ORDERS_KEY, JSON.stringify(drafts));
-    } catch {}
+    } catch (e) {
+      void e;
+    }
   },
 
   /**
@@ -303,7 +270,9 @@ export const ordersService = {
       const drafts: Record<string, Partial<Order>> = JSON.parse(raw);
       delete drafts[draftKey];
       localStorage.setItem(DRAFT_ORDERS_KEY, JSON.stringify(drafts));
-    } catch {}
+    } catch (e) {
+      void e;
+    }
   },
 
   /**
