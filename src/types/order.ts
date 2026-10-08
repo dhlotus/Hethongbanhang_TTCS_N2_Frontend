@@ -5,6 +5,7 @@
 export type OrderStatus =
   | 'DRAFT'       // Nháp
   | 'PENDING'     // Chờ duyệt
+  | 'PENDING_INVENTORY_APPROVAL' // Chờ duyệt do thiếu tồn kho
   | 'APPROVED'    // Đã duyệt
   | 'PROCESSING'  // Đang xử lý / soạn hàng
   | 'SHIPPED'     // Đã xuất kho / giao vận

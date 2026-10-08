@@ -27,6 +27,7 @@ import { PriceListCloneModal } from '../components/price-list-clone-modal';
 import { showToast } from '../components/toast';
 import { PriceListsTableSkeleton } from '../components/skeletons';
 import { ConfirmDeleteModal } from '../components/confirm-delete-modal';
+import { DiscountPoliciesTab } from '../components/discount-policies-tab';
 import type {
   PriceList,
   CustomerGroupType,
@@ -59,6 +60,7 @@ export const PriceListsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
+  const [activeTab, setActiveTab] = useState<'BASE' | 'DISCOUNT'>('BASE');
 
   // Bộ lọc & Tìm kiếm (Debounced)
   const [searchInput, setSearchInput] = useState('');
@@ -297,8 +299,36 @@ export const PriceListsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* 2. Metrics Header: 4 Thẻ chỉ số tổng quan */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* High-level Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100 text-sm mb-4">
+        <button
+          type="button"
+          onClick={() => setActiveTab('BASE')}
+          className={`px-4 py-2 rounded-t-xl font-semibold transition-all whitespace-nowrap cursor-pointer border-b-2 ${
+            activeTab === 'BASE'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+              : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          Bảng giá Cơ sở
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('DISCOUNT')}
+          className={`px-4 py-2 rounded-t-xl font-semibold transition-all whitespace-nowrap cursor-pointer border-b-2 ${
+            activeTab === 'DISCOUNT'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+              : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          Chính sách Chiết khấu sản lượng
+        </button>
+      </div>
+
+      {activeTab === 'BASE' ? (
+        <>
+          {/* 2. Metrics Header: 4 Thẻ chỉ số tổng quan */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Tổng số bảng giá */}
         <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
           <div className="p-3 rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/10 shrink-0">
@@ -724,6 +754,10 @@ export const PriceListsPage: React.FC = () => {
         cancelText="Hủy bỏ"
         isDeleting={deleting}
       />
+        </>
+      ) : (
+        <DiscountPoliciesTab />
+      )}
     </div>
   );
 };
