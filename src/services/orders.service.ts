@@ -46,7 +46,8 @@ export const ordersService = {
       // Kết hợp đơn hàng từ API và đơn hàng đã lưu offline
       const mergedMap = new Map<string, Order>();
       for (const o of [...localOrders, ...apiOrders]) {
-        mergedMap.set(o.id || o.orderCode, o);
+        const key = o.id || o.orderCode || `temp-${Math.random()}`;
+        mergedMap.set(key, o);
       }
       let combined = Array.from(mergedMap.values());
       if (cleanParams.status) {
@@ -56,8 +57,8 @@ export const ordersService = {
         const q = String(cleanParams.search).toLowerCase();
         combined = combined.filter(
           (o) =>
-            o.orderCode.toLowerCase().includes(q) ||
-            o.customerName.toLowerCase().includes(q) ||
+            (o.orderCode || '').toLowerCase().includes(q) ||
+            (o.customerName || '').toLowerCase().includes(q) ||
             (o.deliveryPoint?.receiverName && o.deliveryPoint.receiverName.toLowerCase().includes(q)),
         );
       }

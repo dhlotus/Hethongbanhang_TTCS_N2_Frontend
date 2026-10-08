@@ -47,7 +47,7 @@ export interface Order {
   customerGroup?: string; // Nhóm đại lý (AGENT_LEVEL_1, AGENT_LEVEL_2, RETAIL)
   salesRepId?: string; // ID nhân viên kinh doanh phụ trách
   salesRepName?: string;
-  deliveryPoint?: DeliveryPoint;
+  deliveryPoint?: DeliveryPoint | Partial<DeliveryPoint>;
   deliveryDate?: string; // Ngày giao hàng mong muốn (YYYY-MM-DD)
   lines: OrderLine[];
   subtotal: number; // Tổng tiền hàng trước chiết khấu
