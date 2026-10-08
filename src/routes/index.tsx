@@ -13,6 +13,7 @@ import { UsersPage } from "../pages/users-page";
 import { AuditLogsPage } from "../pages/audit-logs-page";
 import { ProfilePage } from "../pages/profile-page";
 import { OrdersPage } from "../pages/orders-page";
+import { CreditLimitPage } from "../pages/credit-limit-page";
 import { NotFoundPage } from "../pages/not-found-page";
 import { ForbiddenPage } from "../pages/forbidden-page";
 import { ProtectedRoute } from "../components/protected-route";
@@ -121,21 +122,13 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={["SALES_REP", "SALES_MANAGER", "ACCOUNTANT"]}
+                  allowedRoles={["ADMIN", "SALES_REP", "SALES_MANAGER", "ACCOUNTANT"]}
                   moduleName="Quản lý Đại lý & Hạn mức Tín dụng"
                 />
               }
             >
-              <Route
-                path="/sales/customers"
-                element={
-                  <RoleModulePage
-                    title="Quản lý Đại lý & Hạn mức"
-                    subtitle="Danh sách khách hàng đại lý, phân nhóm tín dụng, công nợ và địa bàn phân công"
-                    requiredRole="Nhân viên kinh doanh / Quản lý"
-                  />
-                }
-              />
+              <Route path="/sales/customers" element={<CreditLimitPage />} />
+              <Route path="/sales/credit-limit" element={<CreditLimitPage />} />
             </Route>
 
             <Route
