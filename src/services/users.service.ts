@@ -9,6 +9,7 @@ import type {
   UpdateUserStatusPayload,
   UpdateUserStatusResponse,
   UserManagementItem,
+  UserSummaryStats,
 } from '../types/user';
 import type { AuthUser } from '../types/auth';
 
@@ -44,6 +45,14 @@ export const usersService = {
     const response = await apiClient.get<PaginatedUsersResponse>('/users', {
       params,
     });
+    return response.data;
+  },
+
+  /**
+   * Lấy thống kê số lượng nhân sự toàn hệ thống (không phụ thuộc phân trang limit/page)
+   */
+  async getUserSummary(): Promise<UserSummaryStats> {
+    const response = await apiClient.get<UserSummaryStats>('/users/statistics');
     return response.data;
   },
 

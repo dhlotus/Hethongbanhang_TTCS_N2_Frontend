@@ -15,13 +15,11 @@ import {
   Phone,
   ChevronLeft,
   ChevronRight,
-  KeyRound,
   ShieldAlert,
   Shield,
   Info,
   Copy,
   Check,
-  Sparkles,
   UserX,
   AlertTriangle,
   Store,
@@ -42,6 +40,7 @@ import type {
   UpdateUserPayload,
   UserManagementItem,
   UserStatusType,
+  UserSummaryStats,
 } from "../types/user";
 import { USER_ROLES } from "../types/auth";
 import { getStoredUser } from "../utils/navigation";
@@ -127,6 +126,12 @@ export const UsersPage: React.FC = () => {
   const [limit, setLimit] = useState(20);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [summary, setSummary] = useState<UserSummaryStats>({
+    total: 0,
+    active: 0,
+    locked: 0,
+    pendingReset: 0,
+  });
 
   // Bộ lọc & Tìm kiếm mượt mà có Debounce (350ms)
   const [searchInput, setSearchInput] = useState("");
@@ -177,7 +182,6 @@ export const UsersPage: React.FC = () => {
   };
 
   const [submitting, setSubmitting] = useState(false);
-  const [generatingCode, setGeneratingCode] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Kiểm tra tài khoản đang chỉnh sửa có phải chính Admin đang đăng nhập hay không
@@ -261,6 +265,18 @@ export const UsersPage: React.FC = () => {
     }
   };
 
+  // Tải thống kê số lượng nhân sự toàn hệ thống (không phụ thuộc phân trang limit/page)
+  const fetchSummary = useCallback(async () => {
+    try {
+      const stats = await usersService.getUserSummary();
+      if (stats) {
+        setSummary(stats);
+      }
+    } catch {
+      // Endpoint fallback
+    }
+  }, []);
+
   // Tải danh sách người dùng từ API thật
   const fetchUsers = useCallback(async () => {
     try {
@@ -276,6 +292,9 @@ export const UsersPage: React.FC = () => {
       setUsers(res.data);
       setTotal(res.total);
       setTotalPages(res.totalPages);
+      if (res.summary) {
+        setSummary(res.summary);
+      }
     } catch {
       showToast("error", "Không thể tải danh sách người dùng");
     } finally {
@@ -285,12 +304,14 @@ export const UsersPage: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+    fetchSummary();
+  }, [fetchUsers, fetchSummary]);
 
   // Lắng nghe sự kiện avatar-updated (same-tab) hoặc storage (cross-tab) để tự động làm mới bảng
   useEffect(() => {
     const handleAvatarUpdate = () => {
       fetchUsers();
+      fetchSummary();
     };
 
     window.addEventListener("avatar-updated", handleAvatarUpdate);
@@ -300,7 +321,7 @@ export const UsersPage: React.FC = () => {
       window.removeEventListener("avatar-updated", handleAvatarUpdate);
       window.removeEventListener("storage", handleAvatarUpdate);
     };
-  }, [fetchUsers]);
+  }, [fetchUsers, fetchSummary]);
 
   // Sao chép mã cấp vào clipboard
   const handleCopyCode = (code: string) => {
@@ -308,30 +329,6 @@ export const UsersPage: React.FC = () => {
     setCopiedCode(code);
     showToast("success", "Sao chép mã thành công");
     setTimeout(() => setCopiedCode(null), 2500);
-  };
-
-  // Admin cấp mã đổi mật khẩu cho nhân sự
-  const handleGenerateResetCode = async (userId: string) => {
-    try {
-      setGeneratingCode(true);
-      const res = await usersService.generateResetCode(userId);
-
-      // Cập nhật ngay trên modal đang mở
-      setEditingUser((prev) =>
-        prev && prev.id === userId ? { ...prev, resetCode: res.resetCode } : prev,
-      );
-
-      // Cập nhật lại trong danh sách
-      setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, resetCode: res.resetCode } : u)),
-      );
-
-      showToast("success", "Cấp mã đổi mật khẩu thành công");
-    } catch {
-      showToast("error", "Không thể cấp mã đổi mật khẩu");
-    } finally {
-      setGeneratingCode(false);
-    }
   };
 
   // Mở Modal tạo mới
@@ -501,6 +498,7 @@ export const UsersPage: React.FC = () => {
 
       setModalOpen(false);
       fetchUsers();
+      fetchSummary();
     } catch (err: any) {
       const serverMsg =
         err.response?.data?.message ||
@@ -584,6 +582,7 @@ export const UsersPage: React.FC = () => {
 
       setStatusModalOpen(false);
       fetchUsers();
+      fetchSummary();
     } catch {
       showToast("error", "Không thể cập nhật trạng thái");
     } finally {
@@ -591,19 +590,14 @@ export const UsersPage: React.FC = () => {
     }
   };
 
-  // Thống kê nhanh
-  const activeCount = users.filter((u) => u.status === "ACTIVE").length;
-  const lockedCount = users.filter((u) => u.status === "LOCKED").length;
-  const codePendingCount = users.filter((u) => Boolean(u.resetCode)).length;
-
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* ========================================================================= */}
       {/* 1. FLOATING TOAST NOTIFICATION (Teleport to document.body, luôn nổi trên Header & Modal) */}
       {/* ========================================================================= */}
-      {/* 2. STATS CARDS: THỐNG KÊ NHANH TỔNG QUAN                                    */}
+      {/* 2. STATS CARDS: THỐNG KÊ NHANH TỔNG QUAN TOÀN HỆ THỐNG                     */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-xl bg-white p-5 border border-slate-100 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold">Tổng nhân sự</span>
@@ -611,7 +605,9 @@ export const UsersPage: React.FC = () => {
               <Users className="h-4 w-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold tracking-tight text-slate-900">{total}</div>
+          <div className="text-2xl font-bold tracking-tight text-slate-900">
+            {summary.total.toLocaleString("vi-VN")}
+          </div>
         </div>
 
         <div className="rounded-xl bg-white p-5 border border-slate-100 shadow-2xs">
@@ -621,7 +617,9 @@ export const UsersPage: React.FC = () => {
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
             </div>
           </div>
-          <div className="text-2xl font-bold tracking-tight text-emerald-700">{activeCount}</div>
+          <div className="text-2xl font-bold tracking-tight text-emerald-700">
+            {summary.active.toLocaleString("vi-VN")}
+          </div>
         </div>
 
         <div className="rounded-xl bg-white p-5 border border-slate-100 shadow-2xs">
@@ -631,17 +629,9 @@ export const UsersPage: React.FC = () => {
               <Lock className="h-4 w-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold tracking-tight text-rose-600">{lockedCount}</div>
-        </div>
-
-        <div className="rounded-xl bg-white p-5 border border-slate-100 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold">Chờ đổi mật khẩu</span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
-              <KeyRound className="h-4 w-4" />
-            </div>
+          <div className="text-2xl font-bold tracking-tight text-rose-600">
+            {summary.locked.toLocaleString("vi-VN")}
           </div>
-          <div className="text-2xl font-bold tracking-tight text-indigo-600">{codePendingCount}</div>
         </div>
       </div>
 
@@ -713,7 +703,10 @@ export const UsersPage: React.FC = () => {
         <div className="flex items-center gap-2 shrink-0 justify-end">
           <button
             type="button"
-            onClick={() => fetchUsers()}
+            onClick={() => {
+              fetchUsers();
+              fetchSummary();
+            }}
             disabled={loading}
             title="Làm mới danh sách"
             className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-2xs"
@@ -1498,88 +1491,20 @@ export const UsersPage: React.FC = () => {
                 })()}
               </div>
 
-              {/* =============================================================== */}
-              {/* KHU VỰC CẤP MÃ ĐĂNG NHẬP CHO NHÂN SỰ (Nếu đang chỉnh sửa)       */}
-              {/* =============================================================== */}
               {editingUser ? (
-                <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <KeyRound className="h-4 w-4 text-indigo-600" />
-                      <span className="text-xs font-bold text-indigo-950">
-                        Cấp mã đăng nhập tạm thời cho nhân sự
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={generatingCode}
-                      onClick={() => handleGenerateResetCode(editingUser.id)}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-indigo-700 transition-colors shadow-2xs disabled:opacity-50"
-                    >
-                      <Sparkles className="h-3 w-3" />
-                      <span>{editingUser.resetCode ? "Cấp lại mã khác" : "Cấp mã đăng nhập"}</span>
-                    </button>
-                  </div>
-
-                  {editingUser.resetCode ? (
-                    <div className="rounded-lg bg-white p-3 border border-indigo-200 space-y-2">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div>
-                          <div className="text-[11px] text-slate-500 font-medium">
-                            Mã đăng nhập tạm thời hiện tại (Chưa sử dụng):
-                          </div>
-                          <div className="font-mono text-base font-extrabold text-indigo-700 tracking-wider mt-0.5">
-                            {editingUser.resetCode}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleCopyCode(editingUser.resetCode!)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
-                          >
-                            {copiedCode === editingUser.resetCode ? (
-                              <>
-                                <Check className="h-3.5 w-3.5 text-emerald-600" />
-                                <span>Đã chép</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="h-3.5 w-3.5" />
-                                <span>Sao chép mã</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      <p className="text-[11px] text-indigo-950/70 border-t border-indigo-50 pt-2 leading-relaxed">
-                        💡 <strong>Hướng dẫn:</strong> Nhân sự chỉ cần nhập Tên đăng nhập bình thường và nhập mã này vào ô <strong>Mật khẩu</strong> tại trang Đăng nhập là vào được. Mã sẽ hiển thị tại đây cho đến khi nhân sự tự đổi mật khẩu mới.
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-indigo-900/80 leading-relaxed">
-                      Khi nhân sự không nhớ tài khoản/mật khẩu và không thể truy cập email, bấm nút <strong>"Cấp mã đăng nhập"</strong> ở trên để tạo mã (VD: LH-829401). Nhân sự nhập tên đăng nhập bình thường và nhập mã này vào ô Mật khẩu để đăng nhập trực tiếp. Mã sẽ hiển thị tại đây đến khi nhân sự tự đổi mật khẩu mới.
-                    </p>
-                  )}
-
-                  {/* Hoặc tự nhập mật khẩu mới thủ công */}
-                  <div className="pt-2 border-t border-indigo-100">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Hoặc tự gán mật khẩu mới trực tiếp (Để trống nếu không đổi)
-                    </label>
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
-                      }
-                      placeholder="Nhập mật khẩu mới (tối thiểu 8 ký tự)..."
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Đặt lại mật khẩu mới (Để trống nếu giữ nguyên mật khẩu cũ)
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    placeholder="Nhập mật khẩu mới nếu muốn thay đổi (để trống nếu không đổi)..."
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  />
                 </div>
               ) : (
                 /* Khi Tạo mới nhân sự */
@@ -2077,7 +2002,10 @@ export const UsersPage: React.FC = () => {
       {importModalOpen && (
         <ExcelImportModal
           onClose={() => setImportModalOpen(false)}
-          onImportSuccess={fetchUsers}
+          onImportSuccess={() => {
+            fetchUsers();
+            fetchSummary();
+          }}
         />
       )}
     </div>
