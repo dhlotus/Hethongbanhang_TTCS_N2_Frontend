@@ -816,6 +816,7 @@ export const OrdersPage: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSn40ModalOpen, setIsSn40ModalOpen] = useState(false);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
+  const [approvingOrder, setApprovingOrder] = useState(false);
 
   const user = getStoredUser();
   const isAdmin = user?.roles?.includes('ADMIN');
@@ -857,6 +858,21 @@ export const OrdersPage: React.FC = () => {
   const handleOrderCreated = (order: Order) => {
     setOrders((prev) => [order, ...prev]);
     setTotal((t) => t + 1);
+  };
+
+  const handleApproveOrder = async (order: Order): Promise<void> => {
+    if (!order.id || approvingOrder) return;
+    setApprovingOrder(true);
+    try {
+      const approvedOrder = await ordersService.updateOrderStatus(order.id, 'APPROVED');
+      setOrders((current) => current.map((item) => item.id === approvedOrder.id ? approvedOrder : item));
+      setViewOrder(approvedOrder);
+      showToast('success', `Đã duyệt đơn ${approvedOrder.orderCode || ''}`.trim());
+    } catch (error: unknown) {
+      showToast('error', error instanceof Error ? error.message : 'Không thể duyệt đơn hàng');
+    } finally {
+      setApprovingOrder(false);
+    }
   };
 
   return (
@@ -1129,6 +1145,15 @@ export const OrdersPage: React.FC = () => {
                 </div>
               </div>
 
+              {viewOrder.requiresApproval && (viewOrder.approvalReasons?.length ?? 0) > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+                  <p className="font-semibold">Đơn cần quản lý duyệt</p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs">
+                    {viewOrder.approvalReasons?.map((reason) => <li key={reason}>{reason}</li>)}
+                  </ul>
+                </div>
+              )}
+
               {/* Danh sách dòng hàng */}
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <div className="px-3 py-2 bg-slate-50 text-xs font-semibold text-slate-500 border-b border-slate-200">
@@ -1185,7 +1210,18 @@ export const OrdersPage: React.FC = () => {
               )}
             </div>
 
-            <div className="px-5 py-4 border-t border-slate-100 flex justify-end">
+            <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between gap-3">
+              {(isAdmin || isSalesManager) && viewOrder.status === 'PENDING' && (
+                <button
+                  type="button"
+                  onClick={() => void handleApproveOrder(viewOrder)}
+                  disabled={approvingOrder}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {approvingOrder ? 'Đang duyệt...' : 'Duyệt đơn'}
+                </button>
+              )}
               <button
                 onClick={() => setViewOrder(null)}
                 className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
