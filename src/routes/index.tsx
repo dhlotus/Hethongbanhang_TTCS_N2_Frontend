@@ -12,6 +12,7 @@ import { CategoriesPage } from "../pages/categories-page";
 import { UsersPage } from "../pages/users-page";
 import { AuditLogsPage } from "../pages/audit-logs-page";
 import { ProfilePage } from "../pages/profile-page";
+import { OrdersPage } from "../pages/orders-page";
 import { NotFoundPage } from "../pages/not-found-page";
 import { ForbiddenPage } from "../pages/forbidden-page";
 import { ProtectedRoute } from "../components/protected-route";
@@ -145,16 +146,8 @@ export const AppRoutes: React.FC = () => {
                 />
               }
             >
-              <Route
-                path="/sales/orders"
-                element={
-                  <RoleModulePage
-                    title="Tạo & Quản lý Đơn hàng"
-                    subtitle="Lập đơn hàng bán buôn, kiểm tra tồn khả dụng, áp chính sách chiết khấu và theo dõi xử lý"
-                    requiredRole="Kinh doanh & Vận hành"
-                  />
-                }
-              />
+              {/* SN-38 & SN-39: Tạo & Quản lý Đơn hàng Bán buôn (đã implement) */}
+              <Route path="/sales/orders" element={<OrdersPage />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}

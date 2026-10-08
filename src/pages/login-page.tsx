@@ -254,7 +254,7 @@ export const LoginPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* CONTAINER CHÍNH: Dùng đơn vị tương đối (82vh, max 560px) luôn vừa khít     */}
       {/* ========================================================================= */}
-      <div className="w-full max-w-md lg:max-w-4xl xl:max-w-5xl lg:h-[82vh] lg:max-h-[560px] bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-[0_10px_40px_rgba(0,0,0,0.04)] overflow-hidden grid grid-cols-1 lg:grid-cols-2 my-auto">
+      <div className="w-full max-w-md lg:max-w-4xl xl:max-w-5xl lg:h-[82vh] lg:max-h-[560px] bg-white rounded-xl border border-slate-200/80 shadow-[0_10px_40px_rgba(0,0,0,0.04)] overflow-hidden grid grid-cols-1 lg:grid-cols-2 my-auto">
         {/* ===================================================================== */}
         {/* CỘT TRÁI: Poster (Chiếm chính xác 50% chiều rộng & 100% chiều cao)     */}
         {/* ===================================================================== */}
@@ -280,7 +280,7 @@ export const LoginPage: React.FC = () => {
               <span className="text-base font-bold text-white block leading-tight tracking-tight drop-shadow-xs">
                 LOHA SALES
               </span>
-              <span className="text-[10px] text-blue-100 font-medium block drop-shadow-xs">
+              <span className="text-[10px] text-purple-100 font-medium block drop-shadow-xs">
                 Hệ thống Quản lý Bán hàng & Kho B2B
               </span>
             </div>
@@ -297,20 +297,20 @@ export const LoginPage: React.FC = () => {
         {/* ===================================================================== */}
         <div className="w-full h-full flex flex-col justify-center p-6 sm:p-8 lg:p-8 xl:p-10 bg-white overflow-y-auto">
           {/* Header Card */}
-          <div className="text-center mb-4 sm:mb-5">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl overflow-hidden shadow-xs mb-2.5">
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl overflow-hidden shadow-xs mb-2">
               <img src={logoImg} alt="LOHA SALES" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               Đăng nhập
             </h1>
-            <p className="text-slate-500 text-xs mt-1">
+            <p className="text-slate-500 text-xs mt-2">
               Nhập email và mật khẩu của bạn để tiếp tục
             </p>
           </div>
 
           {/* Form đăng nhập */}
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-3 sm:space-y-3.5">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
             {/* Input Tên đăng nhập / Email */}
             <Input
               label="Tên đăng nhập / Email"
@@ -359,14 +359,14 @@ export const LoginPage: React.FC = () => {
                   type="checkbox"
                   defaultChecked
                   disabled={isSubmitting}
-                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 cursor-pointer"
+                  className="w-4 h-4 rounded border-slate-300 text-[var(--color-primary)] focus:ring-[var(--color-primary-ring)] cursor-pointer"
                 />
                 <span>Ghi nhớ đăng nhập</span>
               </label>
 
               <Link
                 to="/auth/forgot-password"
-                className="text-blue-600 hover:text-blue-700 font-medium hover:underline focus:outline-none transition-colors cursor-pointer"
+                className="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] font-medium hover:underline focus:outline-none transition-colors cursor-pointer"
               >
                 Quên mật khẩu?
               </Link>

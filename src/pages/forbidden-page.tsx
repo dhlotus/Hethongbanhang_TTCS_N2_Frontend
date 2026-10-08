@@ -59,7 +59,7 @@ export const ForbiddenPage: React.FC<ForbiddenPageProps> = ({
     <div className="min-h-[70vh] flex items-center justify-center p-3 sm:p-4 antialiased">
       <div className="w-full max-w-xl mx-auto text-center">
         {/* Card chứa nội dung thông báo lỗi 403 */}
-        <div className="relative overflow-hidden rounded-3xl border border-amber-200/70 bg-white p-6 sm:p-10 shadow-sm">
+        <div className="relative overflow-hidden rounded-xl border border-amber-200/70 bg-white p-6 sm:p-10 shadow-sm">
           {/* Vệt sáng trang trí màu Amber dịu mắt */}
           <div className="absolute -top-16 -right-16 h-44 w-44 rounded-full bg-amber-50/70 blur-2xl pointer-events-none" />
           <div className="absolute -bottom-16 -left-16 h-44 w-44 rounded-full bg-orange-50/50 blur-2xl pointer-events-none" />
@@ -71,7 +71,7 @@ export const ForbiddenPage: React.FC<ForbiddenPageProps> = ({
           </div>
 
           {/* 2. Biểu tượng minh họa trực quan */}
-          <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-50 to-orange-50 text-amber-600 ring-8 ring-amber-50/60 shadow-2xs">
+          <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-md bg-gradient-to-tr from-amber-50 to-orange-50 text-amber-600 ring-8 ring-amber-50/60 shadow-2xs">
             <Lock className="h-9 w-9 text-amber-600" />
             <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white ring-2 ring-white">
               <ShieldX className="h-3.5 w-3.5" />

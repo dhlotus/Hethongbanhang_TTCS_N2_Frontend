@@ -162,9 +162,9 @@ export const ChangePasswordPage: React.FC = () => {
       {successModalOpen &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-            <div className="relative w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100 text-center space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="relative w-full max-w-md bg-white rounded-xl p-6 sm:p-8 shadow-2xl border border-slate-100 text-center space-y-5 animate-in zoom-in-95 duration-200">
               {/* Icon thành công với vòng tỏa ánh sáng */}
-              <div className="relative mx-auto w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm">
+              <div className="relative mx-auto w-16 h-16 rounded-md bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm">
                 <CheckCircle2 className="w-9 h-9 text-emerald-600 animate-in zoom-in-50 duration-300" />
                 <span className="absolute -top-1 -right-1 flex h-4 w-4">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -196,7 +196,7 @@ export const ChangePasswordPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleImmediateLoginRedirect}
-                  className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-semibold text-sm shadow-sm shadow-blue-600/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 rounded-md bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-semibold text-sm shadow-sm shadow-blue-600/20 transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   <span>Đăng nhập lại ngay ({countdown}s)</span>
                 </button>
@@ -208,10 +208,10 @@ export const ChangePasswordPage: React.FC = () => {
 
       {/* Card Form Đổi mật khẩu độc lập, căn giữa trang trọng, chuẩn UI/UX */}
       <div className="w-full max-w-2xl mx-auto">
-        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-[0_4px_25px_rgba(0,0,0,0.03)] p-6 sm:p-8 lg:p-10 transition-all">
+        <div className="bg-white rounded-xl border border-slate-200/80 shadow-[0_4px_25px_rgba(0,0,0,0.03)] p-6 sm:p-8 lg:p-10 transition-all">
           {/* Header Card */}
           <div className="flex items-start gap-4 mb-6 pb-6 border-b border-slate-100">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-blue-500/20">
+            <div className="w-12 h-12 rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-blue-500/20">
               <KeyRound className="w-6 h-6 text-white" />
             </div>
             <div className="min-w-0 flex-1">

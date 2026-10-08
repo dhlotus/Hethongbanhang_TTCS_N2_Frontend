@@ -101,16 +101,29 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
       errs.name = "Tên nhà cung cấp không được để trống";
     }
 
-    if (code.trim() && /\s/.test(code.trim())) {
+    if (isEditMode && code.trim() && /\s/.test(code.trim())) {
       errs.code = "Mã nhà cung cấp không được chứa khoảng trắng";
+    }
+
+    if (taxCode.trim() && !/^[0-9]{12}$/.test(taxCode.trim())) {
+      errs.taxCode = "Mã số thuế phải bao gồm đúng 12 chữ số";
+    }
+
+    if (contactName.trim() && !/^[a-zA-ZÀ-ỹ\s]+$/u.test(contactName.trim())) {
+      errs.contactName = "Tên người liên hệ không được chứa chữ số";
+    }
+
+    if (phone.trim()) {
+      const cleanPhone = phone.trim();
+      if (!cleanPhone.startsWith("0")) {
+        errs.phone = "Số điện thoại phải bắt đầu bằng số 0";
+      } else if (!/^[0-9]+$/.test(cleanPhone) || cleanPhone.length < 10 || cleanPhone.length > 12) {
+        errs.phone = "Số điện thoại phải từ 10 đến 12 chữ số";
+      }
     }
 
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       errs.email = "Email không đúng định dạng hợp lệ";
-    }
-
-    if (phone.trim() && !/^[0-9+\s\-().]{8,20}$/.test(phone.trim())) {
-      errs.phone = "Số điện thoại không hợp lệ (8 - 20 chữ số)";
     }
 
     setErrors(errs);
@@ -124,7 +137,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
     setIsSubmitting(true);
     try {
       await onSubmit({
-        code: code.trim() ? code.trim().toUpperCase() : undefined,
+        code: isEditMode && code.trim() ? code.trim().toUpperCase() : undefined,
         name: name.trim(),
         taxCode: taxCode.trim() || undefined,
         contactName: contactName.trim() || undefined,
@@ -199,15 +212,15 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
               </label>
               <input
                 type="text"
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="VD: NCC-001 (Bỏ trống để tự sinh)"
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all uppercase"
-                disabled={isSubmitting}
+                value={isEditMode ? code : ""}
+                placeholder="Mã nhà cung cấp tự sinh"
+                readOnly
+                disabled
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50 text-slate-500 cursor-not-allowed select-none transition-all uppercase placeholder:text-slate-400 font-medium"
               />
-              {errors.code && (
-                <p className="text-[11px] text-rose-500 mt-1">{errors.code}</p>
-              )}
+              <p className="text-[11px] text-slate-400 mt-1">
+                {isEditMode ? "Mã định danh duy nhất của nhà cung cấp" : "Hệ thống sẽ tự động cấp mã định danh khi lưu"}
+              </p>
             </div>
 
             <div>
@@ -234,9 +247,23 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setName(val);
+                if (val.trim()) {
+                  setErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.name;
+                    return next;
+                  });
+                }
+              }}
               placeholder="VD: Công ty Cổ phần Nước giải khát LOHA"
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+              className={`w-full px-3 py-2 rounded-xl border text-xs focus:ring-2 focus:outline-none transition-all ${
+                errors.name
+                  ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
+                  : "border-slate-200 focus:border-blue-500 focus:ring-blue-100"
+              }`}
               disabled={isSubmitting}
             />
             {errors.name && (
@@ -248,19 +275,41 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Mã số thuế (MST)
+                Mã số thuế
               </label>
               <div className="relative">
                 <FileText className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
                 <input
                   type="text"
                   value={taxCode}
-                  onChange={(e) => setTaxCode(e.target.value)}
-                  placeholder="VD: 0312345678"
-                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setTaxCode(val);
+                    if (val.trim() && !/^[0-9]{12}$/.test(val.trim())) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        taxCode: "Mã số thuế phải bao gồm đúng 12 chữ số",
+                      }));
+                    } else {
+                      setErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.taxCode;
+                        return next;
+                      });
+                    }
+                  }}
+                  placeholder="VD: 031234567890"
+                  className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs focus:ring-2 focus:outline-none transition-all ${
+                    errors.taxCode
+                      ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
+                      : "border-slate-200 focus:border-blue-500 focus:ring-blue-100"
+                  }`}
                   disabled={isSubmitting}
                 />
               </div>
+              {errors.taxCode && (
+                <p className="text-[11px] text-rose-500 mt-1">{errors.taxCode}</p>
+              )}
             </div>
 
             <div>
@@ -272,12 +321,34 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
                 <input
                   type="text"
                   value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setContactName(val);
+                    if (val.trim() && !/^[a-zA-ZÀ-ỹ\s]+$/u.test(val.trim())) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        contactName: "Tên người liên hệ không được chứa chữ số",
+                      }));
+                    } else {
+                      setErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.contactName;
+                        return next;
+                      });
+                    }
+                  }}
                   placeholder="VD: Ông Đỗ Quốc Tuấn"
-                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+                  className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs focus:ring-2 focus:outline-none transition-all ${
+                    errors.contactName
+                      ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
+                      : "border-slate-200 focus:border-blue-500 focus:ring-blue-100"
+                  }`}
                   disabled={isSubmitting}
                 />
               </div>
+              {errors.contactName && (
+                <p className="text-[11px] text-rose-500 mt-1">{errors.contactName}</p>
+              )}
             </div>
           </div>
 
@@ -292,9 +363,46 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
                 <input
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPhone(val);
+                    const clean = val.trim();
+                    if (clean) {
+                      if (!clean.startsWith("0")) {
+                        setErrors((prev) => ({
+                          ...prev,
+                          phone: "Số điện thoại phải bắt đầu bằng số 0",
+                        }));
+                      } else if (
+                        !/^[0-9]+$/.test(clean) ||
+                        clean.length < 10 ||
+                        clean.length > 12
+                      ) {
+                        setErrors((prev) => ({
+                          ...prev,
+                          phone: "Số điện thoại phải từ 10 đến 12 chữ số",
+                        }));
+                      } else {
+                        setErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.phone;
+                          return next;
+                        });
+                      }
+                    } else {
+                      setErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.phone;
+                        return next;
+                      });
+                    }
+                  }}
                   placeholder="VD: 02838123456 hoặc 0901234567"
-                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+                  className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs focus:ring-2 focus:outline-none transition-all ${
+                    errors.phone
+                      ? "border-rose-300 focus:border-rose-500 focus:ring-rose-100"
+                      : "border-slate-200 focus:border-blue-500 focus:ring-blue-100"
+                  }`}
                   disabled={isSubmitting}
                 />
               </div>

@@ -72,11 +72,11 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="profile-edit-title"
-        className="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl animate-modal-in sm:p-8"
+        className="w-full max-w-md rounded-xl border border-slate-100 bg-white p-6 shadow-2xl animate-modal-in sm:p-8"
       >
         <div className="mb-6 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600">
               <PencilLine className="h-5 w-5" />
             </div>
             <div>
@@ -93,7 +93,7 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
             onClick={onClose}
             disabled={isSaving}
             aria-label="Đóng"
-            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <X className="h-5 w-5" />
           </button>
@@ -146,14 +146,14 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isSaving}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Hủy
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
               {isSaving ? "Đang lưu..." : "Lưu thay đổi"}

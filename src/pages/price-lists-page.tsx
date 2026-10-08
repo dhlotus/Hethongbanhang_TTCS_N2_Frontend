@@ -4,7 +4,6 @@ import {
   RefreshCw,
   Search,
   CheckCircle2,
-  AlertTriangle,
   Clock,
   FileEdit,
   Eye,
@@ -27,6 +26,7 @@ import { PriceListFormModal } from '../components/price-list-form-modal';
 import { PriceListCloneModal } from '../components/price-list-clone-modal';
 import { showToast } from '../components/toast';
 import { PriceListsTableSkeleton } from '../components/skeletons';
+import { ConfirmDeleteModal } from '../components/confirm-delete-modal';
 import type {
   PriceList,
   CustomerGroupType,
@@ -298,9 +298,9 @@ export const PriceListsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* 2. Metrics Header: 4 Thẻ chỉ số tổng quan */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Tổng số bảng giá */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3.5">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
           <div className="p-3 rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/10 shrink-0">
             <FileSpreadsheet className="w-5 h-5" />
           </div>
@@ -326,7 +326,7 @@ export const PriceListsPage: React.FC = () => {
         </div>
 
         {/* Card 3: Bản nháp */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3.5">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
           <div className="p-3 rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-500/10 shrink-0">
             <FileEdit className="w-5 h-5" />
           </div>
@@ -339,7 +339,7 @@ export const PriceListsPage: React.FC = () => {
         </div>
 
         {/* Card 4: Đã hết hạn */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3.5">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
           <div className="p-3 rounded-xl bg-rose-50 text-rose-600 ring-1 ring-rose-500/10 shrink-0">
             <Clock className="w-5 h-5" />
           </div>
@@ -353,7 +353,7 @@ export const PriceListsPage: React.FC = () => {
       </div>
 
       {/* 3. Filter Toolbar: Tabs nhóm khách hàng, Search Box, Dropdown Trạng thái */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-3.5">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-4">
         {/* Tabs Nhóm khách hàng */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100 text-xs">
           {CUSTOMER_GROUP_TABS.map((tab) => {
@@ -446,18 +446,18 @@ export const PriceListsPage: React.FC = () => {
 
       {/* 4. Table: Danh sách Bảng giá */}
       <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+        <div className="overflow-auto max-h-[calc(100vh-270px)] relative">
+          <table className="w-full text-left text-xs border-separate border-spacing-0">
             <thead>
-              <tr className="bg-slate-50/90 border-b border-slate-200/80 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-4 w-12 text-center">STT</th>
-                <th className="py-3 px-4 min-w-[200px]">Mã & Phiên bản</th>
-                <th className="py-3 px-4 min-w-[240px]">Tên Bảng giá</th>
-                <th className="py-3 px-4 w-40">Nhóm áp dụng</th>
-                <th className="py-3 px-4 w-48">Thời gian hiệu lực</th>
-                <th className="py-3 px-4 w-36">Trạng thái</th>
-                <th className="py-3 px-4 w-44 text-center">Ràng buộc Đơn hàng</th>
-                <th className="py-3 px-4 w-36 text-center">Thao tác</th>
+              <tr className="text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                <th className="sticky top-0 left-0 z-30 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-12 min-w-12 text-center">STT</th>
+                <th className="sticky top-0 left-12 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 min-w-[200px]">Mã & Phiên bản</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 min-w-[240px]">Tên Bảng giá</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-40">Nhóm áp dụng</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-48">Thời gian hiệu lực</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36">Trạng thái</th>
+                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-44 text-center">Ràng buộc Đơn hàng</th>
+                <th className="sticky top-0 right-0 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 w-36 min-w-36 text-center">Thao tác</th>
               </tr>
             </thead>
 
@@ -466,7 +466,7 @@ export const PriceListsPage: React.FC = () => {
                 <PriceListsTableSkeleton count={6} />
               ) : priceLists.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400 border-b border-slate-100">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <FileSpreadsheet className="w-8 h-8 text-slate-300" />
                       <p className="font-semibold text-slate-600 text-sm">Không tìm thấy bảng giá nào</p>
@@ -496,12 +496,12 @@ export const PriceListsPage: React.FC = () => {
                       className="hover:bg-slate-50/70 transition-colors group"
                     >
                       {/* STT */}
-                      <td className="py-3.5 px-4 text-center text-slate-400 font-mono text-[11px]">
+                      <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors border-b border-slate-100 py-3.5 px-4 text-center text-slate-400 font-mono text-[11px] w-12 min-w-12">
                         {(page - 1) * limit + idx + 1}
                       </td>
 
                       {/* Mã bảng giá & Badge Version */}
-                      <td className="py-3.5 px-4">
+                      <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 py-3.5 px-4">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-mono font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
                             {pl.code}
@@ -511,7 +511,7 @@ export const PriceListsPage: React.FC = () => {
                           </span>
                         </div>
                         {pl.parentVersionId && (
-                          <div className="flex items-center gap-1 text-[11px] text-purple-600 mt-0.5">
+                          <div className="flex items-center gap-1 text-[11px] text-[var(--color-primary)] mt-0.5">
                             <GitBranch className="w-3 h-3" />
                             <span>Nhân bản từ v{pl.version - 1}.0</span>
                           </div>
@@ -519,7 +519,7 @@ export const PriceListsPage: React.FC = () => {
                       </td>
 
                       {/* Tên bảng giá & Mô tả */}
-                      <td className="py-3.5 px-4">
+                      <td className="border-b border-slate-100 py-3.5 px-4">
                         <div className="font-semibold text-slate-900 leading-snug">
                           {pl.name}
                         </div>
@@ -534,12 +534,12 @@ export const PriceListsPage: React.FC = () => {
                       </td>
 
                       {/* Nhóm áp dụng */}
-                      <td className="py-3.5 px-4">
+                      <td className="border-b border-slate-100 py-3.5 px-4">
                         {renderCustomerGroupBadge(pl.customerGroup)}
                       </td>
 
                       {/* Thời gian hiệu lực */}
-                      <td className="py-3.5 px-4 text-slate-600 font-medium">
+                      <td className="border-b border-slate-100 py-3.5 px-4 text-slate-600 font-medium">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span>
@@ -549,12 +549,12 @@ export const PriceListsPage: React.FC = () => {
                       </td>
 
                       {/* Trạng thái */}
-                      <td className="py-3.5 px-4">
+                      <td className="border-b border-slate-100 py-3.5 px-4">
                         {renderStatusBadge(pl.status)}
                       </td>
 
                       {/* Ràng buộc đơn hàng */}
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="border-b border-slate-100 py-3.5 px-4 text-center">
                         {isLocked ? (
                           <div
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 text-[11px] font-semibold ring-1 ring-inset ring-amber-600/30"
@@ -572,7 +572,7 @@ export const PriceListsPage: React.FC = () => {
                       </td>
 
                       {/* Thao tác (Xem, Sửa, Clone, Xóa) */}
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="sticky right-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 py-3.5 px-4 text-center w-36 min-w-36">
                         <div className="flex items-center justify-center gap-1.5">
                           {/* Xem chi tiết */}
                           <button
@@ -610,7 +610,7 @@ export const PriceListsPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleOpenCloneModal(pl)}
-                              className="p-1.5 text-slate-500 hover:text-purple-600 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer"
+                              className="p-1.5 text-slate-500 hover:text-[var(--color-primary)] rounded-lg hover:bg-[var(--color-primary-light)] transition-colors cursor-pointer"
                               title="Tạo phiên bản mới (Clone Version)"
                             >
                               <Copy className="w-4 h-4" />
@@ -700,42 +700,30 @@ export const PriceListsPage: React.FC = () => {
       />
 
       {/* 7. Modal Xác nhận Xóa */}
-      {deleteModalOpen && priceListToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center gap-3 text-rose-600">
-              <div className="p-2.5 rounded-xl bg-rose-50 ring-1 ring-rose-500/20">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">Xác nhận xóa Bảng giá</h3>
-            </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed">
+      <ConfirmDeleteModal
+        isOpen={deleteModalOpen && Boolean(priceListToDelete)}
+        onCancel={() => {
+          setDeleteModalOpen(false);
+          setPriceListToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Xác nhận xóa Bảng giá"
+        itemName={priceListToDelete?.name}
+        itemCode={priceListToDelete?.code}
+        message={
+          priceListToDelete ? (
+            <p>
               Bạn có chắc chắn muốn xóa bảng giá{' '}
-              <strong className="text-slate-900 font-semibold">{priceListToDelete.name}</strong> [
-              {priceListToDelete.code}] không? Thao tác này không thể hoàn tác sau khi thực hiện.
+              <strong className="text-slate-900 font-bold">&quot;{priceListToDelete.name}&quot;</strong> [
+              {priceListToDelete.code}] không?
             </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setDeleteModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={deleting}
-                className="px-4 py-2 text-xs font-semibold rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-xs cursor-pointer"
-              >
-                {deleting ? 'Đang xóa...' : 'Đồng ý xóa'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          ) : undefined
+        }
+        warningText="Thao tác này mang tính vĩnh viễn và không thể hoàn tác sau khi thực hiện."
+        confirmText="Đồng ý xóa"
+        cancelText="Hủy bỏ"
+        isDeleting={deleting}
+      />
     </div>
   );
 };

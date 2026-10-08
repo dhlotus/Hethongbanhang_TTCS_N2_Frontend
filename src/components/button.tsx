@@ -8,7 +8,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /**
- * Component Button chuẩn thiết kế LOHA SALES (h-12, rounded-xl, smooth transition)
+ * Component Button chuẩn thiết kế LOHA SALES (h-10.5/h-11, radius-md: 8px, smooth transition)
  */
 export const Button: React.FC<ButtonProps> = ({
   children,
@@ -20,15 +20,15 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    "w-full h-10.5 sm:h-11 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus:ring-4 select-none disabled:opacity-60 disabled:cursor-not-allowed";
+    "w-full h-10.5 sm:h-11 rounded-md font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus:ring-4 select-none disabled:opacity-60 disabled:cursor-not-allowed";
 
   const variantStyles = {
     primary:
-      "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-sm hover:shadow focus:ring-blue-500/25",
+      "bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-active)] text-white shadow-sm hover:shadow focus:ring-[var(--color-primary-ring)]",
     secondary:
-      "bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 focus:ring-slate-400/20",
+      "bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] active:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] focus:ring-[var(--color-primary-ring)]",
     outline:
-      "border border-slate-200 hover:bg-slate-50 active:bg-slate-100 text-slate-700 focus:ring-slate-300/30",
+      "border border-[var(--color-border)] hover:border-[var(--color-border-hover)] hover:bg-slate-50 active:bg-slate-100 text-slate-700 focus:ring-slate-300/30",
   }[variant];
 
   return (

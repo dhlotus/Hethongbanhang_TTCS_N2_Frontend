@@ -60,7 +60,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
   const menuItems: MenuItem[] = getNavigationItems(currentUser?.roles || currentUser?.role);
 
   return (
-    <div className="flex h-full flex-col justify-between p-3 sm:p-3.5 bg-white select-none">
+    <div className="flex h-full flex-col justify-between p-3 sm:p-4 bg-white select-none">
       {/* ===================================================================== */}
       {/* PHẦN 1: LOGO & BRAND IDENTITY KÈM NÚT ĐÓNG/MỞ THU GỌN                 */}
       {/* ===================================================================== */}
@@ -68,7 +68,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
         {/* Header Logo + Toggle: Chuyển đổi trạng thái đóng/mở siêu mượt mà không bị nhảy layout */}
         <div
           className={`border-b border-slate-100 transition-[height,padding] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden flex flex-col justify-between ${
-            isCollapsed ? "h-[94px] pb-3" : "h-[56px] pb-3.5"
+            isCollapsed ? "h-[96px] pb-3" : "h-[56px] pb-3"
           }`}
         >
           {/* Hàng 1: Logo Icon + Tên LOHA SALES + Nút thu gọn (<) khi mở rộng */}
@@ -76,10 +76,10 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
             <Link
               to="/"
               onClick={onItemClick}
-              className="flex items-center gap-2.5 group focus:outline-none min-w-0"
+              className="flex items-center gap-2 group focus:outline-none min-w-0"
               title="LOHA SALES"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-xs group-hover:scale-105 transition-transform duration-200">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md overflow-hidden shadow-xs group-hover:scale-105 transition-transform duration-200">
                 <img
                   src={logoImg}
                   alt="LOHA SALES"
@@ -93,7 +93,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                     : "max-w-[150px] opacity-100 translate-x-0"
                 }`}
               >
-                <span className="text-base font-bold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
+                <span className="text-base font-bold tracking-tight text-slate-900 group-hover:text-[var(--color-primary)] transition-colors">
                   LOHA SALES
                 </span>
               </div>
@@ -104,7 +104,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               <button
                 type="button"
                 onClick={onToggleCollapse}
-                className={`group/collapse hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 hover:shadow-xs transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer active:scale-95 ${
+                className={`group/collapse hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] hover:shadow-xs transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer active:scale-95 ${
                   isCollapsed
                     ? "opacity-0 scale-75 max-w-0 pointer-events-none"
                     : "opacity-100 scale-100 max-w-8"
@@ -129,7 +129,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               <button
                 type="button"
                 onClick={onToggleCollapse}
-                className="group/expand h-8 w-8 flex items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 hover:shadow-xs transition-all duration-200 cursor-pointer active:scale-95"
+                className="group/expand h-8 w-8 flex items-center justify-center rounded-md border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] hover:shadow-xs transition-all duration-200 cursor-pointer active:scale-95"
                 title="Mở rộng menu"
                 aria-label="Mở rộng menu"
               >
@@ -142,9 +142,9 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
         {/* ===================================================================== */}
         {/* PHẦN 2: DANH MỤC MENU ĐIỀU HƯỚNG THEO VAI TRÒ (DYNAMIC NAVIGATION)    */}
         {/* ===================================================================== */}
-        <div className="mt-3.5 flex-1 flex flex-col min-h-0 overflow-y-auto pr-0.5">
+        <div className="mt-4 flex-1 flex flex-col min-h-0 overflow-y-auto pr-0.5">
           <div onClick={(e) => isCollapsed && e.stopPropagation()}>
-            <nav className="space-y-1.5">
+            <nav className="space-y-2">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isItemActive =
@@ -160,16 +160,16 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                     to={item.path}
                     onClick={onItemClick}
                     title={isCollapsed ? item.name : undefined}
-                    className={`group relative flex items-center px-2.5 py-2.5 min-h-[46px] rounded-xl text-sm font-semibold transition-colors duration-200 active:scale-[0.98] ${
+                    className={`group relative flex items-center px-3 py-2 min-h-[44px] rounded-md text-sm font-semibold transition-colors duration-200 active:scale-[0.98] ${
                       isItemActive
-                        ? "bg-blue-50/90 text-blue-600 font-bold shadow-2xs"
+                        ? "bg-[var(--color-primary-light)] text-[var(--color-primary)] font-bold shadow-2xs"
                         : "text-slate-700 hover:bg-slate-50/90 hover:text-slate-900"
                     }`}
                   >
                     <div className="flex items-center w-full min-w-0">
                       {/* Thanh định vị Active nhỏ ở bên trái */}
                       {isItemActive && (
-                        <span className="absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r-full bg-blue-600 shadow-xs" />
+                        <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[var(--color-primary)] shadow-xs" />
                       )}
 
                       {/* Icon vị trí cố định tuyệt đối mượt mà */}
@@ -177,7 +177,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                         <Icon
                           className={`h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
                             isItemActive
-                              ? "text-blue-600"
+                              ? "text-[var(--color-primary)]"
                               : "text-slate-500 group-hover:text-slate-800"
                           }`}
                         />
@@ -203,7 +203,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                           : "max-w-0 opacity-0 pointer-events-none"
                       }`}
                     >
-                      <ChevronRight className="h-4 w-4 text-blue-500 shrink-0" />
+                      <ChevronRight className="h-4 w-4 text-[var(--color-primary)] shrink-0" />
                     </div>
                   </NavLink>
                 );
@@ -276,7 +276,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none transition-colors"
+                className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none transition-colors"
                 aria-label="Đóng thanh điều hướng"
               >
                 <X className="h-5 w-5" />
