@@ -161,10 +161,10 @@ export interface ImportProductItemDto {
   name: string;
   category: string;
   baseUnit: string;
-  packagingSpec?: string;
   price: number;
   costPrice: number;
   stockQuantity: number;
+  barcode?: string;
   description?: string;
   status: "NEW" | "UPDATE";
   errors: string[];

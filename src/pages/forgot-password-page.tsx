@@ -55,10 +55,10 @@ export const ForgotPasswordPage: React.FC = () => {
     <div className="w-full min-h-screen flex items-center justify-center p-4 sm:p-6 bg-slate-50 text-slate-800 antialiased">
       <div className="w-full max-w-md">
         {/* Card chứa form */}
-        <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-6 sm:p-8 transition-all">
+        <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm sm:shadow-md p-6 sm:p-8 transition-all">
           {/* Header Icon */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-md bg-blue-50 border border-blue-100 text-blue-600 mb-3">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-md bg-blue-50 border border-blue-100 text-blue-600 mb-3 shadow-2xs">
               {isSuccess ? (
                 <CheckCircle2 className="w-6 h-6 text-emerald-600" />
               ) : (

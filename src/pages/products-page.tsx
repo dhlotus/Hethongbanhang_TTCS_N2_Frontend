@@ -21,7 +21,7 @@ import {
   FolderTree,
   FileText,
   BookOpen,
-  Filter,
+  SlidersHorizontal,
   RotateCcw,
 } from "lucide-react";
 import { getStoredUser } from "../utils/navigation";
@@ -64,17 +64,19 @@ export const ProductsPage: React.FC = () => {
   // URL Query Params (Hỗ trợ mở từ Cây danh mục)
   const [searchParams, setSearchParams] = useSearchParams();
   const urlCategoryId = searchParams.get("categoryId");
+  const urlSearch = searchParams.get("search") || searchParams.get("sku") || "";
+  const urlParentCategory = searchParams.get("parentCategory");
+  const urlSubCategory = searchParams.get("subCategory");
 
   // Danh mục phân cấp động
   const [categoriesList, setCategoriesList] = useState<ProductCategory[]>(PRODUCT_CATEGORIES);
 
   // Bộ lọc & Tìm kiếm (Debounced)
-  const [searchInput, setSearchInput] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchInput, setSearchInput] = useState(urlSearch);
+  const [searchTerm, setSearchTerm] = useState(urlSearch);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(urlCategoryId || "ALL");
-  const [selectedParentCategory, setSelectedParentCategory] = useState("ALL");
-  const [selectedSubCategory, setSelectedSubCategory] = useState("ALL");
-  const [selectedChildCategory, setSelectedChildCategory] = useState("ALL");
+  const [selectedParentCategory, setSelectedParentCategory] = useState(urlParentCategory || "ALL");
+  const [selectedSubCategory, setSelectedSubCategory] = useState(urlSubCategory || "ALL");
   const [selectedStatus, setSelectedStatus] = useState<ProductStatus | "ALL">("ALL");
 
   // Drawer bộ lọc nâng cao cho Mobile & Tablet (< lg)
@@ -155,12 +157,50 @@ export const ProductsPage: React.FC = () => {
     };
   }, []);
 
-  // Cập nhật selectedCategoryId khi URL query thay đổi
+  // Cập nhật bộ lọc khi URL query params thay đổi
   useEffect(() => {
-    if (urlCategoryId) {
-      setSelectedCategoryId(urlCategoryId);
+    const s = searchParams.get("search") || searchParams.get("sku") || "";
+    if (s) {
+      setSearchInput(s);
+      setSearchTerm(s);
     }
-  }, [urlCategoryId]);
+    const cId = searchParams.get("categoryId");
+    if (cId) setSelectedCategoryId(cId);
+
+    const pCat = searchParams.get("parentCategory");
+    if (pCat) setSelectedParentCategory(pCat);
+
+    const sCat = searchParams.get("subCategory");
+    if (sCat) setSelectedSubCategory(sCat);
+  }, [searchParams]);
+
+  // Tự động suy luận Cấp 1 và Cấp 2 khi danh mục tải về từ backend
+  useEffect(() => {
+    if (!categoriesList || categoriesList.length === 0) return;
+    const cId = searchParams.get("categoryId");
+    if (!cId || cId === "ALL") return;
+
+    for (const c1 of categoriesList) {
+      if (c1.id === cId || c1.code === cId) {
+        setSelectedParentCategory(c1.name);
+        return;
+      }
+      for (const c2 of (c1.subCategories || c1.children || [])) {
+        if (c2.id === cId || c2.code === cId) {
+          setSelectedParentCategory(c1.name);
+          setSelectedSubCategory(c2.name);
+          return;
+        }
+        for (const c3 of (c2.subCategories || c2.children || [])) {
+          if (c3.id === cId || c3.code === cId) {
+            setSelectedParentCategory(c1.name);
+            setSelectedSubCategory(c2.name);
+            return;
+          }
+        }
+      }
+    }
+  }, [categoriesList, searchParams]);
 
   // Debounce tìm kiếm sau 300ms
   useEffect(() => {
@@ -178,26 +218,17 @@ export const ProductsPage: React.FC = () => {
     return found?.subCategories || [];
   }, [selectedParentCategory, categoriesList]);
 
-  // Danh sách Phân loại con Cấp 3 tương ứng theo Cấp 2 đang chọn
-  const childCategoriesForFilter = useMemo(() => {
-    if (selectedSubCategory === "ALL") return [];
-    const found = subCategoriesForFilter.find((s) => s.name === selectedSubCategory);
-    return found?.subCategories || found?.children || [];
-  }, [selectedSubCategory, subCategoriesForFilter]);
-
   // Đếm số lượng bộ lọc nâng cao đang được kích hoạt (không tính tìm kiếm văn bản)
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (selectedParentCategory !== "ALL") count++;
     if (selectedSubCategory !== "ALL") count++;
-    if (selectedChildCategory !== "ALL") count++;
     if (selectedStatus !== "ALL") count++;
     if (selectedCategoryId !== "ALL") count++;
     return count;
   }, [
     selectedParentCategory,
     selectedSubCategory,
-    selectedChildCategory,
     selectedStatus,
     selectedCategoryId,
   ]);
@@ -206,9 +237,10 @@ export const ProductsPage: React.FC = () => {
   const handleResetFilters = useCallback(() => {
     setSelectedParentCategory("ALL");
     setSelectedSubCategory("ALL");
-    setSelectedChildCategory("ALL");
     setSelectedStatus("ALL");
     setSelectedCategoryId("ALL");
+    setSearchInput("");
+    setSearchTerm("");
     setSearchParams({});
     setPage(1);
   }, [setSearchParams]);
@@ -223,12 +255,7 @@ export const ProductsPage: React.FC = () => {
         search: searchTerm,
         categoryId: selectedCategoryId !== "ALL" ? selectedCategoryId : (urlCategoryId || undefined),
         parentCategory: selectedParentCategory !== "ALL" ? selectedParentCategory : undefined,
-        subCategory:
-          selectedChildCategory !== "ALL"
-            ? selectedChildCategory
-            : selectedSubCategory !== "ALL"
-            ? selectedSubCategory
-            : undefined,
+        subCategory: selectedSubCategory !== "ALL" ? selectedSubCategory : undefined,
         status: selectedStatus !== "ALL" ? selectedStatus : undefined,
       });
 
@@ -254,7 +281,6 @@ export const ProductsPage: React.FC = () => {
     urlCategoryId,
     selectedParentCategory,
     selectedSubCategory,
-    selectedChildCategory,
     selectedStatus,
   ]);
 
@@ -546,7 +572,7 @@ export const ProductsPage: React.FC = () => {
                 : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
             }`}
           >
-            <Filter className="h-4 w-4 text-blue-600" />
+            <SlidersHorizontal className="h-4 w-4 text-blue-600" />
             <span>Bộ lọc</span>
             {activeFilterCount > 0 && (
               <span className="h-5 min-w-[20px] px-1.5 rounded-full bg-blue-600 text-white text-[11px] font-bold flex items-center justify-center">
@@ -586,7 +612,6 @@ export const ProductsPage: React.FC = () => {
               onChange={(e) => {
                 setSelectedParentCategory(e.target.value);
                 setSelectedSubCategory("ALL");
-                setSelectedChildCategory("ALL");
                 setSelectedCategoryId("ALL");
                 setPage(1);
               }}
@@ -607,7 +632,6 @@ export const ProductsPage: React.FC = () => {
               value={selectedSubCategory}
               onChange={(e) => {
                 setSelectedSubCategory(e.target.value);
-                setSelectedChildCategory("ALL");
                 setSelectedCategoryId("ALL");
                 setPage(1);
               }}
@@ -644,90 +668,22 @@ export const ProductsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Lọc Phân loại con Cấp 3 (cho Desktop khi nhóm Cấp 2 có Cấp 3) */}
-        {childCategoriesForFilter.length > 0 && (
-          <div className="hidden lg:flex items-center gap-2 pt-1">
-            <span className="text-xs font-semibold text-indigo-700">Phân loại Cấp 3:</span>
-            <div className="relative max-w-xs">
-              <select
-                value={selectedChildCategory}
-                onChange={(e) => {
-                  setSelectedChildCategory(e.target.value);
-                  setSelectedCategoryId("ALL");
-                  setPage(1);
-                }}
-                className="w-full px-3 py-1.5 text-xs rounded-xl border border-indigo-200 bg-white text-indigo-900 font-medium focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
+        {/* Tổng kết kết quả & Đặt lại bộ lọc */}
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
+          <div>
+            {(activeFilterCount > 0 || searchTerm) ? (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-medium transition-all cursor-pointer"
+                title="Đặt lại toàn bộ bộ lọc"
               >
-                <option value="ALL">Tất cả Phân loại Cấp 3</option>
-                {childCategoriesForFilter.map((child) => (
-                  <option key={child.id} value={child.name}>
-                    {child.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-
-        {/* Chip hiển thị khi đang lọc theo nhánh Cây từ Trang Cây danh mục (Desktop) */}
-        {selectedCategoryId !== "ALL" && (
-          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold w-fit">
-            <FolderTree className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-            <span>Lọc theo nhánh cây</span>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedCategoryId("ALL");
-                setSearchParams({});
-              }}
-              className="ml-1 text-slate-400 hover:text-slate-700 cursor-pointer"
-              title="Bỏ lọc theo cây"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-
-        {/* Thanh trạng thái bộ lọc đang áp dụng & Tổng kết */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-slate-700">Bộ lọc đang áp dụng:</span>
-            {searchTerm && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 font-medium text-[11px]">
-                Tìm kiếm: "{searchTerm}"
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setSearchInput("")} />
-              </span>
+                <RotateCcw className="h-3 w-3" />
+                <span>Đặt lại bộ lọc</span>
+              </button>
+            ) : (
+              <span className="text-slate-400 italic">Tất cả sản phẩm</span>
             )}
-            {selectedParentCategory !== "ALL" && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary)] font-medium text-[11px]">
-                Cấp 1: {selectedParentCategory}
-                <X
-                  className="h-3 w-3 cursor-pointer"
-                  onClick={() => {
-                    setSelectedParentCategory("ALL");
-                    setSelectedSubCategory("ALL");
-                  }}
-                />
-              </span>
-            )}
-            {selectedSubCategory !== "ALL" && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 font-medium text-[11px]">
-                Cấp 2: {selectedSubCategory}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedSubCategory("ALL")} />
-              </span>
-            )}
-            {selectedStatus !== "ALL" && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 font-medium text-[11px]">
-                {selectedStatus === "ACTIVE" ? "Đang kinh doanh" : "Ngừng kinh doanh"}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedStatus("ALL")} />
-              </span>
-            )}
-            {!searchTerm &&
-              selectedParentCategory === "ALL" &&
-              selectedSubCategory === "ALL" &&
-              selectedStatus === "ALL" && (
-                <span className="text-slate-400 italic">Hiển thị toàn bộ danh mục</span>
-              )}
           </div>
 
           <div className="flex items-center gap-1.5 font-medium shrink-0">
@@ -812,7 +768,10 @@ export const ProductsPage: React.FC = () => {
                   const isOutOfStock = p.stockQuantity === 0;
 
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
+                    <tr
+                      key={p.id}
+                      className="hover:bg-slate-50/70 transition-colors"
+                    >
                       {/* Cột 1: Ảnh Thumbnail */}
                       <td className="px-3 py-2.5 text-center">
                         <div className="h-9 w-9 mx-auto rounded-xl border border-slate-200/90 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
@@ -959,7 +918,7 @@ export const ProductsPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleOpenEditModal(p)}
-                              className="btn-icon text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
                               title="Sửa thông tin SKU"
                             >
                               <Edit2 className="h-4 w-4" />
@@ -971,7 +930,7 @@ export const ProductsPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleToggleStatus(p)}
-                              className={`btn-icon transition-colors ${
+                              className={`rounded-lg p-1.5 transition-colors cursor-pointer ${
                                 p.status === "ACTIVE"
                                   ? "text-slate-400 hover:bg-amber-50 hover:text-amber-600"
                                   : "text-slate-400 hover:bg-emerald-50 hover:text-emerald-600"
@@ -991,7 +950,7 @@ export const ProductsPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleOpenAdjustModal(p)}
-                              className="btn-icon text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer"
                               title="Điều chỉnh tồn kho"
                             >
                               <Warehouse className="h-4 w-4" />
@@ -1002,7 +961,7 @@ export const ProductsPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleOpenLedgerModal(p.sku)}
-                            className="btn-icon text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors cursor-pointer"
                             title="Xem Sổ kho & Lịch sử quy đổi của SKU này"
                           >
                             <BookOpen className="h-4 w-4" />
@@ -1013,7 +972,7 @@ export const ProductsPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handlePromptDelete(p)}
-                              className={`btn-icon transition-colors ${
+                              className={`rounded-lg p-1.5 transition-colors cursor-pointer ${
                                 p.hasTransactions
                                   ? "text-slate-300 hover:text-amber-600 hover:bg-amber-50"
                                   : "text-slate-400 hover:bg-rose-50 hover:text-rose-600"
@@ -1202,10 +1161,10 @@ export const ProductsPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenEditModal(p)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
                           title="Sửa thông tin SKU"
                         >
-                          <Edit2 className="h-4 w-4 text-blue-600" />
+                          <Edit2 className="h-3.5 w-3.5 text-blue-600" />
                           <span>Sửa</span>
                         </button>
                       )}
@@ -1215,10 +1174,10 @@ export const ProductsPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenAdjustModal(p)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
                           title="Điều chỉnh tồn kho"
                         >
-                          <Warehouse className="h-4 w-4 text-indigo-600" />
+                          <Warehouse className="h-3.5 w-3.5 text-indigo-600" />
                           <span>Kho</span>
                         </button>
                       )}
@@ -1227,10 +1186,10 @@ export const ProductsPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleOpenLedgerModal(p.sku)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
                         title="Xem Sổ kho & Lịch sử quy đổi"
                       >
-                        <BookOpen className="h-4 w-4 text-blue-600" />
+                        <BookOpen className="h-3.5 w-3.5 text-blue-600" />
                         <span>Sổ</span>
                       </button>
 
@@ -1239,7 +1198,7 @@ export const ProductsPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleToggleStatus(p)}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 text-xs font-medium ${
+                          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 text-xs font-medium ${
                             p.status === "ACTIVE"
                               ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
                               : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
@@ -1250,7 +1209,7 @@ export const ProductsPage: React.FC = () => {
                               : "Kích hoạt Đang kinh doanh"
                           }
                         >
-                          <Power className="h-4 w-4" />
+                          <Power className="h-3.5 w-3.5" />
                           <span>{p.status === "ACTIVE" ? "Tắt" : "Bật"}</span>
                         </button>
                       )}
@@ -1260,7 +1219,7 @@ export const ProductsPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handlePromptDelete(p)}
-                          className={`btn-icon border transition-all cursor-pointer active:scale-95 ${
+                          className={`p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 ${
                             p.hasTransactions
                               ? "border-slate-200 text-slate-300 hover:text-amber-600 hover:bg-amber-50"
                               : "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
@@ -1283,8 +1242,8 @@ export const ProductsPage: React.FC = () => {
         </div>
 
         {/* 4. Thanh phân trang chuẩn Clean SaaS (Mặc định 20 dòng / trang) */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-100 text-xs text-slate-500 bg-slate-50/40">
-          <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-100 text-xs text-slate-500 bg-slate-50/40">
+          <div className="flex items-center gap-3 shrink-0 whitespace-nowrap">
             <div>
               Hiển thị{" "}
               <strong>
@@ -1310,7 +1269,7 @@ export const ProductsPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
             <button
               type="button"
               disabled={page <= 1}
@@ -1342,7 +1301,7 @@ export const ProductsPage: React.FC = () => {
                         onClick={() => setPage(p)}
                         className={`h-7 min-w-7 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                           page === p
-                            ? "bg-blue-600 text-white"
+                            ? "bg-blue-600 text-white shadow-2xs shadow-blue-600/30"
                             : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                         }`}
                       >
@@ -1391,7 +1350,7 @@ export const ProductsPage: React.FC = () => {
               if (e.target === e.currentTarget) setDeleteModalOpen(false);
             }}
           >
-          <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-lg border border-slate-100 animate-modal-in text-slate-800">
+          <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-2xl border border-slate-100 animate-modal-in text-slate-800">
             <button
               type="button"
               onClick={() => setDeleteModalOpen(false)}
@@ -1401,7 +1360,7 @@ export const ProductsPage: React.FC = () => {
             </button>
 
             <div className="flex items-center gap-3.5 mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-rose-50 border border-rose-100 text-rose-600 shrink-0">
+              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-rose-50 border border-rose-100 text-rose-600 shadow-2xs shrink-0">
                 <Trash2 className="h-6 w-6 stroke-[2.2]" />
               </div>
               <div>
@@ -1436,7 +1395,7 @@ export const ProductsPage: React.FC = () => {
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={isDeleting}
-                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-[0.99] text-xs font-semibold text-white cursor-pointer disabled:opacity-50"
+                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-[0.99] text-xs font-semibold text-white shadow-xs cursor-pointer disabled:opacity-50"
               >
                 {isDeleting ? "Đang xóa..." : "Xác nhận xóa"}
               </button>
@@ -1459,7 +1418,7 @@ export const ProductsPage: React.FC = () => {
               if (e.target === e.currentTarget) setAdjustModalOpen(false);
             }}
           >
-          <div className="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-lg border border-slate-100 z-10 space-y-4 animate-modal-in text-slate-800">
+          <div className="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl border border-slate-100 z-10 space-y-4 animate-modal-in text-slate-800">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <Warehouse className="h-5 w-5 text-blue-600" />
@@ -1657,11 +1616,11 @@ export const ProductsPage: React.FC = () => {
               if (e.target === e.currentTarget) setLedgerModalOpen(false);
             }}
           >
-            <div className="relative w-full max-w-5xl max-h-[90vh] flex flex-col rounded-xl bg-white shadow-lg border border-slate-100 animate-modal-in text-slate-800 overflow-hidden">
+            <div className="relative w-full max-w-5xl max-h-[90vh] flex flex-col rounded-xl bg-white shadow-2xl border border-slate-100 animate-modal-in text-slate-800 overflow-hidden">
               {/* Header */}
               <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/70">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 border border-blue-100 text-blue-600">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 border border-blue-100 text-blue-600 shadow-2xs">
                     <BookOpen className="h-5 w-5" />
                   </div>
                   <div>
@@ -1820,12 +1779,12 @@ export const ProductsPage: React.FC = () => {
             />
 
             {/* Khung Drawer trượt lên từ đáy (Mobile) hoặc từ phải sang (Tablet) */}
-            <div className="relative z-10 w-full sm:max-w-md bg-white shadow-xl flex flex-col max-h-[88vh] sm:max-h-full sm:h-full mt-auto sm:mt-0 rounded-t-3xl sm:rounded-none sm:rounded-l-3xl animate-in slide-in-from-bottom sm:slide-in-from-right duration-300">
+            <div className="relative z-10 w-full sm:max-w-md bg-white shadow-2xl flex flex-col max-h-[88vh] sm:max-h-full sm:h-full mt-auto sm:mt-0 rounded-t-3xl sm:rounded-none sm:rounded-l-3xl animate-in slide-in-from-bottom sm:slide-in-from-right duration-300">
               {/* Header Drawer */}
               <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-3xl sm:rounded-none sm:rounded-tl-3xl">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
-                    <Filter className="h-5 w-5" />
+                    <SlidersHorizontal className="h-5 w-5" />
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-slate-900">Bộ lọc nâng cao</h3>
@@ -1854,7 +1813,6 @@ export const ProductsPage: React.FC = () => {
                     onChange={(e) => {
                       setSelectedParentCategory(e.target.value);
                       setSelectedSubCategory("ALL");
-                      setSelectedChildCategory("ALL");
                       setSelectedCategoryId("ALL");
                       setPage(1);
                     }}
@@ -1878,7 +1836,6 @@ export const ProductsPage: React.FC = () => {
                     value={selectedSubCategory}
                     onChange={(e) => {
                       setSelectedSubCategory(e.target.value);
-                      setSelectedChildCategory("ALL");
                       setSelectedCategoryId("ALL");
                       setPage(1);
                     }}
@@ -1898,32 +1855,7 @@ export const ProductsPage: React.FC = () => {
                   </select>
                 </div>
 
-                {/* 3. Phân loại con Cấp 3 (nếu có) */}
-                {childCategoriesForFilter.length > 0 && (
-                  <div className="space-y-1.5">
-                    <label className="font-semibold text-indigo-700 block">
-                      Phân loại con Cấp 3
-                    </label>
-                    <select
-                      value={selectedChildCategory}
-                      onChange={(e) => {
-                        setSelectedChildCategory(e.target.value);
-                        setSelectedCategoryId("ALL");
-                        setPage(1);
-                      }}
-                      className="w-full h-11 px-3.5 text-xs rounded-xl border border-indigo-200 bg-white text-indigo-900 font-medium focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
-                    >
-                      <option value="ALL">Tất cả Phân loại Cấp 3</option>
-                      {childCategoriesForFilter.map((child) => (
-                        <option key={child.id} value={child.name}>
-                          {child.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* 4. Trạng thái kinh doanh */}
+                {/* 3. Trạng thái kinh doanh */}
                 <div className="space-y-1.5">
                   <label className="font-semibold text-slate-700 block">
                     Trạng thái kinh doanh
