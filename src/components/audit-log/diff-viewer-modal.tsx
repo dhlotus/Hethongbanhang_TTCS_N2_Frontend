@@ -463,7 +463,7 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
             type="button"
             onClick={handleClose}
             aria-label="Đóng cửa sổ"
-            className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>

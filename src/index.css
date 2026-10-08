@@ -116,6 +116,15 @@
   --shadow-2xl: var(--shadow-xl); /* Giới hạn trần theo quy tắc 8.2 */
   --shadow-xs: var(--shadow-sm);
   --shadow-2xs: var(--shadow-sm);
+
+  /* ========================================================================= */
+  /* 9.2 ICON SYSTEM DESIGN TOKENS (UI_GUIDELINES)                             */
+  /* ========================================================================= */
+  --size-icon-xs: 14px; /* Phụ, metadata */
+  --size-icon-sm: 16px; /* Button, Input, Table */
+  --size-icon-md: 20px; /* Navigation, Action */
+  --size-icon-lg: 24px; /* Header, Section */
+  --size-icon-xl: 32px; /* Empty State, đặc biệt */
 }
 
 :root {
@@ -200,6 +209,13 @@
   --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
   --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
   --shadow-2xl: var(--shadow-xl);
+
+  /* 9.2 Icon Size Design Tokens */
+  --icon-xs: 14px;
+  --icon-sm: 16px;
+  --icon-md: 20px;
+  --icon-lg: 24px;
+  --icon-xl: 32px;
 
   font-family: var(--font-family);
   color-scheme: light;
@@ -487,6 +503,64 @@
 .shadow-overlay,
 .shadow-drawer {
   box-shadow: var(--shadow-xl);
+}
+
+/* ========================================================================= */
+/* 9. ICON SYSTEM UTILITIES & COMPONENT RULES (UI_GUIDELINES)                */
+/* ========================================================================= */
+.icon-xs {
+  width: var(--icon-xs);
+  height: var(--icon-xs);
+  min-width: var(--icon-xs);
+  min-height: var(--icon-xs);
+}
+
+.icon-sm {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  min-width: var(--icon-sm);
+  min-height: var(--icon-sm);
+}
+
+.icon-md {
+  width: var(--icon-md);
+  height: var(--icon-md);
+  min-width: var(--icon-md);
+  min-height: var(--icon-md);
+}
+
+.icon-lg {
+  width: var(--icon-lg);
+  height: var(--icon-lg);
+  min-width: var(--icon-lg);
+  min-height: var(--icon-lg);
+}
+
+.icon-xl {
+  width: var(--icon-xl);
+  height: var(--icon-xl);
+  min-width: var(--icon-xl);
+  min-height: var(--icon-xl);
+}
+
+/* Icon Button - Vùng click tối thiểu 36-40px, căn giữa theo trục dọc */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.btn-icon:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 body, button, input, select, textarea {

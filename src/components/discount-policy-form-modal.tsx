@@ -1125,7 +1125,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                       : 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-60'
                   }`}
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-4 h-4" />
                   {canAddScopeRow ? '+ Thêm phạm vi áp dụng' : 'Đã chọn tối đa 2 phạm vi (Nhóm hàng & SKU lẻ)'}
                 </button>
 
@@ -1207,7 +1207,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                   onClick={handleAddTier}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-semibold transition-colors cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-4 h-4" />
                   Thêm nấc
                 </button>
               </div>

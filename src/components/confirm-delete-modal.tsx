@@ -127,7 +127,7 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
           onClick={handleClose}
           disabled={deleting}
           aria-label="Đóng popup"
-          className="absolute top-4 right-4 rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer disabled:opacity-40"
+          className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer disabled:opacity-40"
         >
           <X className="h-5 w-5" />
         </button>

@@ -749,3 +749,46 @@ LOHA SALES ưu tiên:
 
 **Nhẹ → Mềm → Tinh tế → Có phân cấp → Không lạm dụng.**
  
+## 9. Icon — Hệ thống biểu tượng
+
+* Dùng **một Icon Library thống nhất** cho toàn hệ thống.
+* Không tự ý trộn nhiều bộ icon có phong cách khác nhau.
+* Icon phải cùng phong cách, cùng độ dày nét và kích thước tương ứng.
+
+### Kích thước chuẩn
+
+| Token     | Size | Sử dụng               |
+| --------- | ---: | --------------------- |
+| `icon-xs` | 14px | phụ, metadata         |
+| `icon-sm` | 16px | Button, Input, Table  |
+| `icon-md` | 20px | Navigation, Action    |
+| `icon-lg` | 24px | Header, Section       |
+| `icon-xl` | 32px | Empty State, đặc biệt |
+
+### Quy tắc sử dụng
+
+* Icon + Text: khoảng cách **4–8px**.
+* Icon trong Button phải căn giữa theo chiều dọc.
+* Icon Button phải có vùng click đủ lớn, tối thiểu khoảng **36–40px**.
+* Icon có chức năng phải có ý nghĩa rõ ràng.
+* Không dùng icon chỉ để trang trí nếu không cần thiết.
+* Các hành động phổ biến phải dùng icon thống nhất:
+
+  * Thêm → `Plus`
+  * Sửa → `Edit`
+  * Xóa → `Trash`
+  * Tìm kiếm → `Search`
+  * Lọc → `Filter`
+  * Đóng → `X`
+  * Xem → `Eye`
+  * Khóa → `Lock`
+  * Mở khóa → `Unlock`
+  * Cài đặt → `Settings`
+* Icon **Danger/Delete** dùng màu Error khi cần thể hiện hành động nguy hiểm.
+* Icon trạng thái phải tuân theo **Semantic Color System**.
+* Không đổi icon tùy ý giữa các màn hình cho cùng một chức năng.
+
+### Nguyên tắc
+
+> **Cùng một chức năng → cùng một icon → cùng một cách hiển thị trong toàn hệ thống.**
+

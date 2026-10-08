@@ -6,7 +6,7 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
-  PencilLine,
+  Edit2,
   Check,
   User,
   Mail,
@@ -500,7 +500,7 @@ export const ProfilePage: React.FC = () => {
                   onClick={handleStartEdit}
                   className="self-start sm:self-auto shrink-0 inline-flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-semibold rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 shadow-2xs transition-all duration-200 cursor-pointer active:scale-[0.98]"
                 >
-                  <PencilLine className="w-4 h-4 text-blue-600" />
+                  <Edit2 className="w-4 h-4 text-blue-600" />
                   <span>Chỉnh sửa thông tin</span>
                 </button>
               ) : (

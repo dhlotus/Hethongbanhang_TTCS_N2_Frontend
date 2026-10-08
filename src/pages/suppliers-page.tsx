@@ -455,20 +455,20 @@ export const SuppliersPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleViewDetail(supplier)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                            className="btn-icon text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                             title="Xem chi tiết nhà cung cấp"
                           >
-                            <Eye className="h-3.5 w-3.5" />
+                            <Eye className="h-4 w-4" />
                           </button>
 
                           {canManageSuppliers && (
                             <button
                               type="button"
                               onClick={() => handleDeleteClick(supplier)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              className="btn-icon text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                               title="Xóa nhà cung cấp"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           )}
                         </div>

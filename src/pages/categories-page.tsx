@@ -434,7 +434,7 @@ export const CategoriesPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleOpenCreateModal(node)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors focus:outline-none cursor-pointer"
+                    className="btn-icon text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors focus:outline-none"
                     title="Thêm nhóm con cấp dưới"
                   >
                     <FolderPlus className="h-4 w-4" />
@@ -445,7 +445,7 @@ export const CategoriesPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleOpenEditModal(node)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-colors focus:outline-none cursor-pointer"
+                  className="btn-icon text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition-colors focus:outline-none"
                   title="Sửa thông tin nhóm hàng"
                 >
                   <Edit2 className="h-4 w-4" />
@@ -455,7 +455,7 @@ export const CategoriesPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleOpenMoveModal(node)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors focus:outline-none cursor-pointer"
+                  className="btn-icon text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors focus:outline-none"
                   title="Chuyển sản phẩm sang nhóm khác"
                 >
                   <ArrowRightLeft className="h-4 w-4" />
@@ -465,7 +465,7 @@ export const CategoriesPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleDeleteCategory(node)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors focus:outline-none cursor-pointer"
+                  className="btn-icon text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors focus:outline-none"
                   title="Xóa nhóm hàng (Ràng buộc: nhóm rỗng và không có nhóm con)"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -548,7 +548,7 @@ export const CategoriesPage: React.FC = () => {
               onClick={() => handleOpenCreateModal()}
               className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer whitespace-nowrap"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-4 w-4" />
               <span>Thêm ngành hàng cha</span>
             </button>
           )}
@@ -592,7 +592,7 @@ export const CategoriesPage: React.FC = () => {
           <CategoriesTreeSkeleton />
         ) : filteredTree.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-slate-400 space-y-3">
-            <FolderTree className="h-10 w-10 text-slate-300" />
+            <FolderTree className="h-8 w-8 text-slate-300" />
             <p className="text-sm font-semibold text-slate-600">
               Không tìm thấy nhóm hàng nào phù hợp
             </p>

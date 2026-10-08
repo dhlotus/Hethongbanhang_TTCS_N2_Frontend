@@ -139,10 +139,10 @@ export const DiscountPoliciesTab: React.FC = () => {
                   </td>
                   <td className="py-3.5 px-4 text-center">
                     <div className="flex justify-center gap-2">
-                      <button onClick={() => handleOpenEditModal(p)} className="p-1 text-slate-400 hover:text-blue-600">
+                      <button onClick={() => handleOpenEditModal(p)} className="btn-icon text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Chỉnh sửa chính sách">
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDelete(p.id)} className="p-1 text-slate-400 hover:text-rose-600">
+                      <button onClick={() => handleDelete(p.id)} className="btn-icon text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors" title="Xóa chính sách">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>

@@ -18,7 +18,7 @@ import {
   MapPin,
   User,
   Phone,
-  Edit,
+  Edit2,
   Save,
   Send,
   Building2,
@@ -904,7 +904,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                             <button
                               type="button"
                               onClick={() => handleRemoveLine(line.id!)}
-                              className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              className="btn-icon text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                               title="Xóa dòng này"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1331,16 +1331,16 @@ export const OrdersPage: React.FC = () => {
                             {order.status === 'DRAFT' && (
                               <button
                                 onClick={() => handleContinueDraft(order)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[var(--color-primary)] bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] rounded-lg transition-colors"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-[var(--color-primary)] bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] rounded-lg transition-colors cursor-pointer"
                                 title="Mở lại tiếp tục gõ đơn (SN-39)"
                               >
-                                <Edit className="w-3.5 h-3.5" />
+                                <Edit2 className="w-4 h-4" />
                                 <span>Gõ tiếp</span>
                               </button>
                             )}
                             <button
                               onClick={() => setViewOrder(order)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-colors"
+                              className="btn-icon text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-colors"
                               title="Xem chi tiết"
                             >
                               <Eye className="w-4 h-4" />
@@ -1367,7 +1367,7 @@ export const OrdersPage: React.FC = () => {
                         </p>
                         {order.deliveryPoint && (
                           <p className="text-[11px] text-slate-500 mt-1 flex items-start gap-1">
-                            <MapPin className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
+                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                             <span className="truncate">
                               {order.deliveryPoint.name || order.deliveryPoint.address}
                             </span>
@@ -1388,17 +1388,17 @@ export const OrdersPage: React.FC = () => {
                       {order.status === 'DRAFT' && (
                         <button
                           onClick={() => handleContinueDraft(order)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[var(--color-primary)] bg-[var(--color-primary-light)] rounded-lg hover:bg-[var(--color-primary-subtle)] transition-colors"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-[var(--color-primary)] bg-[var(--color-primary-light)] rounded-lg hover:bg-[var(--color-primary-subtle)] transition-colors cursor-pointer"
                         >
-                          <Edit className="w-3.5 h-3.5" />
+                          <Edit2 className="w-4 h-4" />
                           Tiếp tục gõ
                         </button>
                       )}
                       <button
                         onClick={() => setViewOrder(order)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
                       >
-                        <Eye className="w-3.5 h-3.5" />
+                        <Eye className="w-4 h-4" />
                         Chi tiết
                       </button>
                     </div>

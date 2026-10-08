@@ -235,7 +235,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200/90 bg-white hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 text-slate-700 text-xs font-semibold shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
                         title="Xem chi tiết so sánh dữ liệu (Audit Diff)"
                       >
-                        <Eye className="h-3.5 w-3.5 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                        <Eye className="h-4 w-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
                         <span>Chi tiết</span>
                       </button>
                     </td>
@@ -344,7 +344,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                       onClick={() => onViewDiff(log)}
                       className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-slate-200/90 bg-white hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 text-slate-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
                     >
-                      <Eye className="h-3.5 w-3.5 text-slate-400" />
+                      <Eye className="h-4 w-4 text-slate-400" />
                       <span>Xem chi tiết đối chiếu thay đổi</span>
                     </button>
                   </div>

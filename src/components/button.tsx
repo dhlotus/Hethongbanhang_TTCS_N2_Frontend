@@ -39,7 +39,7 @@ export const Button: React.FC<ButtonProps> = ({
     >
       {isLoading ? (
         <>
-          <Loader2 className="w-4 h-4 animate-spin text-white" />
+          <Loader2 className={`w-4 h-4 animate-spin ${variant === 'primary' ? 'text-white' : 'text-current'}`} />
           <span>{loadingText}</span>
         </>
       ) : (

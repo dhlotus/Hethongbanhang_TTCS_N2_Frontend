@@ -891,7 +891,7 @@ export const UsersPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleOpenDetailModal(u)}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer"
+                            className="btn-icon text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                             title="Xem toàn bộ thông tin chi tiết nhân sự"
                             aria-label="Xem chi tiết"
                           >
@@ -902,7 +902,7 @@ export const UsersPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleOpenEditModal(u)}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
+                            className="btn-icon text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
                             title="Sửa thông tin & Cấp mã đổi mật khẩu"
                             aria-label="Chỉnh sửa"
                           >
@@ -912,7 +912,7 @@ export const UsersPage: React.FC = () => {
                           {/* Nút Khóa / Mở khóa */}
                           {isCurrentSelf ? (
                             <span
-                              className="rounded-lg p-1.5 text-slate-300 cursor-not-allowed"
+                              className="btn-icon text-slate-300 cursor-not-allowed"
                               title="Bạn không thể tự khóa tài khoản của chính mình"
                             >
                               <Lock className="h-4 w-4" />
@@ -921,7 +921,7 @@ export const UsersPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleOpenStatusModal(u, "LOCKED")}
-                              className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
+                              className="btn-icon text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
                               title="Khóa tài khoản"
                               aria-label="Khóa tài khoản"
                             >
@@ -931,7 +931,7 @@ export const UsersPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleOpenStatusModal(u, "ACTIVE")}
-                              className="rounded-lg p-1.5 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors cursor-pointer"
+                              className="btn-icon text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
                               title="Mở khóa tài khoản"
                               aria-label="Mở khóa tài khoản"
                             >
@@ -1058,7 +1058,7 @@ export const UsersPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleOpenDetailModal(u)}
-                        className="rounded-lg p-1.5 text-slate-500 hover:bg-blue-50 hover:text-blue-600 cursor-pointer"
+                        className="btn-icon text-slate-500 hover:bg-blue-50 hover:text-blue-600"
                         title="Xem chi tiết"
                       >
                         <Eye className="h-4 w-4" />
@@ -1066,7 +1066,7 @@ export const UsersPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleOpenEditModal(u)}
-                        className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+                        className="btn-icon text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                         title="Chỉnh sửa"
                       >
                         <Edit2 className="h-4 w-4" />
@@ -1075,7 +1075,7 @@ export const UsersPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenStatusModal(u, "LOCKED")}
-                          className="rounded-lg p-1.5 text-slate-500 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
+                          className="btn-icon text-slate-500 hover:bg-rose-50 hover:text-rose-600"
                           title="Khóa tài khoản"
                         >
                           <Lock className="h-4 w-4" />
@@ -1084,7 +1084,7 @@ export const UsersPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenStatusModal(u, "ACTIVE")}
-                          className="rounded-lg p-1.5 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 cursor-pointer"
+                          className="btn-icon text-slate-500 hover:bg-emerald-50 hover:text-emerald-600"
                           title="Mở khóa tài khoản"
                         >
                           <Unlock className="h-4 w-4" />

@@ -73,7 +73,7 @@ export const AccountLockedModal: React.FC<AccountLockedModalProps> = ({
           type="button"
           onClick={handleClose}
           aria-label="Đóng popup thông báo"
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-md hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
+          className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>

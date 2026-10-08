@@ -183,7 +183,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
                 type="button"
                 onClick={handleClose}
                 aria-label="Đóng popup"
-                className="rounded-md p-1.5 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
+                className="w-9 h-9 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
