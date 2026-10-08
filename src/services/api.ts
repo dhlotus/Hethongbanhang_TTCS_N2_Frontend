@@ -32,7 +32,7 @@ export const apiClient: AxiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 10000,
+  timeout: 60000,
 });
 
 /**
@@ -44,8 +44,9 @@ export const refreshClient: AxiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 10000,
+  timeout: 60000,
 });
+
 
 // Cờ đánh dấu tiến trình refresh token đang diễn ra
 let isRefreshing = false;
