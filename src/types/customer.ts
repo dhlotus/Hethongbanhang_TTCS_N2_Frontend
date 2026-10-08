@@ -57,6 +57,9 @@ export interface Customer {
   email?: string;
   address?: string;
   status: string;
+  lockReason?: string;
+  lockedAt?: string;
+  lockedBy?: string;
   deliveryPoints: DeliveryPoint[];
   createdAt?: string;
   updatedAt?: string;

@@ -92,4 +92,20 @@ export const customersService = {
     );
     return res.data;
   },
+
+  /**
+   * Khoá giao dịch với đại lý (SN-36)
+   */
+  async lockCustomer(id: string, reason: string): Promise<Customer> {
+    const res = await apiClient.patch<Customer>(`/customers/${id}/lock`, { reason });
+    return res.data;
+  },
+
+  /**
+   * Mở khoá giao dịch với đại lý (SN-36)
+   */
+  async unlockCustomer(id: string): Promise<Customer> {
+    const res = await apiClient.patch<Customer>(`/customers/${id}/unlock`);
+    return res.data;
+  },
 };

@@ -57,6 +57,8 @@ export interface Order {
   status: OrderStatus;
   paymentStatus?: PaymentStatus;
   priceListId?: string; // Bảng giá áp dụng
+  isCustomerLocked?: boolean;
+  warningMessage?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -110,5 +112,8 @@ export interface CustomerOption {
   creditLimit?: number;
   currentDebt?: number;
   status?: string;
+  lockReason?: string;
+  lockedAt?: string;
+  lockedBy?: string;
   deliveryPoints?: DeliveryPoint[];
 }

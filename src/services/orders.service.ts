@@ -91,10 +91,22 @@ export const ordersService = {
       const res = await apiClient.post<Order>('/orders', payload);
       this.saveLocalOrder(res.data);
       return res.data;
-    } catch (apiError) {
+    } catch (apiError: any) {
+      if (apiError?.response) {
+        // Nếu API backend trả về lỗi (như HTTP 400/403 do Đại lý bị KHOÁ GIAO DỊCH), ném lỗi cho UI hiển thị
+        const errMsg = apiError.response.data?.message || apiError.message || 'Lỗi khi tạo đơn hàng trên máy chủ';
+        throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+      }
       console.warn('Backend API /orders unavailable, creating order locally:', apiError);
       const customers = await this.getCustomers();
       const customer = customers.find((c) => c.id === payload.customerId);
+
+      if (customer?.status === 'LOCKED') {
+        throw new Error(
+          `Đại lý "${customer.name}" đang bị KHÓA GIAO DỊCH (Lý do: ${customer.lockReason || 'Không xác định'}). Không thể tạo đơn hàng mới!`,
+        );
+      }
+
       const subtotal = payload.lines.reduce(
         (sum, l) => sum + (l.unitPrice || 0) * (l.quantity || 1),
         0,
