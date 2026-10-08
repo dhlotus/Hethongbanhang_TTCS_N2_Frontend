@@ -1,6 +1,7 @@
 import { apiClient } from './api';
 import type {
   Customer,
+  CreateCustomerPayload,
   CreateDeliveryPointPayload,
   DeliveryPoint,
   UpdateDeliveryPointPayload,
@@ -10,6 +11,14 @@ import type {
  * Service Quản lý Đại lý & Điểm giao hàng (SN-31 & SN-32)
  */
 export const customersService = {
+  /**
+   * Thêm mới đại lý (SN-31 & SN-38)
+   */
+  async createCustomer(payload: CreateCustomerPayload): Promise<Customer> {
+    const res = await apiClient.post<Customer>('/customers', payload);
+    return res.data;
+  },
+
   /**
    * Lấy danh sách đại lý
    */

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ShoppingCart,
   Plus,
@@ -150,6 +151,7 @@ const OrderStatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
 interface CreateOrderModalProps {
   open: boolean;
   editingOrder?: Order | null;
+  initialCustomerId?: string;
   onClose: () => void;
   onSaved: (order: Order) => void;
 }
@@ -159,6 +161,7 @@ const LOCAL_DRAFT_KEY = 'new_order_draft';
 export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   open,
   editingOrder,
+  initialCustomerId,
   onClose,
   onSaved,
 }) => {
@@ -298,6 +301,59 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       setSelectedDeliveryPoint(defaultPoint);
     }
   }, []);
+
+  // Tự động chọn đại lý nếu được điều hướng từ Quản lý đại lý (SN-38 sync)
+  useEffect(() => {
+    if (open && initialCustomerId && customers.length > 0 && !selectedCustomer) {
+      const matched = customers.find((c) => c.id === initialCustomerId);
+      if (matched) {
+        void handleSelectCustomer(matched);
+      }
+    }
+  }, [open, initialCustomerId, customers, selectedCustomer, handleSelectCustomer]);
+
+  // Modal tạo nhanh đại lý mới khi đang tạo đơn (Đồng bộ sang Quản lý đại lý)
+  const [isQuickCustomerModalOpen, setIsQuickCustomerModalOpen] = useState(false);
+  const [quickCustForm, setQuickCustForm] = useState({
+    name: '',
+    phone: '',
+    address: '',
+    creditLimit: 50000000,
+  });
+  const [creatingQuickCust, setCreatingQuickCust] = useState(false);
+
+  const handleCreateQuickCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickCustForm.name.trim() || !quickCustForm.phone.trim() || !quickCustForm.address.trim()) {
+      showToast('error', 'Thiếu thông tin', 'Vui lòng điền đủ Tên, SĐT và Địa chỉ đại lý');
+      return;
+    }
+    setCreatingQuickCust(true);
+    try {
+      const created = await customersService.createCustomer({
+        name: quickCustForm.name.trim(),
+        phone: quickCustForm.phone.trim(),
+        address: quickCustForm.address.trim(),
+        creditLimit: Number(quickCustForm.creditLimit) || 50000000,
+        customerGroup: 'AGENT_LEVEL_2',
+        region: 'Miền Nam',
+      });
+      showToast(
+        'success',
+        'Thêm đại lý thành công',
+        `Đại lý "${created.name}" đã được thêm và đồng bộ sang Quản lý đại lý!`,
+      );
+      const opt: CustomerOption = { ...created, group: created.customerGroup };
+      setCustomers((prev) => [opt, ...prev]);
+      void handleSelectCustomer(opt);
+      setIsQuickCustomerModalOpen(false);
+      setQuickCustForm({ name: '', phone: '', address: '', creditLimit: 50000000 });
+    } catch {
+      showToast('error', 'Lỗi tạo đại lý', 'Không thể tạo đại lý mới. Vui lòng thử lại.');
+    } finally {
+      setCreatingQuickCust(false);
+    }
+  };
 
   // Tìm kiếm sản phẩm (debounce 300ms)
   useEffect(() => {
@@ -600,11 +656,22 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                       <Building2 className="w-4 h-4 text-[var(--color-primary)]" />
                       1. Chọn Đại lý B2B *
                     </label>
-                    {selectedCustomer && (
-                      <span className="text-xs text-[var(--color-primary)] font-medium">
-                        Đã chọn: {selectedCustomer.name}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {selectedCustomer && (
+                        <span className="text-xs text-[var(--color-primary)] font-medium max-w-[150px] truncate">
+                          Đã chọn: {selectedCustomer.name}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setIsQuickCustomerModalOpen(true)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary)] hover:underline"
+                        title="Thêm đại lý mới và đồng bộ"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Thêm đại lý</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="relative">
@@ -1120,6 +1187,105 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           }}
         />
       )}
+
+      {/* Modal Tạo nhanh đại lý mới khi đang tạo đơn (Đồng bộ Quản lý đại lý) */}
+      {isQuickCustomerModalOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-100 w-full max-w-md p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-[var(--color-primary)]" />
+                <h4 className="text-sm font-bold text-slate-900">Thêm Đại Lý Mới Nhanh</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQuickCustomerModalOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateQuickCustomer} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700">Tên đại lý *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="VD: Cửa Hàng Bách Hóa Hoa Sen"
+                  value={quickCustForm.name}
+                  onChange={(e) => setQuickCustForm({ ...quickCustForm, name: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700">Số điện thoại liên hệ *</label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="VD: 0988776655"
+                  value={quickCustForm.phone}
+                  onChange={(e) => setQuickCustForm({ ...quickCustForm, phone: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700">Địa chỉ kinh doanh / kho *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="VD: 45 Nguyễn Huệ, Quận 1, TP.HCM"
+                  value={quickCustForm.address}
+                  onChange={(e) => setQuickCustForm({ ...quickCustForm, address: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700">Hạn mức tín dụng (VNĐ)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="10000000"
+                  value={quickCustForm.creditLimit}
+                  onChange={(e) => setQuickCustForm({ ...quickCustForm, creditLimit: Number(e.target.value) })}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
+                />
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsQuickCustomerModalOpen(false)}
+                  disabled={creatingQuickCust}
+                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingQuickCust}
+                  className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--color-primary)] hover:opacity-90 rounded-lg shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {creatingQuickCust ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Đang lưu...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Lưu & Chọn luôn</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 };
@@ -1155,6 +1321,24 @@ export const OrdersPage: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
+
+  // Nhận customerId từ URL query param (Đồng bộ từ trang Quản lý đại lý)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [initialCustomerId, setInitialCustomerId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    const cid = searchParams.get('customerId');
+    if (cid) {
+      setInitialCustomerId(cid);
+      setEditingOrder(null);
+      setIsCreateModalOpen(true);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('customerId');
+        return next;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const user = getStoredUser();
   const isSalesRep = user?.roles?.includes('SALES_REP') || true;
@@ -1443,9 +1627,11 @@ export const OrdersPage: React.FC = () => {
       <CreateOrderModal
         open={isCreateModalOpen}
         editingOrder={editingOrder}
+        initialCustomerId={initialCustomerId}
         onClose={() => {
           setIsCreateModalOpen(false);
           setEditingOrder(null);
+          setInitialCustomerId(undefined);
         }}
         onSaved={handleOrderSaved}
       />

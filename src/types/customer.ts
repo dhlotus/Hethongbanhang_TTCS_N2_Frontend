@@ -68,3 +68,22 @@ export interface Customer {
 export interface CustomerOption extends Customer {
   group: string;
 }
+
+/**
+ * Payload thêm mới Đại lý (SN-31 & SN-38)
+ */
+export interface CreateCustomerPayload {
+  name: string;
+  code?: string;
+  customerGroup?: string;
+  phone: string;
+  email?: string;
+  taxCode?: string;
+  address: string;
+  region?: string;
+  creditLimit?: number;
+  maxDebtDays?: number;
+  deliveryPointName?: string;
+  receiverName?: string;
+}
+

@@ -13,6 +13,7 @@ import { UsersPage } from "../pages/users-page";
 import { AuditLogsPage } from "../pages/audit-logs-page";
 import { ProfilePage } from "../pages/profile-page";
 import { OrdersPage } from "../pages/orders-page";
+import { CustomersPage } from "../pages/customers-page";
 import { NotFoundPage } from "../pages/not-found-page";
 import { ForbiddenPage } from "../pages/forbidden-page";
 import { ProtectedRoute } from "../components/protected-route";
@@ -128,13 +129,7 @@ export const AppRoutes: React.FC = () => {
             >
               <Route
                 path="/sales/customers"
-                element={
-                  <RoleModulePage
-                    title="Quản lý Đại lý & Hạn mức"
-                    subtitle="Danh sách khách hàng đại lý, phân nhóm tín dụng, công nợ và địa bàn phân công"
-                    requiredRole="Nhân viên kinh doanh / Quản lý"
-                  />
-                }
+                element={<CustomersPage />}
               />
             </Route>
 
