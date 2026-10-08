@@ -26,12 +26,20 @@ export interface ResetPasswordWithCodePayload {
   newPassword: string;
 }
 
+export interface UserSummaryStats {
+  total: number;
+  active: number;
+  locked: number;
+  pendingReset: number;
+}
+
 export interface PaginatedUsersResponse {
   data: UserManagementItem[];
   total: number;
   page: number;
   limit: number;
   totalPages: number;
+  summary?: UserSummaryStats;
 }
 
 export interface CreateUserPayload {
@@ -87,6 +95,7 @@ export interface UpdateUserStatusResponse extends UserManagementItem {
   assignedCustomers?: AssignedCustomerItem[];
   assignedCustomersCount?: number;
   handoverWarning?: string;
+  summary?: UserSummaryStats;
 }
 
 // ──────────────────────────────────────────────────────────────

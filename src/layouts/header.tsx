@@ -89,6 +89,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     tokenStorage.getUser()?.avatarUrl
   );
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Trạng thái modal xác nhận đăng xuất
   const [showLogoutModal, setShowLogoutModal] = useState<boolean>(false);
@@ -96,6 +97,43 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const [isExiting, setIsExiting] = useState<boolean>(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Đóng dropdown an toàn và hủy timer đang chờ
+  const handleCloseDropdown = () => {
+    if (dropdownTimeoutRef.current) {
+      clearTimeout(dropdownTimeoutRef.current);
+      dropdownTimeoutRef.current = null;
+    }
+    setIsDropdownOpen(false);
+  };
+
+  // Hover vào: Hủy timer đóng nếu có và mở dropdown ngay
+  const handleMouseEnter = () => {
+    if (dropdownTimeoutRef.current) {
+      clearTimeout(dropdownTimeoutRef.current);
+      dropdownTimeoutRef.current = null;
+    }
+    setIsDropdownOpen(true);
+  };
+
+  // Rời chuột ra: Đợi 150ms để người dùng di chuột mượt mà sang menu con trước khi đóng
+  const handleMouseLeave = () => {
+    if (dropdownTimeoutRef.current) {
+      clearTimeout(dropdownTimeoutRef.current);
+    }
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setIsDropdownOpen(false);
+    }, 150);
+  };
+
+  // Dọn dẹp timer khi unmount
+  useEffect(() => {
+    return () => {
+      if (dropdownTimeoutRef.current) {
+        clearTimeout(dropdownTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Đồng bộ thông tin người dùng realtime
   useEffect(() => {
@@ -119,20 +157,20 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
 
   // Đóng dropdown khi chuyển trang
   useEffect(() => {
-    setIsDropdownOpen(false);
+    handleCloseDropdown();
   }, [location.pathname]);
 
   // Đóng dropdown khi click ra ngoài hoặc bấm Escape
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
+        handleCloseDropdown();
       }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setIsDropdownOpen(false);
+        handleCloseDropdown();
       }
     };
 
@@ -207,8 +245,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       {/* =================================================================== */}
       {/* 2. BÊN PHẢI: NÚT HỒ SƠ CÁ NHÂN KÈM DROPDOWN MENU XỔ XUỐNG           */}
       {/* =================================================================== */}
-      <div className="relative shrink-0" ref={dropdownRef}>
-        {/* Nút bấm mở Dropdown Profile */}
+      <div
+        className="relative shrink-0"
+        ref={dropdownRef}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        {/* Nút bấm mở Dropdown Profile (Hỗ trợ cả Hover & Click) */}
         <button
           type="button"
           onClick={() => setIsDropdownOpen((prev) => !prev)}
@@ -259,10 +302,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           />
         </button>
 
-        {/* Menu Dropdown xổ xuống (radius-lg: 12px) */}
+        {/* Menu Dropdown xổ xuống (radius-lg: 12px) - Có cầu đệm trước khoảng trống để hover di chuyển mượt mà */}
         {isDropdownOpen && (
           <div
-            className="absolute right-0 top-full mt-2 w-80 rounded-xl bg-white shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-2"
+            className="absolute right-0 top-full mt-2 w-80 rounded-xl bg-white shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-2 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3"
             role="menu"
             aria-orientation="vertical"
           >
@@ -270,7 +313,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
             <div className="p-1 rounded-lg bg-white border border-slate-100 shadow-2xs">
               <Link
                 to="/profile"
-                onClick={() => setIsDropdownOpen(false)}
+                onClick={handleCloseDropdown}
                 className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-50 transition-colors group/user"
               >
                 <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-sm font-bold text-white shadow-xs">
@@ -300,7 +343,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               {/* Mục 1: Hồ sơ cá nhân */}
               <Link
                 to="/profile"
-                onClick={() => setIsDropdownOpen(false)}
+                onClick={handleCloseDropdown}
                 className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group"
                 role="menuitem"
               >
@@ -318,7 +361,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               {/* Mục 2: Đổi mật khẩu */}
               <Link
                 to="/profile/change-password"
-                onClick={() => setIsDropdownOpen(false)}
+                onClick={handleCloseDropdown}
                 className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group"
                 role="menuitem"
               >
@@ -337,7 +380,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               <button
                 type="button"
                 onClick={() => {
-                  setIsDropdownOpen(false);
+                  handleCloseDropdown();
                   setShowLogoutModal(true);
                 }}
                 className="w-full flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group text-left"

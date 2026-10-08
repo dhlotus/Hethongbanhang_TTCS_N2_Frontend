@@ -20,6 +20,11 @@ import {
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ordersService } from '../services/orders.service';
+import {
+  discountPoliciesService,
+  calculateDiscount,
+  type DiscountPolicy,
+} from '../services/discount-policies.service';
 import { getStoredUser } from '../utils/navigation';
 import type {
   Order,
@@ -29,6 +34,76 @@ import type {
   DeliveryPoint,
 } from '../types/order';
 import type { Product, ProductUnit } from '../types/products';
+
+// ──────────────────────────────────────────────────────────────────────────
+// QUANTITY INPUT HELPER COMPONENT (SN-28 / SN-38: Pure Numeric & Free Edit)
+// ──────────────────────────────────────────────────────────────────────────
+
+interface LineQuantityInputProps {
+  value: number;
+  onChangeQty: (newQty: number) => void;
+}
+
+const LineQuantityInput: React.FC<LineQuantityInputProps> = ({ value, onChangeQty }) => {
+  const [localVal, setLocalVal] = useState<string>(() => (value ? String(value) : '1'));
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const num = parseInt(localVal, 10);
+      if (!isNaN(num) && num === value) return;
+      setLocalVal(value !== undefined && value !== null ? String(value) : '');
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [value, localVal]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    // Cho phép xóa rỗng ô khi người dùng nhấn Backspace
+    if (raw === '') {
+      setLocalVal('');
+      onChangeQty(0);
+      return;
+    }
+    // Chỉ giữ lại ký tự số (Pure Numeric Input)
+    const cleaned = raw.replace(/\D/g, '');
+    if (cleaned === '') {
+      setLocalVal('');
+      onChangeQty(0);
+      return;
+    }
+    // Chuẩn hóa loại bỏ số 0 ở đầu (ví dụ "05" -> "5")
+    const formatted = cleaned.length > 1 && cleaned.startsWith('0') ? String(parseInt(cleaned, 10)) : cleaned;
+    setLocalVal(formatted);
+    const parsed = parseInt(formatted, 10);
+    onChangeQty(isNaN(parsed) ? 0 : parsed);
+  };
+
+  const handleBlur = () => {
+    const parsed = parseInt(localVal, 10);
+    if (!localVal || isNaN(parsed) || parsed <= 0) {
+      setLocalVal('1');
+      onChangeQty(1);
+    }
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Tự động bôi đen toàn bộ số khi focus để người dùng gõ đè trực tiếp mà không bị nối chuỗi
+    e.target.select();
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={localVal}
+      onChange={handleChange}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      className="w-full px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-slate-800 bg-white"
+      placeholder="1"
+    />
+  );
+};
 
 // ──────────────────────────────────────────────────────────────────────────
 // HELPERS & FORMATTERS
@@ -214,6 +289,24 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     };
   }, [open, customerSearch, initialCustomerId]);
 
+  // Danh sách chính sách chiết khấu thực tế từ hệ thống (SN-28 / SN-38)
+  const [discountPolicies, setDiscountPolicies] = useState<DiscountPolicy[]>([]);
+
+  // Tải chính sách chiết khấu hệ thống khi mở modal
+  useEffect(() => {
+    if (!open) return;
+    discountPoliciesService
+      .getPolicies()
+      .then((policies) => {
+        if (Array.isArray(policies)) {
+          setDiscountPolicies(policies);
+        }
+      })
+      .catch(() => {
+        // Fallback sang nấc mặc định nếu backend chưa phản hồi
+      });
+  }, [open]);
+
   // Khôi phục nháp
   useEffect(() => {
     if (!open) return;
@@ -242,6 +335,30 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
     return () => clearTimeout(t);
   }, [open, initialCustomerId]);
+
+  // Tự động đồng bộ chiết khấu các dòng hàng hiện tại khi danh sách policies được load
+  useEffect(() => {
+    if (discountPolicies.length === 0) return;
+    const timer = setTimeout(() => {
+      setLines((prev) => {
+        if (prev.length === 0) return prev;
+        return prev.map((line) => {
+          const autoDiscount = line.quantity > 0
+            ? calculateDiscount(discountPolicies, line.productSku || line.productId, '', line.quantity)
+            : 0;
+          const discPrice = line.listPrice * (1 - autoDiscount / 100);
+          return {
+            ...line,
+            discountPercent: autoDiscount,
+            unitPrice: Math.round(discPrice),
+            lineTotal: Math.round(line.quantity * discPrice),
+          };
+        });
+      });
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [discountPolicies]);
 
   // Tự động lưu nháp khi lines thay đổi
   useEffect(() => {
@@ -282,6 +399,15 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       }
 
       const defaultUnit = product.baseUnit;
+      const initialQty = 1;
+      const autoDiscount = calculateDiscount(
+        discountPolicies,
+        product.sku || product.id,
+        '',
+        initialQty,
+      );
+      const discPrice = product.price * (1 - autoDiscount / 100);
+
       const newLine: OrderLine = {
         id: `line-${Date.now()}`,
         productId: product.id,
@@ -290,25 +416,25 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         unit: defaultUnit,
         baseUnit: product.baseUnit,
         conversionRate: 1,
-        quantity: 1,
-        baseQuantity: 1,
-        unitPrice: product.price,
+        quantity: initialQty,
+        baseQuantity: initialQty,
+        unitPrice: Math.round(discPrice),
         listPrice: product.price,
-        discountPercent: 0,
-        lineTotal: product.price,
+        discountPercent: autoDiscount,
+        lineTotal: Math.round(initialQty * discPrice),
         stockAvailable: product.stockQuantity,
       };
       setLines((prev) => [...prev, newLine]);
       setProductQuery('');
     },
-    [lines],
+    [lines, discountPolicies],
   );
 
   /** Cập nhật số lượng hoặc đơn vị của một dòng hàng */
   const handleUpdateLine = useCallback(
     (
       lineId: string,
-      field: 'quantity' | 'unit' | 'discountPercent',
+      field: 'quantity' | 'unit',
       value: string | number,
       product?: Product,
     ) => {
@@ -331,14 +457,13 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               baseQuantity: Math.round(updated.quantity * convRate),
             };
           } else if (field === 'quantity') {
-            const qty = Math.max(1, Number(value) || 1);
-            
-            // Auto calculate discount based on qty (Mock)
-            let autoDiscount = 0;
-            if (qty >= 100) autoDiscount = 10;
-            else if (qty >= 50) autoDiscount = 5;
-            else if (qty >= 10) autoDiscount = 2;
-            
+            const rawQty = typeof value === 'number' ? value : (parseInt(String(value), 10) || 0);
+            const qty = Math.max(0, rawQty);
+
+            // Tự động tính chiết khấu theo số lượng qua chính sách hệ thống (hỗ trợ > 20%, ví dụ 2500 -> 25%)
+            const autoDiscount = qty > 0
+              ? calculateDiscount(discountPolicies, updated.productSku || updated.productId, '', qty)
+              : 0;
             const discPrice = updated.listPrice * (1 - autoDiscount / 100);
 
             updated = {
@@ -348,14 +473,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               discountPercent: autoDiscount,
               unitPrice: Math.round(discPrice),
             };
-          } else if (field === 'discountPercent') {
-            const disc = Math.min(100, Math.max(0, Number(value) || 0));
-            const discPrice = updated.listPrice * (1 - disc / 100);
-            updated = {
-              ...updated,
-              discountPercent: disc,
-              unitPrice: Math.round(discPrice),
-            };
           }
 
           updated.lineTotal = updated.quantity * updated.unitPrice;
@@ -363,7 +480,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         }),
       );
     },
-    [],
+    [discountPolicies],
   );
 
   /** Xóa dòng hàng */
@@ -734,12 +851,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                       <div className="grid grid-cols-3 gap-2">
                         <div>
                           <label className="text-xs text-slate-500 mb-1 block">Số lượng</label>
-                          <input
-                            type="number"
-                            min={1}
+                          <LineQuantityInput
                             value={line.quantity}
-                            onChange={(e) => handleUpdateLine(line.id!, 'quantity', e.target.value)}
-                            className="w-full px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onChangeQty={(newQty) => handleUpdateLine(line.id!, 'quantity', newQty)}
                           />
                         </div>
                         <div>
@@ -755,14 +869,12 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                         <div>
                           <label className="text-xs text-slate-500 mb-1 block">Chiết khấu %</label>
                           <input
-                            type="number"
-                            min={0}
-                            max={100}
-                            value={line.discountPercent}
-                            onChange={(e) =>
-                              handleUpdateLine(line.id!, 'discountPercent', e.target.value)
-                            }
-                            className="w-full px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            type="text"
+                            readOnly
+                            disabled
+                            value={`${line.discountPercent}%`}
+                            title="Mức chiết khấu tự động từ chính sách hệ thống (Read-only, không thể chỉnh sửa)"
+                            className="w-full px-2 py-1.5 text-sm text-center font-bold text-emerald-600 bg-slate-100 border border-slate-200 rounded-lg cursor-not-allowed select-none focus:outline-none"
                           />
                         </div>
                       </div>
