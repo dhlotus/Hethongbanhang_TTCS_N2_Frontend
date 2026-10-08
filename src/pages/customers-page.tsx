@@ -22,7 +22,6 @@ import { showToast } from '../components/toast';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
 import { customerService } from '../services/customer.service';
 import type { Customer, CreateCustomerPayload, DeliveryPoint } from '../types/customer.types';
-import { getStoredUser } from '../utils/navigation';
 
 /**
  * Trang Quản lý Đại lý & Hạn mức tín dụng (SN-31, SN-32, SN-37 & Đồng bộ dữ liệu)
@@ -30,7 +29,6 @@ import { getStoredUser } from '../utils/navigation';
  */
 export const CustomersPage: React.FC = () => {
   const navigate = useNavigate();
-  const currentUser = getStoredUser();
 
   // State danh sách đại lý & tải dữ liệu
   const [customers, setCustomers] = useState<Customer[]>([]);

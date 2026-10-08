@@ -17,9 +17,13 @@ import {
   FileText,
   Truck,
   Loader2,
+  Building2,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ordersService } from '../services/orders.service';
+import { customersService } from '../services/customers.service';
+import { DeliveryPointModal } from '../components/delivery-point-modal';
+import type { Customer, DeliveryPoint as CustomerDeliveryPoint } from '../types/customer.types';
 import {
   discountPoliciesService,
   calculateDiscount,
@@ -226,10 +230,10 @@ const DRAFT_KEY = 'new-order-modal';
 
 const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   open,
-  editingOrder,
+  editingOrder: _editingOrder,
   onClose,
   onCreated,
-  onSaved,
+  onSaved: _onSaved,
   initialCustomerId,
 }) => {
   const [step, setStep] = useState<1 | 2>(1); // 1=Chọn đại lý, 2=Thêm hàng
@@ -240,6 +244,10 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null);
   const [deliveryPoint, setDeliveryPoint] = useState<Partial<DeliveryPoint>>({});
+  const [deliveryPoints, setDeliveryPoints] = useState<CustomerDeliveryPoint[]>([]);
+  void deliveryPoints;
+  const [selectedDeliveryPoint, setSelectedDeliveryPoint] = useState<CustomerDeliveryPoint | null>(null);
+  const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState(getDefaultDeliveryDate());
   const [note, setNote] = useState('');
 
@@ -385,13 +393,13 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       setDeliveryPoints(points);
 
       // Tự động chọn điểm giao hàng mặc định (SN-31)
-      const defaultPoint = points.find((p) => p.isDefault) || points[0] || null;
+      const defaultPoint = points.find((p: CustomerDeliveryPoint) => p.isDefault) || points[0] || null;
       setSelectedDeliveryPoint(defaultPoint);
     } catch {
       // Fallback từ c.deliveryPoints
-      const fallbackPoints = c.deliveryPoints || [];
+      const fallbackPoints = (c.deliveryPoints || []) as unknown as CustomerDeliveryPoint[];
       setDeliveryPoints(fallbackPoints);
-      const defaultPoint = fallbackPoints.find((p) => p.isDefault) || fallbackPoints[0] || null;
+      const defaultPoint = fallbackPoints.find((p: CustomerDeliveryPoint) => p.isDefault) || fallbackPoints[0] || null;
       setSelectedDeliveryPoint(defaultPoint);
     }
   }, []);
@@ -617,7 +625,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         setShowWarningModal(true);
       } else {
         showToast('success', `Tạo đơn hàng ${created.orderCode} thành công!`);
-        onCreated(created);
+        onCreated?.(created);
         handleClose();
       }
     } catch (err: unknown) {
@@ -1046,7 +1054,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               <button
                 onClick={() => {
                   setShowWarningModal(false);
-                  onCreated(createdOrder!);
+                  onCreated?.(createdOrder!);
                   handleClose();
                 }}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
@@ -1068,7 +1076,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               <button
                 onClick={() => {
                   setShowWarningModal(false);
-                  onCreated(createdOrder!);
+                  onCreated?.(createdOrder!);
                   handleClose();
                 }}
                 className="w-full mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
@@ -1087,13 +1095,13 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         open={isDeliveryModalOpen}
         customer={selectedCustomer as unknown as Customer}
         onClose={() => setIsDeliveryModalOpen(false)}
-        onUpdated={(updatedPoints, selectedPointId) => {
+        onUpdated={(updatedPoints: CustomerDeliveryPoint[], selectedPointId?: string) => {
           setDeliveryPoints(updatedPoints);
           if (selectedPointId) {
-            const matched = updatedPoints.find((p) => p.id === selectedPointId);
+            const matched = updatedPoints.find((p: CustomerDeliveryPoint) => p.id === selectedPointId);
             if (matched) setSelectedDeliveryPoint(matched);
-          } else if (!selectedDeliveryPoint || !updatedPoints.some((p) => p.id === selectedDeliveryPoint.id)) {
-            setSelectedDeliveryPoint(updatedPoints.find((p) => p.isDefault) || updatedPoints[0] || null);
+          } else if (!selectedDeliveryPoint || !updatedPoints.some((p: CustomerDeliveryPoint) => p.id === selectedDeliveryPoint.id)) {
+            setSelectedDeliveryPoint(updatedPoints.find((p: CustomerDeliveryPoint) => p.isDefault) || updatedPoints[0] || null);
           }
         }}
       />
