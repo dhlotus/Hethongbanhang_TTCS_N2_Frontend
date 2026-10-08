@@ -135,8 +135,8 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
         onClick={(e) => e.stopPropagation()}
         className={`relative w-full ${maxWidth} bg-white ${
           fullScreenOnMobile
-            ? "h-[100dvh] md:h-auto max-h-[100dvh] md:max-h-[calc(100dvh-3.5rem)] rounded-none md:rounded-xl border-0 md:border border-slate-200/90 shadow-2xl flex flex-col"
-            : "rounded-xl border border-slate-200/90 shadow-2xl flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3.5rem)]"
+            ? "h-[100dvh] md:h-auto max-h-[100dvh] md:max-h-[calc(100dvh-3.5rem)] rounded-none md:rounded-xl border-0 md:border border-slate-200/90 shadow-lg flex flex-col"
+            : "rounded-xl border border-slate-200/90 shadow-lg flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3.5rem)]"
         } ${
           fullScreenOnMobile
             ? isClosing
@@ -155,7 +155,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               {icon && (
-                <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-500/20 shadow-2xs">
+                <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-500/20">
                   {icon}
                 </div>
               )}
@@ -183,7 +183,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
                 type="button"
                 onClick={handleClose}
                 aria-label="Đóng popup"
-                className="rounded-md p-1.5 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
+                className="w-9 h-9 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>

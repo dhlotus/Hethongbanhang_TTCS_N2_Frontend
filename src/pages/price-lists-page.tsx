@@ -509,7 +509,7 @@ export const PriceListsPage: React.FC = () => {
                           onClick={handleResetFilters}
                           className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 shadow-2xs transition-all cursor-pointer active:scale-95"
                         >
-                          <RotateCcw className="h-3.5 w-3.5" />
+                          <RotateCcw className="h-4 w-4" />
                           <span>Đặt lại bộ lọc</span>
                         </button>
                       )}
@@ -608,7 +608,7 @@ export const PriceListsPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleOpenViewModal(pl)}
-                            className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
+                            className="btn-icon text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                             title="Xem chi tiết bảng giá"
                           >
                             <Eye className="w-4 h-4" />
@@ -620,10 +620,10 @@ export const PriceListsPage: React.FC = () => {
                               type="button"
                               onClick={() => handleOpenEditModal(pl)}
                               disabled={isLocked}
-                              className={`p-1.5 rounded-lg transition-colors ${
+                              className={`btn-icon transition-colors ${
                                 isLocked
                                   ? 'text-slate-300 cursor-not-allowed opacity-50 bg-slate-50'
-                                  : 'text-slate-500 hover:text-amber-600 hover:bg-amber-50 cursor-pointer'
+                                  : 'text-slate-500 hover:text-amber-600 hover:bg-amber-50'
                               }`}
                               title={
                                 isLocked
@@ -640,7 +640,7 @@ export const PriceListsPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleOpenCloneModal(pl)}
-                              className="p-1.5 text-slate-500 hover:text-[var(--color-primary)] rounded-lg hover:bg-[var(--color-primary-light)] transition-colors cursor-pointer"
+                              className="btn-icon text-slate-500 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-colors"
                               title="Tạo phiên bản mới (Clone Version)"
                             >
                               <Copy className="w-4 h-4" />
@@ -653,10 +653,10 @@ export const PriceListsPage: React.FC = () => {
                               type="button"
                               onClick={() => handlePromptDelete(pl)}
                               disabled={isLocked}
-                              className={`p-1.5 rounded-lg transition-colors ${
+                              className={`btn-icon transition-colors ${
                                 isLocked
                                   ? 'text-slate-300 cursor-not-allowed opacity-50 bg-slate-50'
-                                  : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'
+                                  : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50'
                               }`}
                               title={
                                 isLocked

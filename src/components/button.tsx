@@ -24,7 +24,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantStyles = {
     primary:
-      "bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-active)] text-white shadow-sm hover:shadow focus:ring-[var(--color-primary-ring)]",
+      "bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-active)] text-white focus:ring-[var(--color-primary-ring)]",
     secondary:
       "bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] active:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] focus:ring-[var(--color-primary-ring)]",
     outline:
@@ -39,7 +39,7 @@ export const Button: React.FC<ButtonProps> = ({
     >
       {isLoading ? (
         <>
-          <Loader2 className="w-4 h-4 animate-spin text-white" />
+          <Loader2 className={`w-4 h-4 animate-spin ${variant === 'primary' ? 'text-white' : 'text-current'}`} />
           <span>{loadingText}</span>
         </>
       ) : (

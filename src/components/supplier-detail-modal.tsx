@@ -81,7 +81,7 @@ export const SupplierDetailModal: React.FC<SupplierDetailModalProps> = ({
               }}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-xs cursor-pointer"
             >
-              <Edit2 className="h-3.5 w-3.5" />
+              <Edit2 className="h-4 w-4" />
               <span>Chỉnh sửa đối tác</span>
             </button>
           )}
