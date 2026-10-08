@@ -106,7 +106,16 @@
   --radius-xl: 16px;    /* Container hoặc khu vực lớn */
   --radius-2xl: 16px;   /* Giới hạn trần 16px, ngăn chặn bo góc quá tròn kiểu mobile/game */
   --radius-3xl: 16px;   /* Giới hạn trần 16px, ngăn chặn bo góc quá tròn kiểu mobile/game */
-  --radius-full: 9999px;/* Avatar, Pill, trạng thái dạng viên */
+  /* ========================================================================= */
+  /* 8.5 SHADOW SYSTEM DESIGN TOKENS (UI_GUIDELINES)                           */
+  /* ========================================================================= */
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05); /* Rất nhẹ: Card, Input, Component nhỏ */
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04); /* Nhẹ: Dropdown, Popover, Toast */
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.03); /* Rõ hơn: Modal, Dialog */
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.04); /* Mạnh: Layer đặc biệt / Overlay / Drawer */
+  --shadow-2xl: var(--shadow-xl); /* Giới hạn trần theo quy tắc 8.2 */
+  --shadow-xs: var(--shadow-sm);
+  --shadow-2xs: var(--shadow-sm);
 }
 
 :root {
@@ -184,6 +193,13 @@
   --radius-lg: 12px;    /* Card, Dropdown, Modal */
   --radius-xl: 16px;    /* Container hoặc khu vực lớn */
   --radius-full: 9999px;/* Avatar, Pill, trạng thái dạng viên */
+
+  /* 8.5 Shadow Design Tokens (UI_GUIDELINES) */
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  --shadow-2xl: var(--shadow-xl);
 
   font-family: var(--font-family);
   color-scheme: light;
@@ -440,6 +456,37 @@
 
 .radius-container-lg {
   border-radius: var(--radius-xl); /* 16px: Container hoặc khu vực lớn */
+}
+
+/* ========================================================================= */
+/* 8.3 QUY TẮC SỬ DỤNG SHADOW THEO COMPONENT (UI_GUIDELINES)                 */
+/* ========================================================================= */
+/* Card: ưu tiên Border; chỉ dùng shadow-sm khi cần tạo phân lớp */
+.shadow-card {
+  box-shadow: var(--shadow-sm);
+}
+
+/* Dropdown / Popover: shadow-md */
+.shadow-dropdown,
+.shadow-popover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Modal / Dialog: shadow-lg */
+.shadow-modal,
+.shadow-dialog {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Toast: shadow-md */
+.shadow-toast {
+  box-shadow: var(--shadow-md);
+}
+
+/* Overlay / Critical Layer / Mobile Drawer: shadow-xl */
+.shadow-overlay,
+.shadow-drawer {
+  box-shadow: var(--shadow-xl);
 }
 
 body, button, input, select, textarea {

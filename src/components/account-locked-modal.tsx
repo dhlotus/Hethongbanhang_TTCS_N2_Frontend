@@ -64,7 +64,7 @@ export const AccountLockedModal: React.FC<AccountLockedModalProps> = ({
       }}
     >
       <div
-        className={`relative w-full max-w-md bg-white rounded-xl border border-slate-200/90 shadow-2xl p-6 sm:p-7 overflow-hidden text-slate-800 ${
+        className={`relative w-full max-w-md bg-white rounded-xl border border-slate-200/90 shadow-lg p-6 sm:p-7 overflow-hidden text-slate-800 ${
           isClosing ? "animate-modal-out" : "animate-modal-in"
         }`}
       >

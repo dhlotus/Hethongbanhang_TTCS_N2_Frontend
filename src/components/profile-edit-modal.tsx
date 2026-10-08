@@ -72,7 +72,7 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="profile-edit-title"
-        className="w-full max-w-md rounded-xl border border-slate-100 bg-white p-6 shadow-2xl animate-modal-in sm:p-8"
+        className="w-full max-w-md rounded-xl border border-slate-100 bg-white p-6 shadow-lg animate-modal-in sm:p-8"
       >
         <div className="mb-6 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">

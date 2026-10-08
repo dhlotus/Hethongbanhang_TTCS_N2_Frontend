@@ -736,7 +736,7 @@ export const UsersPage: React.FC = () => {
           <button
             type="button"
             onClick={handleOpenCreateModal}
-            className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-purple-700 active:scale-[0.98] transition-all shadow-sm shadow-purple-600/20"
+            className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-purple-700 active:scale-[0.98] transition-all"
           >
             <UserPlus className="h-4 w-4" />
             <span>Thêm nhân sự mới</span>
@@ -1158,7 +1158,7 @@ export const UsersPage: React.FC = () => {
                         onClick={() => setPage(p)}
                         className={`h-7 min-w-7 px-2 rounded-lg text-xs font-semibold transition-all ${
                           page === p
-                            ? "bg-purple-600 text-white shadow-2xs shadow-purple-600/30"
+                            ? "bg-purple-600 text-white"
                             : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                         }`}
                       >
@@ -1189,7 +1189,7 @@ export const UsersPage: React.FC = () => {
         typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/35 backdrop-blur-[2px] animate-modal-backdrop-in">
-          <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] animate-modal-in">
+          <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-lg border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] animate-modal-in">
             {/* Header Modal */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
               <div className="flex items-center gap-3">
@@ -1611,7 +1611,7 @@ export const UsersPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="rounded-xl bg-purple-600 px-5 py-2 text-xs font-semibold text-white hover:bg-purple-700 disabled:opacity-50 transition-all shadow-sm shadow-purple-600/20"
+                  className="rounded-xl bg-purple-600 px-5 py-2 text-xs font-semibold text-white hover:bg-purple-700 disabled:opacity-50 transition-all"
                 >
                   {submitting
                     ? "Đang lưu..."
@@ -1634,7 +1634,7 @@ export const UsersPage: React.FC = () => {
         typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/35 backdrop-blur-[2px] animate-modal-backdrop-in">
-          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 animate-modal-in">
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-lg border border-slate-100 animate-modal-in">
             <button
               type="button"
               onClick={() => setStatusModalOpen(false)}
@@ -1782,10 +1782,10 @@ export const UsersPage: React.FC = () => {
                     statusSubmitting ||
                     (targetStatus === "LOCKED" && !statusReason.trim())
                   }
-                  className={`rounded-xl px-5 py-2 text-xs font-semibold text-white transition-all shadow-sm ${
+                  className={`rounded-xl px-5 py-2 text-xs font-semibold text-white transition-all ${
                     targetStatus === "LOCKED"
-                      ? "bg-rose-600 hover:bg-rose-700 shadow-rose-600/20"
-                      : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+                      ? "bg-rose-600 hover:bg-rose-700"
+                      : "bg-emerald-600 hover:bg-emerald-700"
                   } disabled:opacity-50`}
                 >
                   {statusSubmitting
@@ -1812,7 +1812,7 @@ export const UsersPage: React.FC = () => {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-lg rounded-xl bg-white shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] animate-modal-in"
+              className="relative w-full max-w-lg rounded-xl bg-white shadow-lg border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] animate-modal-in"
             >
               {/* Body */}
               <div className="flex-1 overflow-y-auto p-6 space-y-5">

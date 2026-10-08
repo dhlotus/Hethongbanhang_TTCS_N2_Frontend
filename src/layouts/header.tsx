@@ -214,7 +214,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           onClick={() => setIsDropdownOpen((prev) => !prev)}
           className={`flex items-center gap-2 sm:gap-3 p-1.5 sm:px-3 sm:py-2 rounded-lg border transition-all duration-200 cursor-pointer select-none group focus:outline-none ${
             isDropdownOpen
-              ? "bg-slate-50 border-slate-300 shadow-2xs"
+              ? "bg-slate-50 border-slate-300"
               : "bg-white border-slate-200/80 hover:bg-slate-50 hover:border-slate-300/90"
           }`}
           aria-expanded={isDropdownOpen}
@@ -222,7 +222,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           title={`Tài khoản: ${cleanFullName}`}
         >
           {/* Avatar: Ảnh hoặc Chữ cái viết tắt (radius-full) */}
-          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-xs sm:text-sm font-bold text-white shadow-2xs group-hover:scale-105 transition-transform duration-200">
+          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-xs sm:text-sm font-bold text-white group-hover:scale-105 transition-transform duration-200">
             {avatarUrl ? (
               <img
                 src={resolveAvatarUrl(avatarUrl)}
@@ -259,21 +259,21 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           />
         </button>
 
-        {/* Menu Dropdown xổ xuống (radius-lg: 12px) */}
+        {/* Menu Dropdown xổ xuống (radius-lg: 12px, shadow-md) */}
         {isDropdownOpen && (
           <div
-            className="absolute right-0 top-full mt-2 w-80 rounded-xl bg-white shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-2"
+            className="absolute right-0 top-full mt-2 w-80 rounded-xl bg-white shadow-md border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-2"
             role="menu"
             aria-orientation="vertical"
           >
             {/* Thẻ người dùng trên cùng */}
-            <div className="p-1 rounded-lg bg-white border border-slate-100 shadow-2xs">
+            <div className="p-1 rounded-lg bg-white border border-slate-100">
               <Link
                 to="/profile"
                 onClick={() => setIsDropdownOpen(false)}
                 className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-50 transition-colors group/user"
               >
-                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-sm font-bold text-white shadow-xs">
+                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-sm font-bold text-white">
                   {avatarUrl ? (
                     <img
                       src={resolveAvatarUrl(avatarUrl)}
@@ -378,13 +378,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className={`relative w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl border border-slate-100 transition-all duration-300 ${
+              className={`relative w-full max-w-sm rounded-xl bg-white p-6 shadow-lg border border-slate-100 transition-all duration-300 ${
                 isExiting ? "scale-95 opacity-0" : "animate-modal-in"
               }`}
             >
               {isLoggingOut ? (
                 <div className="py-4 flex flex-col items-center justify-center text-center space-y-3">
-                  <div className="relative flex h-14 w-14 items-center justify-center rounded-md bg-rose-50 text-rose-600 ring-4 ring-rose-100/70 shadow-sm animate-pulse">
+                  <div className="relative flex h-14 w-14 items-center justify-center rounded-md bg-rose-50 text-rose-600 ring-4 ring-rose-100/70 animate-pulse">
                     <Loader2 className="h-6 w-6 animate-spin text-rose-600" />
                   </div>
                   <div>
@@ -398,7 +398,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                 </div>
               ) : (
                 <div className="text-center space-y-4">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-rose-50 text-rose-600 ring-1 ring-rose-100 shadow-2xs">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-rose-50 text-rose-600 ring-1 ring-rose-100">
                     <Power className="h-5 w-5" />
                   </div>
 
@@ -422,7 +422,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full rounded-md bg-rose-600 hover:bg-rose-700 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-600/20 transition-all cursor-pointer active:scale-98"
+                      className="w-full rounded-md bg-rose-600 hover:bg-rose-700 py-2.5 text-xs font-semibold text-white transition-all cursor-pointer active:scale-98"
                     >
                       Đăng xuất
                     </button>

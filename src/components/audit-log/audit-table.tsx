@@ -412,7 +412,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                         onClick={() => onPageChange(p)}
                         className={`h-7 min-w-7 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                           page === p
-                            ? "bg-blue-600 text-white shadow-2xs shadow-blue-600/30"
+                            ? "bg-blue-600 text-white"
                             : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                         }`}
                       >

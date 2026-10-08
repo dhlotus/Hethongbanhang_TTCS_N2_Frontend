@@ -312,7 +312,7 @@ export const SuppliersPage: React.FC = () => {
                 setEditingSupplier(null);
                 setFormModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] rounded-xl transition-all cursor-pointer shadow-sm shadow-blue-500/20 whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0"
             >
               <Plus className="h-4 w-4" />
               <span>Thêm nhà cung cấp</span>

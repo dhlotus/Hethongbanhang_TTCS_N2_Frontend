@@ -421,7 +421,7 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
       }}
     >
       <div
-        className={`relative w-full max-w-4xl bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${
+        className={`relative w-full max-w-4xl bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-lg overflow-hidden flex flex-col max-h-[92vh] ${
           isClosing ? "animate-modal-out" : "animate-modal-in"
         }`}
       >

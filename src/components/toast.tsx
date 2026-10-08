@@ -124,7 +124,7 @@ const ToastItem: React.FC<ToastItemProps> = ({
       aria-live="assertive"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className={`pointer-events-auto relative flex items-center gap-3.5 w-[390px] sm:w-[420px] max-w-[calc(100vw-2rem)] min-h-[52px] rounded-md px-4 py-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] border overflow-hidden transition-all duration-200 ease-out transform ${
+      className={`pointer-events-auto relative flex items-center gap-3.5 w-[390px] sm:w-[420px] max-w-[calc(100vw-2rem)] min-h-[52px] rounded-md px-4 py-3.5 shadow-md border overflow-hidden transition-all duration-200 ease-out transform ${
         style.containerBg
       } ${style.borderLeft} ${
         isClosing || !isVisible

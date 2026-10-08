@@ -803,7 +803,7 @@ export const ProfilePage: React.FC = () => {
                     id="profile-save-btn"
                     onClick={handlePreSave}
                     disabled={isSaving}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 h-12 text-sm font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 h-12 text-sm font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
                   >
                     {isSaving ? (
                       <>
@@ -972,11 +972,11 @@ export const ProfilePage: React.FC = () => {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-md rounded-xl bg-white p-6 sm:p-7 shadow-2xl border border-slate-100 transition-all duration-300 animate-modal-in space-y-5"
+              className="relative w-full max-w-md rounded-xl bg-white p-6 sm:p-7 shadow-lg border border-slate-100 transition-all duration-300 animate-modal-in space-y-5"
             >
               {/* Header Popup */}
               <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-600 ring-4 ring-amber-100/60 shadow-xs">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-600 ring-4 ring-amber-100/60">
                   <ShieldAlert className="h-6 w-6" />
                 </div>
                 <div>
@@ -1040,7 +1040,7 @@ export const ProfilePage: React.FC = () => {
                   type="button"
                   onClick={handleSaveProfile}
                   disabled={isSaving}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 hover:bg-blue-700 py-2.5 text-xs font-semibold text-white shadow-sm shadow-blue-600/20 transition-all cursor-pointer active:scale-98"
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 hover:bg-blue-700 py-2.5 text-xs font-semibold text-white transition-all cursor-pointer active:scale-98"
                 >
                   {isSaving ? (
                     <>

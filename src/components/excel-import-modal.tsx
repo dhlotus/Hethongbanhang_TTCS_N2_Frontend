@@ -773,7 +773,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                 <div className="rounded-2xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50/70 to-emerald-50/20 p-4 transition-all">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm shadow-emerald-500/20">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
                         <FileSpreadsheet className="h-6 w-6" />
                       </div>
                       <div className="min-w-0">
