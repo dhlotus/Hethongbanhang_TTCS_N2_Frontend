@@ -173,6 +173,28 @@ function filterDemoCustomers(
 ): PaginatedCustomersResponse {
   let list = [...DEMO_CUSTOMERS_DATA];
 
+  // RBAC Scoping cho chế độ demo / offline
+  const currentUser = tokenStorage.getUser();
+  if (currentUser?.roles && currentUser.roles.length > 0) {
+    const isManagerOrAdmin = currentUser.roles.some((r) => {
+      const u = r.toUpperCase();
+      return u.includes('ADMIN') || u.includes('MANAGER');
+    });
+    const isSalesRep = currentUser.roles.some((r) => {
+      const u = r.toUpperCase();
+      return u.includes('SALES_REP') || u.includes('SALE');
+    });
+
+    if (isSalesRep && !isManagerOrAdmin) {
+      list = list.filter((c) => {
+        if (c.salesRepId === currentUser.id || c.salesRep?.id === currentUser.id) {
+          return true;
+        }
+        return c.salesRepId === 'usr-sale-01' || c.salesRepId === 'usr-sales-002';
+      });
+    }
+  }
+
   if (params.search) {
     const q = params.search.trim().toLowerCase();
     list = list.filter(
