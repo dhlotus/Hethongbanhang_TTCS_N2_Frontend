@@ -23,6 +23,7 @@ import {
   BookOpen,
   SlidersHorizontal,
   RotateCcw,
+  Clock,
 } from "lucide-react";
 import { getStoredUser } from "../utils/navigation";
 import { productsService, PRODUCT_CATEGORIES } from "../services/products.service";
@@ -30,6 +31,7 @@ import { categoriesService } from "../services/categories.service";
 import { inventoryService } from "../services/inventory.service";
 import { ProductFormModal } from "../components/product-form-modal";
 import { ImportProductsModal } from "../components/import-products-modal";
+import { ProductPriceHistoryModal } from "../components/product-price-history-modal";
 import { showToast } from "../components/toast";
 import {
   ProductsTableSkeleton,
@@ -93,6 +95,15 @@ export const ProductsPage: React.FC = () => {
 
   // Modal Nhập từ Excel
   const [importModalOpen, setImportModalOpen] = useState(false);
+
+  // Modal Lịch sử thay đổi giá (SN-29)
+  const [priceHistoryModalOpen, setPriceHistoryModalOpen] = useState(false);
+  const [selectedProductForHistory, setSelectedProductForHistory] = useState<{id: string, name: string} | null>(null);
+
+  const handleOpenPriceHistory = (product: Product) => {
+    setSelectedProductForHistory({ id: product.id, name: product.name });
+    setPriceHistoryModalOpen(true);
+  };
 
   // Modal Điều chỉnh tồn kho (Dành cho Thủ kho / Admin - SN-23)
   const [adjustModalOpen, setAdjustModalOpen] = useState(false);
@@ -925,6 +936,18 @@ export const ProductsPage: React.FC = () => {
                             </button>
                           )}
 
+                          {/* Xem lịch sử giá (SN-29) */}
+                          {canManageProducts && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPriceHistory(p)}
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-blue-600 transition-colors cursor-pointer"
+                              title="Xem lịch sử giá"
+                            >
+                              <Clock className="h-4 w-4" />
+                            </button>
+                          )}
+
                           {/* Bật/Tắt trạng thái */}
                           {canManageProducts && (
                             <button
@@ -1166,6 +1189,19 @@ export const ProductsPage: React.FC = () => {
                         >
                           <Edit2 className="h-3.5 w-3.5 text-blue-600" />
                           <span>Sửa</span>
+                        </button>
+                      )}
+
+                      {/* Lịch sử thay đổi giá (SN-29) */}
+                      {canManageProducts && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPriceHistory(p)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                          title="Lịch sử giá"
+                        >
+                          <Clock className="h-3.5 w-3.5 text-blue-600" />
+                          <span>Lịch sử giá</span>
                         </button>
                       )}
 
@@ -1921,6 +1957,14 @@ export const ProductsPage: React.FC = () => {
           </div>,
           document.body
         )}
+
+      {/* Modal Lịch sử thay đổi giá (SN-29) */}
+      <ProductPriceHistoryModal
+        isOpen={priceHistoryModalOpen}
+        onClose={() => setPriceHistoryModalOpen(false)}
+        productId={selectedProductForHistory?.id || ''}
+        productName={selectedProductForHistory?.name || ''}
+      />
     </div>
   );
 };
