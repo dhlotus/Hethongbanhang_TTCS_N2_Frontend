@@ -52,8 +52,14 @@ const getApiErrorMessage = (error: unknown): string | undefined => {
 export const sn40OrdersService = {
   async getCustomers(): Promise<Sn40Customer[]> {
     try {
-      const response = await apiClient.get<Sn40Customer[]>('/customers');
-      return response.data;
+      const response = await apiClient.get<{
+        data: Sn40Customer[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      }>('/customers', { params: { page: 1, limit: 100 } });
+      return response.data.data;
     } catch (error: unknown) {
       throw new Error(getApiErrorMessage(error) || 'Không thể tải danh sách đại lý từ backend');
     }
