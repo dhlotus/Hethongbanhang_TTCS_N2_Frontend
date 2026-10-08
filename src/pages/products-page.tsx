@@ -64,17 +64,19 @@ export const ProductsPage: React.FC = () => {
   // URL Query Params (Hỗ trợ mở từ Cây danh mục)
   const [searchParams, setSearchParams] = useSearchParams();
   const urlCategoryId = searchParams.get("categoryId");
+  const urlSearch = searchParams.get("search") || searchParams.get("sku") || "";
+  const urlParentCategory = searchParams.get("parentCategory");
+  const urlSubCategory = searchParams.get("subCategory");
 
   // Danh mục phân cấp động
   const [categoriesList, setCategoriesList] = useState<ProductCategory[]>(PRODUCT_CATEGORIES);
 
   // Bộ lọc & Tìm kiếm (Debounced)
-  const [searchInput, setSearchInput] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchInput, setSearchInput] = useState(urlSearch);
+  const [searchTerm, setSearchTerm] = useState(urlSearch);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(urlCategoryId || "ALL");
-  const [selectedParentCategory, setSelectedParentCategory] = useState("ALL");
-  const [selectedSubCategory, setSelectedSubCategory] = useState("ALL");
-  const [selectedChildCategory, setSelectedChildCategory] = useState("ALL");
+  const [selectedParentCategory, setSelectedParentCategory] = useState(urlParentCategory || "ALL");
+  const [selectedSubCategory, setSelectedSubCategory] = useState(urlSubCategory || "ALL");
   const [selectedStatus, setSelectedStatus] = useState<ProductStatus | "ALL">("ALL");
 
   // Drawer bộ lọc nâng cao cho Mobile & Tablet (< lg)
@@ -155,12 +157,50 @@ export const ProductsPage: React.FC = () => {
     };
   }, []);
 
-  // Cập nhật selectedCategoryId khi URL query thay đổi
+  // Cập nhật bộ lọc khi URL query params thay đổi
   useEffect(() => {
-    if (urlCategoryId) {
-      setSelectedCategoryId(urlCategoryId);
+    const s = searchParams.get("search") || searchParams.get("sku") || "";
+    if (s) {
+      setSearchInput(s);
+      setSearchTerm(s);
     }
-  }, [urlCategoryId]);
+    const cId = searchParams.get("categoryId");
+    if (cId) setSelectedCategoryId(cId);
+
+    const pCat = searchParams.get("parentCategory");
+    if (pCat) setSelectedParentCategory(pCat);
+
+    const sCat = searchParams.get("subCategory");
+    if (sCat) setSelectedSubCategory(sCat);
+  }, [searchParams]);
+
+  // Tự động suy luận Cấp 1 và Cấp 2 khi danh mục tải về từ backend
+  useEffect(() => {
+    if (!categoriesList || categoriesList.length === 0) return;
+    const cId = searchParams.get("categoryId");
+    if (!cId || cId === "ALL") return;
+
+    for (const c1 of categoriesList) {
+      if (c1.id === cId || c1.code === cId) {
+        setSelectedParentCategory(c1.name);
+        return;
+      }
+      for (const c2 of (c1.subCategories || c1.children || [])) {
+        if (c2.id === cId || c2.code === cId) {
+          setSelectedParentCategory(c1.name);
+          setSelectedSubCategory(c2.name);
+          return;
+        }
+        for (const c3 of (c2.subCategories || c2.children || [])) {
+          if (c3.id === cId || c3.code === cId) {
+            setSelectedParentCategory(c1.name);
+            setSelectedSubCategory(c2.name);
+            return;
+          }
+        }
+      }
+    }
+  }, [categoriesList, searchParams]);
 
   // Debounce tìm kiếm sau 300ms
   useEffect(() => {
@@ -178,26 +218,17 @@ export const ProductsPage: React.FC = () => {
     return found?.subCategories || [];
   }, [selectedParentCategory, categoriesList]);
 
-  // Danh sách Phân loại con Cấp 3 tương ứng theo Cấp 2 đang chọn
-  const childCategoriesForFilter = useMemo(() => {
-    if (selectedSubCategory === "ALL") return [];
-    const found = subCategoriesForFilter.find((s) => s.name === selectedSubCategory);
-    return found?.subCategories || found?.children || [];
-  }, [selectedSubCategory, subCategoriesForFilter]);
-
   // Đếm số lượng bộ lọc nâng cao đang được kích hoạt (không tính tìm kiếm văn bản)
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (selectedParentCategory !== "ALL") count++;
     if (selectedSubCategory !== "ALL") count++;
-    if (selectedChildCategory !== "ALL") count++;
     if (selectedStatus !== "ALL") count++;
     if (selectedCategoryId !== "ALL") count++;
     return count;
   }, [
     selectedParentCategory,
     selectedSubCategory,
-    selectedChildCategory,
     selectedStatus,
     selectedCategoryId,
   ]);
@@ -206,9 +237,10 @@ export const ProductsPage: React.FC = () => {
   const handleResetFilters = useCallback(() => {
     setSelectedParentCategory("ALL");
     setSelectedSubCategory("ALL");
-    setSelectedChildCategory("ALL");
     setSelectedStatus("ALL");
     setSelectedCategoryId("ALL");
+    setSearchInput("");
+    setSearchTerm("");
     setSearchParams({});
     setPage(1);
   }, [setSearchParams]);
@@ -223,12 +255,7 @@ export const ProductsPage: React.FC = () => {
         search: searchTerm,
         categoryId: selectedCategoryId !== "ALL" ? selectedCategoryId : (urlCategoryId || undefined),
         parentCategory: selectedParentCategory !== "ALL" ? selectedParentCategory : undefined,
-        subCategory:
-          selectedChildCategory !== "ALL"
-            ? selectedChildCategory
-            : selectedSubCategory !== "ALL"
-            ? selectedSubCategory
-            : undefined,
+        subCategory: selectedSubCategory !== "ALL" ? selectedSubCategory : undefined,
         status: selectedStatus !== "ALL" ? selectedStatus : undefined,
       });
 
@@ -254,7 +281,6 @@ export const ProductsPage: React.FC = () => {
     urlCategoryId,
     selectedParentCategory,
     selectedSubCategory,
-    selectedChildCategory,
     selectedStatus,
   ]);
 
@@ -586,7 +612,6 @@ export const ProductsPage: React.FC = () => {
               onChange={(e) => {
                 setSelectedParentCategory(e.target.value);
                 setSelectedSubCategory("ALL");
-                setSelectedChildCategory("ALL");
                 setSelectedCategoryId("ALL");
                 setPage(1);
               }}
@@ -607,7 +632,6 @@ export const ProductsPage: React.FC = () => {
               value={selectedSubCategory}
               onChange={(e) => {
                 setSelectedSubCategory(e.target.value);
-                setSelectedChildCategory("ALL");
                 setSelectedCategoryId("ALL");
                 setPage(1);
               }}
@@ -644,90 +668,22 @@ export const ProductsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Lọc Phân loại con Cấp 3 (cho Desktop khi nhóm Cấp 2 có Cấp 3) */}
-        {childCategoriesForFilter.length > 0 && (
-          <div className="hidden lg:flex items-center gap-2 pt-1">
-            <span className="text-xs font-semibold text-indigo-700">Phân loại Cấp 3:</span>
-            <div className="relative max-w-xs">
-              <select
-                value={selectedChildCategory}
-                onChange={(e) => {
-                  setSelectedChildCategory(e.target.value);
-                  setSelectedCategoryId("ALL");
-                  setPage(1);
-                }}
-                className="w-full px-3 py-1.5 text-xs rounded-xl border border-indigo-200 bg-white text-indigo-900 font-medium focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
+        {/* Tổng kết kết quả & Đặt lại bộ lọc */}
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
+          <div>
+            {(activeFilterCount > 0 || searchTerm) ? (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-medium transition-all cursor-pointer"
+                title="Đặt lại toàn bộ bộ lọc"
               >
-                <option value="ALL">Tất cả Phân loại Cấp 3</option>
-                {childCategoriesForFilter.map((child) => (
-                  <option key={child.id} value={child.name}>
-                    {child.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-
-        {/* Chip hiển thị khi đang lọc theo nhánh Cây từ Trang Cây danh mục (Desktop) */}
-        {selectedCategoryId !== "ALL" && (
-          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold w-fit">
-            <FolderTree className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-            <span>Lọc theo nhánh cây</span>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedCategoryId("ALL");
-                setSearchParams({});
-              }}
-              className="ml-1 text-slate-400 hover:text-slate-700 cursor-pointer"
-              title="Bỏ lọc theo cây"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-
-        {/* Thanh trạng thái bộ lọc đang áp dụng & Tổng kết */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-slate-700">Bộ lọc đang áp dụng:</span>
-            {searchTerm && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 font-medium text-[11px]">
-                Tìm kiếm: "{searchTerm}"
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setSearchInput("")} />
-              </span>
+                <RotateCcw className="h-3 w-3" />
+                <span>Đặt lại bộ lọc</span>
+              </button>
+            ) : (
+              <span className="text-slate-400 italic">Tất cả sản phẩm</span>
             )}
-            {selectedParentCategory !== "ALL" && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-purple-50 text-purple-700 font-medium text-[11px]">
-                Cấp 1: {selectedParentCategory}
-                <X
-                  className="h-3 w-3 cursor-pointer"
-                  onClick={() => {
-                    setSelectedParentCategory("ALL");
-                    setSelectedSubCategory("ALL");
-                  }}
-                />
-              </span>
-            )}
-            {selectedSubCategory !== "ALL" && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 font-medium text-[11px]">
-                Cấp 2: {selectedSubCategory}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedSubCategory("ALL")} />
-              </span>
-            )}
-            {selectedStatus !== "ALL" && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 font-medium text-[11px]">
-                {selectedStatus === "ACTIVE" ? "Đang kinh doanh" : "Ngừng kinh doanh"}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedStatus("ALL")} />
-              </span>
-            )}
-            {!searchTerm &&
-              selectedParentCategory === "ALL" &&
-              selectedSubCategory === "ALL" &&
-              selectedStatus === "ALL" && (
-                <span className="text-slate-400 italic">Hiển thị toàn bộ danh mục</span>
-              )}
           </div>
 
           <div className="flex items-center gap-1.5 font-medium shrink-0">
@@ -812,7 +768,10 @@ export const ProductsPage: React.FC = () => {
                   const isOutOfStock = p.stockQuantity === 0;
 
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
+                    <tr
+                      key={p.id}
+                      className="hover:bg-slate-50/70 transition-colors"
+                    >
                       {/* Cột 1: Ảnh Thumbnail */}
                       <td className="px-3 py-2.5 text-center">
                         <div className="h-9 w-9 mx-auto rounded-xl border border-slate-200/90 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
@@ -1283,8 +1242,8 @@ export const ProductsPage: React.FC = () => {
         </div>
 
         {/* 4. Thanh phân trang chuẩn Clean SaaS (Mặc định 20 dòng / trang) */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-100 text-xs text-slate-500 bg-slate-50/40">
-          <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-100 text-xs text-slate-500 bg-slate-50/40">
+          <div className="flex items-center gap-3 shrink-0 whitespace-nowrap">
             <div>
               Hiển thị{" "}
               <strong>
@@ -1310,7 +1269,7 @@ export const ProductsPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
             <button
               type="button"
               disabled={page <= 1}
@@ -1854,7 +1813,6 @@ export const ProductsPage: React.FC = () => {
                     onChange={(e) => {
                       setSelectedParentCategory(e.target.value);
                       setSelectedSubCategory("ALL");
-                      setSelectedChildCategory("ALL");
                       setSelectedCategoryId("ALL");
                       setPage(1);
                     }}
@@ -1878,7 +1836,6 @@ export const ProductsPage: React.FC = () => {
                     value={selectedSubCategory}
                     onChange={(e) => {
                       setSelectedSubCategory(e.target.value);
-                      setSelectedChildCategory("ALL");
                       setSelectedCategoryId("ALL");
                       setPage(1);
                     }}
@@ -1898,32 +1855,7 @@ export const ProductsPage: React.FC = () => {
                   </select>
                 </div>
 
-                {/* 3. Phân loại con Cấp 3 (nếu có) */}
-                {childCategoriesForFilter.length > 0 && (
-                  <div className="space-y-1.5">
-                    <label className="font-semibold text-indigo-700 block">
-                      Phân loại con Cấp 3
-                    </label>
-                    <select
-                      value={selectedChildCategory}
-                      onChange={(e) => {
-                        setSelectedChildCategory(e.target.value);
-                        setSelectedCategoryId("ALL");
-                        setPage(1);
-                      }}
-                      className="w-full h-11 px-3.5 text-xs rounded-xl border border-indigo-200 bg-white text-indigo-900 font-medium focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
-                    >
-                      <option value="ALL">Tất cả Phân loại Cấp 3</option>
-                      {childCategoriesForFilter.map((child) => (
-                        <option key={child.id} value={child.name}>
-                          {child.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* 4. Trạng thái kinh doanh */}
+                {/* 3. Trạng thái kinh doanh */}
                 <div className="space-y-1.5">
                   <label className="font-semibold text-slate-700 block">
                     Trạng thái kinh doanh
