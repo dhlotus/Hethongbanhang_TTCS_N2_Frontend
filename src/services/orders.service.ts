@@ -146,10 +146,22 @@ export const ordersService = {
     }
 
     try {
-      const res = await apiClient.get<CustomerOption[]>('/customers', {
+      const res = await apiClient.get<CustomerOption[] | { data: CustomerOption[] }>('/customers', {
         params: search ? { search } : undefined,
       });
-      return res.data;
+      if (Array.isArray(res.data)) {
+        return res.data;
+      }
+      if (res.data && Array.isArray(res.data.data)) {
+        return res.data.data.map((c) => {
+          const item = c as CustomerOption & { customerGroup?: string };
+          return {
+            ...item,
+            group: item.group || item.customerGroup || 'Đại lý',
+          };
+        });
+      }
+      return DEMO_CUSTOMERS;
     } catch {
       return DEMO_CUSTOMERS;
     }
