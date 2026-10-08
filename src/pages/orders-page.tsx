@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ShoppingCart,
   Plus,
@@ -15,9 +16,10 @@ import {
   Package,
   FileText,
   Truck,
+  Loader2,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
-import { ordersService, DEMO_CUSTOMERS } from '../services/orders.service';
+import { ordersService } from '../services/orders.service';
 import {
   discountPoliciesService,
   calculateDiscount,
@@ -46,10 +48,13 @@ const LineQuantityInput: React.FC<LineQuantityInputProps> = ({ value, onChangeQt
   const [localVal, setLocalVal] = useState<string>(() => (value ? String(value) : '1'));
 
   useEffect(() => {
-    const num = parseInt(localVal, 10);
-    if (!isNaN(num) && num === value) return;
-    setLocalVal(value !== undefined && value !== null ? String(value) : '');
-  }, [value]);
+    const timer = setTimeout(() => {
+      const num = parseInt(localVal, 10);
+      if (!isNaN(num) && num === value) return;
+      setLocalVal(value !== undefined && value !== null ? String(value) : '');
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [value, localVal]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
@@ -212,6 +217,7 @@ interface CreateOrderModalProps {
   open: boolean;
   onClose: () => void;
   onCreated: (order: Order) => void;
+  initialCustomerId?: string | null;
 }
 
 const DRAFT_KEY = 'new-order-modal';
@@ -220,12 +226,14 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   open,
   onClose,
   onCreated,
+  initialCustomerId,
 }) => {
   const [step, setStep] = useState<1 | 2>(1); // 1=Chọn đại lý, 2=Thêm hàng
 
   // Bước 1: Chọn đại lý
   const [customerSearch, setCustomerSearch] = useState('');
-  const [customers, setCustomers] = useState<CustomerOption[]>(DEMO_CUSTOMERS);
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null);
   const [deliveryPoint, setDeliveryPoint] = useState<Partial<DeliveryPoint>>({});
   const [deliveryDate, setDeliveryDate] = useState(getDefaultDeliveryDate());
@@ -242,6 +250,44 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
+
+  // Tải danh sách đại lý (kèm debounce 300ms khi gõ tìm kiếm)
+  useEffect(() => {
+    if (!open) return;
+    let isMounted = true;
+
+    const timer = setTimeout(async () => {
+      if (isMounted) setIsLoadingCustomers(true);
+      try {
+        const list = await ordersService.getCustomers(customerSearch);
+        if (isMounted) {
+          setCustomers(list);
+          if (initialCustomerId) {
+            const found = list.find((c) => c.id === initialCustomerId);
+            if (found) {
+              setSelectedCustomer(found);
+              if (found.deliveryPoints && found.deliveryPoints.length > 0) {
+                setDeliveryPoint(found.deliveryPoints[0]);
+              } else {
+                setDeliveryPoint({ address: found.address || '' });
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách đại lý:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoadingCustomers(false);
+        }
+      }
+    }, customerSearch ? 300 : 0);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [open, customerSearch, initialCustomerId]);
 
   // Danh sách chính sách chiết khấu thực tế từ hệ thống (SN-28 / SN-38)
   const [discountPolicies, setDiscountPolicies] = useState<DiscountPolicy[]>([]);
@@ -264,36 +310,54 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   // Khôi phục nháp
   useEffect(() => {
     if (!open) return;
-    const draft = ordersService.getDraft(DRAFT_KEY);
-    if (draft?.lines && draft.lines.length > 0) {
-      setLines(draft.lines);
-      if (draft.customerId) {
-        const c = DEMO_CUSTOMERS.find((x) => x.id === draft.customerId);
-        if (c) setSelectedCustomer(c);
+    const t = setTimeout(() => {
+      const draft = ordersService.getDraft(DRAFT_KEY);
+      if (draft?.lines && draft.lines.length > 0) {
+        setLines(draft.lines);
+        if (draft.customerId && !initialCustomerId) {
+          ordersService.getCustomers().then((list) => {
+            const c = list.find((x) => x.id === draft.customerId);
+            if (c) {
+              setSelectedCustomer(c);
+              if (draft.deliveryPoint) {
+                setDeliveryPoint(draft.deliveryPoint);
+              } else if (c.deliveryPoints?.[0]) {
+                setDeliveryPoint(c.deliveryPoints[0]);
+              }
+            }
+          });
+        }
+        if (draft.deliveryDate) setDeliveryDate(draft.deliveryDate);
+        if (draft.note) setNote(draft.note);
+        showToast('info', 'Đã khôi phục nháp đơn hàng từ lần trước');
       }
-      if (draft.deliveryDate) setDeliveryDate(draft.deliveryDate);
-      if (draft.note) setNote(draft.note);
-      showToast('info', 'Đã khôi phục nháp đơn hàng từ lần trước');
-    }
-  }, [open]);
+    }, 0);
+
+    return () => clearTimeout(t);
+  }, [open, initialCustomerId]);
 
   // Tự động đồng bộ chiết khấu các dòng hàng hiện tại khi danh sách policies được load
   useEffect(() => {
-    if (discountPolicies.length === 0 || lines.length === 0) return;
-    setLines((prev) =>
-      prev.map((line) => {
-        const autoDiscount = line.quantity > 0
-          ? calculateDiscount(discountPolicies, line.productSku || line.productId, '', line.quantity)
-          : 0;
-        const discPrice = line.listPrice * (1 - autoDiscount / 100);
-        return {
-          ...line,
-          discountPercent: autoDiscount,
-          unitPrice: Math.round(discPrice),
-          lineTotal: Math.round(line.quantity * discPrice),
-        };
-      }),
-    );
+    if (discountPolicies.length === 0) return;
+    const timer = setTimeout(() => {
+      setLines((prev) => {
+        if (prev.length === 0) return prev;
+        return prev.map((line) => {
+          const autoDiscount = line.quantity > 0
+            ? calculateDiscount(discountPolicies, line.productSku || line.productId, '', line.quantity)
+            : 0;
+          const discPrice = line.listPrice * (1 - autoDiscount / 100);
+          return {
+            ...line,
+            discountPercent: autoDiscount,
+            unitPrice: Math.round(discPrice),
+            lineTotal: Math.round(line.quantity * discPrice),
+          };
+        });
+      });
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [discountPolicies]);
 
   // Tự động lưu nháp khi lines thay đổi
@@ -324,17 +388,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
   }, [productQuery, step]);
-
-  // Tìm kiếm đại lý
-  useEffect(() => {
-    const filtered = DEMO_CUSTOMERS.filter(
-      (c) =>
-        !customerSearch ||
-        c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-        c.code.toLowerCase().includes(customerSearch.toLowerCase()),
-    );
-    setCustomers(filtered);
-  }, [customerSearch]);
 
   /** Thêm sản phẩm vào dòng hàng */
   const handleAddProduct = useCallback(
@@ -562,56 +615,73 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
                 {/* Danh sách đại lý */}
                 <div className="space-y-2 max-h-56 overflow-y-auto">
-                  {customers.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => {
-                        setSelectedCustomer(c);
-                        if (c.deliveryPoints?.[0]) {
-                          setDeliveryPoint(c.deliveryPoints[0]);
-                        }
-                      }}
-                      className={`w-full text-left p-3 rounded-xl border transition-all ${
-                        selectedCustomer?.id === c.id
-                          ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-400'
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-medium text-slate-800">{c.name}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            {c.code} · {c.phone}
-                          </p>
-                        </div>
-                        <span
-                          className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
-                            c.group === 'AGENT_LEVEL_1'
-                              ? 'bg-purple-50 text-purple-700'
-                              : c.group === 'AGENT_LEVEL_2'
-                              ? 'bg-blue-50 text-blue-700'
-                              : 'bg-slate-100 text-slate-600'
-                          }`}
-                        >
-                          {c.group === 'AGENT_LEVEL_1'
-                            ? 'Đại lý Cấp 1'
-                            : c.group === 'AGENT_LEVEL_2'
-                            ? 'Đại lý Cấp 2'
-                            : 'Bán lẻ'}
-                        </span>
-                      </div>
-                      {c.creditLimit && (
-                        <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
-                          <span>Hạn mức: {formatCurrency(c.creditLimit)}</span>
-                          <span>Công nợ: {formatCurrency(c.currentDebt ?? 0)}</span>
-                        </div>
+                  {isLoadingCustomers ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-slate-400 gap-2">
+                      <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                      <span className="text-xs font-medium">Đang tải danh sách đại lý...</span>
+                    </div>
+                  ) : customers.length === 0 ? (
+                    <div className="text-center py-8 text-slate-400">
+                      <p className="text-sm">Không tìm thấy đại lý phù hợp</p>
+                      {customerSearch && (
+                        <p className="text-xs text-slate-400 mt-1">Thử tìm bằng mã hoặc tên khác</p>
                       )}
-                    </button>
-                  ))}
-                  {customers.length === 0 && (
-                    <p className="text-center text-sm text-slate-400 py-6">
-                      Không tìm thấy đại lý phù hợp
-                    </p>
+                    </div>
+                  ) : (
+                    customers.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCustomer(c);
+                          if (c.deliveryPoints?.[0]) {
+                            setDeliveryPoint(c.deliveryPoints[0]);
+                          } else {
+                            setDeliveryPoint({ address: c.address || '' });
+                          }
+                        }}
+                        className={`w-full text-left p-3 rounded-xl border transition-all ${
+                          selectedCustomer?.id === c.id
+                            ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-400'
+                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-800 truncate">{c.name}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {c.code} · {c.phone || 'Chưa có SĐT'}
+                            </p>
+                          </div>
+                          <span
+                            className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
+                              c.group === 'AGENT_LEVEL_1'
+                                ? 'bg-purple-50 text-purple-700'
+                                : c.group === 'AGENT_LEVEL_2'
+                                ? 'bg-blue-50 text-blue-700'
+                                : c.group === 'RETAIL'
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            {c.group === 'AGENT_LEVEL_1'
+                              ? 'Đại lý Cấp 1'
+                              : c.group === 'AGENT_LEVEL_2'
+                              ? 'Đại lý Cấp 2'
+                              : c.group === 'RETAIL'
+                              ? 'Bán lẻ'
+                              : c.group || 'Đại lý'}
+                          </span>
+                        </div>
+                        {c.creditLimit !== undefined && (
+                          <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
+                            <span>Hạn mức: {formatCurrency(c.creditLimit)}</span>
+                            <span>·</span>
+                            <span>Công nợ: {formatCurrency(c.currentDebt ?? 0)}</span>
+                          </div>
+                        )}
+                      </button>
+                    ))
                   )}
                 </div>
               </div>
@@ -619,16 +689,49 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               {/* Điểm giao hàng */}
               {selectedCustomer && (
                 <div className="space-y-3 pt-2 border-t border-slate-100">
-                  <label className="block text-sm font-medium text-slate-700">
-                    Điểm giao hàng
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-slate-700">
+                      Điểm giao hàng
+                    </label>
+                    {selectedCustomer.deliveryPoints && selectedCustomer.deliveryPoints.length > 0 && (
+                      <span className="text-xs text-slate-500">
+                        {selectedCustomer.deliveryPoints.length} điểm đã lưu
+                      </span>
+                    )}
+                  </div>
+
+                  {selectedCustomer.deliveryPoints && selectedCustomer.deliveryPoints.length > 0 && (
+                    <select
+                      value={deliveryPoint.id ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === 'custom') {
+                          setDeliveryPoint({ address: '', name: 'Địa chỉ tự nhập' });
+                        } else {
+                          const dp = selectedCustomer.deliveryPoints?.find((p) => p.id === val);
+                          if (dp) {
+                            setDeliveryPoint(dp);
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    >
+                      {selectedCustomer.deliveryPoints.map((dp) => (
+                        <option key={dp.id} value={dp.id}>
+                          {dp.name} — {dp.address}
+                        </option>
+                      ))}
+                      <option value="custom">Giao tới địa chỉ khác...</option>
+                    </select>
+                  )}
+
                   <input
                     type="text"
                     value={deliveryPoint.address ?? ''}
                     onChange={(e) =>
                       setDeliveryPoint((prev) => ({ ...prev, address: e.target.value }))
                     }
-                    placeholder="Địa chỉ giao hàng..."
+                    placeholder="Địa chỉ giao hàng chi tiết..."
                     className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -905,6 +1008,10 @@ const STATUS_TABS: { key: OrderStatus | 'ALL'; label: string }[] = [
 ];
 
 export const OrdersPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlCustomerId = searchParams.get('customerId');
+  const shouldOpenCreate = searchParams.get('createOrder') === 'true' || !!urlCustomerId;
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -923,6 +1030,24 @@ export const OrdersPage: React.FC = () => {
   const isSalesRep = user?.roles?.includes('SALES_REP');
   const isSalesManager = user?.roles?.includes('SALES_MANAGER');
 
+  // Tự động mở modal khi có createOrder hoặc customerId trên URL
+  useEffect(() => {
+    if (shouldOpenCreate) {
+      const t = setTimeout(() => setIsCreateModalOpen(true), 0);
+      return () => clearTimeout(t);
+    }
+  }, [shouldOpenCreate]);
+
+  const handleCloseCreateModal = () => {
+    setIsCreateModalOpen(false);
+    if (searchParams.has('createOrder') || searchParams.has('customerId')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('createOrder');
+      next.delete('customerId');
+      setSearchParams(next, { replace: true });
+    }
+  };
+
   // Debounce search
   useEffect(() => {
     const t = setTimeout(() => {
@@ -932,28 +1057,38 @@ export const OrdersPage: React.FC = () => {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  const loadOrders = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await ordersService.getOrders({
-        page,
-        limit,
-        status: statusFilter,
-        search: searchTerm || undefined,
-      });
-      setOrders(res.data);
-      setTotal(res.total);
-      setTotalPages(res.totalPages);
-    } catch {
-      showToast('error', 'Không thể tải danh sách đơn hàng');
-    } finally {
-      setLoading(false);
-    }
-  }, [page, statusFilter, searchTerm]);
-
   useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
+    let isMounted = true;
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await ordersService.getOrders({
+          page,
+          limit,
+          status: statusFilter,
+          search: searchTerm || undefined,
+        });
+        if (isMounted) {
+          setOrders(res.data);
+          setTotal(res.total);
+          setTotalPages(res.totalPages);
+        }
+      } catch {
+        if (isMounted) {
+          showToast('error', 'Không thể tải danh sách đơn hàng');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }, 0);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [page, statusFilter, searchTerm]);
 
   const handleOrderCreated = (order: Order) => {
     setOrders((prev) => [order, ...prev]);
@@ -1170,8 +1305,9 @@ export const OrdersPage: React.FC = () => {
       {/* Modal Tạo đơn hàng */}
       <CreateOrderModal
         open={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={handleCloseCreateModal}
         onCreated={handleOrderCreated}
+        initialCustomerId={urlCustomerId}
       />
 
       {/* Modal Xem chi tiết đơn hàng */}

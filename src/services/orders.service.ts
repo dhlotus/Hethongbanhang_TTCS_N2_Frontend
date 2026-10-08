@@ -1,6 +1,7 @@
 import { apiClient } from './api';
 import { tokenStorage } from '../utils/token-storage';
 import { MOCK_PRODUCTS } from './products.service';
+import { customerService } from './customer.service';
 import type {
   CreateOrderPayload,
   CustomerOption,
@@ -17,8 +18,9 @@ const DRAFT_ORDERS_KEY = 'loha_draft_orders';
 const DEMO_ORDERS_KEY = 'loha_demo_orders';
 
 // ──────────────────────────────────────────────────────────────────────────
-// DỮ LIỆU MẪU — Đại lý Demo (SN-38)
+// DỮ LIỆU MẪU — Đại lý Demo (SN-38 & SN-37)
 // ──────────────────────────────────────────────────────────────────────────
+
 
 export const DEMO_CUSTOMERS: CustomerOption[] = [
   // 5 Đại lý Cấp 1 (DL-0001 -> DL-0005)
@@ -321,14 +323,18 @@ const getStoredDemoOrders = (): Order[] => {
   try {
     const raw = localStorage.getItem(DEMO_ORDERS_KEY);
     if (raw) return JSON.parse(raw) as Order[];
-  } catch {}
+  } catch (e) {
+    void e;
+  }
   return [];
 };
 
 const saveStoredDemoOrders = (list: Order[]): void => {
   try {
     localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(list));
-  } catch {}
+  } catch (e) {
+    void e;
+  }
 };
 
 /** Tính tổng đơn hàng từ danh sách dòng hàng */
@@ -363,28 +369,42 @@ const generateOrderCode = (): string => {
 
 export const ordersService = {
   /**
-   * Lấy danh sách đại lý để chọn trong form tạo đơn hàng
+   * Lấy danh sách đại lý để chọn trong form tạo đơn hàng (SN-37 & SN-38)
    */
   async getCustomers(search?: string): Promise<CustomerOption[]> {
-    const token = tokenStorage.getAccessToken();
-    if (token?.startsWith('demo-jwt-')) {
+    try {
+      const res = await customerService.getCustomers({
+        search: search?.trim() || undefined,
+        limit: 100,
+      });
+
+      const list = res?.data || [];
+      return list.map((c) => ({
+        id: c.id,
+        code: c.code,
+        name: c.name,
+        group: c.customerGroup || 'AGENT_LEVEL_1',
+        phone: c.phone,
+        address: c.address,
+        creditLimit: c.creditLimit,
+        currentDebt: c.currentDebt,
+        deliveryPoints: (c.deliveryPoints || []).map((dp) => ({
+          id: dp.id,
+          name: dp.name,
+          address: dp.address,
+          phone: dp.phone,
+          contactPerson: dp.receiverName,
+        })),
+      }));
+    } catch {
       if (!search) return DEMO_CUSTOMERS;
-      const q = search.toLowerCase();
+      const q = search.toLowerCase().trim();
       return DEMO_CUSTOMERS.filter(
         (c) =>
           c.name.toLowerCase().includes(q) ||
           c.code.toLowerCase().includes(q) ||
-          c.phone?.includes(q),
+          (c.phone && c.phone.includes(q)),
       );
-    }
-
-    try {
-      const res = await apiClient.get<CustomerOption[]>('/customers', {
-        params: search ? { search } : undefined,
-      });
-      return res.data;
-    } catch {
-      return DEMO_CUSTOMERS;
     }
   },
 
@@ -497,7 +517,9 @@ export const ordersService = {
       const drafts: Record<string, Partial<Order>> = raw ? JSON.parse(raw) : {};
       drafts[draftKey] = { ...draftData, updatedAt: new Date().toISOString() };
       localStorage.setItem(DRAFT_ORDERS_KEY, JSON.stringify(drafts));
-    } catch {}
+    } catch (e) {
+      void e;
+    }
   },
 
   /**
@@ -524,7 +546,9 @@ export const ordersService = {
       const drafts: Record<string, Partial<Order>> = JSON.parse(raw);
       delete drafts[draftKey];
       localStorage.setItem(DRAFT_ORDERS_KEY, JSON.stringify(drafts));
-    } catch {}
+    } catch (e) {
+      void e;
+    }
   },
 
   /**
