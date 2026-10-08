@@ -218,7 +218,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
               <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
                 <div className="flex items-center gap-6 text-sm font-medium">
                   <div className="flex flex-col">
-                    <span className="text-slate-500 text-xs">Tổng số dòng</span>
+                    <span className="text-slate-500 text-xs">Tổng số SP</span>
                     <span className="text-slate-800 text-base">{previewResult.total}</span>
                   </div>
                   <div className="flex flex-col">
@@ -253,12 +253,14 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
                   <thead className="bg-slate-50 text-xs font-semibold text-slate-500 border-b border-slate-200">
                     <tr>
                       <th className="px-4 py-3 text-center w-12">Dòng</th>
-                      <th className="px-4 py-3">Trạng thái</th>
-                      <th className="px-4 py-3">SKU</th>
-                      <th className="px-4 py-3 w-48">Tên SP</th>
-                      <th className="px-4 py-3">Giá bán</th>
-                      <th className="px-4 py-3">Giá vốn</th>
-                      <th className="px-4 py-3">Lỗi</th>
+                      <th className="px-4 py-3 text-center">Trạng thái</th>
+                      <th className="px-4 py-3 text-left whitespace-nowrap">Mã SKU</th>
+                      <th className="px-4 py-3 text-left min-w-[180px]">Tên SP</th>
+                      <th className="px-4 py-3 text-left">Nhóm hàng</th>
+                      <th className="px-4 py-3 text-center">ĐVT</th>
+                      <th className="px-4 py-3 text-right">Giá niêm yết</th>
+                      <th className="px-4 py-3 text-right">Giá vốn</th>
+                      <th className="px-4 py-3 text-left">Lỗi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
@@ -267,8 +269,8 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
                         key={idx} 
                         className={!item.isValid ? "bg-red-50/50" : "hover:bg-slate-50"}
                       >
-                        <td className="px-4 py-3 text-center text-slate-400 font-mono text-xs">{item.row}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 text-center text-slate-400 font-mono text-xs">{idx + 1}</td>
+                        <td className="px-4 py-3 text-center">
                           {!item.isValid ? (
                             <span className="inline-flex rounded bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">LỖI</span>
                           ) : item.status === "UPDATE" ? (
@@ -277,11 +279,17 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
                             <span className="inline-flex rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">MỚI</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 font-medium text-slate-700">{item.sku}</td>
-                        <td className="px-4 py-3 truncate max-w-[12rem]" title={item.name}>{item.name}</td>
-                        <td className="px-4 py-3">{item.price?.toLocaleString()}</td>
-                        <td className="px-4 py-3">{item.costPrice?.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-xs text-red-600 max-w-[15rem]">
+                        <td className="px-4 py-3 text-left font-mono font-medium text-slate-700 whitespace-nowrap">{item.sku}</td>
+                        <td className="px-4 py-3 text-left truncate min-w-[180px] max-w-[15rem]" title={item.name}>{item.name}</td>
+                        <td className="px-4 py-3 text-left">
+                          <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-500/10">
+                            {item.category}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center text-slate-600">{item.baseUnit}</td>
+                        <td className="px-4 py-3 text-right font-medium text-slate-700">{item.price?.toLocaleString('vi-VN')} đ</td>
+                        <td className="px-4 py-3 text-right font-medium text-slate-700">{item.costPrice?.toLocaleString('vi-VN')} đ</td>
+                        <td className="px-4 py-3 text-left text-xs text-red-600 max-w-[15rem]">
                           {item.errors.join(", ")}
                         </td>
                       </tr>
@@ -307,15 +315,15 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={loading || !previewResult || previewResult.valid === 0}
-            className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 transition-all focus:outline-none"
+            disabled={loading || !previewResult || previewResult.invalid > 0 || previewResult.valid === 0}
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition-all focus:outline-none"
           >
             {loading ? (
               <RefreshCw className="h-4 w-4 animate-spin" />
             ) : (
               <CheckCircle2 className="h-4 w-4" />
             )}
-            Xác nhận nhập kho
+            Xác nhận nhập danh mục
           </button>
         </div>
       </div>
