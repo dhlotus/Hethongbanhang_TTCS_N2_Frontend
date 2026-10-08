@@ -39,8 +39,9 @@ export const CreditLimitHistoryModal: React.FC<CreditLimitHistoryModalProps> = (
   useEffect(() => {
     if (isOpen && item) {
       setLoading(true);
+      const targetId = item.agencyId || item.customerId || item.id;
       creditLimitService
-        .getCreditLimitHistory(item.customerId)
+        .getCreditLimitLogs(targetId)
         .then((data) => setHistories(data))
         .catch(() => setHistories([]))
         .finally(() => setLoading(false));
@@ -48,6 +49,9 @@ export const CreditLimitHistoryModal: React.FC<CreditLimitHistoryModalProps> = (
   }, [isOpen, item]);
 
   if (!isOpen || !item) return null;
+
+  const displayName = item.agencyName || item.customerName || '';
+  const displayCode = item.agencyCode || item.customerCode || '';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
@@ -63,7 +67,7 @@ export const CreditLimitHistoryModal: React.FC<CreditLimitHistoryModalProps> = (
                 Lịch Sử Điều Chỉnh Hạn Mức & Nhật Ký Kiểm Toán
               </h3>
               <p className="text-xs text-slate-500">
-                Đại lý: <strong className="text-slate-700">{item.customerName}</strong> ({item.customerCode})
+                Đại lý: <strong className="text-slate-700">{displayName}</strong> ({displayCode})
               </p>
             </div>
           </div>
@@ -94,6 +98,10 @@ export const CreditLimitHistoryModal: React.FC<CreditLimitHistoryModalProps> = (
             <div className="space-y-4">
               {histories.map((h, idx) => {
                 const diff = h.newCreditLimit - h.oldCreditLimit;
+                const timeString = h.performedAt || h.createdAt || '';
+                const actorName = h.performedBy || h.adjustedBy || 'Hệ thống';
+                const actorRole = h.performedByRole || h.adjustedRole || 'Kế toán';
+
                 return (
                   <div
                     key={h.id || idx}
@@ -103,14 +111,14 @@ export const CreditLimitHistoryModal: React.FC<CreditLimitHistoryModalProps> = (
                     <div className="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2">
                       <div className="flex items-center gap-1.5">
                         <Clock className="h-3.5 w-3.5 text-slate-400" />
-                        <span>{formatDate(h.createdAt)}</span>
+                        <span>{formatDate(timeString)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 font-medium text-slate-700">
                         <User className="h-3.5 w-3.5 text-slate-400" />
                         <span>
-                          {h.adjustedBy}{' '}
+                          {actorName}{' '}
                           <span className="text-[11px] text-slate-400 font-normal">
-                            ({h.adjustedRole})
+                            ({actorRole})
                           </span>
                         </span>
                       </div>

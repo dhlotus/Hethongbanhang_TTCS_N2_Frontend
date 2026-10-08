@@ -105,7 +105,7 @@ export const CreditLimitUpdateModal: React.FC<CreditLimitUpdateModalProps> = ({
     };
 
     try {
-      await onSubmit(item.customerId, payload);
+      await onSubmit(item.agencyId || item.customerId || item.id, payload);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Đã có lỗi xảy ra khi lưu dữ liệu.');
     }
@@ -125,7 +125,7 @@ export const CreditLimitUpdateModal: React.FC<CreditLimitUpdateModalProps> = ({
                 Khai Báo & Điều Chỉnh Hạn Mức Công Nợ (SN-34)
               </h3>
               <p className="text-xs text-slate-500">
-                Đại lý: <strong className="text-slate-700">{item.customerName}</strong> ({item.customerCode})
+                Đại lý: <strong className="text-slate-700">{item.agencyName || item.customerName}</strong> ({item.agencyCode || item.customerCode})
               </p>
             </div>
           </div>

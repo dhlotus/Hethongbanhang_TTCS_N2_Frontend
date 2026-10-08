@@ -41,7 +41,7 @@ export const CreditLimitStatusModal: React.FC<CreditLimitStatusModalProps> = ({
     }
 
     try {
-      await onSubmit(item.customerId, {
+      await onSubmit(item.agencyId || item.customerId || item.id, {
         status: targetStatus,
         reason: reason.trim(),
       });
@@ -82,7 +82,7 @@ export const CreditLimitStatusModal: React.FC<CreditLimitStatusModalProps> = ({
                   : 'Tạm Khóa Hạn Mức Tín Dụng'}
               </h3>
               <p className="text-xs text-slate-500">
-                Đại lý: <strong className="text-slate-700">{item.customerName}</strong>
+                Đại lý: <strong className="text-slate-700">{item.agencyName || item.customerName}</strong>
               </p>
             </div>
           </div>

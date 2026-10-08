@@ -16,6 +16,7 @@ import { CreditStatus } from '../../types/credit-limit';
 interface CreditLimitTableProps {
   items: CreditLimitItem[];
   loading?: boolean;
+  canEdit?: boolean;
   onEdit: (item: CreditLimitItem) => void;
   onToggleStatus: (item: CreditLimitItem) => void;
   onViewHistory: (item: CreditLimitItem) => void;
@@ -32,6 +33,7 @@ const formatCurrency = (val: number): string => {
 export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
   items,
   loading = false,
+  canEdit = true,
   onEdit,
   onToggleStatus,
   onViewHistory,
@@ -79,8 +81,10 @@ export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
           </thead>
           <tbody className="divide-y divide-slate-100">
             {items.map((item) => {
-              const effectiveLimit =
-                item.creditLimit + item.temporaryCreditLimit;
+              const tempLimit = item.temporaryCreditLimit || 0;
+              const effectiveLimit = item.creditLimit + tempLimit;
+              const displayName = item.agencyName || item.customerName || '';
+              const displayCode = item.agencyCode || item.customerCode || '';
               const isBlocked = item.status === CreditStatus.BLOCKED;
               const isExceeded = item.status === CreditStatus.EXCEEDED;
               const isWarning = item.status === CreditStatus.WARNING;
@@ -93,16 +97,16 @@ export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
                   {/* Cột 1: Thông tin đại lý */}
                   <td className="py-3.5 px-4">
                     <div className="font-bold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors text-sm">
-                      {item.customerName}
+                      {displayName}
                     </div>
                     <div className="flex items-center gap-2 mt-1 text-slate-500">
                       <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-[11px] font-semibold text-slate-700">
-                        {item.customerCode}
+                        {displayCode}
                       </span>
                       <span className="text-[11px] text-slate-400">|</span>
                       <span className="flex items-center gap-1 text-[11px]">
                         <Phone className="h-3 w-3 text-slate-400" />
-                        {item.phone}
+                        {item.phone || '-'}
                       </span>
                     </div>
                   </td>
@@ -125,10 +129,10 @@ export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
                     <div className="font-bold text-slate-900 text-sm">
                       {formatCurrency(item.creditLimit)}
                     </div>
-                    {item.temporaryCreditLimit > 0 && (
+                    {tempLimit > 0 && (
                       <div className="mt-0.5">
                         <span className="text-[10px] font-medium bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-200">
-                          + {formatCurrency(item.temporaryCreditLimit)} tạm thời
+                          + {formatCurrency(tempLimit)} tạm thời
                         </span>
                       </div>
                     )}
@@ -216,12 +220,21 @@ export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
                   {/* Cột 8: Nút thao tác */}
                   <td className="py-3.5 px-4 text-right">
                     <div className="flex items-center justify-end gap-1.5">
-                      {/* Nút Khai báo / Chỉnh sửa hạn mức */}
+                      {/* Nút Khai báo / Chỉnh sửa hạn mức (SN-34 RBAC: Ẩn/Disable nếu không có quyền) */}
                       <button
                         type="button"
-                        onClick={() => onEdit(item)}
-                        title="Khai báo & Điều chỉnh hạn mức"
-                        className="p-1.5 rounded-lg text-slate-600 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-colors"
+                        onClick={() => canEdit && onEdit(item)}
+                        disabled={!canEdit}
+                        title={
+                          canEdit
+                            ? 'Khai báo & Điều chỉnh hạn mức'
+                            : 'Chỉ Kế toán công nợ hoặc Quản lý kinh doanh mới có quyền cập nhật hạn mức'
+                        }
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          canEdit
+                            ? 'text-slate-600 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] cursor-pointer'
+                            : 'text-slate-300 opacity-40 cursor-not-allowed hover:bg-transparent'
+                        }`}
                       >
                         <Edit3 className="h-4 w-4" />
                       </button>
@@ -239,16 +252,21 @@ export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
                       {/* Nút Khóa / Mở khóa hạn mức */}
                       <button
                         type="button"
-                        onClick={() => onToggleStatus(item)}
+                        onClick={() => canEdit && onToggleStatus(item)}
+                        disabled={!canEdit}
                         title={
-                          isBlocked
-                            ? 'Mở khóa hạn mức tín dụng'
-                            : 'Tạm khóa hạn mức tín dụng'
+                          !canEdit
+                            ? 'Chỉ Kế toán công nợ hoặc Quản lý kinh doanh mới có quyền thay đổi trạng thái'
+                            : isBlocked
+                              ? 'Mở khóa hạn mức tín dụng'
+                              : 'Tạm khóa hạn mức tín dụng'
                         }
                         className={`p-1.5 rounded-lg transition-colors ${
-                          isBlocked
-                            ? 'text-emerald-600 hover:bg-emerald-50'
-                            : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
+                          !canEdit
+                            ? 'text-slate-300 opacity-40 cursor-not-allowed'
+                            : isBlocked
+                              ? 'text-emerald-600 hover:bg-emerald-50 cursor-pointer'
+                              : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'
                         }`}
                       >
                         {isBlocked ? (
