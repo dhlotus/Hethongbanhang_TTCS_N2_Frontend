@@ -63,7 +63,7 @@ export const CustomersPage: React.FC = () => {
     receiverName: '',
   });
 
-  // Tải danh sách đại lý từ API
+  // Tải danh sách đại lý từ API / Persistent Storage
   const loadCustomers = useCallback(async (keyword?: string) => {
     try {
       setLoading(true);
@@ -83,6 +83,21 @@ export const CustomersPage: React.FC = () => {
   useEffect(() => {
     loadCustomers();
   }, [loadCustomers]);
+
+  // Lắng nghe sự kiện đồng bộ từ Tạo đơn hàng (SN-38) hoặc Tab khác
+  useEffect(() => {
+    const handleSync = () => {
+      void loadCustomers(searchInput.trim() || undefined);
+    };
+
+    window.addEventListener('loha_customers_updated', handleSync);
+    window.addEventListener('storage', handleSync);
+
+    return () => {
+      window.removeEventListener('loha_customers_updated', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, [loadCustomers, searchInput]);
 
   // Làm mới dữ liệu
   const handleRefresh = async () => {
