@@ -12,7 +12,8 @@ export type OrderStatus =
   | 'SHIPPED' // Đã xuất kho / giao vận
   | 'DELIVERED' // Giao thành công
   | 'CANCELLED' // Đã hủy
-  | 'RETURNED'; // Hoàn hàng
+  | 'RETURNED' // Hoàn hàng
+  | 'CLOSED'; // Đã đóng
 
 export type PaymentStatus = 'UNPAID' | 'PARTIAL' | 'PAID';
 
@@ -80,6 +81,7 @@ export interface Order {
   approvalReasons?: string[];
   isCreditLimitExceeded?: boolean; // Cờ vượt hạn mức công nợ (SN-41)
   creditLimitExceededAmount?: number; // Số tiền vượt hạn mức (VND)
+  cancelReason?: string; // Lý do hủy đơn (SN-45)
   createdAt?: string;
   updatedAt?: string;
 }

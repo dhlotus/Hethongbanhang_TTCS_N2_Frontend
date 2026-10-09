@@ -46,6 +46,8 @@ import type {
   CustomerDebtStatus,
 } from '../types/order';
 import type { Product, ProductUnit } from '../types/products';
+import { OrderTimeline } from '../components/order-timeline';
+import { CancelOrderModal } from '../components/cancel-order-modal';
 
 // ──────────────────────────────────────────────────────────────────────────
 // QUANTITY INPUT HELPER COMPONENT (SN-28 / SN-38: Pure Numeric & Free Edit)
@@ -210,6 +212,12 @@ const ORDER_STATUS_CONFIG: Record<
     bgClass: 'bg-orange-50',
     textClass: 'text-orange-700',
     icon: <AlertCircle className="w-3 h-3" />,
+  },
+  CLOSED: {
+    label: 'Đã đóng',
+    bgClass: 'bg-slate-200',
+    textClass: 'text-slate-800',
+    icon: <CheckCircle2 className="w-3 h-3" />,
   },
 };
 
@@ -1677,6 +1685,9 @@ export const OrdersPage: React.FC = () => {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
   const [approvingOrder, setApprovingOrder] = useState(false);
+  
+  // Trạng thái hủy đơn hàng (SN-45)
+  const [cancelingOrder, setCancelingOrder] = useState<Order | null>(null);
   const [printOrder, setPrintOrder] = useState<Order | null>(null);
   const [isCloning, setIsCloning] = useState<string | null>(null);
 
@@ -1810,6 +1821,20 @@ export const OrdersPage: React.FC = () => {
       showToast('error', error instanceof Error ? error.message : 'Không thể duyệt đơn hàng');
     } finally {
       setApprovingOrder(false);
+    }
+  };
+
+  // SN-45: Xử lý hủy đơn hàng
+  const handleCancelOrderSubmit = async (reason: string) => {
+    if (!cancelingOrder?.id) return;
+    try {
+      const updatedOrder = await ordersService.updateOrderStatus(cancelingOrder.id, 'CANCELLED', reason);
+      showToast('success', 'Đã hủy đơn hàng và nhả tồn kho thành công');
+      setCancelingOrder(null);
+      setOrders((current) => current.map((item) => item.id === updatedOrder.id ? updatedOrder : item));
+      setViewOrder((current) => current?.id === updatedOrder.id ? updatedOrder : current);
+    } catch (err: any) {
+      throw new Error(err.message || 'Lỗi khi hủy đơn hàng');
     }
   };
 
@@ -2113,7 +2138,7 @@ export const OrdersPage: React.FC = () => {
       {viewOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[88vh] flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">
                   Chi tiết Đơn hàng
@@ -2122,10 +2147,15 @@ export const OrdersPage: React.FC = () => {
               </div>
               <button
                 onClick={() => setViewOrder(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* SN-45: Hiển thị Vòng đời đơn hàng */}
+            <div className="border-b border-slate-100 bg-white">
+              <OrderTimeline status={viewOrder.status} />
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -2223,6 +2253,13 @@ export const OrdersPage: React.FC = () => {
                   {viewOrder.note}
                 </div>
               )}
+
+              {viewOrder.cancelReason && (
+                <div className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
+                  <span className="font-semibold text-red-800">Lý do hủy: </span>
+                  {viewOrder.cancelReason}
+                </div>
+              )}
             </div>
 
             <div className="px-5 py-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
@@ -2265,6 +2302,18 @@ export const OrdersPage: React.FC = () => {
                     {approvingOrder ? 'Đang duyệt...' : 'Duyệt đơn'}
                   </button>
                 )}
+                
+                {/* Nút hủy đơn hàng chỉ hiển thị khi đơn chưa xuất kho hoặc đóng/hủy */}
+                {!['SHIPPED', 'DELIVERED', 'CLOSED', 'CANCELLED'].includes(viewOrder.status) && (
+                  <button
+                    type="button"
+                    onClick={() => setCancelingOrder(viewOrder)}
+                    className="px-4 py-2 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-red-100"
+                  >
+                    Hủy đơn
+                  </button>
+                )}
+                
                 <button
                   onClick={() => setViewOrder(null)}
                   className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
@@ -2276,6 +2325,14 @@ export const OrdersPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal Hủy Đơn Hàng (SN-45) */}
+      <CancelOrderModal
+        isOpen={Boolean(cancelingOrder)}
+        orderCode={cancelingOrder?.orderCode || ''}
+        onClose={() => setCancelingOrder(null)}
+        onConfirm={handleCancelOrderSubmit}
+      />
 
       {/* Modal In & Xuất PDF Đơn hàng (SN-47) */}
       <OrderPrintModal

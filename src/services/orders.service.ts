@@ -750,17 +750,24 @@ export const ordersService = {
   /**
    * Cập nhật trạng thái đơn hàng (APPROVED, CANCELLED...)
    */
-  async updateOrderStatus(id: string, status: OrderStatus): Promise<Order> {
+  async updateOrderStatus(id: string, status: OrderStatus, reason?: string): Promise<Order> {
     const token = tokenStorage.getAccessToken();
     if (token?.startsWith('demo-jwt-')) {
       const all = getStoredDemoOrders();
       const idx = all.findIndex((o) => o.id === id);
       if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${id}`);
-      all[idx] = { ...all[idx], status, updatedAt: new Date().toISOString() };
+      all[idx] = { 
+        ...all[idx], 
+        status, 
+        updatedAt: new Date().toISOString(),
+        ...(reason && status === 'CANCELLED' ? { cancelReason: reason } : {})
+      };
       saveStoredDemoOrders(all);
       return all[idx];
     }
-    const res = await apiClient.patch<Order>(`/orders/${id}/status`, { status });
+    const payload: any = { status };
+    if (reason) payload.reason = reason;
+    const res = await apiClient.patch<Order>(`/orders/${id}/status`, payload);
     return res.data;
   },
 
