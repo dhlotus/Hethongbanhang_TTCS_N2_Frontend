@@ -10,6 +10,7 @@ import type {
   ImportProductItemDto,
   PreviewImportResult,
   ConfirmImportResult,
+  ProductPriceHistory,
 } from '../types/products';
 
 /**
@@ -395,6 +396,14 @@ const sanitizeProduct = (p: Product, canViewCost: boolean): Product => {
 };
 
 export const productsService = {
+  /**
+   * Lấy lịch sử thay đổi giá của sản phẩm (SN-29)
+   */
+  async getPriceHistory(id: string): Promise<ProductPriceHistory[]> {
+    const response = await apiClient.get<ProductPriceHistory[]>(`/products/${id}/price-history`);
+    return response.data;
+  },
+
   /**
    * Lấy danh sách nhóm hàng phân cấp (Tree Structure)
    */
