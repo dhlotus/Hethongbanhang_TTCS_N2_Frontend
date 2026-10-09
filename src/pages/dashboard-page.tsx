@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp,
   Package,
@@ -11,7 +10,6 @@ import {
   RefreshCw,
   ArrowUpRight,
   ArrowDownRight,
-  ChevronRight,
   ChevronDown,
 } from 'lucide-react';
 import { DropdownMenu } from '../components/dropdown-menu';
@@ -74,7 +72,6 @@ export const DashboardPage: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [lastUpdatedTime, setLastUpdatedTime] = useState<string>('');
-  const navigate = useNavigate();
   const user = getStoredUser();
 
   const roles = user?.roles || [];
@@ -128,7 +125,7 @@ export const DashboardPage: React.FC = () => {
   const { metrics, charts } = data || {} as DashboardOverviewResponse;
 
   return (
-    <div className="space-y-6 pb-6">
+    <div className="space-y-6">
       {/* ── DASHBOARD ACTION & FILTER TOOLBAR ── */}
       <div className="bg-white p-3.5 sm:px-5 sm:py-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3.5">
         {/* Bên trái: Trạng thái thời gian thực & Kỳ báo cáo hiện tại */}
@@ -405,8 +402,6 @@ export const DashboardPage: React.FC = () => {
                     fill="#fb7185" 
                     radius={[0, 4, 4, 0]} 
                     maxBarSize={28}
-                    onClick={(data: any) => navigate(`/sales/customers/${data.payload?.customerId || data.customerId}`)}
-                    className="cursor-pointer hover:opacity-80 transition-opacity"
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -421,7 +416,7 @@ export const DashboardPage: React.FC = () => {
           <div className="border-b border-slate-200 px-4 sm:px-6 py-4 flex flex-wrap justify-between items-center gap-2 bg-slate-50/50">
             <div>
               <h3 className="text-base sm:text-lg font-bold text-slate-900">Danh sách cần thu hồi công nợ gấp</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Nhấp vào từng đại lý để chuyển nhanh sang trang quản lý công nợ chi tiết</p>
+              <p className="text-xs text-slate-500 mt-0.5">Danh sách các đại lý có số dư nợ quá thời hạn thanh toán quy định</p>
             </div>
             <span className="inline-flex items-center rounded-full bg-red-50 border border-red-200/60 px-2.5 py-0.5 text-xs font-semibold text-red-700 shadow-2xs">
               {charts.highRiskAgencies.length} đại lý
@@ -435,20 +430,18 @@ export const DashboardPage: React.FC = () => {
                   <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Tên Đại lý</th>
                   <th className="hidden sm:table-cell px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">NV Phụ trách</th>
                   <th className="px-4 sm:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Dư nợ quá hạn</th>
-                  <th className="px-4 sm:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
                 {charts.highRiskAgencies.map((agency) => (
                   <tr 
                     key={agency.customerId} 
-                    onClick={() => navigate(`/sales/customers/${agency.customerId}`)}
-                    className="hover:bg-indigo-50/40 cursor-pointer transition-colors group"
+                    className="hover:bg-slate-50/70 transition-colors"
                   >
-                    <td className="whitespace-nowrap px-4 sm:px-6 py-3.5 text-xs sm:text-sm font-semibold text-indigo-600 group-hover:text-indigo-800">
+                    <td className="whitespace-nowrap px-4 sm:px-6 py-3.5 text-xs sm:text-sm font-semibold text-indigo-600">
                       {agency.customerCode}
                     </td>
-                    <td className="whitespace-nowrap px-4 sm:px-6 py-3.5 text-xs sm:text-sm font-medium text-slate-900 max-w-[150px] sm:max-w-none truncate">
+                    <td className="whitespace-nowrap px-4 sm:px-6 py-3.5 text-xs sm:text-sm font-medium text-slate-900 max-w-[160px] sm:max-w-none truncate">
                       {agency.customerName}
                     </td>
                     <td className="hidden sm:table-cell whitespace-nowrap px-4 sm:px-6 py-3.5 text-xs sm:text-sm text-slate-500">
@@ -456,9 +449,6 @@ export const DashboardPage: React.FC = () => {
                     </td>
                     <td className="whitespace-nowrap px-4 sm:px-6 py-3.5 text-right text-xs sm:text-sm font-bold text-red-600">
                       {formatCurrency(agency.overdueAmount)}
-                    </td>
-                    <td className="whitespace-nowrap px-4 sm:px-6 py-3.5 text-right text-xs sm:text-sm font-medium text-slate-400 group-hover:text-indigo-600">
-                      <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 inline-block group-hover:translate-x-0.5 transition-transform" />
                     </td>
                   </tr>
                 ))}
