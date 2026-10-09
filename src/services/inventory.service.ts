@@ -76,6 +76,8 @@ export const inventoryService = {
       sku: string;
       name: string;
       stockQuantity: number;
+      physicalStockQuantity: number;
+      reservedQuantity: number;
       baseUnit: string;
       units: Array<{ unitName: string; conversionRate: number; isBaseUnit: boolean }>;
       warehouse: string;
@@ -87,6 +89,8 @@ export const inventoryService = {
         sku: p.sku,
         name: p.name,
         stockQuantity: p.stockQuantity,
+        physicalStockQuantity: p.stockQuantity,
+        reservedQuantity: 0,
         baseUnit: p.baseUnit,
         units: (p.units || []).map((u: ProductUnit) => ({
           unitName: u.unitName,
@@ -97,23 +101,8 @@ export const inventoryService = {
       }));
     }
 
-    try {
-      const response = await apiClient.get('/inventory/stock');
-      return response.data;
-    } catch {
-      return MOCK_PRODUCTS.map((p: Product) => ({
-        sku: p.sku,
-        name: p.name,
-        stockQuantity: p.stockQuantity,
-        baseUnit: p.baseUnit,
-        units: (p.units || []).map((u: ProductUnit) => ({
-          unitName: u.unitName,
-          conversionRate: u.conversionRate,
-          isBaseUnit: Boolean(u.isBaseUnit),
-        })),
-        warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
-      }));
-    }
+    const response = await apiClient.get('/inventory/stock');
+    return response.data;
   },
 
   /**
