@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Search, X, Loader2 } from "lucide-react";
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, X, Loader2 } from 'lucide-react';
 
-export interface SearchInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
+export interface SearchInputProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  'onChange'
+> {
   value?: string;
   defaultValue?: string;
   onChange?: (value: string) => void;
@@ -22,19 +24,19 @@ export interface SearchInputProps
  */
 export const SearchInput: React.FC<SearchInputProps> = ({
   value: controlledValue,
-  defaultValue = "",
+  defaultValue = '',
   onChange,
   onClear,
   isLoading = false,
   debounceMs = 300,
-  placeholder = "Tìm kiếm...",
-  className = "",
+  placeholder = 'Tìm kiếm...',
+  className = '',
   disabled = false,
   ...props
 }) => {
   const isControlled = controlledValue !== undefined;
   const [internalValue, setInternalValue] = useState<string>(
-    isControlled ? controlledValue : defaultValue,
+    isControlled ? controlledValue : defaultValue
   );
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -61,12 +63,12 @@ export const SearchInput: React.FC<SearchInputProps> = ({
 
   const handleClear = () => {
     if (!isControlled) {
-      setInternalValue("");
+      setInternalValue('');
     }
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    onChange?.("");
+    onChange?.('');
     onClear?.();
   };
 

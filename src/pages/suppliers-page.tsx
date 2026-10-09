@@ -616,7 +616,7 @@ export const SuppliersPage: React.FC = () => {
         isOpen={
           deleteModalOpen &&
           Boolean(supplierToDelete) &&
-          !Boolean(supplierToDelete?.hasReceipts ?? supplierToDelete?.has_receipts)
+          !(supplierToDelete?.hasReceipts ?? supplierToDelete?.has_receipts)
         }
         onCancel={() => {
           setDeleteModalOpen(false);

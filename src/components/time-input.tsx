@@ -1,5 +1,5 @@
-import React, { useRef, useId } from "react";
-import { Clock, X, AlertCircle } from "lucide-react";
+import React, { useRef, useId } from 'react';
+import { Clock, X, AlertCircle } from 'lucide-react';
 
 export interface TimeInputProps {
   value?: string; // Định dạng HH:mm (24 giờ)
@@ -22,16 +22,16 @@ export interface TimeInputProps {
  * - Focus ring thương hiệu Primary (#371cdb)
  */
 export const TimeInput: React.FC<TimeInputProps> = ({
-  value = "",
+  value = '',
   onChange,
   disabled = false,
   label,
   required = false,
   error,
   helperText,
-  placeholder = "HH:mm",
+  placeholder = 'HH:mm',
   showClear = true,
-  className = "",
+  className = '',
   id,
 }) => {
   const generatedId = useId();
@@ -41,7 +41,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({
   const handleOpenPicker = () => {
     if (disabled) return;
     if (inputRef.current) {
-      if (typeof inputRef.current.showPicker === "function") {
+      if (typeof inputRef.current.showPicker === 'function') {
         try {
           inputRef.current.showPicker();
         } catch {
@@ -56,9 +56,9 @@ export const TimeInput: React.FC<TimeInputProps> = ({
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (disabled) return;
-    onChange?.("");
+    onChange?.('');
     if (inputRef.current) {
-      inputRef.current.value = "";
+      inputRef.current.value = '';
     }
   };
 
@@ -78,17 +78,17 @@ export const TimeInput: React.FC<TimeInputProps> = ({
         onClick={handleOpenPicker}
         className={`relative flex items-center w-full h-10.5 sm:h-11 px-3.5 rounded-md border transition-all cursor-pointer select-none bg-white ${
           disabled
-            ? "bg-slate-100 border-[var(--color-border-disabled)] text-slate-400 cursor-not-allowed"
+            ? 'bg-slate-100 border-[var(--color-border-disabled)] text-slate-400 cursor-not-allowed'
             : error
-            ? "border-[var(--color-border-error)] focus-within:ring-4 focus-within:ring-rose-500/10"
-            : "border-[var(--color-border)] hover:border-[var(--color-border-hover)] focus-within:border-[var(--color-border-focus)] focus-within:ring-4 focus-within:ring-[var(--color-primary-ring)]"
+              ? 'border-[var(--color-border-error)] focus-within:ring-4 focus-within:ring-rose-500/10'
+              : 'border-[var(--color-border)] hover:border-[var(--color-border-hover)] focus-within:border-[var(--color-border-focus)] focus-within:ring-4 focus-within:ring-[var(--color-primary-ring)]'
         }`}
       >
         <Clock className="w-4 h-4 mr-2.5 shrink-0 text-slate-400" />
 
         <span
           className={`flex-1 text-base truncate font-normal ${
-            value ? "text-slate-900" : "text-slate-400"
+            value ? 'text-slate-900' : 'text-slate-400'
           }`}
         >
           {value || placeholder}
@@ -109,7 +109,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({
           ref={inputRef}
           id={inputId}
           type="time"
-          value={value || ""}
+          value={value || ''}
           disabled={disabled}
           onChange={(e) => onChange?.(e.target.value)}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed -z-0"

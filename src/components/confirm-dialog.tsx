@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import { AlertTriangle, AlertCircle, HelpCircle, X } from "lucide-react";
-import { Button } from "./button";
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { AlertTriangle, AlertCircle, HelpCircle, X } from 'lucide-react';
+import { Button } from './button';
 
-export type ConfirmDialogType = "danger" | "warning" | "primary";
+export type ConfirmDialogType = 'danger' | 'warning' | 'primary';
 
 export interface ConfirmDialogProps {
   isOpen: boolean;
@@ -31,11 +31,11 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onConfirm,
   title,
   message,
-  confirmText = "Xác nhận thực hiện",
-  cancelText = "Hủy bỏ",
-  type = "danger",
+  confirmText = 'Xác nhận thực hiện',
+  cancelText = 'Hủy bỏ',
+  type = 'danger',
   isLoading = false,
-  maxWidth = "max-w-md",
+  maxWidth = 'max-w-md',
 }) => {
   const [isRendered, setIsRendered] = useState(isOpen);
   const [isClosing, setIsClosing] = useState(false);
@@ -57,12 +57,12 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !isLoading) {
+      if (e.key === 'Escape' && !isLoading) {
         onCancel();
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isLoading, onCancel]);
 
   if (!isRendered) return null;
@@ -70,18 +70,18 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   const typeConfig = {
     danger: {
       icon: <AlertCircle className="w-5 h-5 text-rose-600" />,
-      iconBg: "bg-rose-100",
-      confirmVariant: "danger" as const,
+      iconBg: 'bg-rose-100',
+      confirmVariant: 'danger' as const,
     },
     warning: {
       icon: <AlertTriangle className="w-5 h-5 text-amber-600" />,
-      iconBg: "bg-amber-100",
-      confirmVariant: "primary" as const,
+      iconBg: 'bg-amber-100',
+      confirmVariant: 'primary' as const,
     },
     primary: {
       icon: <HelpCircle className="w-5 h-5 text-[var(--color-primary)]" />,
-      iconBg: "bg-[var(--color-primary-light)]",
-      confirmVariant: "primary" as const,
+      iconBg: 'bg-[var(--color-primary-light)]',
+      confirmVariant: 'primary' as const,
     },
   }[type];
 
@@ -94,7 +94,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       {/* Backdrop */}
       <div
         className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-150 ${
-          isClosing ? "opacity-0" : "opacity-100"
+          isClosing ? 'opacity-0' : 'opacity-100'
         }`}
         onClick={() => !isLoading && onCancel()}
       />
@@ -102,7 +102,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       {/* Dialog box */}
       <div
         className={`relative w-full ${maxWidth} rounded-xl bg-white border border-slate-200/80 shadow-xl overflow-hidden transition-all duration-150 ${
-          isClosing ? "scale-95 opacity-0" : "scale-100 opacity-100"
+          isClosing ? 'scale-95 opacity-0' : 'scale-100 opacity-100'
         }`}
       >
         <div className="p-5 sm:p-6">
@@ -113,12 +113,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               {typeConfig.icon}
             </div>
             <div className="flex-1 min-w-0 pr-4">
-              <h3 className="text-base font-bold text-slate-900 leading-snug">
-                {title}
-              </h3>
-              <div className="mt-1.5 text-xs text-slate-600 leading-relaxed">
-                {message}
-              </div>
+              <h3 className="text-base font-bold text-slate-900 leading-snug">{title}</h3>
+              <div className="mt-1.5 text-xs text-slate-600 leading-relaxed">{message}</div>
             </div>
             {!isLoading && (
               <button
@@ -155,6 +151,6 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </div>
       </div>
     </div>,
-    document.body,
+    document.body
   );
 };

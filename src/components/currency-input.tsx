@@ -1,7 +1,9 @@
-import React, { forwardRef, useImperativeHandle, useRef, useState, useEffect } from "react";
+import React, { forwardRef, useImperativeHandle, useRef, useState, useEffect } from 'react';
 
-export interface CurrencyInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> {
+export interface CurrencyInputProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  'onChange' | 'value'
+> {
   value?: number | null;
   onChange?: (value: number | undefined) => void;
   onValueChange?: (value: number | undefined) => void;
@@ -15,15 +17,15 @@ export interface CurrencyInputProps
  * Định dạng số thành chuỗi phân cách hàng nghìn bằng dấu chấm (Chuẩn Việt Nam: 15.000.000)
  */
 export const formatVND = (value: number | undefined | null): string => {
-  if (value === undefined || value === null || isNaN(value)) return "";
-  return new Intl.NumberFormat("vi-VN").format(Math.round(value));
+  if (value === undefined || value === null || isNaN(value)) return '';
+  return new Intl.NumberFormat('vi-VN').format(Math.round(value));
 };
 
 /**
  * Phân tích chuỗi có dấu phân cách hàng nghìn thành số nguyên
  */
 export const parseVND = (formattedValue: string): number | undefined => {
-  const digits = formattedValue.replace(/\D/g, "");
+  const digits = formattedValue.replace(/\D/g, '');
   if (!digits) return undefined;
   const num = parseInt(digits, 10);
   return isNaN(num) ? undefined : num;
@@ -33,20 +35,20 @@ export const parseVND = (formattedValue: string): number | undefined => {
  * Đọc vắn tắt giá trị tiền tệ trong B2B (15 triệu đ, 1,5 tỷ đ) giúp người dùng kiểm chứng ngay lập tức
  */
 export const formatVNDWords = (num: number | undefined | null): string => {
-  if (!num || num <= 0) return "";
+  if (!num || num <= 0) return '';
   if (num >= 1_000_000_000) {
-    const ty = (num / 1_000_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 2 });
+    const ty = (num / 1_000_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
     return `${ty} tỷ`;
   }
   if (num >= 1_000_000) {
-    const trieu = (num / 1_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 2 });
+    const trieu = (num / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
     return `${trieu} triệu`;
   }
   if (num >= 1_000) {
-    const nghin = (num / 1_000).toLocaleString("vi-VN", { maximumFractionDigits: 1 });
+    const nghin = (num / 1_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 });
     return `${nghin} nghìn`;
   }
-  return `${num.toLocaleString("vi-VN")} đ`;
+  return `${num.toLocaleString('vi-VN')} đ`;
 };
 
 /**
@@ -62,12 +64,12 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       value,
       onChange,
       onValueChange,
-      suffix = "đ",
+      suffix = 'đ',
       showWordsBadge = false,
       step = 1000,
       disabled = false,
-      className = "",
-      placeholder = "0",
+      className = '',
+      placeholder = '0',
       onKeyDown,
       ...restProps
     },
@@ -78,12 +80,12 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
 
     // Chuỗi hiển thị bên trong input
     const [displayValue, setDisplayValue] = useState<string>(() =>
-      value !== undefined && value !== null ? formatVND(value) : ""
+      value !== undefined && value !== null ? formatVND(value) : ''
     );
 
     // Đồng bộ khi prop `value` thay đổi từ bên ngoài
     useEffect(() => {
-      const formatted = value !== undefined && value !== null ? formatVND(value) : "";
+      const formatted = value !== undefined && value !== null ? formatVND(value) : '';
       setDisplayValue(formatted);
     }, [value]);
 
@@ -92,10 +94,10 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       const cursorStart = e.target.selectionStart || 0;
 
       // Đếm số lượng chữ số nằm trước vị trí con trỏ trước khi format lại
-      const digitsBeforeCursor = rawText.slice(0, cursorStart).replace(/\D/g, "").length;
+      const digitsBeforeCursor = rawText.slice(0, cursorStart).replace(/\D/g, '').length;
 
       const numeric = parseVND(rawText);
-      const newDisplay = numeric !== undefined ? formatVND(numeric) : "";
+      const newDisplay = numeric !== undefined ? formatVND(numeric) : '';
 
       setDisplayValue(newDisplay);
       onChange?.(numeric);
@@ -128,14 +130,14 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (disabled) return;
 
-      if (e.key === "ArrowUp") {
+      if (e.key === 'ArrowUp') {
         e.preventDefault();
         const currentNum = parseVND(displayValue) || 0;
         const nextNum = currentNum + step;
         setDisplayValue(formatVND(nextNum));
         onChange?.(nextNum);
         onValueChange?.(nextNum);
-      } else if (e.key === "ArrowDown") {
+      } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         const currentNum = parseVND(displayValue) || 0;
         const nextNum = Math.max(0, currentNum - step);
@@ -148,7 +150,8 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     };
 
     const numValue = parseVND(displayValue);
-    const wordsDesc = showWordsBadge && numValue && numValue >= 1000 ? formatVNDWords(numValue) : null;
+    const wordsDesc =
+      showWordsBadge && numValue && numValue >= 1000 ? formatVNDWords(numValue) : null;
 
     return (
       <div className="relative w-full flex items-center">
@@ -162,9 +165,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder={placeholder}
-          className={`${className} ${suffix ? "pr-8" : ""} ${
-            wordsDesc ? "pr-24" : ""
-          }`}
+          className={`${className} ${suffix ? 'pr-8' : ''} ${wordsDesc ? 'pr-24' : ''}`}
           {...restProps}
         />
 
@@ -186,4 +187,4 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
   }
 );
 
-CurrencyInput.displayName = "CurrencyInput";
+CurrencyInput.displayName = 'CurrencyInput';

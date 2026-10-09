@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { AuditFilterBar } from "../components/audit-log/audit-filter-bar";
-import { AuditTable } from "../components/audit-log/audit-table";
-import { DiffViewerModal } from "../components/audit-log/diff-viewer-modal";
-import { showToast } from "../components/toast";
-import { auditLogService } from "../services/audit-log.service";
+import React, { useState, useEffect, useCallback } from 'react';
+import { AuditFilterBar } from '../components/audit-log/audit-filter-bar';
+import { AuditTable } from '../components/audit-log/audit-table';
+import { DiffViewerModal } from '../components/audit-log/diff-viewer-modal';
+import { showToast } from '../components/toast';
+import { auditLogService } from '../services/audit-log.service';
 import type {
   AuditLogItem,
   AuditLogQueryParams,
   PaginatedAuditLogsResponse,
-} from "../types/audit-log";
+} from '../types/audit-log';
 
 export const AuditLogsPage: React.FC = () => {
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
@@ -20,12 +20,12 @@ export const AuditLogsPage: React.FC = () => {
 
   // Bộ lọc
   const [filters, setFilters] = useState<AuditLogQueryParams>({
-    startDate: "",
-    endDate: "",
-    userId: "ALL",
-    searchUser: "",
-    entity: "ALL",
-    action: "ALL",
+    startDate: '',
+    endDate: '',
+    userId: 'ALL',
+    searchUser: '',
+    entity: 'ALL',
+    action: 'ALL',
   });
 
   // Modal xem chi tiết Diff JSON
@@ -46,7 +46,7 @@ export const AuditLogsPage: React.FC = () => {
       setTotal(res.total);
       setTotalPages(res.totalPages);
     } catch {
-      showToast("error", "Không thể tải nhật ký hệ thống");
+      showToast('error', 'Không thể tải nhật ký hệ thống');
     } finally {
       setLoading(false);
     }
@@ -65,12 +65,12 @@ export const AuditLogsPage: React.FC = () => {
   // Đặt lại bộ lọc về mặc định
   const handleResetFilters = () => {
     setFilters({
-      startDate: "",
-      endDate: "",
-      userId: "ALL",
-      searchUser: "",
-      entity: "ALL",
-      action: "ALL",
+      startDate: '',
+      endDate: '',
+      userId: 'ALL',
+      searchUser: '',
+      entity: 'ALL',
+      action: 'ALL',
     });
     setPage(1);
   };
@@ -83,7 +83,6 @@ export const AuditLogsPage: React.FC = () => {
 
   return (
     <div className="space-y-4 sm:space-y-5">
-
       {/* Khu vực Bộ lọc và thao tác (FilterBar) */}
       <AuditFilterBar
         filters={filters}

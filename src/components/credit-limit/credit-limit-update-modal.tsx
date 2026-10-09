@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-  X,
-  CreditCard,
-  AlertCircle,
-  Check,
-  ShieldAlert,
-} from 'lucide-react';
-import type {
-  CreditLimitItem,
-  UpdateCreditLimitPayload,
-} from '../../types/credit-limit';
+import { X, CreditCard, AlertCircle, Check, ShieldAlert } from 'lucide-react';
+import type { CreditLimitItem, UpdateCreditLimitPayload } from '../../types/credit-limit';
 import { PaymentTerm } from '../../types/credit-limit';
 
 interface CreditLimitUpdateModalProps {
@@ -49,7 +40,7 @@ export const CreditLimitUpdateModal: React.FC<CreditLimitUpdateModalProps> = ({
       setTemporaryLimitExpiry(
         item.temporaryLimitExpiry
           ? new Date(item.temporaryLimitExpiry).toISOString().slice(0, 10)
-          : '',
+          : ''
       );
       setAllowOverLimitOrder(Boolean(item.allowOverLimitOrder));
       setReason('');
@@ -60,10 +51,7 @@ export const CreditLimitUpdateModal: React.FC<CreditLimitUpdateModalProps> = ({
   if (!isOpen || !item) return null;
 
   // Xử lý nhập tiền có dấu phân cách hàng nghìn
-  const handleMoneyChange = (
-    raw: string,
-    setter: (val: string) => void,
-  ) => {
+  const handleMoneyChange = (raw: string, setter: (val: string) => void) => {
     const numericOnly = raw.replace(/\D/g, '');
     const num = Number(numericOnly || 0);
     setter(formatVND(num));
@@ -90,7 +78,9 @@ export const CreditLimitUpdateModal: React.FC<CreditLimitUpdateModalProps> = ({
     }
 
     if (!reason.trim() || reason.trim().length < 5) {
-      setErrorMsg('Vui lòng nhập lý do điều chỉnh hạn mức (tối thiểu 5 ký tự) để phục vụ kiểm toán.');
+      setErrorMsg(
+        'Vui lòng nhập lý do điều chỉnh hạn mức (tối thiểu 5 ký tự) để phục vụ kiểm toán.'
+      );
       return;
     }
 
@@ -99,7 +89,9 @@ export const CreditLimitUpdateModal: React.FC<CreditLimitUpdateModalProps> = ({
       maxDebtDays,
       paymentTerms,
       temporaryCreditLimit: parsedTempLimit,
-      temporaryLimitExpiry: temporaryLimitExpiry ? new Date(temporaryLimitExpiry).toISOString() : undefined,
+      temporaryLimitExpiry: temporaryLimitExpiry
+        ? new Date(temporaryLimitExpiry).toISOString()
+        : undefined,
       allowOverLimitOrder,
       reason: reason.trim(),
     };
@@ -125,7 +117,9 @@ export const CreditLimitUpdateModal: React.FC<CreditLimitUpdateModalProps> = ({
                 Khai Báo & Điều Chỉnh Hạn Mức Công Nợ (SN-34)
               </h3>
               <p className="text-xs text-slate-500">
-                Đại lý: <strong className="text-slate-700">{item.agencyName || item.customerName}</strong> ({item.agencyCode || item.customerCode})
+                Đại lý:{' '}
+                <strong className="text-slate-700">{item.agencyName || item.customerName}</strong> (
+                {item.agencyCode || item.customerCode})
               </p>
             </div>
           </div>
@@ -216,9 +210,7 @@ export const CreditLimitUpdateModal: React.FC<CreditLimitUpdateModalProps> = ({
                   onChange={(e) => setMaxDebtDays(Number(e.target.value) || 0)}
                   className="w-full px-3 py-2 pr-12 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
                 />
-                <span className="absolute right-3 top-2.5 text-xs text-slate-400">
-                  ngày
-                </span>
+                <span className="absolute right-3 top-2.5 text-xs text-slate-400">ngày</span>
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
                 Số ngày tối đa kể từ khi nhận hàng trước khi bị tính quá hạn.
@@ -239,7 +231,9 @@ export const CreditLimitUpdateModal: React.FC<CreditLimitUpdateModalProps> = ({
               >
                 <option value={PaymentTerm.COD}>COD - Thanh toán ngay khi nhận hàng</option>
                 <option value={PaymentTerm.NET_15}>NET 15 - Thanh toán trong 15 ngày</option>
-                <option value={PaymentTerm.NET_30}>NET 30 - Thanh toán trong 30 ngày (Chuẩn)</option>
+                <option value={PaymentTerm.NET_30}>
+                  NET 30 - Thanh toán trong 30 ngày (Chuẩn)
+                </option>
                 <option value={PaymentTerm.NET_45}>NET 45 - Thanh toán trong 45 ngày</option>
                 <option value={PaymentTerm.NET_60}>NET 60 - Thanh toán trong 60 ngày</option>
                 <option value={PaymentTerm.EOM_30}>EOM + 30 - Cuối tháng cộng thêm 30 ngày</option>
@@ -255,9 +249,7 @@ export const CreditLimitUpdateModal: React.FC<CreditLimitUpdateModalProps> = ({
                 <input
                   type="text"
                   value={temporaryCreditLimitStr}
-                  onChange={(e) =>
-                    handleMoneyChange(e.target.value, setTemporaryCreditLimitStr)
-                  }
+                  onChange={(e) => handleMoneyChange(e.target.value, setTemporaryCreditLimitStr)}
                   className="w-full px-3 py-2 pr-10 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
                   placeholder="0"
                 />
@@ -304,8 +296,8 @@ export const CreditLimitUpdateModal: React.FC<CreditLimitUpdateModalProps> = ({
             <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
             <div className="text-xs text-blue-900 leading-relaxed">
               <p>
-                Dư nợ hiện hành của đại lý: <strong>{formatVND(item.currentDebt)} đ</strong>.
-                Với hạn mức mới, tỷ lệ sử dụng công nợ ước tính đạt <strong>{newUsageRate}%</strong>.
+                Dư nợ hiện hành của đại lý: <strong>{formatVND(item.currentDebt)} đ</strong>. Với
+                hạn mức mới, tỷ lệ sử dụng công nợ ước tính đạt <strong>{newUsageRate}%</strong>.
               </p>
             </div>
           </div>

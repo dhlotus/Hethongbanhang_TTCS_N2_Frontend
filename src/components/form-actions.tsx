@@ -1,5 +1,5 @@
-import React from "react";
-import { Button } from "./button";
+import React from 'react';
+import { Button } from './button';
 
 export interface FormActionsProps {
   submitText?: string;
@@ -7,8 +7,8 @@ export interface FormActionsProps {
   onCancel?: () => void;
   isSubmitting?: boolean;
   loadingText?: string;
-  submitVariant?: "primary" | "danger";
-  align?: "left" | "center" | "right" | "between";
+  submitVariant?: 'primary' | 'danger';
+  align?: 'left' | 'center' | 'right' | 'between';
   extraActions?: React.ReactNode;
   className?: string;
 }
@@ -20,21 +20,21 @@ export interface FormActionsProps {
  * - Căn chỉnh thống nhất ở chân Form
  */
 export const FormActions: React.FC<FormActionsProps> = ({
-  submitText = "Lưu thay đổi",
-  cancelText = "Hủy bỏ",
+  submitText = 'Lưu thay đổi',
+  cancelText = 'Hủy bỏ',
   onCancel,
   isSubmitting = false,
-  loadingText = "Đang lưu...",
-  submitVariant = "primary",
-  align = "right",
+  loadingText = 'Đang lưu...',
+  submitVariant = 'primary',
+  align = 'right',
   extraActions,
-  className = "",
+  className = '',
 }) => {
   const alignStyles = {
-    left: "justify-start",
-    center: "justify-center",
-    right: "justify-end",
-    between: "justify-between",
+    left: 'justify-start',
+    center: 'justify-center',
+    right: 'justify-end',
+    between: 'justify-between',
   }[align];
 
   return (

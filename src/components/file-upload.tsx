@@ -1,5 +1,5 @@
-import React, { useState, useRef } from "react";
-import { UploadCloud, X, File, AlertCircle, Loader2 } from "lucide-react";
+import React, { useState, useRef } from 'react';
+import { UploadCloud, X, File, AlertCircle, Loader2 } from 'lucide-react';
 
 export interface FileUploadProps {
   label?: string;
@@ -27,7 +27,7 @@ export interface FileUploadProps {
  */
 export const FileUpload: React.FC<FileUploadProps> = ({
   label,
-  accept = "image/*",
+  accept = 'image/*',
   maxSizeMB = 5,
   value,
   onChange,
@@ -38,7 +38,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   required = false,
   error: propError,
   helperText,
-  className = "",
+  className = '',
 }) => {
   const [dragOver, setDragOver] = useState(false);
   const [internalError, setInternalError] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const displayError = propError || internalError;
-  const isImageUpload = accept.includes("image");
+  const isImageUpload = accept.includes('image');
 
   const validateAndSetFile = (file: File) => {
     setInternalError(null);
@@ -55,13 +55,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     const sizeInMB = file.size / (1024 * 1024);
     if (sizeInMB > maxSizeMB) {
       setInternalError(
-        `File vượt quá dung lượng tối đa cho phép (${maxSizeMB}MB). Vui lòng chọn file khác.`,
+        `File vượt quá dung lượng tối đa cho phép (${maxSizeMB}MB). Vui lòng chọn file khác.`
       );
       return;
     }
 
     // Tạo preview nếu là ảnh
-    if (file.type.startsWith("image/")) {
+    if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = () => {
         setLocalPreview(reader.result as string);
@@ -104,7 +104,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value = '';
     }
     setLocalPreview(null);
     setInternalError(null);
@@ -128,14 +128,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         onClick={() => !disabled && !isUploading && fileInputRef.current?.click()}
         className={`relative flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg transition-all duration-200 cursor-pointer select-none ${
           disabled
-            ? "bg-slate-50 border-slate-200 cursor-not-allowed opacity-60"
+            ? 'bg-slate-50 border-slate-200 cursor-not-allowed opacity-60'
             : isUploading
-            ? "bg-slate-50 border-blue-400 cursor-wait"
-            : dragOver
-            ? "border-[var(--color-primary)] bg-[var(--color-primary-light)]"
-            : displayError
-            ? "border-rose-300 bg-rose-50/40 hover:border-rose-400"
-            : "border-slate-200 bg-white hover:border-[var(--color-primary)] hover:bg-slate-50/60"
+              ? 'bg-slate-50 border-blue-400 cursor-wait'
+              : dragOver
+                ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]'
+                : displayError
+                  ? 'border-rose-300 bg-rose-50/40 hover:border-rose-400'
+                  : 'border-slate-200 bg-white hover:border-[var(--color-primary)] hover:bg-slate-50/60'
         }`}
       >
         <input
@@ -151,11 +151,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         {activePreview && isImageUpload ? (
           <div className="relative group w-full flex flex-col items-center">
             <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-slate-200 shadow-sm bg-slate-100 flex items-center justify-center">
-              <img
-                src={activePreview}
-                alt="Xem trước"
-                className="w-full h-full object-cover"
-              />
+              <img src={activePreview} alt="Xem trước" className="w-full h-full object-cover" />
               {!disabled && !isUploading && (
                 <button
                   type="button"
@@ -167,9 +163,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                 </button>
               )}
             </div>
-            <p className="mt-2 text-xs text-slate-500">
-              Nhấp hoặc kéo thả ảnh khác để thay thế
-            </p>
+            <p className="mt-2 text-xs text-slate-500">Nhấp hoặc kéo thả ảnh khác để thay thế</p>
           </div>
         ) : value ? (
           /* Trạng thái đã chọn file thông thường */
@@ -178,9 +172,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
               <File className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-800 truncate">
-                {value.name}
-              </p>
+              <p className="text-sm font-semibold text-slate-800 truncate">{value.name}</p>
               <p className="text-xs text-slate-400 font-mono">
                 {(value.size / 1024).toFixed(1)} KB
               </p>
@@ -203,7 +195,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
               <UploadCloud className="w-6 h-6" />
             </div>
             <p className="text-sm font-semibold text-slate-800">
-              Kéo thả file vào đây hoặc <span className="text-[var(--color-primary)] underline">duyệt tìm file</span>
+              Kéo thả file vào đây hoặc{' '}
+              <span className="text-[var(--color-primary)] underline">duyệt tìm file</span>
             </p>
             <p className="text-xs text-slate-400 mt-1">
               Hỗ trợ: {accept} • Tối đa {maxSizeMB}MB
@@ -216,7 +209,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           <div className="absolute inset-0 bg-white/80 backdrop-blur-xs rounded-lg flex flex-col items-center justify-center p-4">
             <Loader2 className="w-7 h-7 text-[var(--color-primary)] animate-spin mb-2" />
             <span className="text-xs font-semibold text-slate-700">
-              Đang tải lên... {uploadProgress !== undefined ? `${uploadProgress}%` : ""}
+              Đang tải lên... {uploadProgress !== undefined ? `${uploadProgress}%` : ''}
             </span>
           </div>
         )}

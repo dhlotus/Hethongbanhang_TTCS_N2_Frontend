@@ -1,6 +1,6 @@
-import React from "react";
-import { AlertCircle, RotateCcw } from "lucide-react";
-import { Button } from "./button";
+import React from 'react';
+import { AlertCircle, RotateCcw } from 'lucide-react';
+import { Button } from './button';
 
 export interface ErrorStateProps {
   title?: string;
@@ -18,12 +18,12 @@ export interface ErrorStateProps {
  * - Cung cấp nút Thử lại (Retry action) tiện lợi
  */
 export const ErrorState: React.FC<ErrorStateProps> = ({
-  title = "Không thể tải dữ liệu",
-  description = "Đã xảy ra lỗi trong quá trình kết nối tới máy chủ. Vui lòng thử lại sau.",
+  title = 'Không thể tải dữ liệu',
+  description = 'Đã xảy ra lỗi trong quá trình kết nối tới máy chủ. Vui lòng thử lại sau.',
   onRetry,
-  retryText = "Thử lại ngay",
+  retryText = 'Thử lại ngay',
   action,
-  className = "",
+  className = '',
 }) => {
   return (
     <div
@@ -33,9 +33,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
         <AlertCircle className="w-9 h-9 stroke-[2.2]" />
       </div>
 
-      <h3 className="text-lg font-bold text-slate-900 tracking-tight">
-        {title}
-      </h3>
+      <h3 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h3>
 
       {description && (
         <div className="mt-1.5 text-xs sm:text-sm text-slate-500 max-w-md leading-relaxed">

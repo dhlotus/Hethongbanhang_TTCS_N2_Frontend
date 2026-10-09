@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Loader2, AlertCircle } from "lucide-react";
+import React, { useState, useRef, useEffect } from 'react';
+import { Loader2, AlertCircle } from 'lucide-react';
 
 export interface AutocompleteItem {
   id: string | number;
@@ -36,15 +36,15 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   onChange,
   onSelect,
   items,
-  placeholder = "Nhập để tìm kiếm...",
+  placeholder = 'Nhập để tìm kiếm...',
   isLoading = false,
   error,
   required = false,
   disabled = false,
-  noResultText = "Không tìm thấy kết quả phù hợp",
-  className = "",
+  noResultText = 'Không tìm thấy kết quả phù hợp',
+  className = '',
 }) => {
-  const [internalValue, setInternalValue] = useState(controlledValue || "");
+  const [internalValue, setInternalValue] = useState(controlledValue || '');
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -61,15 +61,12 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,28 +90,24 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen) {
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         setIsOpen(true);
       }
       return;
     }
 
-    if (e.key === "ArrowDown") {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setHighlightedIndex((prev) =>
-        prev < items.length - 1 ? prev + 1 : 0,
-      );
-    } else if (e.key === "ArrowUp") {
+      setHighlightedIndex((prev) => (prev < items.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setHighlightedIndex((prev) =>
-        prev > 0 ? prev - 1 : items.length - 1,
-      );
-    } else if (e.key === "Enter") {
+      setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : items.length - 1));
+    } else if (e.key === 'Enter') {
       e.preventDefault();
       if (highlightedIndex >= 0 && items[highlightedIndex]) {
         handleSelectItem(items[highlightedIndex]);
       }
-    } else if (e.key === "Escape") {
+    } else if (e.key === 'Escape') {
       setIsOpen(false);
     }
   };
@@ -122,7 +115,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   // Helper highlight text
   const renderHighlightedText = (text: string, highlight: string) => {
     if (!highlight.trim()) return text;
-    const parts = text.split(new RegExp(`(${highlight})`, "gi"));
+    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
     return (
       <span>
         {parts.map((part, i) =>
@@ -132,7 +125,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
             </span>
           ) : (
             part
-          ),
+          )
         )}
       </span>
     );
@@ -158,8 +151,8 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
           placeholder={placeholder}
           className={`w-full h-10.5 sm:h-11 px-4 rounded-md text-base bg-white border text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none focus:ring-4 focus:ring-[var(--color-primary-ring)] focus:border-[var(--color-border-focus)] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${
             error
-              ? "border-[var(--color-border-error)] focus:border-[var(--color-border-error)]"
-              : "border-[var(--color-border)] hover:border-[var(--color-border-hover)]"
+              ? 'border-[var(--color-border-error)] focus:border-[var(--color-border-error)]'
+              : 'border-[var(--color-border)] hover:border-[var(--color-border-hover)]'
           }`}
         />
         {isLoading && (
@@ -185,9 +178,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
               <span>Đang tải gợi ý...</span>
             </div>
           ) : items.length === 0 ? (
-            <div className="p-3 text-center text-xs text-slate-400">
-              {noResultText}
-            </div>
+            <div className="p-3 text-center text-xs text-slate-400">{noResultText}</div>
           ) : (
             items.map((item, index) => {
               const isSelected = index === highlightedIndex;
@@ -198,17 +189,13 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                   onMouseEnter={() => setHighlightedIndex(index)}
                   className={`px-3.5 py-2 text-sm cursor-pointer transition-colors flex flex-col ${
                     isSelected
-                      ? "bg-[var(--color-primary-light)] text-[var(--color-primary)] font-medium"
-                      : "text-slate-700 hover:bg-slate-50"
+                      ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-medium'
+                      : 'text-slate-700 hover:bg-slate-50'
                   }`}
                 >
-                  <span className="truncate">
-                    {renderHighlightedText(item.label, query)}
-                  </span>
+                  <span className="truncate">{renderHighlightedText(item.label, query)}</span>
                   {item.sublabel && (
-                    <span className="text-xs text-slate-400 truncate mt-0.5">
-                      {item.sublabel}
-                    </span>
+                    <span className="text-xs text-slate-400 truncate mt-0.5">{item.sublabel}</span>
                   )}
                 </div>
               );

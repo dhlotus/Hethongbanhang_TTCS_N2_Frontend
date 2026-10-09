@@ -329,7 +329,7 @@ export function saveStoredCustomers(customers: Customer[]): void {
     window.dispatchEvent(
       new CustomEvent('loha_customers_updated', {
         detail: customers,
-      }),
+      })
     );
   } catch {
     // ignore in non-browser env
@@ -339,9 +339,7 @@ export function saveStoredCustomers(customers: Customer[]): void {
 /**
  * Lọc danh sách đại lý từ kho lưu trữ đồng bộ
  */
-function filterDemoCustomers(
-  params: CustomerFilterParams = {},
-): PaginatedCustomersResponse {
+function filterDemoCustomers(params: CustomerFilterParams = {}): PaginatedCustomersResponse {
   let list = getStoredCustomers();
 
   // RBAC Scoping cho chế độ demo / offline
@@ -370,16 +368,12 @@ function filterDemoCustomers(
     const q = params.search.trim().toLowerCase();
     list = list.filter(
       (c) =>
-        c.code.toLowerCase().includes(q) ||
-        c.name.toLowerCase().includes(q) ||
-        c.phone.includes(q),
+        c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) || c.phone.includes(q)
     );
   }
 
   if (params.region && params.region !== 'ALL') {
-    list = list.filter(
-      (c) => c.region?.toLowerCase() === params.region?.toLowerCase(),
-    );
+    list = list.filter((c) => c.region?.toLowerCase() === params.region?.toLowerCase());
   }
 
   if (params.customerGroup && params.customerGroup !== 'ALL') {
@@ -392,7 +386,7 @@ function filterDemoCustomers(
         c.salesRepId === params.salesRepId ||
         c.salesRep?.id === params.salesRepId ||
         ((params.salesRepId === 'usr-sales-002' || params.salesRepId === 'usr-sale-01') &&
-          (c.salesRepId === 'usr-sale-01' || c.salesRepId === 'usr-sales-002')),
+          (c.salesRepId === 'usr-sale-01' || c.salesRepId === 'usr-sales-002'))
     );
   }
 
@@ -472,19 +466,16 @@ export const customerService = {
   /**
    * Lấy danh sách đại lý có hỗ trợ tìm kiếm nhanh & lọc đa tiêu chí phân trang (SN-37)
    */
-  async getCustomers(
-    params: CustomerFilterParams = {},
-  ): Promise<PaginatedCustomersResponse> {
+  async getCustomers(params: CustomerFilterParams = {}): Promise<PaginatedCustomersResponse> {
     const token = tokenStorage.getAccessToken();
     if (token?.startsWith('demo-jwt-')) {
       return filterDemoCustomers(params);
     }
 
     try {
-      const res = await apiClient.get<PaginatedCustomersResponse | Customer[]>(
-        '/customers',
-        { params },
-      );
+      const res = await apiClient.get<PaginatedCustomersResponse | Customer[]>('/customers', {
+        params,
+      });
 
       // Nếu backend trả về mảng trực tiếp (phiên bản cũ)
       if (Array.isArray(res.data)) {
@@ -534,9 +525,7 @@ export const customerService = {
    */
   async getDeliveryPoints(customerId: string): Promise<DeliveryPoint[]> {
     try {
-      const res = await apiClient.get<DeliveryPoint[]>(
-        `/customers/${customerId}/delivery-points`,
-      );
+      const res = await apiClient.get<DeliveryPoint[]>(`/customers/${customerId}/delivery-points`);
       return res.data;
     } catch {
       const list = getStoredCustomers();
@@ -550,12 +539,12 @@ export const customerService = {
    */
   async createDeliveryPoint(
     customerId: string,
-    payload: CreateDeliveryPointPayload,
+    payload: CreateDeliveryPointPayload
   ): Promise<DeliveryPoint> {
     try {
       const res = await apiClient.post<DeliveryPoint>(
         `/customers/${customerId}/delivery-points`,
-        payload,
+        payload
       );
       return res.data;
     } catch {
@@ -597,12 +586,12 @@ export const customerService = {
   async updateDeliveryPoint(
     customerId: string,
     pointId: string,
-    payload: UpdateDeliveryPointPayload,
+    payload: UpdateDeliveryPointPayload
   ): Promise<DeliveryPoint> {
     try {
       const res = await apiClient.put<DeliveryPoint>(
         `/customers/${customerId}/delivery-points/${pointId}`,
-        payload,
+        payload
       );
       return res.data;
     } catch {
@@ -641,13 +630,10 @@ export const customerService = {
   /**
    * Đặt 1 điểm giao hàng làm mặc định (SN-31)
    */
-  async setDefaultDeliveryPoint(
-    customerId: string,
-    pointId: string,
-  ): Promise<DeliveryPoint> {
+  async setDefaultDeliveryPoint(customerId: string, pointId: string): Promise<DeliveryPoint> {
     try {
       const res = await apiClient.patch<DeliveryPoint>(
-        `/customers/${customerId}/delivery-points/${pointId}/default`,
+        `/customers/${customerId}/delivery-points/${pointId}/default`
       );
       return res.data;
     } catch {
@@ -676,11 +662,11 @@ export const customerService = {
    */
   async deleteDeliveryPoint(
     customerId: string,
-    pointId: string,
+    pointId: string
   ): Promise<{ success: boolean; message: string }> {
     try {
       const res = await apiClient.delete<{ success: boolean; message: string }>(
-        `/customers/${customerId}/delivery-points/${pointId}`,
+        `/customers/${customerId}/delivery-points/${pointId}`
       );
       return res.data;
     } catch {
@@ -711,4 +697,3 @@ export const customerService = {
  * Alias cho tương thích ngược
  */
 export const customersService = customerService;
-

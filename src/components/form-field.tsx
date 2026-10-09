@@ -1,5 +1,5 @@
-import React from "react";
-import { AlertCircle } from "lucide-react";
+import React from 'react';
+import { AlertCircle } from 'lucide-react';
 
 export interface FormLabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
   required?: boolean;
@@ -9,14 +9,11 @@ export interface FormLabelProps extends React.LabelHTMLAttributes<HTMLLabelEleme
 export const FormLabel: React.FC<FormLabelProps> = ({
   required = false,
   children,
-  className = "",
+  className = '',
   ...props
 }) => {
   return (
-    <label
-      className={`block text-sm font-medium text-slate-700 mb-1.5 ${className}`}
-      {...props}
-    >
+    <label className={`block text-sm font-medium text-slate-700 mb-1.5 ${className}`} {...props}>
       {children} {required && <span className="text-rose-500">*</span>}
     </label>
   );
@@ -27,10 +24,7 @@ export interface FieldErrorProps {
   className?: string;
 }
 
-export const FieldError: React.FC<FieldErrorProps> = ({
-  error,
-  className = "",
-}) => {
+export const FieldError: React.FC<FieldErrorProps> = ({ error, className = '' }) => {
   if (!error) return null;
 
   return (
@@ -65,7 +59,7 @@ export const FormField: React.FC<FormFieldProps> = ({
   error,
   helperText,
   children,
-  className = "",
+  className = '',
 }) => {
   return (
     <div className={`w-full text-left ${className}`}>

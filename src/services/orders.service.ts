@@ -22,7 +22,6 @@ const DEMO_ORDERS_KEY = 'loha_demo_orders';
 // DỮ LIỆU MẪU — Đại lý Demo (SN-38 & SN-37)
 // ──────────────────────────────────────────────────────────────────────────
 
-
 export const DEMO_CUSTOMERS: CustomerOption[] = [
   // 5 Đại lý Cấp 1 (DL-0001 -> DL-0005)
   {
@@ -385,7 +384,7 @@ const saveStoredDemoOrders = (list: Order[]): void => {
 
 /** Tính tổng đơn hàng từ danh sách dòng hàng */
 const calcOrderTotals = (
-  lines: Order['lines'],
+  lines: Order['lines']
 ): { subtotal: number; totalDiscount: number; grandTotal: number } => {
   let subtotal = 0;
   let totalDiscount = 0;
@@ -452,7 +451,7 @@ export const ordersService = {
         (c) =>
           c.name.toLowerCase().includes(q) ||
           c.code.toLowerCase().includes(q) ||
-          (c.phone && c.phone.includes(q)),
+          (c.phone && c.phone.includes(q))
       );
     }
   },
@@ -540,9 +539,10 @@ export const ordersService = {
     const token = tokenStorage.getAccessToken();
     if (token?.startsWith('demo-jwt-')) {
       const all = getStoredDemoOrders();
-      const filtered = params.status && params.status !== 'ALL'
-        ? all.filter((o) => o.status === params.status)
-        : all;
+      const filtered =
+        params.status && params.status !== 'ALL'
+          ? all.filter((o) => o.status === params.status)
+          : all;
 
       const page = params.page ?? 1;
       const limit = params.limit ?? 10;
@@ -611,7 +611,7 @@ export const ordersService = {
     const overdueAmount = customer.overdueAmount || 0;
     if (payload.status !== 'DRAFT' && overdueDays > maxDebtDays && overdueAmount > 0) {
       throw new Error(
-        `Đại lý đang có khoản nợ quá hạn ${overdueDays} ngày (vượt quá ${maxDebtDays} ngày cho phép). Hệ thống tạm khóa quyền tạo đơn hàng mới cho đại lý này.`,
+        `Đại lý đang có khoản nợ quá hạn ${overdueDays} ngày (vượt quá ${maxDebtDays} ngày cho phép). Hệ thống tạm khóa quyền tạo đơn hàng mới cho đại lý này.`
       );
     }
 
@@ -630,13 +630,9 @@ export const ordersService = {
     const currentDebt = customer.currentDebt || 0;
     const projectedDebt = currentDebt + totals.grandTotal;
     const isCreditLimitExceeded = creditLimit > 0 && projectedDebt > creditLimit;
-    const creditLimitExceededAmount = isCreditLimitExceeded
-      ? projectedDebt - creditLimit
-      : 0;
+    const creditLimitExceededAmount = isCreditLimitExceeded ? projectedDebt - creditLimit : 0;
 
-    let orderStatus: OrderStatus = isCreditLimitExceeded
-      ? 'PENDING_APPROVAL'
-      : 'PENDING';
+    let orderStatus: OrderStatus = isCreditLimitExceeded ? 'PENDING_APPROVAL' : 'PENDING';
     if (payload.status === 'DRAFT') {
       orderStatus = 'DRAFT';
     }
@@ -651,7 +647,10 @@ export const ordersService = {
       customerId: customer.id,
       customerCode: customer.code,
       customerName: customer.name,
-      customerGroup: (customer as { group?: string }).group || (customer as { customerGroup?: string }).customerGroup || 'AGENT_LEVEL_2',
+      customerGroup:
+        (customer as { group?: string }).group ||
+        (customer as { customerGroup?: string }).customerGroup ||
+        'AGENT_LEVEL_2',
       salesRepId: user?.id || 'usr-sales-002',
       salesRepName: user?.fullName || user?.username || 'Trần Văn Nam',
       deliveryPoint: payload.deliveryPoint as Order['deliveryPoint'],
@@ -659,7 +658,9 @@ export const ordersService = {
       lines,
       ...totals,
       note: payload.note
-        ? (warningNote ? `${payload.note}\n${warningNote}` : payload.note)
+        ? warningNote
+          ? `${payload.note}\n${warningNote}`
+          : payload.note
         : warningNote,
       status: orderStatus,
       paymentStatus: 'UNPAID',
@@ -745,8 +746,7 @@ export const ordersService = {
       if (!query.trim()) return MOCK_PRODUCTS.slice(0, 8);
       const q = query.toLowerCase();
       return MOCK_PRODUCTS.filter(
-        (p: Product) =>
-          p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q),
+        (p: Product) => p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)
       ).slice(0, 10);
     }
     try {

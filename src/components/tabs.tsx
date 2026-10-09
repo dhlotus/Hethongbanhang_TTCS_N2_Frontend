@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 
 export interface TabItem {
   key: string;
@@ -12,7 +12,7 @@ export interface TabsProps {
   items: TabItem[];
   activeKey: string;
   onChange: (key: string) => void;
-  variant?: "underline" | "pills";
+  variant?: 'underline' | 'pills';
   className?: string;
 }
 
@@ -26,22 +26,20 @@ export const Tabs: React.FC<TabsProps> = ({
   items,
   activeKey,
   onChange,
-  variant = "underline",
-  className = "",
+  variant = 'underline',
+  className = '',
 }) => {
   return (
     <div
       className={`flex items-center gap-1 select-none ${
-        variant === "underline"
-          ? "border-b border-slate-200"
-          : "p-1 bg-slate-100 rounded-lg"
+        variant === 'underline' ? 'border-b border-slate-200' : 'p-1 bg-slate-100 rounded-lg'
       } ${className}`}
       role="tablist"
     >
       {items.map((tab) => {
         const isActive = tab.key === activeKey;
 
-        if (variant === "pills") {
+        if (variant === 'pills') {
           return (
             <button
               key={tab.key}
@@ -52,8 +50,8 @@ export const Tabs: React.FC<TabsProps> = ({
               onClick={() => onChange(tab.key)}
               className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none ${
                 isActive
-                  ? "bg-white text-[var(--color-primary)] shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                  ? 'bg-white text-[var(--color-primary)] shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
               }`}
             >
               {tab.icon && <span className="shrink-0">{tab.icon}</span>}
@@ -62,8 +60,8 @@ export const Tabs: React.FC<TabsProps> = ({
                 <span
                   className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
                     isActive
-                      ? "bg-[var(--color-primary-light)] text-[var(--color-primary)]"
-                      : "bg-slate-200 text-slate-600"
+                      ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)]'
+                      : 'bg-slate-200 text-slate-600'
                   }`}
                 >
                   {tab.badge}
@@ -84,8 +82,8 @@ export const Tabs: React.FC<TabsProps> = ({
             onClick={() => onChange(tab.key)}
             className={`relative inline-flex items-center gap-2 px-4 py-3 text-xs font-semibold transition-colors duration-150 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none -mb-px ${
               isActive
-                ? "text-[var(--color-primary)] border-b-2 border-[var(--color-primary)] font-bold"
-                : "text-slate-500 hover:text-slate-800 border-b-2 border-transparent"
+                ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)] font-bold'
+                : 'text-slate-500 hover:text-slate-800 border-b-2 border-transparent'
             }`}
           >
             {tab.icon && <span className="shrink-0">{tab.icon}</span>}
@@ -94,8 +92,8 @@ export const Tabs: React.FC<TabsProps> = ({
               <span
                 className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
                   isActive
-                    ? "bg-[var(--color-primary-light)] text-[var(--color-primary)]"
-                    : "bg-slate-100 text-slate-500"
+                    ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)]'
+                    : 'bg-slate-100 text-slate-500'
                 }`}
               >
                 {tab.badge}

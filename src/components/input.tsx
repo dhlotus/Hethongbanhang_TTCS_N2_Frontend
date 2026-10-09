@@ -1,5 +1,5 @@
-import React, { forwardRef } from "react";
-import { AlertCircle } from "lucide-react";
+import React, { forwardRef } from 'react';
+import { AlertCircle } from 'lucide-react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -18,15 +18,15 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
  * - Hỗ trợ helperText, leftIcon, rightElement
  */
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, helperText, leftIcon, rightElement, required, id, className = "", ...props }, ref) => {
+  (
+    { label, error, helperText, leftIcon, rightElement, required, id, className = '', ...props },
+    ref
+  ) => {
     const inputId = id || props.name;
 
     return (
       <div className="w-full text-left">
-        <label
-          htmlFor={inputId}
-          className="block text-sm font-medium text-slate-700 mb-2"
-        >
+        <label htmlFor={inputId} className="block text-sm font-medium text-slate-700 mb-2">
           {label} {required && <span className="text-rose-500">*</span>}
         </label>
         <div className="relative flex items-center">
@@ -39,11 +39,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             ref={ref}
             className={`w-full h-10.5 sm:h-11 rounded-md text-base bg-white border text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none focus:ring-4 focus:ring-[var(--color-primary-ring)] focus:border-[var(--color-border-focus)] disabled:bg-slate-100 disabled:text-slate-400 disabled:border-[var(--color-border-disabled)] disabled:cursor-not-allowed ${
-              leftIcon ? "pl-10.5" : "pl-4"
-            } ${rightElement ? "pr-10.5" : "pr-4"} ${
+              leftIcon ? 'pl-10.5' : 'pl-4'
+            } ${rightElement ? 'pr-10.5' : 'pr-4'} ${
               error
-                ? "border-[var(--color-border-error)] focus:border-[var(--color-border-error)] focus:ring-rose-500/10"
-                : "border-[var(--color-border)] hover:border-[var(--color-border-hover)]"
+                ? 'border-[var(--color-border-error)] focus:border-[var(--color-border-error)] focus:ring-rose-500/10'
+                : 'border-[var(--color-border)] hover:border-[var(--color-border-hover)]'
             } ${className}`}
             {...props}
           />
@@ -59,13 +59,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             <span>{error}</span>
           </p>
         ) : helperText ? (
-          <p className="mt-1.5 text-xs text-slate-500">
-            {helperText}
-          </p>
+          <p className="mt-1.5 text-xs text-slate-500">{helperText}</p>
         ) : null}
       </div>
     );
-  },
+  }
 );
 
-Input.displayName = "Input";
+Input.displayName = 'Input';

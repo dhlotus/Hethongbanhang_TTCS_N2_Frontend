@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-  X,
-  CreditCard,
-  AlertCircle,
-  Check,
-  ShieldAlert,
-} from 'lucide-react';
-import type {
-  CreditLimit,
-  UpdateCreditLimitPayload,
-} from '../../types/credit-limit.type';
+import { X, CreditCard, AlertCircle, Check, ShieldAlert } from 'lucide-react';
+import type { CreditLimit, UpdateCreditLimitPayload } from '../../types/credit-limit.type';
 import { PaymentTerm } from '../../types/credit-limit.type';
 
 interface UpdateLimitModalProps {
@@ -105,9 +96,7 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
     try {
       await onSubmit(item.agencyId || item.id, payload);
     } catch (err: unknown) {
-      setErrorMsg(
-        err instanceof Error ? err.message : 'Đã có lỗi xảy ra khi lưu dữ liệu.',
-      );
+      setErrorMsg(err instanceof Error ? err.message : 'Đã có lỗi xảy ra khi lưu dữ liệu.');
     }
   };
 
@@ -121,11 +110,10 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
               <CreditCard className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-900">
-                Cập Nhật Hạn Mức Công Nợ (SN-34)
-              </h3>
+              <h3 className="text-lg font-bold text-slate-900">Cập Nhật Hạn Mức Công Nợ (SN-34)</h3>
               <p className="text-xs text-slate-500">
-                Đại lý: <strong className="text-slate-700">{item.agencyName}</strong> ({item.agencyCode})
+                Đại lý: <strong className="text-slate-700">{item.agencyName}</strong> (
+                {item.agencyCode})
               </p>
             </div>
           </div>
@@ -217,9 +205,7 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
                   className="w-full px-3 py-2 pr-12 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
                   placeholder="Ví dụ: 30"
                 />
-                <span className="absolute right-3 top-2.5 text-xs text-slate-400">
-                  ngày
-                </span>
+                <span className="absolute right-3 top-2.5 text-xs text-slate-400">ngày</span>
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
                 Thời hạn được phép nợ kể từ khi giao hàng trước khi đến hạn thanh toán.
@@ -240,7 +226,9 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
               >
                 <option value={PaymentTerm.COD}>COD - Thanh toán ngay khi nhận hàng</option>
                 <option value={PaymentTerm.NET_15}>NET 15 - Thanh toán trong 15 ngày</option>
-                <option value={PaymentTerm.NET_30}>NET 30 - Thanh toán trong 30 ngày (Chuẩn)</option>
+                <option value={PaymentTerm.NET_30}>
+                  NET 30 - Thanh toán trong 30 ngày (Chuẩn)
+                </option>
                 <option value={PaymentTerm.NET_45}>NET 45 - Thanh toán trong 45 ngày</option>
                 <option value={PaymentTerm.NET_60}>NET 60 - Thanh toán trong 60 ngày</option>
                 <option value={PaymentTerm.EOM_30}>EOM + 30 - Cuối tháng cộng 30 ngày</option>
@@ -256,9 +244,7 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
                 <input
                   type="text"
                   value={temporaryCreditLimitStr}
-                  onChange={(e) =>
-                    handleMoneyChange(e.target.value, setTemporaryCreditLimitStr)
-                  }
+                  onChange={(e) => handleMoneyChange(e.target.value, setTemporaryCreditLimitStr)}
                   className="w-full px-3 py-2 pr-10 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
                   placeholder="0"
                 />
@@ -274,8 +260,8 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
             <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
             <div className="text-xs text-blue-900 leading-relaxed">
               <p>
-                Dư nợ hiện hành của đại lý: <strong>{formatVND(item.currentDebt)} đ</strong>.
-                Với hạn mức mới, tỷ lệ sử dụng công nợ ước tính là <strong>{newUsageRate}%</strong>.
+                Dư nợ hiện hành của đại lý: <strong>{formatVND(item.currentDebt)} đ</strong>. Với
+                hạn mức mới, tỷ lệ sử dụng công nợ ước tính là <strong>{newUsageRate}%</strong>.
               </p>
             </div>
           </div>
@@ -294,7 +280,8 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
               className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
             />
             <p className="mt-1 text-[11px] text-slate-400">
-              Lý do này sẽ được ghi nhận vào Nhật ký kiểm toán hệ thống (Audit Log) trong Database Transaction.
+              Lý do này sẽ được ghi nhận vào Nhật ký kiểm toán hệ thống (Audit Log) trong Database
+              Transaction.
             </p>
           </div>
 

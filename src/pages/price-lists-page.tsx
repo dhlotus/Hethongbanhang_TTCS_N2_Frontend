@@ -350,9 +350,7 @@ export const PriceListsPage: React.FC = () => {
           {/* 2. Metrics Header: Hiển thị linh hoạt theo trạng thái được chọn */}
           <div
             className={`grid gap-4 ${
-              selectedStatus === 'ALL'
-                ? 'grid-cols-2 lg:grid-cols-4'
-                : 'grid-cols-1 max-w-sm'
+              selectedStatus === 'ALL' ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 max-w-sm'
             }`}
           >
             {/* Card 1: Tổng số bảng giá (Chỉ hiển thị khi chọn Tất cả Trạng thái) */}
@@ -505,7 +503,9 @@ export const PriceListsPage: React.FC = () => {
                 className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer shrink-0 disabled:opacity-50"
                 title="Tải lại danh sách"
               >
-                <RefreshCw className={`h-4 w-4 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`}
+                />
                 <span className="hidden sm:inline">Làm mới</span>
               </button>
 
@@ -532,14 +532,30 @@ export const PriceListsPage: React.FC = () => {
               <table className="w-full text-left text-xs border-separate border-spacing-0">
                 <thead>
                   <tr className="text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
-                    <th className="sticky top-0 left-0 z-30 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-12 min-w-12 text-center">STT</th>
-                    <th className="sticky top-0 left-12 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 min-w-[180px]">Mã & Phiên bản</th>
-                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 min-w-[220px]">Tên Bảng giá</th>
-                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36">Nhóm áp dụng</th>
-                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-44">Thời gian hiệu lực</th>
-                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-32">Trạng thái</th>
-                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-40 text-center">Ràng buộc Đơn hàng</th>
-                    <th className="sticky top-0 right-0 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 w-20 min-w-20 text-center">Thao tác</th>
+                    <th className="sticky top-0 left-0 z-30 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-12 min-w-12 text-center">
+                      STT
+                    </th>
+                    <th className="sticky top-0 left-12 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 min-w-[180px]">
+                      Mã & Phiên bản
+                    </th>
+                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 min-w-[220px]">
+                      Tên Bảng giá
+                    </th>
+                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36">
+                      Nhóm áp dụng
+                    </th>
+                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-44">
+                      Thời gian hiệu lực
+                    </th>
+                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-32">
+                      Trạng thái
+                    </th>
+                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-40 text-center">
+                      Ràng buộc Đơn hàng
+                    </th>
+                    <th className="sticky top-0 right-0 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 w-20 min-w-20 text-center">
+                      Thao tác
+                    </th>
                   </tr>
                 </thead>
 
@@ -548,12 +564,18 @@ export const PriceListsPage: React.FC = () => {
                     <PriceListsTableSkeleton count={6} />
                   ) : priceLists.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400 border-b border-slate-100">
+                      <td
+                        colSpan={8}
+                        className="py-12 text-center text-slate-400 border-b border-slate-100"
+                      >
                         <div className="flex flex-col items-center justify-center gap-2">
                           <FileSpreadsheet className="w-8 h-8 text-slate-300" />
-                          <p className="font-semibold text-slate-600 text-sm">Không tìm thấy bảng giá nào</p>
+                          <p className="font-semibold text-slate-600 text-sm">
+                            Không tìm thấy bảng giá nào
+                          </p>
                           <p className="text-xs text-slate-400">
-                            Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc nhóm khách hàng / trạng thái.
+                            Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc nhóm khách hàng
+                            / trạng thái.
                           </p>
                           {(searchTerm || selectedGroup !== 'ALL' || selectedStatus !== 'ALL') && (
                             <button
@@ -573,10 +595,7 @@ export const PriceListsPage: React.FC = () => {
                       const isLocked = pl.hasOrders;
 
                       return (
-                        <tr
-                          key={pl.id}
-                          className="hover:bg-slate-50/70 transition-colors group"
-                        >
+                        <tr key={pl.id} className="hover:bg-slate-50/70 transition-colors group">
                           {/* STT */}
                           <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors border-b border-slate-100 py-3.5 px-4 text-center text-slate-400 font-mono text-[11px] w-12 min-w-12">
                             {(page - 1) * limit + idx + 1}
@@ -637,9 +656,7 @@ export const PriceListsPage: React.FC = () => {
                                 <span>Đã có đơn hàng</span>
                               </div>
                             ) : (
-                              <div
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-50 text-slate-600 text-[11px] font-medium ring-1 ring-inset ring-slate-300/40"
-                              >
+                              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-50 text-slate-600 text-[11px] font-medium ring-1 ring-inset ring-slate-300/40">
                                 <Unlock className="w-3.5 h-3.5 text-slate-400" />
                                 <span>Chưa có đơn</span>
                               </div>
@@ -661,97 +678,101 @@ export const PriceListsPage: React.FC = () => {
                                 <MoreVertical className="w-4 h-4" />
                               </button>
 
-                              {openActionMenuId === pl.id && (() => {
-                                // Smart Placement: Mở ngược lên trên nếu dòng ở nửa dưới bảng hoặc 2 dòng cuối
-                                const isDropUp =
-                                  idx >= Math.max(1, priceLists.length - 2) ||
-                                  (priceLists.length > 3 && idx >= Math.floor(priceLists.length / 2));
-                                return (
-                                  <div
-                                    className={`absolute right-0 ${
-                                      isDropUp ? 'bottom-full mb-1 origin-bottom-right' : 'top-full mt-1 origin-top-right'
-                                    } w-44 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 text-left`}
-                                  >
-                                    {/* 1. Xem chi tiết */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setOpenActionMenuId(null);
-                                        handleOpenViewModal(pl);
-                                      }}
-                                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                              {openActionMenuId === pl.id &&
+                                (() => {
+                                  // Smart Placement: Mở ngược lên trên nếu dòng ở nửa dưới bảng hoặc 2 dòng cuối
+                                  const isDropUp =
+                                    idx >= Math.max(1, priceLists.length - 2) ||
+                                    (priceLists.length > 3 &&
+                                      idx >= Math.floor(priceLists.length / 2));
+                                  return (
+                                    <div
+                                      className={`absolute right-0 ${
+                                        isDropUp
+                                          ? 'bottom-full mb-1 origin-bottom-right'
+                                          : 'top-full mt-1 origin-top-right'
+                                      } w-44 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 text-left`}
                                     >
-                                      <Eye className="w-4 h-4 text-slate-500" />
-                                      <span>Xem chi tiết</span>
-                                    </button>
-
-                                    {/* 2. Chỉnh sửa */}
-                                    {canManage && (
+                                      {/* 1. Xem chi tiết */}
                                       <button
                                         type="button"
                                         onClick={() => {
                                           setOpenActionMenuId(null);
-                                          handleOpenEditModal(pl);
-                                        }}
-                                        disabled={isLocked}
-                                        className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
-                                          isLocked
-                                            ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
-                                            : 'text-slate-700 hover:bg-slate-50 cursor-pointer'
-                                        }`}
-                                        title={
-                                          isLocked
-                                            ? 'Bảng giá đã có đơn hàng - Không thể sửa trực tiếp (Vui lòng nhân bản)'
-                                            : 'Chỉnh sửa bảng giá'
-                                        }
-                                      >
-                                        <Edit2 className="w-4 h-4 text-amber-500" />
-                                        <span>Chỉnh sửa</span>
-                                      </button>
-                                    )}
-
-                                    {/* 3. Nhân bản */}
-                                    {canManage && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setOpenActionMenuId(null);
-                                          handleOpenCloneModal(pl);
+                                          handleOpenViewModal(pl);
                                         }}
                                         className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
                                       >
-                                        <Copy className="w-4 h-4 text-blue-500" />
-                                        <span>Nhân bản (Copy)</span>
+                                        <Eye className="w-4 h-4 text-slate-500" />
+                                        <span>Xem chi tiết</span>
                                       </button>
-                                    )}
 
-                                    {/* 4. Xóa */}
-                                    {canManage && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setOpenActionMenuId(null);
-                                          handlePromptDelete(pl);
-                                        }}
-                                        disabled={isLocked}
-                                        className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
-                                          isLocked
-                                            ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
-                                            : 'text-rose-600 hover:bg-rose-50 cursor-pointer'
-                                        }`}
-                                        title={
-                                          isLocked
-                                            ? 'Bảng giá đã có đơn hàng - Không thể xóa để bảo toàn dữ liệu'
-                                            : 'Xóa bảng giá'
-                                        }
-                                      >
-                                        <Trash2 className="w-4 h-4 text-rose-500" />
-                                        <span>Xóa</span>
-                                      </button>
-                                    )}
-                                  </div>
-                                );
-                              })()}
+                                      {/* 2. Chỉnh sửa */}
+                                      {canManage && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setOpenActionMenuId(null);
+                                            handleOpenEditModal(pl);
+                                          }}
+                                          disabled={isLocked}
+                                          className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
+                                            isLocked
+                                              ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
+                                              : 'text-slate-700 hover:bg-slate-50 cursor-pointer'
+                                          }`}
+                                          title={
+                                            isLocked
+                                              ? 'Bảng giá đã có đơn hàng - Không thể sửa trực tiếp (Vui lòng nhân bản)'
+                                              : 'Chỉnh sửa bảng giá'
+                                          }
+                                        >
+                                          <Edit2 className="w-4 h-4 text-amber-500" />
+                                          <span>Chỉnh sửa</span>
+                                        </button>
+                                      )}
+
+                                      {/* 3. Nhân bản */}
+                                      {canManage && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setOpenActionMenuId(null);
+                                            handleOpenCloneModal(pl);
+                                          }}
+                                          className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                        >
+                                          <Copy className="w-4 h-4 text-blue-500" />
+                                          <span>Nhân bản (Copy)</span>
+                                        </button>
+                                      )}
+
+                                      {/* 4. Xóa */}
+                                      {canManage && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setOpenActionMenuId(null);
+                                            handlePromptDelete(pl);
+                                          }}
+                                          disabled={isLocked}
+                                          className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
+                                            isLocked
+                                              ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
+                                              : 'text-rose-600 hover:bg-rose-50 cursor-pointer'
+                                          }`}
+                                          title={
+                                            isLocked
+                                              ? 'Bảng giá đã có đơn hàng - Không thể xóa để bảo toàn dữ liệu'
+                                              : 'Xóa bảng giá'
+                                          }
+                                        >
+                                          <Trash2 className="w-4 h-4 text-rose-500" />
+                                          <span>Xóa</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                             </div>
                           </td>
                         </tr>
@@ -765,8 +786,8 @@ export const PriceListsPage: React.FC = () => {
             {/* 6. Phân trang & Chọn số dòng/trang */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 bg-slate-50/60 text-xs text-slate-500">
               <div>
-                Hiển thị <strong>{priceLists.length}</strong> trên tổng số <strong>{total}</strong> bảng
-                giá
+                Hiển thị <strong>{priceLists.length}</strong> trên tổng số <strong>{total}</strong>{' '}
+                bảng giá
               </div>
 
               <div className="flex items-center gap-3">
@@ -816,50 +837,52 @@ export const PriceListsPage: React.FC = () => {
             </div>
           </div>
 
-      {/* 5. Modal Khai báo & Chỉnh sửa Bảng giá */}
-      <PriceListFormModal
-        isOpen={formModalOpen}
-        onClose={() => setFormModalOpen(false)}
-        onSubmit={handleFormSubmit}
-        onClone={handleOpenCloneModal}
-        onToast={(type, title, message) => showToast(type, title || message)}
-        initialData={editingPriceList}
-        isReadOnly={isViewOnly}
-      />
+          {/* 5. Modal Khai báo & Chỉnh sửa Bảng giá */}
+          <PriceListFormModal
+            isOpen={formModalOpen}
+            onClose={() => setFormModalOpen(false)}
+            onSubmit={handleFormSubmit}
+            onClone={handleOpenCloneModal}
+            onToast={(type, title, message) => showToast(type, title || message)}
+            initialData={editingPriceList}
+            isReadOnly={isViewOnly}
+          />
 
-      {/* 6. Modal Nhân bản Bảng giá (Clone Version) */}
-      <PriceListCloneModal
-        isOpen={cloneModalOpen}
-        onClose={() => setCloneModalOpen(false)}
-        onConfirm={handleConfirmClone}
-        priceList={priceListToClone}
-      />
+          {/* 6. Modal Nhân bản Bảng giá (Clone Version) */}
+          <PriceListCloneModal
+            isOpen={cloneModalOpen}
+            onClose={() => setCloneModalOpen(false)}
+            onConfirm={handleConfirmClone}
+            priceList={priceListToClone}
+          />
 
-      {/* 7. Modal Xác nhận Xóa */}
-      <ConfirmDeleteModal
-        isOpen={deleteModalOpen && Boolean(priceListToDelete)}
-        onCancel={() => {
-          setDeleteModalOpen(false);
-          setPriceListToDelete(null);
-        }}
-        onConfirm={handleConfirmDelete}
-        title="Xác nhận xóa Bảng giá"
-        itemName={priceListToDelete?.name}
-        itemCode={priceListToDelete?.code}
-        message={
-          priceListToDelete ? (
-            <p>
-              Bạn có chắc chắn muốn xóa bảng giá{' '}
-              <strong className="text-slate-900 font-bold">&quot;{priceListToDelete.name}&quot;</strong> [
-              {priceListToDelete.code}] không?
-            </p>
-          ) : undefined
-        }
-        warningText="Thao tác này mang tính vĩnh viễn và không thể hoàn tác sau khi thực hiện."
-        confirmText="Đồng ý xóa"
-        cancelText="Hủy bỏ"
-        isDeleting={deleting}
-      />
+          {/* 7. Modal Xác nhận Xóa */}
+          <ConfirmDeleteModal
+            isOpen={deleteModalOpen && Boolean(priceListToDelete)}
+            onCancel={() => {
+              setDeleteModalOpen(false);
+              setPriceListToDelete(null);
+            }}
+            onConfirm={handleConfirmDelete}
+            title="Xác nhận xóa Bảng giá"
+            itemName={priceListToDelete?.name}
+            itemCode={priceListToDelete?.code}
+            message={
+              priceListToDelete ? (
+                <p>
+                  Bạn có chắc chắn muốn xóa bảng giá{' '}
+                  <strong className="text-slate-900 font-bold">
+                    &quot;{priceListToDelete.name}&quot;
+                  </strong>{' '}
+                  [{priceListToDelete.code}] không?
+                </p>
+              ) : undefined
+            }
+            warningText="Thao tác này mang tính vĩnh viễn và không thể hoàn tác sau khi thực hiện."
+            confirmText="Đồng ý xóa"
+            cancelText="Hủy bỏ"
+            isDeleting={deleting}
+          />
         </>
       ) : (
         <DiscountPoliciesTab />

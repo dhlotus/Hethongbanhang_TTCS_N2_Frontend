@@ -90,9 +90,7 @@ export const sn40OrdersService = {
       const currentDate = new Date().toISOString().slice(0, 10);
       const priceList = response.data.data
         .filter(
-          (item) =>
-            item.startDate <= currentDate &&
-            (!item.endDate || item.endDate >= currentDate),
+          (item) => item.startDate <= currentDate && (!item.endDate || item.endDate >= currentDate)
         )
         .sort((first, second) => second.startDate.localeCompare(first.startDate))[0];
 
@@ -101,7 +99,10 @@ export const sn40OrdersService = {
       }
       return priceList;
     } catch (error: unknown) {
-      throw new Error(getApiErrorMessage(error) || (error instanceof Error ? error.message : 'Không thể tải bảng giá'));
+      throw new Error(
+        getApiErrorMessage(error) ||
+          (error instanceof Error ? error.message : 'Không thể tải bảng giá')
+      );
     }
   },
 
@@ -116,7 +117,7 @@ export const sn40OrdersService = {
           // Keep this preview aligned with the server-side calculation used when saving.
           categoryId: '',
           quantity: baseQuantity,
-        },
+        }
       );
       return response.data.discount;
     } catch (error: unknown) {

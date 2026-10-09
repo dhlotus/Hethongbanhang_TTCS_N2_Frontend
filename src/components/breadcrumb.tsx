@@ -1,6 +1,6 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import { ChevronRight, Home } from "lucide-react";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { ChevronRight, Home } from 'lucide-react';
 
 export interface BreadcrumbItem {
   label: React.ReactNode;
@@ -24,8 +24,8 @@ export interface BreadcrumbProps {
 export const Breadcrumb: React.FC<BreadcrumbProps> = ({
   items,
   showHome = true,
-  homeUrl = "/",
-  className = "",
+  homeUrl = '/',
+  className = '',
 }) => {
   return (
     <nav
@@ -57,7 +57,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({
               {isLast || !item.to ? (
                 <span
                   className="font-bold text-slate-900 truncate max-w-[200px]"
-                  aria-current={isLast ? "page" : undefined}
+                  aria-current={isLast ? 'page' : undefined}
                 >
                   {item.icon && <span className="mr-1 inline-flex">{item.icon}</span>}
                   {item.label}

@@ -1,7 +1,7 @@
-import React from "react";
-import { Inbox, Search, FilterX } from "lucide-react";
+import React from 'react';
+import { Inbox, Search, FilterX } from 'lucide-react';
 
-export type EmptyStateType = "initial" | "search" | "filter";
+export type EmptyStateType = 'initial' | 'search' | 'filter';
 
 export interface EmptyStateProps {
   type?: EmptyStateType;
@@ -18,28 +18,28 @@ export interface EmptyStateProps {
  * - Icon tinh tế, tiêu đề ngắn gọn và nút hành động gợi ý tiếp theo
  */
 export const EmptyState: React.FC<EmptyStateProps> = ({
-  type = "initial",
+  type = 'initial',
   title,
   description,
   icon,
   action,
-  className = "",
+  className = '',
 }) => {
   const config = {
     initial: {
       icon: <Inbox className="w-8 h-8 text-slate-400 stroke-[1.8]" />,
-      defaultTitle: "Chưa có dữ liệu",
-      defaultDesc: "Dữ liệu hiện tại đang trống. Bạn có thể bắt đầu tạo mục mới.",
+      defaultTitle: 'Chưa có dữ liệu',
+      defaultDesc: 'Dữ liệu hiện tại đang trống. Bạn có thể bắt đầu tạo mục mới.',
     },
     search: {
       icon: <Search className="w-8 h-8 text-slate-400 stroke-[1.8]" />,
-      defaultTitle: "Không tìm thấy kết quả",
-      defaultDesc: "Không tìm thấy dữ liệu nào phù hợp với từ khóa bạn đã nhập.",
+      defaultTitle: 'Không tìm thấy kết quả',
+      defaultDesc: 'Không tìm thấy dữ liệu nào phù hợp với từ khóa bạn đã nhập.',
     },
     filter: {
       icon: <FilterX className="w-8 h-8 text-slate-400 stroke-[1.8]" />,
-      defaultTitle: "Không có dữ liệu phù hợp",
-      defaultDesc: "Thử thay đổi hoặc xóa bớt các điều kiện lọc để hiển thị nhiều kết quả hơn.",
+      defaultTitle: 'Không có dữ liệu phù hợp',
+      defaultDesc: 'Thử thay đổi hoặc xóa bớt các điều kiện lọc để hiển thị nhiều kết quả hơn.',
     },
   }[type];
 

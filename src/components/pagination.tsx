@@ -1,5 +1,5 @@
-import React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import React from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export interface PaginationProps {
   currentPage: number;
@@ -27,7 +27,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   pageSizeOptions = [10, 20, 50, 100],
   onPageChange,
   onPageSizeChange,
-  className = "",
+  className = '',
 }) => {
   if (totalPages <= 1 && totalItems === undefined) {
     return null;
@@ -50,12 +50,12 @@ export const Pagination: React.FC<PaginationProps> = ({
 
     const pagesWithEllipsis: (number | string)[] = [];
     for (const p of pages) {
-      if (typeof p === "number") {
+      if (typeof p === 'number') {
         if (l !== null) {
           if (p - l === 2) {
             pagesWithEllipsis.push(l + 1);
           } else if (p - l !== 1) {
-            pagesWithEllipsis.push("...");
+            pagesWithEllipsis.push('...');
           }
         }
         pagesWithEllipsis.push(p);
@@ -76,8 +76,7 @@ export const Pagination: React.FC<PaginationProps> = ({
       <div className="flex items-center gap-3 text-slate-500 font-medium">
         {totalItems !== undefined && (
           <span>
-            Tổng cộng: <strong className="text-slate-800">{totalItems}</strong>{" "}
-            bản ghi
+            Tổng cộng: <strong className="text-slate-800">{totalItems}</strong> bản ghi
           </span>
         )}
         {onPageSizeChange && pageSize && (
@@ -113,7 +112,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 
         {/* Danh sách các số trang */}
         {pages.map((p, index) => {
-          if (p === "...") {
+          if (p === '...') {
             return (
               <span
                 key={`ellipsis-${index}`}
@@ -134,8 +133,8 @@ export const Pagination: React.FC<PaginationProps> = ({
               onClick={() => onPageChange(pageNum)}
               className={`w-9 h-9 flex items-center justify-center rounded-md font-semibold transition-all duration-150 cursor-pointer ${
                 isActive
-                  ? "bg-[var(--color-primary)] text-white shadow-xs"
-                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300"
+                  ? 'bg-[var(--color-primary)] text-white shadow-xs'
+                  : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300'
               }`}
             >
               {pageNum}

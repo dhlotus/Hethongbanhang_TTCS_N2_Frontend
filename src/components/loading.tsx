@@ -1,31 +1,31 @@
-import React from "react";
-import { Loader2 } from "lucide-react";
+import React from 'react';
+import { Loader2 } from 'lucide-react';
 
-export type LoadingSize = "xs" | "sm" | "md" | "lg" | "xl";
+export type LoadingSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
 export interface SpinnerProps {
   size?: LoadingSize;
   className?: string;
-  color?: "primary" | "white" | "slate";
+  color?: 'primary' | 'white' | 'slate';
 }
 
 export const Spinner: React.FC<SpinnerProps> = ({
-  size = "md",
-  className = "",
-  color = "primary",
+  size = 'md',
+  className = '',
+  color = 'primary',
 }) => {
   const sizeStyles = {
-    xs: "w-3.5 h-3.5",
-    sm: "w-4 h-4",
-    md: "w-6 h-6",
-    lg: "w-8 h-8",
-    xl: "w-12 h-12",
+    xs: 'w-3.5 h-3.5',
+    sm: 'w-4 h-4',
+    md: 'w-6 h-6',
+    lg: 'w-8 h-8',
+    xl: 'w-12 h-12',
   }[size];
 
   const colorStyles = {
-    primary: "text-[var(--color-primary)]",
-    white: "text-white",
-    slate: "text-slate-400",
+    primary: 'text-[var(--color-primary)]',
+    white: 'text-white',
+    slate: 'text-slate-400',
   }[color];
 
   return (
@@ -43,9 +43,9 @@ export interface LoadingAreaProps {
 }
 
 export const LoadingArea: React.FC<LoadingAreaProps> = ({
-  text = "Đang tải dữ liệu...",
-  size = "md",
-  className = "",
+  text = 'Đang tải dữ liệu...',
+  size = 'md',
+  className = '',
 }) => {
   return (
     <div
@@ -67,9 +67,9 @@ export interface LoadingOverlayProps {
 
 export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   active,
-  text = "Đang xử lý...",
+  text = 'Đang xử lý...',
   children,
-  className = "",
+  className = '',
 }) => {
   return (
     <div className={`relative ${className}`}>

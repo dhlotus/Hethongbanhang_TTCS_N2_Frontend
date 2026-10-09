@@ -104,8 +104,8 @@ export const PriceListCloneModal: React.FC<PriceListCloneModalProps> = ({
             <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200/60 text-xs text-blue-900 flex items-start gap-2.5">
               <GitBranch className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
               <div>
-                Phiên bản mới sẽ tự động tăng lên <strong>v{(priceList.version || 1) + 1}.0</strong>,
-                chuyển sang trạng thái <strong>Bản nháp</strong> và{' '}
+                Phiên bản mới sẽ tự động tăng lên <strong>v{(priceList.version || 1) + 1}.0</strong>
+                , chuyển sang trạng thái <strong>Bản nháp</strong> và{' '}
                 <strong>mở khóa toàn bộ quyền chỉnh sửa</strong> mặt hàng và giá bán.
               </div>
             </div>

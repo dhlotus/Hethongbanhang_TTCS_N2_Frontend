@@ -5,13 +5,16 @@ import { Button } from './button';
 import { IconButton } from './icon-button';
 import { Badge } from './badge';
 import { discountPoliciesService } from '../services/discount-policies.service';
-import type { DiscountPolicy, CreateDiscountPolicyPayload } from '../services/discount-policies.service';
+import type {
+  DiscountPolicy,
+  CreateDiscountPolicyPayload,
+} from '../services/discount-policies.service';
 import { DiscountPolicyFormModal } from './discount-policy-form-modal';
 
 export const DiscountPoliciesTab: React.FC = () => {
   const [policies, setPolicies] = useState<DiscountPolicy[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<DiscountPolicy | null>(null);
@@ -73,7 +76,9 @@ export const DiscountPoliciesTab: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-slate-900">Danh sách Chính sách Chiết khấu theo Sản lượng</h2>
+        <h2 className="text-xl font-bold text-slate-900">
+          Danh sách Chính sách Chiết khấu theo Sản lượng
+        </h2>
         <Button
           variant="primary"
           size="sm"
@@ -89,25 +94,49 @@ export const DiscountPoliciesTab: React.FC = () => {
         <table className="w-full text-left text-xs border-separate border-spacing-0">
           <thead>
             <tr className="text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
-              <th className="bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-12 text-center">STT</th>
-              <th className="bg-slate-50 border-b border-slate-200/80 py-3 px-4 min-w-[150px]">Mã chính sách</th>
-              <th className="bg-slate-50 border-b border-slate-200/80 py-3 px-4 min-w-[200px]">Tên chính sách</th>
+              <th className="bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-12 text-center">
+                STT
+              </th>
+              <th className="bg-slate-50 border-b border-slate-200/80 py-3 px-4 min-w-[150px]">
+                Mã chính sách
+              </th>
+              <th className="bg-slate-50 border-b border-slate-200/80 py-3 px-4 min-w-[200px]">
+                Tên chính sách
+              </th>
               <th className="bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36">Đối tượng</th>
-              <th className="bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36">Loại chiết khấu</th>
-              <th className="bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-48">Thời gian hiệu lực</th>
-              <th className="bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36 text-center">Trạng thái</th>
-              <th className="bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-28 text-center">Thao tác</th>
+              <th className="bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36">
+                Loại chiết khấu
+              </th>
+              <th className="bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-48">
+                Thời gian hiệu lực
+              </th>
+              <th className="bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36 text-center">
+                Trạng thái
+              </th>
+              <th className="bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-28 text-center">
+                Thao tác
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
             {loading ? (
-              <tr><td colSpan={8} className="py-4 text-center">Đang tải...</td></tr>
+              <tr>
+                <td colSpan={8} className="py-4 text-center">
+                  Đang tải...
+                </td>
+              </tr>
             ) : policies.length === 0 ? (
-              <tr><td colSpan={8} className="py-8 text-center text-slate-500">Không có chính sách nào</td></tr>
+              <tr>
+                <td colSpan={8} className="py-8 text-center text-slate-500">
+                  Không có chính sách nào
+                </td>
+              </tr>
             ) : (
               policies.map((p, i) => (
                 <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3.5 px-4 text-center text-slate-400 font-mono text-[11px] w-12">{i + 1}</td>
+                  <td className="py-3.5 px-4 text-center text-slate-400 font-mono text-[11px] w-12">
+                    {i + 1}
+                  </td>
                   <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{p.code}</td>
                   <td className="py-3.5 px-4 font-semibold text-slate-900">{p.name}</td>
                   <td className="py-3.5 px-4 text-slate-600">
@@ -119,14 +148,22 @@ export const DiscountPoliciesTab: React.FC = () => {
                             ? 'Sản phẩm (SKU)'
                             : 'Nhóm hàng (Category)'}
                       </span>
-                      <span className="text-slate-500 font-mono text-[11px] truncate max-w-[220px]" title={p.targetIds?.join(', ') || p.targetId}>
-                        {p.targetIds && p.targetIds.length > 0 ? p.targetIds.join(', ') : p.targetId}
+                      <span
+                        className="text-slate-500 font-mono text-[11px] truncate max-w-[220px]"
+                        title={p.targetIds?.join(', ') || p.targetId}
+                      >
+                        {p.targetIds && p.targetIds.length > 0
+                          ? p.targetIds.join(', ')
+                          : p.targetId}
                       </span>
                     </div>
                   </td>
-                  <td className="py-3.5 px-4 text-slate-600">{p.discountType === 'PERCENTAGE' ? '% Phần trăm' : 'Cố định'}</td>
                   <td className="py-3.5 px-4 text-slate-600">
-                    {p.startDate ? p.startDate.split('T')[0] : ''} - {p.endDate ? p.endDate.split('T')[0] : ''}
+                    {p.discountType === 'PERCENTAGE' ? '% Phần trăm' : 'Cố định'}
+                  </td>
+                  <td className="py-3.5 px-4 text-slate-600">
+                    {p.startDate ? p.startDate.split('T')[0] : ''} -{' '}
+                    {p.endDate ? p.endDate.split('T')[0] : ''}
                   </td>
                   <td className="py-3.5 px-4 text-center">
                     {p.status === 'ACTIVE' ? (

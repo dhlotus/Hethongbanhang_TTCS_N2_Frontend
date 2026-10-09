@@ -325,7 +325,7 @@ const FALLBACK_PRICE_LISTS: PriceList[] = [
   },
 ];
 
-let localCache: PriceList[] = [...FALLBACK_PRICE_LISTS];
+const localCache: PriceList[] = [...FALLBACK_PRICE_LISTS];
 
 export const priceListsService = {
   /**
@@ -347,7 +347,7 @@ export const priceListsService = {
           (pl) =>
             pl.code.toLowerCase().includes(q) ||
             pl.name.toLowerCase().includes(q) ||
-            (pl.description && pl.description.toLowerCase().includes(q)),
+            (pl.description && pl.description.toLowerCase().includes(q))
         );
       }
 
@@ -464,7 +464,7 @@ export const priceListsService = {
   async deletePriceList(id: string): Promise<{ success: boolean; message: string }> {
     try {
       const response = await apiClient.delete<{ success: boolean; message: string }>(
-        `/price-lists/${id}`,
+        `/price-lists/${id}`
       );
       return response.data;
     } catch (err: unknown) {
