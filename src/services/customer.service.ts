@@ -683,6 +683,54 @@ export const customerService = {
   },
 
   /**
+   * Khoá giao dịch với đại lý (SN-36)
+   */
+  async lockCustomer(id: string, reason: string): Promise<Customer> {
+    try {
+      const res = await apiClient.patch<Customer>(`/customers/${id}/lock`, { reason });
+      return res.data;
+    } catch {
+      const list = getStoredCustomers();
+      const custIndex = list.findIndex((c) => c.id === id);
+      if (custIndex >= 0) {
+        list[custIndex] = {
+          ...list[custIndex],
+          status: CustomerStatus.LOCKED,
+          lockReason: reason,
+          lockedAt: new Date().toISOString(),
+        };
+        saveStoredCustomers(list);
+        return list[custIndex];
+      }
+      throw new Error('Không tìm thấy đại lý');
+    }
+  },
+
+  /**
+   * Mở khoá giao dịch với đại lý (SN-36)
+   */
+  async unlockCustomer(id: string): Promise<Customer> {
+    try {
+      const res = await apiClient.patch<Customer>(`/customers/${id}/unlock`);
+      return res.data;
+    } catch {
+      const list = getStoredCustomers();
+      const custIndex = list.findIndex((c) => c.id === id);
+      if (custIndex >= 0) {
+        list[custIndex] = {
+          ...list[custIndex],
+          status: CustomerStatus.ACTIVE,
+          lockReason: undefined,
+          lockedAt: undefined,
+        };
+        saveStoredCustomers(list);
+        return list[custIndex];
+      }
+      throw new Error('Không tìm thấy đại lý');
+    }
+  },
+
+  /**
    * Đọc danh sách đại lý đã lưu
    */
   getStoredCustomers,

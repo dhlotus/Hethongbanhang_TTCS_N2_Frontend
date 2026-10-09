@@ -8,12 +8,9 @@ import type {
   CustomerDebtStatus,
   CustomerOption,
   Order,
-  OrderApprovalAction,
-  OrderApprovalHistoryEntry,
   OrderQueryParams,
   OrderStatus,
   PaginatedOrdersResponse,
-  UpdateOrderPayload,
 } from '../types/order';
 import type { Product } from '../types/products';
 
@@ -21,6 +18,8 @@ import type { Product } from '../types/products';
 const DRAFT_ORDERS_KEY = 'loha_draft_orders';
 /** Key lưu danh sách đơn hàng demo */
 const DEMO_ORDERS_KEY = 'loha_demo_orders';
+
+export const authStorage = tokenStorage;
 
 // ──────────────────────────────────────────────────────────────────────────
 // DỮ LIỆU MẪU — Đại lý Demo (SN-38 & SN-37)
@@ -364,6 +363,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   },
 ];
 
+export const MOCK_CUSTOMERS = DEMO_CUSTOMERS;
+
 // ──────────────────────────────────────────────────────────────────────────
 // HELPERS — localStorage Demo
 // ──────────────────────────────────────────────────────────────────────────
@@ -440,6 +441,10 @@ export const ordersService = {
         maxDebtDays: c.maxDebtDays,
         overdueAmount: (c as unknown as { overdueAmount?: number }).overdueAmount,
         overdueDays: (c as unknown as { overdueDays?: number }).overdueDays,
+        status: c.status,
+        lockReason: c.lockReason,
+        lockedAt: c.lockedAt,
+        lockedBy: c.lockedBy,
         deliveryPoints: (c.deliveryPoints || []).map((dp) => ({
           id: dp.id,
           name: dp.name,
@@ -585,59 +590,66 @@ export const ordersService = {
     return res.data;
   },
 
-  async updateOrder(id: string, payload: UpdateOrderPayload): Promise<Order> {
-    const res = await apiClient.put<Order>(`/orders/${id}`, payload);
-    return res.data;
-  },
-
-  async decideOrder(
-    id: string,
-    action: OrderApprovalAction,
-    comment?: string,
-  ): Promise<Order> {
-    const res = await apiClient.post<Order>(`/orders/${id}/decision`, {
-      action,
-      comment,
-    });
-    return res.data;
-  },
-
-  async getApprovalHistory(id: string): Promise<OrderApprovalHistoryEntry[]> {
-    const res = await apiClient.get<OrderApprovalHistoryEntry[]>(
-      `/orders/${id}/approval-history`,
-    );
-    return res.data;
-  },
-
   /**
    * Tạo đơn hàng mới (SN-38 & SN-39)
    */
   async createOrder(payload: CreateOrderPayload): Promise<Order> {
+    // Kiểm tra tồn khả dụng theo Task SN-42: Kiểm soát tồn khả dụng
+    for (const line of payload.lines) {
+      const prod = MOCK_PRODUCTS.find((p) => p.id === line.productId || p.sku === line.productSku);
+      const available = prod
+        ? (prod.availableStock ?? prod.availableQuantity ?? prod.stockQuantity)
+        : (line.availableStock ?? line.stockAvailable ?? 9999);
+      const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
+      const maxInUnit = convRate > 1 ? Math.floor(available / convRate) : available;
+      if (line.quantity > maxInUnit) {
+        throw new Error(
+          `Sản phẩm ${line.productName || line.productSku} vượt quá tồn khả dụng (Tồn kho: ${maxInUnit}, Đặt: ${line.quantity})`,
+        );
+      }
+    }
+
     const token = tokenStorage.getAccessToken();
     const isDemo = token?.startsWith('demo-jwt-');
 
     if (!isDemo) {
       try {
         const res = await apiClient.post<Order>('/orders', payload);
+        const all = getStoredDemoOrders();
+        all.unshift(res.data);
+        saveStoredDemoOrders(all);
         return res.data;
-      } catch (error) {
-        throw error;
-        // Fallback sang local simulation khi backend chưa sẵn sàng
+      } catch (apiError: any) {
+        if (apiError?.response) {
+          const errMsg = apiError.response.data?.message || apiError.message || 'Lỗi khi tạo đơn hàng trên máy chủ';
+          throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+        }
+        throw new Error(apiError instanceof Error ? apiError.message : 'Không thể kết nối máy chủ để lưu đơn hàng');
       }
+    }
+
+    const customers = await this.getCustomers();
+    const targetCustomer = customers.find((c) => c.id === payload.customerId);
+
+    if (targetCustomer?.status === 'LOCKED') {
+      throw new Error(
+        `Đại lý "${targetCustomer.name}" đang bị KHÓA GIAO DỊCH (Lý do: ${targetCustomer.lockReason || 'Không xác định'}). Không thể tạo đơn hàng mới!`,
+      );
     }
 
     const storedCustomers = customerService.getStoredCustomers();
     const customer =
+      targetCustomer ||
       storedCustomers.find((c) => c.id === payload.customerId) ||
+      MOCK_CUSTOMERS.find((c) => c.id === payload.customerId) ||
       DEMO_CUSTOMERS.find((c) => c.id === payload.customerId);
-    if (!customer) throw new Error('Không tìm thấy thông tin đại lý');
 
-    const user = tokenStorage.getUser();
+    const user = authStorage.getUser() || tokenStorage.getUser();
 
     // Kiểm tra công nợ theo Task SN-41 (Demo fallback)
-    const overdueDays = customer.overdueDays || 0;
-    const maxDebtDays = customer.maxDebtDays || 30;
-    const overdueAmount = customer.overdueAmount || 0;
+    const overdueDays = customer?.overdueDays || 0;
+    const maxDebtDays = customer?.maxDebtDays || 30;
+    const overdueAmount = customer?.overdueAmount || 0;
     if (payload.status !== 'DRAFT' && overdueDays > maxDebtDays && overdueAmount > 0) {
       throw new Error(
         `Đại lý đang có khoản nợ quá hạn ${overdueDays} ngày (vượt quá ${maxDebtDays} ngày cho phép). Hệ thống tạm khóa quyền tạo đơn hàng mới cho đại lý này.`
@@ -655,8 +667,8 @@ export const ordersService = {
     const totals = calcOrderTotals(lines);
 
     // Kiểm tra vượt hạn mức công nợ (SN-41)
-    const creditLimit = customer.creditLimit || 0;
-    const currentDebt = customer.currentDebt || 0;
+    const creditLimit = customer?.creditLimit || 0;
+    const currentDebt = customer?.currentDebt || 0;
     const projectedDebt = currentDebt + totals.grandTotal;
     const isCreditLimitExceeded = creditLimit > 0 && projectedDebt > creditLimit;
     const creditLimitExceededAmount = isCreditLimitExceeded ? projectedDebt - creditLimit : 0;
@@ -670,18 +682,27 @@ export const ordersService = {
       ? `[SN-41 CẢNH BÁO: Đơn hàng làm tổng công nợ đạt ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(projectedDebt)}, vượt hạn mức ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(creditLimit)}. Chờ phê duyệt]`
       : undefined;
 
+    // Fallback an toàn nếu không tìm thấy customer hoặc user
+    const currentUser = user || authStorage.getUser() || tokenStorage.getUser() || null;
+    const customerCode = customer?.code || payload.customerCode || payload.customerId;
+    const customerName = customer?.name || payload.customerName || 'Đại lý';
+    const customerGroup =
+      (customer as { group?: string })?.group ||
+      (customer as { customerGroup?: string })?.customerGroup ||
+      payload.customerGroup ||
+      'AGENT_LEVEL_2';
+    const salesRepId = currentUser?.id || payload.salesRepId || '';
+    const salesRepName = currentUser?.fullName || currentUser?.username || payload.salesRepName || 'NVKD';
+
     const newOrder: Order = {
       id: `order-${Date.now()}`,
       orderCode: generateOrderCode(),
-      customerId: customer.id,
-      customerCode: customer.code,
-      customerName: customer.name,
-      customerGroup:
-        (customer as { group?: string }).group ||
-        (customer as { customerGroup?: string }).customerGroup ||
-        'AGENT_LEVEL_2',
-      salesRepId: user?.id || 'usr-sales-002',
-      salesRepName: user?.fullName || user?.username || 'Trần Văn Nam',
+      customerId: payload.customerId,
+      customerCode,
+      customerName,
+      customerGroup,
+      salesRepId,
+      salesRepName,
       deliveryPoint: payload.deliveryPoint as Order['deliveryPoint'],
       deliveryDate: payload.deliveryDate,
       lines,
@@ -696,6 +717,7 @@ export const ordersService = {
       priceListId: payload.priceListId,
       isCreditLimitExceeded,
       creditLimitExceededAmount,
+      warningNote,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -772,23 +794,118 @@ export const ordersService = {
   async searchProducts(query: string): Promise<Product[]> {
     const token = tokenStorage.getAccessToken();
     if (token?.startsWith('demo-jwt-')) {
-      if (!query.trim()) return MOCK_PRODUCTS.slice(0, 8);
+      const source = MOCK_PRODUCTS.map((p) => ({
+        ...p,
+        availableStock: p.availableStock ?? p.availableQuantity ?? p.stockQuantity,
+      }));
+      if (!query.trim()) return source.slice(0, 8);
       const q = query.toLowerCase();
-      return MOCK_PRODUCTS.filter(
-        (p: Product) => p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)
+      return source.filter(
+        (p: Product) =>
+          p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q),
       ).slice(0, 10);
     }
-    const res = await apiClient.get<{ data: Product[] }>('/products', {
-      params: { search: query, limit: 10, status: 'ACTIVE' },
-    });
-    const products = res.data.data ?? [];
-    const stockRows = await inventoryService.getStockOverview();
-    const availableBySku = new Map(
-      stockRows.map((stock) => [stock.sku.toUpperCase(), stock.stockQuantity]),
-    );
-    return products.map((product) => ({
-      ...product,
-      stockQuantity: availableBySku.get(product.sku.toUpperCase()) ?? 0,
+    try {
+      const res = await apiClient.get<{ data: Product[] }>('/products', {
+        params: { search: query, limit: 10, status: 'ACTIVE' },
+      });
+      const products = res.data.data ?? [];
+      const stockRows = await inventoryService.getStockOverview();
+      const availableBySku = new Map(stockRows.map((stock) => [stock.sku.toUpperCase(), stock.stockQuantity]));
+      return products.map((product) => ({ ...product, stockQuantity: availableBySku.get(product.sku.toUpperCase()) ?? 0, availableStock: availableBySku.get(product.sku.toUpperCase()) ?? 0 }));
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Sao chép một đơn cũ thành đơn mới (SN-48)
+   * - Giữ nguyên toàn bộ dòng hàng
+   * - Áp lại giá và chiết khấu hiện hành của đại lý
+   * - Đơn mới luôn bắt đầu ở trạng thái Nháp (DRAFT)
+   */
+  async cloneOrder(orderId: string): Promise<Order> {
+    const token = tokenStorage.getAccessToken();
+    if (token?.startsWith('demo-jwt-')) {
+      const all = getStoredDemoOrders();
+      const source = all.find((o) => o.id === orderId);
+      if (!source) throw new Error(`Không tìm thấy đơn hàng cần sao chép (ID: ${orderId})`);
+
+      const nextCode = `DH-${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, '0')}-${(all.length + 1).toString().padStart(4, '0')}`;
+      const now = new Date().toISOString();
+
+      // Sao chép và tính lại giá hiện hành
+      const cloned: Order = {
+        ...source,
+        id: `ord-demo-${Date.now()}`,
+        orderCode: nextCode,
+        status: 'DRAFT',
+        paymentStatus: 'UNPAID',
+        note: source.note
+          ? `[Bản sao từ ${source.orderCode || orderId}] ${source.note}`
+          : `Bản sao từ ${source.orderCode || orderId}`,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      all.unshift(cloned);
+      saveStoredDemoOrders(all);
+      return cloned;
+    }
+
+    const res = await apiClient.post<Order | { data: Order }>(`/orders/${orderId}/clone`);
+    return (res.data as { data?: Order })?.data ?? (res.data as Order);
+  },
+
+  /**
+   * Cập nhật đơn hàng (Chỉnh sửa / Tiếp tục gõ đơn nháp SN-39)
+   */
+  async updateOrder(id: string, payload: Partial<CreateOrderPayload>): Promise<Order> {
+    const token = tokenStorage.getAccessToken();
+    const isDemo = token?.startsWith('demo-jwt-');
+    if (!isDemo) {
+      try {
+        const res = await apiClient.put<Order | { data: Order }>(`/orders/${id}`, payload);
+        const updated = (res.data as { data?: Order })?.data ?? (res.data as Order);
+        const all = getStoredDemoOrders();
+        const idx = all.findIndex((o) => o.id === id);
+        if (idx !== -1) {
+          all[idx] = updated;
+          saveStoredDemoOrders(all);
+        }
+        return updated;
+      } catch (apiError: any) {
+        if (apiError?.response) {
+          const errMsg =
+            apiError.response.data?.message || apiError.message || 'Lỗi khi cập nhật đơn hàng';
+          throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+        }
+      }
+    }
+
+    const all = getStoredDemoOrders();
+    const idx = all.findIndex((o) => o.id === id);
+    if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${id}`);
+    const existing = all[idx];
+    const lines = (payload.lines || existing.lines).map((l) => ({
+      ...l,
+      baseQuantity: Math.round(l.quantity * (l.conversionRate || 1)),
+      lineTotal: l.quantity * l.unitPrice,
     }));
+    const totals = calcOrderTotals(lines);
+    const updatedOrder: Order = {
+      ...existing,
+      ...totals,
+      lines,
+      deliveryDate: payload.deliveryDate || existing.deliveryDate,
+      deliveryPoint: (payload.deliveryPoint as Order['deliveryPoint']) || existing.deliveryPoint,
+      note: payload.note !== undefined ? payload.note : existing.note,
+      status: payload.status || existing.status,
+      updatedAt: new Date().toISOString(),
+    };
+    all[idx] = updatedOrder;
+    saveStoredDemoOrders(all);
+    return updatedOrder;
   },
 };
+
