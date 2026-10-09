@@ -1695,7 +1695,135 @@ LOHA SALES ưu tiên:
 * Nếu Submit thất bại, giữ dữ liệu đã nhập và hiển thị lỗi phù hợp.
 
 * Nếu Cancel có thể làm mất dữ liệu chưa lưu, yêu cầu xác nhận khi cần.
-
 * Sau khi thành công, cập nhật giao diện hoặc điều hướng theo đúng luồng nghiệp vụ.
-
 * Thống nhất vị trí và thứ tự nút trên các Form tương tự.
+
+## 61. Responsive Breakpoints — Điểm chuyển bố cục
+
+* Sử dụng breakpoint thống nhất toàn hệ thống, không tự đặt tùy tiện cho từng component.
+
+* Có thể dùng bộ breakpoint cơ sở:
+
+  * Mobile: `< 768px`
+
+  * Tablet: `768px – 1023px`
+
+  * Desktop: `≥ 1024px`
+
+* Chỉ thay đổi bố cục khi nội dung không còn hiển thị hoặc thao tác thuận tiện.
+
+* Ưu tiên CSS Media Queries, Flexbox và Grid; tránh cố định kích thước gây tràn màn hình.
+
+* Khai báo breakpoint thành token hoặc biến dùng chung.
+
+## 62. Mobile / Tablet / Desktop — Bố cục đa thiết bị
+
+* Thiết kế ưu tiên trải nghiệm Desktop cho hệ thống quản lý LOHA SALES, đồng thời hỗ trợ tốt Tablet và Mobile.
+
+* Desktop: hiển thị đầy đủ Sidebar, bảng dữ liệu và các thao tác chính.
+
+* Tablet: thu gọn Sidebar, điều chỉnh số cột và khoảng cách.
+
+* Mobile: ưu tiên một cột, điều hướng gọn và thao tác thiết yếu.
+
+* Không chỉ thu nhỏ giao diện Desktop; phải điều chỉnh bố cục theo không gian sử dụng.
+
+* Không để nội dung, nút bấm hoặc Form tràn khỏi viewport.
+
+* Bảng dữ liệu trên Mobile phải có phương án phù hợp như cuộn ngang có kiểm soát hoặc hiển thị dạng Card.
+
+* Kiểm tra giao diện ở nhiều độ rộng, không chỉ ở một vài kích thước cố định.
+
+## 63. Touch Target — Vùng thao tác cảm ứng
+
+* Vùng tương tác nên đạt tối thiểu 44 × 44px cho trải nghiệm cảm ứng thuận tiện.
+
+* Nếu không gian hạn chế, mục tiêu tối thiểu tham khảo theo WCAG 2.2 AA là 24 × 24 CSS px, kèm các điều kiện ngoại lệ của tiêu chuẩn.
+
+* Khoảng cách giữa các nút phải tránh bấm nhầm.
+
+* Icon nhỏ vẫn phải có vùng click đủ lớn.
+
+* Không đặt các hành động nguy hiểm sát những nút thường dùng.
+
+* Kiểm tra thao tác cảm ứng trên thiết bị thật khi có thể.
+
+## 64. Keyboard Navigation — Điều hướng bằng bàn phím
+
+* Mọi chức năng tương tác phải có thể sử dụng bằng bàn phím khi phù hợp.
+
+* `Tab` / `Shift + Tab`: di chuyển giữa các thành phần.
+
+* `Enter` / `Space`: kích hoạt thành phần theo đúng loại.
+
+* `Esc`: đóng Modal, Dropdown hoặc Popover khi phù hợp.
+
+* Thứ tự Focus phải logic, theo luồng đọc và thao tác.
+
+* Không tạo Keyboard Trap, ngoại trừ vùng tương tác có chủ đích như Modal; khi đóng phải trả Focus về vị trí phù hợp.
+
+* Các thao tác quan trọng không được yêu cầu bắt buộc dùng chuột.
+
+## 65. Focus State — Trạng thái lấy nét
+
+* Tất cả thành phần tương tác phải có Focus State dễ nhận biết.
+
+* Ưu tiên Focus Ring rõ ràng, sử dụng màu Primary hoặc màu có độ tương phản phù hợp.
+
+* Không xóa `outline` mặc định nếu chưa thay bằng chỉ báo Focus đủ rõ.
+
+* Focus không được bị Header, Modal hoặc thành phần khác che khuất.
+
+* Phân biệt Focus với Hover và Active.
+
+* Duy trì trạng thái Focus nhất quán trên Button, Input, Select, Menu và các thành phần tương tác khác.
+
+## 66. Color Contrast — Độ tương phản màu
+
+* Văn bản thông thường phải đạt tỷ lệ tương phản tối thiểu 4.5:1.
+
+* Văn bản lớn phải đạt tối thiểu 3:1.
+
+* Thành phần giao diện và dấu hiệu trực quan cần thiết để nhận biết trạng thái phải đạt tối thiểu 3:1 với màu liền kề theo tiêu chí WCAG áp dụng.
+
+* Không chỉ dùng màu để truyền đạt Success, Error, Warning hoặc trạng thái khác; cần thêm chữ, icon hoặc dấu hiệu phù hợp.
+
+* Kiểm tra cả trạng thái Default, Hover, Focus, Disabled và Error.
+
+* Không tự ý giảm độ tương phản để giao diện trông nhẹ nhàng hơn.
+
+* Kiểm tra màu chữ trên cả nền sáng, nền tối và nền có màu thương hiệu.
+
+## 67. Screen Reader / Accessibility — Khả năng tiếp cận
+
+* Dùng HTML semantic đúng mục đích: `button`, `nav`, `main`, `form`, `label`...
+
+* Input phải có Label được liên kết đúng với trường nhập.
+
+* Icon Button phải có tên truy cập được, ví dụ `aria-label="Xóa sản phẩm"`.
+
+* Ảnh có ý nghĩa phải có văn bản thay thế phù hợp; ảnh trang trí dùng alt rỗng.
+
+* Trạng thái và thông báo động quan trọng phải được công nghệ hỗ trợ nhận biết.
+
+* Dùng ARIA khi HTML semantic chưa đủ; không dùng ARIA thay thế phần tử HTML phù hợp.
+
+* Các thành phần tùy chỉnh như Modal, Tabs, Dropdown phải hỗ trợ bàn phím và công bố đúng trạng thái.
+
+* Không dùng màu sắc, hình ảnh hoặc icon đơn lẻ làm cách truyền đạt thông tin duy nhất.
+
+## 68. Zoom / Font Scaling — Phóng to giao diện
+
+* Hỗ trợ phóng to văn bản đến 200% mà không mất nội dung hoặc chức năng.
+
+* Với chiều rộng tương đương 320 CSS px, nội dung thông thường phải hiển thị mà không cần cuộn ngang, ngoại trừ nội dung cần bố cục hai chiều như một số bảng dữ liệu.
+
+* Ưu tiên `rem`, `%`, `em`, `minmax()` và kích thước linh hoạt thay vì cố định mọi thứ bằng `px`.
+
+* Không đặt chiều cao cố định cho vùng chứa văn bản nếu có thể khiến chữ bị cắt.
+
+* Khi tăng cỡ chữ, nội dung phải tự xuống dòng và bố cục thích ứng.
+
+* Không vô hiệu hóa tính năng Zoom của trình duyệt.
+
+* Kiểm tra cả Zoom trình duyệt và cài đặt cỡ chữ của hệ điều hành khi phù hợp.

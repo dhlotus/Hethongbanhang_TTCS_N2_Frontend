@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { Clock, X, ArrowRight, User, AlertCircle, Loader2 } from 'lucide-react';
 import { productsService } from '../services/products.service';
 import type { ProductPriceHistory } from '../types/products';
-import { formatVietnameseDate } from './date-input'; // Assuming this exists to format dates, or we can write inline
 
 interface ProductPriceHistoryModalProps {
   isOpen: boolean;
@@ -115,7 +114,7 @@ export const ProductPriceHistoryModal: React.FC<ProductPriceHistoryModalProps> =
             </div>
           ) : (
             <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
-              {history.map((item, index) => (
+              {history.map((item) => (
                 <div key={item.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
                   
                   {/* Timeline marker */}
