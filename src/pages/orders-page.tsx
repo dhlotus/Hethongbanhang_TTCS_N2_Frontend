@@ -33,6 +33,7 @@ import {
   type DiscountPolicy,
 } from '../services/discount-policies.service';
 import { getStoredUser } from '../utils/navigation';
+import { Sn40OrderPricingModal } from '../components/sn40-order-pricing-modal';
 import type {
   Order,
   OrderLine,
@@ -1669,8 +1670,10 @@ export const OrdersPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isSn40ModalOpen, setIsSn40ModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
+  const [approvingOrder, setApprovingOrder] = useState(false);
 
   // Nhận customerId từ URL query param (Đồng bộ từ trang Quản lý đại lý)
   const [initialCustomerId, setInitialCustomerId] = useState<string | undefined>(undefined);
@@ -1690,6 +1693,7 @@ export const OrdersPage: React.FC = () => {
   }, [searchParams, setSearchParams]);
 
   const user = getStoredUser();
+  const isAdmin = user?.roles?.includes('ADMIN');
   const isSalesRep = user?.roles?.includes('SALES_REP');
   const isSalesManager = user?.roles?.includes('SALES_MANAGER');
 
@@ -1760,6 +1764,21 @@ export const OrdersPage: React.FC = () => {
     setTotal((t) => t + 1);
   };
 
+  const handleApproveOrder = async (order: Order): Promise<void> => {
+    if (!order.id || approvingOrder) return;
+    setApprovingOrder(true);
+    try {
+      const approvedOrder = await ordersService.updateOrderStatus(order.id, 'APPROVED');
+      setOrders((current) => current.map((item) => item.id === approvedOrder.id ? approvedOrder : item));
+      setViewOrder((current) => current?.id === approvedOrder.id ? approvedOrder : current);
+      showToast('success', `Đã duyệt đơn ${approvedOrder.orderCode || ''}`.trim());
+    } catch (error: unknown) {
+      showToast('error', error instanceof Error ? error.message : 'Không thể duyệt đơn hàng');
+    } finally {
+      setApprovingOrder(false);
+    }
+  };
+
   return (
     <>
       <div className="space-y-6">
@@ -1775,14 +1794,24 @@ export const OrdersPage: React.FC = () => {
               Tạo và theo dõi đơn hàng bán buôn cho đại lý
             </p>
           </div>
-          {(isSalesRep || isSalesManager) && (
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              Tạo Đơn hàng
-            </button>
+          {(isSalesRep || isSalesManager || isAdmin) && (
+            <div className="flex flex-wrap gap-2">
+              {(isSalesRep || isSalesManager) && (
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  Tạo Đơn hàng
+                </button>
+              )}
+              <button
+                onClick={() => setIsSn40ModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors shadow-sm"
+              >
+                Tạo đơn tự áp giá · SN-40
+              </button>
+            </div>
           )}
         </div>
 
@@ -1977,6 +2006,12 @@ export const OrdersPage: React.FC = () => {
         onCreated={handleOrderCreated}
       />
 
+      <Sn40OrderPricingModal
+        isOpen={isSn40ModalOpen}
+        onClose={() => setIsSn40ModalOpen(false)}
+        onCreated={handleOrderCreated}
+      />
+
       {/* Modal Xem chi tiết đơn hàng */}
       {viewOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/40 backdrop-blur-sm">
@@ -2027,6 +2062,15 @@ export const OrdersPage: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {viewOrder.requiresApproval && (viewOrder.approvalReasons?.length ?? 0) > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+                  <p className="font-semibold">Đơn cần quản lý duyệt</p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs">
+                    {viewOrder.approvalReasons?.map((reason) => <li key={reason}>{reason}</li>)}
+                  </ul>
+                </div>
+              )}
 
               {/* Danh sách dòng hàng */}
               <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -2084,7 +2128,18 @@ export const OrdersPage: React.FC = () => {
               )}
             </div>
 
-            <div className="px-5 py-4 border-t border-slate-100 flex justify-end">
+            <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between gap-3">
+              {(isAdmin || isSalesManager) && viewOrder.status === 'PENDING' && (
+                <button
+                  type="button"
+                  onClick={() => void handleApproveOrder(viewOrder)}
+                  disabled={approvingOrder}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {approvingOrder ? 'Đang duyệt...' : 'Duyệt đơn'}
+                </button>
+              )}
               <button
                 onClick={() => setViewOrder(null)}
                 className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
