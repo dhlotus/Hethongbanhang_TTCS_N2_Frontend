@@ -159,6 +159,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
   // 2. Nhân viên kinh doanh (SALES_REP)
   [USER_ROLES.SALES_REP]: [
     {
+      id: 'dashboard',
+      name: 'Bảng điều khiển',
+      path: '/dashboard',
+      icon: LayoutDashboard,
+      category: 'Kinh doanh & Bán hàng',
+    },
+    {
       id: 'sales-customers',
       name: 'Quản lý đại lý',
       path: '/sales/customers',
@@ -258,6 +265,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
   // 4. Nhân viên kho / Thủ kho (WAREHOUSE_KEEPER)
   [USER_ROLES.WAREHOUSE_KEEPER]: [
     {
+      id: 'dashboard',
+      name: 'Bảng điều khiển',
+      path: '/dashboard',
+      icon: LayoutDashboard,
+      category: 'Quản lý Tồn kho',
+    },
+    {
       id: 'inventory-stock',
       name: 'Sổ tồn kho & Lô hàng',
       path: '/inventory/stock',
@@ -310,6 +324,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
 
   // 5. Quản lý kho (WAREHOUSE_MANAGER)
   [USER_ROLES.WAREHOUSE_MANAGER]: [
+    {
+      id: 'dashboard',
+      name: 'Bảng điều khiển',
+      path: '/dashboard',
+      icon: LayoutDashboard,
+      category: 'Kiểm soát Kho',
+    },
     {
       id: 'inventory-stock',
       name: 'Sổ tồn kho & Lô hàng',
@@ -370,6 +391,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
 
   // 6. Kế toán công nợ (ACCOUNTANT)
   [USER_ROLES.ACCOUNTANT]: [
+    {
+      id: 'dashboard',
+      name: 'Bảng điều khiển',
+      path: '/dashboard',
+      icon: LayoutDashboard,
+      category: 'Hóa đơn & Chứng từ',
+    },
     {
       id: 'accounting-invoices',
       name: 'Hóa đơn & Chứng từ',
