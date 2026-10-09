@@ -128,29 +128,27 @@
 
 
 
-### [Sprint 4] - [SN-43]: Giao Di?n G?i � M?t H�ng Khi G� �on & Th�m Nhanh �on G?n Nh?t (1-Click Reorder)
-- **Th?i gian ho�n th�nh:** 2026-10-09
-- **M� Jira / Task:** SN-43 (Parent Story: SN-39 / S4-04 - Sprint 4)
-- **Ti�u d?:** "L� Nh�n vi�n kinh doanh, t�i mu?n xem l?ch s? mua h�ng c?a d?i l� ngay khi g� don, d? g?i � d�ng m?t h�ng kh�ch v?n l?y d?u thay v� ph?i h?i l?i."
-- **Ti�u ch� ch?p nh?n (AC) d� d?t 100%:**
-  1. **AC1 - G?i � m?t h�ng thu?ng mua trong 3 th�ng:**
-     - Ngay khi Sales Rep ch?n d?i l�, t? d?ng t?i danh s�ch m?t h�ng d?i l� thu?ng l?y trong 3 th�ng qua.
-     - Hi?n th? d?y d? th�ng tin: T�n s?n ph?m, SKU, badge "SL b�nh qu�n: X (�on v?)", s? l?n d� mua, ng�y mua g?n nh?t v� s? lu?ng l?n cu?i.
-     - � ch?nh nhanh s? lu?ng g?i � (kh?i t?o m?c d?nh b?ng s? lu?ng b�nh qu�n) k�m n�t to "+ Th�m v�o don" ho?c badge "? �� c� trong don" n?u h�ng d� n?m trong don.
-  2. **AC2 - Th�m nhanh c? nh�m h�ng d� mua l?n tru?c (1-Click Reorder):**
-     - Hi?n th? banner/card don h�ng th�nh c�ng g?n nh?t: M� don, ng�y mua, t?ng ti?n v� s? lu?ng m?t h�ng.
-     - N�t h�nh d?ng nhanh "? Th�m nhanh nh�m h�ng l?n tru?c": 1 ch?m t? d?ng d? to�n b? danh s�ch m?t h�ng v� s? lu?ng c?a don cu v�o b?ng don h�ng dang g� d?, �p d?ng chi?t kh?u t? d?ng theo ch�nh s�ch hi?n h�nh (calculateDiscount) k�m toast th�ng b�o r� r�ng.
-  3. **AC3 - Tuong th�ch ph�n quy?n & Tr?i nghi?m th?c d?a (UI_GUIDELINES.md):**
-     - Hi?n th? th�ng b�o th�n thi?n n?u kh�ng c� quy?n ph? tr�ch d?i l� (403 Forbidden).
-     - Ph�n t�ch r� r�ng tr?ng th�i �ang t?i (Skeleton), Tr?ng (Empty state: "�?i l� chua c� l?ch s? mua h�ng trong 3 th�ng qua").
-     - T?i uu Mobile/Tablet v?i n�t b?m to >= 44px, bo g�c m?m m?i, h? m�u Indigo-Purple d?ng nh?t v?i thuong hi?u LOHA SALES.
-- **Danh s�ch file t?o m?i / thay d?i:**
-  - src/types/order-suggestion.types.ts (T?o m?i: SuggestedProductItem, LatestOrderItem, LatestOrderSummary, CustomerPurchaseHistoryResponse kh?p 100% v?i Backend).
-  - src/services/order-suggestions.service.ts (T?o m?i: orderSuggestionsService g?i API t?p trung qua piClient k�m fallback demo an to�n).
-  - src/components/order-suggestions-panel.tsx (T?o m?i: Component widget hi?n th? l?ch s? g?i � 3 th�ng v� n�t 1-click reorder).
-  - src/pages/orders-page.tsx (C?p nh?t: T�ch h?p OrderSuggestionsPanel v�o Bu?c 2 t?o don h�ng, c�c handler handleAddSuggestedItem v� handleReorderPreviousOrder).
-- **Tr?ng th�i ki?m th?:**
-  - Frontend ESLint: 
-px eslint -> 0 l?i, 0 warnings.
-  - Frontend Build: 
-pm run build (	sc -b && vite build) -> 0 l?i, build production ho�n t?t trong 2.35s.
+### [Sprint 4] - [SN-43]: Giao Diện Gợi Ý Mặt Hàng Khi Gõ Đơn & Thêm Nhanh Đơn Gần Nhất (1-Click Reorder)
+- **Thời gian hoàn thành:** 2026-10-09
+- **Mã Jira / Task:** SN-43 (Parent Story: SN-39 / S4-04 - Sprint 4)
+- **Tiêu đề:** "Là Nhân viên kinh doanh, tôi muốn xem lịch sử mua hàng của đại lý ngay khi gõ đơn, để gợi ý đúng mặt hàng khách vẫn lấy đều thay vì phải hỏi lại."
+- **Tiêu chí chấp nhận (AC) đã đạt 100%:**
+  1. **AC1 - Gợi ý mặt hàng thường mua trong 3 tháng:**
+     - Ngay khi Sales Rep chọn đại lý, tự động tải danh sách mặt hàng đại lý thường lấy trong 3 tháng qua.
+     - Hiển thị đầy đủ thông tin: Tên sản phẩm, SKU, badge "SL bình quân: X (Đơn vị)", số lần đã mua, ngày mua gần nhất và số lượng lần cuối.
+     - Ô chỉnh nhanh số lượng gợi ý (khởi tạo mặc định bằng số lượng bình quân) kèm nút to "+ Thêm vào đơn" hoặc badge "✓ Đã có trong đơn" nếu hàng đã nằm trong đơn.
+  2. **AC2 - Thêm nhanh cả nhóm hàng đã mua lần trước (1-Click Reorder):**
+     - Hiển thị banner/card đơn hàng thành công gần nhất: Mã đơn, ngày mua, tổng tiền và số lượng mặt hàng.
+     - Nút hành động nhanh "⚡ Thêm nhanh nhóm hàng lần trước": 1 chạm tự động đổ toàn bộ danh sách mặt hàng và số lượng của đơn cũ vào bảng đơn hàng đang gõ dở, áp dụng chiết khấu tự động theo chính sách hiện hành (calculateDiscount) kèm toast thông báo rõ ràng.
+  3. **AC3 - Tương thích phân quyền & Trải nghiệm thực địa (UI_GUIDELINES.md):**
+     - Hiển thị thông báo thân thiện nếu không có quyền phụ trách đại lý (403 Forbidden).
+     - Phân tách rõ ràng trạng thái Đang tải (Skeleton), Trống (Empty state: "Đại lý chưa có lịch sử mua hàng trong 3 tháng qua").
+     - Tối ưu Mobile/Tablet với nút bấm to >= 44px, bo góc mềm mại, hệ màu Indigo-Purple đồng nhất với thương hiệu LOHA SALES.
+- **Danh sách file tạo mới / thay đổi:**
+  - `src/types/order-suggestion.types.ts` (Tạo mới: SuggestedProductItem, LatestOrderItem, LatestOrderSummary, CustomerPurchaseHistoryResponse khớp 100% với Backend).
+  - `src/services/order-suggestions.service.ts` (Tạo mới: orderSuggestionsService gọi API tập trung qua apiClient kèm fallback demo an toàn).
+  - `src/components/order-suggestions-panel.tsx` (Tạo mới: Component widget hiển thị lịch sử gợi ý 3 tháng và nút 1-click reorder).
+  - `src/pages/orders-page.tsx` (Cập nhật: Tích hợp OrderSuggestionsPanel vào Bước 2 tạo đơn hàng, các handler handleAddSuggestedItem và handleReorderPreviousOrder).
+- **Trạng thái kiểm thử:**
+  - Frontend ESLint: `npx eslint` -> 0 lỗi, 0 warnings.
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, build production hoàn tất trong 2.35s.
