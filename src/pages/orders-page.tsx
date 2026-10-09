@@ -1498,8 +1498,12 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                     ) : (
                       <Send className="w-3.5 h-3.5" />
                     )}
-                </div>
+                    <span>{isSubmitting ? 'Đang gửi...' : 'Gửi Tạo Đơn Hàng'}</span>
+                  </button>
+                </>
               )}
+            </div>
+          </div>
 
               {/* Tổng kết đơn hàng */}
               {lines.length > 0 && (
