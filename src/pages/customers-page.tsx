@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
+import { LockAgencyModal } from '../components/lock-agency-modal';
 import { customerService } from '../services/customer.service';
 import type { Customer, CreateCustomerPayload, DeliveryPoint } from '../types/customer.types';
 
@@ -47,6 +48,12 @@ export const CustomersPage: React.FC = () => {
     null
   );
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState<boolean>(false);
+
+  // Modal Khóa / Mở khóa đại lý (SN-36)
+  const [lockModalCustomer, setLockModalCustomer] = useState<Customer | null>(null);
+  const [lockModalMode, setLockModalMode] = useState<'LOCK' | 'UNLOCK'>('LOCK');
+  const [isLockModalOpen, setIsLockModalOpen] = useState<boolean>(false);
+  const [isLockSubmitting, setIsLockSubmitting] = useState<boolean>(false);
 
   // Modal thêm đại lý mới
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
@@ -201,42 +208,79 @@ export const CustomersPage: React.FC = () => {
     }
   };
 
-  // Khóa giao dịch đại lý (SN-36)
-  const handleLockCustomer = async (customer: Customer) => {
-    const reason = window.prompt(
-      `[SN-36] Nhập LÝ DO KHÓA giao dịch cho đại lý "${customer.name}" (Bắt buộc):`,
-      'Quá hạn thanh toán công nợ theo quy định, tạm dừng giao dịch'
-    );
-    if (!reason || !reason.trim()) {
-      showToast('error', 'Chưa nhập lý do', 'Bắt buộc phải nhập lý do khi khóa giao dịch đại lý (SN-36)!');
-      return;
-    }
+  // Mở modal khóa giao dịch đại lý (SN-36)
+  const handleOpenLockModal = (customer: Customer) => {
+    setLockModalCustomer(customer);
+    setLockModalMode('LOCK');
+    setIsLockModalOpen(true);
+  };
 
+  // Mở modal mở khóa giao dịch đại lý (SN-36)
+  const handleOpenUnlockModal = (customer: Customer) => {
+    setLockModalCustomer(customer);
+    setLockModalMode('UNLOCK');
+    setIsLockModalOpen(true);
+  };
+
+  // Xác nhận khóa đại lý qua Modal (SN-36)
+  const handleConfirmLock = async (reason: string) => {
+    if (!lockModalCustomer) return;
     try {
-      const updated = await customerService.lockCustomer(customer.id, reason.trim());
+      setIsLockSubmitting(true);
+      const updated = await customerService.lockCustomer(lockModalCustomer.id, reason.trim());
       setCustomers((prev) =>
-        prev.map((c) => (c.id === customer.id ? { ...c, status: 'LOCKED', lockReason: reason.trim() } : c))
+        prev.map((c) =>
+          c.id === lockModalCustomer.id
+            ? { ...c, status: 'LOCKED', lockReason: reason.trim() }
+            : c
+        )
       );
-      showToast('warning', 'Đã khóa giao dịch', `Đại lý "${updated.name}" đã bị khóa giao dịch. Lý do: ${reason.trim()}`);
+      showToast(
+        'warning',
+        'Đã khóa giao dịch',
+        `Đại lý "${updated.name}" đã bị khóa giao dịch. Lý do: ${reason.trim()}`
+      );
+      setIsLockModalOpen(false);
+      setLockModalCustomer(null);
     } catch (err: unknown) {
-      showToast('error', 'Lỗi khóa đại lý', err instanceof Error ? err.message : 'Không thể khóa đại lý.');
+      showToast(
+        'error',
+        'Lỗi khóa đại lý',
+        err instanceof Error ? err.message : 'Không thể khóa đại lý.'
+      );
+    } finally {
+      setIsLockSubmitting(false);
     }
   };
 
-  // Mở khóa giao dịch đại lý (SN-36)
-  const handleUnlockCustomer = async (customer: Customer) => {
-    if (!window.confirm(`[SN-36] Bạn có chắc chắn muốn MỞ KHÓA giao dịch cho đại lý "${customer.name}"?`)) {
-      return;
-    }
-
+  // Xác nhận mở khóa đại lý qua Modal (SN-36)
+  const handleConfirmUnlock = async () => {
+    if (!lockModalCustomer) return;
     try {
-      const updated = await customerService.unlockCustomer(customer.id);
+      setIsLockSubmitting(true);
+      const updated = await customerService.unlockCustomer(lockModalCustomer.id);
       setCustomers((prev) =>
-        prev.map((c) => (c.id === customer.id ? { ...c, status: 'ACTIVE', lockReason: undefined } : c))
+        prev.map((c) =>
+          c.id === lockModalCustomer.id
+            ? { ...c, status: 'ACTIVE', lockReason: undefined }
+            : c
+        )
       );
-      showToast('success', 'Đã mở khóa giao dịch', `Đại lý "${updated.name}" đã được mở khóa và có thể giao dịch bình thường!`);
+      showToast(
+        'success',
+        'Đã mở khóa giao dịch',
+        `Đại lý "${updated.name}" đã được mở khóa và có thể giao dịch bình thường!`
+      );
+      setIsLockModalOpen(false);
+      setLockModalCustomer(null);
     } catch (err: unknown) {
-      showToast('error', 'Lỗi mở khóa', err instanceof Error ? err.message : 'Không thể mở khóa đại lý.');
+      showToast(
+        'error',
+        'Lỗi mở khóa',
+        err instanceof Error ? err.message : 'Không thể mở khóa đại lý.'
+      );
+    } finally {
+      setIsLockSubmitting(false);
     }
   };
 
@@ -589,8 +633,8 @@ export const CustomersPage: React.FC = () => {
                           {customer.status === 'LOCKED' ? (
                             <button
                               type="button"
-                              onClick={() => handleUnlockCustomer(customer)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+                              onClick={() => handleOpenUnlockModal(customer)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
                               title="Mở khóa giao dịch đại lý (SN-36)"
                             >
                               <Unlock className="w-3.5 h-3.5 text-emerald-600" />
@@ -599,8 +643,8 @@ export const CustomersPage: React.FC = () => {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => handleLockCustomer(customer)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors"
+                              onClick={() => handleOpenLockModal(customer)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors cursor-pointer"
                               title="Khóa giao dịch đại lý (SN-36)"
                             >
                               <Lock className="w-3.5 h-3.5 text-rose-600" />
@@ -866,6 +910,22 @@ export const CustomersPage: React.FC = () => {
           onUpdated={handleDeliveryPointsUpdated}
         />
       )}
+
+      {/* ── MODAL KHÓA / MỞ KHÓA GIAO DỊCH ĐẠI LÝ (SN-36) ── */}
+      <LockAgencyModal
+        open={isLockModalOpen}
+        mode={lockModalMode}
+        customer={lockModalCustomer}
+        onClose={() => {
+          if (!isLockSubmitting) {
+            setIsLockModalOpen(false);
+            setLockModalCustomer(null);
+          }
+        }}
+        onConfirmLock={handleConfirmLock}
+        onConfirmUnlock={handleConfirmUnlock}
+        loading={isLockSubmitting}
+      />
     </div>
   );
 };
