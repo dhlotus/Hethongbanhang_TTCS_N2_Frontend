@@ -377,10 +377,10 @@ export const LoginPage: React.FC = () => {
               type="submit"
               isLoading={isSubmitting}
               loadingText="Đang xác thực..."
+              rightIcon={<ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />}
               className="mt-1 group shadow-2xs hover:shadow-xs active:scale-[0.99] transition-all"
             >
-              <span>Đăng nhập</span>
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+              Đăng nhập
             </Button>
           </form>
         </div>
