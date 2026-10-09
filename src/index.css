@@ -841,3 +841,40 @@ html {
     scroll-behavior: auto !important;
   }
 }
+
+/* ========================================================================= */
+/* PRINT STYLES (SN-47: In hoặc xuất PDF đơn hàng chuẩn A4 dọc)              */
+/* ========================================================================= */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 10mm 10mm 10mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  /* Ẩn các thành phần giao diện không thuộc phiếu in */
+  header,
+  aside,
+  nav,
+  button,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Định dạng tài liệu in chuẩn khổ giấy */
+  #order-print-document {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+}
+
