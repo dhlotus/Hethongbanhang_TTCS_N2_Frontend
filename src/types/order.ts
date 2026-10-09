@@ -8,11 +8,26 @@ export type OrderStatus =
   | 'PENDING_APPROVAL' // Cần phê duyệt (do vượt hạn mức công nợ - SN-41)
   | 'PENDING_INVENTORY_APPROVAL' // Chờ duyệt do thiếu tồn kho
   | 'APPROVED' // Đã duyệt
+  | 'REJECTED' // Bị từ chối khi xét duyệt
+  | 'RETURNED_FOR_UPDATE' // Trả lại nhân viên kinh doanh để chỉnh sửa
   | 'PROCESSING' // Đang xử lý / soạn hàng
   | 'SHIPPED' // Đã xuất kho / giao vận
   | 'DELIVERED' // Giao thành công
   | 'CANCELLED' // Đã hủy
   | 'RETURNED'; // Hoàn hàng
+
+export type OrderApprovalAction = 'APPROVE' | 'REJECT' | 'RETURN_FOR_UPDATE';
+
+export interface OrderApprovalHistory {
+  id: number;
+  orderId: string;
+  action: OrderApprovalAction;
+  comment: string | null;
+  approverId: string;
+  approverName: string;
+  approverRoles: string[];
+  createdAt: string;
+}
 
 export type PaymentStatus = 'UNPAID' | 'PARTIAL' | 'PAID';
 

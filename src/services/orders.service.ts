@@ -8,6 +8,8 @@ import type {
   CustomerDebtStatus,
   CustomerOption,
   Order,
+  OrderApprovalAction,
+  OrderApprovalHistory,
   OrderQueryParams,
   OrderStatus,
   PaginatedOrdersResponse,
@@ -18,6 +20,7 @@ import type { Product } from '../types/products';
 const DRAFT_ORDERS_KEY = 'loha_draft_orders';
 /** Key lưu danh sách đơn hàng demo */
 const DEMO_ORDERS_KEY = 'loha_demo_orders';
+const DEMO_APPROVAL_HISTORY_KEY = 'loha_demo_order_approval_history';
 
 export const authStorage = tokenStorage;
 
@@ -791,19 +794,58 @@ export const ordersService = {
   /** Submit an approval decision through the dedicated review endpoint. */
   async decideOrder(
     id: string,
-    action: 'APPROVE',
+    action: OrderApprovalAction,
+    comment?: string,
   ): Promise<Order> {
     const token = tokenStorage.getAccessToken();
     if (token?.startsWith('demo-jwt-')) {
       const all = getStoredDemoOrders();
       const idx = all.findIndex((order) => order.id === id);
       if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${id}`);
-      all[idx] = { ...all[idx], status: 'APPROVED', updatedAt: new Date().toISOString() };
+      const nextStatus: Record<OrderApprovalAction, OrderStatus> = {
+        APPROVE: 'APPROVED',
+        REJECT: 'REJECTED',
+        RETURN_FOR_UPDATE: 'RETURNED_FOR_UPDATE',
+      };
+      const createdAt = new Date().toISOString();
+      all[idx] = { ...all[idx], status: nextStatus[action], updatedAt: createdAt };
       saveStoredDemoOrders(all);
+      const user = tokenStorage.getUser();
+      const history = this.readDemoApprovalHistory();
+      history.push({
+        id: Date.now(),
+        orderId: id,
+        action,
+        comment: comment?.trim() || null,
+        approverId: user?.id || 'demo-reviewer',
+        approverName: user?.fullName || user?.username || 'Quản lý',
+        approverRoles: user?.roles || [],
+        createdAt,
+      });
+      localStorage.setItem(DEMO_APPROVAL_HISTORY_KEY, JSON.stringify(history));
       return all[idx];
     }
-    const res = await apiClient.post<Order>(`/orders/${id}/decision`, { action });
+    const res = await apiClient.post<Order>(`/orders/${id}/decision`, { action, comment });
     return res.data;
+  },
+
+  async getApprovalHistory(orderId: string): Promise<OrderApprovalHistory[]> {
+    const token = tokenStorage.getAccessToken();
+    if (token?.startsWith('demo-jwt-')) {
+      return this.readDemoApprovalHistory()
+        .filter((entry) => entry.orderId === orderId)
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    }
+    const res = await apiClient.get<OrderApprovalHistory[]>(`/orders/${orderId}/approval-history`);
+    return res.data;
+  },
+
+  readDemoApprovalHistory(): OrderApprovalHistory[] {
+    try {
+      return JSON.parse(localStorage.getItem(DEMO_APPROVAL_HISTORY_KEY) || '[]') as OrderApprovalHistory[];
+    } catch {
+      return [];
+    }
   },
 
   /**

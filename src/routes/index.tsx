@@ -161,7 +161,7 @@ export const AppRoutes: React.FC = () => {
             >
               <Route
                 path="/sales/approvals"
-                element={<Navigate to="/sales/orders" replace />}
+                element={<Navigate to="/sales/orders?status=PENDING_APPROVAL" replace />}
               />
               <Route
                 path="/reports/sales"

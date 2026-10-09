@@ -25,6 +25,9 @@ import {
   Copy,
   Printer,
   Edit3,
+  XCircle,
+  CornerUpLeft,
+  History,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ordersService } from '../services/orders.service';
@@ -39,6 +42,8 @@ import type {
   Order,
   OrderLine,
   OrderStatus,
+  OrderApprovalAction,
+  OrderApprovalHistory,
   CustomerOption,
   DeliveryPoint,
   CustomerDebtStatus,
@@ -203,6 +208,18 @@ const ORDER_STATUS_CONFIG: Record<
     bgClass: 'bg-blue-50',
     textClass: 'text-blue-700',
     icon: <CheckCircle2 className="w-3 h-3" />,
+  },
+  REJECTED: {
+    label: 'Từ chối',
+    bgClass: 'bg-red-50',
+    textClass: 'text-red-700',
+    icon: <XCircle className="w-3 h-3" />,
+  },
+  RETURNED_FOR_UPDATE: {
+    label: 'Trả lại sửa',
+    bgClass: 'bg-orange-50',
+    textClass: 'text-orange-700',
+    icon: <CornerUpLeft className="w-3 h-3" />,
   },
   PROCESSING: {
     label: 'Đang soạn',
@@ -2108,7 +2125,9 @@ const STATUS_TABS: { key: OrderStatus | 'ALL'; label: string }[] = [
   { key: 'DRAFT', label: 'Nháp' },
   { key: 'PENDING', label: 'Chờ duyệt' },
   { key: 'PENDING_APPROVAL', label: 'Cần duyệt hạn mức' },
+  { key: 'RETURNED_FOR_UPDATE', label: 'Trả lại sửa' },
   { key: 'APPROVED', label: 'Đã duyệt' },
+  { key: 'REJECTED', label: 'Từ chối' },
   { key: 'PROCESSING', label: 'Đang soạn' },
   { key: 'DELIVERED', label: 'Giao thành công' },
   { key: 'CANCELLED', label: 'Đã hủy' },
@@ -2126,7 +2145,12 @@ export const OrdersPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const limit = 10;
 
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>(() => {
+    const requestedStatus = searchParams.get('status');
+    return STATUS_TABS.some((tab) => tab.key === requestedStatus)
+      ? requestedStatus as OrderStatus
+      : 'ALL';
+  });
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -2134,6 +2158,10 @@ export const OrdersPage: React.FC = () => {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
   const [approvingOrder, setApprovingOrder] = useState(false);
+  const [decisionAction, setDecisionAction] = useState<OrderApprovalAction | null>(null);
+  const [decisionComment, setDecisionComment] = useState('');
+  const [approvalHistory, setApprovalHistory] = useState<OrderApprovalHistory[]>([]);
+  const [isLoadingApprovalHistory, setIsLoadingApprovalHistory] = useState(false);
   const [printOrder, setPrintOrder] = useState<Order | null>(null);
   const [isCloning, setIsCloning] = useState<string | null>(null);
 
@@ -2223,6 +2251,28 @@ export const OrdersPage: React.FC = () => {
     };
   }, [page, limit, statusFilter, searchTerm, refreshKey]);
 
+  useEffect(() => {
+    let isMounted = true;
+    if (!viewOrder?.id) {
+      setApprovalHistory([]);
+      return;
+    }
+    setIsLoadingApprovalHistory(true);
+    ordersService.getApprovalHistory(viewOrder.id)
+      .then((history) => {
+        if (isMounted) setApprovalHistory(history);
+      })
+      .catch(() => {
+        if (isMounted) setApprovalHistory([]);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingApprovalHistory(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [viewOrder?.id]);
+
   const handleOrderCreated = (order: Order) => {
     setOrders((prev) => [order, ...prev]);
     setTotal((t) => t + 1);
@@ -2255,19 +2305,41 @@ export const OrdersPage: React.FC = () => {
     setPrintOrder(targetOrder);
   };
 
-  const handleApproveOrder = async (order: Order): Promise<void> => {
+  const submitApprovalDecision = async (
+    order: Order,
+    action: OrderApprovalAction,
+    comment?: string,
+  ): Promise<void> => {
     if (!order.id || approvingOrder) return;
+    if (action !== 'APPROVE' && !comment?.trim()) return;
     setApprovingOrder(true);
     try {
-      const approvedOrder = await ordersService.decideOrder(order.id, 'APPROVE');
-      setOrders((current) => current.map((item) => item.id === approvedOrder.id ? approvedOrder : item));
-      setViewOrder((current) => current?.id === approvedOrder.id ? approvedOrder : current);
-      showToast('success', `Đã duyệt đơn ${approvedOrder.orderCode || ''}`.trim());
+      const decidedOrder = await ordersService.decideOrder(order.id, action, comment);
+      setOrders((current) => current.map((item) => item.id === decidedOrder.id ? decidedOrder : item));
+      setViewOrder((current) => current?.id === decidedOrder.id ? decidedOrder : current);
+      setRefreshKey((key) => key + 1);
+      try {
+        setApprovalHistory(await ordersService.getApprovalHistory(order.id));
+      } catch {
+        // The decision is saved independently; history remains available when its request succeeds.
+      }
+      const successMessage: Record<OrderApprovalAction, string> = {
+        APPROVE: 'Đã duyệt đơn',
+        REJECT: 'Đã từ chối đơn',
+        RETURN_FOR_UPDATE: 'Đã trả đơn về để chỉnh sửa',
+      };
+      showToast('success', `${successMessage[action]} ${decidedOrder.orderCode || ''}`.trim());
+      setDecisionAction(null);
+      setDecisionComment('');
     } catch (error: unknown) {
-      showToast('error', error instanceof Error ? error.message : 'Không thể duyệt đơn hàng');
+      showToast('error', error instanceof Error ? error.message : 'Không thể cập nhật quyết định đơn hàng');
     } finally {
       setApprovingOrder(false);
     }
+  };
+
+  const handleApproveOrder = (order: Order): void => {
+    void submitApprovalDecision(order, 'APPROVE');
   };
 
   return (
@@ -2389,6 +2461,12 @@ export const OrdersPage: React.FC = () => {
                             {order.orderCode ?? order.id?.slice(-8)}
                           </p>
                           <p className="text-xs text-slate-400">{formatDate(order.createdAt)}</p>
+                          {(order.status === 'PENDING_APPROVAL' || order.status === 'PENDING') && (
+                            <p className="mt-1 max-w-64 truncate text-xs font-medium text-amber-700" title={order.approvalReasons?.join(' · ') || order.warningNote || 'Cần quản lý xét duyệt'}>
+                              Cần duyệt: {order.approvalReasons?.[0] || order.warningNote || 'Chờ quản lý xét duyệt'}
+                              {(order.approvalReasons?.length || 0) > 1 ? ` (+${(order.approvalReasons?.length || 1) - 1})` : ''}
+                            </p>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <p className="text-slate-700 font-medium">{order.customerName}</p>
@@ -2405,7 +2483,7 @@ export const OrdersPage: React.FC = () => {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            {order.status === 'DRAFT' && (
+                            {(order.status === 'DRAFT' || order.status === 'RETURNED_FOR_UPDATE') && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -2474,6 +2552,12 @@ export const OrdersPage: React.FC = () => {
                           <p className="text-xs text-slate-500 mt-0.5 font-mono">
                             {order.orderCode} · {formatDate(order.createdAt)}
                           </p>
+                          {(order.status === 'PENDING_APPROVAL' || order.status === 'PENDING') && (
+                            <p className="mt-1 line-clamp-2 text-xs font-medium text-amber-700">
+                              Cần duyệt: {order.approvalReasons?.[0] || order.warningNote || 'Chờ quản lý xét duyệt'}
+                              {(order.approvalReasons?.length || 0) > 1 ? ` (+${(order.approvalReasons?.length || 1) - 1})` : ''}
+                            </p>
+                          )}
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-sm font-bold text-slate-900">
@@ -2488,7 +2572,7 @@ export const OrdersPage: React.FC = () => {
 
                     {/* Nút hành động nhanh trên di động: Chạm chuẩn Mobile-first (Touch target >= 36-40px) */}
                     <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                      {order.status === 'DRAFT' && (
+                      {(order.status === 'DRAFT' || order.status === 'RETURNED_FOR_UPDATE') && (
                         <button
                           type="button"
                           onClick={() => {
@@ -2641,6 +2725,40 @@ export const OrdersPage: React.FC = () => {
                 </div>
               )}
 
+              <section className="rounded-xl border border-slate-200 overflow-hidden">
+                <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 text-xs font-semibold text-slate-600 border-b border-slate-200">
+                  <History className="w-3.5 h-3.5" />
+                  Lịch sử xét duyệt
+                  <span className="ml-auto text-[10px] font-normal text-slate-400">Chỉ xem</span>
+                </div>
+                <div className="p-3 space-y-3">
+                  {isLoadingApprovalHistory ? (
+                    <p className="text-xs text-slate-400">Đang tải lịch sử...</p>
+                  ) : approvalHistory.length === 0 ? (
+                    <p className="text-xs text-slate-400">Chưa có quyết định xét duyệt.</p>
+                  ) : approvalHistory.map((entry) => {
+                    const actionLabel: Record<OrderApprovalAction, string> = {
+                      APPROVE: 'Đã duyệt',
+                      REJECT: 'Đã từ chối',
+                      RETURN_FOR_UPDATE: 'Đã trả lại sửa',
+                    };
+                    return (
+                      <article key={entry.id} className="border-l-2 border-blue-200 pl-3 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                          <span className="font-semibold text-slate-700">
+                            {actionLabel[entry.action]} · {entry.approverName}
+                          </span>
+                          <time className="text-slate-400">
+                            {new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(entry.createdAt))}
+                          </time>
+                        </div>
+                        {entry.comment && <p className="mt-1 whitespace-pre-wrap text-slate-600">{entry.comment}</p>}
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+
               {/* Danh sách dòng hàng */}
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <div className="px-3 py-2 bg-slate-50 text-xs font-semibold text-slate-500 border-b border-slate-200">
@@ -2736,7 +2854,7 @@ export const OrdersPage: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                {viewOrder.status === 'DRAFT' && (
+                {(viewOrder.status === 'DRAFT' || viewOrder.status === 'RETURNED_FOR_UPDATE') && (
                   <button
                     type="button"
                     onClick={() => {
@@ -2754,15 +2872,33 @@ export const OrdersPage: React.FC = () => {
                 )}
                 {(isAdmin || isSalesManager) &&
                   (viewOrder.status === 'PENDING' || viewOrder.status === 'PENDING_APPROVAL') && (
-                  <button
-                    type="button"
-                    onClick={() => void handleApproveOrder(viewOrder)}
-                    disabled={approvingOrder}
-                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    {approvingOrder ? 'Đang duyệt...' : 'Duyệt đơn'}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleApproveOrder(viewOrder)}
+                      disabled={approvingOrder}
+                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      {approvingOrder ? 'Đang lưu...' : 'Duyệt'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setDecisionComment(''); setDecisionAction('REJECT'); }}
+                      disabled={approvingOrder}
+                      className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60 cursor-pointer"
+                    >
+                      <XCircle className="h-4 w-4" /> Từ chối
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setDecisionComment(''); setDecisionAction('RETURN_FOR_UPDATE'); }}
+                      disabled={approvingOrder}
+                      className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60 cursor-pointer"
+                    >
+                      <CornerUpLeft className="h-4 w-4" /> Trả lại sửa
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={() => setViewOrder(null)}
@@ -2783,6 +2919,59 @@ export const OrdersPage: React.FC = () => {
         isOpen={Boolean(printOrder)}
         onClose={() => setPrintOrder(null)}
       />
+
+      {decisionAction && viewOrder && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+          <form
+            className="w-full max-w-lg rounded-2xl bg-white shadow-2xl"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submitApprovalDecision(viewOrder, decisionAction, decisionComment);
+            }}
+          >
+            <div className="border-b border-slate-100 px-5 py-4">
+              <h3 className="font-semibold text-slate-900">
+                {decisionAction === 'REJECT' ? 'Từ chối đơn hàng' : 'Trả đơn hàng về chỉnh sửa'}
+              </h3>
+              <p className="mt-1 text-sm text-slate-500">
+                {viewOrder.orderCode} · Ý kiến sẽ được lưu vào lịch sử xét duyệt.
+              </p>
+            </div>
+            <div className="p-5">
+              <label htmlFor="approval-comment" className="mb-2 block text-sm font-medium text-slate-700">
+                Ý kiến bắt buộc
+              </label>
+              <textarea
+                id="approval-comment"
+                autoFocus
+                required
+                minLength={1}
+                maxLength={2000}
+                rows={4}
+                value={decisionComment}
+                onChange={(event) => setDecisionComment(event.target.value)}
+                placeholder="Nhập lý do từ chối hoặc nội dung cần chỉnh sửa..."
+                className="w-full resize-y rounded-xl border border-slate-300 p-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => { setDecisionAction(null); setDecisionComment(''); }}
+                className="rounded-xl px-4 py-2 text-sm text-slate-600 hover:bg-slate-100"
+              >Hủy</button>
+              <button
+                type="submit"
+                disabled={approvingOrder || !decisionComment.trim()}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {approvingOrder ? 'Đang lưu...' : 'Xác nhận'}
+              </button>
+            </div>
+          </form>
+        </div>,
+        document.body,
+      )}
     </>
   );
 };
