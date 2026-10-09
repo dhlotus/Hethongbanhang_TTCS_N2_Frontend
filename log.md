@@ -89,3 +89,41 @@
   - ✅ Build Production: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, 100% type-safe, không dùng `any`.
   - ✅ Kiểm thử tự động trên trình duyệt thật (Chrome/Edge Headless qua CDP): Toàn bộ 13 bước (từ tạo nhanh đại lý -> kiểm tra Storage -> kiểm tra nhảy dữ liệu sang Quản lý đại lý -> bấm "Lên đơn" -> thêm sản phẩm -> kiểm tra tính tiền -> lưu nháp -> kiểm tra responsive 360px) đều vượt qua xuất sắc.
 
+---
+
+### [Sprint 4] - [SN-48]: Sao Chép Đơn Hàng Cũ Thành Đơn Mới (Clone Order)
+- **Thời gian hoàn thành:** 2026-10-09
+- **Mã Jira / Subtask:** SN-48 (Epic EP-04 / S4-01)
+- **Tiêu đề:** "Là Nhân viên kinh doanh, tôi muốn sao chép một đơn cũ thành đơn mới, để tạo đơn định kỳ cho khách quen trong vài giây."
+- **Tiêu chí chấp nhận (AC) đã đạt 100%:**
+  1. **Sao chép toàn bộ dòng hàng:** Giữ nguyên danh mục sản phẩm, đơn vị tính (`unit`, `baseUnit`, `conversionRate`), số lượng (`quantity`), khách hàng và điểm giao hàng từ đơn gốc.
+  2. **Tái áp giá & chiết khấu hiện hành:** Giá và chiết khấu được áp lại theo bảng giá / chính sách chiết khấu hiện hành của đại lý tại thời điểm sao chép, KHÔNG kế thừa đơn giá và % chiết khấu cũ.
+  3. **Trạng thái Nháp:** Bản sao luôn bắt đầu ở trạng thái Nháp (`DRAFT`), có mã đơn mới duy nhất (`DH...`).
+  4. **Thao tác nhanh 1 chạm:** Tích hợp nút "Sao chép" (Icon Copy) trên cả Bảng đơn hàng (Desktop), Card đơn hàng (Mobile), và Modal xem chi tiết đơn (`viewOrder`), giúp NVKD tạo đơn định kỳ cho khách quen trong vài giây.
+- **Danh sách file tạo mới / thay đổi:**
+  - `src/services/orders.service.ts`: Bổ sung hàm `cloneOrder(orderId)` xử lý sao chép cho cả Backend API (`POST /orders/:id/clone`) và local demo storage.
+  - `src/pages/orders-page.tsx`: Tích hợp action Sao chép đơn hàng trên Bảng Desktop, Card Mobile và Footer Modal chi tiết đơn hàng, kèm Toast thông báo trạng thái rõ ràng.
+- **Trạng thái kiểm thử:**
+  - ✅ Build Production: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, build hoàn tất.
+
+---
+
+### [Sprint 4] - [SN-47]: In & Xuất PDF Đơn Hàng Kèm Mã Vạch Tra Cứu Kho Nhanh
+- **Thời gian hoàn thành:** 2026-10-09
+- **Mã Jira / Subtask:** SN-47 (Epic EP-04 / S4-02)
+- **Tiêu đề:** "Là Nhân viên kinh doanh, tôi muốn in hoặc xuất PDF đơn hàng, để đưa đại lý xem lại đơn ngay tại chỗ để xác nhận trước khi rời đi."
+- **Tiêu chí chấp nhận (AC) đã đạt 100%:**
+  1. **Mẫu in hoàn chỉnh:** Đầy đủ thông tin đại lý (tên, mã, phân cấp, SĐT), điểm giao hàng (người nhận, địa chỉ, ghi chú đường), thời gian (ngày đặt, ngày hẹn giao, NVKD phụ trách), chi tiết dòng hàng (STT, SKU, tên hàng, ĐVT, số lượng, giá niêm yết, chiết khấu %, đơn giá sau CK, thành tiền), tổng tiền hàng, tổng chiết khấu, tổng thanh toán và số tiền viết bằng chữ.
+  2. **Mã vạch tra cứu nhanh:** Tích hợp vector SVG barcode chuẩn Code 39 sắc nét, quét được tức thì bằng máy quét mã vạch (Barcode Scanner) tại kho.
+  3. **Chữ ký xác nhận 3 bên:** Đại diện đại lý / khách hàng xác nhận tại chỗ, Nhân viên kinh doanh lập đơn, Thủ kho nhận đơn / xuất hàng.
+  4. **In ấn & Xuất PDF tiện lợi:** Nút "In đơn hàng" và "Xuất PDF" chuẩn khổ giấy A4 qua CSS `@media print`, ẩn toàn bộ UI thừa, hỗ trợ xem trước trên điện thoại (Mobile-First) để NVKD đưa đại lý xem tại chỗ.
+- **Danh sách file tạo mới / thay đổi:**
+  - `src/components/barcode-svg.tsx`: Component tạo mã vạch Vector SVG chuẩn công nghiệp cho kho quét nhanh.
+  - `src/utils/number-to-words.ts`: Tiện ích chuyển đổi tổng tiền thành chuỗi chữ Tiếng Việt chuẩn hóa kế toán B2B.
+  - `src/components/order-print-modal.tsx`: Modal xem trước mẫu in phiếu đơn hàng chuẩn A4, hỗ trợ in trực tiếp và lưu PDF.
+  - `src/types/order.ts`: Bổ sung `receiverName` và `roadNote` vào interface `DeliveryPoint`.
+  - `src/pages/orders-page.tsx`: Tích hợp nút mở modal In / Xuất PDF trên Bảng Desktop, Card Mobile và Modal chi tiết đơn.
+- **Trạng thái kiểm thử:**
+  - ✅ Build Production: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, build hoàn tất.
+
+

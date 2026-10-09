@@ -793,4 +793,44 @@ export const ordersService = {
       return [];
     }
   },
+
+  /**
+   * Sao chép một đơn cũ thành đơn mới (SN-48)
+   * - Giữ nguyên toàn bộ dòng hàng
+   * - Áp lại giá và chiết khấu hiện hành của đại lý
+   * - Đơn mới luôn bắt đầu ở trạng thái Nháp (DRAFT)
+   */
+  async cloneOrder(orderId: string): Promise<Order> {
+    const token = tokenStorage.getAccessToken();
+    if (token?.startsWith('demo-jwt-')) {
+      const all = getStoredDemoOrders();
+      const source = all.find((o) => o.id === orderId);
+      if (!source) throw new Error(`Không tìm thấy đơn hàng cần sao chép (ID: ${orderId})`);
+
+      const nextCode = `DH-${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, '0')}-${(all.length + 1).toString().padStart(4, '0')}`;
+      const now = new Date().toISOString();
+
+      // Sao chép và tính lại giá hiện hành
+      const cloned: Order = {
+        ...source,
+        id: `ord-demo-${Date.now()}`,
+        orderCode: nextCode,
+        status: 'DRAFT',
+        paymentStatus: 'UNPAID',
+        note: source.note
+          ? `[Bản sao từ ${source.orderCode || orderId}] ${source.note}`
+          : `Bản sao từ ${source.orderCode || orderId}`,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      all.unshift(cloned);
+      saveStoredDemoOrders(all);
+      return cloned;
+    }
+
+    const res = await apiClient.post<Order | { data: Order }>(`/orders/${orderId}/clone`);
+    return (res.data as { data?: Order })?.data ?? (res.data as Order);
+  },
 };
+
