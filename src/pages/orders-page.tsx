@@ -2280,7 +2280,7 @@ export const OrdersPage: React.FC = () => {
           </div>
           {(isSalesRep || isSalesManager || isAdmin) && (
             <div className="flex flex-wrap gap-2">
-              {(isSalesRep || isSalesManager) && (
+              {(isSalesRep || isSalesManager || isAdmin) && (
                 <button
                   onClick={() => setIsCreateModalOpen(true)}
                   className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm"
@@ -2338,7 +2338,7 @@ export const OrdersPage: React.FC = () => {
             <div className="p-10 text-center text-slate-400">
               <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-25" />
               <p className="text-sm font-medium">Chưa có đơn hàng nào</p>
-              {(isSalesRep || isSalesManager) && (
+              {(isSalesRep || isSalesManager || isAdmin) && (
                 <button
                   onClick={() => setIsCreateModalOpen(true)}
                   className="mt-3 text-sm text-blue-600 hover:underline"
