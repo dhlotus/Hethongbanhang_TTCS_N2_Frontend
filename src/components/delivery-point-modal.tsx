@@ -111,18 +111,14 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
     try {
       if (formData.id) {
         // Cập nhật
-        const updated = await customersService.updateDeliveryPoint(
-          customer.id,
-          formData.id,
-          {
-            name: formData.name,
-            address: formData.address,
-            receiverName: formData.receiverName,
-            phone: formData.phone,
-            roadNote: formData.roadNote,
-            isDefault: formData.isDefault,
-          },
-        );
+        const updated = await customersService.updateDeliveryPoint(customer.id, formData.id, {
+          name: formData.name,
+          address: formData.address,
+          receiverName: formData.receiverName,
+          phone: formData.phone,
+          roadNote: formData.roadNote,
+          isDefault: formData.isDefault,
+        });
 
         let newPoints = points.map((p) => (p.id === updated.id ? updated : p));
         if (formData.isDefault) {
@@ -214,7 +210,8 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
                 Điểm Giao Hàng — {customer.name}
               </h2>
               <p className="text-xs text-slate-500 truncate">
-                Mã đại lý: <span className="font-medium text-slate-700">{customer.code}</span> · {points.length} điểm nhận hàng
+                Mã đại lý: <span className="font-medium text-slate-700">{customer.code}</span> ·{' '}
+                {points.length} điểm nhận hàng
               </p>
             </div>
           </div>
@@ -253,7 +250,9 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
                 <h3 className="text-xs sm:text-sm font-semibold text-[var(--color-primary)]">
                   {formData.id ? 'Chỉnh sửa điểm giao hàng' : 'Khai báo điểm giao hàng mới'}
                 </h3>
-                <span className="text-[11px] text-[var(--color-primary)] font-medium">* Bắt buộc nhập</span>
+                <span className="text-[11px] text-[var(--color-primary)] font-medium">
+                  * Bắt buộc nhập
+                </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -286,9 +285,7 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-700">
-                    Người nhận hàng *
-                  </label>
+                  <label className="text-xs font-medium text-slate-700">Người nhận hàng *</label>
                   <input
                     type="text"
                     value={formData.receiverName}
@@ -335,7 +332,10 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
                   onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
                   className="w-4 h-4 text-[var(--color-primary)] rounded border-slate-300 focus:ring-[var(--color-primary)] cursor-pointer"
                 />
-                <label htmlFor="isDefaultCheckbox" className="text-xs font-medium text-slate-700 cursor-pointer">
+                <label
+                  htmlFor="isDefaultCheckbox"
+                  className="text-xs font-medium text-slate-700 cursor-pointer"
+                >
                   Đặt điểm này làm điểm giao hàng mặc định cho đại lý
                 </label>
               </div>
@@ -365,7 +365,9 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
             {points.length === 0 ? (
               <div className="text-center py-8 bg-slate-50 rounded-lg border border-dashed border-slate-200">
                 <AlertCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs sm:text-sm text-slate-500">Đại lý chưa có điểm giao hàng nào.</p>
+                <p className="text-xs sm:text-sm text-slate-500">
+                  Đại lý chưa có điểm giao hàng nào.
+                </p>
                 <button
                   onClick={handleOpenAddForm}
                   className="mt-2 text-xs text-[var(--color-primary)] hover:underline font-medium"

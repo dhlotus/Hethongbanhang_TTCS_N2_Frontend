@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { Outlet } from "react-router-dom";
-import { Sidebar } from "./sidebar";
-import { Header } from "./header";
-import { apiClient } from "../services/api";
+import React, { useEffect, useState } from 'react';
+import { Outlet } from 'react-router-dom';
+import { Sidebar } from './sidebar';
+import { Header } from './header';
+import { apiClient } from '../services/api';
 
 /**
  * Khung giao diện quản trị tổng quan (AdminLayout) cho hệ thống LOHA SALES:
@@ -15,7 +15,7 @@ export const AdminLayout: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     try {
-      return localStorage.getItem("loha_sidebar_collapsed") === "true";
+      return localStorage.getItem('loha_sidebar_collapsed') === 'true';
     } catch {
       return false;
     }
@@ -33,7 +33,7 @@ export const AdminLayout: React.FC = () => {
     setIsSidebarCollapsed((prev) => {
       const next = !prev;
       try {
-        localStorage.setItem("loha_sidebar_collapsed", String(next));
+        localStorage.setItem('loha_sidebar_collapsed', String(next));
       } catch {
         // Bỏ qua lỗi truy cập storage
       }
@@ -45,7 +45,7 @@ export const AdminLayout: React.FC = () => {
   useEffect(() => {
     const checkActiveStatus = async () => {
       try {
-        await apiClient.get("/auth/me");
+        await apiClient.get('/auth/me');
       } catch {
         // Interceptor của apiClient sẽ tự động bắt mã 401 và chuyển hướng về /login nếu tài khoản bị khóa
       }
@@ -53,15 +53,15 @@ export const AdminLayout: React.FC = () => {
 
     const interval = setInterval(checkActiveStatus, 7000);
     const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
+      if (document.visibilityState === 'visible') {
         checkActiveStatus();
       }
     };
-    document.addEventListener("visibilitychange", onVisibilityChange);
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
       clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
 
@@ -82,7 +82,7 @@ export const AdminLayout: React.FC = () => {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto w-full max-w-[1600px]">
+          <div className="mx-auto w-full max-w-[1600px] page-transition">
             <Outlet />
           </div>
         </main>

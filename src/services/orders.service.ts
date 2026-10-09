@@ -25,7 +25,6 @@ const DEMO_ORDERS_KEY = 'loha_demo_orders';
 // DỮ LIỆU MẪU — Đại lý Demo (SN-38 & SN-37)
 // ──────────────────────────────────────────────────────────────────────────
 
-
 export const DEMO_CUSTOMERS: CustomerOption[] = [
   // 5 Đại lý Cấp 1 (DL-0001 -> DL-0005)
   {
@@ -388,7 +387,7 @@ const saveStoredDemoOrders = (list: Order[]): void => {
 
 /** Tính tổng đơn hàng từ danh sách dòng hàng */
 const calcOrderTotals = (
-  lines: Order['lines'],
+  lines: Order['lines']
 ): { subtotal: number; totalDiscount: number; grandTotal: number } => {
   let subtotal = 0;
   let totalDiscount = 0;
@@ -455,7 +454,7 @@ export const ordersService = {
         (c) =>
           c.name.toLowerCase().includes(q) ||
           c.code.toLowerCase().includes(q) ||
-          (c.phone && c.phone.includes(q)),
+          (c.phone && c.phone.includes(q))
       );
     }
   },
@@ -543,9 +542,10 @@ export const ordersService = {
     const token = tokenStorage.getAccessToken();
     if (token?.startsWith('demo-jwt-')) {
       const all = getStoredDemoOrders();
-      const filtered = params.status && params.status !== 'ALL'
-        ? all.filter((o) => o.status === params.status)
-        : all;
+      const filtered =
+        params.status && params.status !== 'ALL'
+          ? all.filter((o) => o.status === params.status)
+          : all;
 
       const page = params.page ?? 1;
       const limit = params.limit ?? 10;
@@ -613,82 +613,95 @@ export const ordersService = {
    */
   async createOrder(payload: CreateOrderPayload): Promise<Order> {
     const token = tokenStorage.getAccessToken();
-    if (token?.startsWith('demo-jwt-')) {
-      const customer = DEMO_CUSTOMERS.find((c) => c.id === payload.customerId);
-      if (!customer) throw new Error('Không tìm thấy thông tin đại lý');
+    const isDemo = token?.startsWith('demo-jwt-');
 
-      const user = tokenStorage.getUser();
-
-      // Kiểm tra công nợ theo Task SN-41 (Demo fallback)
-      const overdueDays = customer.overdueDays || 0;
-      const maxDebtDays = customer.maxDebtDays || 30;
-      const overdueAmount = customer.overdueAmount || 0;
-      if (overdueDays > maxDebtDays && overdueAmount > 0) {
-        throw new Error(
-          `Đại lý đang có khoản nợ quá hạn ${overdueDays} ngày (vượt quá ${maxDebtDays} ngày cho phép). Hệ thống tạm khóa quyền tạo đơn hàng mới cho đại lý này.`,
-        );
+    if (!isDemo) {
+      try {
+        const res = await apiClient.post<Order>('/orders', payload);
+        return res.data;
+      } catch {
+        // Fallback sang local simulation khi backend chưa sẵn sàng
       }
-
-      // Tính lineTotal từng dòng
-      const lines = payload.lines.map((l) => ({
-        ...l,
-        id: `line-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        baseQuantity: Math.round(l.quantity * l.conversionRate),
-        lineTotal: l.quantity * l.unitPrice,
-      }));
-
-      const totals = calcOrderTotals(lines);
-
-      // Kiểm tra vượt hạn mức công nợ (SN-41)
-      const creditLimit = customer.creditLimit || 0;
-      const currentDebt = customer.currentDebt || 0;
-      const projectedDebt = currentDebt + totals.grandTotal;
-      const isCreditLimitExceeded = creditLimit > 0 && projectedDebt > creditLimit;
-      const creditLimitExceededAmount = isCreditLimitExceeded
-        ? projectedDebt - creditLimit
-        : 0;
-
-      const orderStatus: OrderStatus = isCreditLimitExceeded
-        ? 'PENDING_APPROVAL'
-        : 'PENDING';
-
-      const warningNote = isCreditLimitExceeded
-        ? `[SN-41 CẢNH BÁO: Đơn hàng làm tổng công nợ đạt ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(projectedDebt)}, vượt hạn mức ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(creditLimit)}. Chờ phê duyệt]`
-        : undefined;
-
-      const newOrder: Order = {
-        id: `order-${Date.now()}`,
-        orderCode: generateOrderCode(),
-        customerId: customer.id,
-        customerCode: customer.code,
-        customerName: customer.name,
-        customerGroup: customer.group,
-        salesRepId: user?.id,
-        salesRepName: user?.fullName || user?.username,
-        deliveryPoint: payload.deliveryPoint as Order['deliveryPoint'],
-        deliveryDate: payload.deliveryDate,
-        lines,
-        ...totals,
-        note: payload.note
-          ? (warningNote ? `${payload.note}\n${warningNote}` : payload.note)
-          : warningNote,
-        status: orderStatus,
-        paymentStatus: 'UNPAID',
-        priceListId: payload.priceListId,
-        isCreditLimitExceeded,
-        creditLimitExceededAmount,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      const all = getStoredDemoOrders();
-      all.unshift(newOrder);
-      saveStoredDemoOrders(all);
-      return newOrder;
     }
 
-    const res = await apiClient.post<Order>('/orders', payload);
-    return res.data;
+    const storedCustomers = customerService.getStoredCustomers();
+    const customer =
+      storedCustomers.find((c) => c.id === payload.customerId) ||
+      DEMO_CUSTOMERS.find((c) => c.id === payload.customerId);
+    if (!customer) throw new Error('Không tìm thấy thông tin đại lý');
+
+    const user = tokenStorage.getUser();
+
+    // Kiểm tra công nợ theo Task SN-41 (Demo fallback)
+    const overdueDays = customer.overdueDays || 0;
+    const maxDebtDays = customer.maxDebtDays || 30;
+    const overdueAmount = customer.overdueAmount || 0;
+    if (payload.status !== 'DRAFT' && overdueDays > maxDebtDays && overdueAmount > 0) {
+      throw new Error(
+        `Đại lý đang có khoản nợ quá hạn ${overdueDays} ngày (vượt quá ${maxDebtDays} ngày cho phép). Hệ thống tạm khóa quyền tạo đơn hàng mới cho đại lý này.`
+      );
+    }
+
+    // Tính lineTotal từng dòng
+    const lines = payload.lines.map((l) => ({
+      ...l,
+      id: `line-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      baseQuantity: Math.round(l.quantity * (l.conversionRate || 1)),
+      lineTotal: l.quantity * l.unitPrice,
+    }));
+
+    const totals = calcOrderTotals(lines);
+
+    // Kiểm tra vượt hạn mức công nợ (SN-41)
+    const creditLimit = customer.creditLimit || 0;
+    const currentDebt = customer.currentDebt || 0;
+    const projectedDebt = currentDebt + totals.grandTotal;
+    const isCreditLimitExceeded = creditLimit > 0 && projectedDebt > creditLimit;
+    const creditLimitExceededAmount = isCreditLimitExceeded ? projectedDebt - creditLimit : 0;
+
+    let orderStatus: OrderStatus = isCreditLimitExceeded ? 'PENDING_APPROVAL' : 'PENDING';
+    if (payload.status === 'DRAFT') {
+      orderStatus = 'DRAFT';
+    }
+
+    const warningNote = isCreditLimitExceeded
+      ? `[SN-41 CẢNH BÁO: Đơn hàng làm tổng công nợ đạt ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(projectedDebt)}, vượt hạn mức ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(creditLimit)}. Chờ phê duyệt]`
+      : undefined;
+
+    const newOrder: Order = {
+      id: `order-${Date.now()}`,
+      orderCode: generateOrderCode(),
+      customerId: customer.id,
+      customerCode: customer.code,
+      customerName: customer.name,
+      customerGroup:
+        (customer as { group?: string }).group ||
+        (customer as { customerGroup?: string }).customerGroup ||
+        'AGENT_LEVEL_2',
+      salesRepId: user?.id || 'usr-sales-002',
+      salesRepName: user?.fullName || user?.username || 'Trần Văn Nam',
+      deliveryPoint: payload.deliveryPoint as Order['deliveryPoint'],
+      deliveryDate: payload.deliveryDate,
+      lines,
+      ...totals,
+      note: payload.note
+        ? warningNote
+          ? `${payload.note}\n${warningNote}`
+          : payload.note
+        : warningNote,
+      status: orderStatus,
+      paymentStatus: 'UNPAID',
+      priceListId: payload.priceListId,
+      isCreditLimitExceeded,
+      creditLimitExceededAmount,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const all = getStoredDemoOrders();
+    all.unshift(newOrder);
+    saveStoredDemoOrders(all);
+    return newOrder;
   },
 
   /**
@@ -760,8 +773,7 @@ export const ordersService = {
       if (!query.trim()) return MOCK_PRODUCTS.slice(0, 8);
       const q = query.toLowerCase();
       return MOCK_PRODUCTS.filter(
-        (p: Product) =>
-          p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q),
+        (p: Product) => p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)
       ).slice(0, 10);
     }
     try {

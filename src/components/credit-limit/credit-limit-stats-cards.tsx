@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  CreditCard,
-  AlertTriangle,
-  CheckCircle2,
-  Lock,
-  TrendingUp,
-  Wallet,
-} from 'lucide-react';
+import { CreditCard, AlertTriangle, CheckCircle2, Lock, TrendingUp, Wallet } from 'lucide-react';
 import type { CreditLimitStats } from '../../types/credit-limit';
 
 interface CreditLimitStatsCardsProps {
@@ -55,10 +48,8 @@ export const CreditLimitStatsCards: React.FC<CreditLimitStatsCardsProps> = ({
           {formatCurrency(stats.totalCreditLimit)}
         </div>
         <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
-          <span className="font-medium text-slate-700">
-            {stats.totalCustomers}
-          </span>{' '}
-          đại lý trong hệ thống
+          <span className="font-medium text-slate-700">{stats.totalCustomers}</span> đại lý trong hệ
+          thống
         </div>
       </div>
 
@@ -105,8 +96,7 @@ export const CreditLimitStatsCards: React.FC<CreditLimitStatsCardsProps> = ({
         <div className="mt-2 flex items-center gap-1 text-xs text-slate-500">
           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
           <span>
-            <strong className="text-slate-700">{stats.normalCount}</strong> đại
-            lý hoạt động an toàn
+            <strong className="text-slate-700">{stats.normalCount}</strong> đại lý hoạt động an toàn
           </span>
         </div>
       </div>

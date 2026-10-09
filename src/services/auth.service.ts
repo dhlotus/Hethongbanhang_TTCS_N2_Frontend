@@ -1,6 +1,6 @@
-import axios from "axios";
-import { apiClient, refreshClient } from "./api";
-import { tokenStorage } from "../utils/token-storage";
+import axios from 'axios';
+import { apiClient, refreshClient } from './api';
+import { tokenStorage } from '../utils/token-storage';
 import type {
   LoginCredentials,
   LoginResponse,
@@ -11,307 +11,307 @@ import type {
   ForgotPasswordResponse,
   ResetPasswordRequest,
   ResetPasswordResponse,
-} from "../types/auth";
+} from '../types/auth';
 
 // Danh sách 7 tài khoản demo theo đúng 7 vai trò của hệ thống LOHA SALES (Mật khẩu chung: 123456)
 const DEMO_USERS: Record<string, LoginResponse> = {
   // 1. Quản trị hệ thống (Admin)
-  "quantrihethong@loha.vn": {
-    accessToken: "demo-jwt-admin-access-token",
-    refreshToken: "demo-jwt-admin-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'quantrihethong@loha.vn': {
+    accessToken: 'demo-jwt-admin-access-token',
+    refreshToken: 'demo-jwt-admin-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-admin",
-      username: "admin",
-      fullName: "Nguyễn Văn Admin (Quản Trị Viên)",
-      email: "quantrihethong@loha.vn",
-      roles: ["ADMIN"],
+      id: 'demo-admin',
+      username: 'admin',
+      fullName: 'Nguyễn Văn Admin (Quản Trị Viên)',
+      email: 'quantrihethong@loha.vn',
+      roles: ['ADMIN'],
     },
   },
-  "admin@loha.vn": {
-    accessToken: "demo-jwt-admin-access-token",
-    refreshToken: "demo-jwt-admin-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'admin@loha.vn': {
+    accessToken: 'demo-jwt-admin-access-token',
+    refreshToken: 'demo-jwt-admin-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-admin",
-      username: "admin",
-      fullName: "Nguyễn Văn Admin (Quản Trị Viên)",
-      email: "quantrihethong@loha.vn",
-      roles: ["ADMIN"],
+      id: 'demo-admin',
+      username: 'admin',
+      fullName: 'Nguyễn Văn Admin (Quản Trị Viên)',
+      email: 'quantrihethong@loha.vn',
+      roles: ['ADMIN'],
     },
   },
-  "admin": {
-    accessToken: "demo-jwt-admin-access-token",
-    refreshToken: "demo-jwt-admin-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  admin: {
+    accessToken: 'demo-jwt-admin-access-token',
+    refreshToken: 'demo-jwt-admin-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-admin",
-      username: "admin",
-      fullName: "Nguyễn Văn Admin (Quản Trị Viên)",
-      email: "quantrihethong@loha.vn",
-      roles: ["ADMIN"],
+      id: 'demo-admin',
+      username: 'admin',
+      fullName: 'Nguyễn Văn Admin (Quản Trị Viên)',
+      email: 'quantrihethong@loha.vn',
+      roles: ['ADMIN'],
     },
   },
 
   // 2. Nhân viên kinh doanh (Sales Rep)
-  "nhanvienkinhdoanh@loha.vn": {
-    accessToken: "demo-jwt-sales-access-token",
-    refreshToken: "demo-jwt-sales-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'nhanvienkinhdoanh@loha.vn': {
+    accessToken: 'demo-jwt-sales-access-token',
+    refreshToken: 'demo-jwt-sales-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-sales-rep",
-      username: "sales",
-      fullName: "Trần Văn Nam (Nhân Viên Kinh Doanh)",
-      email: "nhanvienkinhdoanh@loha.vn",
-      roles: ["SALES_REP"],
+      id: 'demo-sales-rep',
+      username: 'sales',
+      fullName: 'Trần Văn Nam (Nhân Viên Kinh Doanh)',
+      email: 'nhanvienkinhdoanh@loha.vn',
+      roles: ['SALES_REP'],
     },
   },
-  "sales@loha.vn": {
-    accessToken: "demo-jwt-sales-access-token",
-    refreshToken: "demo-jwt-sales-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'sales@loha.vn': {
+    accessToken: 'demo-jwt-sales-access-token',
+    refreshToken: 'demo-jwt-sales-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-sales-rep",
-      username: "sales",
-      fullName: "Trần Văn Nam (Nhân Viên Kinh Doanh)",
-      email: "nhanvienkinhdoanh@loha.vn",
-      roles: ["SALES_REP"],
+      id: 'demo-sales-rep',
+      username: 'sales',
+      fullName: 'Trần Văn Nam (Nhân Viên Kinh Doanh)',
+      email: 'nhanvienkinhdoanh@loha.vn',
+      roles: ['SALES_REP'],
     },
   },
-  "sales": {
-    accessToken: "demo-jwt-sales-access-token",
-    refreshToken: "demo-jwt-sales-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  sales: {
+    accessToken: 'demo-jwt-sales-access-token',
+    refreshToken: 'demo-jwt-sales-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-sales-rep",
-      username: "sales",
-      fullName: "Trần Văn Nam (Nhân Viên Kinh Doanh)",
-      email: "nhanvienkinhdoanh@loha.vn",
-      roles: ["SALES_REP"],
+      id: 'demo-sales-rep',
+      username: 'sales',
+      fullName: 'Trần Văn Nam (Nhân Viên Kinh Doanh)',
+      email: 'nhanvienkinhdoanh@loha.vn',
+      roles: ['SALES_REP'],
     },
   },
 
   // 3. Quản lý kinh doanh (Sales Manager)
-  "quanlykinhdoanh@loha.vn": {
-    accessToken: "demo-jwt-salesmanager-access-token",
-    refreshToken: "demo-jwt-salesmanager-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'quanlykinhdoanh@loha.vn': {
+    accessToken: 'demo-jwt-salesmanager-access-token',
+    refreshToken: 'demo-jwt-salesmanager-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-sales-manager",
-      username: "salesmanager",
-      fullName: "Lê Hoàng Trưởng Phòng (Quản Lý Kinh Doanh)",
-      email: "quanlykinhdoanh@loha.vn",
-      roles: ["SALES_MANAGER"],
+      id: 'demo-sales-manager',
+      username: 'salesmanager',
+      fullName: 'Lê Hoàng Trưởng Phòng (Quản Lý Kinh Doanh)',
+      email: 'quanlykinhdoanh@loha.vn',
+      roles: ['SALES_MANAGER'],
     },
   },
-  "salesmanager@loha.vn": {
-    accessToken: "demo-jwt-salesmanager-access-token",
-    refreshToken: "demo-jwt-salesmanager-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'salesmanager@loha.vn': {
+    accessToken: 'demo-jwt-salesmanager-access-token',
+    refreshToken: 'demo-jwt-salesmanager-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-sales-manager",
-      username: "salesmanager",
-      fullName: "Lê Hoàng Trưởng Phòng (Quản Lý Kinh Doanh)",
-      email: "quanlykinhdoanh@loha.vn",
-      roles: ["SALES_MANAGER"],
+      id: 'demo-sales-manager',
+      username: 'salesmanager',
+      fullName: 'Lê Hoàng Trưởng Phòng (Quản Lý Kinh Doanh)',
+      email: 'quanlykinhdoanh@loha.vn',
+      roles: ['SALES_MANAGER'],
     },
   },
 
   // 4. Thủ kho (Warehouse Keeper)
-  "thukho@loha.vn": {
-    accessToken: "demo-jwt-wh-keeper-access-token",
-    refreshToken: "demo-jwt-wh-keeper-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'thukho@loha.vn': {
+    accessToken: 'demo-jwt-wh-keeper-access-token',
+    refreshToken: 'demo-jwt-wh-keeper-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-warehouse-keeper",
-      username: "warehouse",
-      fullName: "Phạm Hùng Kho (Thủ Kho)",
-      email: "thukho@loha.vn",
-      roles: ["WAREHOUSE_KEEPER"],
+      id: 'demo-warehouse-keeper',
+      username: 'warehouse',
+      fullName: 'Phạm Hùng Kho (Thủ Kho)',
+      email: 'thukho@loha.vn',
+      roles: ['WAREHOUSE_KEEPER'],
     },
   },
-  "warehouse@loha.vn": {
-    accessToken: "demo-jwt-wh-keeper-access-token",
-    refreshToken: "demo-jwt-wh-keeper-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'warehouse@loha.vn': {
+    accessToken: 'demo-jwt-wh-keeper-access-token',
+    refreshToken: 'demo-jwt-wh-keeper-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-warehouse-keeper",
-      username: "warehouse",
-      fullName: "Phạm Hùng Kho (Thủ Kho)",
-      email: "thukho@loha.vn",
-      roles: ["WAREHOUSE_KEEPER"],
+      id: 'demo-warehouse-keeper',
+      username: 'warehouse',
+      fullName: 'Phạm Hùng Kho (Thủ Kho)',
+      email: 'thukho@loha.vn',
+      roles: ['WAREHOUSE_KEEPER'],
     },
   },
-  "warehouse": {
-    accessToken: "demo-jwt-wh-keeper-access-token",
-    refreshToken: "demo-jwt-wh-keeper-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  warehouse: {
+    accessToken: 'demo-jwt-wh-keeper-access-token',
+    refreshToken: 'demo-jwt-wh-keeper-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-warehouse-keeper",
-      username: "warehouse",
-      fullName: "Phạm Hùng Kho (Thủ Kho)",
-      email: "thukho@loha.vn",
-      roles: ["WAREHOUSE_KEEPER"],
+      id: 'demo-warehouse-keeper',
+      username: 'warehouse',
+      fullName: 'Phạm Hùng Kho (Thủ Kho)',
+      email: 'thukho@loha.vn',
+      roles: ['WAREHOUSE_KEEPER'],
     },
   },
 
   // 5. Quản lý kho (Warehouse Manager)
-  "quanlykho@loha.vn": {
-    accessToken: "demo-jwt-wh-manager-access-token",
-    refreshToken: "demo-jwt-wh-manager-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'quanlykho@loha.vn': {
+    accessToken: 'demo-jwt-wh-manager-access-token',
+    refreshToken: 'demo-jwt-wh-manager-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-warehouse-manager",
-      username: "warehousemanager",
-      fullName: "Đỗ Quốc Bảo (Quản Lý Kho)",
-      email: "quanlykho@loha.vn",
-      roles: ["WAREHOUSE_MANAGER"],
+      id: 'demo-warehouse-manager',
+      username: 'warehousemanager',
+      fullName: 'Đỗ Quốc Bảo (Quản Lý Kho)',
+      email: 'quanlykho@loha.vn',
+      roles: ['WAREHOUSE_MANAGER'],
     },
   },
-  "warehousemanager@loha.vn": {
-    accessToken: "demo-jwt-wh-manager-access-token",
-    refreshToken: "demo-jwt-wh-manager-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'warehousemanager@loha.vn': {
+    accessToken: 'demo-jwt-wh-manager-access-token',
+    refreshToken: 'demo-jwt-wh-manager-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-warehouse-manager",
-      username: "warehousemanager",
-      fullName: "Đỗ Quốc Bảo (Quản Lý Kho)",
-      email: "quanlykho@loha.vn",
-      roles: ["WAREHOUSE_MANAGER"],
+      id: 'demo-warehouse-manager',
+      username: 'warehousemanager',
+      fullName: 'Đỗ Quốc Bảo (Quản Lý Kho)',
+      email: 'quanlykho@loha.vn',
+      roles: ['WAREHOUSE_MANAGER'],
     },
   },
 
   // 6. Kế toán công nợ (Accountant)
-  "ketoan@loha.vn": {
-    accessToken: "demo-jwt-acc-access-token",
-    refreshToken: "demo-jwt-acc-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'ketoan@loha.vn': {
+    accessToken: 'demo-jwt-acc-access-token',
+    refreshToken: 'demo-jwt-acc-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-accountant",
-      username: "accountant",
-      fullName: "Vũ Mai Hoa (Kế Toán Công Nợ)",
-      email: "ketoan@loha.vn",
-      roles: ["ACCOUNTANT"],
+      id: 'demo-accountant',
+      username: 'accountant',
+      fullName: 'Vũ Mai Hoa (Kế Toán Công Nợ)',
+      email: 'ketoan@loha.vn',
+      roles: ['ACCOUNTANT'],
     },
   },
-  "ketoancongno@loha.vn": {
-    accessToken: "demo-jwt-acc-access-token",
-    refreshToken: "demo-jwt-acc-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'ketoancongno@loha.vn': {
+    accessToken: 'demo-jwt-acc-access-token',
+    refreshToken: 'demo-jwt-acc-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-accountant",
-      username: "accountant",
-      fullName: "Vũ Mai Hoa (Kế Toán Công Nợ)",
-      email: "ketoan@loha.vn",
-      roles: ["ACCOUNTANT"],
+      id: 'demo-accountant',
+      username: 'accountant',
+      fullName: 'Vũ Mai Hoa (Kế Toán Công Nợ)',
+      email: 'ketoan@loha.vn',
+      roles: ['ACCOUNTANT'],
     },
   },
-  "accountant@loha.vn": {
-    accessToken: "demo-jwt-acc-access-token",
-    refreshToken: "demo-jwt-acc-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'accountant@loha.vn': {
+    accessToken: 'demo-jwt-acc-access-token',
+    refreshToken: 'demo-jwt-acc-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-accountant",
-      username: "accountant",
-      fullName: "Vũ Mai Hoa (Kế Toán Công Nợ)",
-      email: "ketoan@loha.vn",
-      roles: ["ACCOUNTANT"],
+      id: 'demo-accountant',
+      username: 'accountant',
+      fullName: 'Vũ Mai Hoa (Kế Toán Công Nợ)',
+      email: 'ketoan@loha.vn',
+      roles: ['ACCOUNTANT'],
     },
   },
-  "accountant": {
-    accessToken: "demo-jwt-acc-access-token",
-    refreshToken: "demo-jwt-acc-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  accountant: {
+    accessToken: 'demo-jwt-acc-access-token',
+    refreshToken: 'demo-jwt-acc-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-accountant",
-      username: "accountant",
-      fullName: "Vũ Mai Hoa (Kế Toán Công Nợ)",
-      email: "ketoan@loha.vn",
-      roles: ["ACCOUNTANT"],
+      id: 'demo-accountant',
+      username: 'accountant',
+      fullName: 'Vũ Mai Hoa (Kế Toán Công Nợ)',
+      email: 'ketoan@loha.vn',
+      roles: ['ACCOUNTANT'],
     },
   },
 
   // 7. Đại lý / Khách hàng B2B (Dealer / Customer)
-  "daily@loha.vn": {
-    accessToken: "demo-jwt-dealer-access-token",
-    refreshToken: "demo-jwt-dealer-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'daily@loha.vn': {
+    accessToken: 'demo-jwt-dealer-access-token',
+    refreshToken: 'demo-jwt-dealer-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-dealer",
-      username: "dealer",
-      fullName: "Đại Lý Cửa Hàng Minh Khang (B2B)",
-      email: "daily@loha.vn",
-      roles: ["CUSTOMER"],
+      id: 'demo-dealer',
+      username: 'dealer',
+      fullName: 'Đại Lý Cửa Hàng Minh Khang (B2B)',
+      email: 'daily@loha.vn',
+      roles: ['CUSTOMER'],
     },
   },
-  "khachhang@loha.vn": {
-    accessToken: "demo-jwt-dealer-access-token",
-    refreshToken: "demo-jwt-dealer-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'khachhang@loha.vn': {
+    accessToken: 'demo-jwt-dealer-access-token',
+    refreshToken: 'demo-jwt-dealer-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-dealer",
-      username: "dealer",
-      fullName: "Đại Lý Cửa Hàng Minh Khang (B2B)",
-      email: "daily@loha.vn",
-      roles: ["CUSTOMER"],
+      id: 'demo-dealer',
+      username: 'dealer',
+      fullName: 'Đại Lý Cửa Hàng Minh Khang (B2B)',
+      email: 'daily@loha.vn',
+      roles: ['CUSTOMER'],
     },
   },
-  "dealer@loha.vn": {
-    accessToken: "demo-jwt-dealer-access-token",
-    refreshToken: "demo-jwt-dealer-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'dealer@loha.vn': {
+    accessToken: 'demo-jwt-dealer-access-token',
+    refreshToken: 'demo-jwt-dealer-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-dealer",
-      username: "dealer",
-      fullName: "Đại Lý Cửa Hàng Minh Khang (B2B)",
-      email: "daily@loha.vn",
-      roles: ["CUSTOMER"],
+      id: 'demo-dealer',
+      username: 'dealer',
+      fullName: 'Đại Lý Cửa Hàng Minh Khang (B2B)',
+      email: 'daily@loha.vn',
+      roles: ['CUSTOMER'],
     },
   },
-  "customer@gmail.com": {
-    accessToken: "demo-jwt-dealer-access-token",
-    refreshToken: "demo-jwt-dealer-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  'customer@gmail.com': {
+    accessToken: 'demo-jwt-dealer-access-token',
+    refreshToken: 'demo-jwt-dealer-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-dealer",
-      username: "dealer",
-      fullName: "Đại Lý Cửa Hàng Minh Khang (B2B)",
-      email: "daily@loha.vn",
-      roles: ["CUSTOMER"],
+      id: 'demo-dealer',
+      username: 'dealer',
+      fullName: 'Đại Lý Cửa Hàng Minh Khang (B2B)',
+      email: 'daily@loha.vn',
+      roles: ['CUSTOMER'],
     },
   },
-  "customer": {
-    accessToken: "demo-jwt-dealer-access-token",
-    refreshToken: "demo-jwt-dealer-refresh-token",
-    tokenType: "Bearer",
-    expiresIn: "3600s",
+  customer: {
+    accessToken: 'demo-jwt-dealer-access-token',
+    refreshToken: 'demo-jwt-dealer-refresh-token',
+    tokenType: 'Bearer',
+    expiresIn: '3600s',
     user: {
-      id: "demo-dealer",
-      username: "dealer",
-      fullName: "Đại Lý Cửa Hàng Minh Khang (B2B)",
-      email: "daily@loha.vn",
-      roles: ["CUSTOMER"],
+      id: 'demo-dealer',
+      username: 'dealer',
+      fullName: 'Đại Lý Cửa Hàng Minh Khang (B2B)',
+      email: 'daily@loha.vn',
+      roles: ['CUSTOMER'],
     },
   },
 };
@@ -323,7 +323,7 @@ export class TemporaryLockedError extends Error {
 
   constructor(message: string, cause?: unknown) {
     super(message, cause !== undefined ? { cause } : undefined);
-    this.name = "TemporaryLockedError";
+    this.name = 'TemporaryLockedError';
     Object.setPrototypeOf(this, TemporaryLockedError.prototype);
   }
 }
@@ -335,7 +335,7 @@ export class AccountLockedError extends Error {
 
   constructor(message: string, lockReason?: string, cause?: unknown) {
     super(message, cause !== undefined ? { cause } : undefined);
-    this.name = "AccountLockedError";
+    this.name = 'AccountLockedError';
     this.lockReason = lockReason;
     Object.setPrototypeOf(this, AccountLockedError.prototype);
   }
@@ -353,7 +353,7 @@ export const authService = {
 
     // 1. Luôn ưu tiên gọi API Backend thật: POST /auth/login để nhận Access Token thật từ Server
     try {
-      const response = await apiClient.post<LoginResponse>("/auth/login", {
+      const response = await apiClient.post<LoginResponse>('/auth/login', {
         username: identifier,
         email: identifier,
         password,
@@ -370,60 +370,60 @@ export const authService = {
           status?: string;
         };
         const rawMessage = Array.isArray(data?.message)
-          ? data.message.join(", ")
-          : data?.message || "";
+          ? data.message.join(', ')
+          : data?.message || '';
 
         // Kiểm tra xem có bị khóa tạm thời do quá 5 lần sai không
         const isTemporaryLocked =
           error.response.status === 423 ||
-          rawMessage.toLowerCase().includes("tạm khóa") ||
-          rawMessage.toLowerCase().includes("tạm khoá") ||
-          rawMessage.toLowerCase().includes("15 phút");
+          rawMessage.toLowerCase().includes('tạm khóa') ||
+          rawMessage.toLowerCase().includes('tạm khoá') ||
+          rawMessage.toLowerCase().includes('15 phút');
 
         if (isTemporaryLocked) {
           throw new TemporaryLockedError(
-            "Tài khoản bị khóa tạm thời 15 phút do nhập sai quá số lần quy định",
-            error,
+            'Tài khoản bị khóa tạm thời 15 phút do nhập sai quá số lần quy định',
+            error
           );
         }
 
         // Kiểm tra xem tài khoản có bị Quản trị viên khóa không
         const lowerRaw = rawMessage.toLowerCase();
-        const normRaw = rawMessage.normalize("NFC").toLowerCase();
+        const normRaw = rawMessage.normalize('NFC').toLowerCase();
         const isLockedByAdmin =
           Boolean(data?.isLocked) ||
-          data?.status === "LOCKED" ||
-          lowerRaw.includes("quản trị viên khóa") ||
-          lowerRaw.includes("quản trị viên khoá") ||
-          normRaw.includes("quản trị viên khóa") ||
-          normRaw.includes("quản trị viên khoá") ||
-          lowerRaw.includes("đã bị khóa") ||
-          lowerRaw.includes("đã bị khoá") ||
-          lowerRaw.includes("tài khoản đã bị");
+          data?.status === 'LOCKED' ||
+          lowerRaw.includes('quản trị viên khóa') ||
+          lowerRaw.includes('quản trị viên khoá') ||
+          normRaw.includes('quản trị viên khóa') ||
+          normRaw.includes('quản trị viên khoá') ||
+          lowerRaw.includes('đã bị khóa') ||
+          lowerRaw.includes('đã bị khoá') ||
+          lowerRaw.includes('tài khoản đã bị');
 
         if (isLockedByAdmin) {
           const extractedReason =
             data?.lockReason ||
-            (rawMessage.includes("Lý do:")
-              ? rawMessage.split("Lý do:")[1]?.split(".")[0]?.trim()
+            (rawMessage.includes('Lý do:')
+              ? rawMessage.split('Lý do:')[1]?.split('.')[0]?.trim()
               : undefined);
 
           throw new AccountLockedError(
-            rawMessage || "Tài khoản của bạn đã bị quản trị viên khóa.",
-            extractedReason,
+            rawMessage || 'Tài khoản của bạn đã bị quản trị viên khóa.',
+            extractedReason
           );
         }
 
         // Bắt lỗi 401 hoặc 400
         if (error.response.status === 401 || error.response.status === 400) {
           // Nếu backend trả về thông báo lỗi cụ thể (như tài khoản chưa kích hoạt), giữ nguyên
-          if (rawMessage && !rawMessage.toLowerCase().includes("unauthorized")) {
+          if (rawMessage && !rawMessage.toLowerCase().includes('unauthorized')) {
             throw new Error(rawMessage, { cause: error });
           }
-          throw new Error("Tài khoản hoặc mật khẩu không chính xác", { cause: error });
+          throw new Error('Tài khoản hoặc mật khẩu không chính xác', { cause: error });
         }
 
-        throw new Error(rawMessage || "Tài khoản hoặc mật khẩu không chính xác", { cause: error });
+        throw new Error(rawMessage || 'Tài khoản hoặc mật khẩu không chính xác', { cause: error });
       }
 
       // 2. Chỉ khi máy chủ Backend không phản hồi (Offline / Network error), mới dùng tài khoản Demo dự phòng
@@ -432,27 +432,23 @@ export const authService = {
         const now = Date.now();
 
         if (lockData && lockData.lockedUntil > now) {
-          throw new Error(
-            "Tài khoản bị khóa tạm thời 15 phút do nhập sai quá số lần quy định",
-          );
+          throw new Error('Tài khoản bị khóa tạm thời 15 phút do nhập sai quá số lần quy định');
         }
 
         await new Promise((resolve) => setTimeout(resolve, 300));
 
-        if (password !== "123456") {
+        if (password !== '123456') {
           const nextCount = (lockData?.count || 0) + 1;
           if (nextCount >= 5) {
             demoFailedAttempts.set(identifier, {
               count: 5,
               lockedUntil: now + 15 * 60 * 1000,
             });
-            throw new Error(
-              "Tài khoản bị khóa tạm thời 15 phút do nhập sai quá số lần quy định",
-            );
+            throw new Error('Tài khoản bị khóa tạm thời 15 phút do nhập sai quá số lần quy định');
           }
 
           demoFailedAttempts.set(identifier, { count: nextCount, lockedUntil: 0 });
-          throw new Error("Tài khoản hoặc mật khẩu không chính xác");
+          throw new Error('Tài khoản hoặc mật khẩu không chính xác');
         }
 
         demoFailedAttempts.delete(identifier);
@@ -460,7 +456,7 @@ export const authService = {
       }
 
       const err = error as Error;
-      throw new Error(err.message || "Không thể kết nối đến máy chủ Backend.", { cause: error });
+      throw new Error(err.message || 'Không thể kết nối đến máy chủ Backend.', { cause: error });
     }
   },
 
@@ -471,17 +467,17 @@ export const authService = {
     const cleanToken = refreshToken.trim();
 
     // Hỗ trợ demo tokens offline
-    if (cleanToken.startsWith("demo-jwt-")) {
+    if (cleanToken.startsWith('demo-jwt-')) {
       await new Promise((resolve) => setTimeout(resolve, 200));
       return {
         accessToken: `demo-jwt-refreshed-${Date.now()}-access-token`,
         refreshToken: cleanToken,
-        tokenType: "Bearer",
-        expiresIn: "3600s",
+        tokenType: 'Bearer',
+        expiresIn: '3600s',
       };
     }
 
-    const response = await refreshClient.post<TokenResponse>("/auth/refresh", {
+    const response = await refreshClient.post<TokenResponse>('/auth/refresh', {
       refreshToken: cleanToken,
     });
 
@@ -500,35 +496,29 @@ export const authService = {
 
     try {
       // Chỉ gửi request lên máy chủ nếu thiết bị đang có mạng
-      const isOnline = typeof navigator === "undefined" || navigator.onLine;
+      const isOnline = typeof navigator === 'undefined' || navigator.onLine;
 
-      if (
-        isOnline &&
-        refreshToken &&
-        !refreshToken.startsWith("demo-jwt-")
-      ) {
+      if (isOnline && refreshToken && !refreshToken.startsWith('demo-jwt-')) {
         await refreshClient.post(
-          "/auth/logout",
+          '/auth/logout',
           { refreshToken },
           {
-            headers: accessToken
-              ? { Authorization: `Bearer ${accessToken}` }
-              : undefined,
+            headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
             timeout: 3000, // Timeout ngắn 3 giây tránh treo khi mạng lag/rớt
-          },
+          }
         );
       }
     } catch (error: unknown) {
       // Ghi log cảnh báo nhưng không chặn việc dọn dẹp client
       console.warn(
-        "Không thể thu hồi token trên máy chủ khi đăng xuất (có thể do mạng chập chờn):",
-        error,
+        'Không thể thu hồi token trên máy chủ khi đăng xuất (có thể do mạng chập chờn):',
+        error
       );
     } finally {
       tokenStorage.clearAuthData();
 
       if (redirect) {
-        window.location.href = "/auth/login";
+        window.location.href = '/auth/login';
       }
     }
   },
@@ -536,43 +526,37 @@ export const authService = {
   /**
    * Đổi mật khẩu tài khoản người dùng: POST /auth/change-password
    */
-  async changePassword(
-    data: ChangePasswordRequest,
-  ): Promise<ChangePasswordResponse> {
+  async changePassword(data: ChangePasswordRequest): Promise<ChangePasswordResponse> {
     const token = tokenStorage.getAccessToken();
 
     // 1. Kiểm tra tài khoản Demo (hỗ trợ thử nghiệm khi chưa bật backend)
-    if (token && token.startsWith("demo-jwt-")) {
+    if (token && token.startsWith('demo-jwt-')) {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      if (data.currentPassword !== "123456") {
-        throw new Error("Mật khẩu hiện tại không chính xác");
+      if (data.currentPassword !== '123456') {
+        throw new Error('Mật khẩu hiện tại không chính xác');
       }
 
       return {
         success: true,
-        message: "Đổi mật khẩu thành công! Vui lòng đăng nhập lại.",
+        message: 'Đổi mật khẩu thành công! Vui lòng đăng nhập lại.',
       };
     }
 
     // 2. Gọi API Backend thật: POST /auth/change-password
     try {
-      const response = await apiClient.post<ChangePasswordResponse>(
-        "/auth/change-password",
-        {
-          currentPassword: data.currentPassword,
-          newPassword: data.newPassword,
-        },
-      );
+      const response = await apiClient.post<ChangePasswordResponse>('/auth/change-password', {
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      });
 
       return response.data;
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         if (!error.response) {
-          throw new Error(
-            "Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng!",
-            { cause: error },
-          );
+          throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng!', {
+            cause: error,
+          });
         }
 
         const resData = error.response.data as {
@@ -581,48 +565,40 @@ export const authService = {
         };
 
         const rawMessage = Array.isArray(resData?.message)
-          ? resData.message.join(", ")
-          : resData?.message || "";
+          ? resData.message.join(', ')
+          : resData?.message || '';
 
         if (error.response.status === 400 || error.response.status === 401) {
-          throw new Error(
-            rawMessage || "Mật khẩu hiện tại không chính xác",
-            { cause: error },
-          );
+          throw new Error(rawMessage || 'Mật khẩu hiện tại không chính xác', { cause: error });
         }
 
-        throw new Error(
-          rawMessage || "Không thể đổi mật khẩu. Vui lòng thử lại sau!",
-          { cause: error },
-        );
+        throw new Error(rawMessage || 'Không thể đổi mật khẩu. Vui lòng thử lại sau!', {
+          cause: error,
+        });
       }
 
       const err = error as Error;
-      throw new Error(err.message || "Đổi mật khẩu thất bại", { cause: error });
+      throw new Error(err.message || 'Đổi mật khẩu thất bại', { cause: error });
     }
   },
 
   /**
    * Yêu cầu gửi email đặt lại mật khẩu: POST /auth/forgot-password (SN-8)
    */
-  async forgotPassword(
-    data: ForgotPasswordRequest,
-  ): Promise<ForgotPasswordResponse> {
+  async forgotPassword(data: ForgotPasswordRequest): Promise<ForgotPasswordResponse> {
     const email = data.email.trim().toLowerCase();
 
     try {
-      const response = await apiClient.post<ForgotPasswordResponse>(
-        "/auth/forgot-password",
-        { email },
-      );
+      const response = await apiClient.post<ForgotPasswordResponse>('/auth/forgot-password', {
+        email,
+      });
       return response.data;
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         if (!error.response) {
-          throw new Error(
-            "Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng!",
-            { cause: error },
-          );
+          throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng!', {
+            cause: error,
+          });
         }
 
         const resData = error.response.data as {
@@ -630,53 +606,46 @@ export const authService = {
           statusCode?: number;
         };
         const rawMessage = Array.isArray(resData?.message)
-          ? resData.message.join(", ")
+          ? resData.message.join(', ')
           : resData?.message;
 
-        throw new Error(
-          rawMessage || "Địa chỉ email này chưa được đăng ký trong hệ thống!",
-          { cause: error },
-        );
+        throw new Error(rawMessage || 'Địa chỉ email này chưa được đăng ký trong hệ thống!', {
+          cause: error,
+        });
       }
 
       const err = error as Error;
-      throw new Error(err.message || "Gửi yêu cầu thất bại", { cause: error });
+      throw new Error(err.message || 'Gửi yêu cầu thất bại', { cause: error });
     }
   },
 
   /**
    * Đặt lại mật khẩu mới với token từ email: POST /auth/reset-password (SN-8)
    */
-  async resetPassword(
-    data: ResetPasswordRequest,
-  ): Promise<ResetPasswordResponse> {
+  async resetPassword(data: ResetPasswordRequest): Promise<ResetPasswordResponse> {
     const { token, newPassword } = data;
 
     // Giả lập cho token demo
-    if (token.startsWith("demo-reset-token")) {
+    if (token.startsWith('demo-reset-token')) {
       await new Promise((resolve) => setTimeout(resolve, 600));
       return {
         success: true,
-        message: "Đặt lại mật khẩu thành công! Vui lòng đăng nhập bằng mật khẩu mới.",
+        message: 'Đặt lại mật khẩu thành công! Vui lòng đăng nhập bằng mật khẩu mới.',
       };
     }
 
     try {
-      const response = await apiClient.post<ResetPasswordResponse>(
-        "/auth/reset-password",
-        {
-          token: token.trim(),
-          newPassword,
-        },
-      );
+      const response = await apiClient.post<ResetPasswordResponse>('/auth/reset-password', {
+        token: token.trim(),
+        newPassword,
+      });
       return response.data;
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         if (!error.response) {
-          throw new Error(
-            "Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng!",
-            { cause: error },
-          );
+          throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng!', {
+            cause: error,
+          });
         }
 
         const resData = error.response.data as {
@@ -685,20 +654,19 @@ export const authService = {
         };
 
         const rawMessage = Array.isArray(resData?.message)
-          ? resData.message.join(", ")
+          ? resData.message.join(', ')
           : resData?.message;
 
         throw new Error(
-          rawMessage || "Mã token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn (30 phút).",
-          { cause: error },
+          rawMessage || 'Mã token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn (30 phút).',
+          { cause: error }
         );
       }
 
       const err = error as Error;
-      throw new Error(
-        err.message || "Không thể đặt lại mật khẩu. Vui lòng thử lại sau!",
-        { cause: error },
-      );
+      throw new Error(err.message || 'Không thể đặt lại mật khẩu. Vui lòng thử lại sau!', {
+        cause: error,
+      });
     }
   },
 
@@ -712,37 +680,34 @@ export const authService = {
   }): Promise<{ success: boolean; message: string }> {
     try {
       const response = await apiClient.post<{ success: boolean; message: string }>(
-        "/auth/reset-password-with-code",
+        '/auth/reset-password-with-code',
         {
           identifier: data.identifier.trim(),
           resetCode: data.resetCode.trim().toUpperCase(),
           newPassword: data.newPassword,
-        },
+        }
       );
       return response.data;
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         if (!error.response) {
-          throw new Error(
-            "Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng!",
-            { cause: error },
-          );
+          throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng!', {
+            cause: error,
+          });
         }
         const resData = error.response.data as {
           message?: string | string[];
           statusCode?: number;
         };
         const rawMessage = Array.isArray(resData?.message)
-          ? resData.message.join(", ")
+          ? resData.message.join(', ')
           : resData?.message;
-        throw new Error(
-          rawMessage || "Mã cấp đổi mật khẩu không chính xác hoặc đã được sử dụng.",
-          { cause: error },
-        );
+        throw new Error(rawMessage || 'Mã cấp đổi mật khẩu không chính xác hoặc đã được sử dụng.', {
+          cause: error,
+        });
       }
       const err = error as Error;
-      throw new Error(err.message || "Đặt lại mật khẩu thất bại.", { cause: error });
+      throw new Error(err.message || 'Đặt lại mật khẩu thất bại.', { cause: error });
     }
   },
 };
-

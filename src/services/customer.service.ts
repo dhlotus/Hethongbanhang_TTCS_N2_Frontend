@@ -284,13 +284,63 @@ export const DEMO_CUSTOMERS_DATA: Customer[] = [
   },
 ];
 
+// ──────────────────────────────────────────────────────────────────────────
+// PERSISTENT STORAGE SYNC (SN-37, SN-38, SN-31)
+// ──────────────────────────────────────────────────────────────────────────
+
+export const CUSTOMERS_STORAGE_KEY = 'loha_customers_data';
+
 /**
- * Lọc danh sách demo trong bộ nhớ
+ * Lấy danh sách đại lý từ LocalStorage hoặc khởi tạo từ demo seed
  */
-function filterDemoCustomers(
-  params: CustomerFilterParams = {},
-): PaginatedCustomersResponse {
-  let list = [...DEMO_CUSTOMERS_DATA];
+export function getStoredCustomers(): Customer[] {
+  try {
+    const raw = localStorage.getItem(CUSTOMERS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed as Customer[];
+      }
+    }
+  } catch {
+    // ignore parse error
+  }
+
+  // Khởi tạo seed ban đầu
+  try {
+    localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(DEMO_CUSTOMERS_DATA));
+  } catch {
+    // ignore storage error
+  }
+  return [...DEMO_CUSTOMERS_DATA];
+}
+
+/**
+ * Lưu danh sách đại lý vào LocalStorage & phát sự kiện đồng bộ toàn ứng dụng
+ */
+export function saveStoredCustomers(customers: Customer[]): void {
+  try {
+    localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(customers));
+  } catch {
+    // ignore
+  }
+
+  try {
+    window.dispatchEvent(
+      new CustomEvent('loha_customers_updated', {
+        detail: customers,
+      })
+    );
+  } catch {
+    // ignore in non-browser env
+  }
+}
+
+/**
+ * Lọc danh sách đại lý từ kho lưu trữ đồng bộ
+ */
+function filterDemoCustomers(params: CustomerFilterParams = {}): PaginatedCustomersResponse {
+  let list = getStoredCustomers();
 
   // RBAC Scoping cho chế độ demo / offline
   const currentUser = tokenStorage.getUser();
@@ -318,19 +368,15 @@ function filterDemoCustomers(
     const q = params.search.trim().toLowerCase();
     list = list.filter(
       (c) =>
-        c.code.toLowerCase().includes(q) ||
-        c.name.toLowerCase().includes(q) ||
-        c.phone.includes(q),
+        c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) || c.phone.includes(q)
     );
   }
 
-  if (params.region) {
-    list = list.filter(
-      (c) => c.region?.toLowerCase() === params.region?.toLowerCase(),
-    );
+  if (params.region && params.region !== 'ALL') {
+    list = list.filter((c) => c.region?.toLowerCase() === params.region?.toLowerCase());
   }
 
-  if (params.customerGroup) {
+  if (params.customerGroup && params.customerGroup !== 'ALL') {
     list = list.filter((c) => c.customerGroup === params.customerGroup);
   }
 
@@ -340,18 +386,18 @@ function filterDemoCustomers(
         c.salesRepId === params.salesRepId ||
         c.salesRep?.id === params.salesRepId ||
         ((params.salesRepId === 'usr-sales-002' || params.salesRepId === 'usr-sale-01') &&
-          (c.salesRepId === 'usr-sale-01' || c.salesRepId === 'usr-sales-002')),
+          (c.salesRepId === 'usr-sale-01' || c.salesRepId === 'usr-sales-002'))
     );
   }
 
-  if (params.status) {
+  if (params.status && params.status !== 'ALL') {
     list = list.filter((c) => c.status === params.status);
   }
 
   const page = Number(params.page) || 1;
   const limit = Number(params.limit) || 20;
   const total = list.length;
-  const totalPages = Math.ceil(total / limit) || 1;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
   const start = (page - 1) * limit;
   const data = list.slice(start, start + limit);
 
@@ -365,48 +411,54 @@ function filterDemoCustomers(
 }
 
 /**
- * Service Quản lý Đại lý & Tìm kiếm Lọc theo tuyến (SN-37 & SN-31)
+ * Service Quản lý Đại lý & Tìm kiếm Lọc theo tuyến (SN-37, SN-31 & SN-38)
  */
 export const customerService = {
   /**
-   * Thêm mới đại lý (SN-31 & SN-38)
+   * Thêm mới đại lý & đồng bộ tức thì toàn hệ thống (SN-31, SN-37 & SN-38)
    */
   async createCustomer(payload: CreateCustomerPayload): Promise<Customer> {
+    const existingList = getStoredCustomers();
+
     try {
       const res = await apiClient.post<Customer>('/customers', payload);
       if (res.data) {
-        DEMO_CUSTOMERS_DATA.unshift(res.data);
+        saveStoredCustomers([res.data, ...existingList.filter((c) => c.id !== res.data.id)]);
       }
       return res.data;
     } catch {
-      // Fallback offline / demo
+      // Fallback offline / demo: sinh đối tượng chuẩn và lưu persistent
+      const newCustId = `cust-${Date.now().toString().slice(-6)}`;
       const newCust: Customer = {
-        id: `cust-${Date.now().toString().slice(-6)}`,
-        code: payload.code || `DL-${Date.now().toString().slice(-4)}`,
-        name: payload.name,
-        phone: payload.phone,
-        address: payload.address,
+        id: newCustId,
+        code: payload.code?.trim() || `DL-${Date.now().toString().slice(-4)}`,
+        name: payload.name.trim(),
+        phone: payload.phone.trim(),
+        address: payload.address.trim(),
         region: payload.region || 'Miền Nam',
         customerGroup: payload.customerGroup || 'AGENT_LEVEL_2',
-        creditLimit: payload.creditLimit || 50000000,
+        creditLimit: Number(payload.creditLimit) || 50000000,
         currentDebt: 0,
-        maxDebtDays: payload.maxDebtDays || 30,
+        maxDebtDays: Number(payload.maxDebtDays) || 30,
         status: CustomerStatus.ACTIVE,
-        taxCode: payload.taxCode,
-        email: payload.email,
+        taxCode: payload.taxCode?.trim(),
+        email: payload.email?.trim(),
+        salesRepId: payload.salesRepId || 'usr-sales-002',
+        salesRepName: 'Trần Văn Nam',
         deliveryPoints: [
           {
-            id: `dp-${Date.now().toString().slice(-4)}`,
-            customerId: `cust-${Date.now().toString().slice(-6)}`,
-            name: payload.deliveryPointName || 'Trụ sở chính / Kho đại lý',
-            address: payload.address,
-            receiverName: payload.receiverName || payload.name,
-            phone: payload.phone,
+            id: `dp-${Date.now().toString().slice(-5)}`,
+            customerId: newCustId,
+            name: payload.deliveryPointName?.trim() || 'Kho chính / Trụ sở đại lý',
+            address: payload.address.trim(),
+            receiverName: payload.receiverName?.trim() || payload.name.trim(),
+            phone: payload.phone.trim(),
             isDefault: true,
           },
         ],
       };
-      DEMO_CUSTOMERS_DATA.unshift(newCust);
+
+      saveStoredCustomers([newCust, ...existingList]);
       return newCust;
     }
   },
@@ -414,19 +466,16 @@ export const customerService = {
   /**
    * Lấy danh sách đại lý có hỗ trợ tìm kiếm nhanh & lọc đa tiêu chí phân trang (SN-37)
    */
-  async getCustomers(
-    params: CustomerFilterParams = {},
-  ): Promise<PaginatedCustomersResponse> {
+  async getCustomers(params: CustomerFilterParams = {}): Promise<PaginatedCustomersResponse> {
     const token = tokenStorage.getAccessToken();
     if (token?.startsWith('demo-jwt-')) {
       return filterDemoCustomers(params);
     }
 
     try {
-      const res = await apiClient.get<PaginatedCustomersResponse | Customer[]>(
-        '/customers',
-        { params },
-      );
+      const res = await apiClient.get<PaginatedCustomersResponse | Customer[]>('/customers', {
+        params,
+      });
 
       // Nếu backend trả về mảng trực tiếp (phiên bản cũ)
       if (Array.isArray(res.data)) {
@@ -454,9 +503,10 @@ export const customerService = {
    * Lấy chi tiết một đại lý theo ID
    */
   async getCustomerById(id: string): Promise<Customer> {
+    const list = getStoredCustomers();
     const token = tokenStorage.getAccessToken();
     if (token?.startsWith('demo-jwt-')) {
-      const found = DEMO_CUSTOMERS_DATA.find((c) => c.id === id);
+      const found = list.find((c) => c.id === id);
       if (found) return found;
     }
 
@@ -464,7 +514,7 @@ export const customerService = {
       const res = await apiClient.get<Customer>(`/customers/${id}`);
       return res.data;
     } catch {
-      const found = DEMO_CUSTOMERS_DATA.find((c) => c.id === id);
+      const found = list.find((c) => c.id === id);
       if (found) return found;
       throw new Error(`Không tìm thấy đại lý có ID: ${id}`);
     }
@@ -475,12 +525,11 @@ export const customerService = {
    */
   async getDeliveryPoints(customerId: string): Promise<DeliveryPoint[]> {
     try {
-      const res = await apiClient.get<DeliveryPoint[]>(
-        `/customers/${customerId}/delivery-points`,
-      );
+      const res = await apiClient.get<DeliveryPoint[]>(`/customers/${customerId}/delivery-points`);
       return res.data;
     } catch {
-      const cust = DEMO_CUSTOMERS_DATA.find((c) => c.id === customerId);
+      const list = getStoredCustomers();
+      const cust = list.find((c) => c.id === customerId);
       return cust?.deliveryPoints || [];
     }
   },
@@ -490,13 +539,45 @@ export const customerService = {
    */
   async createDeliveryPoint(
     customerId: string,
-    payload: CreateDeliveryPointPayload,
+    payload: CreateDeliveryPointPayload
   ): Promise<DeliveryPoint> {
-    const res = await apiClient.post<DeliveryPoint>(
-      `/customers/${customerId}/delivery-points`,
-      payload,
-    );
-    return res.data;
+    try {
+      const res = await apiClient.post<DeliveryPoint>(
+        `/customers/${customerId}/delivery-points`,
+        payload
+      );
+      return res.data;
+    } catch {
+      const list = getStoredCustomers();
+      const custIndex = list.findIndex((c) => c.id === customerId);
+      const newPoint: DeliveryPoint = {
+        id: `dp-${Date.now().toString().slice(-5)}`,
+        customerId,
+        name: payload.name.trim(),
+        address: payload.address.trim(),
+        receiverName: payload.receiverName?.trim() || '',
+        phone: payload.phone.trim(),
+        roadNote: payload.roadNote,
+        ward: payload.ward,
+        district: payload.district,
+        province: payload.province,
+        isDefault: Boolean(payload.isDefault),
+      };
+
+      if (custIndex >= 0) {
+        const cust = list[custIndex];
+        let currentPoints = cust.deliveryPoints ? [...cust.deliveryPoints] : [];
+        if (newPoint.isDefault) {
+          currentPoints = currentPoints.map((p) => ({ ...p, isDefault: false }));
+        } else if (currentPoints.length === 0) {
+          newPoint.isDefault = true;
+        }
+        currentPoints.push(newPoint);
+        list[custIndex] = { ...cust, deliveryPoints: currentPoints };
+        saveStoredCustomers(list);
+      }
+      return newPoint;
+    }
   },
 
   /**
@@ -505,26 +586,75 @@ export const customerService = {
   async updateDeliveryPoint(
     customerId: string,
     pointId: string,
-    payload: UpdateDeliveryPointPayload,
+    payload: UpdateDeliveryPointPayload
   ): Promise<DeliveryPoint> {
-    const res = await apiClient.put<DeliveryPoint>(
-      `/customers/${customerId}/delivery-points/${pointId}`,
-      payload,
-    );
-    return res.data;
+    try {
+      const res = await apiClient.put<DeliveryPoint>(
+        `/customers/${customerId}/delivery-points/${pointId}`,
+        payload
+      );
+      return res.data;
+    } catch {
+      const list = getStoredCustomers();
+      const custIndex = list.findIndex((c) => c.id === customerId);
+      let updatedPoint: DeliveryPoint | null = null;
+      if (custIndex >= 0) {
+        const cust = list[custIndex];
+        const points = (cust.deliveryPoints || []).map((p) => {
+          if (p.id === pointId) {
+            updatedPoint = {
+              ...p,
+              ...payload,
+              name: payload.name ?? p.name,
+              address: payload.address ?? p.address,
+              receiverName: payload.receiverName ?? p.receiverName,
+              phone: payload.phone ?? p.phone,
+            };
+            return updatedPoint;
+          }
+          return p;
+        });
+        if (payload.isDefault) {
+          points.forEach((p) => {
+            if (p.id !== pointId) p.isDefault = false;
+          });
+        }
+        list[custIndex] = { ...cust, deliveryPoints: points };
+        saveStoredCustomers(list);
+      }
+      if (!updatedPoint) throw new Error('Không tìm thấy điểm giao hàng');
+      return updatedPoint;
+    }
   },
 
   /**
    * Đặt 1 điểm giao hàng làm mặc định (SN-31)
    */
-  async setDefaultDeliveryPoint(
-    customerId: string,
-    pointId: string,
-  ): Promise<DeliveryPoint> {
-    const res = await apiClient.patch<DeliveryPoint>(
-      `/customers/${customerId}/delivery-points/${pointId}/default`,
-    );
-    return res.data;
+  async setDefaultDeliveryPoint(customerId: string, pointId: string): Promise<DeliveryPoint> {
+    try {
+      const res = await apiClient.patch<DeliveryPoint>(
+        `/customers/${customerId}/delivery-points/${pointId}/default`
+      );
+      return res.data;
+    } catch {
+      const list = getStoredCustomers();
+      const custIndex = list.findIndex((c) => c.id === customerId);
+      let targetPoint: DeliveryPoint | null = null;
+      if (custIndex >= 0) {
+        const cust = list[custIndex];
+        const points = (cust.deliveryPoints || []).map((p) => {
+          if (p.id === pointId) {
+            targetPoint = { ...p, isDefault: true };
+            return targetPoint;
+          }
+          return { ...p, isDefault: false };
+        });
+        list[custIndex] = { ...cust, deliveryPoints: points };
+        saveStoredCustomers(list);
+      }
+      if (!targetPoint) throw new Error('Không tìm thấy điểm giao hàng');
+      return targetPoint;
+    }
   },
 
   /**
@@ -532,13 +662,35 @@ export const customerService = {
    */
   async deleteDeliveryPoint(
     customerId: string,
-    pointId: string,
+    pointId: string
   ): Promise<{ success: boolean; message: string }> {
-    const res = await apiClient.delete<{ success: boolean; message: string }>(
-      `/customers/${customerId}/delivery-points/${pointId}`,
-    );
-    return res.data;
+    try {
+      const res = await apiClient.delete<{ success: boolean; message: string }>(
+        `/customers/${customerId}/delivery-points/${pointId}`
+      );
+      return res.data;
+    } catch {
+      const list = getStoredCustomers();
+      const custIndex = list.findIndex((c) => c.id === customerId);
+      if (custIndex >= 0) {
+        const cust = list[custIndex];
+        const filtered = (cust.deliveryPoints || []).filter((p) => p.id !== pointId);
+        list[custIndex] = { ...cust, deliveryPoints: filtered };
+        saveStoredCustomers(list);
+      }
+      return { success: true, message: 'Đã xóa điểm giao hàng' };
+    }
   },
+
+  /**
+   * Đọc danh sách đại lý đã lưu
+   */
+  getStoredCustomers,
+
+  /**
+   * Lưu danh sách đại lý
+   */
+  saveStoredCustomers,
 };
 
 /**

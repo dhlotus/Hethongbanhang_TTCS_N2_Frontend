@@ -3,7 +3,6 @@ import {
   Search,
   Filter,
   RefreshCw,
-  CreditCard,
   ChevronLeft,
   ChevronRight,
   ShieldAlert,
@@ -76,9 +75,7 @@ export const CreditLimitPage: React.FC = () => {
     } catch (err: unknown) {
       showToast(
         'error',
-        err instanceof Error
-          ? err.message
-          : 'Không thể tải số liệu thống kê hạn mức.',
+        err instanceof Error ? err.message : 'Không thể tải số liệu thống kê hạn mức.'
       );
     } finally {
       setStatsLoading(false);
@@ -103,9 +100,7 @@ export const CreditLimitPage: React.FC = () => {
     } catch (err: unknown) {
       showToast(
         'error',
-        err instanceof Error
-          ? err.message
-          : 'Không thể tải danh sách hạn mức công nợ.',
+        err instanceof Error ? err.message : 'Không thể tải danh sách hạn mức công nợ.'
       );
     } finally {
       setLoading(false);
@@ -123,7 +118,7 @@ export const CreditLimitPage: React.FC = () => {
   // Xử lý Cập nhật Hạn mức (Bọc trong try-catch và hiển thị thông báo)
   const handleUpdateLimit = async (
     agencyId: string,
-    payload: UpdateCreditLimitPayload,
+    payload: UpdateCreditLimitPayload
   ): Promise<void> => {
     try {
       setModalSubmitting(true);
@@ -132,10 +127,7 @@ export const CreditLimitPage: React.FC = () => {
       setSelectedItemForEdit(null);
       await Promise.all([fetchCreditLimits(), fetchStats()]);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : 'Lỗi khi cập nhật hạn mức công nợ.';
+      const msg = err instanceof Error ? err.message : 'Lỗi khi cập nhật hạn mức công nợ.';
       showToast('error', msg);
       throw err;
     } finally {
@@ -146,7 +138,7 @@ export const CreditLimitPage: React.FC = () => {
   // Xử lý Khóa / Mở khóa Hạn mức (Bọc trong try-catch và hiển thị thông báo)
   const handleUpdateStatus = async (
     agencyId: string,
-    payload: UpdateCreditStatusPayload,
+    payload: UpdateCreditStatusPayload
   ): Promise<void> => {
     try {
       setModalSubmitting(true);
@@ -155,15 +147,12 @@ export const CreditLimitPage: React.FC = () => {
         'success',
         payload.status === CreditStatus.BLOCKED
           ? 'Đã khóa hạn mức tín dụng của đại lý thành công!'
-          : 'Đã mở khóa hạn mức tín dụng của đại lý thành công!',
+          : 'Đã mở khóa hạn mức tín dụng của đại lý thành công!'
       );
       setSelectedItemForStatus(null);
       await Promise.all([fetchCreditLimits(), fetchStats()]);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : 'Lỗi khi cập nhật trạng thái hạn mức.';
+      const msg = err instanceof Error ? err.message : 'Lỗi khi cập nhật trạng thái hạn mức.';
       showToast('error', msg);
       throw err;
     } finally {
@@ -176,42 +165,28 @@ export const CreditLimitPage: React.FC = () => {
       {/* ===================================================================== */}
       {/* 1. Header Trang                                                       */}
       {/* ===================================================================== */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary)] flex items-center justify-center font-bold">
-              <CreditCard className="h-4 w-4" />
-            </div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-              Khai Báo & Quản Lý Hạn Mức Công Nợ (SN-34)
-            </h1>
+      <div className="flex items-center justify-end gap-2.5 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+        {!canEditCreditLimit && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+            <ShieldAlert className="h-4 w-4 text-amber-600" />
+            <span>
+              Chế độ chỉ xem (Chỉ Kế toán công nợ / Quản lý kinh doanh mới có quyền chỉnh sửa)
+            </span>
           </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Thiết lập hạn mức tín dụng mua buôn, thời hạn nợ gối đầu và giám sát an toàn dòng tiền cho từng đại lý.
-          </p>
-        </div>
+        )}
 
-        <div className="flex items-center gap-2">
-          {!canEditCreditLimit && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-              <ShieldAlert className="h-4 w-4 text-amber-600" />
-              <span>Chế độ chỉ xem (Chỉ Kế toán công nợ / Quản lý kinh doanh mới có quyền chỉnh sửa)</span>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => {
-              fetchCreditLimits();
-              fetchStats();
-            }}
-            disabled={loading}
-            className="px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Làm mới</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            fetchCreditLimits();
+            fetchStats();
+          }}
+          disabled={loading}
+          className="px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <span>Làm mới</span>
+        </button>
       </div>
 
       {/* ===================================================================== */}
@@ -296,8 +271,8 @@ export const CreditLimitPage: React.FC = () => {
       {totalItems > 0 && (
         <div className="flex items-center justify-between text-xs text-slate-500 px-1">
           <div>
-            Hiển thị <strong>{items.length}</strong> trên tổng số{' '}
-            <strong>{totalItems}</strong> đại lý
+            Hiển thị <strong>{items.length}</strong> trên tổng số <strong>{totalItems}</strong> đại
+            lý
           </div>
 
           <div className="flex items-center gap-2">

@@ -1,5 +1,5 @@
-import { AppRoutes } from "./routes";
-import { ToastContainer } from "./components/toast";
+import { AppRoutes } from './routes';
+import { ToastContainer } from './components/toast';
 
 function App() {
   return (

@@ -15,7 +15,6 @@ import {
   Filter,
   ShieldCheck,
   AlertCircle,
-  ChevronRight,
   UserCheck,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
@@ -42,7 +41,9 @@ export const CustomersPage: React.FC = () => {
   const [selectedRegion, setSelectedRegion] = useState<string>('ALL');
 
   // Modal quản lý điểm giao hàng (SN-31 & SN-32)
-  const [selectedCustomerForDelivery, setSelectedCustomerForDelivery] = useState<Customer | null>(null);
+  const [selectedCustomerForDelivery, setSelectedCustomerForDelivery] = useState<Customer | null>(
+    null
+  );
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState<boolean>(false);
 
   // Modal thêm đại lý mới
@@ -63,7 +64,7 @@ export const CustomersPage: React.FC = () => {
     receiverName: '',
   });
 
-  // Tải danh sách đại lý từ API
+  // Tải danh sách đại lý từ API / Persistent Storage
   const loadCustomers = useCallback(async (keyword?: string) => {
     try {
       setLoading(true);
@@ -84,11 +85,30 @@ export const CustomersPage: React.FC = () => {
     loadCustomers();
   }, [loadCustomers]);
 
+  // Lắng nghe sự kiện đồng bộ từ Tạo đơn hàng (SN-38) hoặc Tab khác
+  useEffect(() => {
+    const handleSync = () => {
+      void loadCustomers(searchInput.trim() || undefined);
+    };
+
+    window.addEventListener('loha_customers_updated', handleSync);
+    window.addEventListener('storage', handleSync);
+
+    return () => {
+      window.removeEventListener('loha_customers_updated', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, [loadCustomers, searchInput]);
+
   // Làm mới dữ liệu
   const handleRefresh = async () => {
     setRefreshing(true);
     await loadCustomers(searchInput.trim() || undefined);
-    showToast('success', 'Đồng bộ hoàn tất', 'Dữ liệu đại lý và điểm giao hàng đã được cập nhật mới nhất.');
+    showToast(
+      'success',
+      'Đồng bộ hoàn tất',
+      'Dữ liệu đại lý và điểm giao hàng đã được cập nhật mới nhất.'
+    );
   };
 
   // Lọc dữ liệu đại lý theo từ khóa, nhóm, vùng và trạng thái
@@ -130,7 +150,11 @@ export const CustomersPage: React.FC = () => {
       return;
     }
     if (!formData.address.trim()) {
-      showToast('error', 'Thiếu thông tin', 'Vui lòng nhập địa chỉ trụ sở / kinh doanh của đại lý.');
+      showToast(
+        'error',
+        'Thiếu thông tin',
+        'Vui lòng nhập địa chỉ trụ sở / kinh doanh của đại lý.'
+      );
       return;
     }
 
@@ -146,7 +170,7 @@ export const CustomersPage: React.FC = () => {
       showToast(
         'success',
         'Thêm đại lý thành công',
-        `Đại lý "${newCustomer.name}" đã được tạo và đồng bộ ngay vào hệ thống!`,
+        `Đại lý "${newCustomer.name}" đã được tạo và đồng bộ ngay vào hệ thống!`
       );
 
       // Đóng modal và reset form
@@ -187,14 +211,12 @@ export const CustomersPage: React.FC = () => {
 
     setCustomers((prev) =>
       prev.map((c) =>
-        c.id === selectedCustomerForDelivery.id
-          ? { ...c, deliveryPoints: updatedPoints }
-          : c,
-      ),
+        c.id === selectedCustomerForDelivery.id ? { ...c, deliveryPoints: updatedPoints } : c
+      )
     );
 
     setSelectedCustomerForDelivery((prev) =>
-      prev ? { ...prev, deliveryPoints: updatedPoints } : null,
+      prev ? { ...prev, deliveryPoints: updatedPoints } : null
     );
   };
 
@@ -221,44 +243,29 @@ export const CustomersPage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 py-4">
-      {/* ── HEADER BREADCRUMB & CTA ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-100">
-        <div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mb-1">
-            <span>Phân hệ Bán hàng</span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-slate-800 font-semibold">Quản lý Đại lý & Hạn mức</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Building2 className="w-6 h-6 text-[var(--color-primary)]" />
-            Quản lý Đại lý & Điểm giao hàng
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Danh sách khách hàng B2B, điểm giao hàng (SN-31 & SN-32), hạn mức công nợ và đồng bộ tạo đơn
-          </p>
-        </div>
+      {/* ── HEADER CTA ── */}
+      <div className="flex items-center justify-end gap-2.5 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+          title="Đồng bộ danh sách"
+        >
+          <RefreshCw
+            className={`w-4 h-4 ${refreshing ? 'animate-spin text-[var(--color-primary)]' : 'text-slate-500'}`}
+          />
+          <span className="hidden sm:inline">Làm mới</span>
+        </button>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
-            title="Đồng bộ danh sách"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-[var(--color-primary)]' : 'text-slate-500'}`} />
-            <span className="hidden sm:inline">Làm mới</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-white bg-[var(--color-primary)] hover:opacity-90 rounded-lg shadow-sm transition-all active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Thêm đại lý mới</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setIsCreateModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-white bg-[var(--color-primary)] hover:opacity-90 rounded-lg shadow-sm transition-all active:scale-95"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Thêm đại lý mới</span>
+        </button>
       </div>
 
       {/* ── THỐNG KÊ NHANH KPI (CARD-BASED UI) ── */}
@@ -408,14 +415,14 @@ export const CustomersPage: React.FC = () => {
                 {filteredCustomers.map((customer) => {
                   const debtPercent =
                     customer.creditLimit > 0
-                      ? Math.min(100, Math.round((customer.currentDebt / customer.creditLimit) * 100))
+                      ? Math.min(
+                          100,
+                          Math.round((customer.currentDebt / customer.creditLimit) * 100)
+                        )
                       : 0;
 
                   return (
-                    <tr
-                      key={customer.id}
-                      className="hover:bg-slate-50/60 transition-colors group"
-                    >
+                    <tr key={customer.id} className="hover:bg-slate-50/60 transition-colors group">
                       {/* Cột 1: Mã & Tên Đại lý */}
                       <td className="px-4 py-3.5">
                         <div className="font-semibold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors">
@@ -425,7 +432,10 @@ export const CustomersPage: React.FC = () => {
                           {customer.code} • {customer.region || 'Miền Nam'}
                         </div>
                         {customer.address && (
-                          <div className="text-xs text-slate-400 line-clamp-1 mt-0.5" title={customer.address}>
+                          <div
+                            className="text-xs text-slate-400 line-clamp-1 mt-0.5"
+                            title={customer.address}
+                          >
                             {customer.address}
                           </div>
                         )}
@@ -484,8 +494,8 @@ export const CustomersPage: React.FC = () => {
                               debtPercent > 80
                                 ? 'bg-rose-500'
                                 : debtPercent > 50
-                                ? 'bg-amber-500'
-                                : 'bg-[var(--color-primary)]'
+                                  ? 'bg-amber-500'
+                                  : 'bg-[var(--color-primary)]'
                             }`}
                             style={{ width: `${debtPercent}%` }}
                           />
@@ -621,9 +631,7 @@ export const CustomersPage: React.FC = () => {
 
                 {/* Phân nhóm */}
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Phân nhóm đại lý
-                  </label>
+                  <label className="text-xs font-semibold text-slate-700">Phân nhóm đại lý</label>
                   <select
                     value={formData.customerGroup}
                     onChange={(e) => setFormData({ ...formData, customerGroup: e.target.value })}
@@ -653,9 +661,7 @@ export const CustomersPage: React.FC = () => {
 
                 {/* Email */}
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Email liên hệ
-                  </label>
+                  <label className="text-xs font-semibold text-slate-700">Email liên hệ</label>
                   <input
                     type="email"
                     placeholder="VD: daily@gmail.com"
@@ -690,16 +696,16 @@ export const CustomersPage: React.FC = () => {
                     min="0"
                     step="1000000"
                     value={formData.creditLimit}
-                    onChange={(e) => setFormData({ ...formData, creditLimit: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, creditLimit: Number(e.target.value) })
+                    }
                     className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
                   />
                 </div>
 
                 {/* Khu vực */}
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Khu vực địa bàn
-                  </label>
+                  <label className="text-xs font-semibold text-slate-700">Khu vực địa bàn</label>
                   <select
                     value={formData.region}
                     onChange={(e) => setFormData({ ...formData, region: e.target.value })}
@@ -722,7 +728,9 @@ export const CustomersPage: React.FC = () => {
                       type="text"
                       placeholder="Tên điểm giao (VD: Kho chính, Showroom)"
                       value={formData.deliveryPointName}
-                      onChange={(e) => setFormData({ ...formData, deliveryPointName: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, deliveryPointName: e.target.value })
+                      }
                       className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white"
                     />
                     <input

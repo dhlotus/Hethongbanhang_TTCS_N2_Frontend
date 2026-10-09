@@ -98,6 +98,7 @@ export interface CreateOrderPayload {
   lines: Omit<OrderLine, 'id' | 'lineTotal' | 'baseQuantity'>[];
   note?: string;
   priceListId?: string;
+  status?: OrderStatus;
 }
 
 /** Payload cập nhật đơn hàng */

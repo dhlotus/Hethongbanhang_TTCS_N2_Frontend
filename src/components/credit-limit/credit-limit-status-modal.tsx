@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import { X, Lock, Unlock, AlertTriangle, Check } from 'lucide-react';
-import type {
-  CreditLimitItem,
-  UpdateCreditStatusPayload,
-} from '../../types/credit-limit';
+import type { CreditLimitItem, UpdateCreditStatusPayload } from '../../types/credit-limit';
 import { CreditStatus } from '../../types/credit-limit';
 
 interface CreditLimitStatusModalProps {
@@ -27,9 +24,7 @@ export const CreditLimitStatusModal: React.FC<CreditLimitStatusModalProps> = ({
   if (!isOpen || !item) return null;
 
   const isCurrentlyBlocked = item.status === CreditStatus.BLOCKED;
-  const targetStatus = isCurrentlyBlocked
-    ? CreditStatus.NORMAL
-    : CreditStatus.BLOCKED;
+  const targetStatus = isCurrentlyBlocked ? CreditStatus.NORMAL : CreditStatus.BLOCKED;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,11 +43,7 @@ export const CreditLimitStatusModal: React.FC<CreditLimitStatusModalProps> = ({
       setReason('');
       onClose();
     } catch (err: unknown) {
-      setErrorMsg(
-        err instanceof Error
-          ? err.message
-          : 'Không thể cập nhật trạng thái hạn mức.',
-      );
+      setErrorMsg(err instanceof Error ? err.message : 'Không thể cập nhật trạng thái hạn mức.');
     }
   };
 
@@ -64,25 +55,18 @@ export const CreditLimitStatusModal: React.FC<CreditLimitStatusModalProps> = ({
           <div className="flex items-center gap-3">
             <div
               className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold ${
-                isCurrentlyBlocked
-                  ? 'bg-emerald-50 text-emerald-600'
-                  : 'bg-rose-50 text-rose-600'
+                isCurrentlyBlocked ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
               }`}
             >
-              {isCurrentlyBlocked ? (
-                <Unlock className="h-5 w-5" />
-              ) : (
-                <Lock className="h-5 w-5" />
-              )}
+              {isCurrentlyBlocked ? <Unlock className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">
-                {isCurrentlyBlocked
-                  ? 'Mở Khóa Hạn Mức Tín Dụng'
-                  : 'Tạm Khóa Hạn Mức Tín Dụng'}
+                {isCurrentlyBlocked ? 'Mở Khóa Hạn Mức Tín Dụng' : 'Tạm Khóa Hạn Mức Tín Dụng'}
               </h3>
               <p className="text-xs text-slate-500">
-                Đại lý: <strong className="text-slate-700">{item.agencyName || item.customerName}</strong>
+                Đại lý:{' '}
+                <strong className="text-slate-700">{item.agencyName || item.customerName}</strong>
               </p>
             </div>
           </div>
@@ -114,12 +98,12 @@ export const CreditLimitStatusModal: React.FC<CreditLimitStatusModalProps> = ({
             <div>
               {isCurrentlyBlocked ? (
                 <p>
-                  Đại lý sẽ được phép tiếp tục đặt hàng mua trả chậm theo hạn
-                  mức tín dụng được cấp.
+                  Đại lý sẽ được phép tiếp tục đặt hàng mua trả chậm theo hạn mức tín dụng được cấp.
                 </p>
               ) : (
                 <p>
-                  Khi bị khóa, đại lý sẽ <strong>không thể tạo đơn hàng công nợ mới</strong> cho đến khi được Kế toán hoặc Quản lý mở khóa.
+                  Khi bị khóa, đại lý sẽ <strong>không thể tạo đơn hàng công nợ mới</strong> cho đến
+                  khi được Kế toán hoặc Quản lý mở khóa.
                 </p>
               )}
             </div>
@@ -166,9 +150,7 @@ export const CreditLimitStatusModal: React.FC<CreditLimitStatusModalProps> = ({
               ) : (
                 <>
                   <Check className="h-4 w-4" />
-                  <span>
-                    {isCurrentlyBlocked ? 'Xác nhận mở khóa' : 'Xác nhận khóa'}
-                  </span>
+                  <span>{isCurrentlyBlocked ? 'Xác nhận mở khóa' : 'Xác nhận khóa'}</span>
                 </>
               )}
             </button>

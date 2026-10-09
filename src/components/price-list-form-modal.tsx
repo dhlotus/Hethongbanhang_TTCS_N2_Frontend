@@ -28,7 +28,11 @@ interface PriceListFormModalProps {
   onClose: () => void;
   onSubmit: (payload: CreatePriceListPayload) => Promise<void>;
   onClone?: (priceList: PriceList) => void;
-  onToast?: (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => void;
+  onToast?: (
+    type: 'success' | 'error' | 'warning' | 'info',
+    title: string,
+    message: string
+  ) => void;
   initialData?: PriceList | null;
   isReadOnly?: boolean;
 }
@@ -128,7 +132,7 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
           ...it,
           price: Number(it.price) || 0,
           minPrice: Number(it.minPrice) || 0,
-        })),
+        }))
       );
     } else {
       // Khởi tạo mặc định cho bảng giá mới (mã để trống để hiển thị placeholder tự sinh)
@@ -136,9 +140,7 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
       setCode('');
       setCustomerGroup('AGENT_LEVEL_1');
       const today = new Date().toISOString().split('T')[0];
-      const nextYear = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split('T')[0];
+      const nextYear = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       setStartDate(today);
       setEndDate(nextYear);
       setStatus('DRAFT');
@@ -155,7 +157,8 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
       const price = Number(item.price) || 0;
       const minPrice = Number(item.minPrice) || 0;
       if (price < minPrice) {
-        errors[item.id] = `Giá bán (${price.toLocaleString('vi-VN')} đ) không được nhỏ hơn giá sàn (${minPrice.toLocaleString('vi-VN')} đ)`;
+        errors[item.id] =
+          `Giá bán (${price.toLocaleString('vi-VN')} đ) không được nhỏ hơn giá sàn (${minPrice.toLocaleString('vi-VN')} đ)`;
       }
     }
     return errors;
@@ -225,7 +228,7 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
           return { ...it, [field]: val };
         }
         return it;
-      }),
+      })
     );
   };
 
@@ -303,55 +306,57 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
 
   if (!isOpen) return null;
 
-  const modalBanner = (hasOrders || localError) ? (
-    <div className="space-y-3 px-6 pt-4">
-      {/* Banner cảnh báo vàng khi hasOrders == true */}
-      {hasOrders && (
-        <div className="p-3.5 rounded-xl bg-amber-50/90 border border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 animate-in fade-in">
-          <div className="flex items-center gap-2.5">
-            <Lock className="w-5 h-5 text-amber-600 shrink-0" />
-            <div className="text-xs">
-              <strong className="font-semibold block text-amber-950 sm:inline">
-                Đã phát sinh đơn hàng:
-              </strong>{' '}
-              Bảng giá này đã có đơn hàng nên không thể chỉnh sửa trực tiếp nhằm bảo toàn chứng từ.
+  const modalBanner =
+    hasOrders || localError ? (
+      <div className="space-y-3 px-6 pt-4">
+        {/* Banner cảnh báo vàng khi hasOrders == true */}
+        {hasOrders && (
+          <div className="p-3.5 rounded-xl bg-amber-50/90 border border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 animate-in fade-in">
+            <div className="flex items-center gap-2.5">
+              <Lock className="w-5 h-5 text-amber-600 shrink-0" />
+              <div className="text-xs">
+                <strong className="font-semibold block text-amber-950 sm:inline">
+                  Đã phát sinh đơn hàng:
+                </strong>{' '}
+                Bảng giá này đã có đơn hàng nên không thể chỉnh sửa trực tiếp nhằm bảo toàn chứng
+                từ.
+              </div>
             </div>
-          </div>
 
-          {onClone && initialData && (
+            {onClone && initialData && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClone(initialData);
+                  handleClose();
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs shadow-xs transition-all cursor-pointer shrink-0"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Tạo phiên bản mới</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Banner cảnh báo đỏ khi có lỗi form */}
+        {localError && (
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200/80 flex items-center justify-between gap-3 text-rose-900 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
+              <div className="text-xs font-semibold">{localError}</div>
+            </div>
             <button
               type="button"
-              onClick={() => {
-                onClone(initialData);
-                handleClose();
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs shadow-xs transition-all cursor-pointer shrink-0"
+              onClick={() => setLocalError(null)}
+              className="text-xs font-semibold text-rose-600 hover:text-rose-800 underline cursor-pointer"
             >
-              <Copy className="w-3.5 h-3.5" />
-              <span>Tạo phiên bản mới</span>
+              Đóng
             </button>
-          )}
-        </div>
-      )}
-
-      {/* Banner cảnh báo đỏ khi có lỗi form */}
-      {localError && (
-        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200/80 flex items-center justify-between gap-3 text-rose-900 animate-in fade-in">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
-            <div className="text-xs font-semibold">{localError}</div>
           </div>
-          <button
-            type="button"
-            onClick={() => setLocalError(null)}
-            className="text-xs font-semibold text-rose-600 hover:text-rose-800 underline cursor-pointer"
-          >
-            Đóng
-          </button>
-        </div>
-      )}
-    </div>
-  ) : null;
+        )}
+      </div>
+    ) : null;
 
   const modalFooter = (
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
@@ -397,10 +402,10 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
               isDateRangeInvalid
                 ? dateRangeErrorMessage || undefined
                 : hasPricingErrors
-                ? `Không thể lưu: Có ${Object.keys(pricingErrors).length} mặt hàng có Giá bán nhỏ hơn Giá sàn`
-                : items.length === 0
-                ? 'Bảng giá chưa có sản phẩm nào'
-                : 'Lưu cấu hình Bảng giá'
+                  ? `Không thể lưu: Có ${Object.keys(pricingErrors).length} mặt hàng có Giá bán nhỏ hơn Giá sàn`
+                  : items.length === 0
+                    ? 'Bảng giá chưa có sản phẩm nào'
+                    : 'Lưu cấu hình Bảng giá'
             }
             className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 sm:py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white shadow-xs transition-all cursor-pointer"
           >
@@ -542,7 +547,13 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
                 placeholder="dd/mm/yyyy"
                 error={dateRangeErrorMessage}
                 hasError={isDateRangeInvalid}
-                helperText={!isDateRangeInvalid ? (startDate ? `Tự động chặn ngày trước ${formatVietnameseDate(startDate)}` : undefined) : undefined}
+                helperText={
+                  !isDateRangeInvalid
+                    ? startDate
+                      ? `Tự động chặn ngày trước ${formatVietnameseDate(startDate)}`
+                      : undefined
+                    : undefined
+                }
               />
 
               {/* Trạng thái */}
@@ -636,8 +647,12 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
                   <div className="flex items-center gap-2">
                     <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
                     <div className="text-xs">
-                      <strong className="font-semibold text-rose-950">Ràng buộc Giá bán & Giá sàn vi phạm:</strong>{' '}
-                      Có <strong>{Object.keys(pricingErrors).length}</strong> sản phẩm có Giá bán nhỏ hơn Giá sàn. Nút "Lưu Bảng giá" đã tự động bị khóa để bảo vệ biên lợi nhuận.
+                      <strong className="font-semibold text-rose-950">
+                        Ràng buộc Giá bán & Giá sàn vi phạm:
+                      </strong>{' '}
+                      Có <strong>{Object.keys(pricingErrors).length}</strong> sản phẩm có Giá bán
+                      nhỏ hơn Giá sàn. Nút "Lưu Bảng giá" đã tự động bị khóa để bảo vệ biên lợi
+                      nhuận.
                     </div>
                   </div>
                   <span className="text-[11px] font-semibold text-rose-700 bg-rose-100/70 px-2 py-0.5 rounded-md shrink-0">
@@ -667,10 +682,13 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
                           className="py-10 text-center text-slate-400"
                         >
                           <FileSpreadsheet className="w-8 h-8 text-slate-300 mx-auto mb-1.5" />
-                          <p className="text-xs font-semibold text-slate-600">Chưa có sản phẩm nào trong bảng giá</p>
+                          <p className="text-xs font-semibold text-slate-600">
+                            Chưa có sản phẩm nào trong bảng giá
+                          </p>
                           {!effectiveReadOnly && (
                             <p className="text-[11px] text-slate-400 mt-0.5">
-                              Bấm &quot;Nạp tất cả SKU&quot; hoặc chọn sản phẩm ở trên để thêm dòng giá
+                              Bấm &quot;Nạp tất cả SKU&quot; hoặc chọn sản phẩm ở trên để thêm dòng
+                              giá
                             </p>
                           )}
                         </td>
@@ -710,13 +728,7 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
                             <td className="py-2.5 px-3">
                               <CurrencyInput
                                 value={item.minPrice}
-                                onChange={(val) =>
-                                  handleUpdateItem(
-                                    item.id,
-                                    'minPrice',
-                                    val ?? 0,
-                                  )
-                                }
+                                onChange={(val) => handleUpdateItem(item.id, 'minPrice', val ?? 0)}
                                 disabled={effectiveReadOnly}
                                 placeholder="0"
                                 className="w-full px-2.5 py-1.5 text-xs font-mono font-semibold rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-slate-50"
@@ -728,13 +740,7 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
                               <div>
                                 <CurrencyInput
                                   value={item.price}
-                                  onChange={(val) =>
-                                    handleUpdateItem(
-                                      item.id,
-                                      'price',
-                                      val ?? 0,
-                                    )
-                                  }
+                                  onChange={(val) => handleUpdateItem(item.id, 'price', val ?? 0)}
                                   disabled={effectiveReadOnly}
                                   placeholder="0"
                                   className={`w-full px-2.5 py-1.5 text-xs font-mono font-bold rounded-lg border focus:outline-none transition-colors disabled:bg-slate-50 ${
@@ -747,7 +753,10 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
                                 {isItemError && (
                                   <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-rose-600 leading-tight">
                                     <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
-                                    <span>Giá bán &lt; Giá sàn ({item.minPrice.toLocaleString('vi-VN')} đ)!</span>
+                                    <span>
+                                      Giá bán &lt; Giá sàn ({item.minPrice.toLocaleString('vi-VN')}{' '}
+                                      đ)!
+                                    </span>
                                   </div>
                                 )}
                               </div>

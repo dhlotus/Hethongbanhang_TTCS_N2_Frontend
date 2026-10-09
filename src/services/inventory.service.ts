@@ -16,7 +16,7 @@ const getStoredDemoTransactions = (): InventoryTransaction[] => {
     const raw = localStorage.getItem(DEMO_TRANSACTIONS_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
-  
+
   // Dữ liệu mẫu ban đầu
   const initial: InventoryTransaction[] = [
     {
@@ -141,7 +141,7 @@ export const inventoryService = {
       }
 
       const product = MOCK_PRODUCTS.find(
-        (p: Product) => p.sku === payload.productSku || p.id === payload.productSku,
+        (p: Product) => p.sku === payload.productSku || p.id === payload.productSku
       );
 
       if (!product) {
@@ -154,12 +154,12 @@ export const inventoryService = {
 
       if (payload.unit && payload.unit.trim().toLowerCase() !== product.baseUnit.toLowerCase()) {
         const matchingUnit = product.units?.find(
-          (u: ProductUnit) => u.unitName.toLowerCase() === payload.unit!.trim().toLowerCase(),
+          (u: ProductUnit) => u.unitName.toLowerCase() === payload.unit!.trim().toLowerCase()
         );
         if (!matchingUnit) {
           const validUnits = (product.units || []).map((u: ProductUnit) => u.unitName).join(', ');
           throw new Error(
-            `Đơn vị "${payload.unit}" không hợp lệ. Các đơn vị được chấp nhận: ${validUnits || product.baseUnit}`,
+            `Đơn vị "${payload.unit}" không hợp lệ. Các đơn vị được chấp nhận: ${validUnits || product.baseUnit}`
           );
         }
         unitName = matchingUnit.unitName;
@@ -171,7 +171,7 @@ export const inventoryService = {
 
       if (product.stockQuantity + baseQuantityChange < 0) {
         throw new Error(
-          `Số lượng xuất (${Math.abs(payload.quantityChange)} ${unitName} = ${Math.abs(baseQuantityChange)} ${product.baseUnit}) vượt quá tồn khả dụng (${product.stockQuantity} ${product.baseUnit}).`,
+          `Số lượng xuất (${Math.abs(payload.quantityChange)} ${unitName} = ${Math.abs(baseQuantityChange)} ${product.baseUnit}) vượt quá tồn khả dụng (${product.stockQuantity} ${product.baseUnit}).`
         );
       }
 

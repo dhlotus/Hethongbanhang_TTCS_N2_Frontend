@@ -46,13 +46,20 @@ export const discountPoliciesService = {
     await apiClient.delete(`/api/v1/discount-policies/${id}`);
   },
 
-  async calculateDiscount(productId: string, categoryId: string, quantity: number): Promise<number> {
+  async calculateDiscount(
+    productId: string,
+    categoryId: string,
+    quantity: number
+  ): Promise<number> {
     try {
-      const res = await apiClient.post<{ discount: number }>('/api/v1/discount-policies/calculate', {
-        productId,
-        categoryId,
-        quantity,
-      });
+      const res = await apiClient.post<{ discount: number }>(
+        '/api/v1/discount-policies/calculate',
+        {
+          productId,
+          categoryId,
+          quantity,
+        }
+      );
       return res.data.discount;
     } catch {
       // Fallback cục bộ nếu endpoint calculate chưa sẵn sàng
@@ -72,7 +79,7 @@ export function calculateDiscount(
   policies: DiscountPolicy[],
   productId: string,
   categoryId: string = '',
-  quantity: number,
+  quantity: number
 ): number {
   if (quantity <= 0) return 0;
 
@@ -85,16 +92,20 @@ export function calculateDiscount(
     if (p.endDate && p.endDate.split('T')[0] < todayStr) return false;
 
     const matchesProduct =
-      (p.appliedProductSkus && (p.appliedProductSkus.includes(productId) || p.appliedProductSkus.includes('all'))) ||
+      (p.appliedProductSkus &&
+        (p.appliedProductSkus.includes(productId) || p.appliedProductSkus.includes('all'))) ||
       (p.targetType === 'SKU' && (p.targetIds?.includes(productId) || p.targetId === productId)) ||
-      (!p.targetId && (!p.targetIds || p.targetIds.length === 0) && (!p.appliedProductSkus || p.appliedProductSkus.length === 0));
+      (!p.targetId &&
+        (!p.targetIds || p.targetIds.length === 0) &&
+        (!p.appliedProductSkus || p.appliedProductSkus.length === 0));
 
     const matchesCategory =
-      (p.appliedCategoryIds && (p.appliedCategoryIds.includes(categoryId) || p.appliedCategoryIds.includes('all'))) ||
-      (p.targetType === 'CATEGORY' && (p.targetIds?.includes(categoryId) || p.targetId === categoryId));
+      (p.appliedCategoryIds &&
+        (p.appliedCategoryIds.includes(categoryId) || p.appliedCategoryIds.includes('all'))) ||
+      (p.targetType === 'CATEGORY' &&
+        (p.targetIds?.includes(categoryId) || p.targetId === categoryId));
 
-    const matchesHybrid =
-      p.targetType === 'HYBRID' && (matchesProduct || matchesCategory);
+    const matchesHybrid = p.targetType === 'HYBRID' && (matchesProduct || matchesCategory);
 
     return matchesProduct || matchesCategory || matchesHybrid;
   });
@@ -106,7 +117,7 @@ export function calculateDiscount(
 
     // 1. Sắp xếp các nấc theo Q_min tăng dần
     const sortedTiers = [...policy.tiers].sort(
-      (a, b) => (Number(a.minQuantity) || 0) - (Number(b.minQuantity) || 0),
+      (a, b) => (Number(a.minQuantity) || 0) - (Number(b.minQuantity) || 0)
     );
 
     // 2. Tìm tất cả các nấc thỏa mãn: Quantity >= Q_min VÀ (Quantity <= Q_max HOẶC Q_max là rỗng/0/null/undefined/Infinity)
