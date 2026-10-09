@@ -397,8 +397,8 @@ export const DashboardPage: React.FC = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="date" tickFormatter={(val) => val.slice(8,10) + '/' + val.slice(5,7)} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
-                  <YAxis tickFormatter={(val) => (val / 1000000).toFixed(0) + 'M'} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="date" tickFormatter={(val: string) => val.slice(8,10) + '/' + val.slice(5,7)} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+                  <YAxis tickFormatter={(val: number) => (val / 1000000).toFixed(0) + 'M'} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
                   <Tooltip 
                     formatter={(value: any) => [formatCurrency(value), 'Doanh số']} 
                     labelFormatter={(label: any) => `Ngày: ${label}`}
@@ -425,12 +425,12 @@ export const DashboardPage: React.FC = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={highRiskAgencies} layout="vertical" margin={{ top: 5, right: 15, left: -5, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                  <XAxis type="number" tickFormatter={(val) => (val / 1000000).toFixed(0) + 'M'} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+                  <XAxis type="number" tickFormatter={(val: number) => (val / 1000000).toFixed(0) + 'M'} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
                   <YAxis 
                     dataKey="customerName" 
                     type="category" 
                     width={130} 
-                    tickFormatter={(val) => (val && val.length > 16 ? val.slice(0, 15) + '…' : val)}
+                    tickFormatter={(val: string) => (val && val.length > 16 ? val.slice(0, 15) + '…' : val)}
                     tick={{ fill: '#475569', fontSize: 11 }} 
                     tickLine={false} 
                     axisLine={{ stroke: '#e2e8f0' }} 
