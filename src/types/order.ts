@@ -1,5 +1,5 @@
 /**
- * Kiểu dữ liệu cho Đơn hàng Bán buôn (SN-38 & SN-39)
+ * Kiểu dữ liệu cho Đơn hàng Bán buôn (SN-38, SN-39 & SN-41)
  */
 
 export type OrderStatus =
@@ -41,6 +41,7 @@ export interface DeliveryPoint {
   address: string;
   phone?: string;
   contactPerson?: string;
+  isDefault?: boolean;
 }
 
 /** Đơn hàng bán buôn */
@@ -77,6 +78,7 @@ export interface CreateOrderPayload {
   lines: Omit<OrderLine, 'id' | 'lineTotal' | 'baseQuantity'>[];
   note?: string;
   priceListId?: string;
+  status?: OrderStatus;
 }
 
 /** Payload cập nhật đơn hàng */
@@ -136,4 +138,3 @@ export interface CustomerDebtStatus {
   blockReason?: string;
   warningMessage?: string;
 }
-
