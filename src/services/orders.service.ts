@@ -1,4 +1,5 @@
 import { apiClient } from './api';
+import { inventoryService } from './inventory.service';
 import { tokenStorage } from '../utils/token-storage';
 import { MOCK_PRODUCTS } from './products.service';
 import { customerService } from './customer.service';
@@ -776,13 +777,17 @@ export const ordersService = {
         (p: Product) => p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)
       ).slice(0, 10);
     }
-    try {
-      const res = await apiClient.get<{ data: Product[] }>('/products', {
-        params: { search: query, limit: 10, status: 'ACTIVE' },
-      });
-      return res.data.data ?? [];
-    } catch {
-      return [];
-    }
+    const res = await apiClient.get<{ data: Product[] }>('/products', {
+      params: { search: query, limit: 10, status: 'ACTIVE' },
+    });
+    const products = res.data.data ?? [];
+    const stockRows = await inventoryService.getStockOverview();
+    const availableBySku = new Map(
+      stockRows.map((stock) => [stock.sku.toUpperCase(), stock.stockQuantity]),
+    );
+    return products.map((product) => ({
+      ...product,
+      stockQuantity: availableBySku.get(product.sku.toUpperCase()) ?? 0,
+    }));
   },
 };

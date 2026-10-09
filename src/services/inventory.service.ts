@@ -101,25 +101,8 @@ export const inventoryService = {
       }));
     }
 
-    try {
-      const response = await apiClient.get('/inventory/stock');
-      return response.data;
-    } catch {
-      return MOCK_PRODUCTS.map((p: Product) => ({
-        sku: p.sku,
-        name: p.name,
-        stockQuantity: p.stockQuantity,
-        physicalStockQuantity: p.stockQuantity,
-        reservedQuantity: 0,
-        baseUnit: p.baseUnit,
-        units: (p.units || []).map((u: ProductUnit) => ({
-          unitName: u.unitName,
-          conversionRate: u.conversionRate,
-          isBaseUnit: Boolean(u.isBaseUnit),
-        })),
-        warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
-      }));
-    }
+    const response = await apiClient.get('/inventory/stock');
+    return response.data;
   },
 
   /**
