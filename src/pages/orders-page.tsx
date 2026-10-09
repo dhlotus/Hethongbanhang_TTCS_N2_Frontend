@@ -278,7 +278,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
 
-<<<<<<< HEAD
   // Tải danh sách đại lý từ API khi mở modal
   const loadCustomers = useCallback(async () => {
     setLoadingCustomers(true);
@@ -345,11 +344,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       })();
     }
   }, [open, loadCustomers]);
-
-  // Khôi phục dữ liệu: Từ đơn hàng cần soạn tiếp (SN-39) hoặc từ local draft
-=======
-  // Tải danh sách đại lý (kèm debounce 300ms khi gõ tìm kiếm)
->>>>>>> origin/main
   useEffect(() => {
     if (!open) return;
     let isMounted = true;
@@ -878,7 +872,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm">
-<<<<<<< HEAD
       <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[94vh] flex flex-col shadow-2xl">
         {/* Header Modal */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
@@ -908,8 +901,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             />
           ))}
         </div>
-
-<<<<<<< HEAD
           {/* Nội dung theo bước (Thân thiện màn hình 360px) */}
           <div className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-3.5 space-y-4">
             {/* CẢNH BÁO KẾ TOÁN (SN-36): Đại lý bị khóa giao dịch (Hiển thị ở cả Bước 1 & Bước 2 khi sửa đơn dở) */}
@@ -1569,7 +1560,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                     </div>
                   </div>
 
-<<<<<<< HEAD
           {/* Footer Modal với các nút hành động (Lưu nháp / Tiếp theo / Hoàn tất) */}
           <div className="flex items-center justify-between px-3.5 sm:px-6 py-3 border-t border-slate-100 bg-slate-50/70 flex-shrink-0 gap-2">
             <button
@@ -1616,24 +1606,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                     ) : (
                       <Send className="w-3.5 h-3.5" />
-=======
-                  {/* Cảnh báo vượt hạn mức công nợ */}
-                  {debtStatus.creditLimit > 0 &&
-                    debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit && (
-                      <div className="pt-2 border-t border-amber-200/80 text-xs text-amber-900 flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                        <p className="leading-relaxed">
-                          Đơn hàng khiến tổng công nợ vượt hạn mức{' '}
-                          <strong>
-                            {formatCurrency(
-                              debtStatus.currentDebt + totals.grandTotal - debtStatus.creditLimit,
-                            )}
-                          </strong>
-                          . Hệ thống sẽ tự động chuyển đơn sang trạng thái{' '}
-                          <strong className="underline">Cần phê duyệt (Pending Approval)</strong> khi gửi.
-                        </p>
-                      </div>
->>>>>>> origin/main
                     )}
                 </div>
               )}
@@ -2896,7 +2868,6 @@ export const OrdersPage: React.FC = () => {
     setTotal((t) => t + 1);
   };
 
-<<<<<<< HEAD
   const handleOpenCreateModal = () => {
     setEditingOrder(null);
     setIsCreateModalOpen(true);
@@ -2926,7 +2897,6 @@ export const OrdersPage: React.FC = () => {
       setEditingOrder(order);
     }
     setIsCreateModalOpen(true);
-=======
   const handleApproveOrder = async (order: Order): Promise<void> => {
     if (!order.id || approvingOrder) return;
     setApprovingOrder(true);
@@ -2942,7 +2912,6 @@ export const OrdersPage: React.FC = () => {
     } finally {
       setApprovingOrder(false);
     }
->>>>>>> origin/main
   };
 
   return (
@@ -3192,7 +3161,6 @@ export const OrdersPage: React.FC = () => {
               </button>
             </div>
 
-<<<<<<< HEAD
             <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-3.5 space-y-3.5 text-xs sm:text-sm">
               {/* Cảnh báo đơn đang dở của đại lý bị khóa (SN-36) */}
               {(viewOrder.isCustomerLocked || viewOrder.warningMessage) && (
@@ -3206,10 +3174,6 @@ export const OrdersPage: React.FC = () => {
                   </p>
                 </div>
               )}
-
-=======
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
->>>>>>> origin/main
               {/* Thông tin đại lý */}
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
