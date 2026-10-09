@@ -38,6 +38,10 @@ export interface OrderLine {
   requiresApproval?: boolean;
   baseListPrice?: number;
   unitOptions?: Array<{ unitName: string; conversionRate: number }>;
+  isPriceManuallyEdited?: boolean;
+  manualPrice?: string;
+  pricingLoading?: boolean;
+  pricingError?: string;
 }
 
 /** Thông tin điểm giao hàng */

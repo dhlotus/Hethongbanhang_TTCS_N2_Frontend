@@ -620,7 +620,8 @@ export const ordersService = {
       try {
         const res = await apiClient.post<Order>('/orders', payload);
         return res.data;
-      } catch {
+      } catch (error) {
+        throw error;
         // Fallback sang local simulation khi backend chưa sẵn sàng
       }
     }

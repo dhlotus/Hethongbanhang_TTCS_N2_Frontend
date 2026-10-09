@@ -27,13 +27,9 @@ import { ordersService } from '../services/orders.service';
 import { customersService } from '../services/customers.service';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
 import type { Customer, DeliveryPoint as CustomerDeliveryPoint } from '../types/customer.types';
-import {
-  discountPoliciesService,
-  calculateDiscount,
-  type DiscountPolicy,
-} from '../services/discount-policies.service';
 import { getStoredUser } from '../utils/navigation';
-import { Sn40OrderPricingModal } from '../components/sn40-order-pricing-modal';
+import { orderPricingService } from '../services/order-pricing.service';
+import type { PriceList, CustomerGroupType } from '../types/price-list';
 import type {
   Order,
   OrderLine,
@@ -58,6 +54,13 @@ const getAvailableProductUnits = (
   }
   return units;
 };
+
+const getPriceListItem = (priceList: PriceList, line: Pick<OrderLine, 'productId' | 'productSku'>) =>
+  priceList.items.find(
+    (item) =>
+      item.productId === line.productId ||
+      item.productCode.toLowerCase() === line.productSku.toLowerCase(),
+  );
 
 // ──────────────────────────────────────────────────────────────────────────
 // QUANTITY INPUT HELPER COMPONENT (SN-28 / SN-38: Pure Numeric & Free Edit)
@@ -307,6 +310,71 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [lines, setLines] = useState<OrderLine[]>([]);
+  const linesRef = useRef<OrderLine[]>([]);
+  linesRef.current = lines;
+
+  const quoteOrderLine = useCallback(async (line: OrderLine, priceList: PriceList): Promise<OrderLine> => {
+    const item = getPriceListItem(priceList, line);
+    if (!item) {
+      return {
+        ...line,
+        pricingLoading: false,
+        pricingError: `SKU ${line.productSku} chưa có giá trong bảng giá hiệu lực`,
+      };
+    }
+
+    const conversionRate = line.conversionRate || 1;
+    const listPrice = Math.round(item.price * conversionRate);
+    const minPrice = Math.round(item.minPrice * conversionRate);
+    try {
+      const discountPercent = await orderPricingService.calculateDiscount(
+        { id: line.productId, sku: line.productSku },
+        Math.round(line.quantity * conversionRate),
+      );
+      const automaticPrice = Math.round(listPrice * (1 - discountPercent / 100));
+      const unitPrice = line.isPriceManuallyEdited
+        ? Number(line.manualPrice || line.unitPrice)
+        : automaticPrice;
+      return {
+        ...line,
+        baseListPrice: item.price,
+        listPrice,
+        minPrice,
+        discountPercent: listPrice > 0
+          ? Number((((listPrice - unitPrice) / listPrice) * 100).toFixed(2))
+          : 0,
+        unitPrice,
+        lineTotal: line.quantity * unitPrice,
+        requiresApproval: unitPrice < minPrice,
+        pricingLoading: false,
+        pricingError: undefined,
+      };
+    } catch (error: unknown) {
+      return {
+        ...line,
+        listPrice,
+        minPrice,
+        pricingLoading: false,
+        pricingError: error instanceof Error ? error.message : 'Không thể tính chiết khấu',
+      };
+    }
+  }, []);
+
+  const refreshLinePricing = useCallback((line: OrderLine, priceList: PriceList) => {
+    setLines((current) => current.map((item) =>
+      item.id === line.id ? { ...item, pricingLoading: true, pricingError: undefined } : item,
+    ));
+    void quoteOrderLine(line, priceList).then((quotedLine) => {
+      setLines((current) => current.map((item) =>
+        item.id === quotedLine.id &&
+        item.quantity === line.quantity &&
+        item.conversionRate === line.conversionRate &&
+        item.isPriceManuallyEdited === line.isPriceManuallyEdited
+          ? quotedLine
+          : item,
+      ));
+    });
+  }, [quoteOrderLine]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -370,23 +438,48 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     };
   }, [open, customerSearch, initialCustomerId, editingOrder?.id, selectedCustomer]);
 
-  // Danh sách chính sách chiết khấu thực tế từ hệ thống (SN-28 / SN-38)
-  const [discountPolicies, setDiscountPolicies] = useState<DiscountPolicy[]>([]);
+  // Bảng giá SN-40 được tải theo khách hàng ngay trong form tạo đơn SN-38.
+  const [effectivePriceList, setEffectivePriceList] = useState<PriceList | null>(null);
+  const [isLoadingPriceList, setIsLoadingPriceList] = useState(false);
+  const [priceListError, setPriceListError] = useState('');
 
-  // Tải chính sách chiết khấu hệ thống khi mở modal
+  // Tải bảng giá hiệu lực theo nhóm khách hàng.
   useEffect(() => {
-    if (!open) return;
-    discountPoliciesService
-      .getPolicies()
-      .then((policies) => {
-        if (Array.isArray(policies)) {
-          setDiscountPolicies(policies);
+    if (!open || !selectedCustomer) {
+      setEffectivePriceList(null);
+      setPriceListError('');
+      return;
+    }
+
+    let active = true;
+    setEffectivePriceList(null);
+    setPriceListError('');
+    setIsLoadingPriceList(true);
+    orderPricingService
+      .getEffectivePriceList(selectedCustomer.group as CustomerGroupType)
+      .then((priceList) => {
+        if (active) setEffectivePriceList(priceList);
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setPriceListError(
+            error instanceof Error ? error.message : 'No effective price list for this customer',
+          );
         }
       })
-      .catch(() => {
-        // Fallback sang nấc mặc định nếu backend chưa phản hồi
+      .finally(() => {
+        if (active) setIsLoadingPriceList(false);
       });
-  }, [open]);
+
+    return () => {
+      active = false;
+    };
+  }, [open, selectedCustomer?.id, selectedCustomer?.group]);
+
+  useEffect(() => {
+    if (!effectivePriceList) return;
+    linesRef.current.forEach((line) => refreshLinePricing(line, effectivePriceList));
+  }, [effectivePriceList, refreshLinePricing]);
 
   // Trạng thái kiểm soát hạn mức công nợ thời gian thực (Task SN-41)
   const [debtStatus, setDebtStatus] = useState<CustomerDebtStatus | null>(null);
@@ -421,30 +514,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
     return () => clearTimeout(t);
   }, [open, initialCustomerId, editingOrder]);
-
-  // Tự động đồng bộ chiết khấu các dòng hàng hiện tại khi danh sách policies được load
-  useEffect(() => {
-    if (discountPolicies.length === 0) return;
-    const timer = setTimeout(() => {
-      setLines((prev) => {
-        if (prev.length === 0) return prev;
-        return prev.map((line) => {
-          const autoDiscount = line.quantity > 0
-            ? calculateDiscount(discountPolicies, line.productSku || line.productId, '', line.quantity)
-            : 0;
-          const discPrice = line.listPrice * (1 - autoDiscount / 100);
-          return {
-            ...line,
-            discountPercent: autoDiscount,
-            unitPrice: Math.round(discPrice),
-            lineTotal: Math.round(line.quantity * discPrice),
-          };
-        });
-      });
-    }, 0);
-
-    return () => clearTimeout(timer);
-  }, [discountPolicies]);
 
   // Tự động lưu nháp khi lines thay đổi
   useEffect(() => {
@@ -593,112 +662,100 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     };
   }, [selectedCustomer]);
   /** Thêm sản phẩm vào dòng hàng */
-  const handleAddProduct = useCallback(
-    (product: Product) => {
-      // Kiểm tra đã có trong danh sách chưa
-      if (lines.some((l) => l.productId === product.id)) {
-        showToast('warning', `${product.name} đã có trong đơn hàng. Vui lòng điều chỉnh số lượng.`);
-        return;
-      }
+  const handleAddProduct = useCallback((product: Product) => {
+    if (!effectivePriceList) {
+      showToast('error', priceListError || 'No effective price list for this customer');
+      return;
+    }
+    if (lines.some((line) => line.productId === product.id)) {
+      showToast('warning', 'Product is already in this order');
+      return;
+    }
+    const priceItem = getPriceListItem(effectivePriceList, { productId: product.id, productSku: product.sku });
+    if (!priceItem) {
+      showToast('error', 'This SKU is not in the customer price list');
+      return;
+    }
 
-      const defaultUnit = product.baseUnit;
-      const initialQty = 1;
-      const autoDiscount = calculateDiscount(
-        discountPolicies,
-        product.sku || product.id,
-        '',
-        initialQty,
-      );
-      const discPrice = product.price * (1 - autoDiscount / 100);
+    const line: OrderLine = {
+      id: 'line-' + Date.now(),
+      productId: product.id,
+      productSku: product.sku,
+      productName: product.name,
+      unit: product.baseUnit,
+      baseUnit: product.baseUnit,
+      conversionRate: 1,
+      quantity: 1,
+      baseQuantity: 1,
+      unitPrice: Math.round(priceItem.price),
+      listPrice: Math.round(priceItem.price),
+      baseListPrice: priceItem.price,
+      minPrice: priceItem.minPrice,
+      unitOptions: getAvailableProductUnits(product),
+      discountPercent: 0,
+      lineTotal: Math.round(priceItem.price),
+      stockAvailable: product.stockQuantity,
+      pricingLoading: true,
+    };
+    setLines((current) => [...current, line]);
+    setProductQuery('');
+    refreshLinePricing(line, effectivePriceList);
+  }, [effectivePriceList, lines, priceListError, refreshLinePricing]);
 
-      const newLine: OrderLine = {
-        id: `line-${Date.now()}`,
-        productId: product.id,
-        productSku: product.sku,
-        productName: product.name,
-        unit: defaultUnit,
-        baseUnit: product.baseUnit,
-        conversionRate: 1,
-        quantity: initialQty,
-        baseQuantity: initialQty,
-        unitPrice: Math.round(discPrice),
-        listPrice: product.price,
-        baseListPrice: product.price,
-        unitOptions: getAvailableProductUnits(product),
-        discountPercent: autoDiscount,
-        lineTotal: Math.round(initialQty * discPrice),
-        stockAvailable: product.stockQuantity,
-      };
-      setLines((prev) => [...prev, newLine]);
-      setProductQuery('');
-    },
-    [lines, discountPolicies],
-  );
+  const handleUpdateLine = useCallback((lineId: string, field: 'quantity' | 'unit', value: string | number) => {
+    const line = lines.find((item) => item.id === lineId);
+    if (!line) return;
+    const updated = field === 'unit'
+      ? (() => {
+          const unit = line.unitOptions?.find((option) => option.unitName === String(value));
+          const conversionRate = unit?.conversionRate ?? 1;
+          const manualPrice = line.isPriceManuallyEdited
+            ? Math.round((Number(line.manualPrice || line.unitPrice) / line.conversionRate) * conversionRate)
+            : undefined;
+          return {
+            ...line,
+            unit: String(value),
+            conversionRate,
+            baseQuantity: Math.round(line.quantity * conversionRate),
+            ...(manualPrice !== undefined ? { manualPrice: String(manualPrice), unitPrice: manualPrice } : {}),
+          };
+        })()
+      : (() => {
+          const quantity = Math.max(0, Number(value) || 0);
+          return { ...line, quantity, baseQuantity: Math.round(quantity * line.conversionRate) };
+        })();
+    updated.lineTotal = updated.quantity * updated.unitPrice;
+    setLines((current) => current.map((item) => item.id === lineId ? updated : item));
+    if (effectivePriceList) {
+      refreshLinePricing(updated, effectivePriceList);
+    }
+  }, [effectivePriceList, lines, refreshLinePricing]);
 
-  /** Cập nhật số lượng hoặc đơn vị của một dòng hàng */
-  const handleUpdateLine = useCallback(
-    (
-      lineId: string,
-      field: 'quantity' | 'unit',
-      value: string | number,
-    ) => {
-      setLines((prev) =>
-        prev.map((line) => {
-          if (line.id !== lineId) return line;
+  const handleToggleManualPrice = useCallback((line: OrderLine, enabled: boolean) => {
+    const updated = {
+      ...line,
+      isPriceManuallyEdited: enabled,
+      manualPrice: enabled ? String(line.unitPrice) : '',
+    };
+    setLines((current) => current.map((item) => item.id === line.id ? updated : item));
+    if (!enabled && effectivePriceList) refreshLinePricing(updated, effectivePriceList);
+  }, [effectivePriceList, refreshLinePricing]);
 
-          let updated = { ...line };
+  const handleManualPriceChange = (line: OrderLine, value: string) => {
+    const unitPrice = Number(value) || 0;
+    const updated = {
+      ...line,
+      manualPrice: value,
+      unitPrice,
+      discountPercent: line.listPrice > 0
+        ? Number((((line.listPrice - unitPrice) / line.listPrice) * 100).toFixed(2))
+        : 0,
+      lineTotal: line.quantity * unitPrice,
+      requiresApproval: unitPrice < (line.minPrice ?? 0),
+    };
+    setLines((current) => current.map((item) => item.id === line.id ? updated : item));
+  };
 
-          if (field === 'unit') {
-            const targetUnit = String(value);
-            const productUnit = line.unitOptions?.find((unit) => unit.unitName === targetUnit);
-            const convRate = productUnit?.conversionRate ?? 1;
-            const baseListPrice = line.baseListPrice ?? Math.round(line.listPrice / line.conversionRate);
-            const listPrice = Math.round(baseListPrice * convRate);
-            const baseQuantity = Math.round(updated.quantity * convRate);
-            const discountPercent = calculateDiscount(
-              discountPolicies,
-              updated.productSku || updated.productId,
-              '',
-              baseQuantity,
-            );
-            updated = {
-              ...updated,
-              unit: targetUnit,
-              conversionRate: convRate,
-              baseQuantity,
-              listPrice,
-              unitPrice: Math.round(listPrice * (1 - discountPercent / 100)),
-              discountPercent,
-            };
-          } else if (field === 'quantity') {
-            const rawQty = typeof value === 'number' ? value : (parseInt(String(value), 10) || 0);
-            const qty = Math.max(0, rawQty);
-
-            // Tự động tính chiết khấu theo số lượng qua chính sách hệ thống (hỗ trợ > 20%, ví dụ 2500 -> 25%)
-            const baseQuantity = Math.round(qty * updated.conversionRate);
-            const autoDiscount = baseQuantity > 0
-              ? calculateDiscount(discountPolicies, updated.productSku || updated.productId, '', baseQuantity)
-              : 0;
-            const discPrice = updated.listPrice * (1 - autoDiscount / 100);
-
-            updated = {
-              ...updated,
-              quantity: qty,
-              baseQuantity,
-              discountPercent: autoDiscount,
-              unitPrice: Math.round(discPrice),
-            };
-          }
-
-          updated.lineTotal = updated.quantity * updated.unitPrice;
-          return updated;
-        }),
-      );
-    },
-    [discountPolicies],
-  );
-
-  /** Xóa dòng hàng */
   const handleRemoveLine = useCallback((lineId: string) => {
     setLines((prev) => prev.filter((l) => l.id !== lineId));
   }, []);
@@ -722,6 +779,36 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     }
     if (lines.length === 0) {
       showToast('error', 'Vui lòng thêm ít nhất 1 sản phẩm vào đơn hàng');
+      return;
+    }
+    if (!effectivePriceList) {
+      showToast('error', priceListError || 'No effective price list for this customer');
+      return;
+    }
+    if (lines.some((line) => line.pricingLoading || line.pricingError)) {
+      showToast('error', 'Resolve price list or discount errors before submitting');
+      return;
+    }
+
+    const requestedBaseBySku = new Map<string, number>();
+    for (const line of lines) {
+      const sku = line.productSku.toUpperCase();
+      requestedBaseBySku.set(
+        sku,
+        (requestedBaseBySku.get(sku) ?? 0) + Math.round(line.quantity * line.conversionRate),
+      );
+    }
+    const overStockLine = lines.find((line) => {
+      const available = Number(line.stockAvailable);
+      return Number.isFinite(available) && (requestedBaseBySku.get(line.productSku.toUpperCase()) ?? 0) > available;
+    });
+    if (overStockLine) {
+      const availableBase = Math.max(0, Number(overStockLine.stockAvailable));
+      const maxInUnit = Math.floor(availableBase / Math.max(1, overStockLine.conversionRate));
+      showToast(
+        'error',
+        `SKU ${overStockLine.productSku} vượt tồn khả dụng (${availableBase} ${overStockLine.baseUnit}); tối đa ${maxInUnit} ${overStockLine.unit}.`,
+      );
       return;
     }
 
@@ -748,6 +835,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     try {
       const payload = {
         customerId: selectedCustomer.id,
+        priceListId: effectivePriceList.id,
         deliveryPoint: Object.keys(deliveryPoint).length > 0 ? deliveryPoint : undefined,
         deliveryDate,
         lines: lines.map((l) => ({
@@ -761,6 +849,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           unitPrice: l.unitPrice,
           listPrice: l.listPrice,
           discountPercent: l.discountPercent,
+          isPriceManuallyEdited: l.isPriceManuallyEdited ?? false,
           stockAvailable: l.stockAvailable,
         })),
         note,
@@ -771,11 +860,10 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
       ordersService.clearDraft(DRAFT_KEY);
 
-      if (created.status === 'PENDING_APPROVAL' || created.isCreditLimitExceeded) {
-        showToast(
-          'warning',
-          `Đơn hàng ${created.orderCode} đã tạo và chuyển trạng thái "Cần phê duyệt" do vượt hạn mức công nợ!`,
-        );
+      if (created.status === 'PENDING_APPROVAL' || created.isCreditLimitExceeded || created.requiresApproval) {
+        const approvalReason = created.approvalReasons?.join('; ') ||
+          (created.isCreditLimitExceeded ? 'vượt hạn mức công nợ' : 'giá bán dưới giá sàn');
+        showToast('warning', '\u0110ơn hàng ' + created.orderCode + ' đã tạo, cần duyệt: ' + approvalReason + '.');
         (editingOrder ? onSaved : onCreated)?.(created);
         handleClose();
       } else if (created.status === 'PENDING_INVENTORY_APPROVAL') {
@@ -787,7 +875,11 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         handleClose();
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Không thể tạo đơn hàng';
+      const responseMessage = (err as { response?: { data?: { message?: string | string[] } } })
+        ?.response?.data?.message;
+      const msg = Array.isArray(responseMessage)
+        ? responseMessage.join('; ')
+        : responseMessage || (err instanceof Error ? err.message : 'Không thể tạo đơn hàng');
       showToast('error', msg);
     } finally {
       setIsSubmitting(false);
@@ -953,6 +1045,19 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                   )}
                 </div>
               </div>
+
+              {selectedCustomer && (
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 text-sm text-slate-700">
+                  <div className="font-semibold">Bảng giá và chiết khấu tự động</div>
+                  {isLoadingPriceList ? (
+                    <div className="mt-1 text-xs">Đang tải bảng giá theo nhóm đại lý...</div>
+                  ) : priceListError ? (
+                    <div className="mt-1 text-xs text-rose-700">{priceListError}</div>
+                  ) : effectivePriceList ? (
+                    <div className="mt-1 text-xs">{effectivePriceList.name} · {effectivePriceList.code}</div>
+                  ) : null}
+                </div>
+              )}
 
               {/* Widget thông tin công nợ thời gian thực (Task SN-41) */}
               {selectedCustomer && (
@@ -1197,11 +1302,15 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 {/* Kết quả tìm kiếm */}
                 {searchResults.length > 0 && (
                   <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm max-h-44 overflow-y-auto">
-                    {searchResults.map((p) => (
-                      <button
+                    {searchResults.map((p) => {
+                      const priceItem = effectivePriceList
+                        ? getPriceListItem(effectivePriceList, { productId: p.id, productSku: p.sku })
+                        : undefined;
+                      return <button
                         key={p.id}
                         onClick={() => handleAddProduct(p)}
-                        disabled={lines.some((l) => l.productId === p.id)}
+                        disabled={lines.some((l) => l.productId === p.id) || !priceItem || isLoadingPriceList}
+                        title={priceItem ? undefined : `SKU ${p.sku} has no item in the effective price list`}
                         className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-blue-50 border-b border-slate-100 last:border-0 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       >
                         <div>
@@ -1213,10 +1322,10 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                           </p>
                         </div>
                         <span className="text-sm font-semibold text-blue-600 shrink-0 ml-3">
-                          {formatCurrency(p.price)}
+                          {priceItem ? formatCurrency(priceItem.price) : 'Không có giá hiệu lực'}
                         </span>
-                      </button>
-                    ))}
+                      </button>;
+                    })}
                   </div>
                 )}
               </div>
@@ -1295,6 +1404,32 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                       </div>
 
                       {/* Thành tiền */}
+                      <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-2.5">
+                        <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                          <input
+                            type="checkbox"
+                            checked={line.isPriceManuallyEdited ?? false}
+                            onChange={(event) => handleToggleManualPrice(line, event.target.checked)}
+                          />
+                          {'Ch\u1ec9nh s\u1eeda gi\u00e1 b\u00e1n'}
+                        </label>
+                        {line.isPriceManuallyEdited && (
+                          <input
+                            type="number"
+                            min="0"
+                            value={line.manualPrice ?? line.unitPrice}
+                            onChange={(event) => handleManualPriceChange(line, event.target.value)}
+                            className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-sm"
+                            aria-label="Gia ban thu cong"
+                          />
+                        )}
+                        {line.pricingLoading && <p className="text-xs text-slate-500">{'\u0110ang t\u00ednh gi\u00e1 v\u00e0 chi\u1ebft kh\u1ea5u...'}</p>}
+                        {line.pricingError && <p className="text-xs text-rose-600">{line.pricingError}</p>}
+                        {(line.minPrice ?? 0) > 0 && line.unitPrice < (line.minPrice ?? 0) && (
+                          <p className="text-xs font-medium text-amber-700">Duoi gia san: can duyet ({formatCurrency(line.minPrice ?? 0)})</p>
+                        )}
+                      </div>
+
                       <div className="flex items-center justify-between pt-1 border-t border-slate-100">
                         <span className="text-xs text-slate-500">
                           Đơn giá: {formatCurrency(line.unitPrice)}/{line.unit}
@@ -1428,7 +1563,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             {step === 1 ? (
               <button
                 onClick={() => setStep(2)}
-                disabled={!selectedCustomer || (debtStatus !== null && !debtStatus.canCreateOrder)}
+                disabled={!selectedCustomer || isLoadingPriceList || !effectivePriceList || (debtStatus !== null && !debtStatus.canCreateOrder)}
                 className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors cursor-pointer"
                 title={debtStatus && !debtStatus.canCreateOrder ? debtStatus.blockReason : undefined}
               >
@@ -1440,6 +1575,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 disabled={
                   isSubmitting ||
                   lines.length === 0 ||
+                  isLoadingPriceList ||
+                  !effectivePriceList ||
+                  lines.some((line) => line.pricingLoading || line.pricingError) ||
                   (debtStatus !== null && !debtStatus.canCreateOrder)
                 }
                 className={`px-5 py-2 text-sm font-medium text-white rounded-xl transition-colors inline-flex items-center gap-2 cursor-pointer ${
@@ -1754,7 +1892,6 @@ export const OrdersPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isSn40ModalOpen, setIsSn40ModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
   const [approvingOrder, setApprovingOrder] = useState(false);
@@ -1963,12 +2100,6 @@ export const OrdersPage: React.FC = () => {
                   Tạo Đơn hàng
                 </button>
               )}
-              <button
-                onClick={() => setIsSn40ModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors shadow-sm"
-              >
-                Tạo đơn tự áp giá · SN-40
-              </button>
             </div>
           )}
         </div>
@@ -2166,12 +2297,6 @@ export const OrdersPage: React.FC = () => {
         initialCustomerId={initialCustomerId || urlCustomerId}
         onClose={handleCloseCreateModal}
         onSaved={handleOrderSaved}
-        onCreated={handleOrderCreated}
-      />
-
-      <Sn40OrderPricingModal
-        isOpen={isSn40ModalOpen}
-        onClose={() => setIsSn40ModalOpen(false)}
         onCreated={handleOrderCreated}
       />
 
