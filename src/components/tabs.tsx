@@ -50,7 +50,7 @@ export const Tabs: React.FC<TabsProps> = ({
               aria-selected={isActive}
               disabled={tab.disabled}
               onClick={() => onChange(tab.key)}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-all duration-150 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none ${
                 isActive
                   ? "bg-white text-[var(--color-primary)] shadow-xs"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
@@ -82,7 +82,7 @@ export const Tabs: React.FC<TabsProps> = ({
             aria-selected={isActive}
             disabled={tab.disabled}
             onClick={() => onChange(tab.key)}
-            className={`relative inline-flex items-center gap-2 px-4 py-3 text-xs font-semibold transition-colors duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed -mb-px ${
+            className={`relative inline-flex items-center gap-2 px-4 py-3 text-xs font-semibold transition-colors duration-150 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none -mb-px ${
               isActive
                 ? "text-[var(--color-primary)] border-b-2 border-[var(--color-primary)] font-bold"
                 : "text-slate-500 hover:text-slate-800 border-b-2 border-transparent"

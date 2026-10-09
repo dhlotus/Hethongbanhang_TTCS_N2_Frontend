@@ -1827,3 +1827,140 @@ LOHA SALES ưu tiên:
 * Không vô hiệu hóa tính năng Zoom của trình duyệt.
 
 * Kiểm tra cả Zoom trình duyệt và cài đặt cỡ chữ của hệ điều hành khi phù hợp.
+
+## 69. Hover — Trạng thái rê chuột
+
+* Dùng để báo hiệu thành phần có thể tương tác.
+
+* Thay đổi nhẹ màu nền, màu chữ, border hoặc icon.
+
+* Ưu tiên dùng Primary Color với thành phần tương tác chính.
+
+* Không thay đổi kích thước hoặc làm xê dịch bố cục khi Hover.
+
+* Không phụ thuộc vào Hover để hiển thị thông tin quan trọng vì thiết bị cảm ứng không có Hover.
+
+## 70. Active — Trạng thái đang được chọn
+
+* Dùng để thể hiện mục đang được chọn hoặc đang hoạt động.
+
+* Navigation, Tabs và các mục được chọn phải có Active State rõ ràng.
+
+* Sử dụng màu sắc, nền hoặc dấu hiệu nhận biết thống nhất.
+
+* Phân biệt Active với Hover, Focus và Pressed.
+
+* Trạng thái Active phải phản ánh đúng trạng thái thực tế của hệ thống.
+
+## 71. Focus — Trạng thái lấy nét
+
+* Mọi thành phần tương tác phải có Focus State rõ ràng khi điều hướng bằng bàn phím.
+
+* Ưu tiên Focus Ring có độ tương phản tốt.
+
+* Không xóa `outline` nếu chưa có chỉ báo thay thế phù hợp.
+
+* Focus không được bị thành phần khác che khuất.
+
+* Không nhầm Focus với Hover hoặc Active.
+
+## 72. Pressed — Trạng thái nhấn
+
+* Thể hiện phản hồi tức thời khi người dùng nhấn hoặc kích hoạt thành phần.
+
+* Có thể thay đổi nhẹ màu nền, border hoặc độ sáng.
+
+* Không dùng hiệu ứng quá mạnh, rung lắc hoặc làm dịch chuyển bố cục.
+
+* Phản hồi phải nhanh, nhất quán giữa các thành phần cùng loại.
+
+* Không nhầm trạng thái Pressed với trạng thái Active được duy trì.
+
+## 73. Disabled — Trạng thái vô hiệu hóa
+
+* Thể hiện rõ thành phần hiện không thể tương tác.
+
+* Dùng màu sắc và độ tương phản phù hợp để phân biệt với trạng thái bình thường.
+
+* Không chỉ dựa vào màu sắc để biểu thị Disabled.
+
+* Không thực hiện hành động khi thành phần bị vô hiệu hóa.
+
+* Nếu lý do Disabled không rõ ràng, cung cấp hướng dẫn phù hợp.
+
+* Không dùng Disabled thay cho Loading.
+
+## 74. Loading — Trạng thái đang xử lý
+
+* Hiển thị khi hệ thống đang tải dữ liệu hoặc thực hiện tác vụ.
+
+* Dùng Spinner, Progress Bar hoặc trạng thái Loading phù hợp với ngữ cảnh.
+
+* Với Button đang gửi dữ liệu, hiển thị Loading và ngăn gửi lặp.
+
+* Không để Loading kéo rộng vô hạn mà không có xử lý lỗi hoặc timeout phù hợp.
+
+* Không hiển thị Loading nếu tác vụ hoàn tất gần như tức thì và không cần phản hồi trực quan.
+
+* Chỉ kết thúc Loading khi tác vụ hoàn tất hoặc chuyển sang trạng thái lỗi phù hợp.
+
+## 75. Transition — Hiệu ứng chuyển trạng thái
+
+* Dùng để chuyển đổi mượt giữa các trạng thái như Hover, Focus, mở/đóng Dropdown.
+
+* Thời lượng tham khảo: 150–250ms cho tương tác thông thường.
+
+* Ưu tiên `opacity`, `transform` và các thuộc tính dễ tối ưu.
+
+* Không lạm dụng Transition trên mọi thuộc tính.
+
+* Không làm chậm thao tác hoặc cản trở phản hồi của giao diện.
+
+* Tôn trọng thiết lập `prefers-reduced-motion` của người dùng.
+
+## 76. Animation — Hiệu ứng chuyển động
+
+* Chỉ dùng khi giúp người dùng hiểu trạng thái, hướng di chuyển hoặc kết quả thao tác.
+
+* Animation phải ngắn, mượt và nhất quán.
+
+* Tránh hiệu ứng trang trí không cần thiết, nhấp nháy liên tục hoặc chuyển động gây mất tập trung.
+
+* Không dùng Animation để che giấu thời gian xử lý lâu.
+
+* Không làm thay đổi bố cục bất ngờ hoặc cản trở thao tác.
+
+* Hỗ trợ giảm chuyển động theo thiết lập của hệ điều hành.
+
+## 77. Micro-interaction — Phản hồi tương tác nhỏ
+
+* Dùng để xác nhận hành động của người dùng, ví dụ Button được nhấn, Checkbox được chọn hoặc dữ liệu được lưu.
+
+* Phản hồi phải nhanh, dễ nhận biết và đúng với kết quả thực tế.
+
+* Chuẩn hóa cách phản hồi giữa các component cùng loại.
+
+* Có thể dùng thay đổi màu, icon, chuyển động nhẹ hoặc Toast.
+
+* Không tạo phản hồi thành công trước khi hệ thống xác nhận thao tác thành công.
+
+* Không dùng quá nhiều hiệu ứng khiến giao diện rối mắt.
+
+## 78. Page Transition — Chuyển trang
+
+* Chuyển trang phải nhanh, nhất quán và không làm gián đoạn công việc.
+
+* Ưu tiên chuyển đổi nhẹ hoặc không dùng Animation nếu không cần thiết.
+
+* Không để Animation làm chậm thao tác điều hướng.
+
+* Trong lúc tải trang, hiển thị Loading hoặc Skeleton phù hợp.
+
+* Tránh nhấp nháy, hiển thị nội dung cũ không phù hợp hoặc dịch chuyển bố cục mạnh.
+
+* Giữ trạng thái cần thiết khi chuyển trang, như bộ lọc hoặc vị trí cuộn, nếu phù hợp với nghiệp vụ.
+
+* Tôn trọng `prefers-reduced-motion`.
+
+**Nguyên tắc chung:** Mọi hiệu ứng phải phục vụ khả năng sử dụng, phản hồi nhanh và nhất quán. LOHA SALES ưu tiên giao diện chuyên nghiệp, chuyển động nhẹ; không dùng animation chỉ để trang trí.
+

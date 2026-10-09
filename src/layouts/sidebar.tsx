@@ -160,7 +160,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                     to={item.path}
                     onClick={onItemClick}
                     title={isCollapsed ? item.name : undefined}
-                    className={`group relative flex items-center px-3 py-2 min-h-[44px] rounded-md text-sm font-semibold transition-colors duration-200 active:scale-[0.98] ${
+                    className={`group relative flex items-center px-3 py-2 min-h-[44px] rounded-md text-sm font-semibold transition-colors duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1 ${
                       isItemActive
                         ? "bg-[var(--color-primary-light)] text-[var(--color-primary)] font-bold"
                         : "text-slate-700 hover:bg-slate-50/90 hover:text-slate-900"
