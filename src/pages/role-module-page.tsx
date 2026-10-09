@@ -3,9 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Shield,
   Layers,
-  Sparkles,
   CheckCircle2,
-  MapPin,
   Package,
   ArrowRight,
   TrendingUp,
@@ -27,7 +25,6 @@ interface RoleModulePageProps {
  */
 export const RoleModulePage: React.FC<RoleModulePageProps> = ({
   title,
-  subtitle,
   requiredRole,
 }) => {
   const location = useLocation();
@@ -39,41 +36,14 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
       {/* =================================================================== */}
       {/* 1. Header Banner của Phân hệ                                        */}
       {/* =================================================================== */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-7 shadow-xs">
-        <div className="absolute -top-12 -right-12 h-48 w-48 rounded-full bg-blue-50/60 blur-2xl pointer-events-none" />
-
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ${context.badgeClass}`}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>{context.roleLabel}</span>
-              </span>
-
-              <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
-                <MapPin className="h-3 w-3 text-slate-400" />
-                <span>{context.locationText}</span>
-              </span>
-            </div>
-
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
-            <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
-              {subtitle}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 self-start md:self-auto">
-            <Link
-              to="/catalog/products"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-blue-600 transition-colors"
-            >
-              <Package className="h-4 w-4 text-slate-400" />
-              <span>Tra cứu Sản phẩm</span>
-            </Link>
-          </div>
-        </div>
+      <div className="flex items-center justify-end gap-2.5 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+        <Link
+          to="/catalog/products"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-blue-600 transition-colors"
+        >
+          <Package className="h-4 w-4 text-slate-400" />
+          <span>Tra cứu Sản phẩm</span>
+        </Link>
       </div>
 
       {/* =================================================================== */}

@@ -15,7 +15,6 @@ import {
   Filter,
   ShieldCheck,
   AlertCircle,
-  ChevronRight,
   UserCheck,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
@@ -244,47 +243,29 @@ export const CustomersPage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 py-4">
-      {/* ── HEADER BREADCRUMB & CTA ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-100">
-        <div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mb-1">
-            <span>Phân hệ Bán hàng</span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-slate-800 font-semibold">Quản lý Đại lý & Hạn mức</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Building2 className="w-6 h-6 text-[var(--color-primary)]" />
-            Quản lý Đại lý & Điểm giao hàng
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Danh sách khách hàng B2B, điểm giao hàng (SN-31 & SN-32), hạn mức công nợ và đồng bộ tạo
-            đơn
-          </p>
-        </div>
+      {/* ── HEADER CTA ── */}
+      <div className="flex items-center justify-end gap-2.5 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+          title="Đồng bộ danh sách"
+        >
+          <RefreshCw
+            className={`w-4 h-4 ${refreshing ? 'animate-spin text-[var(--color-primary)]' : 'text-slate-500'}`}
+          />
+          <span className="hidden sm:inline">Làm mới</span>
+        </button>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
-            title="Đồng bộ danh sách"
-          >
-            <RefreshCw
-              className={`w-4 h-4 ${refreshing ? 'animate-spin text-[var(--color-primary)]' : 'text-slate-500'}`}
-            />
-            <span className="hidden sm:inline">Làm mới</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-white bg-[var(--color-primary)] hover:opacity-90 rounded-lg shadow-sm transition-all active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Thêm đại lý mới</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setIsCreateModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-white bg-[var(--color-primary)] hover:opacity-90 rounded-lg shadow-sm transition-all active:scale-95"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Thêm đại lý mới</span>
+        </button>
       </div>
 
       {/* ── THỐNG KÊ NHANH KPI (CARD-BASED UI) ── */}

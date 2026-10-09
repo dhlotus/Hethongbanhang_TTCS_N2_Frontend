@@ -7,11 +7,9 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
-  ShieldAlert,
   TrendingUp,
   Warehouse,
   Boxes,
-  CheckCircle2,
   X,
   Edit2,
   Trash2,
@@ -429,117 +427,58 @@ export const ProductsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* 1. Header Banner & RBAC Status Badge */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xs">
-        <div className="absolute -top-12 -right-12 h-44 w-44 rounded-full bg-blue-50/70 blur-2xl pointer-events-none" />
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                <Package className="h-3.5 w-3.5 text-blue-600" />
-                <span>Danh mục SKU Hàng hóa (SN-139 / SN-20)</span>
-              </span>
+      {/* 1. Nhóm nút hành động */}
+      <div className="flex items-center justify-end gap-2.5 flex-wrap sm:flex-nowrap bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+        <button
+          type="button"
+          onClick={loadProducts}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+          title="Làm mới dữ liệu từ server"
+        >
+          <RefreshCw className={`h-4 w-4 shrink-0 ${loading ? 'animate-spin' : ''}`} />
+          <span>Làm mới</span>
+        </button>
 
-              {canViewCostPrice ? (
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>Quyền xem Giá vốn & Biên LN: MỞ (SN-10)</span>
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">
-                  <ShieldAlert className="h-3.5 w-3.5 text-amber-600" />
-                  <span>Giá vốn bảo mật máy chủ (SN-10)</span>
-                </span>
-              )}
-            </div>
+        {canManageProducts && (
+          <>
+            <Link
+              to="/catalog/categories"
+              className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/80 px-3.5 py-2.5 text-xs font-semibold text-indigo-700 shadow-2xs hover:bg-indigo-100 hover:text-indigo-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+              title="Mở giao diện quản lý Cây nhóm hàng đa cấp"
+            >
+              <FolderTree className="h-4 w-4 shrink-0 text-indigo-600" />
+              <span>Cây nhóm hàng</span>
+            </Link>
 
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-              Quản lý Danh mục Sản phẩm & SKU Phân phối
-            </h1>
-            <p className="text-sm text-slate-500 max-w-2xl mt-2">
-              Quản lý mã định danh SKU, phân loại nhóm hàng đa cấp, quy cách đóng gói xuất buôn B2B
-              và kiểm soát an toàn bảo mật giá vốn kinh doanh.
-            </p>
-          </div>
-
-          {/* Nhóm nút hành động */}
-          <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap">
             <button
               type="button"
-              onClick={loadProducts}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-              title="Làm mới dữ liệu từ server"
+              onClick={() => handleOpenLedgerModal()}
+              className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/80 px-3.5 py-2.5 text-xs font-semibold text-blue-700 shadow-2xs hover:bg-blue-100 hover:text-blue-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+              title="Xem Sổ kho & Lịch sử quy đổi giao dịch (SN-23)"
             >
-              <RefreshCw className={`h-4 w-4 shrink-0 ${loading ? 'animate-spin' : ''}`} />
-              <span>Làm mới</span>
+              <BookOpen className="h-4 w-4 shrink-0 text-blue-600" />
+              <span>Sổ kho quy đổi</span>
             </button>
 
-            {canManageProducts && (
-              <>
-                <Link
-                  to="/catalog/categories"
-                  className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/80 px-3.5 py-2.5 text-xs font-semibold text-indigo-700 shadow-2xs hover:bg-indigo-100 hover:text-indigo-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-                  title="Mở giao diện quản lý Cây nhóm hàng đa cấp"
-                >
-                  <FolderTree className="h-4 w-4 shrink-0 text-indigo-600" />
-                  <span>Cây nhóm hàng</span>
-                </Link>
+            <button
+              type="button"
+              onClick={() => setImportModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3.5 py-2.5 text-xs font-semibold text-emerald-700 shadow-2xs hover:bg-emerald-100 hover:text-emerald-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+            >
+              <FileText className="h-4 w-4 shrink-0 text-emerald-600" />
+              <span>Nhập từ Excel</span>
+            </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleOpenLedgerModal()}
-                  className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/80 px-3.5 py-2.5 text-xs font-semibold text-blue-700 shadow-2xs hover:bg-blue-100 hover:text-blue-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-                  title="Xem Sổ kho & Lịch sử quy đổi giao dịch (SN-23)"
-                >
-                  <BookOpen className="h-4 w-4 shrink-0 text-blue-600" />
-                  <span>Sổ kho quy đổi</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setImportModalOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3.5 py-2.5 text-xs font-semibold text-emerald-700 shadow-2xs hover:bg-emerald-100 hover:text-emerald-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-                >
-                  <FileText className="h-4 w-4 shrink-0 text-emerald-600" />
-                  <span>Nhập từ Excel</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleOpenCreateModal}
-                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-                >
-                  <Plus className="h-4 w-4 shrink-0" />
-                  <span>Thêm sản phẩm mới</span>
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Thông báo quyền hạn người dùng */}
-        <div className="mt-5 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs gap-2">
-          {canViewCostPrice ? (
-            <div className="flex items-center gap-2 text-emerald-700">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-              <span>
-                <strong>Chế độ Quản lý:</strong> Tài khoản của bạn được cấp phép xem và thiết lập
-                Giá vốn (Cost Price) cùng Biên lợi nhuận (Margin %).
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 text-slate-600">
-              <ShieldAlert className="h-4 w-4 shrink-0 text-amber-500" />
-              <span>
-                <strong>Bảo mật bí mật kinh doanh:</strong> Cột Giá vốn và Biên lợi nhuận được ẩn tự
-                động ở tầng máy chủ đối với vai trò hiện tại.
-              </span>
-            </div>
-          )}
-          <span className="text-slate-400 font-mono text-[11px]">
-            Tài khoản: {user?.username} ({userRoles.join(', ')})
-          </span>
-        </div>
+            <button
+              type="button"
+              onClick={handleOpenCreateModal}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="h-4 w-4 shrink-0" />
+              <span>Thêm sản phẩm mới</span>
+            </button>
+          </>
+        )}
       </div>
 
       {/* 2. Thanh công cụ lọc & Tìm kiếm (Responsive: Gọn gàng trên Mobile/Tablet, Đầy đủ trên Desktop) */}

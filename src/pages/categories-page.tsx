@@ -710,52 +710,35 @@ export const CategoriesPage: React.FC = () => {
       {/* ===================================================================== */}
       {/* 1. TOP HEADER BANNER (QUẢN LÝ NHÓM HÀNG NHIỀU CẤP)                   */}
       {/* ===================================================================== */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-3xl border border-slate-200/90 p-5 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 shadow-2xs shrink-0">
-            <FolderTree className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">
-              Quản lý Nhóm Hàng Nhiều Cấp
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Phân cấp ngành hàng theo cấu trúc cây, quản lý sản phẩm và chuyển nhóm linh hoạt.
-            </p>
-          </div>
-        </div>
+      <div className="flex items-center justify-end gap-2.5 flex-wrap bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+        <button
+          type="button"
+          onClick={loadData}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all cursor-pointer"
+          title="Tải lại toàn bộ cây danh mục"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-blue-600' : ''}`} />
+          <span>Làm mới</span>
+        </button>
 
-        {/* Top Actions */}
-        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+        <Link
+          to="/catalog/products"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-blue-600 transition-all cursor-pointer"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Danh mục sản phẩm</span>
+        </Link>
+
+        {canManageCategories && (
           <button
             type="button"
-            onClick={loadData}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all cursor-pointer"
-            title="Tải lại toàn bộ cây danh mục"
+            onClick={() => handleOpenCreateModal()}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-all cursor-pointer whitespace-nowrap"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-blue-600' : ''}`} />
-            <span>Làm mới</span>
+            <Plus className="h-4 w-4" />
+            <span>Thêm ngành hàng chính</span>
           </button>
-
-          <Link
-            to="/catalog/products"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-blue-600 transition-all cursor-pointer"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Danh mục sản phẩm</span>
-          </Link>
-
-          {canManageCategories && (
-            <button
-              type="button"
-              onClick={() => handleOpenCreateModal()}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-all cursor-pointer whitespace-nowrap"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Thêm ngành hàng chính</span>
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {/* ===================================================================== */}
