@@ -1421,3 +1421,281 @@ LOHA SALES ưu tiên:
 * Không nhầm Empty State với Loading hoặc Error State.
 
 * Hình minh họa nếu có phải đơn giản, phù hợp thương hiệu và không lấn át nội dung.
+
+# 5. 🧭 Điều hướng
+
+## 44. Sidebar — Thanh điều hướng bên
+
+* Hiển thị các phân hệ/chức năng chính theo vai trò và quyền truy cập của người dùng.
+
+* Các mục phải có icon, tên gọi rõ ràng và thống nhất.
+
+* Mục đang chọn phải có trạng thái Active dễ nhận biết, dùng Primary Color.
+
+* Phân nhóm chức năng theo nghiệp vụ, không dồn tất cả vào một danh sách dài.
+
+* Chuẩn hóa chiều rộng, padding, khoảng cách, icon và typography.
+
+* Hỗ trợ thu gọn/mở rộng nếu phù hợp; khi thu gọn, icon phải có Tooltip.
+
+* Sidebar phải giữ cấu trúc nhất quán giữa các trang.
+
+* Không hiển thị chức năng người dùng không có quyền truy cập.
+
+## 45. Header / Topbar — Thanh đầu trang
+
+* Dùng chung cấu trúc trên toàn hệ thống.
+
+* Có thể chứa Logo, tiêu đề/khu vực điều hướng, thông báo và Avatar người dùng tùy nhu cầu.
+
+* Căn chỉnh các thành phần thống nhất, không để nội dung chồng lấn.
+
+* Chuẩn hóa chiều cao, padding, icon, font và khoảng cách.
+
+* Dropdown của Avatar phải hiển thị đúng vị trí, không bị Header hoặc thành phần khác che khuất.
+
+* Toast phải hiển thị bên dưới Header và không che Dropdown đang mở.
+
+* Khi cuộn trang, hành vi cố định của Header phải nhất quán.
+
+* Không đưa quá nhiều chức năng vào Header gây rối.
+
+## 46. Navigation Menu — Menu điều hướng
+
+* Phân biệt rõ mục điều hướng chính, mục con và nhóm chức năng.
+
+* Tên mục ngắn gọn, phản ánh đúng trang đích.
+
+* Trạng thái Active phải thể hiện đúng trang hoặc nhóm đang truy cập.
+
+* Các mục cùng cấp phải có cách hiển thị thống nhất.
+
+* Hỗ trợ điều hướng bằng bàn phím và Focus State.
+
+* Không tạo nhiều mục dẫn đến cùng một nơi nếu không có lý do nghiệp vụ.
+
+* Chỉ hiển thị mục phù hợp với quyền người dùng.
+
+## 47. Breadcrumb — Đường dẫn phân cấp
+
+* Dùng để thể hiện vị trí hiện tại trong cấu trúc hệ thống.
+
+* Hiển thị theo thứ tự từ cấp cao đến trang hiện tại.
+
+* Các cấp trước có thể click để quay lại; cấp hiện tại không cần là liên kết.
+
+* Tên từng cấp phải khớp với tên trang hoặc phân hệ.
+
+* Dùng dấu phân cách và khoảng cách thống nhất.
+
+* Không hiển thị Breadcrumb nếu cấu trúc trang quá đơn giản và không mang lại giá trị.
+
+## 48. Dropdown Menu — Menu thả xuống
+
+* Dùng để hiển thị nhóm hành động hoặc lựa chọn bổ sung từ một thành phần kích hoạt.
+
+* Menu phải mở đúng vị trí, không bị che hoặc vượt khỏi viewport.
+
+* Các mục phải có tên rõ ràng, icon nhất quán nếu có.
+
+* Nhóm hành động nguy hiểm phải được phân biệt bằng màu Danger/Error.
+
+* Hỗ trợ đóng khi click ra ngoài hoặc nhấn `Esc` khi phù hợp.
+
+* Hỗ trợ điều hướng bằng bàn phím.
+
+* Không nhồi quá nhiều mục; nhóm các hành động có liên quan.
+
+* Không nhầm Dropdown Menu chứa hành động với Select dùng để chọn giá trị.
+
+## 49. Context Menu — Menu ngữ cảnh
+
+* Hiển thị các hành động liên quan trực tiếp đến đối tượng được chọn.
+
+* Chỉ chứa hành động phù hợp với đối tượng và quyền của người dùng.
+
+* Các mục như Sửa, Xóa, Sao chép phải có tên rõ ràng.
+
+* Hành động nguy hiểm dùng màu Danger/Error.
+
+* Menu phải nằm trong vùng nhìn thấy, không bị cắt khỏi viewport.
+
+* Hỗ trợ bàn phím và đóng menu bằng `Esc`.
+
+* Nếu hành động đã được hiển thị rõ ràng tại vị trí khác, chỉ thêm vào Context Menu khi thực sự hữu ích.
+
+* Trên thiết bị không có chuột phải, phải có cách khác để truy cập các hành động cần thiết.
+
+## 50. Pagination Navigation — Điều hướng phân trang
+
+* Tuân thủ quy tắc Pagination tại mục 28.
+
+* Nút Trang trước/Trang sau phải hoạt động đúng và có trạng thái Disabled khi không thể chuyển trang.
+
+* Trang hiện tại phải được đánh dấu rõ ràng.
+
+* Khi chuyển trang, giữ nguyên Search, Filter và cách sắp xếp nếu phù hợp.
+
+* Không để người dùng chuyển đến trang không tồn tại khi dữ liệu thay đổi.
+
+* Trên màn hình nhỏ, ưu tiên hiển thị trang hiện tại và các thao tác điều hướng thiết yếu.
+
+# 6. 📝 Form & thao tác
+
+## 51. Form Layout — Bố cục biểu mẫu
+
+* Sắp xếp trường nhập theo thứ tự nghiệp vụ và trình tự người dùng dễ thực hiện.
+
+* Các trường liên quan phải được nhóm thành từng phần rõ ràng.
+
+* Căn chỉnh Label, Input, Select và thông báo lỗi thống nhất.
+
+* Khoảng cách giữa các trường tuân theo Spacing System.
+
+* Biểu mẫu dài nên chia nhóm hoặc chia bước khi thực sự cần.
+
+* Nút hành động đặt ở vị trí dễ tìm và thống nhất giữa các Form tương tự.
+
+* Responsive phải đảm bảo trường nhập không bị tràn hoặc quá hẹp.
+
+* Không dùng quá nhiều cột khiến biểu mẫu khó đọc.
+
+## 52. Label — Nhãn trường nhập
+
+* Mỗi trường nhập phải có Label mô tả rõ dữ liệu cần nhập.
+
+* Label đặt ở vị trí nhất quán, ưu tiên phía trên trường nhập.
+
+* Font, kích thước, màu sắc và khoảng cách phải thống nhất.
+
+* Không dùng Placeholder thay thế Label.
+
+* Trường bắt buộc phải được đánh dấu theo Required Field System.
+
+* Tên Label ngắn gọn, tránh thuật ngữ khó hiểu hoặc mơ hồ.
+
+## 53. Placeholder — Nội dung gợi ý
+
+* Dùng để đưa ra ví dụ hoặc hướng dẫn ngắn cho dữ liệu cần nhập.
+
+* Không dùng Placeholder thay Label.
+
+* Nội dung phải ngắn gọn, đúng ngữ cảnh.
+
+* Ví dụ: `Nhập tên sản phẩm...`, `Nhập số điện thoại...`.
+
+* Dùng màu Text Muted nhưng vẫn đảm bảo độ tương phản dễ đọc.
+
+* Không đặt thông tin quan trọng duy nhất trong Placeholder vì nội dung biến mất khi nhập.
+
+* Không dùng Placeholder cho nội dung mặc định nếu dữ liệu đó sẽ được lưu như giá trị thực.
+
+## 54. Required Field — Trường bắt buộc
+
+* Trường bắt buộc phải được đánh dấu thống nhất, ví dụ dấu `*`.
+
+* Quy ước dấu `*` phải được giải thích rõ khi cần.
+
+* Quy tắc bắt buộc phải khớp với validation phía giao diện và phía server.
+
+* Không đánh dấu bắt buộc nếu nghiệp vụ cho phép bỏ trống.
+
+* Khi thiếu dữ liệu, hiển thị lỗi gần trường tương ứng.
+
+* Không chỉ dựa vào màu sắc để thể hiện trường bắt buộc.
+
+## 55. Validation — Kiểm tra dữ liệu
+
+* Kiểm tra dữ liệu theo quy tắc nghiệp vụ trước khi gửi và tại server.
+
+* Kiểm tra đúng kiểu dữ liệu, định dạng, độ dài, giới hạn và tính hợp lệ.
+
+* Ưu tiên hiển thị lỗi sau khi người dùng rời trường hoặc gửi Form; tránh báo lỗi liên tục khi chưa nhập xong.
+
+* Khi dữ liệu sai, chỉ rõ trường cần sửa và cách sửa.
+
+* Khi sửa đúng, cập nhật trạng thái lỗi phù hợp.
+
+* Không xóa dữ liệu hợp lệ người dùng đã nhập chỉ vì có trường khác bị lỗi.
+
+* Không coi validation phía Frontend là cơ chế bảo mật thay cho Backend.
+
+## 56. Error Message — Thông báo lỗi
+
+* Hiển thị gần trường hoặc thao tác gây ra lỗi.
+
+* Nội dung phải ngắn gọn, dễ hiểu và nêu cách khắc phục nếu có thể.
+
+* Dùng Error Color và icon theo quy chuẩn chung.
+
+* Không chỉ hiển thị mã lỗi kỹ thuật hoặc thông báo chung chung như `Có lỗi xảy ra` nếu có thể giải thích cụ thể hơn.
+
+* Không hiển thị đồng thời nhiều thông báo trùng lặp cho cùng một lỗi.
+
+* Giữ dữ liệu người dùng đã nhập khi có thể.
+
+* Lỗi quan trọng phải dễ nhận biết, không phụ thuộc riêng vào màu sắc.
+
+## 57. Success Message — Thông báo thành công
+
+* Chỉ hiển thị sau khi hệ thống xác nhận thao tác thành công.
+
+* Nội dung ngắn gọn, nêu rõ kết quả: `Cập nhật sản phẩm thành công`.
+
+* Dùng Success Color theo Semantic Color System.
+
+* Với thao tác ngắn, dùng Toast; với quy trình dài hoặc kết quả cần hiển thị tại chỗ, dùng phản hồi phù hợp.
+
+* Không hiển thị thông báo thành công trùng lặp.
+
+* Không dùng thông báo thành công để thay thế việc cập nhật dữ liệu thực tế trên giao diện.
+
+## 58. Disabled State — Trạng thái vô hiệu hóa
+
+* Dùng khi thành phần tạm thời không thể tương tác.
+
+* Phải có kiểu hiển thị Disabled thống nhất, dễ phân biệt với trạng thái bình thường.
+
+* Không chỉ dùng màu sắc để thể hiện Disabled.
+
+* Không cho phép thực hiện hành động khi thành phần đang Disabled.
+
+* Chỉ vô hiệu hóa khi có lý do rõ ràng.
+
+* Nếu lý do không thể thao tác không hiển nhiên, cung cấp hướng dẫn phù hợp.
+
+* Phân biệt Disabled với Loading: Disabled là không thể tương tác; Loading là đang xử lý.
+
+## 59. Read-only State — Trạng thái chỉ đọc
+
+* Dùng khi người dùng được xem dữ liệu nhưng không được chỉnh sửa.
+
+* Phải phân biệt rõ với trường nhập có thể chỉnh sửa và trường Disabled.
+
+* Giá trị phải dễ đọc, có thể sao chép nếu phù hợp.
+
+* Không hiển thị kiểu Read-only khiến dữ liệu trông như bị lỗi hoặc mất khả năng đọc.
+
+* Không cho phép chỉnh sửa qua giao diện; Backend vẫn phải kiểm tra quyền cập nhật.
+
+* Chỉ dùng khi nghiệp vụ yêu cầu xem dữ liệu nhưng không cho sửa.
+
+## 60. Form Submit / Cancel — Gửi / Hủy biểu mẫu
+
+* Nút Submit phải thể hiện rõ hành động: `Lưu`, `Tạo sản phẩm`, `Cập nhật`.
+
+* Nút Cancel phải có kiểu Secondary và không nổi bật hơn hành động chính.
+
+* Khi Submit, phải kiểm tra Validation và ngăn gửi lặp.
+
+* Trong lúc xử lý, hiển thị Loading và khóa thao tác gửi lặp.
+
+* Chỉ thông báo thành công khi server xác nhận thành công.
+
+* Nếu Submit thất bại, giữ dữ liệu đã nhập và hiển thị lỗi phù hợp.
+
+* Nếu Cancel có thể làm mất dữ liệu chưa lưu, yêu cầu xác nhận khi cần.
+
+* Sau khi thành công, cập nhật giao diện hoặc điều hướng theo đúng luồng nghiệp vụ.
+
+* Thống nhất vị trí và thứ tự nút trên các Form tương tự.
