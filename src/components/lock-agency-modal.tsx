@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Lock, Unlock, AlertCircle, X, RefreshCw, Building2 } from 'lucide-react';
 import type { Customer } from '../types/customer.types';
 
@@ -14,7 +15,9 @@ export interface LockAgencyModalProps {
 
 /**
  * Modal Khóa / Mở khóa giao dịch Đại lý (Task SN-36)
- * Thay thế hoàn toàn dialog window.prompt / window.confirm mặc định của trình duyệt
+ * - Sử dụng createPortal gắn trực tiếp document.body để cố định 100% giữa màn hình
+ * - Khóa cuộn trang nền (Scroll Lock trên cả body và main container) không để popup bị trượt
+ * - Hỗ trợ phím tắt Escape và click backdrop đóng an toàn
  */
 export const LockAgencyModal: React.FC<LockAgencyModalProps> = ({
   open,
@@ -36,6 +39,31 @@ export const LockAgencyModal: React.FC<LockAgencyModalProps> = ({
     }
   }, [open, customer, mode]);
 
+  // Khóa cuộn trang nền để popup cố định tuyệt đối giữa màn hình
+  useEffect(() => {
+    if (open && customer) {
+      const prevBodyOverflow = document.body.style.overflow;
+      const mainEl = document.querySelector('main');
+      const prevMainOverflow = mainEl ? mainEl.style.overflow : '';
+
+      document.body.style.overflow = 'hidden';
+      if (mainEl) mainEl.style.overflow = 'hidden';
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && !loading) {
+          onClose();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        document.body.style.overflow = prevBodyOverflow;
+        if (mainEl) mainEl.style.overflow = prevMainOverflow;
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [open, customer, loading, onClose]);
+
   if (!open || !customer) return null;
 
   const handleConfirm = async () => {
@@ -53,12 +81,19 @@ export const LockAgencyModal: React.FC<LockAgencyModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs transition-opacity animate-in fade-in duration-150">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col animate-in zoom-in-95 duration-150">
-        {/* Header */}
+  return createPortal(
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !loading) {
+          onClose();
+        }
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs transition-opacity animate-in fade-in duration-150"
+    >
+      <div className="w-full max-w-lg max-h-[90vh] rounded-2xl bg-white shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col animate-in zoom-in-95 duration-150">
+        {/* Header (shrink-0) */}
         <div
-          className={`flex items-start justify-between p-5 border-b ${
+          className={`flex items-start justify-between p-5 border-b shrink-0 ${
             mode === 'LOCK' ? 'border-rose-100 bg-rose-50/60' : 'border-emerald-100 bg-emerald-50/60'
           }`}
         >
@@ -88,14 +123,14 @@ export const LockAgencyModal: React.FC<LockAgencyModalProps> = ({
             onClick={onClose}
             disabled={loading}
             className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-white/80 transition-colors cursor-pointer"
-            title="Đóng modal"
+            title="Đóng modal (Esc)"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-5 space-y-4">
+        {/* Body (flex-1 overflow-y-auto) */}
+        <div className="p-5 space-y-4 flex-1 overflow-y-auto">
           {/* Thông tin Mã & Tên đại lý */}
           <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80">
             <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
@@ -158,8 +193,8 @@ export const LockAgencyModal: React.FC<LockAgencyModalProps> = ({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5">
+        {/* Footer (shrink-0) */}
+        <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5 shrink-0">
           <button
             type="button"
             onClick={onClose}
@@ -210,6 +245,7 @@ export const LockAgencyModal: React.FC<LockAgencyModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
