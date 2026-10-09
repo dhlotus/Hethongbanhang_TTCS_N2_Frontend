@@ -3,7 +3,6 @@ import {
   Search,
   Filter,
   RefreshCw,
-  CreditCard,
   ChevronLeft,
   ChevronRight,
   ShieldAlert,
@@ -166,45 +165,28 @@ export const CreditLimitPage: React.FC = () => {
       {/* ===================================================================== */}
       {/* 1. Header Trang                                                       */}
       {/* ===================================================================== */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-[var(--color-primary-light)] text-[var(--color-primary)] flex items-center justify-center font-bold">
-              <CreditCard className="h-4 w-4" />
-            </div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-              Khai Báo & Quản Lý Hạn Mức Công Nợ (SN-34)
-            </h1>
+      <div className="flex items-center justify-end gap-2.5 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+        {!canEditCreditLimit && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+            <ShieldAlert className="h-4 w-4 text-amber-600" />
+            <span>
+              Chế độ chỉ xem (Chỉ Kế toán công nợ / Quản lý kinh doanh mới có quyền chỉnh sửa)
+            </span>
           </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Thiết lập hạn mức tín dụng mua buôn, thời hạn nợ gối đầu và giám sát an toàn dòng tiền
-            cho từng đại lý.
-          </p>
-        </div>
+        )}
 
-        <div className="flex items-center gap-2">
-          {!canEditCreditLimit && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-              <ShieldAlert className="h-4 w-4 text-amber-600" />
-              <span>
-                Chế độ chỉ xem (Chỉ Kế toán công nợ / Quản lý kinh doanh mới có quyền chỉnh sửa)
-              </span>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => {
-              fetchCreditLimits();
-              fetchStats();
-            }}
-            disabled={loading}
-            className="px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Làm mới</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            fetchCreditLimits();
+            fetchStats();
+          }}
+          disabled={loading}
+          className="px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <span>Làm mới</span>
+        </button>
       </div>
 
       {/* ===================================================================== */}
