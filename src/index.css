@@ -887,16 +887,15 @@ html {
 @keyframes pageSlideFadeIn {
   from {
     opacity: 0;
-    transform: translateY(2px);
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
 
 .page-transition {
-  animation: pageSlideFadeIn 180ms ease-out forwards;
+  animation: pageSlideFadeIn 180ms ease-out;
+  transform: none !important;
 }
 
 /* 75, 76 & 78. Tôn trọng thiết lập prefers-reduced-motion của người dùng */

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   MapPin,
@@ -196,7 +197,7 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-lg overflow-hidden border border-slate-200">
         {/* Header */}
@@ -473,6 +474,7 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
