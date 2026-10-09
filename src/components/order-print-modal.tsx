@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Printer,
   Download,
@@ -73,7 +74,7 @@ export const OrderPrintModal: React.FC<OrderPrintModalProps> = ({
     window.print();
   };
 
-  return (
+  const modalElement = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:static">
       <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden print:max-h-none print:shadow-none print:w-full print:rounded-none">
         {/* Thanh công cụ Modal (Nền trắng sáng sủa, sạch sẽ, chuẩn UI Guidelines) */}
@@ -414,4 +415,9 @@ export const OrderPrintModal: React.FC<OrderPrintModalProps> = ({
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalElement, document.body);
+  }
+  return modalElement;
 };

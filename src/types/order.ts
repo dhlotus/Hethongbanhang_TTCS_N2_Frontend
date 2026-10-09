@@ -8,12 +8,27 @@ export type OrderStatus =
   | 'PENDING_APPROVAL' // Cần phê duyệt (do vượt hạn mức công nợ - SN-41)
   | 'PENDING_INVENTORY_APPROVAL' // Chờ duyệt do thiếu tồn kho
   | 'APPROVED' // Đã duyệt
+  | 'REJECTED' // Bị từ chối khi xét duyệt
+  | 'RETURNED_FOR_UPDATE' // Trả lại nhân viên kinh doanh để chỉnh sửa
   | 'PROCESSING' // Đang xử lý / soạn hàng
   | 'SHIPPED' // Đã xuất kho / giao vận
   | 'DELIVERED' // Giao thành công
   | 'CANCELLED' // Đã hủy
   | 'RETURNED' // Hoàn hàng
   | 'CLOSED'; // Đã đóng
+
+export type OrderApprovalAction = 'APPROVE' | 'REJECT' | 'RETURN_FOR_UPDATE';
+
+export interface OrderApprovalHistory {
+  id: number;
+  orderId: string;
+  action: OrderApprovalAction;
+  comment: string | null;
+  approverId: string;
+  approverName: string;
+  approverRoles: string[];
+  createdAt: string;
+}
 
 export type PaymentStatus = 'UNPAID' | 'PARTIAL' | 'PAID';
 
@@ -38,6 +53,12 @@ export interface OrderLine {
   availableStock?: number; // Tồn khả dụng (SN-39)
   priceListId?: string;
   notes?: string;
+  baseListPrice?: number;
+  unitOptions?: Array<{ unitName: string; conversionRate: number }>;
+  isPriceManuallyEdited?: boolean;
+  manualPrice?: string;
+  pricingLoading?: boolean;
+  pricingError?: string;
 }
 
 /** Alias cho OrderLine phục vụ tính tương thích (SN-38 / SN-39) */
@@ -77,6 +98,8 @@ export interface Order {
   status: OrderStatus;
   paymentStatus?: PaymentStatus;
   priceListId?: string; // Bảng giá áp dụng
+  isCustomerLocked?: boolean;
+  warningMessage?: string;
   requiresApproval?: boolean;
   approvalReasons?: string[];
   isCreditLimitExceeded?: boolean; // Cờ vượt hạn mức công nợ (SN-41)
@@ -142,6 +165,10 @@ export interface CustomerOption {
   address?: string;
   creditLimit?: number;
   currentDebt?: number;
+  status?: string;
+  lockReason?: string;
+  lockedAt?: string;
+  lockedBy?: string;
   maxDebtDays?: number;
   overdueAmount?: number;
   overdueDays?: number;

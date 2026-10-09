@@ -76,6 +76,9 @@ export interface Customer {
   overdueAmount?: number;
   overdueDays?: number;
   status: CustomerStatus | string;
+  lockReason?: string;
+  lockedAt?: string;
+  lockedBy?: string;
   taxCode?: string;
   email?: string;
   deliveryPoints?: DeliveryPoint[];

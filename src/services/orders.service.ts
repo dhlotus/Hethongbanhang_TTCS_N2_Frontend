@@ -1,4 +1,5 @@
 import { apiClient } from './api';
+import { inventoryService } from './inventory.service';
 import { tokenStorage } from '../utils/token-storage';
 import { MOCK_PRODUCTS } from './products.service';
 import { customerService } from './customer.service';
@@ -7,6 +8,8 @@ import type {
   CustomerDebtStatus,
   CustomerOption,
   Order,
+  OrderApprovalAction,
+  OrderApprovalHistory,
   OrderQueryParams,
   OrderStatus,
   PaginatedOrdersResponse,
@@ -17,6 +20,7 @@ import type { Product } from '../types/products';
 const DRAFT_ORDERS_KEY = 'loha_draft_orders';
 /** Key lưu danh sách đơn hàng demo */
 const DEMO_ORDERS_KEY = 'loha_demo_orders';
+const DEMO_APPROVAL_HISTORY_KEY = 'loha_demo_order_approval_history';
 
 export const authStorage = tokenStorage;
 
@@ -440,6 +444,10 @@ export const ordersService = {
         maxDebtDays: c.maxDebtDays,
         overdueAmount: (c as unknown as { overdueAmount?: number }).overdueAmount,
         overdueDays: (c as unknown as { overdueDays?: number }).overdueDays,
+        status: c.status,
+        lockReason: c.lockReason,
+        lockedAt: c.lockedAt,
+        lockedBy: c.lockedBy,
         deliveryPoints: (c.deliveryPoints || []).map((dp) => ({
           id: dp.id,
           name: dp.name,
@@ -589,20 +597,52 @@ export const ordersService = {
    * Tạo đơn hàng mới (SN-38 & SN-39)
    */
   async createOrder(payload: CreateOrderPayload): Promise<Order> {
+    // Kiểm tra tồn khả dụng theo Task SN-42: Kiểm soát tồn khả dụng
+    for (const line of payload.lines) {
+      const prod = MOCK_PRODUCTS.find((p) => p.id === line.productId || p.sku === line.productSku);
+      const available = prod
+        ? (prod.availableStock ?? prod.availableQuantity ?? prod.stockQuantity)
+        : (line.availableStock ?? line.stockAvailable ?? 9999);
+      const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
+      const maxInUnit = convRate > 1 ? Math.floor(available / convRate) : available;
+      if (line.quantity > maxInUnit) {
+        throw new Error(
+          `Sản phẩm ${line.productName || line.productSku} vượt quá tồn khả dụng (Tồn kho: ${maxInUnit}, Đặt: ${line.quantity})`,
+        );
+      }
+    }
+
     const token = tokenStorage.getAccessToken();
     const isDemo = token?.startsWith('demo-jwt-');
 
     if (!isDemo) {
       try {
         const res = await apiClient.post<Order>('/orders', payload);
+        const all = getStoredDemoOrders();
+        all.unshift(res.data);
+        saveStoredDemoOrders(all);
         return res.data;
-      } catch {
-        // Fallback sang local simulation khi backend chưa sẵn sàng
+      } catch (apiError: any) {
+        if (apiError?.response) {
+          const errMsg = apiError.response.data?.message || apiError.message || 'Lỗi khi tạo đơn hàng trên máy chủ';
+          throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+        }
+        throw new Error(apiError instanceof Error ? apiError.message : 'Không thể kết nối máy chủ để lưu đơn hàng');
       }
+    }
+
+    const customers = await this.getCustomers();
+    const targetCustomer = customers.find((c) => c.id === payload.customerId);
+
+    if (targetCustomer?.status === 'LOCKED') {
+      throw new Error(
+        `Đại lý "${targetCustomer.name}" đang bị KHÓA GIAO DỊCH (Lý do: ${targetCustomer.lockReason || 'Không xác định'}). Không thể tạo đơn hàng mới!`,
+      );
     }
 
     const storedCustomers = customerService.getStoredCustomers();
     const customer =
+      targetCustomer ||
       storedCustomers.find((c) => c.id === payload.customerId) ||
       MOCK_CUSTOMERS.find((c) => c.id === payload.customerId) ||
       DEMO_CUSTOMERS.find((c) => c.id === payload.customerId);
@@ -617,19 +657,6 @@ export const ordersService = {
       throw new Error(
         `Đại lý đang có khoản nợ quá hạn ${overdueDays} ngày (vượt quá ${maxDebtDays} ngày cho phép). Hệ thống tạm khóa quyền tạo đơn hàng mới cho đại lý này.`
       );
-    }
-
-    // Kiểm tra tồn khả dụng theo Task SN-39 (Demo fallback)
-    for (const line of payload.lines) {
-      const prod = MOCK_PRODUCTS.find((p) => p.id === line.productId || p.sku === line.productSku);
-      const available = prod ? (prod.availableStock ?? prod.stockQuantity) : (line.stockAvailable ?? 9999);
-      const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
-      const maxInUnit = convRate > 1 ? Math.floor(available / convRate) : available;
-      if (line.quantity > maxInUnit) {
-        throw new Error(
-          `Sản phẩm ${line.productName || line.productSku} vượt quá tồn khả dụng (Còn tối đa ${maxInUnit} ${line.unit})`,
-        );
-      }
     }
 
     // Tính lineTotal từng dòng
@@ -771,6 +798,63 @@ export const ordersService = {
     return res.data;
   },
 
+  /** Submit an approval decision through the dedicated review endpoint. */
+  async decideOrder(
+    id: string,
+    action: OrderApprovalAction,
+    comment?: string,
+  ): Promise<Order> {
+    const token = tokenStorage.getAccessToken();
+    if (token?.startsWith('demo-jwt-')) {
+      const all = getStoredDemoOrders();
+      const idx = all.findIndex((order) => order.id === id);
+      if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${id}`);
+      const nextStatus: Record<OrderApprovalAction, OrderStatus> = {
+        APPROVE: 'APPROVED',
+        REJECT: 'REJECTED',
+        RETURN_FOR_UPDATE: 'RETURNED_FOR_UPDATE',
+      };
+      const createdAt = new Date().toISOString();
+      all[idx] = { ...all[idx], status: nextStatus[action], updatedAt: createdAt };
+      saveStoredDemoOrders(all);
+      const user = tokenStorage.getUser();
+      const history = this.readDemoApprovalHistory();
+      history.push({
+        id: Date.now(),
+        orderId: id,
+        action,
+        comment: comment?.trim() || null,
+        approverId: user?.id || 'demo-reviewer',
+        approverName: user?.fullName || user?.username || 'Quản lý',
+        approverRoles: user?.roles || [],
+        createdAt,
+      });
+      localStorage.setItem(DEMO_APPROVAL_HISTORY_KEY, JSON.stringify(history));
+      return all[idx];
+    }
+    const res = await apiClient.post<Order>(`/orders/${id}/decision`, { action, comment });
+    return res.data;
+  },
+
+  async getApprovalHistory(orderId: string): Promise<OrderApprovalHistory[]> {
+    const token = tokenStorage.getAccessToken();
+    if (token?.startsWith('demo-jwt-')) {
+      return this.readDemoApprovalHistory()
+        .filter((entry) => entry.orderId === orderId)
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    }
+    const res = await apiClient.get<OrderApprovalHistory[]>(`/orders/${orderId}/approval-history`);
+    return res.data;
+  },
+
+  readDemoApprovalHistory(): OrderApprovalHistory[] {
+    try {
+      return JSON.parse(localStorage.getItem(DEMO_APPROVAL_HISTORY_KEY) || '[]') as OrderApprovalHistory[];
+    } catch {
+      return [];
+    }
+  },
+
   /**
    * Tìm kiếm sản phẩm để thêm vào dòng hàng (dùng mock hoặc API)
    */
@@ -792,10 +876,31 @@ export const ordersService = {
       const res = await apiClient.get<{ data: Product[] }>('/products', {
         params: { search: query, limit: 10, status: 'ACTIVE' },
       });
-      return (res.data.data ?? []).map((p) => ({
-        ...p,
-        availableStock: p.availableStock ?? p.availableQuantity ?? p.stockQuantity,
-      }));
+      const products = res.data.data ?? [];
+      const stockRows = await inventoryService.getStockOverview();
+      const availableBySku = new Map(stockRows.map((stock) => [stock.sku.toUpperCase(), stock.stockQuantity]));
+      return products.map((product) => {
+        const knownProduct = MOCK_PRODUCTS.find(
+          (candidate) => candidate.sku.toUpperCase() === product.sku.toUpperCase(),
+        );
+        // Product list responses from older backend data may only include the base unit.
+        // Use the curated packaging options for a matching seeded SKU in that case.
+        const hasPackagingUnits = (product.units ?? []).some(
+          (unit) => unit.conversionRate > 1,
+        );
+        const units = hasPackagingUnits
+          ? product.units
+          : knownProduct?.units?.some((unit) => unit.conversionRate > 1)
+            ? knownProduct.units
+            : product.units;
+        const stockQuantity = availableBySku.get(product.sku.toUpperCase()) ?? 0;
+        return {
+          ...product,
+          units,
+          stockQuantity,
+          availableStock: stockQuantity,
+        };
+      });
     } catch {
       return [];
     }
@@ -838,6 +943,57 @@ export const ordersService = {
 
     const res = await apiClient.post<Order | { data: Order }>(`/orders/${orderId}/clone`);
     return (res.data as { data?: Order })?.data ?? (res.data as Order);
+  },
+
+  /**
+   * Cập nhật đơn hàng (Chỉnh sửa / Tiếp tục gõ đơn nháp SN-39)
+   */
+  async updateOrder(id: string, payload: Partial<CreateOrderPayload>): Promise<Order> {
+    const token = tokenStorage.getAccessToken();
+    const isDemo = token?.startsWith('demo-jwt-');
+    if (!isDemo) {
+      try {
+        const res = await apiClient.put<Order | { data: Order }>(`/orders/${id}`, payload);
+        const updated = (res.data as { data?: Order })?.data ?? (res.data as Order);
+        const all = getStoredDemoOrders();
+        const idx = all.findIndex((o) => o.id === id);
+        if (idx !== -1) {
+          all[idx] = updated;
+          saveStoredDemoOrders(all);
+        }
+        return updated;
+      } catch (apiError: any) {
+        if (apiError?.response) {
+          const errMsg =
+            apiError.response.data?.message || apiError.message || 'Lỗi khi cập nhật đơn hàng';
+          throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+        }
+      }
+    }
+
+    const all = getStoredDemoOrders();
+    const idx = all.findIndex((o) => o.id === id);
+    if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${id}`);
+    const existing = all[idx];
+    const lines = (payload.lines || existing.lines).map((l) => ({
+      ...l,
+      baseQuantity: Math.round(l.quantity * (l.conversionRate || 1)),
+      lineTotal: l.quantity * l.unitPrice,
+    }));
+    const totals = calcOrderTotals(lines);
+    const updatedOrder: Order = {
+      ...existing,
+      ...totals,
+      lines,
+      deliveryDate: payload.deliveryDate || existing.deliveryDate,
+      deliveryPoint: (payload.deliveryPoint as Order['deliveryPoint']) || existing.deliveryPoint,
+      note: payload.note !== undefined ? payload.note : existing.note,
+      status: payload.status || existing.status,
+      updatedAt: new Date().toISOString(),
+    };
+    all[idx] = updatedOrder;
+    saveStoredDemoOrders(all);
+    return updatedOrder;
   },
 };
 
