@@ -7,9 +7,12 @@ import type {
   CustomerDebtStatus,
   CustomerOption,
   Order,
+  OrderApprovalAction,
+  OrderApprovalHistoryEntry,
   OrderQueryParams,
   OrderStatus,
   PaginatedOrdersResponse,
+  UpdateOrderPayload,
 } from '../types/order';
 import type { Product } from '../types/products';
 
@@ -578,6 +581,30 @@ export const ordersService = {
       return found;
     }
     const res = await apiClient.get<Order>(`/orders/${id}`);
+    return res.data;
+  },
+
+  async updateOrder(id: string, payload: UpdateOrderPayload): Promise<Order> {
+    const res = await apiClient.put<Order>(`/orders/${id}`, payload);
+    return res.data;
+  },
+
+  async decideOrder(
+    id: string,
+    action: OrderApprovalAction,
+    comment?: string,
+  ): Promise<Order> {
+    const res = await apiClient.post<Order>(`/orders/${id}/decision`, {
+      action,
+      comment,
+    });
+    return res.data;
+  },
+
+  async getApprovalHistory(id: string): Promise<OrderApprovalHistoryEntry[]> {
+    const res = await apiClient.get<OrderApprovalHistoryEntry[]>(
+      `/orders/${id}/approval-history`,
+    );
     return res.data;
   },
 

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Shield,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { getStoredUser } from "../utils/navigation";
 import { getUserContext } from "../utils/navigation-config";
+import { inventoryService } from "../services/inventory.service";
 
 interface RoleModulePageProps {
   title: string;
@@ -33,6 +34,20 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
   const location = useLocation();
   const user = getStoredUser();
   const context = getUserContext(user);
+  const [stockRows, setStockRows] = useState<Array<{
+    sku: string;
+    name: string;
+    stockQuantity: number;
+    physicalStockQuantity?: number;
+    reservedQuantity?: number;
+    baseUnit: string;
+  }>>([]);
+  const isInventoryPage = location.pathname === "/inventory/stock";
+
+  useEffect(() => {
+    if (!isInventoryPage) return;
+    void inventoryService.getStockOverview().then(setStockRows).catch(() => setStockRows([]));
+  }, [isInventoryPage]);
 
   return (
     <div className="space-y-6">
@@ -146,6 +161,40 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
       {/* =================================================================== */}
       {/* 3. Vùng nội dung trống sẵn sàng cho nghiệp vụ (Placeholder)         */}
       {/* =================================================================== */}
+      {isInventoryPage ? (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+          <div className="border-b border-slate-100 px-5 py-4">
+            <h2 className="text-sm font-bold text-slate-800">Tồn thực tế và hàng đang giữ cho đơn</h2>
+            <p className="mt-1 text-xs text-slate-500">Tồn khả dụng là số lượng có thể tiếp tục bán hoặc xuất kho.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] text-left text-sm">
+              <thead className="bg-slate-50 text-xs text-slate-500">
+                <tr>
+                  <th className="px-5 py-3 font-semibold">Sản phẩm</th>
+                  <th className="px-5 py-3 text-right font-semibold">Tồn thực tế</th>
+                  <th className="px-5 py-3 text-right font-semibold">Đang giữ</th>
+                  <th className="px-5 py-3 text-right font-semibold">Khả dụng</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {stockRows.map((item) => (
+                  <tr key={item.sku}>
+                    <td className="px-5 py-3">
+                      <div className="font-medium text-slate-800">{item.name}</div>
+                      <div className="text-xs text-slate-400">{item.sku}</div>
+                    </td>
+                    <td className="px-5 py-3 text-right text-slate-600">{(item.physicalStockQuantity ?? item.stockQuantity).toLocaleString("vi-VN")} {item.baseUnit}</td>
+                    <td className="px-5 py-3 text-right font-medium text-amber-700">{(item.reservedQuantity ?? 0).toLocaleString("vi-VN")} {item.baseUnit}</td>
+                    <td className="px-5 py-3 text-right font-bold text-emerald-700">{item.stockQuantity.toLocaleString("vi-VN")} {item.baseUnit}</td>
+                  </tr>
+                ))}
+                {stockRows.length === 0 && <tr><td colSpan={4} className="px-5 py-10 text-center text-sm text-slate-400">Chưa tải được dữ liệu tồn kho.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
       <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-8 sm:p-12 text-center">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-2xs">
           <TrendingUp className="h-6 w-6" />
@@ -165,6 +214,7 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

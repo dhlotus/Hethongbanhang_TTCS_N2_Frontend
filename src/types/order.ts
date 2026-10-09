@@ -8,6 +8,8 @@ export type OrderStatus =
   | 'PENDING_APPROVAL' // Cần phê duyệt (do vượt hạn mức công nợ - SN-41)
   | 'PENDING_INVENTORY_APPROVAL' // Chờ duyệt do thiếu tồn kho
   | 'APPROVED'    // Đã duyệt
+  | 'REJECTED'    // Bị từ chối
+  | 'RETURNED_FOR_UPDATE' // Trả lại chỉnh sửa
   | 'PROCESSING'  // Đang xử lý / soạn hàng
   | 'SHIPPED'     // Đã xuất kho / giao vận
   | 'DELIVERED'   // Giao thành công
@@ -34,6 +36,8 @@ export interface OrderLine {
   stockAvailable?: number; // Tồn khả dụng tham khảo (hiển thị UI)
   minPrice?: number;
   requiresApproval?: boolean;
+  baseListPrice?: number;
+  unitOptions?: Array<{ unitName: string; conversionRate: number }>;
 }
 
 /** Thông tin điểm giao hàng */
@@ -71,6 +75,19 @@ export interface Order {
   creditLimitExceededAmount?: number; // Số tiền vượt hạn mức (VND)
   createdAt?: string;
   updatedAt?: string;
+}
+
+export type OrderApprovalAction = 'APPROVE' | 'REJECT' | 'RETURN_FOR_UPDATE';
+
+export interface OrderApprovalHistoryEntry {
+  id: number;
+  orderId: string;
+  action: OrderApprovalAction;
+  comment: string | null;
+  approverId: string;
+  approverName: string;
+  approverRoles: string[];
+  createdAt: string;
 }
 
 /** Payload tạo đơn hàng mới */

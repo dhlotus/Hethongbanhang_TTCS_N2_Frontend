@@ -38,11 +38,26 @@ import type {
   Order,
   OrderLine,
   OrderStatus,
+  OrderApprovalAction,
+  OrderApprovalHistoryEntry,
   CustomerOption,
   DeliveryPoint,
   CustomerDebtStatus,
 } from '../types/order';
 import type { Product, ProductUnit } from '../types/products';
+
+const getAvailableProductUnits = (
+  product: Product,
+): Array<{ unitName: string; conversionRate: number }> => {
+  const units = product.units?.map((unit: ProductUnit) => ({
+    unitName: unit.unitName,
+    conversionRate: unit.conversionRate,
+  })) ?? [];
+  if (!units.some((unit) => unit.unitName === product.baseUnit)) {
+    units.unshift({ unitName: product.baseUnit, conversionRate: 1 });
+  }
+  return units;
+};
 
 // ──────────────────────────────────────────────────────────────────────────
 // QUANTITY INPUT HELPER COMPONENT (SN-28 / SN-38: Pure Numeric & Free Edit)
@@ -178,6 +193,18 @@ const ORDER_STATUS_CONFIG: Record<
     textClass: 'text-blue-700',
     icon: <CheckCircle2 className="w-3 h-3" />,
   },
+  REJECTED: {
+    label: 'Từ chối',
+    bgClass: 'bg-red-50',
+    textClass: 'text-red-700',
+    icon: <X className="w-3 h-3" />,
+  },
+  RETURNED_FOR_UPDATE: {
+    label: 'Trả lại sửa',
+    bgClass: 'bg-orange-50',
+    textClass: 'text-orange-700',
+    icon: <AlertCircle className="w-3 h-3" />,
+  },
   PROCESSING: {
     label: 'Đang soạn',
     bgClass: 'bg-purple-50',
@@ -224,6 +251,19 @@ const OrderStatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
   );
 };
 
+const getOrderApprovalReasons = (order: Order): string[] => {
+  const reasons = [...(order.approvalReasons ?? [])];
+  if (
+    order.isCreditLimitExceeded &&
+    !reasons.some((reason) => reason.toLowerCase().includes('hạn mức'))
+  ) {
+    reasons.push(
+      `Vượt hạn mức công nợ ${formatCurrency(order.creditLimitExceededAmount ?? 0)}`,
+    );
+  }
+  return reasons;
+};
+
 // ──────────────────────────────────────────────────────────────────────────
 // COMPONENT: MODAL TẠO ĐƠN HÀNG (SN-39)
 // ──────────────────────────────────────────────────────────────────────────
@@ -241,10 +281,10 @@ const DRAFT_KEY = 'new-order-modal';
 
 const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   open,
-  editingOrder: _editingOrder,
+  editingOrder,
   onClose,
   onCreated,
-  onSaved: _onSaved,
+  onSaved,
   initialCustomerId,
 }) => {
   const [step, setStep] = useState<1 | 2>(1); // 1=Chọn đại lý, 2=Thêm hàng
@@ -285,6 +325,24 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         const list = await ordersService.getCustomers(customerSearch);
         if (isMounted) {
           setCustomers(list);
+          if (editingOrder && !selectedCustomer) {
+            const orderCustomer = list.find((customer) => customer.id === editingOrder.customerId);
+            if (orderCustomer) {
+              setSelectedCustomer(orderCustomer);
+              setSelectedDeliveryPoint(null);
+              setDeliveryPoint({
+                id: editingOrder.deliveryPoint?.id,
+                name: editingOrder.deliveryPoint?.name,
+                address: editingOrder.deliveryPoint?.address ?? orderCustomer.address ?? '',
+                phone: editingOrder.deliveryPoint?.phone,
+                contactPerson: editingOrder.deliveryPoint?.contactPerson,
+              });
+              setDeliveryDate(editingOrder.deliveryDate ?? getDefaultDeliveryDate());
+              setNote(editingOrder.note ?? '');
+              setLines(editingOrder.lines);
+              setStep(2);
+            }
+          }
           if (initialCustomerId) {
             const found = list.find((c) => c.id === initialCustomerId);
             if (found) {
@@ -310,7 +368,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       isMounted = false;
       clearTimeout(timer);
     };
-  }, [open, customerSearch, initialCustomerId]);
+  }, [open, customerSearch, initialCustomerId, editingOrder?.id, selectedCustomer]);
 
   // Danh sách chính sách chiết khấu thực tế từ hệ thống (SN-28 / SN-38)
   const [discountPolicies, setDiscountPolicies] = useState<DiscountPolicy[]>([]);
@@ -337,7 +395,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
   // Khôi phục nháp
   useEffect(() => {
-    if (!open) return;
+    if (!open || editingOrder) return;
     const t = setTimeout(() => {
       const draft = ordersService.getDraft(DRAFT_KEY);
       if (draft?.lines && draft.lines.length > 0) {
@@ -362,7 +420,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     }, 0);
 
     return () => clearTimeout(t);
-  }, [open, initialCustomerId]);
+  }, [open, initialCustomerId, editingOrder]);
 
   // Tự động đồng bộ chiết khấu các dòng hàng hiện tại khi danh sách policies được load
   useEffect(() => {
@@ -565,6 +623,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         baseQuantity: initialQty,
         unitPrice: Math.round(discPrice),
         listPrice: product.price,
+        baseListPrice: product.price,
+        unitOptions: getAvailableProductUnits(product),
         discountPercent: autoDiscount,
         lineTotal: Math.round(initialQty * discPrice),
         stockAvailable: product.stockQuantity,
@@ -581,7 +641,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       lineId: string,
       field: 'quantity' | 'unit',
       value: string | number,
-      product?: Product,
     ) => {
       setLines((prev) =>
         prev.map((line) => {
@@ -589,32 +648,43 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
           let updated = { ...line };
 
-          if (field === 'unit' && product) {
+          if (field === 'unit') {
             const targetUnit = String(value);
-            const productUnit = product.units?.find(
-              (u: ProductUnit) => u.unitName === targetUnit,
-            );
+            const productUnit = line.unitOptions?.find((unit) => unit.unitName === targetUnit);
             const convRate = productUnit?.conversionRate ?? 1;
+            const baseListPrice = line.baseListPrice ?? Math.round(line.listPrice / line.conversionRate);
+            const listPrice = Math.round(baseListPrice * convRate);
+            const baseQuantity = Math.round(updated.quantity * convRate);
+            const discountPercent = calculateDiscount(
+              discountPolicies,
+              updated.productSku || updated.productId,
+              '',
+              baseQuantity,
+            );
             updated = {
               ...updated,
               unit: targetUnit,
               conversionRate: convRate,
-              baseQuantity: Math.round(updated.quantity * convRate),
+              baseQuantity,
+              listPrice,
+              unitPrice: Math.round(listPrice * (1 - discountPercent / 100)),
+              discountPercent,
             };
           } else if (field === 'quantity') {
             const rawQty = typeof value === 'number' ? value : (parseInt(String(value), 10) || 0);
             const qty = Math.max(0, rawQty);
 
             // Tự động tính chiết khấu theo số lượng qua chính sách hệ thống (hỗ trợ > 20%, ví dụ 2500 -> 25%)
-            const autoDiscount = qty > 0
-              ? calculateDiscount(discountPolicies, updated.productSku || updated.productId, '', qty)
+            const baseQuantity = Math.round(qty * updated.conversionRate);
+            const autoDiscount = baseQuantity > 0
+              ? calculateDiscount(discountPolicies, updated.productSku || updated.productId, '', baseQuantity)
               : 0;
             const discPrice = updated.listPrice * (1 - autoDiscount / 100);
 
             updated = {
               ...updated,
               quantity: qty,
-              baseQuantity: Math.round(qty * updated.conversionRate),
+              baseQuantity,
               discountPercent: autoDiscount,
               unitPrice: Math.round(discPrice),
             };
@@ -676,7 +746,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     setShowCreditApprovalModal(false);
     setIsSubmitting(true);
     try {
-      const created = await ordersService.createOrder({
+      const payload = {
         customerId: selectedCustomer.id,
         deliveryPoint: Object.keys(deliveryPoint).length > 0 ? deliveryPoint : undefined,
         deliveryDate,
@@ -694,7 +764,10 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           stockAvailable: l.stockAvailable,
         })),
         note,
-      });
+      };
+      const created = editingOrder?.id
+        ? await ordersService.updateOrder(editingOrder.id, payload)
+        : await ordersService.createOrder(payload);
 
       ordersService.clearDraft(DRAFT_KEY);
 
@@ -703,14 +776,14 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           'warning',
           `Đơn hàng ${created.orderCode} đã tạo và chuyển trạng thái "Cần phê duyệt" do vượt hạn mức công nợ!`,
         );
-        onCreated?.(created);
+        (editingOrder ? onSaved : onCreated)?.(created);
         handleClose();
       } else if (created.status === 'PENDING_INVENTORY_APPROVAL') {
         setCreatedOrder(created);
         setShowWarningModal(true);
       } else {
         showToast('success', `Tạo đơn hàng ${created.orderCode} thành công!`);
-        onCreated?.(created);
+        (editingOrder ? onSaved : onCreated)?.(created);
         handleClose();
       }
     } catch (err: unknown) {
@@ -743,7 +816,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         {/* Header Modal */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Tạo Đơn Hàng Mới</h2>
+            <h2 className="text-base font-semibold text-slate-900">{editingOrder ? 'Chỉnh Sửa Đơn Hàng' : 'Tạo Đơn Hàng Mới'}</h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Bước {step}/2:{' '}
               {step === 1 ? 'Chọn đại lý & thông tin giao hàng' : 'Thêm sản phẩm & xác nhận'}
@@ -1196,7 +1269,16 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                             onChange={(e) => handleUpdateLine(line.id!, 'unit', e.target.value)}
                             className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                           >
-                            <option value={line.baseUnit}>{line.baseUnit}</option>
+                            {(line.unitOptions?.length
+                              ? line.unitOptions
+                              : [{ unitName: line.baseUnit, conversionRate: 1 }]
+                            ).map((unit) => (
+                              <option key={unit.unitName} value={unit.unitName}>
+                                {unit.conversionRate > 1
+                                  ? `${unit.unitName} (${unit.conversionRate} ${line.baseUnit})`
+                                  : unit.unitName}
+                              </option>
+                            ))}
                           </select>
                         </div>
                         <div>
@@ -1647,7 +1729,9 @@ const STATUS_TABS: { key: OrderStatus | 'ALL'; label: string }[] = [
   { key: 'DRAFT', label: 'Nháp' },
   { key: 'PENDING', label: 'Chờ duyệt' },
   { key: 'PENDING_APPROVAL', label: 'Cần duyệt hạn mức' },
+  { key: 'RETURNED_FOR_UPDATE', label: 'Trả lại sửa' },
   { key: 'APPROVED', label: 'Đã duyệt' },
+  { key: 'REJECTED', label: 'Từ chối' },
   { key: 'PROCESSING', label: 'Đang soạn' },
   { key: 'DELIVERED', label: 'Giao thành công' },
   { key: 'CANCELLED', label: 'Đã hủy' },
@@ -1674,6 +1758,12 @@ export const OrdersPage: React.FC = () => {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
   const [approvingOrder, setApprovingOrder] = useState(false);
+  const [approvalHistory, setApprovalHistory] = useState<OrderApprovalHistoryEntry[]>([]);
+  const [loadingApprovalHistory, setLoadingApprovalHistory] = useState(false);
+  const [decisionOrder, setDecisionOrder] = useState<Order | null>(null);
+  const [decisionAction, setDecisionAction] = useState<OrderApprovalAction | null>(null);
+  const [decisionComment, setDecisionComment] = useState('');
+  const [submittingDecision, setSubmittingDecision] = useState(false);
 
   // Nhận customerId từ URL query param (Đồng bộ từ trang Quản lý đại lý)
   const [initialCustomerId, setInitialCustomerId] = useState<string | undefined>(undefined);
@@ -1764,19 +1854,87 @@ export const OrdersPage: React.FC = () => {
     setTotal((t) => t + 1);
   };
 
+  const handleOrderSaved = (order: Order) => {
+    setOrders((current) => current.map((item) => item.id === order.id ? order : item));
+    setViewOrder((current) => current?.id === order.id ? order : current);
+    setEditingOrder(null);
+  };
+
+  const updateDecisionOrderInList = (order: Order) => {
+    if (statusFilter === 'ALL') {
+      setOrders((current) => current.map((item) => item.id === order.id ? order : item));
+      return;
+    }
+    setOrders((current) => current.filter((item) => item.id !== order.id));
+    setTotal((current) => Math.max(0, current - 1));
+  };
+
   const handleApproveOrder = async (order: Order): Promise<void> => {
     if (!order.id || approvingOrder) return;
     setApprovingOrder(true);
     try {
-      const approvedOrder = await ordersService.updateOrderStatus(order.id, 'APPROVED');
-      setOrders((current) => current.map((item) => item.id === approvedOrder.id ? approvedOrder : item));
+      const approvedOrder = await ordersService.decideOrder(order.id, 'APPROVE');
+      updateDecisionOrderInList(approvedOrder);
       setViewOrder((current) => current?.id === approvedOrder.id ? approvedOrder : current);
+      setApprovalHistory(await ordersService.getApprovalHistory(order.id));
       showToast('success', `Đã duyệt đơn ${approvedOrder.orderCode || ''}`.trim());
     } catch (error: unknown) {
       showToast('error', error instanceof Error ? error.message : 'Không thể duyệt đơn hàng');
     } finally {
       setApprovingOrder(false);
     }
+  };
+
+  const requestOrderDecision = (
+    order: Order,
+    action: OrderApprovalAction,
+  ): void => {
+    if (action === 'APPROVE') {
+      void handleApproveOrder(order);
+      return;
+    }
+    setDecisionOrder(order);
+    setDecisionAction(action);
+    setDecisionComment('');
+  };
+
+  const submitOrderDecision = async (): Promise<void> => {
+    if (!decisionOrder?.id || !decisionAction || !decisionComment.trim()) return;
+    setSubmittingDecision(true);
+    try {
+      const updatedOrder = await ordersService.decideOrder(
+        decisionOrder.id,
+        decisionAction,
+        decisionComment.trim(),
+      );
+      updateDecisionOrderInList(updatedOrder);
+      setViewOrder((current) => current?.id === updatedOrder.id ? updatedOrder : current);
+      setApprovalHistory(await ordersService.getApprovalHistory(updatedOrder.id!));
+      showToast(
+        'success',
+        decisionAction === 'REJECT'
+          ? `Đã từ chối đơn ${updatedOrder.orderCode}`
+          : `Đã trả đơn ${updatedOrder.orderCode} để chỉnh sửa`,
+      );
+      setDecisionOrder(null);
+      setDecisionAction(null);
+      setDecisionComment('');
+    } catch (error: unknown) {
+      showToast('error', error instanceof Error ? error.message : 'Không thể xử lý đơn hàng');
+    } finally {
+      setSubmittingDecision(false);
+    }
+  };
+
+  const openOrderDetails = (order: Order): void => {
+    setViewOrder(order);
+    setApprovalHistory([]);
+    if (!order.id) return;
+    setLoadingApprovalHistory(true);
+    ordersService.getApprovalHistory(order.id)
+      .then(setApprovalHistory)
+      .catch(() => setApprovalHistory([]))
+      .finally(() => setLoadingApprovalHistory(false));
   };
 
   return (
@@ -1796,7 +1954,7 @@ export const OrdersPage: React.FC = () => {
           </div>
           {(isSalesRep || isSalesManager || isAdmin) && (
             <div className="flex flex-wrap gap-2">
-              {(isSalesRep || isSalesManager) && (
+              {(isSalesRep || isSalesManager || isAdmin) && (
                 <button
                   onClick={() => setIsCreateModalOpen(true)}
                   className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm"
@@ -1860,7 +2018,7 @@ export const OrdersPage: React.FC = () => {
             <div className="p-10 text-center text-slate-400">
               <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-25" />
               <p className="text-sm font-medium">Chưa có đơn hàng nào</p>
-              {(isSalesRep || isSalesManager) && (
+              {(isSalesRep || isSalesManager || isAdmin) && (
                 <button
                   onClick={() => setIsCreateModalOpen(true)}
                   className="mt-3 text-sm text-blue-600 hover:underline"
@@ -1904,6 +2062,11 @@ export const OrdersPage: React.FC = () => {
                             {order.orderCode ?? order.id?.slice(-8)}
                           </p>
                           <p className="text-xs text-slate-400">{formatDate(order.createdAt)}</p>
+                          {order.status === 'PENDING_APPROVAL' && getOrderApprovalReasons(order).map((reason) => (
+                            <p key={reason} className="mt-1 max-w-xs text-xs text-amber-700">
+                              {reason}
+                            </p>
+                          ))}
                         </td>
                         <td className="px-4 py-3">
                           <p className="text-slate-700 font-medium">{order.customerName}</p>
@@ -1920,7 +2083,7 @@ export const OrdersPage: React.FC = () => {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <button
-                            onClick={() => setViewOrder(order)}
+                            onClick={() => openOrderDetails(order)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                             title="Xem chi tiết"
                           >
@@ -1938,7 +2101,7 @@ export const OrdersPage: React.FC = () => {
                 {orders.map((order) => (
                   <button
                     key={order.id}
-                    onClick={() => setViewOrder(order)}
+                    onClick={() => openOrderDetails(order)}
                     className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -2002,7 +2165,7 @@ export const OrdersPage: React.FC = () => {
         editingOrder={editingOrder}
         initialCustomerId={initialCustomerId || urlCustomerId}
         onClose={handleCloseCreateModal}
-        onSaved={handleOrderCreated}
+        onSaved={handleOrderSaved}
         onCreated={handleOrderCreated}
       />
 
@@ -2063,14 +2226,39 @@ export const OrdersPage: React.FC = () => {
                 )}
               </div>
 
-              {viewOrder.requiresApproval && (viewOrder.approvalReasons?.length ?? 0) > 0 && (
+              {viewOrder.status === 'PENDING_APPROVAL' && getOrderApprovalReasons(viewOrder).length > 0 && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
                   <p className="font-semibold">Đơn cần quản lý duyệt</p>
                   <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs">
-                    {viewOrder.approvalReasons?.map((reason) => <li key={reason}>{reason}</li>)}
+                    {getOrderApprovalReasons(viewOrder).map((reason) => <li key={reason}>{reason}</li>)}
                   </ul>
                 </div>
               )}
+
+              <section className="rounded-xl border border-slate-200 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-800">Lịch sử xét duyệt</h3>
+                  <span className="text-xs text-slate-400">Chỉ xem</span>
+                </div>
+                {loadingApprovalHistory ? (
+                  <p className="text-xs text-slate-500">Đang tải lịch sử...</p>
+                ) : approvalHistory.length === 0 ? (
+                  <p className="text-xs text-slate-500">Chưa có lần xét duyệt nào.</p>
+                ) : (
+                  <ol className="space-y-3">
+                    {approvalHistory.map((entry) => (
+                      <li key={entry.id} className="border-l-2 border-blue-200 pl-3">
+                        <p className="text-xs font-semibold text-slate-800">
+                          {entry.action === 'APPROVE' ? 'Đã duyệt' : entry.action === 'REJECT' ? 'Đã từ chối' : 'Trả lại sửa'}
+                          <span className="font-normal text-slate-500"> · {entry.approverName}</span>
+                        </p>
+                        <p className="text-xs text-slate-500">{formatDate(entry.createdAt)}</p>
+                        {entry.comment && <p className="mt-1 text-xs text-slate-700">{entry.comment}</p>}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
 
               {/* Danh sách dòng hàng */}
               <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -2129,17 +2317,43 @@ export const OrdersPage: React.FC = () => {
             </div>
 
             <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between gap-3">
-              {(isAdmin || isSalesManager) && viewOrder.status === 'PENDING' && (
-                <button
-                  type="button"
-                  onClick={() => void handleApproveOrder(viewOrder)}
-                  disabled={approvingOrder}
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  {approvingOrder ? 'Đang duyệt...' : 'Duyệt đơn'}
-                </button>
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {(isAdmin || isSalesManager) &&
+                  (viewOrder.status === 'PENDING_APPROVAL' || viewOrder.status === 'PENDING') && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => requestOrderDecision(viewOrder, 'APPROVE')}
+                      disabled={approvingOrder}
+                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      {approvingOrder ? 'Đang duyệt...' : 'Duyệt'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => requestOrderDecision(viewOrder, 'REJECT')}
+                      className="rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+                    >Từ chối</button>
+                    <button
+                      type="button"
+                      onClick={() => requestOrderDecision(viewOrder, 'RETURN_FOR_UPDATE')}
+                      className="rounded-xl border border-amber-200 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-50"
+                    >Trả lại sửa</button>
+                  </>
+                )}
+                {viewOrder.status === 'RETURNED_FOR_UPDATE' && (isAdmin || isSalesManager || isSalesRep) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingOrder(viewOrder);
+                      setViewOrder(null);
+                      setIsCreateModalOpen(true);
+                    }}
+                    className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                  >Sửa và gửi lại</button>
+                )}
+              </div>
               <button
                 onClick={() => setViewOrder(null)}
                 className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
@@ -2148,6 +2362,53 @@ export const OrdersPage: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {decisionOrder && decisionAction && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submitOrderDecision();
+            }}
+            className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-5 shadow-2xl"
+          >
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                {decisionAction === 'REJECT' ? 'Từ chối đơn hàng' : 'Trả đơn để chỉnh sửa'}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {decisionOrder.orderCode} · Ý kiến sẽ được lưu trong lịch sử xét duyệt.
+              </p>
+            </div>
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium text-slate-700">Ý kiến bắt buộc</span>
+              <textarea
+                value={decisionComment}
+                onChange={(event) => setDecisionComment(event.target.value)}
+                required
+                minLength={3}
+                rows={4}
+                className="w-full resize-y rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                placeholder="Nêu lý do từ chối hoặc nội dung cần chỉnh sửa..."
+              />
+            </label>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDecisionOrder(null)}
+                disabled={submittingDecision}
+                className="rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+              >Hủy</button>
+              <button
+                type="submit"
+                disabled={submittingDecision || decisionComment.trim().length < 3}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {submittingDecision ? 'Đang lưu...' : 'Xác nhận'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </>

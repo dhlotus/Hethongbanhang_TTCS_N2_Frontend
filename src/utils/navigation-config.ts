@@ -199,13 +199,6 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
   // 3. Quản lý kinh doanh (SALES_MANAGER)
   [USER_ROLES.SALES_MANAGER]: [
     {
-      id: "sales-approvals",
-      name: "Phê duyệt đơn hàng",
-      path: "/sales/approvals",
-      icon: ClipboardCheck,
-      category: "Duyệt nghiệp vụ",
-    },
-    {
       id: "catalog-products",
       name: "Danh mục sản phẩm",
       path: "/catalog/products",

@@ -143,6 +143,7 @@ export const AppRoutes: React.FC = () => {
             >
               {/* SN-38 & SN-39: Tạo & Quản lý Đơn hàng Bán buôn (đã implement) */}
               <Route path="/sales/orders" element={<OrdersPage />} />
+              <Route path="/sales/approvals" element={<Navigate to="/sales/orders" replace />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
@@ -151,21 +152,11 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={["SALES_MANAGER"]}
+                  allowedRoles={["SALES_MANAGER", "ADMIN"]}
                   moduleName="Quản lý & Điều hành Kinh doanh"
                 />
               }
             >
-              <Route
-                path="/sales/approvals"
-                element={
-                  <RoleModulePage
-                    title="Phê duyệt Đơn hàng (Duyệt đơn)"
-                    subtitle="Xét duyệt các đơn hàng vượt hạn mức công nợ, chiết khấu đặc biệt hoặc dưới giá sàn"
-                    requiredRole="Quản lý kinh doanh"
-                  />
-                }
-              />
               <Route
                 path="/reports/sales"
                 element={
