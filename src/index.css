@@ -822,12 +822,12 @@ html {
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
 .page-transition {
-  animation: pageSlideFadeIn 180ms ease-out both;
+  animation: pageSlideFadeIn 180ms ease-out forwards;
 }
 
 /* 75, 76 & 78. Tôn trọng thiết lập prefers-reduced-motion của người dùng */

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
   ShoppingCart,
@@ -2110,7 +2111,7 @@ export const OrdersPage: React.FC = () => {
       />
 
       {/* Modal Xem chi tiết đơn hàng */}
-      {viewOrder && (
+      {viewOrder && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[88vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
@@ -2274,7 +2275,8 @@ export const OrdersPage: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal In & Xuất PDF Đơn hàng (SN-47) */}
