@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown, Inbox, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Inbox, AlertCircle, Loader2, Search, FilterX } from "lucide-react";
 
 export type SortDirection = "asc" | "desc" | null;
 
@@ -18,7 +18,10 @@ export interface TableProps<T> {
   keyExtractor: (row: T, index: number) => string | number;
   isLoading?: boolean;
   isEmpty?: boolean;
+  emptyType?: "initial" | "search" | "filter";
+  emptyTitle?: string;
   emptyText?: string;
+  emptyAction?: React.ReactNode;
   error?: string | null;
   onRetry?: () => void;
   sortKey?: string;
@@ -40,7 +43,10 @@ export function Table<T>({
   keyExtractor,
   isLoading = false,
   isEmpty = false,
-  emptyText = "Không có dữ liệu hiển thị",
+  emptyType = "initial",
+  emptyTitle,
+  emptyText,
+  emptyAction,
   error = null,
   onRetry,
   sortKey,
@@ -56,6 +62,23 @@ export function Table<T>({
     if (align === "center") return "text-center";
     return "text-left";
   };
+
+  const resolvedEmptyText =
+    emptyText ||
+    (emptyType === "search"
+      ? "Không tìm thấy dữ liệu nào phù hợp với từ khóa tìm kiếm"
+      : emptyType === "filter"
+      ? "Không có bản ghi nào phù hợp với bộ lọc hiện tại"
+      : "Chưa có dữ liệu hiển thị");
+
+  const resolvedEmptyIcon =
+    emptyType === "search" ? (
+      <Search className="w-8 h-8 text-slate-300 stroke-[1.6]" />
+    ) : emptyType === "filter" ? (
+      <FilterX className="w-8 h-8 text-slate-300 stroke-[1.6]" />
+    ) : (
+      <Inbox className="w-8 h-8 text-slate-300 stroke-[1.6]" />
+    );
 
   return (
     <div
@@ -143,11 +166,19 @@ export function Table<T>({
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="py-12 text-center text-slate-400"
+                  className="py-12 px-4 text-center text-slate-400"
                 >
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <Inbox className="w-8 h-8 text-slate-300 stroke-[1.5]" />
-                    <span className="text-xs font-medium">{emptyText}</span>
+                  <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+                    {resolvedEmptyIcon}
+                    {emptyTitle && (
+                      <span className="text-sm font-semibold text-slate-700">
+                        {emptyTitle}
+                      </span>
+                    )}
+                    <span className="text-xs font-medium text-slate-500 leading-relaxed">
+                      {resolvedEmptyText}
+                    </span>
+                    {emptyAction && <div className="mt-2">{emptyAction}</div>}
                   </div>
                 </td>
               </tr>

@@ -189,8 +189,18 @@ class ToastManager {
   }
 
   show(options: ToastOptions) {
+    const text = (options.title || "").trim();
+    if (!text) return;
+
+    // Quy tắc 81: Không hiển thị thông báo trùng lặp đang hiển thị trên màn hình
+    const isDuplicate = this.toasts.some(
+      (t) => t.title.toLowerCase() === text.toLowerCase() && t.type === options.type
+    );
+    if (isDuplicate) return;
+
     const item: ToastOptions = {
       ...options,
+      title: text,
       id: options.id || `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     };
 

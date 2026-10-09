@@ -1828,7 +1828,7 @@ LOHA SALES ưu tiên:
 
 * Kiểm tra cả Zoom trình duyệt và cài đặt cỡ chữ của hệ điều hành khi phù hợp.
 
-## 69. Hover — Trạng thái rê chuột
+### 69. Hover — Trạng thái rê chuột
 
 * Dùng để báo hiệu thành phần có thể tương tác.
 
@@ -1840,7 +1840,7 @@ LOHA SALES ưu tiên:
 
 * Không phụ thuộc vào Hover để hiển thị thông tin quan trọng vì thiết bị cảm ứng không có Hover.
 
-## 70. Active — Trạng thái đang được chọn
+### 70. Active — Trạng thái đang được chọn
 
 * Dùng để thể hiện mục đang được chọn hoặc đang hoạt động.
 
@@ -1852,7 +1852,7 @@ LOHA SALES ưu tiên:
 
 * Trạng thái Active phải phản ánh đúng trạng thái thực tế của hệ thống.
 
-## 71. Focus — Trạng thái lấy nét
+### 71. Focus — Trạng thái lấy nét
 
 * Mọi thành phần tương tác phải có Focus State rõ ràng khi điều hướng bằng bàn phím.
 
@@ -1864,7 +1864,7 @@ LOHA SALES ưu tiên:
 
 * Không nhầm Focus với Hover hoặc Active.
 
-## 72. Pressed — Trạng thái nhấn
+### 72. Pressed — Trạng thái nhấn
 
 * Thể hiện phản hồi tức thời khi người dùng nhấn hoặc kích hoạt thành phần.
 
@@ -1876,7 +1876,7 @@ LOHA SALES ưu tiên:
 
 * Không nhầm trạng thái Pressed với trạng thái Active được duy trì.
 
-## 73. Disabled — Trạng thái vô hiệu hóa
+### 73. Disabled — Trạng thái vô hiệu hóa
 
 * Thể hiện rõ thành phần hiện không thể tương tác.
 
@@ -1890,7 +1890,7 @@ LOHA SALES ưu tiên:
 
 * Không dùng Disabled thay cho Loading.
 
-## 74. Loading — Trạng thái đang xử lý
+### 74. Loading — Trạng thái đang xử lý
 
 * Hiển thị khi hệ thống đang tải dữ liệu hoặc thực hiện tác vụ.
 
@@ -1898,13 +1898,13 @@ LOHA SALES ưu tiên:
 
 * Với Button đang gửi dữ liệu, hiển thị Loading và ngăn gửi lặp.
 
-* Không để Loading kéo rộng vô hạn mà không có xử lý lỗi hoặc timeout phù hợp.
+* Không để Loading kéo dài vô hạn mà không có xử lý lỗi hoặc timeout phù hợp.
 
 * Không hiển thị Loading nếu tác vụ hoàn tất gần như tức thì và không cần phản hồi trực quan.
 
 * Chỉ kết thúc Loading khi tác vụ hoàn tất hoặc chuyển sang trạng thái lỗi phù hợp.
 
-## 75. Transition — Hiệu ứng chuyển trạng thái
+### 75. Transition — Hiệu ứng chuyển trạng thái
 
 * Dùng để chuyển đổi mượt giữa các trạng thái như Hover, Focus, mở/đóng Dropdown.
 
@@ -1918,7 +1918,7 @@ LOHA SALES ưu tiên:
 
 * Tôn trọng thiết lập `prefers-reduced-motion` của người dùng.
 
-## 76. Animation — Hiệu ứng chuyển động
+### 76. Animation — Hiệu ứng chuyển động
 
 * Chỉ dùng khi giúp người dùng hiểu trạng thái, hướng di chuyển hoặc kết quả thao tác.
 
@@ -1932,7 +1932,7 @@ LOHA SALES ưu tiên:
 
 * Hỗ trợ giảm chuyển động theo thiết lập của hệ điều hành.
 
-## 77. Micro-interaction — Phản hồi tương tác nhỏ
+### 77. Micro-interaction — Phản hồi tương tác nhỏ
 
 * Dùng để xác nhận hành động của người dùng, ví dụ Button được nhấn, Checkbox được chọn hoặc dữ liệu được lưu.
 
@@ -1946,7 +1946,7 @@ LOHA SALES ưu tiên:
 
 * Không dùng quá nhiều hiệu ứng khiến giao diện rối mắt.
 
-## 78. Page Transition — Chuyển trang
+### 78. Page Transition — Chuyển trang
 
 * Chuyển trang phải nhanh, nhất quán và không làm gián đoạn công việc.
 
@@ -1962,5 +1962,175 @@ LOHA SALES ưu tiên:
 
 * Tôn trọng `prefers-reduced-motion`.
 
-**Nguyên tắc chung:** Mọi hiệu ứng phải phục vụ khả năng sử dụng, phản hồi nhanh và nhất quán. LOHA SALES ưu tiên giao diện chuyên nghiệp, chuyển động nhẹ; không dùng animation chỉ để trang trí.
+Nguyên tắc chung: Mọi hiệu ứng phải phục vụ khả năng sử dụng, phản hồi nhanh và nhất quán. LOHA SALES ưu tiên giao diện chuyên nghiệp, chuyển động nhẹ; không dùng animation chỉ để trang trí.
 
+
+### 79. Quy tắc đặt tên chức năng
+
+* Dùng tên tiếng Việt ngắn gọn, rõ nghĩa và đúng nghiệp vụ.
+
+* Cùng một chức năng phải dùng cùng tên trên Sidebar, tiêu đề trang, Breadcrumb và các vị trí liên quan.
+
+* Ưu tiên tên cụ thể: `Quản lý sản phẩm`, `Quản lý kho`, `Quản lý đơn hàng`.
+
+* Tránh tên mơ hồ như `Xử lý`, `Thao tác` hoặc `Quản lý` khi có thể gọi tên chính xác hơn.
+
+### 80. Quy tắc đặt tên Button
+
+* Tên Button phải mô tả đúng hành động sẽ thực hiện.
+
+* Ưu tiên động từ + đối tượng: `Thêm sản phẩm`, `Cập nhật đơn hàng`, `Xóa tài khoản`.
+
+* Tránh tên mơ hồ như `OK`, `Xử lý`, `Thực hiện`.
+
+* Cùng một hành động phải dùng cùng cách gọi trên toàn hệ thống.
+
+* Với hành động nguy hiểm, tên Button phải nêu rõ hành động cụ thể.
+
+### 81. Quy tắc thông báo thành công
+
+* Chỉ thông báo thành công sau khi hệ thống xác nhận thao tác hoàn tất.
+
+* Nội dung ngắn gọn, nêu rõ kết quả: `Cập nhật sản phẩm thành công`.
+
+* Dùng Toast Success màu xanh lá theo quy chuẩn LOHA SALES.
+
+* Không hiển thị thông báo trùng lặp.
+
+* Sau thao tác, dữ liệu trên giao diện phải phản ánh đúng kết quả thực tế.
+
+### 82. Quy tắc thông báo lỗi
+
+* Nội dung dễ hiểu, nêu rõ thao tác thất bại và nguyên nhân nếu xác định được.
+
+* Dùng Toast Error màu đỏ theo quy chuẩn LOHA SALES.
+
+* Lỗi nhập liệu phải hiển thị gần trường tương ứng; lỗi tải dữ liệu phải hiển thị tại khu vực nội dung.
+
+* Cung cấp hướng xử lý hoặc nút thử lại khi phù hợp.
+
+* Không hiển thị mã lỗi kỹ thuật hoặc thông tin nhạy cảm cho người dùng thông thường.
+
+### 83. Quy tắc xác nhận hành động nguy hiểm
+
+* Yêu cầu xác nhận trước hành động có nguy cơ mất dữ liệu, khó hoàn tác hoặc ảnh hưởng lớn.
+
+* Nội dung phải nêu rõ hành động và đối tượng bị ảnh hưởng.
+
+* Nút xác nhận phải cụ thể: `Xóa sản phẩm`, `Khóa tài khoản`.
+
+* Dùng màu Danger/Error cho hành động nguy hiểm; nút Hủy dùng Secondary.
+
+* Không yêu cầu xác nhận cho mọi thao tác thông thường.
+
+* Backend vẫn phải kiểm tra quyền và tính hợp lệ trước khi thực hiện.
+
+### 84. Quy tắc trạng thái dữ liệu
+
+* Mỗi loại dữ liệu phải có danh sách trạng thái được xác định theo nghiệp vụ.
+
+* Tên trạng thái phải rõ ràng và thống nhất trên toàn hệ thống.
+
+* Ví dụ: `Hoạt động`, `Đã khóa`, `Chờ xử lý`, `Đã hoàn thành`, `Đã hủy`.
+
+* Chỉ cho phép chuyển trạng thái theo quy tắc nghiệp vụ hợp lệ.
+
+* Sau khi cập nhật, giao diện phải hiển thị đúng trạng thái mới.
+
+* Không tự tạo trạng thái chỉ để phục vụ cách trình bày UI.
+
+### 85. Quy tắc màu theo trạng thái
+
+* Success – Xanh lá: thành công hoặc hoàn thành khi phù hợp nghiệp vụ.
+
+* Error/Danger – Đỏ: lỗi, thất bại hoặc hành động nguy hiểm.
+
+* Warning – Vàng/Cam: cảnh báo, cần chú ý.
+
+* Info – Xanh dương: thông tin bổ sung.
+
+* Neutral – Xám: trạng thái trung tính.
+
+* Cùng một trạng thái phải dùng cùng màu trên Badge, Table, bộ lọc và trang chi tiết.
+
+* Không dùng màu chỉ để trang trí hoặc dùng màu làm dấu hiệu nhận biết duy nhất.
+
+### 86. Quy tắc quyền người dùng
+
+* Mọi chức năng và dữ liệu phải tuân theo quyền được cấp.
+
+* Phân biệt các quyền Xem, Thêm, Sửa, Xóa, Khóa và quyền nghiệp vụ khác nếu có.
+
+* Không mặc định mọi vai trò đều có toàn quyền.
+
+* Backend/API phải kiểm tra quyền độc lập với Frontend.
+
+* Không để người dùng truy cập dữ liệu vượt quá phạm vi được phép.
+
+### 87. Quy tắc hiển thị/ẩn chức năng theo quyền
+
+* Chỉ hiển thị chức năng phù hợp với vai trò và quyền của người dùng.
+
+* Ưu tiên ẩn chức năng không liên quan để giao diện gọn gàng.
+
+* Nếu cần hiển thị chức năng bị hạn chế, phải thể hiện rõ trạng thái và lý do.
+
+* Button, Menu và thao tác phải cập nhật theo quyền thực tế của người dùng.
+
+* Ẩn chức năng trên Frontend không thay thế kiểm tra quyền ở Backend.
+
+### 88. Quy tắc thao tác Xem / Sửa / Xóa / Khóa
+
+* Xem: chỉ hiển thị dữ liệu người dùng được phép truy cập.
+
+* Sửa: chỉ cho phép sửa dữ liệu được quyền cập nhật.
+
+* Xóa: kiểm tra quyền, ràng buộc nghiệp vụ và xác nhận khi cần.
+
+* Khóa: kiểm tra quyền, trạng thái hiện tại và xác nhận khi phù hợp.
+
+* Icon, tên gọi, vị trí và kiểu hiển thị phải thống nhất.
+
+* Chỉ hiển thị hành động hợp lệ với quyền và trạng thái dữ liệu.
+
+* Sau thao tác, cập nhật giao diện và thông báo đúng kết quả thực tế.
+
+### 89. Quy tắc xử lý dữ liệu rỗng
+
+* Phân biệt rõ:
+
+  * Chưa có dữ liệu.
+
+  * Không có kết quả tìm kiếm.
+
+  * Không có dữ liệu phù hợp bộ lọc.
+
+* Hiển thị Empty State với nội dung phù hợp từng trường hợp.
+
+* Cung cấp hành động tiếp theo nếu cần, ví dụ `Thêm sản phẩm`, `Xóa bộ lọc`.
+
+* Không hiển thị bảng trống mà không giải thích.
+
+* Không nhầm dữ liệu rỗng với Loading hoặc Error.
+
+* Không tự tạo dữ liệu giả để lấp đầy giao diện.
+
+### 90. Quy tắc xử lý lỗi hệ thống
+
+* Xử lý lỗi thống nhất trên toàn ứng dụng.
+
+* Phân biệt lỗi nhập liệu, lỗi nghiệp vụ, lỗi mạng, lỗi xác thực/phân quyền và lỗi hệ thống.
+
+* Hiển thị thông báo thân thiện, phù hợp với từng loại lỗi.
+
+* Không hiển thị Stack Trace, thông tin nhạy cảm hoặc cấu hình nội bộ.
+
+* Có cơ chế thử lại khi phù hợp và an toàn.
+
+* Giữ dữ liệu người dùng đã nhập khi có thể.
+
+* Ghi log kỹ thuật để phục vụ kiểm tra và khắc phục sự cố.
+
+* Không tự động lặp lại thao tác có thể gây trùng giao dịch hoặc thay đổi dữ liệu ngoài ý muốn.
+
+Nguyên tắc cốt lõi: UI phải phản ánh đúng nghiệp vụ, trạng thái dữ liệu và quyền người dùng. Mọi hành động hiển thị phải tương ứng với hành vi thực tế của hệ thống.

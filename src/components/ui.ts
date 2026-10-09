@@ -125,3 +125,9 @@ export * from "./read-only-field";
 
 // 60. Form Actions
 export * from "./form-actions";
+
+// 84, 85. Status Badge & Semantic Status System
+export * from "../utils/status-badge";
+
+// 82, 90. Error Handling Utilities
+export * from "../utils/error-handler";
