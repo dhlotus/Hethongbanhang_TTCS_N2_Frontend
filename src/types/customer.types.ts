@@ -73,6 +73,8 @@ export interface Customer {
   creditLimit: number;
   currentDebt: number;
   maxDebtDays?: number;
+  overdueAmount?: number;
+  overdueDays?: number;
   status: CustomerStatus | string;
   taxCode?: string;
   email?: string;
@@ -133,4 +135,6 @@ export interface CreateCustomerPayload {
   maxDebtDays?: number;
   deliveryPointName?: string;
   receiverName?: string;
+  salesRepId?: string;
+  salesRepName?: string;
 }
