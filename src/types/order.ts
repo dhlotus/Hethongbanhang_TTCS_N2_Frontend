@@ -50,6 +50,8 @@ export interface DeliveryPoint {
   phone?: string;
   contactPerson?: string;
   isDefault?: boolean;
+  receiverName?: string;
+  roadNote?: string;
 }
 
 /** Đơn hàng bán buôn */
@@ -62,7 +64,7 @@ export interface Order {
   customerGroup?: string; // Nhóm đại lý (AGENT_LEVEL_1, AGENT_LEVEL_2, RETAIL)
   salesRepId?: string; // ID nhân viên kinh doanh phụ trách
   salesRepName?: string;
-  deliveryPoint?: DeliveryPoint | Record<string, unknown>;
+  deliveryPoint?: DeliveryPoint;
   deliveryDate?: string; // Ngày giao hàng mong muốn (YYYY-MM-DD)
   lines: OrderLine[];
   items?: OrderItem[]; // Alias danh sách hàng

@@ -21,12 +21,14 @@ import {
   Truck,
   Loader2,
   Building2,
-  Save,
+  Copy,
+  Printer,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ordersService } from '../services/orders.service';
 import { customersService } from '../services/customers.service';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
+import { OrderPrintModal } from '../components/order-print-modal';
 import type { Customer, DeliveryPoint as CustomerDeliveryPoint } from '../types/customer.types';
 import {
   discountPoliciesService,
@@ -52,16 +54,9 @@ import type { Product, ProductUnit } from '../types/products';
 interface LineQuantityInputProps {
   value: number;
   onChangeQty: (newQty: number) => void;
-  max?: number;
-  hasError?: boolean;
 }
 
-const LineQuantityInput: React.FC<LineQuantityInputProps> = ({
-  value,
-  onChangeQty,
-  max,
-  hasError,
-}) => {
+const LineQuantityInput: React.FC<LineQuantityInputProps> = ({ value, onChangeQty }) => {
   const [localVal, setLocalVal] = useState<string>(() => (value ? String(value) : '1'));
 
   useEffect(() => {
@@ -75,7 +70,7 @@ const LineQuantityInput: React.FC<LineQuantityInputProps> = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
-    // Cho phép xóa rỗng ô khi người dùng nhấn Backspace (Pure Numeric Input)
+    // Cho phép xóa rỗng ô khi người dùng nhấn Backspace
     if (raw === '') {
       setLocalVal('');
       onChangeQty(0);
@@ -89,8 +84,7 @@ const LineQuantityInput: React.FC<LineQuantityInputProps> = ({
       return;
     }
     // Chuẩn hóa loại bỏ số 0 ở đầu (ví dụ "05" -> "5")
-    const formatted =
-      cleaned.length > 1 && cleaned.startsWith('0') ? String(parseInt(cleaned, 10)) : cleaned;
+    const formatted = cleaned.length > 1 && cleaned.startsWith('0') ? String(parseInt(cleaned, 10)) : cleaned;
     setLocalVal(formatted);
     const parsed = parseInt(formatted, 10);
     onChangeQty(isNaN(parsed) ? 0 : parsed);
@@ -113,16 +107,11 @@ const LineQuantityInput: React.FC<LineQuantityInputProps> = ({
     <input
       type="text"
       inputMode="numeric"
-      max={max}
       value={localVal}
       onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
-      className={`w-full px-2 py-1.5 text-sm text-center rounded-lg focus:outline-none font-semibold transition-all ${
-        hasError
-          ? 'border-2 border-red-500 bg-red-50/40 text-red-700 ring-2 ring-red-100 focus:ring-red-400 focus:border-red-600'
-          : 'border border-slate-200 text-slate-800 bg-white focus:ring-2 focus:ring-blue-500'
-      }`}
+      className="w-full px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-slate-800 bg-white"
       placeholder="1"
     />
   );
@@ -271,9 +260,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const [deliveryPoint, setDeliveryPoint] = useState<Partial<DeliveryPoint>>({});
   const [deliveryPoints, setDeliveryPoints] = useState<CustomerDeliveryPoint[]>([]);
   void deliveryPoints;
-  const [selectedDeliveryPoint, setSelectedDeliveryPoint] = useState<CustomerDeliveryPoint | null>(
-    null
-  );
+  const [selectedDeliveryPoint, setSelectedDeliveryPoint] = useState<CustomerDeliveryPoint | null>(null);
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState(getDefaultDeliveryDate());
   const [note, setNote] = useState('');
@@ -286,7 +273,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
 
@@ -295,35 +282,32 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     if (!open) return;
     let isMounted = true;
 
-    const timer = setTimeout(
-      async () => {
-        if (isMounted) setIsLoadingCustomers(true);
-        try {
-          const list = await ordersService.getCustomers(customerSearch);
-          if (isMounted) {
-            setCustomers(list);
-            if (initialCustomerId) {
-              const found = list.find((c) => c.id === initialCustomerId);
-              if (found) {
-                setSelectedCustomer(found);
-                if (found.deliveryPoints && found.deliveryPoints.length > 0) {
-                  setDeliveryPoint(found.deliveryPoints[0]);
-                } else {
-                  setDeliveryPoint({ address: found.address || '' });
-                }
+    const timer = setTimeout(async () => {
+      if (isMounted) setIsLoadingCustomers(true);
+      try {
+        const list = await ordersService.getCustomers(customerSearch);
+        if (isMounted) {
+          setCustomers(list);
+          if (initialCustomerId) {
+            const found = list.find((c) => c.id === initialCustomerId);
+            if (found) {
+              setSelectedCustomer(found);
+              if (found.deliveryPoints && found.deliveryPoints.length > 0) {
+                setDeliveryPoint(found.deliveryPoints[0]);
+              } else {
+                setDeliveryPoint({ address: found.address || '' });
               }
             }
           }
-        } catch (err) {
-          // Bỏ qua lỗi hoặc xử lý ngầm
-        } finally {
-          if (isMounted) {
-            setIsLoadingCustomers(false);
-          }
         }
-      },
-      customerSearch ? 300 : 0
-    );
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách đại lý:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoadingCustomers(false);
+        }
+      }
+    }, customerSearch ? 300 : 0);
 
     return () => {
       isMounted = false;
@@ -390,15 +374,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       setLines((prev) => {
         if (prev.length === 0) return prev;
         return prev.map((line) => {
-          const autoDiscount =
-            line.quantity > 0
-              ? calculateDiscount(
-                  discountPolicies,
-                  line.productSku || line.productId,
-                  '',
-                  line.quantity
-                )
-              : 0;
+          const autoDiscount = line.quantity > 0
+            ? calculateDiscount(discountPolicies, line.productSku || line.productId, '', line.quantity)
+            : 0;
           const discPrice = line.listPrice * (1 - autoDiscount / 100);
           return {
             ...line,
@@ -434,15 +412,13 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       setDeliveryPoints(points);
 
       // Tự động chọn điểm giao hàng mặc định (SN-31)
-      const defaultPoint =
-        points.find((p: CustomerDeliveryPoint) => p.isDefault) || points[0] || null;
+      const defaultPoint = points.find((p: CustomerDeliveryPoint) => p.isDefault) || points[0] || null;
       setSelectedDeliveryPoint(defaultPoint);
     } catch {
       // Fallback từ c.deliveryPoints
       const fallbackPoints = (c.deliveryPoints || []) as unknown as CustomerDeliveryPoint[];
       setDeliveryPoints(fallbackPoints);
-      const defaultPoint =
-        fallbackPoints.find((p: CustomerDeliveryPoint) => p.isDefault) || fallbackPoints[0] || null;
+      const defaultPoint = fallbackPoints.find((p: CustomerDeliveryPoint) => p.isDefault) || fallbackPoints[0] || null;
       setSelectedDeliveryPoint(defaultPoint);
     }
   }, []);
@@ -469,11 +445,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
   const handleCreateQuickCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !quickCustForm.name.trim() ||
-      !quickCustForm.phone.trim() ||
-      !quickCustForm.address.trim()
-    ) {
+    if (!quickCustForm.name.trim() || !quickCustForm.phone.trim() || !quickCustForm.address.trim()) {
       showToast('error', 'Thiếu thông tin', 'Vui lòng điền đủ Tên, SĐT và Địa chỉ đại lý');
       return;
     }
@@ -490,7 +462,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       showToast(
         'success',
         'Thêm đại lý thành công',
-        `Đại lý "${created.name}" đã được thêm và đồng bộ sang Quản lý đại lý!`
+        `Đại lý "${created.name}" đã được thêm và đồng bộ sang Quản lý đại lý!`,
       );
       const opt: CustomerOption = { ...created, group: created.customerGroup };
       setCustomers((prev) => [opt, ...prev]);
@@ -580,11 +552,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         discountPolicies,
         product.sku || product.id,
         '',
-        initialQty
+        initialQty,
       );
       const discPrice = product.price * (1 - autoDiscount / 100);
-
-      const stock = product.availableStock ?? product.availableQuantity ?? product.stockQuantity ?? 0;
 
       const newLine: OrderLine = {
         id: `line-${Date.now()}`,
@@ -600,18 +570,22 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         listPrice: product.price,
         discountPercent: autoDiscount,
         lineTotal: Math.round(initialQty * discPrice),
-        stockAvailable: stock,
-        availableStock: stock,
+        stockAvailable: product.stockQuantity,
       };
       setLines((prev) => [...prev, newLine]);
       setProductQuery('');
     },
-    [lines, discountPolicies]
+    [lines, discountPolicies],
   );
 
   /** Cập nhật số lượng hoặc đơn vị của một dòng hàng */
   const handleUpdateLine = useCallback(
-    (lineId: string, field: 'quantity' | 'unit', value: string | number, product?: Product) => {
+    (
+      lineId: string,
+      field: 'quantity' | 'unit',
+      value: string | number,
+      product?: Product,
+    ) => {
       setLines((prev) =>
         prev.map((line) => {
           if (line.id !== lineId) return line;
@@ -620,7 +594,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
           if (field === 'unit' && product) {
             const targetUnit = String(value);
-            const productUnit = product.units?.find((u: ProductUnit) => u.unitName === targetUnit);
+            const productUnit = product.units?.find(
+              (u: ProductUnit) => u.unitName === targetUnit,
+            );
             const convRate = productUnit?.conversionRate ?? 1;
             updated = {
               ...updated,
@@ -629,19 +605,13 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               baseQuantity: Math.round(updated.quantity * convRate),
             };
           } else if (field === 'quantity') {
-            const rawQty = typeof value === 'number' ? value : parseInt(String(value), 10) || 0;
+            const rawQty = typeof value === 'number' ? value : (parseInt(String(value), 10) || 0);
             const qty = Math.max(0, rawQty);
 
             // Tự động tính chiết khấu theo số lượng qua chính sách hệ thống (hỗ trợ > 20%, ví dụ 2500 -> 25%)
-            const autoDiscount =
-              qty > 0
-                ? calculateDiscount(
-                    discountPolicies,
-                    updated.productSku || updated.productId,
-                    '',
-                    qty
-                  )
-                : 0;
+            const autoDiscount = qty > 0
+              ? calculateDiscount(discountPolicies, updated.productSku || updated.productId, '', qty)
+              : 0;
             const discPrice = updated.listPrice * (1 - autoDiscount / 100);
 
             updated = {
@@ -655,10 +625,10 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
           updated.lineTotal = updated.quantity * updated.unitPrice;
           return updated;
-        })
+        }),
       );
     },
-    [discountPolicies]
+    [discountPolicies],
   );
 
   /** Xóa dòng hàng */
@@ -677,29 +647,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     return { subtotal, totalDiscount, grandTotal: subtotal - totalDiscount };
   }, [lines]);
 
-  // Kiểm tra nếu có bất kỳ dòng sản phẩm nào vượt quá tồn khả dụng (SN-39)
-  const hasStockExceeded = useMemo(() => {
-    return lines.some((l) => {
-      const maxAvail = Math.floor(
-        (l.stockAvailable ?? l.availableStock ?? 0) / (l.conversionRate || 1),
-      );
-      return l.quantity > maxAvail || l.quantity <= 0;
-    });
-  }, [lines]);
-
-  // Kiểm tra nếu giá trị đơn hàng vượt hạn mức công nợ đại lý hoặc nợ quá hạn (SN-41)
-  const hasCreditLimitExceeded = useMemo(() => {
-    if (!selectedCustomer) return false;
-    if (debtStatus && !debtStatus.canCreateOrder) return true;
-    const currentDebt = debtStatus?.currentDebt ?? (selectedCustomer.currentDebt || 0);
-    const creditLimit = debtStatus?.creditLimit ?? (selectedCustomer.creditLimit || 0);
-    if (creditLimit > 0 && currentDebt + totals.grandTotal > creditLimit) {
-      return true;
-    }
-    return false;
-  }, [selectedCustomer, debtStatus, totals.grandTotal]);
-
-  /** Submit tạo đơn hàng (Hỗ trợ luồng kiểm soát công nợ SN-41 & Tồn khả dụng SN-39) */
+  /** Submit tạo đơn hàng (Hỗ trợ luồng kiểm soát công nợ SN-41) */
   const handleSubmit = async (forceApproval = false) => {
     if (!selectedCustomer) {
       showToast('error', 'Vui lòng chọn đại lý trước khi tạo đơn');
@@ -709,24 +657,23 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       showToast('error', 'Vui lòng thêm ít nhất 1 sản phẩm vào đơn hàng');
       return;
     }
-    if (hasStockExceeded) {
-      showToast('error', 'Có sản phẩm vượt quá tồn khả dụng. Vui lòng điều chỉnh lại số lượng.');
+
+    // Trường hợp 1 (Hard Block): Chặn tạo đơn nếu nợ quá hạn vượt quá số ngày cho phép
+    if (debtStatus && !debtStatus.canCreateOrder) {
+      showToast('error', debtStatus.blockReason || 'Đại lý bị khóa tạo đơn do có khoản nợ quá hạn');
       return;
     }
 
-    // Kiểm tra kiểm soát công nợ (SN-41)
-    if (hasCreditLimitExceeded) {
-      // Trường hợp 1 (Hard Block): Chặn tạo đơn nếu nợ quá hạn vượt quá số ngày cho phép
-      if (debtStatus && !debtStatus.canCreateOrder) {
-        showToast('error', debtStatus.blockReason || 'Đại lý bị khóa tạo đơn do có khoản nợ quá hạn');
-        return;
-      }
+    // Trường hợp 2 (Approval Flow): Nếu tổng đơn + nợ hiện tại vượt hạn mức công nợ
+    const currentDebt = debtStatus?.currentDebt ?? (selectedCustomer.currentDebt || 0);
+    const creditLimit = debtStatus?.creditLimit ?? (selectedCustomer.creditLimit || 0);
+    const projectedDebt = currentDebt + totals.grandTotal;
+    const isExceeded = creditLimit > 0 && projectedDebt > creditLimit;
 
-      // Trường hợp 2 (Approval Flow): Nếu tổng đơn + nợ hiện tại vượt hạn mức công nợ
-      if (!forceApproval) {
-        setShowCreditApprovalModal(true);
-        return;
-      }
+    if (isExceeded && !forceApproval) {
+      // Hiển thị modal xác nhận thông minh chuyển sang trạng thái chờ phê duyệt
+      setShowCreditApprovalModal(true);
+      return;
     }
 
     setShowCreditApprovalModal(false);
@@ -757,7 +704,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       if (created.status === 'PENDING_APPROVAL' || created.isCreditLimitExceeded) {
         showToast(
           'warning',
-          `Đơn hàng ${created.orderCode} đã tạo và chuyển trạng thái "Cần phê duyệt" do vượt hạn mức công nợ!`
+          `Đơn hàng ${created.orderCode} đã tạo và chuyển trạng thái "Cần phê duyệt" do vượt hạn mức công nợ!`,
         );
         onCreated?.(created);
         handleClose();
@@ -771,52 +718,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Không thể tạo đơn hàng';
-      showToast('error', msg);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  /** Lưu đơn hàng dạng Bản nháp (SN-38: Lưu nháp được và mở lại tiếp tục gõ) */
-  const handleSaveAsDraft = async () => {
-    if (!selectedCustomer) {
-      showToast('error', 'Chưa chọn đại lý', 'Vui lòng chọn đại lý trước khi lưu bản nháp');
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      const draftOrder = await ordersService.createOrder({
-        customerId: selectedCustomer.id,
-        deliveryPoint: Object.keys(deliveryPoint).length > 0 ? deliveryPoint : undefined,
-        deliveryDate,
-        lines: lines.map((l) => ({
-          productId: l.productId,
-          productSku: l.productSku,
-          productName: l.productName,
-          unit: l.unit,
-          baseUnit: l.baseUnit,
-          conversionRate: l.conversionRate,
-          quantity: l.quantity,
-          unitPrice: l.unitPrice,
-          listPrice: l.listPrice,
-          discountPercent: l.discountPercent,
-          stockAvailable: l.stockAvailable,
-        })),
-        note,
-        status: 'DRAFT',
-      });
-
-      ordersService.clearDraft(DRAFT_KEY);
-      showToast(
-        'success',
-        'Lưu nháp thành công',
-        `Đơn hàng ${draftOrder.orderCode} đã được lưu nháp.`
-      );
-      onCreated?.(draftOrder);
-      handleClose();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Không thể lưu bản nháp';
       showToast('error', msg);
     } finally {
       setIsSubmitting(false);
@@ -841,7 +742,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[94vh] flex flex-col shadow-2xl">
+      <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[94vh] flex flex-col shadow-2xl">
         {/* Header Modal */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
           <div>
@@ -851,6 +752,12 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               {step === 1 ? 'Chọn đại lý & thông tin giao hàng' : 'Thêm sản phẩm & xác nhận'}
             </p>
           </div>
+          <button
+            onClick={handleClose}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Bước chỉ báo */}
@@ -1220,29 +1127,26 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 {/* Kết quả tìm kiếm */}
                 {searchResults.length > 0 && (
                   <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm max-h-44 overflow-y-auto">
-                    {searchResults.map((p) => {
-                      const avail = p.availableStock ?? p.availableQuantity ?? p.stockQuantity ?? 0;
-                      return (
-                        <button
-                          key={p.id}
-                          onClick={() => handleAddProduct(p)}
-                          disabled={lines.some((l) => l.productId === p.id)}
-                          className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-blue-50 border-b border-slate-100 last:border-0 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        >
-                          <div>
-                            <p className="text-sm font-medium text-slate-800 leading-snug">
-                              {p.name} - <span className="text-slate-500 font-normal">Tồn khả dụng: {avail} {p.baseUnit}</span>
-                            </p>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                              {p.sku} · Tồn khả dụng: {avail} {p.baseUnit}
-                            </p>
-                          </div>
-                          <span className="text-sm font-semibold text-blue-600 shrink-0 ml-3">
-                            {formatCurrency(p.price)}
-                          </span>
-                        </button>
-                      );
-                    })}
+                    {searchResults.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => handleAddProduct(p)}
+                        disabled={lines.some((l) => l.productId === p.id)}
+                        className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-blue-50 border-b border-slate-100 last:border-0 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-slate-800 leading-snug">
+                            {p.name}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {p.sku} · {p.baseUnit} · Tồn: {p.stockQuantity}
+                          </p>
+                        </div>
+                        <span className="text-sm font-semibold text-blue-600 shrink-0 ml-3">
+                          {formatCurrency(p.price)}
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -1255,125 +1159,73 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Danh sách hàng ({lines.length} dòng)
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleSaveAsDraft}
-                      disabled={isSubmitting}
-                      className="inline-flex items-center gap-1 text-xs text-slate-600 hover:text-blue-600 font-medium cursor-pointer"
-                      title="Lưu tạm nháp đơn hàng (SN-38)"
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                    Danh sách hàng ({lines.length} dòng)
+                  </p>
+                  {lines.map((line) => (
+                    <div
+                      key={line.id}
+                      className="border border-slate-200 rounded-xl p-3 space-y-2 bg-slate-50/50"
                     >
-                      <Save className="w-3.5 h-3.5" />
-                      <span>Lưu nháp</span>
-                    </button>
-                  </div>
-                  {lines.map((line) => {
-                    const maxAvailable = Math.floor(
-                      (line.stockAvailable ?? line.availableStock ?? 0) /
-                        (line.conversionRate || 1),
-                    );
-                    const isExceeded = line.quantity > maxAvailable;
+                      {/* Tên sản phẩm + Xóa */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">
+                            {line.productName}
+                          </p>
+                          <p className="text-xs text-slate-500">{line.productSku}</p>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveLine(line.id!)}
+                          className="shrink-0 p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
 
-                    return (
-                      <div
-                        key={line.id}
-                        className={`border rounded-xl p-3 space-y-2 transition-all ${
-                          isExceeded
-                            ? 'border-red-300 bg-red-50/20 shadow-xs'
-                            : 'border-slate-200 bg-slate-50/50'
-                        }`}
-                      >
-                        {/* Tên sản phẩm + Nhãn tồn khả dụng + Xóa */}
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-slate-800 truncate">
-                              {line.productName}
-                            </p>
-                            <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                              <span className="text-xs text-slate-500">{line.productSku}</span>
-                              <span className="text-xs text-slate-300">·</span>
-                              <span className="text-xs text-slate-500 font-normal">
-                                Tồn khả dụng: {maxAvailable} {line.unit}
-                              </span>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleRemoveLine(line.id!)}
-                            className="shrink-0 p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                      {/* Số lượng + Đơn vị + Chiết khấu */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-xs text-slate-500 mb-1 block">Số lượng</label>
+                          <LineQuantityInput
+                            value={line.quantity}
+                            onChangeQty={(newQty) => handleUpdateLine(line.id!, 'quantity', newQty)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-slate-500 mb-1 block">Đơn vị</label>
+                          <select
+                            value={line.unit}
+                            onChange={(e) => handleUpdateLine(line.id!, 'unit', e.target.value)}
+                            className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                            <option value={line.baseUnit}>{line.baseUnit}</option>
+                          </select>
                         </div>
-
-                        {/* Số lượng + Đơn vị + Chiết khấu */}
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
-                            <label className="text-xs text-slate-500 mb-1 block">Số lượng</label>
-                            <LineQuantityInput
-                              value={line.quantity}
-                              max={maxAvailable}
-                              hasError={isExceeded}
-                              onChangeQty={(newQty) => handleUpdateLine(line.id!, 'quantity', newQty)}
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs text-slate-500 mb-1 block">Đơn vị</label>
-                            <select
-                              value={line.unit}
-                              onChange={(e) => handleUpdateLine(line.id!, 'unit', e.target.value)}
-                              className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                            >
-                              <option value={line.baseUnit}>{line.baseUnit}</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="text-xs text-slate-500 mb-1 block">Chiết khấu %</label>
-                            <input
-                              type="text"
-                              readOnly
-                              disabled
-                              value={`${line.discountPercent}%`}
-                              title="Mức chiết khấu tự động từ chính sách hệ thống (Read-only, không thể chỉnh sửa)"
-                              className="w-full px-2 py-1.5 text-sm text-center font-bold text-emerald-600 bg-slate-100 border border-slate-200 rounded-lg cursor-not-allowed select-none focus:outline-none"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Cảnh báo vượt tồn khả dụng Realtime và nút bấm nhanh */}
-                        {isExceeded && (
-                          <div className="flex items-center justify-between gap-2 p-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600 font-medium">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
-                              <span className="truncate">
-                                Số lượng vượt quá tồn khả dụng (Tối đa {maxAvailable})
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateLine(line.id!, 'quantity', maxAvailable)}
-                              className="shrink-0 text-xs font-bold text-red-700 hover:text-red-900 underline px-1.5 py-0.5 rounded bg-red-100/80 hover:bg-red-200 transition-colors cursor-pointer"
-                              title={`Bấm để đưa số lượng về mức tối đa còn đặt được (${maxAvailable})`}
-                            >
-                              Lấy tối đa ({maxAvailable})
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Thành tiền */}
-                        <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                          <span className="text-xs text-slate-500">
-                            Đơn giá: {formatCurrency(line.unitPrice)}/{line.unit}
-                          </span>
-                          <span className="text-sm font-semibold text-slate-800">
-                            {formatCurrency(line.lineTotal)}
-                          </span>
+                        <div>
+                          <label className="text-xs text-slate-500 mb-1 block">Chiết khấu %</label>
+                          <input
+                            type="text"
+                            readOnly
+                            disabled
+                            value={`${line.discountPercent}%`}
+                            title="Mức chiết khấu tự động từ chính sách hệ thống (Read-only, không thể chỉnh sửa)"
+                            className="w-full px-2 py-1.5 text-sm text-center font-bold text-emerald-600 bg-slate-100 border border-slate-200 rounded-lg cursor-not-allowed select-none focus:outline-none"
+                          />
                         </div>
                       </div>
-                    );
-                  })}
+
+                      {/* Thành tiền */}
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                        <span className="text-xs text-slate-500">
+                          Đơn giá: {formatCurrency(line.unitPrice)}/{line.unit}
+                        </span>
+                        <span className="text-sm font-semibold text-slate-800">
+                          {formatCurrency(line.lineTotal)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -1509,18 +1361,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 disabled={
                   isSubmitting ||
                   lines.length === 0 ||
-                  hasStockExceeded ||
-                  hasCreditLimitExceeded ||
                   (debtStatus !== null && !debtStatus.canCreateOrder)
-                }
-                title={
-                  hasStockExceeded
-                    ? 'Có sản phẩm vượt quá tồn khả dụng. Vui lòng điều chỉnh lại số lượng'
-                    : hasCreditLimitExceeded
-                    ? (debtStatus && !debtStatus.canCreateOrder
-                        ? debtStatus.blockReason
-                        : 'Giá trị đơn hàng vượt hạn mức công nợ đại lý')
-                    : undefined
                 }
                 className={`px-5 py-2 text-sm font-medium text-white rounded-xl transition-colors inline-flex items-center gap-2 cursor-pointer ${
                   debtStatus &&
@@ -1560,6 +1401,12 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                   Khách hàng: <span className="font-semibold text-slate-800">{selectedCustomer?.name}</span> ({selectedCustomer?.code})
                 </p>
               </div>
+              <button
+                onClick={() => setShowCreditApprovalModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
             {/* Bảng đối chiếu số liệu tài chính */}
@@ -1635,6 +1482,18 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       {showWarningModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md flex flex-col shadow-2xl p-6 relative">
+            <div className="absolute top-4 right-4">
+              <button
+                onClick={() => {
+                  setShowWarningModal(false);
+                  onCreated?.(createdOrder!);
+                  handleClose();
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             <div className="flex flex-col items-center text-center space-y-4 pt-4">
               <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center">
                 <AlertCircle className="w-6 h-6 text-rose-600" />
@@ -1642,7 +1501,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               <div>
                 <h3 className="text-lg font-bold text-slate-900 mb-1">Cảnh báo tồn kho</h3>
                 <p className="text-sm text-slate-500">
-                  Đơn hàng <span className="font-semibold text-slate-700">{createdOrder?.orderCode}</span> có số lượng vượt quá tồn kho khả dụng.
+                  Đơn hàng <span className="font-semibold text-slate-700">{createdOrder?.orderCode}</span> có số lượng vượt quá tồn kho khả dụng. 
                   Đơn hàng đã được ghi nhận với trạng thái chờ phê duyệt tồn kho.
                 </p>
               </div>
@@ -1689,97 +1548,96 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               <Building2 className="w-5 h-5 text-[var(--color-primary)]" />
               <h4 className="text-sm font-bold text-slate-900">Thêm Đại Lý Mới Nhanh</h4>
             </div>
+            <button
+              type="button"
+              onClick={() => setIsQuickCustomerModalOpen(false)}
+              className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
-            <form onSubmit={handleCreateQuickCustomer} className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">Tên đại lý *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="VD: Cửa Hàng Bách Hóa Hoa Sen"
-                  value={quickCustForm.name}
-                  onChange={(e) => setQuickCustForm({ ...quickCustForm, name: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
-                />
-              </div>
+          <form onSubmit={handleCreateQuickCustomer} className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700">Tên đại lý *</label>
+              <input
+                type="text"
+                required
+                placeholder="VD: Cửa Hàng Bách Hóa Hoa Sen"
+                value={quickCustForm.name}
+                onChange={(e) => setQuickCustForm({ ...quickCustForm, name: e.target.value })}
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
+              />
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">
-                  Số điện thoại liên hệ *
-                </label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="VD: 0988776655"
-                  value={quickCustForm.phone}
-                  onChange={(e) => setQuickCustForm({ ...quickCustForm, phone: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
-                />
-              </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700">Số điện thoại liên hệ *</label>
+              <input
+                type="tel"
+                required
+                placeholder="VD: 0988776655"
+                value={quickCustForm.phone}
+                onChange={(e) => setQuickCustForm({ ...quickCustForm, phone: e.target.value })}
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
+              />
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">
-                  Địa chỉ kinh doanh / kho *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="VD: 45 Nguyễn Huệ, Quận 1, TP.HCM"
-                  value={quickCustForm.address}
-                  onChange={(e) => setQuickCustForm({ ...quickCustForm, address: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
-                />
-              </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700">Địa chỉ kinh doanh / kho *</label>
+              <input
+                type="text"
+                required
+                placeholder="VD: 45 Nguyễn Huệ, Quận 1, TP.HCM"
+                value={quickCustForm.address}
+                onChange={(e) => setQuickCustForm({ ...quickCustForm, address: e.target.value })}
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
+              />
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">
-                  Hạn mức tín dụng (VNĐ)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="10000000"
-                  value={quickCustForm.creditLimit}
-                  onChange={(e) =>
-                    setQuickCustForm({ ...quickCustForm, creditLimit: Number(e.target.value) })
-                  }
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
-                />
-              </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700">Hạn mức tín dụng (VNĐ)</label>
+              <input
+                type="number"
+                min="0"
+                step="10000000"
+                value={quickCustForm.creditLimit}
+                onChange={(e) => setQuickCustForm({ ...quickCustForm, creditLimit: Number(e.target.value) })}
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
+              />
+            </div>
 
-              <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsQuickCustomerModalOpen(false)}
-                  disabled={creatingQuickCust}
-                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={creatingQuickCust}
-                  className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--color-primary)] hover:opacity-90 rounded-lg shadow-sm flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  {creatingQuickCust ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Đang lưu...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Lưu & Chọn luôn</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
+            <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsQuickCustomerModalOpen(false)}
+                disabled={creatingQuickCust}
+                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={creatingQuickCust}
+                className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--color-primary)] hover:opacity-90 rounded-lg shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {creatingQuickCust ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Đang lưu...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Lưu & Chọn luôn</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
-      )}
-    </>
+      </div>
+    )}
+  </>
   );
 };
 
@@ -1819,6 +1677,8 @@ export const OrdersPage: React.FC = () => {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
   const [approvingOrder, setApprovingOrder] = useState(false);
+  const [printOrder, setPrintOrder] = useState<Order | null>(null);
+  const [isCloning, setIsCloning] = useState<string | null>(null);
 
   // Nhận customerId từ URL query param (Đồng bộ từ trang Quản lý đại lý)
   const [initialCustomerId, setInitialCustomerId] = useState<string | undefined>(undefined);
@@ -1829,14 +1689,11 @@ export const OrdersPage: React.FC = () => {
       setInitialCustomerId(cid);
       setEditingOrder(null);
       setIsCreateModalOpen(true);
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.delete('customerId');
-          return next;
-        },
-        { replace: true }
-      );
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('customerId');
+        return next;
+      }, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
@@ -1874,6 +1731,8 @@ export const OrdersPage: React.FC = () => {
     return () => clearTimeout(t);
   }, [searchInput]);
 
+  const [refreshKey, setRefreshKey] = useState(0);
+
   useEffect(() => {
     let isMounted = true;
     const timer = setTimeout(async () => {
@@ -1905,11 +1764,38 @@ export const OrdersPage: React.FC = () => {
       isMounted = false;
       clearTimeout(timer);
     };
-  }, [page, statusFilter, searchTerm]);
+  }, [page, limit, statusFilter, searchTerm, refreshKey]);
 
   const handleOrderCreated = (order: Order) => {
     setOrders((prev) => [order, ...prev]);
     setTotal((t) => t + 1);
+  };
+
+  /** Sao chép một đơn cũ thành đơn mới ở trạng thái Nháp (SN-48) */
+  const handleCloneOrder = async (targetOrder: Order): Promise<void> => {
+    if (!targetOrder.id) return;
+    setIsCloning(targetOrder.id);
+    try {
+      const cloned = await ordersService.cloneOrder(targetOrder.id);
+      showToast(
+        'success',
+        `Sao chép thành công đơn ${targetOrder.orderCode} thành bản sao mới ${cloned.orderCode}! Bản sao luôn bắt đầu ở trạng thái Nháp. Giá và chiết khấu đã được tính lại theo bảng giá hiện hành.`,
+      );
+      setRefreshKey((k) => k + 1);
+      if (viewOrder?.id === targetOrder.id) {
+        setViewOrder(null);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi sao chép đơn hàng';
+      showToast('error', msg);
+    } finally {
+      setIsCloning(null);
+    }
+  };
+
+  /** Mở modal in / xuất PDF đơn hàng (SN-47) */
+  const handleOpenPrint = (targetOrder: Order): void => {
+    setPrintOrder(targetOrder);
   };
 
   const handleApproveOrder = async (order: Order): Promise<void> => {
@@ -1917,10 +1803,8 @@ export const OrdersPage: React.FC = () => {
     setApprovingOrder(true);
     try {
       const approvedOrder = await ordersService.updateOrderStatus(order.id, 'APPROVED');
-      setOrders((current) =>
-        current.map((item) => (item.id === approvedOrder.id ? approvedOrder : item))
-      );
-      setViewOrder((current) => (current?.id === approvedOrder.id ? approvedOrder : current));
+      setOrders((current) => current.map((item) => item.id === approvedOrder.id ? approvedOrder : item));
+      setViewOrder((current) => current?.id === approvedOrder.id ? approvedOrder : current);
       showToast('success', `Đã duyệt đơn ${approvedOrder.orderCode || ''}`.trim());
     } catch (error: unknown) {
       showToast('error', error instanceof Error ? error.message : 'Không thể duyệt đơn hàng');
@@ -1932,26 +1816,38 @@ export const OrdersPage: React.FC = () => {
   return (
     <>
       <div className="space-y-6">
-        {/* Nhóm nút hành động */}
-        {(isSalesRep || isSalesManager || isAdmin) && (
-          <div className="flex items-center justify-end gap-2.5 flex-wrap sm:flex-nowrap bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
-            {(isSalesRep || isSalesManager) && (
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                Tạo Đơn hàng
-              </button>
-            )}
-            <button
-              onClick={() => setIsSn40ModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors shadow-sm"
-            >
-              Tạo đơn tự áp giá · SN-40
-            </button>
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+              <ShoppingCart className="w-6 h-6 text-blue-600" />
+              Quản lý Đơn hàng
+            </h1>
+            <p className="text-sm text-slate-500 mt-2">
+              Tạo và theo dõi đơn hàng bán buôn cho đại lý
+            </p>
           </div>
-        )}
+          {(isSalesRep || isSalesManager || isAdmin) && (
+            <div className="flex flex-wrap gap-2">
+              {(isSalesRep || isSalesManager) && (
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  Tạo Đơn hàng
+                </button>
+              )}
+              <button
+                onClick={() => setIsSn40ModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors shadow-sm"
+              >
+                Tạo đơn tự áp giá · SN-40
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Thanh tìm kiếm & bộ lọc */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
@@ -2057,13 +1953,37 @@ export const OrdersPage: React.FC = () => {
                           <OrderStatusBadge status={order.status} />
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => setViewOrder(order)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                            title="Xem chi tiết"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setViewOrder(order)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                              title="Xem chi tiết đơn hàng"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleCloneOrder(order)}
+                              disabled={isCloning === order.id}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 cursor-pointer"
+                              title="Sao chép đơn thành đơn mới (SN-48)"
+                            >
+                              {isCloning === order.id ? (
+                                <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
+                              ) : (
+                                <Copy className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPrint(order)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
+                              title="In / Xuất PDF đơn hàng (SN-47)"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -2074,28 +1994,69 @@ export const OrdersPage: React.FC = () => {
               {/* Mobile Card */}
               <div className="sm:hidden divide-y divide-slate-100">
                 {orders.map((order) => (
-                  <button
+                  <div
                     key={order.id}
-                    onClick={() => setViewOrder(order)}
-                    className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors"
+                    className="w-full text-left px-4 py-3.5 hover:bg-slate-50 transition-colors space-y-2.5"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-medium text-slate-800 truncate">{order.customerName}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {order.orderCode} · {formatDate(order.createdAt)}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-bold text-slate-800">
-                          {formatCurrency(order.grandTotal)}
-                        </p>
-                        <div className="mt-1">
-                          <OrderStatusBadge status={order.status} />
+                    <div
+                      onClick={() => setViewOrder(order)}
+                      className="cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900 truncate">
+                            {order.customerName}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-0.5 font-mono">
+                            {order.orderCode} · {formatDate(order.createdAt)}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-bold text-slate-900">
+                            {formatCurrency(order.grandTotal)}
+                          </p>
+                          <div className="mt-1">
+                            <OrderStatusBadge status={order.status} />
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </button>
+
+                    {/* Nút hành động nhanh trên di động: Chạm chuẩn Mobile-first (Touch target >= 36-40px) */}
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setViewOrder(order)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer min-h-[36px]"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Chi tiết</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleCloneOrder(order)}
+                        disabled={isCloning === order.id}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer min-h-[36px]"
+                        title="Sao chép đơn thành đơn mới (SN-48)"
+                      >
+                        {isCloning === order.id ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                        <span>Sao chép</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenPrint(order)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors cursor-pointer min-h-[36px]"
+                        title="In / Xuất PDF (SN-47)"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>In / PDF</span>
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
             </>
@@ -2106,8 +2067,8 @@ export const OrdersPage: React.FC = () => {
         {totalPages > 1 && (
           <div className="flex items-center justify-between text-sm text-slate-500">
             <span>
-              Hiển thị {Math.min((page - 1) * limit + 1, total)}–{Math.min(page * limit, total)} /{' '}
-              {total} đơn hàng
+              Hiển thị {Math.min((page - 1) * limit + 1, total)}–
+              {Math.min(page * limit, total)} / {total} đơn hàng
             </span>
             <div className="flex items-center gap-1">
               <button
@@ -2154,9 +2115,17 @@ export const OrdersPage: React.FC = () => {
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[88vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <div>
-                <h2 className="text-base font-semibold text-slate-900">Chi tiết Đơn hàng</h2>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Chi tiết Đơn hàng
+                </h2>
                 <p className="text-xs text-slate-500">{viewOrder.orderCode}</p>
               </div>
+              <button
+                onClick={() => setViewOrder(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -2184,9 +2153,7 @@ export const OrdersPage: React.FC = () => {
                     <div>
                       <p className="font-bold">Đơn hàng vượt hạn mức công nợ</p>
                       <p className="mt-0.5 text-amber-800">
-                        Đơn hàng làm vượt hạn mức{' '}
-                        {formatCurrency(viewOrder.creditLimitExceededAmount || 0)}. Đang ở trạng
-                        thái chờ Quản lý kinh doanh / Kế toán phê duyệt.
+                        Đơn hàng làm vượt hạn mức {formatCurrency(viewOrder.creditLimitExceededAmount || 0)}. Đang ở trạng thái chờ Quản lý kinh doanh / Kế toán phê duyệt.
                       </p>
                     </div>
                   </div>
@@ -2197,9 +2164,7 @@ export const OrdersPage: React.FC = () => {
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
                   <p className="font-semibold">Đơn cần quản lý duyệt</p>
                   <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs">
-                    {viewOrder.approvalReasons?.map((reason) => (
-                      <li key={reason}>{reason}</li>
-                    ))}
+                    {viewOrder.approvalReasons?.map((reason) => <li key={reason}>{reason}</li>)}
                   </ul>
                 </div>
               )}
@@ -2210,7 +2175,10 @@ export const OrdersPage: React.FC = () => {
                   Danh sách hàng
                 </div>
                 {viewOrder.lines.map((line, i) => (
-                  <div key={i} className="px-3 py-2.5 border-b border-slate-100 last:border-0">
+                  <div
+                    key={i}
+                    className="px-3 py-2.5 border-b border-slate-100 last:border-0"
+                  >
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-slate-800 truncate">
@@ -2257,28 +2225,64 @@ export const OrdersPage: React.FC = () => {
               )}
             </div>
 
-            <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between gap-3">
-              {(isAdmin || isSalesManager) && viewOrder.status === 'PENDING' && (
+            <div className="px-5 py-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => void handleApproveOrder(viewOrder)}
-                  disabled={approvingOrder}
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => void handleCloneOrder(viewOrder)}
+                  disabled={isCloning === viewOrder.id}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer"
+                  title="Sao chép đơn cũ thành đơn mới ở trạng thái Nháp (SN-48)"
                 >
-                  <CheckCircle2 className="h-4 w-4" />
-                  {approvingOrder ? 'Đang duyệt...' : 'Duyệt đơn'}
+                  {isCloning === viewOrder.id ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                  <span>Sao chép đơn</span>
                 </button>
-              )}
-              <button
-                onClick={() => setViewOrder(null)}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
-              >
-                Đóng
-              </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleOpenPrint(viewOrder)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
+                  title="In hoặc xuất PDF đơn hàng cho đại lý xem tại chỗ (SN-47)"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>In / Xuất PDF</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {(isAdmin || isSalesManager) && viewOrder.status === 'PENDING' && (
+                  <button
+                    type="button"
+                    onClick={() => void handleApproveOrder(viewOrder)}
+                    disabled={approvingOrder}
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    {approvingOrder ? 'Đang duyệt...' : 'Duyệt đơn'}
+                  </button>
+                )}
+                <button
+                  onClick={() => setViewOrder(null)}
+                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Modal In & Xuất PDF Đơn hàng (SN-47) */}
+      <OrderPrintModal
+        order={printOrder}
+        isOpen={Boolean(printOrder)}
+        onClose={() => setPrintOrder(null)}
+      />
     </>
   );
 };
