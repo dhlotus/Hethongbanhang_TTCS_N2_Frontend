@@ -602,25 +602,17 @@ export const ordersService = {
     }
 
     const customers = await this.getCustomers();
-    const customer = customers.find((c) => c.id === payload.customerId);
+    const targetCustomer = customers.find((c) => c.id === payload.customerId);
 
-    if (customer?.status === 'LOCKED') {
+    if (targetCustomer?.status === 'LOCKED') {
       throw new Error(
-        `Đại lý "${customer.name}" đang bị KHÓA GIAO DỊCH (Lý do: ${customer.lockReason || 'Không xác định'}). Không thể tạo đơn hàng mới!`,
+        `Đại lý "${targetCustomer.name}" đang bị KHÓA GIAO DỊCH (Lý do: ${targetCustomer.lockReason || 'Không xác định'}). Không thể tạo đơn hàng mới!`,
       );
-    }
-
-    if (!isDemo) {
-      try {
-        const res = await apiClient.post<Order>('/orders', payload);
-        return res.data;
-      } catch {
-        // Fallback sang local simulation khi backend chưa sẵn sàng
-      }
     }
 
     const storedCustomers = customerService.getStoredCustomers();
     const customer =
+      targetCustomer ||
       storedCustomers.find((c) => c.id === payload.customerId) ||
       DEMO_CUSTOMERS.find((c) => c.id === payload.customerId);
     if (!customer) throw new Error('Không tìm thấy thông tin đại lý');
