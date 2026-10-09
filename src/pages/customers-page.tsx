@@ -22,6 +22,7 @@ import {
 import { showToast } from '../components/toast';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
 import { LockAgencyModal } from '../components/lock-agency-modal';
+import { Pagination } from '../components/pagination';
 import { customerService } from '../services/customer.service';
 import type { Customer, CreateCustomerPayload, DeliveryPoint } from '../types/customer.types';
 
@@ -42,6 +43,10 @@ export const CustomersPage: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedRegion, setSelectedRegion] = useState<string>('ALL');
+
+  // Phân trang danh sách đại lý (10 - 20 - 50 dòng/trang)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   // Modal quản lý điểm giao hàng (SN-31 & SN-32)
   const [selectedCustomerForDelivery, setSelectedCustomerForDelivery] = useState<Customer | null>(
@@ -136,6 +141,28 @@ export const CustomersPage: React.FC = () => {
       return matchSearch && matchGroup && matchStatus && matchRegion;
     });
   }, [customers, searchInput, selectedGroup, selectedStatus, selectedRegion]);
+
+  // Tự động reset về trang 1 khi thay đổi điều kiện tìm kiếm / lọc
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchInput, selectedGroup, selectedStatus, selectedRegion]);
+
+  // Tính toán phân trang
+  const totalItems = filteredCustomers.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  // Tự động điều chỉnh trang hiện tại nếu vượt quá tổng số trang sau khi lọc
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  // Danh sách đại lý được phân chia trang hiển thị thực tế
+  const paginatedCustomers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredCustomers.slice(start, start + pageSize);
+  }, [filteredCustomers, currentPage, pageSize]);
 
   // Thống kê nhanh KPI
   const stats = useMemo(() => {
@@ -327,7 +354,7 @@ export const CustomersPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 py-4">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 py-4 pb-24">
       {/* ── HEADER CTA ── */}
       <div className="flex items-center justify-end gap-2.5 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
         <button
@@ -497,7 +524,7 @@ export const CustomersPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredCustomers.map((customer) => {
+                {paginatedCustomers.map((customer) => {
                   const debtPercent =
                     customer.creditLimit > 0
                       ? Math.min(
@@ -691,6 +718,27 @@ export const CustomersPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* ── THANH PHÂN TRANG NỔI TÁCH RỜI (STICKY FLOATING BOTTOM) ── */}
+      {!loading && filteredCustomers.length > 0 && (
+        <div className="sticky bottom-4 z-30 transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
+          <Pagination
+            variant="floating"
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            pageSizeOptions={[10, 20, 50]}
+            itemLabel="đại lý"
+            showFirstLast={true}
+            onPageChange={(page) => setCurrentPage(page)}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setCurrentPage(1);
+            }}
+          />
+        </div>
+      )}
 
       {/* ── MODAL THÊM ĐẠI LÝ MỚI (TƯƠNG THÍCH ĐỒNG BỘ 100%) ── */}
       {isCreateModalOpen && (
