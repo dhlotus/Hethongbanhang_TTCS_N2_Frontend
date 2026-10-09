@@ -183,3 +183,12 @@ export interface ConfirmImportResult {
   error: number;
   errorDetails: string[];
 }
+
+export interface ProductPriceHistory {
+  id: string;
+  productId: string;
+  oldPrice: number;
+  newPrice: number;
+  changedBy: string;
+  changedAt: string;
+}

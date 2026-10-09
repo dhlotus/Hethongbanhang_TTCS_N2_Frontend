@@ -686,4 +686,146 @@ body {
   animation: popoverFromAvatarIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* ========================================================================= */
+/* 61. RESPONSIVE BREAKPOINTS & FLUID LAYOUT UTILITIES (UI_GUIDELINES)       */
+/* Mobile: < 768px | Tablet: 768px - 1023px | Desktop: >= 1024px            */
+/* ========================================================================= */
+:root {
+  --breakpoint-mobile: 768px;
+  --breakpoint-tablet: 1024px;
+  --touch-target-min: 44px;
+}
+
+/* 63. Touch Target Utility (Đạt chuẩn tối thiểu 44x44px cho thao tác cảm ứng) */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* 64, 65 & 71. Accessible Keyboard Focus Indicator (WCAG 2.2 AA Compliant) */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[role="menuitem"]:focus-visible,
+[role="tab"]:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 67. Screen Reader Only Utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* 68. Zoom & Font Scaling Safeguards (Hạn chế tối đa rách chữ khi zoom tới 200%) */
+html {
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+.break-word-safe {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* ========================================================================= */
+/* 69 - 78. INTERACTION STATES & MOTION SYSTEM (UI_GUIDELINES)               */
+/* ========================================================================= */
+:root {
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 250ms;
+  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 69. Hover: Thay đổi nhẹ nền/viền/màu chữ, không xê dịch layout */
+.hover-subtle {
+  transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+.hover-subtle:hover {
+  background-color: var(--color-surface);
+}
+
+/* 70. Active: Trạng thái đang được chọn rõ ràng, phân biệt với Hover/Focus */
+.active-item {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* 71. Focus Ring Utility */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--color-primary-ring);
+}
+
+/* 72 & 77. Pressed & Micro-interaction: Phản hồi xúc giác nhanh, mượt */
+.active-press {
+  transition: transform var(--duration-fast) ease, opacity var(--duration-fast) ease;
+}
+.active-press:active {
+  transform: scale(0.98);
+}
+
+/* 73. Disabled: Nhận biết rõ, chặn thao tác */
+.disabled-control {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+}
+
+/* 75. Standard Transition (150-250ms tối ưu trên opacity/transform/color) */
+.transition-smooth {
+  transition: all var(--duration-normal) var(--ease-standard);
+}
+
+/* 78. Page Transition: Chuyển trang nhanh (180ms), nhẹ nhàng, không giật layout */
+@keyframes pageSlideFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition {
+  animation: pageSlideFadeIn 180ms ease-out both;
+}
+
+/* 75, 76 & 78. Tôn trọng thiết lập prefers-reduced-motion của người dùng */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+
 

@@ -4,16 +4,21 @@ import { AlertCircle } from "lucide-react";
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string;
+  helperText?: string;
   leftIcon?: React.ReactNode;
   rightElement?: React.ReactNode;
   required?: boolean;
 }
 
 /**
- * Component Input chuẩn UI/UX cao cấp cho hệ thống LOHA SALES (h-10.5/h-11, radius-md: 8px, clean focus)
+ * Component Input chuẩn UI/UX cao cấp cho hệ thống LOHA SALES (UI_GUIDELINES Section 12)
+ * - Label rõ ràng, dấu required *
+ * - Focus Ring Primary Brand Color (#371cdb)
+ * - Trạng thái Error với màu Error và AlertCircle
+ * - Hỗ trợ helperText, leftIcon, rightElement
  */
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, leftIcon, rightElement, required, id, className = "", ...props }, ref) => {
+  ({ label, error, helperText, leftIcon, rightElement, required, id, className = "", ...props }, ref) => {
     const inputId = id || props.name;
 
     return (
@@ -48,12 +53,16 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             </div>
           )}
         </div>
-        {error && (
+        {error ? (
           <p className="mt-2 text-xs text-rose-600 flex items-center gap-2 font-medium">
             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
             <span>{error}</span>
           </p>
-        )}
+        ) : helperText ? (
+          <p className="mt-1.5 text-xs text-slate-500">
+            {helperText}
+          </p>
+        ) : null}
       </div>
     );
   },

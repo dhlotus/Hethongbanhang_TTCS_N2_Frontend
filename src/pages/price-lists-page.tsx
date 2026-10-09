@@ -14,7 +14,7 @@ import {
   Unlock,
   ChevronLeft,
   ChevronRight,
-  GitBranch,
+  MoreVertical,
   X,
   FileSpreadsheet,
   Calendar,
@@ -37,16 +37,20 @@ import type {
 
 const CUSTOMER_GROUP_TABS: { key: string; label: string }[] = [
   { key: 'ALL', label: 'Tất cả Nhóm' },
-  { key: 'AGENT_LEVEL_1', label: 'Đại lý Cấp 1 (NPP)' },
+  { key: 'AGENT_LEVEL_1', label: 'Đại lý Cấp 1' },
   { key: 'AGENT_LEVEL_2', label: 'Đại lý Cấp 2' },
   { key: 'RETAIL', label: 'Bán lẻ Niêm yết' },
 ];
 
+/** Định dạng ngày hiển thị chuẩn Việt Nam: DD/MM/YYYY */
 const formatDate = (dateStr?: string): string => {
   if (!dateStr) return '---';
   try {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('vi-VN');
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
   } catch {
     return dateStr;
   }
@@ -58,7 +62,7 @@ export const PriceListsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
+  const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [activeTab, setActiveTab] = useState<'BASE' | 'DISCOUNT'>('BASE');
 
@@ -67,6 +71,9 @@ export const PriceListsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<PriceListStatusType | 'ALL'>('ALL');
+
+  // Quản lý dropdown thao tác 3 chấm
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
 
   // Modals state
   const [formModalOpen, setFormModalOpen] = useState(false);
@@ -87,6 +94,17 @@ export const PriceListsPage: React.FC = () => {
     userRoles.includes('ADMIN') ||
     userRoles.includes('SALES_MANAGER') ||
     userRoles.includes('SALES_REP');
+
+  // Đóng dropdown thao tác khi click ra ngoài
+  useEffect(() => {
+    const handleDocClick = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.action-menu-dropdown-container')) {
+        setOpenActionMenuId(null);
+      }
+    };
+    document.addEventListener('click', handleDocClick);
+    return () => document.removeEventListener('click', handleDocClick);
+  }, []);
 
   // Debounce ô tìm kiếm sau 300ms
   useEffect(() => {
@@ -132,18 +150,20 @@ export const PriceListsPage: React.FC = () => {
     loadPriceLists();
   }, [loadPriceLists]);
 
-  // Thống kê Metrics Header (tính toán dựa trên dữ liệu hiện tại hoặc tổng quát)
+  // Thống kê Metrics Header
   const metrics = useMemo(() => {
     const all = priceLists;
     const activeCount = all.filter((p) => p.status === 'ACTIVE').length;
     const expiredCount = all.filter((p) => p.status === 'EXPIRED').length;
     const draftCount = all.filter((p) => p.status === 'DRAFT').length;
+    const inactiveCount = all.filter((p) => p.status === 'INACTIVE').length;
 
     return {
       totalCount: total,
       activeCount,
       expiredCount,
       draftCount,
+      inactiveCount,
     };
   }, [priceLists, total]);
 
@@ -244,7 +264,7 @@ export const PriceListsPage: React.FC = () => {
       case 'AGENT_LEVEL_1':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-700/20">
-            Đại lý Cấp 1 (NPP)
+            Đại lý Cấp 1
           </span>
         );
       case 'AGENT_LEVEL_2':
@@ -327,388 +347,474 @@ export const PriceListsPage: React.FC = () => {
 
       {activeTab === 'BASE' ? (
         <>
-          {/* 2. Metrics Header: 4 Thẻ chỉ số tổng quan */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Tổng số bảng giá */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/10 shrink-0">
-            <FileSpreadsheet className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              {metrics.totalCount}
-            </div>
-            <div className="text-xs font-medium text-slate-500">Tổng số bảng giá</div>
-          </div>
-        </div>
+          {/* 2. Metrics Header: Hiển thị linh hoạt theo trạng thái được chọn */}
+          <div
+            className={`grid gap-4 ${
+              selectedStatus === 'ALL'
+                ? 'grid-cols-2 lg:grid-cols-4'
+                : 'grid-cols-1 max-w-sm'
+            }`}
+          >
+            {/* Card 1: Tổng số bảng giá (Chỉ hiển thị khi chọn Tất cả Trạng thái) */}
+            {selectedStatus === 'ALL' && (
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/10 shrink-0">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                    {metrics.totalCount}
+                  </div>
+                  <div className="text-xs font-medium text-slate-500">Tổng số bảng giá</div>
+                </div>
+              </div>
+            )}
 
-        {/* Card 2: Đang hiệu lực */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3.5">
-          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/10 shrink-0">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-2xl font-extrabold text-emerald-700 tracking-tight">
-              {metrics.activeCount}
-            </div>
-            <div className="text-xs font-medium text-slate-500">Đang hiệu lực (Active)</div>
-          </div>
-        </div>
+            {/* Card 2: Đang hiệu lực */}
+            {(selectedStatus === 'ALL' || selectedStatus === 'ACTIVE') && (
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3.5">
+                <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/10 shrink-0">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-2xl font-extrabold text-emerald-700 tracking-tight">
+                    {metrics.activeCount}
+                  </div>
+                  <div className="text-xs font-medium text-slate-500">Đang hiệu lực</div>
+                </div>
+              </div>
+            )}
 
-        {/* Card 3: Bản nháp */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-500/10 shrink-0">
-            <FileEdit className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-2xl font-extrabold text-amber-700 tracking-tight">
-              {metrics.draftCount}
-            </div>
-            <div className="text-xs font-medium text-slate-500">Bản nháp (Draft)</div>
-          </div>
-        </div>
+            {/* Card 3: Bản nháp */}
+            {(selectedStatus === 'ALL' || selectedStatus === 'DRAFT') && (
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-500/10 shrink-0">
+                  <FileEdit className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-2xl font-extrabold text-amber-700 tracking-tight">
+                    {metrics.draftCount}
+                  </div>
+                  <div className="text-xs font-medium text-slate-500">Bản nháp</div>
+                </div>
+              </div>
+            )}
 
-        {/* Card 4: Đã hết hạn */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-rose-50 text-rose-600 ring-1 ring-rose-500/10 shrink-0">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-2xl font-extrabold text-rose-700 tracking-tight">
-              {metrics.expiredCount}
-            </div>
-            <div className="text-xs font-medium text-slate-500">Đã hết hạn (Expired)</div>
-          </div>
-        </div>
-      </div>
+            {/* Card 4: Đã hết hạn */}
+            {(selectedStatus === 'ALL' || selectedStatus === 'EXPIRED') && (
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-rose-50 text-rose-600 ring-1 ring-rose-500/10 shrink-0">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-2xl font-extrabold text-rose-700 tracking-tight">
+                    {metrics.expiredCount}
+                  </div>
+                  <div className="text-xs font-medium text-slate-500">Đã hết hạn</div>
+                </div>
+              </div>
+            )}
 
-      {/* 3. Filter Toolbar: Tabs nhóm khách hàng, Search Box, Dropdown Trạng thái */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-4">
-        {/* Tabs Nhóm khách hàng */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100 text-xs">
-          {CUSTOMER_GROUP_TABS.map((tab) => {
-            const isActive = selectedGroup === tab.key;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => {
-                  setSelectedGroup(tab.key);
-                  setPage(1);
-                }}
-                className={`px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-2xs'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-          {/* Ô Tìm kiếm theo tên / mã */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Tìm theo mã bảng giá, tên bảng giá hoặc ghi chú..."
-              className="w-full pl-9.5 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-medium"
-            />
-            {searchInput && (
-              <button
-                type="button"
-                onClick={() => setSearchInput('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+            {/* Card 5: Tạm dừng (nếu lọc riêng INACTIVE) */}
+            {selectedStatus === 'INACTIVE' && (
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-500/10 shrink-0">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-2xl font-extrabold text-amber-700 tracking-tight">
+                    {metrics.inactiveCount}
+                  </div>
+                  <div className="text-xs font-medium text-slate-500">Tạm dừng</div>
+                </div>
+              </div>
             )}
           </div>
 
-          {/* Lọc Trạng thái */}
-          <div className="sm:w-44">
-            <select
-              value={selectedStatus}
-              onChange={(e) => {
-                setSelectedStatus(e.target.value as PriceListStatusType | 'ALL');
-                setPage(1);
-              }}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
-            >
-              <option value="ALL">Tất cả Trạng thái</option>
-              <option value="ACTIVE">Đang hiệu lực (Active)</option>
-              <option value="DRAFT">Bản nháp (Draft)</option>
-              <option value="INACTIVE">Tạm dừng (Inactive)</option>
-              <option value="EXPIRED">Đã hết hạn (Expired)</option>
-            </select>
+          {/* 3. Filter Toolbar: Tabs nhóm khách hàng, Search Box, Dropdown Trạng thái */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-4">
+            {/* Tabs Nhóm khách hàng */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100 text-xs">
+              {CUSTOMER_GROUP_TABS.map((tab) => {
+                const isActive = selectedGroup === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => {
+                      setSelectedGroup(tab.key);
+                      setPage(1);
+                    }}
+                    className={`px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                      isActive
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              {/* Ô Tìm kiếm theo tên / mã */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Tìm theo mã bảng giá, tên bảng giá hoặc ghi chú..."
+                  className="w-full pl-9.5 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-medium"
+                />
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchInput('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Lọc Trạng thái (Việt hóa hoàn toàn, không có từ tiếng Anh trong ngoặc) */}
+              <div className="sm:w-44">
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => {
+                    setSelectedStatus(e.target.value as PriceListStatusType | 'ALL');
+                    setPage(1);
+                  }}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+                >
+                  <option value="ALL">Tất cả Trạng thái</option>
+                  <option value="ACTIVE">Đang hiệu lực</option>
+                  <option value="DRAFT">Bản nháp</option>
+                  <option value="INACTIVE">Tạm dừng</option>
+                  <option value="EXPIRED">Đã hết hạn</option>
+                </select>
+              </div>
+
+              {/* Nút Làm mới */}
+              <button
+                type="button"
+                onClick={loadPriceLists}
+                disabled={loading}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                title="Tải lại danh sách"
+              >
+                <RefreshCw className={`h-4 w-4 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`} />
+                <span className="hidden sm:inline">Làm mới</span>
+              </button>
+
+              {/* Nút Thêm mới bảng giá */}
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={handleOpenCreateModal}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Thêm mới bảng giá</span>
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Nút Làm mới */}
-          <button
-            type="button"
-            onClick={loadPriceLists}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer shrink-0 disabled:opacity-50"
-            title="Tải lại danh sách"
-          >
-            <RefreshCw className={`h-4 w-4 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`} />
-            <span className="hidden sm:inline">Làm mới</span>
-          </button>
-
-          {/* Nút Thêm mới bảng giá */}
-          {canManage && (
-            <button
-              type="button"
-              onClick={handleOpenCreateModal}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+          {/* 4. Table: Danh sách Bảng giá */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
+            <div
+              className="overflow-auto max-h-[calc(100vh-270px)] relative [scrollbar-width:thin] [scrollbar-color:#E5E7EB_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#E5E7EB] hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: '#E5E7EB transparent' }}
             >
-              <Plus className="h-4 w-4" />
-              <span>Thêm mới bảng giá</span>
-            </button>
-          )}
-        </div>
-      </div>
+              <table className="w-full text-left text-xs border-separate border-spacing-0">
+                <thead>
+                  <tr className="text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                    <th className="sticky top-0 left-0 z-30 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-12 min-w-12 text-center">STT</th>
+                    <th className="sticky top-0 left-12 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 min-w-[180px]">Mã & Phiên bản</th>
+                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 min-w-[220px]">Tên Bảng giá</th>
+                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36">Nhóm áp dụng</th>
+                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-44">Thời gian hiệu lực</th>
+                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-32">Trạng thái</th>
+                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-40 text-center">Ràng buộc Đơn hàng</th>
+                    <th className="sticky top-0 right-0 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 w-20 min-w-20 text-center">Thao tác</th>
+                  </tr>
+                </thead>
 
-      {/* 4. Table: Danh sách Bảng giá */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
-        <div className="overflow-auto max-h-[calc(100vh-270px)] relative">
-          <table className="w-full text-left text-xs border-separate border-spacing-0">
-            <thead>
-              <tr className="text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
-                <th className="sticky top-0 left-0 z-30 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-12 min-w-12 text-center">STT</th>
-                <th className="sticky top-0 left-12 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 min-w-[200px]">Mã & Phiên bản</th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 min-w-[240px]">Tên Bảng giá</th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-40">Nhóm áp dụng</th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-48">Thời gian hiệu lực</th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36">Trạng thái</th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-44 text-center">Ràng buộc Đơn hàng</th>
-                <th className="sticky top-0 right-0 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 w-36 min-w-36 text-center">Thao tác</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {loading ? (
-                <PriceListsTableSkeleton count={6} />
-              ) : priceLists.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400 border-b border-slate-100">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <FileSpreadsheet className="w-8 h-8 text-slate-300" />
-                      <p className="font-semibold text-slate-600 text-sm">Không tìm thấy bảng giá nào</p>
-                      <p className="text-xs text-slate-400">
-                        Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc nhóm khách hàng / trạng thái.
-                      </p>
-                      {(searchTerm || selectedGroup !== 'ALL' || selectedStatus !== 'ALL') && (
-                        <button
-                          type="button"
-                          onClick={handleResetFilters}
-                          className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 shadow-2xs transition-all cursor-pointer active:scale-95"
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />
-                          <span>Đặt lại bộ lọc</span>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                priceLists.map((pl, idx) => {
-                  const isLocked = pl.hasOrders;
-
-                  return (
-                    <tr
-                      key={pl.id}
-                      className="hover:bg-slate-50/70 transition-colors group"
-                    >
-                      {/* STT */}
-                      <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors border-b border-slate-100 py-3.5 px-4 text-center text-slate-400 font-mono text-[11px] w-12 min-w-12">
-                        {(page - 1) * limit + idx + 1}
-                      </td>
-
-                      {/* Mã bảng giá & Badge Version */}
-                      <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 py-3.5 px-4">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-mono font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                            {pl.code}
-                          </span>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-700">
-                            v{pl.version}.0
-                          </span>
-                        </div>
-                        {pl.parentVersionId && (
-                          <div className="flex items-center gap-1 text-[11px] text-[var(--color-primary)] mt-0.5">
-                            <GitBranch className="w-3 h-3" />
-                            <span>Nhân bản từ v{pl.version - 1}.0</span>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Tên bảng giá & Mô tả */}
-                      <td className="border-b border-slate-100 py-3.5 px-4">
-                        <div className="font-semibold text-slate-900 leading-snug">
-                          {pl.name}
-                        </div>
-                        {pl.description && (
-                          <div className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                            {pl.description}
-                          </div>
-                        )}
-                        <div className="text-[10px] text-slate-400 mt-0.5">
-                          {pl.items?.length || 0} mặt hàng được định giá
-                        </div>
-                      </td>
-
-                      {/* Nhóm áp dụng */}
-                      <td className="border-b border-slate-100 py-3.5 px-4">
-                        {renderCustomerGroupBadge(pl.customerGroup)}
-                      </td>
-
-                      {/* Thời gian hiệu lực */}
-                      <td className="border-b border-slate-100 py-3.5 px-4 text-slate-600 font-medium">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>
-                            {formatDate(pl.startDate)} - {formatDate(pl.endDate)}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Trạng thái */}
-                      <td className="border-b border-slate-100 py-3.5 px-4">
-                        {renderStatusBadge(pl.status)}
-                      </td>
-
-                      {/* Ràng buộc đơn hàng */}
-                      <td className="border-b border-slate-100 py-3.5 px-4 text-center">
-                        {isLocked ? (
-                          <div
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 text-[11px] font-semibold ring-1 ring-inset ring-amber-600/30"
-                            title="Bảng giá này đã có đơn hàng. Khóa sửa trực tiếp, hỗ trợ Clone Version."
-                          >
-                            <Lock className="w-3.5 h-3.5 text-amber-600" />
-                            <span>Đã có đơn hàng</span>
-                          </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-50 text-slate-600 text-[11px] font-medium ring-1 ring-inset ring-slate-300/40">
-                            <Unlock className="w-3.5 h-3.5 text-slate-400" />
-                            <span>Chưa có đơn</span>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Thao tác (Xem, Sửa, Clone, Xóa) */}
-                      <td className="sticky right-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 py-3.5 px-4 text-center w-36 min-w-36">
-                        <div className="flex items-center justify-center gap-1.5">
-                          {/* Xem chi tiết */}
-                          <button
-                            type="button"
-                            onClick={() => handleOpenViewModal(pl)}
-                            className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
-                            title="Xem chi tiết bảng giá"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-
-                          {/* Chỉnh sửa */}
-                          {canManage && (
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {loading ? (
+                    <PriceListsTableSkeleton count={6} />
+                  ) : priceLists.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-slate-400 border-b border-slate-100">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <FileSpreadsheet className="w-8 h-8 text-slate-300" />
+                          <p className="font-semibold text-slate-600 text-sm">Không tìm thấy bảng giá nào</p>
+                          <p className="text-xs text-slate-400">
+                            Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc nhóm khách hàng / trạng thái.
+                          </p>
+                          {(searchTerm || selectedGroup !== 'ALL' || selectedStatus !== 'ALL') && (
                             <button
                               type="button"
-                              onClick={() => handleOpenEditModal(pl)}
-                              disabled={isLocked}
-                              className={`p-1.5 rounded-lg transition-colors ${
-                                isLocked
-                                  ? 'text-slate-300 cursor-not-allowed opacity-50 bg-slate-50'
-                                  : 'text-slate-500 hover:text-amber-600 hover:bg-amber-50 cursor-pointer'
-                              }`}
-                              title={
-                                isLocked
-                                  ? 'Bảng giá đã có đơn hàng - Tuyệt đối không thể sửa trực tiếp (Vui lòng nhân bản)'
-                                  : 'Chỉnh sửa bảng giá'
-                              }
+                              onClick={handleResetFilters}
+                              className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 shadow-2xs transition-all cursor-pointer active:scale-95"
                             >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                          )}
-
-                          {/* Clone Version */}
-                          {canManage && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenCloneModal(pl)}
-                              className="p-1.5 text-slate-500 hover:text-[var(--color-primary)] rounded-lg hover:bg-[var(--color-primary-light)] transition-colors cursor-pointer"
-                              title="Tạo phiên bản mới (Clone Version)"
-                            >
-                              <Copy className="w-4 h-4" />
-                            </button>
-                          )}
-
-                          {/* Xóa */}
-                          {canManage && (
-                            <button
-                              type="button"
-                              onClick={() => handlePromptDelete(pl)}
-                              disabled={isLocked}
-                              className={`p-1.5 rounded-lg transition-colors ${
-                                isLocked
-                                  ? 'text-slate-300 cursor-not-allowed opacity-50 bg-slate-50'
-                                  : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'
-                              }`}
-                              title={
-                                isLocked
-                                  ? 'Bảng giá đã có đơn hàng - Không thể xóa để bảo đảm toàn vẹn dữ liệu'
-                                  : 'Xóa bảng giá'
-                              }
-                            >
-                              <Trash2 className="w-4 h-4" />
+                              <RotateCcw className="h-4 w-4" />
+                              <span>Đặt lại bộ lọc</span>
                             </button>
                           )}
                         </div>
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                  ) : (
+                    priceLists.map((pl, idx) => {
+                      const isLocked = pl.hasOrders;
 
-        {/* Phân trang (Pagination) */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 bg-slate-50/60 text-xs text-slate-500">
-          <div>
-            Hiển thị <strong>{priceLists.length}</strong> trên tổng số <strong>{total}</strong> bảng
-            giá
+                      return (
+                        <tr
+                          key={pl.id}
+                          className="hover:bg-slate-50/70 transition-colors group"
+                        >
+                          {/* STT */}
+                          <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors border-b border-slate-100 py-3.5 px-4 text-center text-slate-400 font-mono text-[11px] w-12 min-w-12">
+                            {(page - 1) * limit + idx + 1}
+                          </td>
+
+                          {/* 1. Mã bảng giá & Badge Version (Chỉ hiện badge từ v2 trở đi) */}
+                          <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 py-3.5 px-4">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-mono font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                                {pl.code}
+                              </span>
+                              {pl.version > 1 && (
+                                <span
+                                  className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-50 text-blue-700 border border-blue-200/60 cursor-help"
+                                  title={`Phiên bản v${pl.version}.0 nhân bản từ v${pl.version - 1}.0`}
+                                >
+                                  v{pl.version}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* 2. Tên bảng giá (Chỉ hiển thị duy nhất tên bảng giá) */}
+                          <td className="border-b border-slate-100 py-3.5 px-4">
+                            <div className="font-semibold text-slate-900 leading-snug">
+                              {pl.name}
+                            </div>
+                          </td>
+
+                          {/* 3. Nhóm áp dụng */}
+                          <td className="border-b border-slate-100 py-3.5 px-4">
+                            {renderCustomerGroupBadge(pl.customerGroup)}
+                          </td>
+
+                          {/* 4. Thời gian hiệu lực: DD/MM/YYYY - DD/MM/YYYY */}
+                          <td className="border-b border-slate-100 py-3.5 px-4 text-slate-600 font-medium">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span>
+                                {formatDate(pl.startDate)} - {formatDate(pl.endDate)}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Trạng thái */}
+                          <td className="border-b border-slate-100 py-3.5 px-4">
+                            {renderStatusBadge(pl.status)}
+                          </td>
+
+                          {/* Ràng buộc đơn hàng */}
+                          <td className="border-b border-slate-100 py-3.5 px-4 text-center">
+                            {isLocked ? (
+                              <div
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 text-[11px] font-semibold ring-1 ring-inset ring-amber-600/30"
+                                title="Bảng giá này đã có đơn hàng. Khóa sửa trực tiếp, hỗ trợ Clone Version."
+                              >
+                                <Lock className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Đã có đơn hàng</span>
+                              </div>
+                            ) : (
+                              <div
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-50 text-slate-600 text-[11px] font-medium ring-1 ring-inset ring-slate-300/40"
+                              >
+                                <Unlock className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Chưa có đơn</span>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* 5. Cột Thao tác: Nút 3 chấm ⋮ duy nhất với Smart Dropdown Menu (Dropup) */}
+                          <td className="sticky right-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 py-3.5 px-4 text-center w-20 min-w-20">
+                            <div className="relative inline-block text-left action-menu-dropdown-container">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenActionMenuId(openActionMenuId === pl.id ? null : pl.id);
+                                }}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                                title="Thao tác"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
+
+                              {openActionMenuId === pl.id && (() => {
+                                // Smart Placement: Mở ngược lên trên nếu dòng ở nửa dưới bảng hoặc 2 dòng cuối
+                                const isDropUp =
+                                  idx >= Math.max(1, priceLists.length - 2) ||
+                                  (priceLists.length > 3 && idx >= Math.floor(priceLists.length / 2));
+                                return (
+                                  <div
+                                    className={`absolute right-0 ${
+                                      isDropUp ? 'bottom-full mb-1 origin-bottom-right' : 'top-full mt-1 origin-top-right'
+                                    } w-44 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 text-left`}
+                                  >
+                                    {/* 1. Xem chi tiết */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenuId(null);
+                                        handleOpenViewModal(pl);
+                                      }}
+                                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                    >
+                                      <Eye className="w-4 h-4 text-slate-500" />
+                                      <span>Xem chi tiết</span>
+                                    </button>
+
+                                    {/* 2. Chỉnh sửa */}
+                                    {canManage && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOpenActionMenuId(null);
+                                          handleOpenEditModal(pl);
+                                        }}
+                                        disabled={isLocked}
+                                        className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
+                                          isLocked
+                                            ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
+                                            : 'text-slate-700 hover:bg-slate-50 cursor-pointer'
+                                        }`}
+                                        title={
+                                          isLocked
+                                            ? 'Bảng giá đã có đơn hàng - Không thể sửa trực tiếp (Vui lòng nhân bản)'
+                                            : 'Chỉnh sửa bảng giá'
+                                        }
+                                      >
+                                        <Edit2 className="w-4 h-4 text-amber-500" />
+                                        <span>Chỉnh sửa</span>
+                                      </button>
+                                    )}
+
+                                    {/* 3. Nhân bản */}
+                                    {canManage && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOpenActionMenuId(null);
+                                          handleOpenCloneModal(pl);
+                                        }}
+                                        className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                      >
+                                        <Copy className="w-4 h-4 text-blue-500" />
+                                        <span>Nhân bản (Copy)</span>
+                                      </button>
+                                    )}
+
+                                    {/* 4. Xóa */}
+                                    {canManage && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOpenActionMenuId(null);
+                                          handlePromptDelete(pl);
+                                        }}
+                                        disabled={isLocked}
+                                        className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
+                                          isLocked
+                                            ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
+                                            : 'text-rose-600 hover:bg-rose-50 cursor-pointer'
+                                        }`}
+                                        title={
+                                          isLocked
+                                            ? 'Bảng giá đã có đơn hàng - Không thể xóa để bảo toàn dữ liệu'
+                                            : 'Xóa bảng giá'
+                                        }
+                                      >
+                                        <Trash2 className="w-4 h-4 text-rose-500" />
+                                        <span>Xóa</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 6. Phân trang & Chọn số dòng/trang */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 bg-slate-50/60 text-xs text-slate-500">
+              <div>
+                Hiển thị <strong>{priceLists.length}</strong> trên tổng số <strong>{total}</strong> bảng
+                giá
+              </div>
+
+              <div className="flex items-center gap-3">
+                {/* Select box chọn số dòng/trang */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500">Số dòng/trang:</span>
+                  <select
+                    value={limit}
+                    onChange={(e) => {
+                      setLimit(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className="px-2 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value={10}>10 dòng/trang</option>
+                    <option value={20}>20 dòng (Chuẩn)</option>
+                    <option value={50}>50 dòng/trang</option>
+                    <option value={100}>100 dòng/trang</option>
+                  </select>
+                </div>
+
+                {/* Nút chuyển trang */}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  <span className="px-2 font-medium">
+                    Trang {page} / {totalPages || 1}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-
-            <span className="px-2 font-medium">
-              Trang {page} / {totalPages || 1}
-            </span>
-
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* 5. Modal Khai báo & Chỉnh sửa Bảng giá */}
       <PriceListFormModal

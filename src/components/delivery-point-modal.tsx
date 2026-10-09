@@ -202,7 +202,7 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200">
+      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-lg overflow-hidden border border-slate-200">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -239,7 +239,7 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
                 onClick={handleOpenAddForm}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-medium rounded-lg shadow-sm transition-all"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-4 h-4" />
                 Thêm điểm giao mới
               </button>
             </div>
@@ -351,9 +351,9 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-medium rounded-lg shadow-sm disabled:opacity-50 transition-all"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white text-xs font-medium rounded-lg shadow-sm disabled:opacity-50 transition-all cursor-pointer"
                 >
-                  <Save className="w-3.5 h-3.5" />
+                  <Save className="w-4 h-4" />
                   {isSubmitting ? 'Đang lưu...' : formData.id ? 'Cập nhật' : 'Thêm điểm'}
                 </button>
               </div>
@@ -439,18 +439,18 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleOpenEditForm(pt)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-colors"
+                        className="btn-icon text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-colors"
                         title="Chỉnh sửa điểm giao"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDeletePoint(pt.id, pt.name)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        className="btn-icon text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                         title="Xóa điểm giao"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>

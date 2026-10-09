@@ -799,11 +799,11 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleRemoveConversionUnit(idx)}
-                      className="text-slate-400 hover:text-rose-600 transition-colors p-0.5"
+                      className="btn-icon text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                       title="Xóa đơn vị quy đổi này"
                       disabled={isSubmitting}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
@@ -880,9 +880,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   type="button"
                   onClick={handleAddConversionUnit}
                   disabled={isSubmitting}
-                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-colors whitespace-nowrap shadow-xs cursor-pointer"
+                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap shadow-xs cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-4 h-4" />
                   <span>Thêm</span>
                 </button>
               </div>
