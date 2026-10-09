@@ -788,6 +788,24 @@ export const ordersService = {
     return res.data;
   },
 
+  /** Submit an approval decision through the dedicated review endpoint. */
+  async decideOrder(
+    id: string,
+    action: 'APPROVE',
+  ): Promise<Order> {
+    const token = tokenStorage.getAccessToken();
+    if (token?.startsWith('demo-jwt-')) {
+      const all = getStoredDemoOrders();
+      const idx = all.findIndex((order) => order.id === id);
+      if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${id}`);
+      all[idx] = { ...all[idx], status: 'APPROVED', updatedAt: new Date().toISOString() };
+      saveStoredDemoOrders(all);
+      return all[idx];
+    }
+    const res = await apiClient.post<Order>(`/orders/${id}/decision`, { action });
+    return res.data;
+  },
+
   /**
    * Tìm kiếm sản phẩm để thêm vào dòng hàng (dùng mock hoặc API)
    */
@@ -812,7 +830,28 @@ export const ordersService = {
       const products = res.data.data ?? [];
       const stockRows = await inventoryService.getStockOverview();
       const availableBySku = new Map(stockRows.map((stock) => [stock.sku.toUpperCase(), stock.stockQuantity]));
-      return products.map((product) => ({ ...product, stockQuantity: availableBySku.get(product.sku.toUpperCase()) ?? 0, availableStock: availableBySku.get(product.sku.toUpperCase()) ?? 0 }));
+      return products.map((product) => {
+        const knownProduct = MOCK_PRODUCTS.find(
+          (candidate) => candidate.sku.toUpperCase() === product.sku.toUpperCase(),
+        );
+        // Product list responses from older backend data may only include the base unit.
+        // Use the curated packaging options for a matching seeded SKU in that case.
+        const hasPackagingUnits = (product.units ?? []).some(
+          (unit) => unit.conversionRate > 1,
+        );
+        const units = hasPackagingUnits
+          ? product.units
+          : knownProduct?.units?.some((unit) => unit.conversionRate > 1)
+            ? knownProduct.units
+            : product.units;
+        const stockQuantity = availableBySku.get(product.sku.toUpperCase()) ?? 0;
+        return {
+          ...product,
+          units,
+          stockQuantity,
+          availableStock: stockQuantity,
+        };
+      });
     } catch {
       return [];
     }

@@ -1478,6 +1478,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                   {lines.map((line) => {
                     const available = line.availableStock ?? line.stockAvailable ?? 0;
                     const isExceeded = line.quantity > available;
+                    const unitOptions = line.unitOptions?.length
+                      ? line.unitOptions
+                      : [{ unitName: line.baseUnit, conversionRate: 1 }];
                     return (
                     <div
                       key={line.id}
@@ -1526,7 +1529,11 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                             onChange={(e) => handleUpdateLine(line.id!, 'unit', e.target.value)}
                             className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                           >
-                            <option value={line.baseUnit}>{line.baseUnit}</option>
+                            {unitOptions.map((unit) => (
+                              <option key={unit.unitName} value={unit.unitName}>
+                                {unit.unitName}
+                              </option>
+                            ))}
                           </select>
                         </div>
                         <div>
@@ -2252,7 +2259,7 @@ export const OrdersPage: React.FC = () => {
     if (!order.id || approvingOrder) return;
     setApprovingOrder(true);
     try {
-      const approvedOrder = await ordersService.updateOrderStatus(order.id, 'APPROVED');
+      const approvedOrder = await ordersService.decideOrder(order.id, 'APPROVE');
       setOrders((current) => current.map((item) => item.id === approvedOrder.id ? approvedOrder : item));
       setViewOrder((current) => current?.id === approvedOrder.id ? approvedOrder : current);
       showToast('success', `Đã duyệt đơn ${approvedOrder.orderCode || ''}`.trim());
@@ -2745,7 +2752,8 @@ export const OrdersPage: React.FC = () => {
                     <span>Chỉnh sửa / Gõ tiếp</span>
                   </button>
                 )}
-                {(isAdmin || isSalesManager) && viewOrder.status === 'PENDING' && (
+                {(isAdmin || isSalesManager) &&
+                  (viewOrder.status === 'PENDING' || viewOrder.status === 'PENDING_APPROVAL') && (
                   <button
                     type="button"
                     onClick={() => void handleApproveOrder(viewOrder)}
