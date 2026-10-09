@@ -593,6 +593,21 @@ export const ordersService = {
    * Tạo đơn hàng mới (SN-38 & SN-39)
    */
   async createOrder(payload: CreateOrderPayload): Promise<Order> {
+    // Kiểm tra tồn khả dụng theo Task SN-42: Kiểm soát tồn khả dụng
+    for (const line of payload.lines) {
+      const prod = MOCK_PRODUCTS.find((p) => p.id === line.productId || p.sku === line.productSku);
+      const available = prod
+        ? (prod.availableStock ?? prod.availableQuantity ?? prod.stockQuantity)
+        : (line.availableStock ?? line.stockAvailable ?? 9999);
+      const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
+      const maxInUnit = convRate > 1 ? Math.floor(available / convRate) : available;
+      if (line.quantity > maxInUnit) {
+        throw new Error(
+          `Sản phẩm ${line.productName || line.productSku} vượt quá tồn khả dụng (Tồn kho: ${maxInUnit}, Đặt: ${line.quantity})`,
+        );
+      }
+    }
+
     const token = tokenStorage.getAccessToken();
     const isDemo = token?.startsWith('demo-jwt-');
 
@@ -637,19 +652,6 @@ export const ordersService = {
       throw new Error(
         `Đại lý đang có khoản nợ quá hạn ${overdueDays} ngày (vượt quá ${maxDebtDays} ngày cho phép). Hệ thống tạm khóa quyền tạo đơn hàng mới cho đại lý này.`
       );
-    }
-
-    // Kiểm tra tồn khả dụng theo Task SN-39 (Demo fallback)
-    for (const line of payload.lines) {
-      const prod = MOCK_PRODUCTS.find((p) => p.id === line.productId || p.sku === line.productSku);
-      const available = prod ? (prod.availableStock ?? prod.stockQuantity) : (line.stockAvailable ?? 9999);
-      const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
-      const maxInUnit = convRate > 1 ? Math.floor(available / convRate) : available;
-      if (line.quantity > maxInUnit) {
-        throw new Error(
-          `Sản phẩm ${line.productName || line.productSku} vượt quá tồn khả dụng (Còn tối đa ${maxInUnit} ${line.unit})`,
-        );
-      }
     }
 
     // Tính lineTotal từng dòng

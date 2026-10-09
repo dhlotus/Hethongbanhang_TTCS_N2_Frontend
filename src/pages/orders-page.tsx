@@ -55,9 +55,10 @@ import type { Product, ProductUnit } from '../types/products';
 interface LineQuantityInputProps {
   value: number;
   onChangeQty: (newQty: number) => void;
+  isError?: boolean;
 }
 
-const LineQuantityInput: React.FC<LineQuantityInputProps> = ({ value, onChangeQty }) => {
+const LineQuantityInput: React.FC<LineQuantityInputProps> = ({ value, onChangeQty, isError }) => {
   const [localVal, setLocalVal] = useState<string>(() => (value ? String(value) : '1'));
 
   useEffect(() => {
@@ -112,7 +113,11 @@ const LineQuantityInput: React.FC<LineQuantityInputProps> = ({ value, onChangeQt
       onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
-      className="w-full px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-slate-800 bg-white"
+      className={`w-full px-2 py-1.5 text-sm text-center border rounded-lg focus:outline-none font-semibold ${
+        isError
+          ? 'border-rose-400 text-rose-700 bg-rose-50 focus:ring-2 focus:ring-rose-400'
+          : 'border-slate-200 text-slate-800 bg-white focus:ring-2 focus:ring-blue-500'
+      }`}
       placeholder="1"
     />
   );
@@ -547,6 +552,11 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         return;
       }
 
+      const stockAvailable =
+        product.availableStock ??
+        product.availableQuantity ??
+        product.stockQuantity ??
+        0;
       const defaultUnit = product.baseUnit;
       const initialQty = 1;
       const autoDiscount = calculateDiscount(
@@ -571,10 +581,18 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         listPrice: product.price,
         discountPercent: autoDiscount,
         lineTotal: Math.round(initialQty * discPrice),
-        stockAvailable: product.stockQuantity,
+        stockAvailable,
+        availableStock: stockAvailable,
       };
       setLines((prev) => [...prev, newLine]);
       setProductQuery('');
+
+      if (initialQty > stockAvailable) {
+        showToast(
+          'error',
+          `Sản phẩm ${product.name} vượt quá tồn khả dụng (Tồn kho: ${stockAvailable}, Đặt: ${initialQty})`,
+        );
+      }
     },
     [lines, discountPolicies],
   );
@@ -615,6 +633,14 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               : 0;
             const discPrice = updated.listPrice * (1 - autoDiscount / 100);
 
+            const maxStock = updated.availableStock ?? updated.stockAvailable ?? 0;
+            if (qty > maxStock) {
+              showToast(
+                'error',
+                `Sản phẩm ${updated.productName || updated.productSku} vượt quá tồn khả dụng (Tồn kho: ${maxStock}, Đặt: ${qty})`,
+              );
+            }
+
             updated = {
               ...updated,
               quantity: qty,
@@ -637,6 +663,15 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     setLines((prev) => prev.filter((l) => l.id !== lineId));
   }, []);
 
+  /** Đổi nhanh về số lượng tồn khả dụng tối đa (SN-42) */
+  const updateLineQuantity = useCallback(
+    (lineId?: string, qty: number = 0) => {
+      if (!lineId) return;
+      handleUpdateLine(lineId, 'quantity', qty);
+    },
+    [handleUpdateLine],
+  );
+
   // Tính tổng đơn hàng
   const totals = useMemo(() => {
     let subtotal = 0;
@@ -648,7 +683,17 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     return { subtotal, totalDiscount, grandTotal: subtotal - totalDiscount };
   }, [lines]);
 
-  /** Submit tạo đơn hàng (Hỗ trợ luồng kiểm soát công nợ SN-41) */
+  // Kiểm tra tồn khả dụng theo Task SN-42
+  const stockErrors = useMemo(() => {
+    return lines.filter((l) => {
+      const available = l.availableStock ?? l.stockAvailable ?? 0;
+      return l.quantity > available;
+    });
+  }, [lines]);
+
+  const hasStockError = stockErrors.length > 0;
+
+  /** Submit tạo đơn hàng (Hỗ trợ luồng kiểm soát công nợ SN-41 & SN-42) */
   const handleSubmit = async (forceApproval = false) => {
     if (!selectedCustomer) {
       showToast('error', 'Vui lòng chọn đại lý trước khi tạo đơn');
@@ -656,6 +701,19 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     }
     if (lines.length === 0) {
       showToast('error', 'Vui lòng thêm ít nhất 1 sản phẩm vào đơn hàng');
+      return;
+    }
+
+    // Trường hợp 0 (SN-42): Chặn tạo đơn nếu có sản phẩm vượt quá tồn khả dụng
+    const stockExceededLine = lines.find(
+      (l) => l.quantity > (l.availableStock ?? l.stockAvailable ?? 0),
+    );
+    if (stockExceededLine) {
+      const stock = stockExceededLine.availableStock ?? stockExceededLine.stockAvailable ?? 0;
+      showToast(
+        'error',
+        `Sản phẩm ${stockExceededLine.productName || stockExceededLine.productSku} vượt quá tồn khả dụng (Tồn kho: ${stock}, Đặt: ${stockExceededLine.quantity})`,
+      );
       return;
     }
 
@@ -696,6 +754,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           listPrice: l.listPrice,
           discountPercent: l.discountPercent,
           stockAvailable: l.stockAvailable,
+          availableStock: l.availableStock ?? l.stockAvailable,
         })),
         note,
       });
@@ -742,8 +801,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[94vh] flex flex-col shadow-2xl">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="max-h-[90vh] w-full max-w-3xl flex flex-col rounded-xl bg-white shadow-2xl overflow-hidden">
         {/* Header Modal */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
           <div>
@@ -774,7 +833,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         </div>
 
         {/* Nội dung theo bước */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {/* ── BƯỚC 1: Chọn đại lý ── */}
           {step === 1 && (
             <>
@@ -1232,10 +1291,17 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                   <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
                     Danh sách hàng ({lines.length} dòng)
                   </p>
-                  {lines.map((line) => (
+                  {lines.map((line) => {
+                    const available = line.availableStock ?? line.stockAvailable ?? 0;
+                    const isExceeded = line.quantity > available;
+                    return (
                     <div
                       key={line.id}
-                      className="border border-slate-200 rounded-xl p-3 space-y-2 bg-slate-50/50"
+                      className={`border rounded-xl p-3 space-y-2 transition-all ${
+                        isExceeded
+                          ? 'border-rose-300 bg-rose-50/60 shadow-xs'
+                          : 'border-slate-200 bg-slate-50/50'
+                      }`}
                     >
                       {/* Tên sản phẩm + Xóa */}
                       <div className="flex items-start justify-between gap-2">
@@ -1243,7 +1309,13 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                           <p className="text-sm font-medium text-slate-800 truncate">
                             {line.productName}
                           </p>
-                          <p className="text-xs text-slate-500">{line.productSku}</p>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-slate-500">{line.productSku}</span>
+                            <span className="text-slate-300">·</span>
+                            <span className={isExceeded ? 'font-semibold text-rose-600' : 'text-slate-500'}>
+                              Tồn khả dụng: {available} {line.baseUnit}
+                            </span>
+                          </div>
                         </div>
                         <button
                           onClick={() => handleRemoveLine(line.id!)}
@@ -1260,6 +1332,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                           <LineQuantityInput
                             value={line.quantity}
                             onChangeQty={(newQty) => handleUpdateLine(line.id!, 'quantity', newQty)}
+                            isError={isExceeded}
                           />
                         </div>
                         <div>
@@ -1285,6 +1358,31 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                         </div>
                       </div>
 
+                      {/* Thông báo lỗi màu đỏ theo Task SN-42 */}
+                      {isExceeded && (
+                        <div className="flex flex-wrap items-center justify-between gap-1.5 p-2 rounded-lg bg-rose-100/90 border border-rose-300 text-rose-800 text-xs font-semibold">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                            <span>
+                              Sản phẩm {line.productName} vượt quá tồn khả dụng (Tồn: {available}, Đặt: {line.quantity})
+                            </span>
+                          </div>
+                          {available > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => updateLineQuantity(line.id, available)}
+                              className="text-xs text-blue-600 underline font-medium hover:text-blue-800 ml-2 cursor-pointer transition-colors"
+                            >
+                              Đổi về số lượng tối đa ({available})
+                            </button>
+                          ) : (
+                            <span className="text-xs text-rose-600 italic">
+                              (Hết hàng trong kho)
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       {/* Thành tiền */}
                       <div className="flex items-center justify-between pt-1 border-t border-slate-100">
                         <span className="text-xs text-slate-500">
@@ -1295,7 +1393,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                         </span>
                       </div>
                     </div>
-                  ))}
+                  );
+                })}
                 </div>
               )}
 
@@ -1382,6 +1481,40 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 </div>
               )}
 
+              {/* Cảnh báo màu đỏ tổng thể khi vượt tồn khả dụng (SN-42) */}
+              {hasStockError && (
+                <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold text-rose-700">
+                    <ShieldAlert className="w-4 h-4 shrink-0 text-rose-600" />
+                    <span>Cảnh báo SN-42: Vượt quá tồn khả dụng ({stockErrors.length} sản phẩm)</span>
+                  </div>
+                  <ul className="list-disc pl-5 space-y-1 text-rose-900 font-medium">
+                    {stockErrors.map((errLine) => {
+                      const avail = errLine.availableStock ?? errLine.stockAvailable ?? 0;
+                      return (
+                        <li key={errLine.id} className="flex flex-wrap items-center gap-1.5">
+                          <span>
+                            Sản phẩm {errLine.productName} vượt quá tồn khả dụng (Tồn: {avail}, Đặt: {errLine.quantity})
+                          </span>
+                          {avail > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => updateLineQuantity(errLine.id, avail)}
+                              className="text-xs text-blue-600 underline font-medium hover:text-blue-800 ml-1 cursor-pointer"
+                            >
+                              Đổi về số lượng tối đa ({avail})
+                            </button>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <p className="text-[11px] text-rose-600 italic pt-0.5">
+                    Hệ thống khóa nút "Tạo đơn hàng". Vui lòng điều chỉnh lại số lượng đặt.
+                  </p>
+                </div>
+              )}
+
               {/* Tổng kết đơn hàng */}
               {lines.length > 0 && (
                 <div className="border border-blue-100 rounded-xl p-4 bg-blue-50/50 space-y-2">
@@ -1431,12 +1564,20 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 disabled={
                   isSubmitting ||
                   lines.length === 0 ||
+                  hasStockError ||
                   (debtStatus !== null && !debtStatus.canCreateOrder)
                 }
+                title={
+                  hasStockError
+                    ? `Không thể tạo đơn hàng do có sản phẩm vượt quá tồn khả dụng`
+                    : undefined
+                }
                 className={`px-5 py-2 text-sm font-medium text-white rounded-xl transition-colors inline-flex items-center gap-2 cursor-pointer ${
-                  debtStatus &&
-                  debtStatus.creditLimit > 0 &&
-                  debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit
+                  hasStockError
+                    ? 'bg-rose-400 opacity-60 cursor-not-allowed'
+                    : debtStatus &&
+                      debtStatus.creditLimit > 0 &&
+                      debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit
                     ? 'bg-amber-600 hover:bg-amber-700 shadow-sm shadow-amber-600/20'
                     : 'bg-blue-600 hover:bg-blue-700'
                 } disabled:opacity-40 disabled:cursor-not-allowed`}
@@ -1444,6 +1585,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 {isSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
                 {isSubmitting
                   ? 'Đang xử lý...'
+                  : hasStockError
+                  ? 'Vượt tồn khả dụng'
                   : debtStatus &&
                     debtStatus.creditLimit > 0 &&
                     debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit
