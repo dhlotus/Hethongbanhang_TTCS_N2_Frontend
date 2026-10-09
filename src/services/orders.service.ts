@@ -591,7 +591,9 @@ export const ordersService = {
     if (!isDemo) {
       try {
         const res = await apiClient.post<Order>('/orders', payload);
-        this.saveLocalOrder(res.data);
+        const all = getStoredDemoOrders();
+        all.unshift(res.data);
+        saveStoredDemoOrders(all);
         return res.data;
       } catch (apiError: any) {
         if (apiError?.response) {
