@@ -127,3 +127,30 @@
   - âœ… Build Production: `npm run build` (`tsc -b && vite build`) -> 0 lá»—i, build hoÃ n táº¥t.
 
 
+
+### [Sprint 4] - [SN-43]: Giao Di?n G?i Ý M?t Hàng Khi Gõ Ðon & Thêm Nhanh Ðon G?n Nh?t (1-Click Reorder)
+- **Th?i gian hoàn thành:** 2026-10-09
+- **Mã Jira / Task:** SN-43 (Parent Story: SN-39 / S4-04 - Sprint 4)
+- **Tiêu d?:** "Là Nhân viên kinh doanh, tôi mu?n xem l?ch s? mua hàng c?a d?i lý ngay khi gõ don, d? g?i ý dúng m?t hàng khách v?n l?y d?u thay vì ph?i h?i l?i."
+- **Tiêu chí ch?p nh?n (AC) dã d?t 100%:**
+  1. **AC1 - G?i ý m?t hàng thu?ng mua trong 3 tháng:**
+     - Ngay khi Sales Rep ch?n d?i lý, t? d?ng t?i danh sách m?t hàng d?i lý thu?ng l?y trong 3 tháng qua.
+     - Hi?n th? d?y d? thông tin: Tên s?n ph?m, SKU, badge "SL bình quân: X (Ðon v?)", s? l?n dã mua, ngày mua g?n nh?t và s? lu?ng l?n cu?i.
+     - Ô ch?nh nhanh s? lu?ng g?i ý (kh?i t?o m?c d?nh b?ng s? lu?ng bình quân) kèm nút to "+ Thêm vào don" ho?c badge "? Ðã có trong don" n?u hàng dã n?m trong don.
+  2. **AC2 - Thêm nhanh c? nhóm hàng dã mua l?n tru?c (1-Click Reorder):**
+     - Hi?n th? banner/card don hàng thành công g?n nh?t: Mã don, ngày mua, t?ng ti?n và s? lu?ng m?t hàng.
+     - Nút hành d?ng nhanh "? Thêm nhanh nhóm hàng l?n tru?c": 1 ch?m t? d?ng d? toàn b? danh sách m?t hàng và s? lu?ng c?a don cu vào b?ng don hàng dang gõ d?, áp d?ng chi?t kh?u t? d?ng theo chính sách hi?n hành (calculateDiscount) kèm toast thông báo rõ ràng.
+  3. **AC3 - Tuong thích phân quy?n & Tr?i nghi?m th?c d?a (UI_GUIDELINES.md):**
+     - Hi?n th? thông báo thân thi?n n?u không có quy?n ph? trách d?i lý (403 Forbidden).
+     - Phân tách rõ ràng tr?ng thái Ðang t?i (Skeleton), Tr?ng (Empty state: "Ð?i lý chua có l?ch s? mua hàng trong 3 tháng qua").
+     - T?i uu Mobile/Tablet v?i nút b?m to >= 44px, bo góc m?m m?i, h? màu Indigo-Purple d?ng nh?t v?i thuong hi?u LOHA SALES.
+- **Danh sách file t?o m?i / thay d?i:**
+  - src/types/order-suggestion.types.ts (T?o m?i: SuggestedProductItem, LatestOrderItem, LatestOrderSummary, CustomerPurchaseHistoryResponse kh?p 100% v?i Backend).
+  - src/services/order-suggestions.service.ts (T?o m?i: orderSuggestionsService g?i API t?p trung qua piClient kèm fallback demo an toàn).
+  - src/components/order-suggestions-panel.tsx (T?o m?i: Component widget hi?n th? l?ch s? g?i ý 3 tháng và nút 1-click reorder).
+  - src/pages/orders-page.tsx (C?p nh?t: Tích h?p OrderSuggestionsPanel vào Bu?c 2 t?o don hàng, các handler handleAddSuggestedItem và handleReorderPreviousOrder).
+- **Tr?ng thái ki?m th?:**
+  - Frontend ESLint: 
+px eslint -> 0 l?i, 0 warnings.
+  - Frontend Build: 
+pm run build (	sc -b && vite build) -> 0 l?i, build production hoàn t?t trong 2.35s.

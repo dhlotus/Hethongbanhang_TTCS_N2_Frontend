@@ -38,6 +38,8 @@ import {
 } from '../services/discount-policies.service';
 import { getStoredUser } from '../utils/navigation';
 import { Sn40OrderPricingModal } from '../components/sn40-order-pricing-modal';
+import { OrderSuggestionsPanel } from '../components/order-suggestions-panel';
+import type { SuggestedProductItem, LatestOrderItem } from '../types/order-suggestion.types';
 import type {
   Order,
   OrderLine,
@@ -251,6 +253,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   onSaved: _onSaved,
   initialCustomerId,
 }) => {
+  void _editingOrder;
+  void _onSaved;
   const [step, setStep] = useState<1 | 2>(1); // 1=Chọn đại lý, 2=Thêm hàng
 
   // Bước 1: Chọn đại lý
@@ -429,7 +433,10 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     if (open && initialCustomerId && customers.length > 0 && !selectedCustomer) {
       const matched = customers.find((c) => c.id === initialCustomerId);
       if (matched) {
-        void handleSelectCustomer(matched);
+        const timer = setTimeout(() => {
+          void handleSelectCustomer(matched);
+        }, 0);
+        return () => clearTimeout(timer);
       }
     }
   }, [open, initialCustomerId, customers, selectedCustomer, handleSelectCustomer]);
@@ -498,44 +505,47 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   // Tự động truy vấn thông tin công nợ thời gian thực khi chọn đại lý (Task SN-41)
   useEffect(() => {
     let active = true;
-    if (!selectedCustomer) {
-      setDebtStatus(null);
-      return;
-    }
-
-    const fetchDebt = async () => {
-      setIsLoadingDebt(true);
-      try {
-        const res = await ordersService.getDebtStatus(selectedCustomer.id);
-        if (active) setDebtStatus(res);
-      } catch {
-        if (active) {
-          const cLimit = selectedCustomer.creditLimit || 0;
-          const cDebt = selectedCustomer.currentDebt || 0;
-          setDebtStatus({
-            customerId: selectedCustomer.id,
-            customerCode: selectedCustomer.code,
-            customerName: selectedCustomer.name,
-            creditLimit: cLimit,
-            currentDebt: cDebt,
-            availableLimit: Math.max(0, cLimit - cDebt),
-            maxDebtDays: selectedCustomer.maxDebtDays || 30,
-            overdueAmount: selectedCustomer.overdueAmount || 0,
-            overdueDays: selectedCustomer.overdueDays || 0,
-            canCreateOrder: !(
-              (selectedCustomer.overdueDays || 0) > (selectedCustomer.maxDebtDays || 30) &&
-              (selectedCustomer.overdueAmount || 0) > 0
-            ),
-          });
-        }
-      } finally {
-        if (active) setIsLoadingDebt(false);
+    const timer = setTimeout(() => {
+      if (!selectedCustomer) {
+        if (active) setDebtStatus(null);
+        return;
       }
-    };
 
-    fetchDebt();
+      setIsLoadingDebt(true);
+      ordersService
+        .getDebtStatus(selectedCustomer.id)
+        .then((res) => {
+          if (active) setDebtStatus(res);
+        })
+        .catch(() => {
+          if (active) {
+            const cLimit = selectedCustomer.creditLimit || 0;
+            const cDebt = selectedCustomer.currentDebt || 0;
+            setDebtStatus({
+              customerId: selectedCustomer.id,
+              customerCode: selectedCustomer.code,
+              customerName: selectedCustomer.name,
+              creditLimit: cLimit,
+              currentDebt: cDebt,
+              availableLimit: Math.max(0, cLimit - cDebt),
+              maxDebtDays: selectedCustomer.maxDebtDays || 30,
+              overdueAmount: selectedCustomer.overdueAmount || 0,
+              overdueDays: selectedCustomer.overdueDays || 0,
+              canCreateOrder: !(
+                (selectedCustomer.overdueDays || 0) > (selectedCustomer.maxDebtDays || 30) &&
+                (selectedCustomer.overdueAmount || 0) > 0
+              ),
+            });
+          }
+        })
+        .finally(() => {
+          if (active) setIsLoadingDebt(false);
+        });
+    }, 0);
+
     return () => {
       active = false;
+      clearTimeout(timer);
     };
   }, [selectedCustomer]);
   /** Thêm sản phẩm vào dòng hàng */
@@ -636,6 +646,139 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const handleRemoveLine = useCallback((lineId: string) => {
     setLines((prev) => prev.filter((l) => l.id !== lineId));
   }, []);
+
+  /** Thêm mặt hàng gợi ý theo lịch sử mua hàng 3 tháng (SN-43 AC1) */
+  const handleAddSuggestedItem = useCallback(
+    (item: SuggestedProductItem, quantity: number) => {
+      const targetQty = Math.max(1, quantity);
+      const autoDiscount = calculateDiscount(
+        discountPolicies,
+        item.sku || item.productId,
+        '',
+        targetQty,
+      );
+      const listPrice = item.price;
+      const discPrice = listPrice * (1 - autoDiscount / 100);
+
+      setLines((prev) => {
+        const existingIdx = prev.findIndex(
+          (l) =>
+            l.productId === item.productId ||
+            (Boolean(l.productSku) && Boolean(item.sku) && l.productSku.toUpperCase() === item.sku.toUpperCase()),
+        );
+
+        if (existingIdx !== -1) {
+          const nextLines = [...prev];
+          const curr = nextLines[existingIdx];
+          const newQty = curr.quantity + targetQty;
+          const newDiscount = calculateDiscount(
+            discountPolicies,
+            curr.productSku || curr.productId,
+            '',
+            newQty,
+          );
+          const newDiscPrice = curr.listPrice * (1 - newDiscount / 100);
+          nextLines[existingIdx] = {
+            ...curr,
+            quantity: newQty,
+            baseQuantity: Math.round(newQty * (curr.conversionRate || 1)),
+            discountPercent: newDiscount,
+            unitPrice: Math.round(newDiscPrice),
+            lineTotal: Math.round(newQty * newDiscPrice),
+          };
+          return nextLines;
+        }
+
+        const newLine: OrderLine = {
+          id: `line-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          productId: item.productId,
+          productSku: item.sku,
+          productName: item.productName,
+          unit: item.unit || item.baseUnit,
+          baseUnit: item.baseUnit,
+          conversionRate: item.conversionRate || 1,
+          quantity: targetQty,
+          baseQuantity: Math.round(targetQty * (item.conversionRate || 1)),
+          unitPrice: Math.round(discPrice),
+          listPrice,
+          discountPercent: autoDiscount,
+          lineTotal: Math.round(targetQty * discPrice),
+        };
+        return [...prev, newLine];
+      });
+
+      showToast(
+        'success',
+        `Đã thêm ${targetQty} ${item.unit || item.baseUnit} ${item.productName} vào đơn hàng!`,
+      );
+    },
+    [discountPolicies],
+  );
+
+  /** Thêm nhanh toàn bộ nhóm hàng từ đơn thành công gần nhất (SN-43 AC2 1-Click Reorder) */
+  const handleReorderPreviousOrder = useCallback(
+    (items: LatestOrderItem[]) => {
+      if (!items || items.length === 0) return;
+
+      setLines((prev) => {
+        const merged = [...prev];
+
+        for (const item of items) {
+          const targetQty = Math.max(1, item.quantity);
+          const autoDiscount = calculateDiscount(
+            discountPolicies,
+            item.sku || item.productId,
+            '',
+            targetQty,
+          );
+          const listPrice = item.listPrice || item.unitPrice;
+          const discPrice = listPrice * (1 - autoDiscount / 100);
+
+          const existingIdx = merged.findIndex(
+            (l) =>
+              l.productId === item.productId ||
+              (Boolean(l.productSku) && Boolean(item.sku) && l.productSku.toUpperCase() === item.sku.toUpperCase()),
+          );
+
+          if (existingIdx !== -1) {
+            merged[existingIdx] = {
+              ...merged[existingIdx],
+              quantity: targetQty,
+              baseQuantity: Math.round(targetQty * (item.conversionRate || 1)),
+              unitPrice: Math.round(discPrice),
+              listPrice,
+              discountPercent: autoDiscount,
+              lineTotal: Math.round(targetQty * discPrice),
+            };
+          } else {
+            merged.push({
+              id: `line-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+              productId: item.productId,
+              productSku: item.sku,
+              productName: item.productName,
+              unit: item.unit || item.baseUnit,
+              baseUnit: item.baseUnit,
+              conversionRate: item.conversionRate || 1,
+              quantity: targetQty,
+              baseQuantity: Math.round(targetQty * (item.conversionRate || 1)),
+              unitPrice: Math.round(discPrice),
+              listPrice,
+              discountPercent: autoDiscount,
+              lineTotal: Math.round(targetQty * discPrice),
+            });
+          }
+        }
+
+        return merged;
+      });
+
+      showToast(
+        'success',
+        `Đã thêm nhanh ${items.length} mặt hàng từ đơn gần nhất vào đơn mới!`,
+      );
+    },
+    [discountPolicies],
+  );
 
   // Tính tổng đơn hàng
   const totals = useMemo(() => {
@@ -1174,6 +1317,18 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           {/* ── BƯỚC 2: Thêm sản phẩm ── */}
           {step === 2 && (
             <>
+              {/* Widget Gợi ý mặt hàng thường mua & 1-Click Reorder (SN-43) */}
+              {selectedCustomer && (
+                <OrderSuggestionsPanel
+                  customerId={selectedCustomer.id}
+                  customerName={selectedCustomer.name}
+                  existingProductIds={lines.map((l) => l.productId)}
+                  existingProductSkus={lines.map((l) => (l.productSku || '').toUpperCase())}
+                  onAddSuggestedItem={handleAddSuggestedItem}
+                  onReorderPreviousOrder={handleReorderPreviousOrder}
+                />
+              )}
+
               {/* Tìm kiếm sản phẩm */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-slate-700">
@@ -1756,14 +1911,17 @@ export const OrdersPage: React.FC = () => {
   useEffect(() => {
     const cid = searchParams.get('customerId');
     if (cid) {
-      setInitialCustomerId(cid);
-      setEditingOrder(null);
-      setIsCreateModalOpen(true);
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete('customerId');
-        return next;
-      }, { replace: true });
+      const timer = setTimeout(() => {
+        setInitialCustomerId(cid);
+        setEditingOrder(null);
+        setIsCreateModalOpen(true);
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('customerId');
+          return next;
+        }, { replace: true });
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [searchParams, setSearchParams]);
 
