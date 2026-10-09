@@ -243,7 +243,7 @@ const DRAFT_KEY = 'new-order-modal';
 
 const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   open,
-  editingOrder: _editingOrder,
+  editingOrder,
   onClose,
   onCreated,
   onSaved: _onSaved,
@@ -914,9 +914,22 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                                       <ShieldAlert className="w-3 h-3" /> Nợ quá hạn
                                     </span>
                                   )}
+                                  {c.status === 'LOCKED' && (
+                                    <span
+                                      className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200"
+                                      title={c.lockReason || 'Đang bị khóa giao dịch'}
+                                    >
+                                      🔒 Khóa GD (SN-36)
+                                    </span>
+                                  )}
                                 </div>
                                 <p className="text-xs text-slate-500 mt-0.5">
                                   {c.code} · {c.phone || 'Chưa có SĐT'}
+                                  {c.status === 'LOCKED' && c.lockReason && (
+                                    <span className="text-rose-600 block text-[11px] font-medium mt-0.5">
+                                      Lý do khóa: {c.lockReason}
+                                    </span>
+                                  )}
                                 </p>
                               </div>
                               <span
@@ -1094,6 +1107,22 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                           <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-amber-900 text-xs">
                             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                             <span className="leading-relaxed">{debtStatus.warningMessage}</span>
+                          </div>
+                        )}
+
+                        {/* CẢNH BÁO KẾ TOÁN (SN-36): Đại lý bị khóa giao dịch */}
+                        {selectedCustomer.status === 'LOCKED' && (
+                          <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl flex items-start gap-3 text-rose-900 text-xs sm:text-sm animate-pulse">
+                            <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-bold text-rose-900">
+                                ⛔ CẢNH BÁO KẾ TOÁN (SN-36): ĐẠI LÝ ĐANG BỊ KHÓA GIAO DỊCH
+                              </p>
+                              <p className="mt-0.5 text-rose-800 leading-relaxed">
+                                Lý do khóa: <span className="font-semibold">{selectedCustomer.lockReason || 'Nợ quá hạn / Rủi ro giao dịch'}</span>. 
+                                Hệ thống khóa tạo đơn mới cho đại lý này. Đơn hàng đang dở vẫn được xử lý tiếp theo nhưng có cảnh báo này để kiểm tra công nợ trước khi xuất hàng.
+                              </p>
+                            </div>
                           </div>
                         )}
                       </>
@@ -1454,11 +1483,17 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 <button
                   onClick={() => setStep(2)}
                   disabled={
-                    !selectedCustomer || (debtStatus !== null && !debtStatus.canCreateOrder)
+                    !selectedCustomer ||
+                    (debtStatus !== null && !debtStatus.canCreateOrder) ||
+                    (selectedCustomer.status === 'LOCKED' && !editingOrder)
                   }
                   className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors cursor-pointer"
                   title={
-                    debtStatus && !debtStatus.canCreateOrder ? debtStatus.blockReason : undefined
+                    selectedCustomer?.status === 'LOCKED' && !editingOrder
+                      ? `Đại lý đang bị KHÓA GIAO DỊCH (Lý do: ${selectedCustomer.lockReason || 'Nợ quá hạn'}). Không thể tạo đơn mới!`
+                      : debtStatus && !debtStatus.canCreateOrder
+                        ? debtStatus.blockReason
+                        : undefined
                   }
                 >
                   Tiếp theo →
@@ -2180,6 +2215,21 @@ export const OrdersPage: React.FC = () => {
                   <span className="text-slate-500">Trạng thái:</span>
                   <OrderStatusBadge status={viewOrder.status} />
                 </div>
+
+                {/* CẢNH BÁO KẾ TOÁN (SN-36): Đại lý bị khóa giao dịch */}
+                {(viewOrder.isCustomerLocked || viewOrder.warningMessage) && (
+                  <div className="p-3 bg-amber-50 rounded-xl border border-amber-300 text-xs text-amber-900 space-y-1 shadow-2xs mt-2">
+                    <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>⚠️ CẢNH BÁO KẾ TOÁN (SN-36)</span>
+                    </div>
+                    <p className="text-amber-800 leading-relaxed">
+                      {viewOrder.warningMessage ||
+                        `Đại lý "${viewOrder.customerName}" đang bị KHÓA GIAO DỊCH. Đơn hàng đang dở vẫn được xử lý tiếp theo nhưng có cảnh báo này để kiểm tra công nợ trước khi duyệt / xuất kho.`}
+                    </p>
+                  </div>
+                )}
+
                 {viewOrder.isCreditLimitExceeded && (
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-start gap-2 mt-2">
                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />

@@ -436,6 +436,10 @@ export const ordersService = {
         maxDebtDays: c.maxDebtDays,
         overdueAmount: (c as unknown as { overdueAmount?: number }).overdueAmount,
         overdueDays: (c as unknown as { overdueDays?: number }).overdueDays,
+        status: c.status,
+        lockReason: c.lockReason,
+        lockedAt: c.lockedAt,
+        lockedBy: c.lockedBy,
         deliveryPoints: (c.deliveryPoints || []).map((dp) => ({
           id: dp.id,
           name: dp.name,
