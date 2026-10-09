@@ -175,10 +175,10 @@ export const ResetPasswordPage: React.FC = () => {
                 <Button
                   type="button"
                   onClick={() => navigate("/auth/login", { replace: true })}
-                  className="w-full flex items-center justify-center gap-2"
+                  rightIcon={<ArrowRight className="w-4 h-4" />}
+                  className="w-full"
                 >
-                  <span>Đăng nhập ngay</span>
-                  <ArrowRight className="w-4 h-4" />
+                  Đăng nhập ngay
                 </Button>
               </div>
             </div>

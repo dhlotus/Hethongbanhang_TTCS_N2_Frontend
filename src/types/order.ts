@@ -32,6 +32,8 @@ export interface OrderLine {
   discountPercent: number; // Chiết khấu % theo bảng giá
   lineTotal: number;       // Thành tiền = quantity × unitPrice
   stockAvailable?: number; // Tồn khả dụng tham khảo (hiển thị UI)
+  minPrice?: number;
+  requiresApproval?: boolean;
 }
 
 /** Thông tin điểm giao hàng */
@@ -64,6 +66,8 @@ export interface Order {
   status: OrderStatus;
   paymentStatus?: PaymentStatus;
   priceListId?: string;      // Bảng giá áp dụng
+  requiresApproval?: boolean;
+  approvalReasons?: string[];
   isCreditLimitExceeded?: boolean; // Cờ vượt hạn mức công nợ (SN-41)
   creditLimitExceededAmount?: number; // Số tiền vượt hạn mức (VND)
   createdAt?: string;
