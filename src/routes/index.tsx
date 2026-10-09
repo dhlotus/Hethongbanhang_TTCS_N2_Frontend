@@ -23,6 +23,7 @@ import { NetworkStatusIndicator } from '../components/network-status-indicator';
 import { AdminLayout } from '../layouts/admin-layout';
 import { getRedirectPathByUser, getStoredUser } from '../utils/navigation';
 import { tokenStorage } from '../utils/token-storage';
+import { DashboardPage } from '../pages/dashboard-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -175,16 +176,6 @@ export const AppRoutes: React.FC = () => {
                     title="Báo cáo Doanh số Bán buôn"
                     subtitle="Phân tích tăng trưởng doanh số theo nhân viên thị trường, nhóm đại lý và sản phẩm chủ lực"
                     requiredRole="Quản lý kinh doanh"
-                  />
-                }
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <RoleModulePage
-                    title="Dashboard Điều hành Doanh nghiệp"
-                    subtitle="Bảng chỉ số vận hành tổng thể: Doanh thu, Đơn hàng chờ xuất, Tồn kho cảnh báo và Công nợ"
-                    requiredRole="Ban Quản lý & Điều hành"
                   />
                 }
               />
@@ -428,6 +419,9 @@ export const AppRoutes: React.FC = () => {
             {/* ------------------------------------------------------------- */}
             {/* PHÂN HỆ MỞ CHO MỌI NHÂN SỰ ĐÃ ĐĂNG NHẬP                       */}
             {/* ------------------------------------------------------------- */}
+            {/* Dashboard Điều hành Doanh nghiệp (truy cập dựa theo role bên trong Component) */}
+            <Route path="/dashboard" element={<DashboardPage />} />
+            
             {/* Danh mục sản phẩm (giá vốn tự động ẩn trên server theo SN-10) */}
             <Route path="/catalog/products" element={<ProductsPage />} />
             {/* Quản lý Cây nhóm hàng đa cấp (Tree Structure - SN-150 / SN-22) */}
