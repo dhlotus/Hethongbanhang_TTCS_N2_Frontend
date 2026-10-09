@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ShoppingCart,
   Plus,
@@ -12,12 +13,25 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  AlertTriangle,
+  ShieldAlert,
+  CreditCard,
   Package,
   FileText,
   Truck,
+  Loader2,
+  Building2,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
-import { ordersService, DEMO_CUSTOMERS } from '../services/orders.service';
+import { ordersService } from '../services/orders.service';
+import { customersService } from '../services/customers.service';
+import { DeliveryPointModal } from '../components/delivery-point-modal';
+import type { Customer, DeliveryPoint as CustomerDeliveryPoint } from '../types/customer.types';
+import {
+  discountPoliciesService,
+  calculateDiscount,
+  type DiscountPolicy,
+} from '../services/discount-policies.service';
 import { getStoredUser } from '../utils/navigation';
 import { Sn40OrderPricingModal } from '../components/sn40-order-pricing-modal';
 import type {
@@ -26,8 +40,79 @@ import type {
   OrderStatus,
   CustomerOption,
   DeliveryPoint,
+  CustomerDebtStatus,
 } from '../types/order';
 import type { Product, ProductUnit } from '../types/products';
+
+// ──────────────────────────────────────────────────────────────────────────
+// QUANTITY INPUT HELPER COMPONENT (SN-28 / SN-38: Pure Numeric & Free Edit)
+// ──────────────────────────────────────────────────────────────────────────
+
+interface LineQuantityInputProps {
+  value: number;
+  onChangeQty: (newQty: number) => void;
+}
+
+const LineQuantityInput: React.FC<LineQuantityInputProps> = ({ value, onChangeQty }) => {
+  const [localVal, setLocalVal] = useState<string>(() => (value ? String(value) : '1'));
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const num = parseInt(localVal, 10);
+      if (!isNaN(num) && num === value) return;
+      setLocalVal(value !== undefined && value !== null ? String(value) : '');
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [value, localVal]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    // Cho phép xóa rỗng ô khi người dùng nhấn Backspace
+    if (raw === '') {
+      setLocalVal('');
+      onChangeQty(0);
+      return;
+    }
+    // Chỉ giữ lại ký tự số (Pure Numeric Input)
+    const cleaned = raw.replace(/\D/g, '');
+    if (cleaned === '') {
+      setLocalVal('');
+      onChangeQty(0);
+      return;
+    }
+    // Chuẩn hóa loại bỏ số 0 ở đầu (ví dụ "05" -> "5")
+    const formatted = cleaned.length > 1 && cleaned.startsWith('0') ? String(parseInt(cleaned, 10)) : cleaned;
+    setLocalVal(formatted);
+    const parsed = parseInt(formatted, 10);
+    onChangeQty(isNaN(parsed) ? 0 : parsed);
+  };
+
+  const handleBlur = () => {
+    const parsed = parseInt(localVal, 10);
+    if (!localVal || isNaN(parsed) || parsed <= 0) {
+      setLocalVal('1');
+      onChangeQty(1);
+    }
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Tự động bôi đen toàn bộ số khi focus để người dùng gõ đè trực tiếp mà không bị nối chuỗi
+    e.target.select();
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={localVal}
+      onChange={handleChange}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      className="w-full px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-slate-800 bg-white"
+      placeholder="1"
+    />
+  );
+};
 
 // ──────────────────────────────────────────────────────────────────────────
 // HELPERS & FORMATTERS
@@ -74,6 +159,12 @@ const ORDER_STATUS_CONFIG: Record<
     bgClass: 'bg-amber-50',
     textClass: 'text-amber-700',
     icon: <Clock className="w-3 h-3" />,
+  },
+  PENDING_APPROVAL: {
+    label: 'Chờ duyệt hạn mức',
+    bgClass: 'bg-amber-100 ring-1 ring-amber-300',
+    textClass: 'text-amber-800',
+    icon: <AlertTriangle className="w-3 h-3" />,
   },
   PENDING_INVENTORY_APPROVAL: {
     label: 'Chờ duyệt tồn kho',
@@ -139,24 +230,35 @@ const OrderStatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
 
 interface CreateOrderModalProps {
   open: boolean;
+  editingOrder?: Order | null;
   onClose: () => void;
-  onCreated: (order: Order) => void;
+  onCreated?: (order: Order) => void;
+  onSaved?: (order: Order) => void;
+  initialCustomerId?: string | null;
 }
 
 const DRAFT_KEY = 'new-order-modal';
 
 const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   open,
+  editingOrder: _editingOrder,
   onClose,
   onCreated,
+  onSaved: _onSaved,
+  initialCustomerId,
 }) => {
   const [step, setStep] = useState<1 | 2>(1); // 1=Chọn đại lý, 2=Thêm hàng
 
   // Bước 1: Chọn đại lý
   const [customerSearch, setCustomerSearch] = useState('');
-  const [customers, setCustomers] = useState<CustomerOption[]>(DEMO_CUSTOMERS);
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null);
   const [deliveryPoint, setDeliveryPoint] = useState<Partial<DeliveryPoint>>({});
+  const [deliveryPoints, setDeliveryPoints] = useState<CustomerDeliveryPoint[]>([]);
+  void deliveryPoints;
+  const [selectedDeliveryPoint, setSelectedDeliveryPoint] = useState<CustomerDeliveryPoint | null>(null);
+  const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState(getDefaultDeliveryDate());
   const [note, setNote] = useState('');
 
@@ -172,21 +274,119 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
 
+  // Tải danh sách đại lý (kèm debounce 300ms khi gõ tìm kiếm)
+  useEffect(() => {
+    if (!open) return;
+    let isMounted = true;
+
+    const timer = setTimeout(async () => {
+      if (isMounted) setIsLoadingCustomers(true);
+      try {
+        const list = await ordersService.getCustomers(customerSearch);
+        if (isMounted) {
+          setCustomers(list);
+          if (initialCustomerId) {
+            const found = list.find((c) => c.id === initialCustomerId);
+            if (found) {
+              setSelectedCustomer(found);
+              if (found.deliveryPoints && found.deliveryPoints.length > 0) {
+                setDeliveryPoint(found.deliveryPoints[0]);
+              } else {
+                setDeliveryPoint({ address: found.address || '' });
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách đại lý:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoadingCustomers(false);
+        }
+      }
+    }, customerSearch ? 300 : 0);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [open, customerSearch, initialCustomerId]);
+
+  // Danh sách chính sách chiết khấu thực tế từ hệ thống (SN-28 / SN-38)
+  const [discountPolicies, setDiscountPolicies] = useState<DiscountPolicy[]>([]);
+
+  // Tải chính sách chiết khấu hệ thống khi mở modal
+  useEffect(() => {
+    if (!open) return;
+    discountPoliciesService
+      .getPolicies()
+      .then((policies) => {
+        if (Array.isArray(policies)) {
+          setDiscountPolicies(policies);
+        }
+      })
+      .catch(() => {
+        // Fallback sang nấc mặc định nếu backend chưa phản hồi
+      });
+  }, [open]);
+
+  // Trạng thái kiểm soát hạn mức công nợ thời gian thực (Task SN-41)
+  const [debtStatus, setDebtStatus] = useState<CustomerDebtStatus | null>(null);
+  const [isLoadingDebt, setIsLoadingDebt] = useState<boolean>(false);
+  const [showCreditApprovalModal, setShowCreditApprovalModal] = useState<boolean>(false);
+
   // Khôi phục nháp
   useEffect(() => {
     if (!open) return;
-    const draft = ordersService.getDraft(DRAFT_KEY);
-    if (draft?.lines && draft.lines.length > 0) {
-      setLines(draft.lines);
-      if (draft.customerId) {
-        const c = DEMO_CUSTOMERS.find((x) => x.id === draft.customerId);
-        if (c) setSelectedCustomer(c);
+    const t = setTimeout(() => {
+      const draft = ordersService.getDraft(DRAFT_KEY);
+      if (draft?.lines && draft.lines.length > 0) {
+        setLines(draft.lines);
+        if (draft.customerId && !initialCustomerId) {
+          ordersService.getCustomers().then((list) => {
+            const c = list.find((x) => x.id === draft.customerId);
+            if (c) {
+              setSelectedCustomer(c);
+              if (draft.deliveryPoint) {
+                setDeliveryPoint(draft.deliveryPoint);
+              } else if (c.deliveryPoints?.[0]) {
+                setDeliveryPoint(c.deliveryPoints[0]);
+              }
+            }
+          });
+        }
+        if (draft.deliveryDate) setDeliveryDate(draft.deliveryDate);
+        if (draft.note) setNote(draft.note);
+        showToast('info', 'Đã khôi phục nháp đơn hàng từ lần trước');
       }
-      if (draft.deliveryDate) setDeliveryDate(draft.deliveryDate);
-      if (draft.note) setNote(draft.note);
-      showToast('info', 'Đã khôi phục nháp đơn hàng từ lần trước');
-    }
-  }, [open]);
+    }, 0);
+
+    return () => clearTimeout(t);
+  }, [open, initialCustomerId]);
+
+  // Tự động đồng bộ chiết khấu các dòng hàng hiện tại khi danh sách policies được load
+  useEffect(() => {
+    if (discountPolicies.length === 0) return;
+    const timer = setTimeout(() => {
+      setLines((prev) => {
+        if (prev.length === 0) return prev;
+        return prev.map((line) => {
+          const autoDiscount = line.quantity > 0
+            ? calculateDiscount(discountPolicies, line.productSku || line.productId, '', line.quantity)
+            : 0;
+          const discPrice = line.listPrice * (1 - autoDiscount / 100);
+          return {
+            ...line,
+            discountPercent: autoDiscount,
+            unitPrice: Math.round(discPrice),
+            lineTotal: Math.round(line.quantity * discPrice),
+          };
+        });
+      });
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [discountPolicies]);
 
   // Tự động lưu nháp khi lines thay đổi
   useEffect(() => {
@@ -199,7 +399,81 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     });
   }, [lines, selectedCustomer, deliveryDate, note, open]);
 
-  // Tìm kiếm sản phẩm với debounce 400ms
+  // Xử lý khi chọn một Đại lý (SN-31: Đơn hàng chọn điểm giao trong danh sách của đúng đại lý đó)
+  const handleSelectCustomer = useCallback(async (c: CustomerOption) => {
+    setSelectedCustomer(c);
+
+    try {
+      // Lấy danh sách điểm giao hàng chính thức từ backend
+      const points = await customersService.getDeliveryPoints(c.id);
+      setDeliveryPoints(points);
+
+      // Tự động chọn điểm giao hàng mặc định (SN-31)
+      const defaultPoint = points.find((p: CustomerDeliveryPoint) => p.isDefault) || points[0] || null;
+      setSelectedDeliveryPoint(defaultPoint);
+    } catch {
+      // Fallback từ c.deliveryPoints
+      const fallbackPoints = (c.deliveryPoints || []) as unknown as CustomerDeliveryPoint[];
+      setDeliveryPoints(fallbackPoints);
+      const defaultPoint = fallbackPoints.find((p: CustomerDeliveryPoint) => p.isDefault) || fallbackPoints[0] || null;
+      setSelectedDeliveryPoint(defaultPoint);
+    }
+  }, []);
+
+  // Tự động chọn đại lý nếu được điều hướng từ Quản lý đại lý (SN-38 sync)
+  useEffect(() => {
+    if (open && initialCustomerId && customers.length > 0 && !selectedCustomer) {
+      const matched = customers.find((c) => c.id === initialCustomerId);
+      if (matched) {
+        void handleSelectCustomer(matched);
+      }
+    }
+  }, [open, initialCustomerId, customers, selectedCustomer, handleSelectCustomer]);
+
+  // Modal tạo nhanh đại lý mới khi đang tạo đơn (Đồng bộ sang Quản lý đại lý)
+  const [isQuickCustomerModalOpen, setIsQuickCustomerModalOpen] = useState(false);
+  const [quickCustForm, setQuickCustForm] = useState({
+    name: '',
+    phone: '',
+    address: '',
+    creditLimit: 50000000,
+  });
+  const [creatingQuickCust, setCreatingQuickCust] = useState(false);
+
+  const handleCreateQuickCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickCustForm.name.trim() || !quickCustForm.phone.trim() || !quickCustForm.address.trim()) {
+      showToast('error', 'Thiếu thông tin', 'Vui lòng điền đủ Tên, SĐT và Địa chỉ đại lý');
+      return;
+    }
+    setCreatingQuickCust(true);
+    try {
+      const created = await customersService.createCustomer({
+        name: quickCustForm.name.trim(),
+        phone: quickCustForm.phone.trim(),
+        address: quickCustForm.address.trim(),
+        creditLimit: Number(quickCustForm.creditLimit) || 50000000,
+        customerGroup: 'AGENT_LEVEL_2',
+        region: 'Miền Nam',
+      });
+      showToast(
+        'success',
+        'Thêm đại lý thành công',
+        `Đại lý "${created.name}" đã được thêm và đồng bộ sang Quản lý đại lý!`,
+      );
+      const opt: CustomerOption = { ...created, group: created.customerGroup };
+      setCustomers((prev) => [opt, ...prev]);
+      void handleSelectCustomer(opt);
+      setIsQuickCustomerModalOpen(false);
+      setQuickCustForm({ name: '', phone: '', address: '', creditLimit: 50000000 });
+    } catch {
+      showToast('error', 'Lỗi tạo đại lý', 'Không thể tạo đại lý mới. Vui lòng thử lại.');
+    } finally {
+      setCreatingQuickCust(false);
+    }
+  };
+
+  // Tìm kiếm sản phẩm (debounce 300ms)
   useEffect(() => {
     if (step !== 2) return;
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -217,17 +491,49 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     };
   }, [productQuery, step]);
 
-  // Tìm kiếm đại lý
+  // Tự động truy vấn thông tin công nợ thời gian thực khi chọn đại lý (Task SN-41)
   useEffect(() => {
-    const filtered = DEMO_CUSTOMERS.filter(
-      (c) =>
-        !customerSearch ||
-        c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-        c.code.toLowerCase().includes(customerSearch.toLowerCase()),
-    );
-    setCustomers(filtered);
-  }, [customerSearch]);
+    let active = true;
+    if (!selectedCustomer) {
+      setDebtStatus(null);
+      return;
+    }
 
+    const fetchDebt = async () => {
+      setIsLoadingDebt(true);
+      try {
+        const res = await ordersService.getDebtStatus(selectedCustomer.id);
+        if (active) setDebtStatus(res);
+      } catch {
+        if (active) {
+          const cLimit = selectedCustomer.creditLimit || 0;
+          const cDebt = selectedCustomer.currentDebt || 0;
+          setDebtStatus({
+            customerId: selectedCustomer.id,
+            customerCode: selectedCustomer.code,
+            customerName: selectedCustomer.name,
+            creditLimit: cLimit,
+            currentDebt: cDebt,
+            availableLimit: Math.max(0, cLimit - cDebt),
+            maxDebtDays: selectedCustomer.maxDebtDays || 30,
+            overdueAmount: selectedCustomer.overdueAmount || 0,
+            overdueDays: selectedCustomer.overdueDays || 0,
+            canCreateOrder: !(
+              (selectedCustomer.overdueDays || 0) > (selectedCustomer.maxDebtDays || 30) &&
+              (selectedCustomer.overdueAmount || 0) > 0
+            ),
+          });
+        }
+      } finally {
+        if (active) setIsLoadingDebt(false);
+      }
+    };
+
+    fetchDebt();
+    return () => {
+      active = false;
+    };
+  }, [selectedCustomer]);
   /** Thêm sản phẩm vào dòng hàng */
   const handleAddProduct = useCallback(
     (product: Product) => {
@@ -238,6 +544,15 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       }
 
       const defaultUnit = product.baseUnit;
+      const initialQty = 1;
+      const autoDiscount = calculateDiscount(
+        discountPolicies,
+        product.sku || product.id,
+        '',
+        initialQty,
+      );
+      const discPrice = product.price * (1 - autoDiscount / 100);
+
       const newLine: OrderLine = {
         id: `line-${Date.now()}`,
         productId: product.id,
@@ -246,25 +561,25 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         unit: defaultUnit,
         baseUnit: product.baseUnit,
         conversionRate: 1,
-        quantity: 1,
-        baseQuantity: 1,
-        unitPrice: product.price,
+        quantity: initialQty,
+        baseQuantity: initialQty,
+        unitPrice: Math.round(discPrice),
         listPrice: product.price,
-        discountPercent: 0,
-        lineTotal: product.price,
+        discountPercent: autoDiscount,
+        lineTotal: Math.round(initialQty * discPrice),
         stockAvailable: product.stockQuantity,
       };
       setLines((prev) => [...prev, newLine]);
       setProductQuery('');
     },
-    [lines],
+    [lines, discountPolicies],
   );
 
   /** Cập nhật số lượng hoặc đơn vị của một dòng hàng */
   const handleUpdateLine = useCallback(
     (
       lineId: string,
-      field: 'quantity' | 'unit' | 'discountPercent',
+      field: 'quantity' | 'unit',
       value: string | number,
       product?: Product,
     ) => {
@@ -287,14 +602,13 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               baseQuantity: Math.round(updated.quantity * convRate),
             };
           } else if (field === 'quantity') {
-            const qty = Math.max(1, Number(value) || 1);
-            
-            // Auto calculate discount based on qty (Mock)
-            let autoDiscount = 0;
-            if (qty >= 100) autoDiscount = 10;
-            else if (qty >= 50) autoDiscount = 5;
-            else if (qty >= 10) autoDiscount = 2;
-            
+            const rawQty = typeof value === 'number' ? value : (parseInt(String(value), 10) || 0);
+            const qty = Math.max(0, rawQty);
+
+            // Tự động tính chiết khấu theo số lượng qua chính sách hệ thống (hỗ trợ > 20%, ví dụ 2500 -> 25%)
+            const autoDiscount = qty > 0
+              ? calculateDiscount(discountPolicies, updated.productSku || updated.productId, '', qty)
+              : 0;
             const discPrice = updated.listPrice * (1 - autoDiscount / 100);
 
             updated = {
@@ -304,14 +618,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               discountPercent: autoDiscount,
               unitPrice: Math.round(discPrice),
             };
-          } else if (field === 'discountPercent') {
-            const disc = Math.min(100, Math.max(0, Number(value) || 0));
-            const discPrice = updated.listPrice * (1 - disc / 100);
-            updated = {
-              ...updated,
-              discountPercent: disc,
-              unitPrice: Math.round(discPrice),
-            };
           }
 
           updated.lineTotal = updated.quantity * updated.unitPrice;
@@ -319,7 +625,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         }),
       );
     },
-    [],
+    [discountPolicies],
   );
 
   /** Xóa dòng hàng */
@@ -338,8 +644,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     return { subtotal, totalDiscount, grandTotal: subtotal - totalDiscount };
   }, [lines]);
 
-  /** Submit tạo đơn hàng */
-  const handleSubmit = async () => {
+  /** Submit tạo đơn hàng (Hỗ trợ luồng kiểm soát công nợ SN-41) */
+  const handleSubmit = async (forceApproval = false) => {
     if (!selectedCustomer) {
       showToast('error', 'Vui lòng chọn đại lý trước khi tạo đơn');
       return;
@@ -349,6 +655,25 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       return;
     }
 
+    // Trường hợp 1 (Hard Block): Chặn tạo đơn nếu nợ quá hạn vượt quá số ngày cho phép
+    if (debtStatus && !debtStatus.canCreateOrder) {
+      showToast('error', debtStatus.blockReason || 'Đại lý bị khóa tạo đơn do có khoản nợ quá hạn');
+      return;
+    }
+
+    // Trường hợp 2 (Approval Flow): Nếu tổng đơn + nợ hiện tại vượt hạn mức công nợ
+    const currentDebt = debtStatus?.currentDebt ?? (selectedCustomer.currentDebt || 0);
+    const creditLimit = debtStatus?.creditLimit ?? (selectedCustomer.creditLimit || 0);
+    const projectedDebt = currentDebt + totals.grandTotal;
+    const isExceeded = creditLimit > 0 && projectedDebt > creditLimit;
+
+    if (isExceeded && !forceApproval) {
+      // Hiển thị modal xác nhận thông minh chuyển sang trạng thái chờ phê duyệt
+      setShowCreditApprovalModal(true);
+      return;
+    }
+
+    setShowCreditApprovalModal(false);
     setIsSubmitting(true);
     try {
       const created = await ordersService.createOrder({
@@ -372,13 +697,20 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       });
 
       ordersService.clearDraft(DRAFT_KEY);
-      
-      if (created.status === 'PENDING_INVENTORY_APPROVAL') {
+
+      if (created.status === 'PENDING_APPROVAL' || created.isCreditLimitExceeded) {
+        showToast(
+          'warning',
+          `Đơn hàng ${created.orderCode} đã tạo và chuyển trạng thái "Cần phê duyệt" do vượt hạn mức công nợ!`,
+        );
+        onCreated?.(created);
+        handleClose();
+      } else if (created.status === 'PENDING_INVENTORY_APPROVAL') {
         setCreatedOrder(created);
         setShowWarningModal(true);
       } else {
         showToast('success', `Tạo đơn hàng ${created.orderCode} thành công!`);
-        onCreated(created);
+        onCreated?.(created);
         handleClose();
       }
     } catch (err: unknown) {
@@ -392,6 +724,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const handleClose = () => {
     setStep(1);
     setSelectedCustomer(null);
+    setDebtStatus(null);
+    setShowCreditApprovalModal(false);
     setLines([]);
     setCustomerSearch('');
     setProductQuery('');
@@ -403,7 +737,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm">
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[94vh] flex flex-col shadow-2xl">
         {/* Header Modal */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
@@ -440,7 +775,18 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           {step === 1 && (
             <>
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-slate-700">Tìm kiếm đại lý</label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-medium text-slate-700">Tìm kiếm đại lý</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickCustomerModalOpen(true)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline"
+                    title="Thêm đại lý mới và đồng bộ"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Thêm đại lý mới</span>
+                  </button>
+                </div>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
@@ -454,73 +800,271 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
                 {/* Danh sách đại lý */}
                 <div className="space-y-2 max-h-56 overflow-y-auto">
-                  {customers.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => {
-                        setSelectedCustomer(c);
-                        if (c.deliveryPoints?.[0]) {
-                          setDeliveryPoint(c.deliveryPoints[0]);
-                        }
-                      }}
-                      className={`w-full text-left p-3 rounded-xl border transition-all ${
-                        selectedCustomer?.id === c.id
-                          ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-400'
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-medium text-slate-800">{c.name}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            {c.code} · {c.phone}
-                          </p>
-                        </div>
-                        <span
-                          className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
-                            c.group === 'AGENT_LEVEL_1'
-                              ? 'bg-purple-50 text-purple-700'
-                              : c.group === 'AGENT_LEVEL_2'
-                              ? 'bg-blue-50 text-blue-700'
-                              : 'bg-slate-100 text-slate-600'
+                  {isLoadingCustomers ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-slate-400 gap-2">
+                      <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                      <span className="text-xs font-medium">Đang tải danh sách đại lý...</span>
+                    </div>
+                  ) : customers.length === 0 ? (
+                    <div className="text-center py-8 text-slate-400">
+                      <p className="text-sm">Không tìm thấy đại lý phù hợp</p>
+                      {customerSearch && (
+                        <p className="text-xs text-slate-400 mt-1">Thử tìm bằng mã hoặc tên khác</p>
+                      )}
+                    </div>
+                  ) : (
+                    customers.map((c) => {
+                      const isOverdue =
+                        (c.overdueDays || 0) > (c.maxDebtDays || 30) && (c.overdueAmount || 0) > 0;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCustomer(c);
+                            if (c.deliveryPoints?.[0]) {
+                              setDeliveryPoint(c.deliveryPoints[0]);
+                            } else {
+                              setDeliveryPoint({ address: c.address || '' });
+                            }
+                          }}
+                          className={`w-full text-left p-3 rounded-xl border transition-all ${
+                            selectedCustomer?.id === c.id
+                              ? 'border-blue-500 bg-blue-50/70 ring-1 ring-blue-400'
+                              : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                           }`}
                         >
-                          {c.group === 'AGENT_LEVEL_1'
-                            ? 'Đại lý Cấp 1'
-                            : c.group === 'AGENT_LEVEL_2'
-                            ? 'Đại lý Cấp 2'
-                            : 'Bán lẻ'}
-                        </span>
-                      </div>
-                      {c.creditLimit && (
-                        <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
-                          <span>Hạn mức: {formatCurrency(c.creditLimit)}</span>
-                          <span>Công nợ: {formatCurrency(c.currentDebt ?? 0)}</span>
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                  {customers.length === 0 && (
-                    <p className="text-center text-sm text-slate-400 py-6">
-                      Không tìm thấy đại lý phù hợp
-                    </p>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-sm font-semibold text-slate-800 truncate">{c.name}</p>
+                                {isOverdue && (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">
+                                    <ShieldAlert className="w-3 h-3" /> Nợ quá hạn
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                {c.code} · {c.phone || 'Chưa có SĐT'}
+                              </p>
+                            </div>
+                            <span
+                              className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
+                                c.group === 'AGENT_LEVEL_1'
+                                  ? 'bg-purple-50 text-purple-700'
+                                  : c.group === 'AGENT_LEVEL_2'
+                                  ? 'bg-blue-50 text-blue-700'
+                                  : c.group === 'RETAIL'
+                                  ? 'bg-emerald-50 text-emerald-700'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}
+                            >
+                              {c.group === 'AGENT_LEVEL_1'
+                                ? 'Đại lý Cấp 1'
+                                : c.group === 'AGENT_LEVEL_2'
+                                ? 'Đại lý Cấp 2'
+                                : c.group === 'RETAIL'
+                                ? 'Bán lẻ'
+                                : c.group || 'Đại lý'}
+                            </span>
+                          </div>
+                          {c.creditLimit !== undefined && (
+                            <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+                              <span>Hạn mức: {formatCurrency(c.creditLimit)}</span>
+                              <span>Công nợ: {formatCurrency(c.currentDebt ?? 0)}</span>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })
                   )}
                 </div>
               </div>
 
+              {/* Widget thông tin công nợ thời gian thực (Task SN-41) */}
+              {selectedCustomer && (
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3 transition-all">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-[var(--color-primary)]" />
+                      <h4 className="text-sm font-semibold text-slate-800">
+                        Kiểm Soát Hạn Mức & Công Nợ Đại Lý
+                      </h4>
+                    </div>
+                    {isLoadingDebt ? (
+                      <span className="text-xs text-slate-400 inline-flex items-center gap-1">
+                        <RefreshCw className="w-3 h-3 animate-spin" /> Đang kiểm tra...
+                      </span>
+                    ) : debtStatus ? (
+                      !debtStatus.canCreateOrder ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                          <ShieldAlert className="w-3.5 h-3.5" />
+                          Khóa tạo đơn ({debtStatus.overdueDays} ngày quá hạn)
+                        </span>
+                      ) : debtStatus.currentDebt >= debtStatus.creditLimit ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          Hết hạn mức (Cần duyệt)
+                        </span>
+                      ) : debtStatus.availableLimit < debtStatus.creditLimit * 0.2 ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                          <Clock className="w-3.5 h-3.5" />
+                          Sắp chạm trần
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Hạn mức an toàn
+                        </span>
+                      )
+                    ) : null}
+                  </div>
+
+                  {debtStatus && (
+                    <>
+                      {/* 3 Thẻ Metric Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                        <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 flex flex-col">
+                          <span className="text-xs text-slate-500 font-medium">Hạn mức được cấp</span>
+                          <span className="text-sm sm:text-base font-bold text-slate-900 mt-0.5">
+                            {formatCurrency(debtStatus.creditLimit)}
+                          </span>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 flex flex-col">
+                          <span className="text-xs text-slate-500 font-medium">Công nợ hiện tại</span>
+                          <span className="text-sm sm:text-base font-bold text-slate-900 mt-0.5">
+                            {formatCurrency(debtStatus.currentDebt)}
+                          </span>
+                        </div>
+                        <div
+                          className={`p-3 rounded-lg border flex flex-col ${
+                            !debtStatus.canCreateOrder
+                              ? 'bg-rose-50/70 border-rose-200'
+                              : debtStatus.availableLimit < debtStatus.creditLimit * 0.2
+                              ? 'bg-amber-50/70 border-amber-200'
+                              : 'bg-emerald-50/70 border-emerald-200'
+                          }`}
+                        >
+                          <span className="text-xs text-slate-600 font-medium">Hạn mức khả dụng</span>
+                          <span
+                            className={`text-sm sm:text-base font-bold mt-0.5 ${
+                              !debtStatus.canCreateOrder
+                                ? 'text-rose-700'
+                                : debtStatus.availableLimit < debtStatus.creditLimit * 0.2
+                                ? 'text-amber-800'
+                                : 'text-emerald-700'
+                            }`}
+                          >
+                            {formatCurrency(debtStatus.availableLimit)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Thanh phần trăm sử dụng hạn mức */}
+                      {debtStatus.creditLimit > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex justify-between text-xs text-slate-500 font-medium">
+                            <span>Tỷ lệ sử dụng hạn mức</span>
+                            <span className="font-semibold text-slate-700">
+                              {Math.round((debtStatus.currentDebt / debtStatus.creditLimit) * 100)}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                !debtStatus.canCreateOrder
+                                  ? 'bg-rose-500'
+                                  : debtStatus.currentDebt / debtStatus.creditLimit >= 0.9
+                                  ? 'bg-rose-500'
+                                  : debtStatus.currentDebt / debtStatus.creditLimit >= 0.7
+                                  ? 'bg-amber-500'
+                                  : 'bg-emerald-500'
+                              }`}
+                              style={{
+                                width: `${Math.min(
+                                  100,
+                                  Math.round((debtStatus.currentDebt / debtStatus.creditLimit) * 100),
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Hard Block Banner nếu có nợ quá hạn vượt quá số ngày cho phép */}
+                      {!debtStatus.canCreateOrder && (
+                        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-rose-900 text-xs sm:text-sm">
+                          <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold text-rose-800">
+                              Hệ thống khóa quyền tạo đơn hàng (Hard Block)
+                            </p>
+                            <p className="mt-0.5 text-rose-700 leading-relaxed">
+                              {debtStatus.blockReason ||
+                                `Đại lý đang có khoản nợ quá hạn ${debtStatus.overdueDays} ngày (vượt quá ${debtStatus.maxDebtDays} ngày cho phép) với số tiền ${formatCurrency(debtStatus.overdueAmount)}. Vui lòng thu hồi công nợ trước khi tiếp tục.`}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Cảnh báo nợ nếu canCreateOrder = true nhưng có warningMessage */}
+                      {debtStatus.canCreateOrder && debtStatus.warningMessage && (
+                        <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-amber-900 text-xs">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          <span className="leading-relaxed">{debtStatus.warningMessage}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
               {/* Điểm giao hàng */}
               {selectedCustomer && (
                 <div className="space-y-3 pt-2 border-t border-slate-100">
-                  <label className="block text-sm font-medium text-slate-700">
-                    Điểm giao hàng
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-slate-700">
+                      Điểm giao hàng
+                    </label>
+                    {selectedCustomer.deliveryPoints && selectedCustomer.deliveryPoints.length > 0 && (
+                      <span className="text-xs text-slate-500">
+                        {selectedCustomer.deliveryPoints.length} điểm đã lưu
+                      </span>
+                    )}
+                  </div>
+
+                  {selectedCustomer.deliveryPoints && selectedCustomer.deliveryPoints.length > 0 && (
+                    <select
+                      value={deliveryPoint.id ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === 'custom') {
+                          setDeliveryPoint({ address: '', name: 'Địa chỉ tự nhập' });
+                        } else {
+                          const dp = selectedCustomer.deliveryPoints?.find((p) => p.id === val);
+                          if (dp) {
+                            setDeliveryPoint(dp);
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    >
+                      {selectedCustomer.deliveryPoints.map((dp) => (
+                        <option key={dp.id} value={dp.id}>
+                          {dp.name} — {dp.address}
+                        </option>
+                      ))}
+                      <option value="custom">Giao tới địa chỉ khác...</option>
+                    </select>
+                  )}
+
                   <input
                     type="text"
                     value={deliveryPoint.address ?? ''}
                     onChange={(e) =>
                       setDeliveryPoint((prev) => ({ ...prev, address: e.target.value }))
                     }
-                    placeholder="Địa chỉ giao hàng..."
+                    placeholder="Địa chỉ giao hàng chi tiết..."
                     className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -640,12 +1184,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                       <div className="grid grid-cols-3 gap-2">
                         <div>
                           <label className="text-xs text-slate-500 mb-1 block">Số lượng</label>
-                          <input
-                            type="number"
-                            min={1}
+                          <LineQuantityInput
                             value={line.quantity}
-                            onChange={(e) => handleUpdateLine(line.id!, 'quantity', e.target.value)}
-                            className="w-full px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onChangeQty={(newQty) => handleUpdateLine(line.id!, 'quantity', newQty)}
                           />
                         </div>
                         <div>
@@ -661,14 +1202,12 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                         <div>
                           <label className="text-xs text-slate-500 mb-1 block">Chiết khấu %</label>
                           <input
-                            type="number"
-                            min={0}
-                            max={100}
-                            value={line.discountPercent}
-                            onChange={(e) =>
-                              handleUpdateLine(line.id!, 'discountPercent', e.target.value)
-                            }
-                            className="w-full px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            type="text"
+                            readOnly
+                            disabled
+                            value={`${line.discountPercent}%`}
+                            title="Mức chiết khấu tự động từ chính sách hệ thống (Read-only, không thể chỉnh sửa)"
+                            className="w-full px-2 py-1.5 text-sm text-center font-bold text-emerald-600 bg-slate-100 border border-slate-200 rounded-lg cursor-not-allowed select-none focus:outline-none"
                           />
                         </div>
                       </div>
@@ -684,6 +1223,89 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Khung đối soát công nợ thời gian thực (Task SN-41) */}
+              {debtStatus && (
+                <div
+                  className={`rounded-xl border p-3.5 space-y-2.5 transition-all ${
+                    !debtStatus.canCreateOrder
+                      ? 'bg-rose-50/80 border-rose-200 text-rose-900'
+                      : debtStatus.creditLimit > 0 &&
+                        debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit
+                      ? 'bg-amber-50/80 border-amber-200 text-amber-900'
+                      : 'bg-slate-50 border-slate-200/80 text-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <span className="flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-slate-600" />
+                      Kiểm soát hạn mức công nợ sau đơn
+                    </span>
+                    {!debtStatus.canCreateOrder ? (
+                      <span className="text-rose-700 font-bold flex items-center gap-1">
+                        <ShieldAlert className="w-3.5 h-3.5" /> Chặn tạo đơn (Quá hạn)
+                      </span>
+                    ) : debtStatus.creditLimit > 0 &&
+                      debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit ? (
+                      <span className="text-amber-800 font-bold flex items-center gap-1">
+                        <AlertTriangle className="w-3.5 h-3.5" /> Cần phê duyệt (Vượt hạn mức)
+                      </span>
+                    ) : (
+                      <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Trong hạn mức an toàn
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-500 block">Hạn mức cấp:</span>
+                      <span className="font-semibold">{formatCurrency(debtStatus.creditLimit)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Công nợ hiện tại:</span>
+                      <span className="font-semibold">{formatCurrency(debtStatus.currentDebt)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Đơn hàng này:</span>
+                      <span className="font-semibold text-blue-700">
+                        + {formatCurrency(totals.grandTotal)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Dự kiến sau đơn:</span>
+                      <span
+                        className={`font-bold ${
+                          debtStatus.creditLimit > 0 &&
+                          debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit
+                            ? 'text-rose-600'
+                            : 'text-slate-800'
+                        }`}
+                      >
+                        {formatCurrency(debtStatus.currentDebt + totals.grandTotal)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Cảnh báo vượt hạn mức công nợ */}
+                  {debtStatus.creditLimit > 0 &&
+                    debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit && (
+                      <div className="pt-2 border-t border-amber-200/80 text-xs text-amber-900 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <p className="leading-relaxed">
+                          Đơn hàng khiến tổng công nợ vượt hạn mức{' '}
+                          <strong>
+                            {formatCurrency(
+                              debtStatus.currentDebt + totals.grandTotal - debtStatus.creditLimit,
+                            )}
+                          </strong>
+                          . Hệ thống sẽ tự động chuyển đơn sang trạng thái{' '}
+                          <strong className="underline">Cần phê duyệt (Pending Approval)</strong> khi gửi.
+                        </p>
+                      </div>
+                    )}
                 </div>
               )}
 
@@ -712,7 +1334,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 flex-shrink-0 gap-3">
           <button
             onClick={step === 1 ? handleClose : () => setStep(1)}
-            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
+            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
           >
             {step === 1 ? 'Hủy' : '← Quay lại'}
           </button>
@@ -724,24 +1346,135 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             {step === 1 ? (
               <button
                 onClick={() => setStep(2)}
-                disabled={!selectedCustomer}
-                className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors"
+                disabled={!selectedCustomer || (debtStatus !== null && !debtStatus.canCreateOrder)}
+                className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors cursor-pointer"
+                title={debtStatus && !debtStatus.canCreateOrder ? debtStatus.blockReason : undefined}
               >
                 Tiếp theo →
               </button>
             ) : (
               <button
-                onClick={handleSubmit}
-                disabled={isSubmitting || lines.length === 0}
-                className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors inline-flex items-center gap-2"
+                onClick={() => handleSubmit(false)}
+                disabled={
+                  isSubmitting ||
+                  lines.length === 0 ||
+                  (debtStatus !== null && !debtStatus.canCreateOrder)
+                }
+                className={`px-5 py-2 text-sm font-medium text-white rounded-xl transition-colors inline-flex items-center gap-2 cursor-pointer ${
+                  debtStatus &&
+                  debtStatus.creditLimit > 0 &&
+                  debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit
+                    ? 'bg-amber-600 hover:bg-amber-700 shadow-sm shadow-amber-600/20'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
               >
                 {isSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
-                {isSubmitting ? 'Đang tạo...' : 'Tạo Đơn hàng'}
+                {isSubmitting
+                  ? 'Đang xử lý...'
+                  : debtStatus &&
+                    debtStatus.creditLimit > 0 &&
+                    debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit
+                  ? 'Gửi Duyệt Đơn hàng'
+                  : 'Tạo Đơn hàng'}
               </button>
             )}
           </div>
         </div>
       </div>
+
+      {/* Modal Xác nhận gửi duyệt khi vượt hạn mức công nợ (SN-41) */}
+      {showCreditApprovalModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl w-full max-w-lg flex flex-col shadow-2xl p-6 relative border border-slate-100">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center ring-4 ring-amber-100 shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                  Đơn hàng vượt hạn mức công nợ
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                  Khách hàng: <span className="font-semibold text-slate-800">{selectedCustomer?.name}</span> ({selectedCustomer?.code})
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCreditApprovalModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Bảng đối chiếu số liệu tài chính */}
+            <div className="my-4 p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2.5 text-xs sm:text-sm">
+              <div className="flex justify-between items-center text-slate-600">
+                <span>Hạn mức công nợ được cấp:</span>
+                <span className="font-semibold text-slate-900">
+                  {formatCurrency(debtStatus?.creditLimit || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-600">
+                <span>Công nợ hiện tại:</span>
+                <span className="font-medium text-slate-800">
+                  {formatCurrency(debtStatus?.currentDebt || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-600">
+                <span>Giá trị đơn hàng mới:</span>
+                <span className="font-semibold text-blue-700">+ {formatCurrency(totals.grandTotal)}</span>
+              </div>
+              <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+                <span className="font-bold text-slate-800">Dự kiến công nợ sau đơn:</span>
+                <span className="font-bold text-rose-600">
+                  {formatCurrency((debtStatus?.currentDebt || 0) + totals.grandTotal)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-rose-600 font-medium">
+                <span>Số tiền vượt hạn mức:</span>
+                <span className="font-bold">
+                  +{' '}
+                  {formatCurrency(
+                    Math.max(
+                      0,
+                      (debtStatus?.currentDebt || 0) + totals.grandTotal - (debtStatus?.creditLimit || 0),
+                    ),
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm leading-relaxed mb-5">
+              <p className="font-semibold flex items-center gap-1.5 mb-1 text-amber-800">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                Cơ chế kiểm soát công nợ tự động (Task SN-41)
+              </p>
+              Đơn hàng này khiến tổng công nợ vượt hạn mức cho phép. Hệ thống sẽ ghi nhận đơn ở trạng thái{' '}
+              <strong className="text-amber-900 underline">Cần phê duyệt (Pending Approval)</strong> và gửi thông báo tới Kế toán / Quản lý kinh doanh duyệt trước khi soạn hàng. Bạn có muốn tiếp tục gửi đơn?
+            </div>
+
+            {/* Hành động */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCreditApprovalModal(false)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+              >
+                Xem lại đơn hàng
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSubmit(true)}
+                disabled={isSubmitting}
+                className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-semibold shadow-sm shadow-amber-600/20 transition-all cursor-pointer flex items-center gap-2"
+              >
+                {isSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
+                Xác nhận gửi duyệt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showWarningModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm">
@@ -750,7 +1483,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               <button
                 onClick={() => {
                   setShowWarningModal(false);
-                  onCreated(createdOrder!);
+                  onCreated?.(createdOrder!);
                   handleClose();
                 }}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
@@ -772,7 +1505,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               <button
                 onClick={() => {
                   setShowWarningModal(false);
-                  onCreated(createdOrder!);
+                  onCreated?.(createdOrder!);
                   handleClose();
                 }}
                 className="w-full mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
@@ -784,6 +1517,124 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         </div>
       )}
     </div>
+
+    {/* Modal Quản lý Điểm Giao Hàng của Đại lý (SN-31 & SN-32) */}
+    {selectedCustomer && isDeliveryModalOpen && (
+      <DeliveryPointModal
+        open={isDeliveryModalOpen}
+        customer={selectedCustomer as unknown as Customer}
+        onClose={() => setIsDeliveryModalOpen(false)}
+        onUpdated={(updatedPoints: CustomerDeliveryPoint[], selectedPointId?: string) => {
+          setDeliveryPoints(updatedPoints);
+          if (selectedPointId) {
+            const matched = updatedPoints.find((p: CustomerDeliveryPoint) => p.id === selectedPointId);
+            if (matched) setSelectedDeliveryPoint(matched);
+          } else if (!selectedDeliveryPoint || !updatedPoints.some((p: CustomerDeliveryPoint) => p.id === selectedDeliveryPoint.id)) {
+            setSelectedDeliveryPoint(updatedPoints.find((p: CustomerDeliveryPoint) => p.isDefault) || updatedPoints[0] || null);
+          }
+        }}
+      />
+    )}
+
+    {/* Modal Tạo nhanh đại lý mới khi đang tạo đơn (Đồng bộ Quản lý đại lý) */}
+    {isQuickCustomerModalOpen && (
+      <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+        <div className="bg-white rounded-xl shadow-xl border border-slate-100 w-full max-w-md p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-[var(--color-primary)]" />
+              <h4 className="text-sm font-bold text-slate-900">Thêm Đại Lý Mới Nhanh</h4>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsQuickCustomerModalOpen(false)}
+              className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <form onSubmit={handleCreateQuickCustomer} className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700">Tên đại lý *</label>
+              <input
+                type="text"
+                required
+                placeholder="VD: Cửa Hàng Bách Hóa Hoa Sen"
+                value={quickCustForm.name}
+                onChange={(e) => setQuickCustForm({ ...quickCustForm, name: e.target.value })}
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700">Số điện thoại liên hệ *</label>
+              <input
+                type="tel"
+                required
+                placeholder="VD: 0988776655"
+                value={quickCustForm.phone}
+                onChange={(e) => setQuickCustForm({ ...quickCustForm, phone: e.target.value })}
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700">Địa chỉ kinh doanh / kho *</label>
+              <input
+                type="text"
+                required
+                placeholder="VD: 45 Nguyễn Huệ, Quận 1, TP.HCM"
+                value={quickCustForm.address}
+                onChange={(e) => setQuickCustForm({ ...quickCustForm, address: e.target.value })}
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700">Hạn mức tín dụng (VNĐ)</label>
+              <input
+                type="number"
+                min="0"
+                step="10000000"
+                value={quickCustForm.creditLimit}
+                onChange={(e) => setQuickCustForm({ ...quickCustForm, creditLimit: Number(e.target.value) })}
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
+              />
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsQuickCustomerModalOpen(false)}
+                disabled={creatingQuickCust}
+                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={creatingQuickCust}
+                className="px-4 py-1.5 text-xs font-semibold text-white bg-[var(--color-primary)] hover:opacity-90 rounded-lg shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {creatingQuickCust ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Đang lưu...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Lưu & Chọn luôn</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+  </>
   );
 };
 
@@ -795,6 +1646,7 @@ const STATUS_TABS: { key: OrderStatus | 'ALL'; label: string }[] = [
   { key: 'ALL', label: 'Tất cả' },
   { key: 'DRAFT', label: 'Nháp' },
   { key: 'PENDING', label: 'Chờ duyệt' },
+  { key: 'PENDING_APPROVAL', label: 'Cần duyệt hạn mức' },
   { key: 'APPROVED', label: 'Đã duyệt' },
   { key: 'PROCESSING', label: 'Đang soạn' },
   { key: 'DELIVERED', label: 'Giao thành công' },
@@ -802,6 +1654,10 @@ const STATUS_TABS: { key: OrderStatus | 'ALL'; label: string }[] = [
 ];
 
 export const OrdersPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlCustomerId = searchParams.get('customerId');
+  const shouldOpenCreate = searchParams.get('createOrder') === 'true' || !!urlCustomerId;
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -815,13 +1671,51 @@ export const OrdersPage: React.FC = () => {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSn40ModalOpen, setIsSn40ModalOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
   const [approvingOrder, setApprovingOrder] = useState(false);
+
+  // Nhận customerId từ URL query param (Đồng bộ từ trang Quản lý đại lý)
+  const [initialCustomerId, setInitialCustomerId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    const cid = searchParams.get('customerId');
+    if (cid) {
+      setInitialCustomerId(cid);
+      setEditingOrder(null);
+      setIsCreateModalOpen(true);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('customerId');
+        return next;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const user = getStoredUser();
   const isAdmin = user?.roles?.includes('ADMIN');
   const isSalesRep = user?.roles?.includes('SALES_REP');
   const isSalesManager = user?.roles?.includes('SALES_MANAGER');
+
+  // Tự động mở modal khi có createOrder hoặc customerId trên URL
+  useEffect(() => {
+    if (shouldOpenCreate) {
+      const t = setTimeout(() => setIsCreateModalOpen(true), 0);
+      return () => clearTimeout(t);
+    }
+  }, [shouldOpenCreate]);
+
+  const handleCloseCreateModal = () => {
+    setIsCreateModalOpen(false);
+    setEditingOrder(null);
+    setInitialCustomerId(undefined);
+    if (searchParams.has('createOrder') || searchParams.has('customerId')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('createOrder');
+      next.delete('customerId');
+      setSearchParams(next, { replace: true });
+    }
+  };
 
   // Debounce search
   useEffect(() => {
@@ -832,28 +1726,38 @@ export const OrdersPage: React.FC = () => {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  const loadOrders = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await ordersService.getOrders({
-        page,
-        limit,
-        status: statusFilter,
-        search: searchTerm || undefined,
-      });
-      setOrders(res.data);
-      setTotal(res.total);
-      setTotalPages(res.totalPages);
-    } catch {
-      showToast('error', 'Không thể tải danh sách đơn hàng');
-    } finally {
-      setLoading(false);
-    }
-  }, [page, statusFilter, searchTerm]);
-
   useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
+    let isMounted = true;
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await ordersService.getOrders({
+          page,
+          limit,
+          status: statusFilter,
+          search: searchTerm || undefined,
+        });
+        if (isMounted) {
+          setOrders(res.data);
+          setTotal(res.total);
+          setTotalPages(res.totalPages);
+        }
+      } catch {
+        if (isMounted) {
+          showToast('error', 'Không thể tải danh sách đơn hàng');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }, 0);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [page, statusFilter, searchTerm]);
 
   const handleOrderCreated = (order: Order) => {
     setOrders((prev) => [order, ...prev]);
@@ -1095,7 +1999,10 @@ export const OrdersPage: React.FC = () => {
       {/* Modal Tạo đơn hàng */}
       <CreateOrderModal
         open={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        editingOrder={editingOrder}
+        initialCustomerId={initialCustomerId || urlCustomerId}
+        onClose={handleCloseCreateModal}
+        onSaved={handleOrderCreated}
         onCreated={handleOrderCreated}
       />
 
@@ -1143,6 +2050,17 @@ export const OrdersPage: React.FC = () => {
                   <span className="text-slate-500">Trạng thái:</span>
                   <OrderStatusBadge status={viewOrder.status} />
                 </div>
+                {viewOrder.isCreditLimitExceeded && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-start gap-2 mt-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Đơn hàng vượt hạn mức công nợ</p>
+                      <p className="mt-0.5 text-amber-800">
+                        Đơn hàng làm vượt hạn mức {formatCurrency(viewOrder.creditLimitExceededAmount || 0)}. Đang ở trạng thái chờ Quản lý kinh doanh / Kế toán phê duyệt.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {viewOrder.requiresApproval && (viewOrder.approvalReasons?.length ?? 0) > 0 && (

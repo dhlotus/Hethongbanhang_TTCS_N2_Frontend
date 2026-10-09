@@ -446,6 +446,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: "Vận hành Toàn diện",
     },
     {
+      id: "sales-customers",
+      name: "Đại lý & Hạn mức nợ",
+      path: "/sales/customers",
+      icon: Users,
+      category: "Vận hành Toàn diện",
+    },
+    {
       id: "inventory-stock",
       name: "Quản lý tồn kho & Lô hàng",
       path: "/inventory/stock",
