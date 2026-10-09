@@ -125,18 +125,18 @@ export const DashboardPage: React.FC = () => {
   const { metrics, charts } = data || {} as DashboardOverviewResponse;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 sm:space-y-8">
       {/* ── DASHBOARD ACTION & FILTER TOOLBAR ── */}
-      <div className="bg-white p-3.5 sm:px-5 sm:py-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3.5">
+      <div className="bg-white p-4 sm:px-6 sm:py-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Bên trái: Trạng thái thời gian thực & Kỳ báo cáo hiện tại */}
-        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200/70 shadow-2xs">
+        <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs sm:text-sm font-semibold border border-emerald-200/70 shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             Thời gian thực
           </div>
-          <div className="flex items-center text-xs sm:text-sm text-slate-600 font-medium">
-            <span className="text-slate-400 mr-1.5 hidden sm:inline">Kỳ báo cáo:</span>
-            <span className="text-slate-800 font-semibold">
+          <div className="flex items-center text-sm text-slate-600 font-medium">
+            <span className="text-slate-400 mr-2 hidden sm:inline">Kỳ báo cáo:</span>
+            <span className="text-slate-900 font-semibold">
               {timeRange === 'today'
                 ? `Hôm nay (${new Date().toLocaleDateString('vi-VN')})`
                 : timeRange === 'this_month'
@@ -149,33 +149,33 @@ export const DashboardPage: React.FC = () => {
             </span>
           </div>
           {lastUpdatedTime && (
-            <span className="hidden lg:inline text-xs text-slate-400 pl-3 border-l border-slate-200">
+            <span className="hidden lg:inline text-xs sm:text-sm text-slate-400 pl-4 border-l border-slate-200 tabular-nums">
               Đồng bộ lúc: {lastUpdatedTime}
             </span>
           )}
         </div>
 
         {/* Bên phải: Cụm bộ lọc thời gian & Tải lại dữ liệu */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full md:w-auto justify-start sm:justify-end">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full md:w-auto justify-start sm:justify-end">
           {timeRange === 'custom' && (
-            <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto bg-slate-50/90 p-1 rounded-xl border border-slate-200/70">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto bg-slate-50/90 p-1.5 rounded-xl border border-slate-200/70">
               <input 
                 type="date" 
-                className="rounded-lg border border-slate-200 bg-white py-1.5 px-2 text-xs sm:text-sm text-slate-700 shadow-2xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none flex-1 sm:flex-initial"
+                className="rounded-lg border border-slate-200 bg-white py-1.5 px-2.5 text-xs sm:text-sm text-slate-700 shadow-2xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none flex-1 sm:flex-initial"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
               />
               <span className="text-slate-400 text-xs">-</span>
               <input 
                 type="date" 
-                className="rounded-lg border border-slate-200 bg-white py-1.5 px-2 text-xs sm:text-sm text-slate-700 shadow-2xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none flex-1 sm:flex-initial"
+                className="rounded-lg border border-slate-200 bg-white py-1.5 px-2.5 text-xs sm:text-sm text-slate-700 shadow-2xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none flex-1 sm:flex-initial"
                 value={endDate}
                 min={startDate}
                 onChange={(e) => setEndDate(e.target.value)}
               />
               <button 
                 onClick={fetchData}
-                className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs sm:text-sm font-semibold text-white shadow-xs hover:bg-indigo-700 active:scale-95 transition-all"
+                className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-white shadow-xs hover:bg-indigo-700 active:scale-95 transition-all"
               >
                 Lọc
               </button>
@@ -186,7 +186,7 @@ export const DashboardPage: React.FC = () => {
             trigger={
               <button
                 type="button"
-                className="inline-flex items-center gap-2 bg-white rounded-xl border border-slate-200/90 shadow-2xs px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer active:scale-95"
+                className="inline-flex items-center gap-2 bg-white rounded-xl border border-slate-200/90 shadow-2xs px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer active:scale-95"
               >
                 <Calendar className="h-4 w-4 text-indigo-600" />
                 <span>
@@ -207,7 +207,7 @@ export const DashboardPage: React.FC = () => {
             type="button"
             onClick={fetchData} 
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
             title="Tải lại dữ liệu tức thì"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
@@ -216,23 +216,23 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── METRICS CARDS ── */}
-      <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
+      {/* ── METRICS CARDS (Tối đa hóa khoảng trắng & Cỡ chữ số lớn) ── */}
+      <div className={`grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
         {(isManager || isSalesRep) && (
           <>
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs hover:shadow-md transition-all">
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
               <div className="flex items-center">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-indigo-50">
-                  <TrendingUp className="h-6 w-6 text-indigo-600" />
+                <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-indigo-50">
+                  <TrendingUp className="h-6.5 w-6.5 text-indigo-600" />
                 </div>
-                <div className="ml-4 w-0 flex-1 min-w-0">
+                <div className="ml-5 w-0 flex-1 min-w-0">
                   <dl>
                     <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Doanh số hôm nay</dt>
-                    <dd className="mt-1 flex items-baseline">
-                      <span className="truncate text-xl sm:text-2xl font-bold tracking-tight text-slate-900">{formatCurrency(metrics.todaySales)}</span>
+                    <dd className="mt-1.5 flex items-baseline">
+                      <span className="truncate text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 tabular-nums">{formatCurrency(metrics.todaySales)}</span>
                       {metrics.salesGrowthPercent !== undefined && (
-                        <span className={`ml-2 flex items-baseline text-xs font-semibold ${metrics.salesGrowthPercent > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {metrics.salesGrowthPercent > 0 ? <ArrowUpRight className="h-3 w-3 mr-0.5" /> : <ArrowDownRight className="h-3 w-3 mr-0.5" />}
+                        <span className={`ml-2.5 flex items-baseline text-xs sm:text-sm font-semibold tabular-nums ${metrics.salesGrowthPercent > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {metrics.salesGrowthPercent > 0 ? <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" /> : <ArrowDownRight className="h-3.5 w-3.5 mr-0.5" />}
                           {Math.abs(metrics.salesGrowthPercent)}%
                         </span>
                       )}
@@ -242,15 +242,15 @@ export const DashboardPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs hover:shadow-md transition-all">
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
               <div className="flex items-center">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-green-50">
-                  <DollarSign className="h-6 w-6 text-green-600" />
+                <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-green-50">
+                  <DollarSign className="h-6.5 w-6.5 text-green-600" />
                 </div>
-                <div className="ml-4 w-0 flex-1 min-w-0">
+                <div className="ml-5 w-0 flex-1 min-w-0">
                   <dl>
                     <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Doanh số tháng này</dt>
-                    <dd className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate">{formatCurrency(metrics.monthlySales)}</dd>
+                    <dd className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 truncate tabular-nums">{formatCurrency(metrics.monthlySales)}</dd>
                   </dl>
                 </div>
               </div>
@@ -259,15 +259,15 @@ export const DashboardPage: React.FC = () => {
         )}
 
         {(isManager || isAccountant || isSalesRep) && (
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs hover:shadow-md transition-all">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
             <div className="flex items-center">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-yellow-50">
-                <ShoppingCart className="h-6 w-6 text-yellow-500" />
+              <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-yellow-50">
+                <ShoppingCart className="h-6.5 w-6.5 text-yellow-500" />
               </div>
-              <div className="ml-4 w-0 flex-1 min-w-0">
+              <div className="ml-5 w-0 flex-1 min-w-0">
                 <dl>
                   <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Đơn hàng chờ duyệt</dt>
-                  <dd className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate">{metrics.pendingOrdersCount}</dd>
+                  <dd className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 truncate tabular-nums">{metrics.pendingOrdersCount}</dd>
                 </dl>
               </div>
             </div>
@@ -275,15 +275,15 @@ export const DashboardPage: React.FC = () => {
         )}
 
         {(isManager || isWarehouse) && (
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs hover:shadow-md transition-all">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
             <div className="flex items-center">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-50">
-                <Package className="h-6 w-6 text-blue-500" />
+              <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-blue-50">
+                <Package className="h-6.5 w-6.5 text-blue-500" />
               </div>
-              <div className="ml-4 w-0 flex-1 min-w-0">
+              <div className="ml-5 w-0 flex-1 min-w-0">
                 <dl>
                   <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Đơn chờ xuất kho</dt>
-                  <dd className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate">{metrics.readyToShipOrdersCount}</dd>
+                  <dd className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 truncate tabular-nums">{metrics.readyToShipOrdersCount}</dd>
                 </dl>
               </div>
             </div>
@@ -291,19 +291,19 @@ export const DashboardPage: React.FC = () => {
         )}
 
         {(isManager || isAccountant) && (
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs hover:shadow-md transition-all">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
             <div className="flex items-center">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-50">
-                <Users className="h-6 w-6 text-red-500" />
+              <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-red-50">
+                <Users className="h-6.5 w-6.5 text-red-500" />
               </div>
-              <div className="ml-4 w-0 flex-1 min-w-0">
+              <div className="ml-5 w-0 flex-1 min-w-0">
                 <dl>
                   <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Tổng công nợ quá hạn</dt>
-                  <dd className="mt-1 flex items-baseline">
-                    <span className="truncate text-xl sm:text-2xl font-bold tracking-tight text-red-600">{formatCurrency(metrics.totalOverdueDebt)}</span>
+                  <dd className="mt-1.5 flex items-baseline">
+                    <span className="truncate text-2xl sm:text-3xl font-bold tracking-tight text-red-600 tabular-nums">{formatCurrency(metrics.totalOverdueDebt)}</span>
                     {metrics.debtGrowthPercent !== undefined && (
-                      <span className={`ml-2 flex items-baseline text-xs font-semibold ${metrics.debtGrowthPercent < 0 ? 'text-green-600' : 'text-red-600'}`} title="So với kỳ trước">
-                        {metrics.debtGrowthPercent < 0 ? <ArrowDownRight className="h-3 w-3 mr-0.5" /> : <ArrowUpRight className="h-3 w-3 mr-0.5" />}
+                      <span className={`ml-2.5 flex items-baseline text-xs sm:text-sm font-semibold tabular-nums ${metrics.debtGrowthPercent < 0 ? 'text-green-600' : 'text-red-600'}`} title="So với kỳ trước">
+                        {metrics.debtGrowthPercent < 0 ? <ArrowDownRight className="h-3.5 w-3.5 mr-0.5" /> : <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" />}
                         {Math.abs(metrics.debtGrowthPercent)}%
                       </span>
                     )}
@@ -315,15 +315,15 @@ export const DashboardPage: React.FC = () => {
         )}
 
         {(isManager || isWarehouse) && (
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs hover:shadow-md transition-all">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
             <div className="flex items-center">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-orange-50">
-                <AlertTriangle className="h-6 w-6 text-orange-500" />
+              <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-orange-50">
+                <AlertTriangle className="h-6.5 w-6.5 text-orange-500" />
               </div>
-              <div className="ml-4 w-0 flex-1 min-w-0">
+              <div className="ml-5 w-0 flex-1 min-w-0">
                 <dl>
                   <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Sản phẩm cảnh báo tồn</dt>
-                  <dd className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-orange-600 truncate">{metrics.lowStockAlertCount}</dd>
+                  <dd className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-orange-600 truncate tabular-nums">{metrics.lowStockAlertCount}</dd>
                 </dl>
               </div>
             </div>
@@ -331,18 +331,18 @@ export const DashboardPage: React.FC = () => {
         )}
       </div>
 
-      {/* ── CHARTS SECTION ── */}
-      <div className={`grid grid-cols-1 gap-6 lg:grid-cols-2 ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
+      {/* ── CHARTS SECTION (Khoảng cách & Bố cục thoáng mắt) ── */}
+      <div className={`grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2 ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
         {/* Sales Trend Chart */}
         {(isManager || isSalesRep) && (
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-xs hover:shadow-md transition-all">
-            <div className="mb-4 flex items-center justify-between">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-7 shadow-xs hover:shadow-md transition-all">
+            <div className="mb-5 flex items-center justify-between">
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900">Biểu đồ doanh số</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Biến động doanh thu theo chu kỳ thời gian</p>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Biểu đồ doanh số</h2>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-normal">Biến động doanh thu theo chu kỳ thời gian</p>
               </div>
             </div>
-            <div className="h-72 w-full">
+            <div className="h-72 sm:h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={charts.salesTrend} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                   <defs>
@@ -359,7 +359,7 @@ export const DashboardPage: React.FC = () => {
                     labelFormatter={(label: any) => `Ngày: ${label}`}
                     contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.08)' }}
                   />
-                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '12px', fontSize: '12px' }} />
+                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '13px' }} />
                   <Area type="monotone" dataKey="value" name="Doanh số" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" activeDot={{ r: 6, strokeWidth: 0, fill: '#4f46e5' }} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -369,14 +369,14 @@ export const DashboardPage: React.FC = () => {
 
         {/* High Risk Agencies Chart */}
         {(isManager || isAccountant) && (
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-xs hover:shadow-md transition-all" id="high-risk">
-            <div className="mb-4 flex items-center justify-between">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-7 shadow-xs hover:shadow-md transition-all" id="high-risk">
+            <div className="mb-5 flex items-center justify-between">
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900">Top Đại lý rủi ro công nợ cao</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Xếp hạng các đại lý có số dư nợ quá hạn lớn nhất</p>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Top Đại lý rủi ro công nợ cao</h2>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-normal">Xếp hạng các đại lý có số dư nợ quá hạn lớn nhất</p>
               </div>
             </div>
-            <div className="h-72 w-full">
+            <div className="h-72 sm:h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={charts.highRiskAgencies} layout="vertical" margin={{ top: 5, right: 15, left: -5, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
@@ -395,7 +395,7 @@ export const DashboardPage: React.FC = () => {
                     contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.08)' }}
                     cursor={{ fill: '#f8fafc' }}
                   />
-                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '12px', fontSize: '12px' }} />
+                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '13px' }} />
                   <Bar 
                     dataKey="overdueAmount" 
                     name="Công nợ quá hạn" 
@@ -410,15 +410,15 @@ export const DashboardPage: React.FC = () => {
         )}
       </div>
 
-      {/* ── ADDITIONAL DETAILS TABLE FOR HIGH RISK ── */}
+      {/* ── ADDITIONAL DETAILS TABLE FOR HIGH RISK (Khoảng trắng & Dòng thoáng) ── */}
       {(isManager || isAccountant) && charts.highRiskAgencies.length > 0 && (
         <div className={`rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
-          <div className="border-b border-slate-200 px-4 sm:px-6 py-4 flex flex-wrap justify-between items-center gap-2 bg-slate-50/50">
+          <div className="border-b border-slate-200 px-5 sm:px-7 py-4.5 sm:py-5 flex flex-wrap justify-between items-center gap-3 bg-slate-50/50">
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900">Danh sách cần thu hồi công nợ gấp</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Danh sách các đại lý có số dư nợ quá thời hạn thanh toán quy định</p>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Danh sách cần thu hồi công nợ gấp</h3>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-normal">Danh sách các đại lý có số dư nợ quá thời hạn thanh toán quy định</p>
             </div>
-            <span className="inline-flex items-center rounded-full bg-red-50 border border-red-200/60 px-2.5 py-0.5 text-xs font-semibold text-red-700 shadow-2xs">
+            <span className="inline-flex items-center rounded-full bg-red-50 border border-red-200/60 px-3 py-1 text-xs sm:text-sm font-semibold text-red-700 shadow-2xs tabular-nums">
               {charts.highRiskAgencies.length} đại lý
             </span>
           </div>
@@ -426,10 +426,10 @@ export const DashboardPage: React.FC = () => {
             <table className="min-w-full divide-y divide-slate-100">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Mã ĐL</th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Tên Đại lý</th>
-                  <th className="hidden sm:table-cell px-4 sm:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">NV Phụ trách</th>
-                  <th className="px-4 sm:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Dư nợ quá hạn</th>
+                  <th className="px-5 sm:px-7 py-3.5 sm:py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Mã ĐL</th>
+                  <th className="px-5 sm:px-7 py-3.5 sm:py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Tên Đại lý</th>
+                  <th className="hidden sm:table-cell px-5 sm:px-7 py-3.5 sm:py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">NV Phụ trách</th>
+                  <th className="px-5 sm:px-7 py-3.5 sm:py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Dư nợ quá hạn</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
@@ -438,16 +438,16 @@ export const DashboardPage: React.FC = () => {
                     key={agency.customerId} 
                     className="hover:bg-slate-50/70 transition-colors"
                   >
-                    <td className="whitespace-nowrap px-4 sm:px-6 py-3.5 text-xs sm:text-sm font-semibold text-indigo-600">
+                    <td className="whitespace-nowrap px-5 sm:px-7 py-4 sm:py-4.5 text-xs sm:text-sm font-semibold text-indigo-600">
                       {agency.customerCode}
                     </td>
-                    <td className="whitespace-nowrap px-4 sm:px-6 py-3.5 text-xs sm:text-sm font-medium text-slate-900 max-w-[160px] sm:max-w-none truncate">
+                    <td className="whitespace-nowrap px-5 sm:px-7 py-4 sm:py-4.5 text-xs sm:text-sm font-medium text-slate-900 max-w-[160px] sm:max-w-none truncate">
                       {agency.customerName}
                     </td>
-                    <td className="hidden sm:table-cell whitespace-nowrap px-4 sm:px-6 py-3.5 text-xs sm:text-sm text-slate-500">
+                    <td className="hidden sm:table-cell whitespace-nowrap px-5 sm:px-7 py-4 sm:py-4.5 text-xs sm:text-sm text-slate-500">
                       {agency.salesRepName || '-'}
                     </td>
-                    <td className="whitespace-nowrap px-4 sm:px-6 py-3.5 text-right text-xs sm:text-sm font-bold text-red-600">
+                    <td className="whitespace-nowrap px-5 sm:px-7 py-4 sm:py-4.5 text-right text-sm sm:text-base font-bold text-red-600 tabular-nums">
                       {formatCurrency(agency.overdueAmount)}
                     </td>
                   </tr>
