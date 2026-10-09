@@ -440,6 +440,10 @@ export const ordersService = {
         maxDebtDays: c.maxDebtDays,
         overdueAmount: (c as unknown as { overdueAmount?: number }).overdueAmount,
         overdueDays: (c as unknown as { overdueDays?: number }).overdueDays,
+        status: c.status,
+        lockReason: c.lockReason,
+        lockedAt: c.lockedAt,
+        lockedBy: c.lockedBy,
         deliveryPoints: (c.deliveryPoints || []).map((dp) => ({
           id: dp.id,
           name: dp.name,
@@ -595,14 +599,30 @@ export const ordersService = {
     if (!isDemo) {
       try {
         const res = await apiClient.post<Order>('/orders', payload);
+        const all = getStoredDemoOrders();
+        all.unshift(res.data);
+        saveStoredDemoOrders(all);
         return res.data;
-      } catch {
-        // Fallback sang local simulation khi backend chưa sẵn sàng
+      } catch (apiError: any) {
+        if (apiError?.response) {
+          const errMsg = apiError.response.data?.message || apiError.message || 'Lỗi khi tạo đơn hàng trên máy chủ';
+          throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+        }
       }
+    }
+
+    const customers = await this.getCustomers();
+    const targetCustomer = customers.find((c) => c.id === payload.customerId);
+
+    if (targetCustomer?.status === 'LOCKED') {
+      throw new Error(
+        `Đại lý "${targetCustomer.name}" đang bị KHÓA GIAO DỊCH (Lý do: ${targetCustomer.lockReason || 'Không xác định'}). Không thể tạo đơn hàng mới!`,
+      );
     }
 
     const storedCustomers = customerService.getStoredCustomers();
     const customer =
+      targetCustomer ||
       storedCustomers.find((c) => c.id === payload.customerId) ||
       MOCK_CUSTOMERS.find((c) => c.id === payload.customerId) ||
       DEMO_CUSTOMERS.find((c) => c.id === payload.customerId);

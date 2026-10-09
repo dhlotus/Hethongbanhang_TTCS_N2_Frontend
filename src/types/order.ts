@@ -76,6 +76,8 @@ export interface Order {
   status: OrderStatus;
   paymentStatus?: PaymentStatus;
   priceListId?: string; // Bảng giá áp dụng
+  isCustomerLocked?: boolean;
+  warningMessage?: string;
   requiresApproval?: boolean;
   approvalReasons?: string[];
   isCreditLimitExceeded?: boolean; // Cờ vượt hạn mức công nợ (SN-41)
@@ -140,6 +142,10 @@ export interface CustomerOption {
   address?: string;
   creditLimit?: number;
   currentDebt?: number;
+  status?: string;
+  lockReason?: string;
+  lockedAt?: string;
+  lockedBy?: string;
   maxDebtDays?: number;
   overdueAmount?: number;
   overdueDays?: number;

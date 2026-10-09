@@ -846,30 +846,88 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                                     <ShieldAlert className="w-3 h-3" /> Nợ quá hạn
                                   </span>
                                 )}
+                                {c.status === 'LOCKED' && (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">
+                                    🔒 ĐÃ KHÓA (SN-36)
+                                  </span>
+                                )}
                               </div>
                               <p className="text-xs text-slate-500 mt-0.5">
                                 {c.code} · {c.phone || 'Chưa có SĐT'}
                               </p>
                             </div>
-                            <span
-                              className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
-                                c.group === 'AGENT_LEVEL_1'
-                                  ? 'bg-purple-50 text-purple-700'
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (c.status === 'LOCKED') {
+                                    if (confirm(`Bạn có chắc chắn muốn MỞ KHÓA đại lý "${c.name}"?`)) {
+                                      try {
+                                        await customersService.unlockCustomer(c.id);
+                                        showToast('success', `Đã mở khóa đại lý ${c.name}`);
+                                        const updated = customers.map((item) =>
+                                          item.id === c.id ? { ...item, status: 'ACTIVE' as const, lockReason: undefined } : item
+                                        );
+                                        setCustomers(updated);
+                                        if (selectedCustomer?.id === c.id) {
+                                          setSelectedCustomer((prev) => prev ? { ...prev, status: 'ACTIVE', lockReason: undefined } : null);
+                                        }
+                                      } catch (err: unknown) {
+                                        showToast('error', err instanceof Error ? err.message : 'Không thể mở khóa');
+                                      }
+                                    }
+                                  } else {
+                                    const reason = window.prompt(`Nhập lý do khóa đại lý "${c.name}" (Bắt buộc - SN-36):`);
+                                    if (reason === null) return;
+                                    if (!reason.trim()) {
+                                      alert('Vui lòng nhập lý do khóa đại lý! Không được để trống.');
+                                      return;
+                                    }
+                                    try {
+                                      await customersService.lockCustomer(c.id, reason.trim());
+                                      showToast('warning', `Đã khóa đại lý ${c.name}`, `Lý do: ${reason.trim()}`);
+                                      const updated = customers.map((item) =>
+                                        item.id === c.id ? { ...item, status: 'LOCKED' as const, lockReason: reason.trim() } : item
+                                      );
+                                      setCustomers(updated);
+                                      if (selectedCustomer?.id === c.id) {
+                                        setSelectedCustomer((prev) => prev ? { ...prev, status: 'LOCKED', lockReason: reason.trim() } : null);
+                                      }
+                                    } catch (err: unknown) {
+                                      showToast('error', err instanceof Error ? err.message : 'Không thể khóa đại lý');
+                                    }
+                                  }
+                                }}
+                                className={`text-[10px] font-bold px-2 py-1 rounded transition-colors cursor-pointer ${
+                                  c.status === 'LOCKED'
+                                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border border-emerald-300'
+                                    : 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-300'
+                                }`}
+                                title={c.status === 'LOCKED' ? 'Bấm để mở khóa giao dịch' : 'Bấm để khóa giao dịch (SN-36)'}
+                              >
+                                {c.status === 'LOCKED' ? '🔓 Mở khóa' : '🔒 Khóa (SN-36)'}
+                              </button>
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  c.group === 'AGENT_LEVEL_1'
+                                    ? 'bg-purple-50 text-purple-700'
+                                    : c.group === 'AGENT_LEVEL_2'
+                                    ? 'bg-blue-50 text-blue-700'
+                                    : c.group === 'RETAIL'
+                                    ? 'bg-emerald-50 text-emerald-700'
+                                    : 'bg-slate-100 text-slate-600'
+                                }`}
+                              >
+                                {c.group === 'AGENT_LEVEL_1'
+                                  ? 'Đại lý Cấp 1'
                                   : c.group === 'AGENT_LEVEL_2'
-                                  ? 'bg-blue-50 text-blue-700'
+                                  ? 'Đại lý Cấp 2'
                                   : c.group === 'RETAIL'
-                                  ? 'bg-emerald-50 text-emerald-700'
-                                  : 'bg-slate-100 text-slate-600'
-                              }`}
-                            >
-                              {c.group === 'AGENT_LEVEL_1'
-                                ? 'Đại lý Cấp 1'
-                                : c.group === 'AGENT_LEVEL_2'
-                                ? 'Đại lý Cấp 2'
-                                : c.group === 'RETAIL'
-                                ? 'Bán lẻ'
-                                : c.group || 'Đại lý'}
-                            </span>
+                                  ? 'Bán lẻ'
+                                  : c.group || 'Đại lý'}
+                              </span>
+                            </div>
                           </div>
                           {c.creditLimit !== undefined && (
                             <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
@@ -883,6 +941,17 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                   )}
                 </div>
               </div>
+
+              {/* Cảnh báo đỏ SN-36 khi chọn Đại lý bị khóa */}
+              {selectedCustomer?.status === 'LOCKED' && (
+                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-900 text-xs sm:text-sm leading-relaxed mb-3">
+                  <p className="font-semibold flex items-center gap-1.5 mb-1 text-red-800 text-sm">
+                    <ShieldAlert className="w-4 h-4 text-red-600 shrink-0" />
+                    CẢNH BÁO SN-36: Đại lý đang bị KHÓA GIAO DỊCH
+                  </p>
+                  Đại lý <strong>{selectedCustomer.name}</strong> đang bị khóa giao dịch (Lý do: <em>{selectedCustomer.lockReason || 'Nợ quá hạn/Mất khả năng thanh toán'}</em>). Hệ thống từ chối tạo đơn mới cho đại lý này!
+                </div>
+              )}
 
               {/* Widget thông tin công nợ thời gian thực (Task SN-41) */}
               {selectedCustomer && (
@@ -1349,9 +1418,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             {step === 1 ? (
               <button
                 onClick={() => setStep(2)}
-                disabled={!selectedCustomer || (debtStatus !== null && !debtStatus.canCreateOrder)}
+                disabled={!selectedCustomer || (debtStatus !== null && !debtStatus.canCreateOrder) || selectedCustomer?.status === 'LOCKED'}
                 className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors cursor-pointer"
-                title={debtStatus && !debtStatus.canCreateOrder ? debtStatus.blockReason : undefined}
+                title={selectedCustomer?.status === 'LOCKED' ? 'Đại lý đang bị KHÓA GIAO DỊCH (SN-36)' : debtStatus && !debtStatus.canCreateOrder ? debtStatus.blockReason : undefined}
               >
                 Tiếp theo →
               </button>
@@ -2216,6 +2285,16 @@ export const OrdersPage: React.FC = () => {
                   <span className="text-blue-700">{formatCurrency(viewOrder.grandTotal)}</span>
                 </div>
               </div>
+
+              {viewOrder.isCustomerLocked && (
+                <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm leading-relaxed mb-3">
+                  <p className="font-semibold flex items-center gap-1.5 mb-1 text-amber-800">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    CẢNH BÁO SN-36: Đại lý đang bị KHÓA GIAO DỊCH
+                  </p>
+                  {viewOrder.warningMessage || 'Đại lý của đơn hàng này hiện đang bị khóa giao dịch. Đơn dở vẫn xử lý tiếp nhưng cần cảnh báo trước khi duyệt/xuất kho.'}
+                </div>
+              )}
 
               {viewOrder.note && (
                 <div className="text-sm text-slate-600 bg-slate-50 rounded-xl px-3 py-2.5">
