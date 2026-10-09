@@ -792,3 +792,261 @@ LOHA SALES ưu tiên:
 
 > **Cùng một chức năng → cùng một icon → cùng một cách hiển thị trong toàn hệ thống.**
 
+## 10. Button — Nút bấm
+
+* Button phải có **phân cấp hành động rõ ràng**:
+
+  * **Primary:** hành động chính → Thêm, Lưu, Xác nhận.
+  * **Secondary:** hành động phụ → Hủy, Quay lại.
+  * **Danger:** hành động nguy hiểm → Xóa, Khóa.
+  * **Ghost / Icon:** hành động phụ hoặc thao tác trên từng dòng.
+* Không biến mọi Button thành Primary.
+* Button cùng loại phải có cùng kích thước, chiều cao, font, radius và khoảng cách.
+* Chuẩn hóa các trạng thái:
+
+  * Default
+  * Hover
+  * Active/Pressed
+  * Focus
+  * Disabled
+  * Loading
+* Loading phải khóa thao tác và thể hiện rõ đang xử lý.
+* Nội dung Button phải ngắn, mô tả đúng hành động: `Lưu`, `Xóa`, `Thêm sản phẩm`.
+* Icon nếu có phải đặt và căn chỉnh thống nhất.
+* Không dùng màu chỉ để trang trí; màu phải phản ánh vai trò hành động.
+
+---
+
+## 11. Icon Button — Nút chỉ có Icon
+
+* Dùng khi chức năng đã **quen thuộc và icon đủ rõ nghĩa**.
+* Các thao tác phổ biến phải dùng icon thống nhất.
+* Phải có `Tooltip` cho Icon Button khi ý nghĩa không rõ ngay.
+* Kích thước vùng click tối thiểu khoảng **36–40px**.
+* Icon luôn căn giữa.
+* Chuẩn hóa trạng thái:
+
+  * Default
+  * Hover
+  * Active
+  * Focus
+  * Disabled
+* Action nguy hiểm như Xóa phải dùng **Danger/Error**.
+* Không dùng Icon Button cho hành động quan trọng nếu người dùng dễ hiểu sai.
+
+---
+
+## 12. Input — Ô nhập liệu
+
+* Mỗi Input phải có **Label rõ ràng**.
+* Placeholder chỉ dùng để gợi ý, **không thay thế Label**.
+* Chuẩn hóa:
+
+  * Height
+  * Padding
+  * Font
+  * Border
+  * Radius
+* Trạng thái bắt buộc có:
+
+  * Default
+  * Hover
+  * Focus
+  * Error
+  * Disabled
+  * Read-only nếu cần
+* Focus dùng **Primary Border/Focus Ring**.
+* Error dùng **Error Color** và thông báo lỗi ngắn, rõ nguyên nhân.
+* Required field phải được thể hiện thống nhất.
+* Không dùng quá nhiều kiểu Input khác nhau cho cùng một loại dữ liệu.
+
+---
+
+## 13. Textarea — Ô nhập nhiều dòng
+
+* Tuân theo toàn bộ quy tắc của **Input**.
+* Dùng cho nội dung dài: mô tả, ghi chú, nội dung chi tiết.
+* Có chiều cao mặc định phù hợp.
+* Cho phép Resize khi thực sự cần.
+* Không để Textarea quá thấp khiến người dùng khó nhập nội dung.
+* Nếu có giới hạn ký tự, hiển thị số ký tự đã nhập/tối đa.
+* Error phải hiển thị rõ dưới hoặc gần Textarea.
+* Không dùng Textarea cho dữ liệu ngắn có cấu trúc.
+
+---
+
+## 14. Select / Dropdown
+
+* Dùng Select khi người dùng chọn **một hoặc một số giá trị có sẵn**.
+* Giao diện phải thống nhất với Input.
+* Có các trạng thái:
+
+  * Default
+  * Hover
+  * Open
+  * Focus
+  * Disabled
+  * Error
+* Dropdown phải hiển thị rõ:
+
+  * Giá trị đang chọn
+  * Các lựa chọn
+  * Trạng thái Selected
+* Danh sách dài nên có Search.
+* Không mở Dropdown ra ngoài viewport nếu có thể tránh.
+* Option phải có vùng click đủ lớn.
+* Không dùng Dropdown cho danh sách quá dài nếu Autocomplete phù hợp hơn.
+
+---
+
+## 15. Checkbox
+
+* Dùng cho lựa chọn **độc lập hoặc nhiều lựa chọn đồng thời**.
+* Checkbox phải có Label rõ ràng.
+* Trạng thái:
+
+  * Unchecked
+  * Checked
+  * Indeterminate
+  * Disabled
+  * Error nếu cần
+* Có thể click cả Label để thay đổi trạng thái.
+* Không dùng Checkbox cho lựa chọn chỉ có **một trong nhiều giá trị** → dùng Radio.
+* Không dùng màu tùy ý; trạng thái Checked dùng Primary.
+
+---
+
+## 16. Radio
+
+* Dùng khi người dùng chỉ được chọn **một giá trị trong một nhóm**.
+* Các Radio cùng nhóm phải có cùng `name/group`.
+* Phải có Label rõ ràng.
+* Một nhóm nên có giá trị mặc định khi hợp lý.
+* Trạng thái:
+
+  * Unselected
+  * Selected
+  * Disabled
+  * Error nếu cần
+* Có thể click Label để chọn.
+* Không dùng Radio cho danh sách quá dài; cân nhắc Select.
+
+---
+
+## 17. Switch / Toggle
+
+* Dùng cho trạng thái **Bật / Tắt** có hiệu lực ngay hoặc có ý nghĩa rõ ràng.
+* Không dùng Switch cho việc chọn dữ liệu hoặc lựa chọn nhiều mục.
+* Phải thể hiện rõ:
+
+  * ON
+  * OFF
+  * Disabled
+* Label phải mô tả **trạng thái/chức năng**, không dùng câu mơ hồ.
+* Nếu thay đổi có hậu quả lớn → yêu cầu Confirm thay vì đổi ngay.
+* Chuyển trạng thái phải có phản hồi trực quan rõ ràng.
+* Không lạm dụng Switch thay cho Checkbox.
+
+---
+
+## 18. Date Picker / Time Picker
+
+* Dùng đúng mục đích:
+
+  * Date Picker → ngày
+  * Time Picker → giờ
+  * DateTime Picker → ngày + giờ
+* Format ngày/giờ phải thống nhất toàn hệ thống.
+* Không để mỗi màn hình dùng một format khác nhau.
+* Hỗ trợ nhập trực tiếp nếu phù hợp.
+* Có trạng thái:
+
+  * Default
+  * Focus
+  * Selected
+  * Disabled
+  * Error
+* Không cho chọn ngày không hợp lệ theo nghiệp vụ.
+* Khoảng ngày phải thể hiện rõ khi dùng Date Range.
+* Calendar/Picker phải không bị che hoặc vượt khỏi viewport.
+
+---
+
+## 19. Search — Tìm kiếm
+
+* Search phải có Icon Search và Placeholder rõ ràng.
+* Placeholder nên mô tả nội dung có thể tìm: `Tìm sản phẩm...`.
+* Search Input phải có trạng thái:
+
+  * Default
+  * Focus
+  * Loading
+  * Has Result
+  * No Result
+* Nếu tìm kiếm realtime → có debounce để tránh gọi API liên tục.
+* Có nút Clear khi đã nhập dữ liệu.
+* Kết quả tìm kiếm phải phản hồi nhanh và rõ ràng.
+* Không dùng Search thay cho Filter nếu người dùng cần lọc theo điều kiện cụ thể.
+
+---
+
+## 20. Autocomplete — Tự động gợi ý
+
+* Dùng khi người dùng **nhập và chọn một giá trị từ danh sách gợi ý**.
+* Gợi ý phải xuất hiện gần Input.
+* Có trạng thái:
+
+  * Loading
+  * Suggestions
+  * No Result
+  * Error
+* Cho phép chọn bằng chuột và bàn phím.
+* Highlight phần text khớp nếu phù hợp.
+* Không hiển thị quá nhiều kết quả cùng lúc.
+* Không tự động chọn giá trị nếu người dùng chưa xác nhận.
+* Với dữ liệu lớn, ưu tiên tìm kiếm từ server thay vì tải toàn bộ dữ liệu.
+
+---
+
+## 21. Slider — Thanh kéo
+
+* Chỉ dùng cho dữ liệu có **giá trị liên tục hoặc khoảng giá trị**.
+* Phải hiển thị rõ:
+
+  * Min
+  * Max
+  * Giá trị hiện tại
+* Có thể cho phép nhập số trực tiếp khi cần độ chính xác cao.
+* Slider phải có vùng kéo đủ lớn, dễ thao tác.
+* Hỗ trợ Keyboard khi phù hợp.
+* Không dùng Slider cho dữ liệu có ít lựa chọn cố định → dùng Select/Radio.
+* Range Slider phải phân biệt rõ hai giá trị Min/Max.
+
+---
+
+## 22. Upload File / Ảnh
+
+* Phải hiển thị rõ:
+
+  * Loại file được phép
+  * Dung lượng tối đa
+  * Số lượng file tối đa nếu có
+* Hỗ trợ:
+
+  * Click để chọn file
+  * Drag & Drop nếu phù hợp
+* Hiển thị trạng thái:
+
+  * Empty
+  * Uploading
+  * Success
+  * Error
+  * Disabled
+* Trong lúc Upload phải có Progress/Loading.
+* Upload lỗi phải nêu rõ nguyên nhân: sai định dạng, quá dung lượng...
+* Ảnh phải có Preview trước khi xác nhận nếu phù hợp.
+* Có nút Xóa/Thay thế file đã chọn.
+* Không cho Upload file không đúng quy định.
+* Không làm mất file đã chọn khi một file khác Upload thất bại.
+* Khu vực Upload phải có vùng click và Drop Zone đủ lớn, dễ nhận biết.
+

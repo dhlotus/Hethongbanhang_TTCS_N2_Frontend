@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, CheckCircle2, X, Edit2, Trash2 } from 'lucide-react';
 import { showToast } from './toast';
+import { Button } from './button';
+import { IconButton } from './icon-button';
 import { discountPoliciesService } from '../services/discount-policies.service';
 import type { DiscountPolicy, CreateDiscountPolicyPayload } from '../services/discount-policies.service';
 import { DiscountPolicyFormModal } from './discount-policy-form-modal';
@@ -71,14 +73,15 @@ export const DiscountPoliciesTab: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-slate-900">Danh sách Chính sách Chiết khấu theo Sản lượng</h2>
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="sm"
+          fullWidth={false}
+          leftIcon={<Plus className="h-4 w-4" />}
           onClick={handleOpenCreateModal}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
         >
-          <Plus className="h-4 w-4" />
-          <span>Thêm chính sách</span>
-        </button>
+          Thêm chính sách
+        </Button>
       </div>
 
       <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
@@ -138,13 +141,21 @@ export const DiscountPoliciesTab: React.FC = () => {
                     )}
                   </td>
                   <td className="py-3.5 px-4 text-center">
-                    <div className="flex justify-center gap-2">
-                      <button onClick={() => handleOpenEditModal(p)} className="p-1 text-slate-400 hover:text-blue-600">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDelete(p.id)} className="p-1 text-slate-400 hover:text-rose-600">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    <div className="flex justify-center items-center gap-1">
+                      <IconButton
+                        icon={<Edit2 className="w-3.5 h-3.5" />}
+                        size="sm"
+                        variant="default"
+                        tooltip="Chỉnh sửa chính sách"
+                        onClick={() => handleOpenEditModal(p)}
+                      />
+                      <IconButton
+                        icon={<Trash2 className="w-3.5 h-3.5" />}
+                        size="sm"
+                        variant="danger"
+                        tooltip="Xóa chính sách"
+                        onClick={() => handleDelete(p.id)}
+                      />
                     </div>
                   </td>
                 </tr>
