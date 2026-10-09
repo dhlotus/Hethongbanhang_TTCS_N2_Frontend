@@ -1038,35 +1038,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                       </p>
                     </div>
                   )}
-=======
-        {/* Nội dung theo bước */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {/* ── BƯỚC 1: Chọn đại lý ── */}
-          {step === 1 && (
-            <>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="block text-sm font-medium text-slate-700">Tìm kiếm đại lý</label>
-                  <button
-                    type="button"
-                    onClick={() => setIsQuickCustomerModalOpen(true)}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline"
-                    title="Thêm đại lý mới và đồng bộ"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Thêm đại lý mới</span>
-                  </button>
-                </div>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    placeholder="Nhập mã hoặc tên đại lý..."
-                    className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
->>>>>>> origin/main
+
                 </div>
 
                 {/* Danh sách đại lý */}
@@ -1761,16 +1733,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               <p className="font-semibold flex items-center gap-1.5 mb-1 text-amber-800">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                 Cơ chế kiểm soát công nợ tự động (Task SN-41)
-=======
-        <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[94vh] flex flex-col shadow-2xl">
-          {/* Header Modal */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
-            <div>
-              <h2 className="text-base font-semibold text-slate-900">Tạo Đơn Hàng Mới</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Bước {step}/2:{' '}
-                {step === 1 ? 'Chọn đại lý & thông tin giao hàng' : 'Thêm sản phẩm & xác nhận'}
->>>>>>> 094ff376c70a350d5d91def19687c922f9d61ced
+
               </p>
             </div>
             <button
