@@ -79,6 +79,31 @@ export const CustomersPage: React.FC = () => {
     receiverName: '',
   });
 
+  // Khóa cuộn trang nền khi mở Modal Thêm mới đại lý (cố định popup giữa màn hình)
+  useEffect(() => {
+    if (isCreateModalOpen) {
+      const prevBodyOverflow = document.body.style.overflow;
+      const mainEl = document.querySelector('main');
+      const prevMainOverflow = mainEl ? mainEl.style.overflow : '';
+
+      document.body.style.overflow = 'hidden';
+      if (mainEl) mainEl.style.overflow = 'hidden';
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && !submitting) {
+          setIsCreateModalOpen(false);
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        document.body.style.overflow = prevBodyOverflow;
+        if (mainEl) mainEl.style.overflow = prevMainOverflow;
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [isCreateModalOpen, submitting]);
+
   // Tải danh sách đại lý từ API / Persistent Storage
   const loadCustomers = useCallback(async (keyword?: string) => {
     try {
@@ -741,194 +766,204 @@ export const CustomersPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── MODAL THÊM ĐẠI LÝ MỚI (TƯƠNG THÍCH ĐỒNG BỘ 100%) ── */}
+      {/* ── MODAL THÊM ĐẠI LÝ MỚI (CỐ ĐỊNH GIỮA MÀN HÌNH - KHÔNG TRƯỢT) ── */}
       {isCreateModalOpen &&
         createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
-            <div className="bg-white rounded-xl shadow-xl border border-slate-100 w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden">
-            {/* Modal Header */}
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-lg bg-indigo-50 text-[var(--color-primary)] flex items-center justify-center">
-                  <Building2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Thêm Đại Lý Mới</h3>
-                  <p className="text-xs text-slate-500">
-                    Dữ liệu sẽ đồng bộ ngay lập tức sang Quản lý đại lý & Tạo đơn hàng
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body / Form */}
-            <form onSubmit={handleCreateCustomer} className="flex-1 overflow-y-auto p-5 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {/* Tên đại lý */}
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Tên đại lý / Doanh nghiệp <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="VD: Công ty TNHH Phân Phối Toàn Cầu"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
-                  />
-                </div>
-
-                {/* Mã đại lý */}
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Mã đại lý (tùy chọn)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Tự sinh nếu để trống (DL-...)"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 font-mono"
-                  />
-                </div>
-
-                {/* Phân nhóm */}
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Phân nhóm đại lý</label>
-                  <select
-                    value={formData.customerGroup}
-                    onChange={(e) => setFormData({ ...formData, customerGroup: e.target.value })}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-white"
-                  >
-                    <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
-                    <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
-                    <option value="WHOLESALE">Bán buôn</option>
-                    <option value="RETAIL">Bán lẻ</option>
-                  </select>
-                </div>
-
-                {/* Số điện thoại */}
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Số điện thoại liên hệ <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="VD: 0988776655"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
-                  />
-                </div>
-
-                {/* Email */}
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Email liên hệ</label>
-                  <input
-                    type="email"
-                    placeholder="VD: daily@gmail.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
-                  />
-                </div>
-
-                {/* Địa chỉ trụ sở */}
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Địa chỉ kinh doanh / trụ sở <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="VD: 123 Đường Nguyễn Trãi, Phường 2, Quận 5, TP.HCM"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
-                  />
-                </div>
-
-                {/* Hạn mức tín dụng */}
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Hạn mức tín dụng (VNĐ)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1000000"
-                    value={formData.creditLimit}
-                    onChange={(e) =>
-                      setFormData({ ...formData, creditLimit: Number(e.target.value) })
-                    }
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
-                  />
-                </div>
-
-                {/* Khu vực */}
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">Khu vực địa bàn</label>
-                  <select
-                    value={formData.region}
-                    onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-white"
-                  >
-                    <option value="Miền Nam">Miền Nam</option>
-                    <option value="Miền Trung">Miền Trung</option>
-                    <option value="Miền Bắc">Miền Bắc</option>
-                  </select>
-                </div>
-
-                {/* Điểm giao ban đầu */}
-                <div className="sm:col-span-2 p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-                    <MapPin className="w-3.5 h-3.5 text-[var(--color-primary)]" />
-                    <span>Điểm giao hàng mặc định ban đầu</span>
+          <div
+            onClick={(e) => {
+              if (e.target === e.currentTarget && !submitting) {
+                setIsCreateModalOpen(false);
+              }
+            }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+          >
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200/80 w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+              {/* Modal Header (Cố định ở đỉnh popup) */}
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 text-[var(--color-primary)] flex items-center justify-center">
+                    <Building2 className="w-5 h-5" />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">Thêm Đại Lý Mới</h3>
+                    <p className="text-xs text-slate-500">
+                      Dữ liệu sẽ đồng bộ ngay lập tức sang Quản lý đại lý & Tạo đơn hàng
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                  title="Đóng modal (Esc)"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body / Form Fields (Cuộn độc lập bên trong) */}
+              <form id="create-customer-form" onSubmit={handleCreateCustomer} className="flex-1 overflow-y-auto p-5 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* Tên đại lý */}
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">
+                      Tên đại lý / Doanh nghiệp <span className="text-rose-500">*</span>
+                    </label>
                     <input
                       type="text"
-                      placeholder="Tên điểm giao (VD: Kho chính, Showroom)"
-                      value={formData.deliveryPointName}
+                      required
+                      placeholder="VD: Công ty TNHH Phân Phối Toàn Cầu"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
+                    />
+                  </div>
+
+                  {/* Mã đại lý */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">
+                      Mã đại lý (tùy chọn)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Tự sinh nếu để trống (DL-...)"
+                      value={formData.code}
+                      onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 font-mono"
+                    />
+                  </div>
+
+                  {/* Phân nhóm */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Phân nhóm đại lý</label>
+                    <select
+                      value={formData.customerGroup}
+                      onChange={(e) => setFormData({ ...formData, customerGroup: e.target.value })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-white"
+                    >
+                      <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
+                      <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
+                      <option value="WHOLESALE">Bán buôn</option>
+                      <option value="RETAIL">Bán lẻ</option>
+                    </select>
+                  </div>
+
+                  {/* Số điện thoại */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">
+                      Số điện thoại liên hệ <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="VD: 0988776655"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Email liên hệ</label>
+                    <input
+                      type="email"
+                      placeholder="VD: daily@gmail.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
+                    />
+                  </div>
+
+                  {/* Địa chỉ trụ sở */}
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">
+                      Địa chỉ kinh doanh / trụ sở <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="VD: 123 Đường Nguyễn Trãi, Phường 2, Quận 5, TP.HCM"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
+                    />
+                  </div>
+
+                  {/* Hạn mức tín dụng */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">
+                      Hạn mức tín dụng (VNĐ)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1000000"
+                      value={formData.creditLimit}
                       onChange={(e) =>
-                        setFormData({ ...formData, deliveryPointName: e.target.value })
+                        setFormData({ ...formData, creditLimit: Number(e.target.value) })
                       }
-                      className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Người nhận (mặc định lấy theo tên đại lý)"
-                      value={formData.receiverName}
-                      onChange={(e) => setFormData({ ...formData, receiverName: e.target.value })}
-                      className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white"
+                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
                     />
                   </div>
-                </div>
-              </div>
 
-              {/* Modal Footer */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                  {/* Khu vực */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Khu vực địa bàn</label>
+                    <select
+                      value={formData.region}
+                      onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-white"
+                    >
+                      <option value="Miền Nam">Miền Nam</option>
+                      <option value="Miền Trung">Miền Trung</option>
+                      <option value="Miền Bắc">Miền Bắc</option>
+                    </select>
+                  </div>
+
+                  {/* Điểm giao ban đầu */}
+                  <div className="sm:col-span-2 p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                      <MapPin className="w-3.5 h-3.5 text-[var(--color-primary)]" />
+                      <span>Điểm giao hàng mặc định ban đầu</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <input
+                        type="text"
+                        placeholder="Tên điểm giao (VD: Kho chính, Showroom)"
+                        value={formData.deliveryPointName}
+                        onChange={(e) =>
+                          setFormData({ ...formData, deliveryPointName: e.target.value })
+                        }
+                        className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Người nhận (mặc định lấy theo tên đại lý)"
+                        value={formData.receiverName}
+                        onChange={(e) => setFormData({ ...formData, receiverName: e.target.value })}
+                        className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              {/* Modal Footer (Cố định ở đáy popup) */}
+              <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-end gap-2.5 shrink-0 bg-slate-50/60">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
                   disabled={submitting}
-                  className="px-4 py-2 text-xs sm:text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
                 >
                   Hủy bỏ
                 </button>
                 <button
                   type="submit"
+                  form="create-customer-form"
                   disabled={submitting}
-                  className="flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-medium text-white bg-[var(--color-primary)] hover:opacity-90 rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-[var(--color-primary)] hover:opacity-90 rounded-xl shadow-xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                 >
                   {submitting ? (
                     <>
@@ -943,11 +978,10 @@ export const CustomersPage: React.FC = () => {
                   )}
                 </button>
               </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* ── MODAL QUẢN LÝ ĐIỂM GIAO HÀNG CỦA ĐẠI LÝ (SN-31 & SN-32) ── */}
       {selectedCustomerForDelivery && isDeliveryModalOpen && (
