@@ -34,7 +34,13 @@ export interface OrderLine {
   stockAvailable?: number; // Tồn khả dụng tham khảo (hiển thị UI)
   minPrice?: number;
   requiresApproval?: boolean;
+  availableStock?: number; // Tồn khả dụng (SN-39)
+  priceListId?: string;
+  notes?: string;
 }
+
+/** Alias cho OrderLine phục vụ tính tương thích (SN-38 / SN-39) */
+export type OrderItem = OrderLine;
 
 /** Thông tin điểm giao hàng */
 export interface DeliveryPoint {
@@ -51,18 +57,20 @@ export interface Order {
   id?: string;
   orderCode?: string; // Mã đơn hàng tự sinh
   customerId: string; // ID Đại lý / Khách hàng B2B
-  customerCode: string;
-  customerName: string;
+  customerCode?: string;
+  customerName?: string;
   customerGroup?: string; // Nhóm đại lý (AGENT_LEVEL_1, AGENT_LEVEL_2, RETAIL)
   salesRepId?: string; // ID nhân viên kinh doanh phụ trách
   salesRepName?: string;
-  deliveryPoint?: DeliveryPoint;
+  deliveryPoint?: DeliveryPoint | Record<string, unknown>;
   deliveryDate?: string; // Ngày giao hàng mong muốn (YYYY-MM-DD)
   lines: OrderLine[];
+  items?: OrderItem[]; // Alias danh sách hàng
   subtotal: number; // Tổng tiền hàng trước chiết khấu
   totalDiscount: number; // Tổng chiết khấu
   grandTotal: number; // Tổng phải thu = subtotal - totalDiscount
   note?: string;
+  warningNote?: string; // Ghi chú cảnh báo công nợ / tồn kho (SN-41 / SN-39)
   status: OrderStatus;
   paymentStatus?: PaymentStatus;
   priceListId?: string; // Bảng giá áp dụng
@@ -77,12 +85,21 @@ export interface Order {
 /** Payload tạo đơn hàng mới */
 export interface CreateOrderPayload {
   customerId: string;
-  deliveryPoint?: Partial<DeliveryPoint>;
+  customerCode?: string;
+  customerName?: string;
+  customerGroup?: string;
+  salesRepId?: string;
+  salesRepName?: string;
+  deliveryPoint?: Partial<DeliveryPoint> | Record<string, unknown>;
   deliveryDate?: string;
   lines: Omit<OrderLine, 'id' | 'lineTotal' | 'baseQuantity'>[];
+  items?: Omit<OrderLine, 'id' | 'lineTotal' | 'baseQuantity'>[];
   note?: string;
+  warningNote?: string;
   priceListId?: string;
   status?: OrderStatus;
+  isCreditLimitExceeded?: boolean;
+  creditLimitExceededAmount?: number;
 }
 
 /** Payload cập nhật đơn hàng */

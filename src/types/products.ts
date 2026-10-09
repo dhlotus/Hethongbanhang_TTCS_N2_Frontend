@@ -58,6 +58,10 @@ export interface Product {
    */
   margin?: number;
   stockQuantity: number;
+  availableStock?: number;
+  availableQuantity?: number;
+  physicalStock?: number;
+  reservedStock?: number;
   status: ProductStatus;
   imageUrl?: string;
   barcode?: string;

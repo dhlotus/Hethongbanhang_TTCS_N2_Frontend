@@ -18,6 +18,8 @@ const DRAFT_ORDERS_KEY = 'loha_draft_orders';
 /** Key lưu danh sách đơn hàng demo */
 const DEMO_ORDERS_KEY = 'loha_demo_orders';
 
+export const authStorage = tokenStorage;
+
 // ──────────────────────────────────────────────────────────────────────────
 // DỮ LIỆU MẪU — Đại lý Demo (SN-38 & SN-37)
 // ──────────────────────────────────────────────────────────────────────────
@@ -360,6 +362,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   },
 ];
 
+export const MOCK_CUSTOMERS = DEMO_CUSTOMERS;
+
 // ──────────────────────────────────────────────────────────────────────────
 // HELPERS — localStorage Demo
 // ──────────────────────────────────────────────────────────────────────────
@@ -600,19 +604,32 @@ export const ordersService = {
     const storedCustomers = customerService.getStoredCustomers();
     const customer =
       storedCustomers.find((c) => c.id === payload.customerId) ||
+      MOCK_CUSTOMERS.find((c) => c.id === payload.customerId) ||
       DEMO_CUSTOMERS.find((c) => c.id === payload.customerId);
-    if (!customer) throw new Error('Không tìm thấy thông tin đại lý');
 
-    const user = tokenStorage.getUser();
+    const user = authStorage.getUser() || tokenStorage.getUser();
 
     // Kiểm tra công nợ theo Task SN-41 (Demo fallback)
-    const overdueDays = customer.overdueDays || 0;
-    const maxDebtDays = customer.maxDebtDays || 30;
-    const overdueAmount = customer.overdueAmount || 0;
+    const overdueDays = customer?.overdueDays || 0;
+    const maxDebtDays = customer?.maxDebtDays || 30;
+    const overdueAmount = customer?.overdueAmount || 0;
     if (payload.status !== 'DRAFT' && overdueDays > maxDebtDays && overdueAmount > 0) {
       throw new Error(
         `Đại lý đang có khoản nợ quá hạn ${overdueDays} ngày (vượt quá ${maxDebtDays} ngày cho phép). Hệ thống tạm khóa quyền tạo đơn hàng mới cho đại lý này.`
       );
+    }
+
+    // Kiểm tra tồn khả dụng theo Task SN-39 (Demo fallback)
+    for (const line of payload.lines) {
+      const prod = MOCK_PRODUCTS.find((p) => p.id === line.productId || p.sku === line.productSku);
+      const available = prod ? (prod.availableStock ?? prod.stockQuantity) : (line.stockAvailable ?? 9999);
+      const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
+      const maxInUnit = convRate > 1 ? Math.floor(available / convRate) : available;
+      if (line.quantity > maxInUnit) {
+        throw new Error(
+          `Sản phẩm ${line.productName || line.productSku} vượt quá tồn khả dụng (Còn tối đa ${maxInUnit} ${line.unit})`,
+        );
+      }
     }
 
     // Tính lineTotal từng dòng
@@ -626,8 +643,8 @@ export const ordersService = {
     const totals = calcOrderTotals(lines);
 
     // Kiểm tra vượt hạn mức công nợ (SN-41)
-    const creditLimit = customer.creditLimit || 0;
-    const currentDebt = customer.currentDebt || 0;
+    const creditLimit = customer?.creditLimit || 0;
+    const currentDebt = customer?.currentDebt || 0;
     const projectedDebt = currentDebt + totals.grandTotal;
     const isCreditLimitExceeded = creditLimit > 0 && projectedDebt > creditLimit;
     const creditLimitExceededAmount = isCreditLimitExceeded ? projectedDebt - creditLimit : 0;
@@ -641,18 +658,27 @@ export const ordersService = {
       ? `[SN-41 CẢNH BÁO: Đơn hàng làm tổng công nợ đạt ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(projectedDebt)}, vượt hạn mức ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(creditLimit)}. Chờ phê duyệt]`
       : undefined;
 
+    // Fallback an toàn nếu không tìm thấy customer hoặc user
+    const currentUser = user || authStorage.getUser() || tokenStorage.getUser() || null;
+    const customerCode = customer?.code || payload.customerCode || payload.customerId;
+    const customerName = customer?.name || payload.customerName || 'Đại lý';
+    const customerGroup =
+      (customer as { group?: string })?.group ||
+      (customer as { customerGroup?: string })?.customerGroup ||
+      payload.customerGroup ||
+      'AGENT_LEVEL_2';
+    const salesRepId = currentUser?.id || payload.salesRepId || '';
+    const salesRepName = currentUser?.fullName || currentUser?.username || payload.salesRepName || 'NVKD';
+
     const newOrder: Order = {
       id: `order-${Date.now()}`,
       orderCode: generateOrderCode(),
-      customerId: customer.id,
-      customerCode: customer.code,
-      customerName: customer.name,
-      customerGroup:
-        (customer as { group?: string }).group ||
-        (customer as { customerGroup?: string }).customerGroup ||
-        'AGENT_LEVEL_2',
-      salesRepId: user?.id || 'usr-sales-002',
-      salesRepName: user?.fullName || user?.username || 'Trần Văn Nam',
+      customerId: payload.customerId,
+      customerCode,
+      customerName,
+      customerGroup,
+      salesRepId,
+      salesRepName,
       deliveryPoint: payload.deliveryPoint as Order['deliveryPoint'],
       deliveryDate: payload.deliveryDate,
       lines,
@@ -667,6 +693,7 @@ export const ordersService = {
       priceListId: payload.priceListId,
       isCreditLimitExceeded,
       creditLimitExceededAmount,
+      warningNote,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -743,17 +770,25 @@ export const ordersService = {
   async searchProducts(query: string): Promise<Product[]> {
     const token = tokenStorage.getAccessToken();
     if (token?.startsWith('demo-jwt-')) {
-      if (!query.trim()) return MOCK_PRODUCTS.slice(0, 8);
+      const source = MOCK_PRODUCTS.map((p) => ({
+        ...p,
+        availableStock: p.availableStock ?? p.availableQuantity ?? p.stockQuantity,
+      }));
+      if (!query.trim()) return source.slice(0, 8);
       const q = query.toLowerCase();
-      return MOCK_PRODUCTS.filter(
-        (p: Product) => p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)
+      return source.filter(
+        (p: Product) =>
+          p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q),
       ).slice(0, 10);
     }
     try {
       const res = await apiClient.get<{ data: Product[] }>('/products', {
         params: { search: query, limit: 10, status: 'ACTIVE' },
       });
-      return res.data.data ?? [];
+      return (res.data.data ?? []).map((p) => ({
+        ...p,
+        availableStock: p.availableStock ?? p.availableQuantity ?? p.stockQuantity,
+      }));
     } catch {
       return [];
     }
