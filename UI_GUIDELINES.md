@@ -1243,3 +1243,181 @@ LOHA SALES ưu tiên:
 * Không để Popover che mất nội dung hoặc thao tác quan trọng.
 
 * Nếu nội dung dài hoặc có nhiều bước, dùng Modal hoặc trang riêng thay vì Popover.
+
+## 33. Toast / Notification — Thông báo nhanh
+
+* Dùng để thông báo kết quả của một hành động mà không làm gián đoạn công việc.
+
+* LOHA SALES chỉ dùng 2 màu chính:
+
+  * Success: xanh lá.
+
+  * Error: đỏ.
+
+* Toast chỉ gồm Icon + Tiêu đề một dòng + Nút đóng (X), không có mô tả.
+
+* Toast trượt vào từ bên phải, hiển thị bên dưới Header và không che Avatar Dropdown đang mở.
+
+* Có thanh tiến trình mỏng ở cạnh dưới để thể hiện thời gian tự đóng.
+
+* Người dùng có thể đóng Toast ngay bằng nút X.
+
+* Nhiều Toast phải hiển thị đồng thời, Toast mới ở trên, Toast cũ dịch xuống dưới; không xếp hàng chờ.
+
+* Mỗi Toast có bộ đếm thời gian độc lập. Khi một Toast biến mất, các Toast còn lại dịch chuyển mượt mà, không chồng lấn.
+
+* Chuẩn hóa kích thước, khoảng cách, animation và vị trí trên toàn hệ thống.
+
+## 34. Alert — Cảnh báo trong giao diện
+
+* Dùng để hiển thị thông tin hoặc cảnh báo cần người dùng chú ý ngay trong nội dung trang.
+
+* Các loại: Info, Success, Warning, Error.
+
+* Màu sắc, icon và tiêu đề phải tương ứng với loại thông báo.
+
+* Nội dung ngắn gọn, nêu rõ vấn đề và hướng xử lý nếu cần.
+
+* Có thể có nút hành động hoặc nút đóng nếu phù hợp.
+
+* Alert quan trọng không được tự biến mất khi người dùng chưa đọc.
+
+* Chuẩn hóa padding, border, radius, icon và typography.
+
+## 35. Modal / Dialog — Hộp thoại
+
+* Dùng cho tác vụ cần tập trung hoặc tương tác mà không rời trang hiện tại.
+
+* Cấu trúc chuẩn: Tiêu đề → Nội dung → Khu vực hành động.
+
+* Chuẩn hóa chiều rộng, padding, radius, shadow và khoảng cách.
+
+* Có nút đóng rõ ràng; hỗ trợ `Esc` và click bên ngoài khi phù hợp.
+
+* Không tự đóng khi người dùng đang nhập dữ liệu chưa lưu.
+
+* Khi mở Modal, nền phía sau phải được làm nổi bật vừa đủ và không thể thao tác ngoài Modal nếu đó là hộp thoại chặn.
+
+* Hỗ trợ bàn phím, Focus và quản lý Focus đúng cách.
+
+* Không lồng nhiều Modal nếu không thực sự cần thiết.
+
+## 36. Confirm Dialog — Hộp thoại xác nhận
+
+* Dùng trước hành động quan trọng, khó hoàn tác hoặc có nguy cơ mất dữ liệu.
+
+* Nội dung phải nói rõ hành động nào sẽ xảy ra và đối tượng bị ảnh hưởng.
+
+* Với hành động nguy hiểm như Xóa hoặc Khóa, dùng màu Danger/Error.
+
+* Nút xác nhận phải mô tả hành động cụ thể: `Xóa sản phẩm`, `Khóa tài khoản`; tránh dùng `OK`.
+
+* Nút Hủy phải dễ nhận biết và không nổi bật hơn nút xác nhận nguy hiểm.
+
+* Không yêu cầu xác nhận cho mọi thao tác thông thường.
+
+* Khi đang xử lý, khóa nút xác nhận để tránh gửi yêu cầu lặp.
+
+* Chỉ đóng sau khi xử lý thành công hoặc khi người dùng chủ động Hủy.
+
+## 37. Loading — Trạng thái đang tải
+
+* Dùng để cho biết hệ thống đang xử lý hoặc tải dữ liệu.
+
+* Tác vụ ngắn dùng Spinner; tác vụ dài nên có thông tin tiến trình nếu đo được.
+
+* Loading phải xuất hiện đúng khu vực đang xử lý.
+
+* Không hiển thị nhiều Spinner không cần thiết trên cùng một vùng.
+
+* Khi đang gửi biểu mẫu, khóa thao tác gửi lặp và thể hiện trạng thái đang xử lý.
+
+* Không dùng Loading vô thời hạn nếu có thể phát hiện lỗi hoặc timeout.
+
+* Khi hoàn tất, hiển thị dữ liệu hoặc trạng thái kết quả tương ứng.
+
+## 38. Skeleton Loading — Khung tải dữ liệu
+
+* Dùng khi đã biết cấu trúc nội dung sẽ hiển thị nhưng dữ liệu chưa tải xong.
+
+* Hình dạng Skeleton phải gần với bố cục dữ liệu thật.
+
+* Ưu tiên Skeleton cho Table, Card, List và khu vực nội dung lớn.
+
+* Dùng hiệu ứng chuyển động nhẹ, không gây mất tập trung.
+
+* Giữ bố cục ổn định để hạn chế Layout Shift.
+
+* Khi dữ liệu tải xong, thay Skeleton bằng nội dung thật.
+
+* Nếu tải thất bại, hiển thị Error State thay vì giữ Skeleton mãi.
+
+## 39. Progress Bar — Thanh tiến trình
+
+* Dùng để thể hiện tiến độ của tác vụ đang diễn ra.
+
+* Tiến trình xác định được phải hiển thị phần trăm hoặc giá trị thực tế.
+
+* Tiến trình không xác định được dùng dạng chuyển động liên tục, không hiển thị phần trăm giả.
+
+* Chuẩn hóa chiều cao, màu sắc, radius và animation.
+
+* Success dùng xanh lá; Error dùng đỏ khi tác vụ thất bại.
+
+* Với Upload hoặc xử lý dài, hiển thị thêm tên tác vụ nếu cần.
+
+* Không để Progress Bar đứng yên khi tác vụ đã kết thúc.
+
+## 40. Success State — Trạng thái thành công
+
+* Dùng khi thao tác hoặc quá trình đã hoàn tất thành công.
+
+* Thể hiện rõ kết quả bằng icon và nội dung ngắn gọn.
+
+* Dùng màu Success theo Semantic Color System.
+
+* Nếu cần bước tiếp theo, cung cấp hành động phù hợp.
+
+* Với thao tác ngắn, ưu tiên Toast; với kết quả cần người dùng xem hoặc tiếp tục thao tác, dùng Success State trong nội dung trang.
+
+* Chỉ hiển thị thành công sau khi hệ thống xác nhận thao tác đã thành công.
+
+## 41. Error State — Trạng thái lỗi
+
+* Dùng khi tải dữ liệu hoặc thực hiện thao tác thất bại.
+
+* Nêu rõ điều gì đã xảy ra và hướng xử lý nếu xác định được.
+
+* Dùng màu Error và icon nhất quán.
+
+* Cung cấp nút Thử lại khi có thể thực hiện lại.
+
+* Không chỉ hiển thị mã lỗi kỹ thuật cho người dùng thông thường.
+
+* Không làm mất dữ liệu người dùng đã nhập khi có thể giữ lại an toàn.
+
+* Phân biệt lỗi nhập liệu, lỗi nghiệp vụ, lỗi mạng và lỗi hệ thống khi cần.
+
+* Chỉ hiển thị lỗi sau khi đã xác định thao tác thất bại; không báo lỗi giả do trạng thái trung gian.
+
+## 42. Empty State — Trạng thái chưa có dữ liệu
+
+* Dùng khi khu vực chưa có dữ liệu để hiển thị.
+
+* Phân biệt:
+
+  * Chưa có dữ liệu ban đầu.
+
+  * Không có kết quả tìm kiếm.
+
+  * Không có dữ liệu phù hợp bộ lọc.
+
+* Hiển thị tiêu đề ngắn gọn, giải thích phù hợp và hành động tiếp theo nếu cần.
+
+* Ví dụ: `Chưa có sản phẩm` → `Thêm sản phẩm`.
+
+* Không hiển thị bảng trống mà không có hướng dẫn.
+
+* Không nhầm Empty State với Loading hoặc Error State.
+
+* Hình minh họa nếu có phải đơn giản, phù hợp thương hiệu và không lấn át nội dung.
