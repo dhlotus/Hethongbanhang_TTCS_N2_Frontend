@@ -1,6 +1,6 @@
-import React from "react";
+import React from 'react';
 
-export type ProgressStatus = "default" | "success" | "error";
+export type ProgressStatus = 'default' | 'success' | 'error';
 
 export interface ProgressBarProps {
   value?: number; // 0 đến 100
@@ -9,7 +9,7 @@ export interface ProgressBarProps {
   indeterminate?: boolean;
   label?: string;
   showPercentage?: boolean;
-  size?: "sm" | "md" | "lg";
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
 
@@ -22,25 +22,25 @@ export interface ProgressBarProps {
 export const ProgressBar: React.FC<ProgressBarProps> = ({
   value = 0,
   max = 100,
-  status = "default",
+  status = 'default',
   indeterminate = false,
   label,
   showPercentage = false,
-  size = "md",
-  className = "",
+  size = 'md',
+  className = '',
 }) => {
   const percentage = Math.max(0, Math.min(100, (value / max) * 100));
 
   const heightStyles = {
-    sm: "h-1.5",
-    md: "h-2",
-    lg: "h-3",
+    sm: 'h-1.5',
+    md: 'h-2',
+    lg: 'h-3',
   }[size];
 
   const colorStyles = {
-    default: "bg-[var(--color-primary)]",
-    success: "bg-emerald-600",
-    error: "bg-rose-600",
+    default: 'bg-[var(--color-primary)]',
+    success: 'bg-emerald-600',
+    error: 'bg-rose-600',
   }[status];
 
   return (
@@ -49,9 +49,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
         <div className="flex items-center justify-between text-xs font-medium text-slate-700 mb-1.5">
           {label && <span>{label}</span>}
           {showPercentage && !indeterminate && (
-            <span className="font-mono text-slate-500 font-bold">
-              {Math.round(percentage)}%
-            </span>
+            <span className="font-mono text-slate-500 font-bold">{Math.round(percentage)}%</span>
           )}
         </div>
       )}

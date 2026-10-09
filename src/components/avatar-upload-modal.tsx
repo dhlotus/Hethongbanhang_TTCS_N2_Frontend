@@ -249,12 +249,7 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
       if (distBR <= CORNER_HANDLE_RADIUS) return 'se';
 
       // 2. Kiểm tra bên trong vùng crop (Move)
-      if (
-        posX >= cropX &&
-        posX <= cropX + cropSize &&
-        posY >= cropY &&
-        posY <= cropY + cropSize
-      ) {
+      if (posX >= cropX && posX <= cropX + cropSize && posY >= cropY && posY <= cropY + cropSize) {
         return 'move';
       }
 
@@ -362,13 +357,7 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
         });
       }
     },
-    [
-      imageSrc,
-      dragState,
-      detectInteraction,
-      getScaleFactor,
-      imageNaturalSize,
-    ]
+    [imageSrc, dragState, detectInteraction, getScaleFactor, imageNaturalSize]
   );
 
   const endDrag = () => {
@@ -444,8 +433,7 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
 
       await onConfirm(file);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : 'Upload thất bại. Vui lòng thử lại.';
+      const msg = err instanceof Error ? err.message : 'Upload thất bại. Vui lòng thử lại.';
       setError(msg);
     } finally {
       setIsUploading(false);
@@ -541,9 +529,7 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
               <span className="font-semibold text-sm text-slate-800 group-hover:text-blue-600">
                 Nhấn để chọn ảnh mới từ thiết bị
               </span>
-              <span className="text-xs text-slate-400">
-                Hỗ trợ JPEG, PNG, WebP — Tối đa 2 MB
-              </span>
+              <span className="text-xs text-slate-400">Hỗ trợ JPEG, PNG, WebP — Tối đa 2 MB</span>
             </button>
           </div>
         )}
@@ -579,7 +565,8 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
             {/* Hướng dẫn thao tác trực quan */}
             <div className="flex items-center justify-center py-1.5 px-3 rounded-xl bg-slate-50 border border-slate-100 text-center">
               <p className="text-[11px] text-slate-500 font-medium select-none">
-                Kéo <strong className="text-blue-600">4 góc tròn</strong> để thu phóng • Kéo <strong className="text-slate-700">ở giữa</strong> để căn góc ảnh
+                Kéo <strong className="text-blue-600">4 góc tròn</strong> để thu phóng • Kéo{' '}
+                <strong className="text-slate-700">ở giữa</strong> để căn góc ảnh
               </p>
             </div>
 

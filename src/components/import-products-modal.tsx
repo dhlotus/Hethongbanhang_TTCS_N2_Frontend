@@ -1,5 +1,5 @@
-import React, { useState, useRef } from "react";
-import { createPortal } from "react-dom";
+import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   UploadCloud,
@@ -8,40 +8,37 @@ import {
   AlertCircle,
   CheckCircle2,
   RefreshCw,
-} from "lucide-react";
-import { productsService } from "../services/products.service";
-import type { PreviewImportResult } from "../types/products";
+} from 'lucide-react';
+import { productsService } from '../services/products.service';
+import type { PreviewImportResult } from '../types/products';
 
 interface ImportProductsModalProps {
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
-  onClose,
-  onSuccess,
-}) => {
+export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ onClose, onSuccess }) => {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [previewResult, setPreviewResult] = useState<PreviewImportResult | null>(null);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadTemplate = async () => {
     try {
       setLoading(true);
-      setErrorMsg("");
+      setErrorMsg('');
       const blob = await productsService.downloadImportTemplate();
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
+      const link = document.createElement('a');
       link.href = url;
-      link.setAttribute("download", "Template_Nhap_SanPham.xlsx");
+      link.setAttribute('download', 'Template_Nhap_SanPham.xlsx');
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "Không thể tải tệp mẫu.");
+      setErrorMsg(err instanceof Error ? err.message : 'Không thể tải tệp mẫu.');
     } finally {
       setLoading(false);
     }
@@ -49,14 +46,14 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
 
   const processFile = async (selectedFile: File) => {
     // Check extension
-    const ext = selectedFile.name.split(".").pop()?.toLowerCase();
-    if (ext !== "xlsx" && ext !== "xls") {
-      setErrorMsg("Vui lòng chọn tệp Excel (.xlsx, .xls)");
+    const ext = selectedFile.name.split('.').pop()?.toLowerCase();
+    if (ext !== 'xlsx' && ext !== 'xls') {
+      setErrorMsg('Vui lòng chọn tệp Excel (.xlsx, .xls)');
       return;
     }
 
     setFile(selectedFile);
-    setErrorMsg("");
+    setErrorMsg('');
     setPreviewResult(null);
 
     // Call preview API
@@ -65,12 +62,12 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
       const result = await productsService.previewImport(selectedFile);
       setPreviewResult(result);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "Có lỗi xảy ra khi đọc tệp Excel.");
+      setErrorMsg(err instanceof Error ? err.message : 'Có lỗi xảy ra khi đọc tệp Excel.');
       setFile(null);
     } finally {
       setLoading(false);
       // Reset input value to allow selecting the same file again
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -101,15 +98,17 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
 
     try {
       setLoading(true);
-      setErrorMsg("");
+      setErrorMsg('');
       const result = await productsService.confirmImport(previewResult.data);
       if (result.error > 0) {
-        setErrorMsg(`Đã nhập thành công ${result.success} dòng. Có ${result.error} dòng lỗi: \n${result.errorDetails.join("\n")}`);
+        setErrorMsg(
+          `Đã nhập thành công ${result.success} dòng. Có ${result.error} dòng lỗi: \n${result.errorDetails.join('\n')}`
+        );
       } else {
         onSuccess();
       }
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : "Có lỗi xảy ra khi xác nhận nhập.");
+      setErrorMsg(err instanceof Error ? err.message : 'Có lỗi xảy ra khi xác nhận nhập.');
     } finally {
       setLoading(false);
     }
@@ -125,9 +124,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
               <FileText className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-800">
-                Nhập danh mục từ Excel
-              </h2>
+              <h2 className="text-lg font-bold text-slate-800">Nhập danh mục từ Excel</h2>
               <p className="text-xs text-slate-500">
                 Tải lên tệp danh sách để tạo mới hoặc cập nhật hàng loạt.
               </p>
@@ -168,9 +165,9 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
 
               <div
                 className={`group relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all py-12 px-6 ${
-                  isDragging 
-                    ? "border-blue-500 bg-blue-50/70" 
-                    : "border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50"
+                  isDragging
+                    ? 'border-blue-500 bg-blue-50/70'
+                    : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50'
                 }`}
                 onClick={() => !loading && fileInputRef.current?.click()}
                 onDragOver={handleDragOver}
@@ -184,7 +181,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
                   ref={fileInputRef}
                   onChange={handleFileChange}
                 />
-                
+
                 {loading && file ? (
                   <div className="flex flex-col items-center justify-center text-center">
                     <RefreshCw className="h-8 w-8 text-blue-500 animate-spin mb-4" />
@@ -197,12 +194,16 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
                   </div>
                 ) : (
                   <>
-                    <div className={`rounded-full p-4 shadow-sm transition-transform ${isDragging ? "bg-blue-100 scale-110" : "bg-white group-hover:scale-110"}`}>
+                    <div
+                      className={`rounded-full p-4 shadow-sm transition-transform ${isDragging ? 'bg-blue-100 scale-110' : 'bg-white group-hover:scale-110'}`}
+                    >
                       <UploadCloud className="h-8 w-8 text-blue-500" />
                     </div>
                     <div className="mt-4 text-center pointer-events-none">
                       <p className="text-sm font-semibold text-slate-700">
-                        {isDragging ? "Thả tệp vào đây" : "Nhấp để tải lên hoặc kéo thả tệp vào đây"}
+                        {isDragging
+                          ? 'Thả tệp vào đây'
+                          : 'Nhấp để tải lên hoặc kéo thả tệp vào đây'}
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
                         Chỉ hỗ trợ tệp định dạng .xlsx, tối đa 5000 dòng.
@@ -234,13 +235,13 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
                     </span>
                   </div>
                 </div>
-                
+
                 <button
                   type="button"
                   onClick={() => {
                     setPreviewResult(null);
                     setFile(null);
-                    setErrorMsg("");
+                    setErrorMsg('');
                   }}
                   className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                 >
@@ -263,26 +264,36 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {previewResult.data.map((item, idx) => (
-                      <tr 
-                        key={idx} 
-                        className={!item.isValid ? "bg-red-50/50" : "hover:bg-slate-50"}
+                      <tr
+                        key={idx}
+                        className={!item.isValid ? 'bg-red-50/50' : 'hover:bg-slate-50'}
                       >
-                        <td className="px-4 py-3 text-center text-slate-400 font-mono text-xs">{item.row}</td>
+                        <td className="px-4 py-3 text-center text-slate-400 font-mono text-xs">
+                          {item.row}
+                        </td>
                         <td className="px-4 py-3">
                           {!item.isValid ? (
-                            <span className="inline-flex rounded bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">LỖI</span>
-                          ) : item.status === "UPDATE" ? (
-                            <span className="inline-flex rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">CẬP NHẬT</span>
+                            <span className="inline-flex rounded bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
+                              LỖI
+                            </span>
+                          ) : item.status === 'UPDATE' ? (
+                            <span className="inline-flex rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                              CẬP NHẬT
+                            </span>
                           ) : (
-                            <span className="inline-flex rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">MỚI</span>
+                            <span className="inline-flex rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                              MỚI
+                            </span>
                           )}
                         </td>
                         <td className="px-4 py-3 font-medium text-slate-700">{item.sku}</td>
-                        <td className="px-4 py-3 truncate max-w-[12rem]" title={item.name}>{item.name}</td>
+                        <td className="px-4 py-3 truncate max-w-[12rem]" title={item.name}>
+                          {item.name}
+                        </td>
                         <td className="px-4 py-3">{item.price?.toLocaleString()}</td>
                         <td className="px-4 py-3">{item.costPrice?.toLocaleString()}</td>
                         <td className="px-4 py-3 text-xs text-red-600 max-w-[15rem]">
-                          {item.errors.join(", ")}
+                          {item.errors.join(', ')}
                         </td>
                       </tr>
                     ))}
@@ -303,7 +314,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({
           >
             Hủy bỏ
           </button>
-          
+
           <button
             type="button"
             onClick={handleConfirm}

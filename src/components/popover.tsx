@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from "react";
-import { X } from "lucide-react";
+import React, { useState, useRef, useEffect } from 'react';
+import { X } from 'lucide-react';
 
-export type PopoverPlacement = "bottom-start" | "bottom-end" | "top-start" | "top-end";
+export type PopoverPlacement = 'bottom-start' | 'bottom-end' | 'top-start' | 'top-end';
 
 export interface PopoverProps {
   trigger: React.ReactNode;
@@ -25,10 +25,10 @@ export const Popover: React.FC<PopoverProps> = ({
   children,
   title,
   showClose = false,
-  placement = "bottom-start",
+  placement = 'bottom-start',
   isOpen: controlledIsOpen,
   onOpenChange,
-  className = "",
+  className = '',
 }) => {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,33 +50,30 @@ export const Popover: React.FC<PopoverProps> = ({
     if (!open) return;
 
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         setOpen(false);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [open]);
 
   const placementClasses = {
-    "bottom-start": "top-full left-0 mt-2",
-    "bottom-end": "top-full right-0 mt-2",
-    "top-start": "bottom-full left-0 mb-2",
-    "top-end": "bottom-full right-0 mb-2",
+    'bottom-start': 'top-full left-0 mt-2',
+    'bottom-end': 'top-full right-0 mt-2',
+    'top-start': 'bottom-full left-0 mb-2',
+    'top-end': 'bottom-full right-0 mb-2',
   }[placement];
 
   return (
@@ -91,11 +88,7 @@ export const Popover: React.FC<PopoverProps> = ({
         >
           {(title || showClose) && (
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/70">
-              {title && (
-                <span className="text-xs font-bold text-slate-800">
-                  {title}
-                </span>
-              )}
+              {title && <span className="text-xs font-bold text-slate-800">{title}</span>}
               {showClose && (
                 <button
                   type="button"

@@ -18,73 +18,145 @@ import type {
  */
 export const PRODUCT_CATEGORIES: ProductCategory[] = [
   {
-    id: "cat-milk",
-    code: "MILK",
-    name: "Sữa & Chế phẩm sữa",
+    id: 'cat-milk',
+    code: 'MILK',
+    name: 'Sữa & Chế phẩm sữa',
     level: 1,
     subCategories: [
       {
-        id: "cat-milk-powder",
-        code: "MILK_POWDER",
-        name: "Sữa bột công thức",
+        id: 'cat-milk-powder',
+        code: 'MILK_POWDER',
+        name: 'Sữa bột công thức',
         level: 2,
-        parentId: "cat-milk",
+        parentId: 'cat-milk',
         subCategories: [
-          { id: "cat-milk-powder-baby", code: "MILK_POWDER_BABY", name: "Sữa bột cho trẻ em", level: 3, parentId: "cat-milk-powder" },
-          { id: "cat-milk-powder-adult", code: "MILK_POWDER_ADULT", name: "Sữa bột người lớn & cao tuổi", level: 3, parentId: "cat-milk-powder" },
+          {
+            id: 'cat-milk-powder-baby',
+            code: 'MILK_POWDER_BABY',
+            name: 'Sữa bột cho trẻ em',
+            level: 3,
+            parentId: 'cat-milk-powder',
+          },
+          {
+            id: 'cat-milk-powder-adult',
+            code: 'MILK_POWDER_ADULT',
+            name: 'Sữa bột người lớn & cao tuổi',
+            level: 3,
+            parentId: 'cat-milk-powder',
+          },
         ],
       },
-      { id: "cat-milk-nut", code: "MILK_NUT", name: "Sữa hạt organic", level: 2, parentId: "cat-milk" },
-      { id: "cat-milk-ready", code: "MILK_READY", name: "Sữa tươi & Tiệt trùng", level: 2, parentId: "cat-milk" },
+      {
+        id: 'cat-milk-nut',
+        code: 'MILK_NUT',
+        name: 'Sữa hạt organic',
+        level: 2,
+        parentId: 'cat-milk',
+      },
+      {
+        id: 'cat-milk-ready',
+        code: 'MILK_READY',
+        name: 'Sữa tươi & Tiệt trùng',
+        level: 2,
+        parentId: 'cat-milk',
+      },
     ],
   },
   {
-    id: "cat-nest",
-    code: "NEST",
-    name: "Nước yến & Bổ dưỡng",
+    id: 'cat-nest',
+    code: 'NEST',
+    name: 'Nước yến & Bổ dưỡng',
     level: 1,
     subCategories: [
       {
-        id: "cat-nest-ready",
-        code: "NEST_READY",
-        name: "Nước yến chưng sẵn",
+        id: 'cat-nest-ready',
+        code: 'NEST_READY',
+        name: 'Nước yến chưng sẵn',
         level: 2,
-        parentId: "cat-nest",
+        parentId: 'cat-nest',
         subCategories: [
-          { id: "cat-nest-ready-sugar", code: "NEST_READY_SUGAR", name: "Nước yến chưng đường phèn", level: 3, parentId: "cat-nest-ready" },
+          {
+            id: 'cat-nest-ready-sugar',
+            code: 'NEST_READY_SUGAR',
+            name: 'Nước yến chưng đường phèn',
+            level: 3,
+            parentId: 'cat-nest-ready',
+          },
         ],
       },
-      { id: "cat-nest-pure", code: "NEST_PURE", name: "Tổ yến sào tinh chế", level: 2, parentId: "cat-nest" },
+      {
+        id: 'cat-nest-pure',
+        code: 'NEST_PURE',
+        name: 'Tổ yến sào tinh chế',
+        level: 2,
+        parentId: 'cat-nest',
+      },
     ],
   },
   {
-    id: "cat-cereal",
-    code: "CEREAL",
-    name: "Ngũ cốc & Hạt dinh dưỡng",
+    id: 'cat-cereal',
+    code: 'CEREAL',
+    name: 'Ngũ cốc & Hạt dinh dưỡng',
     level: 1,
     subCategories: [
-      { id: "cat-cereal-sprout", code: "CEREAL_SPROUT", name: "Ngũ cốc hạt mầm", level: 2, parentId: "cat-cereal" },
-      { id: "cat-cereal-nuts", code: "CEREAL_NUTS", name: "Hạt dinh dưỡng sấy giòn", level: 2, parentId: "cat-cereal" },
+      {
+        id: 'cat-cereal-sprout',
+        code: 'CEREAL_SPROUT',
+        name: 'Ngũ cốc hạt mầm',
+        level: 2,
+        parentId: 'cat-cereal',
+      },
+      {
+        id: 'cat-cereal-nuts',
+        code: 'CEREAL_NUTS',
+        name: 'Hạt dinh dưỡng sấy giòn',
+        level: 2,
+        parentId: 'cat-cereal',
+      },
     ],
   },
   {
-    id: "cat-supp",
-    code: "SUPP",
-    name: "Thực phẩm chức năng",
+    id: 'cat-supp',
+    code: 'SUPP',
+    name: 'Thực phẩm chức năng',
     level: 1,
     subCategories: [
-      { id: "cat-supp-collagen", code: "SUPP_COLLAGEN", name: "Collagen & Chống lão hóa", level: 2, parentId: "cat-supp" },
-      { id: "cat-supp-herb", code: "SUPP_HERB", name: "Đông trùng & Thảo dược", level: 2, parentId: "cat-supp" },
+      {
+        id: 'cat-supp-collagen',
+        code: 'SUPP_COLLAGEN',
+        name: 'Collagen & Chống lão hóa',
+        level: 2,
+        parentId: 'cat-supp',
+      },
+      {
+        id: 'cat-supp-herb',
+        code: 'SUPP_HERB',
+        name: 'Đông trùng & Thảo dược',
+        level: 2,
+        parentId: 'cat-supp',
+      },
     ],
   },
   {
-    id: "cat-bev",
-    code: "BEV",
-    name: "Nước giải khát & Trà",
+    id: 'cat-bev',
+    code: 'BEV',
+    name: 'Nước giải khát & Trà',
     level: 1,
     subCategories: [
-      { id: "cat-bev-tea", code: "BEV_TEA", name: "Trà thảo mộc thanh nhiệt", level: 2, parentId: "cat-bev" },
-      { id: "cat-bev-water", code: "BEV_WATER", name: "Nước khoáng thiên nhiên", level: 2, parentId: "cat-bev" },
+      {
+        id: 'cat-bev-tea',
+        code: 'BEV_TEA',
+        name: 'Trà thảo mộc thanh nhiệt',
+        level: 2,
+        parentId: 'cat-bev',
+      },
+      {
+        id: 'cat-bev-water',
+        code: 'BEV_WATER',
+        name: 'Nước khoáng thiên nhiên',
+        level: 2,
+        parentId: 'cat-bev',
+      },
     ],
   },
 ];
@@ -94,286 +166,296 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
  */
 export let MOCK_PRODUCTS: Product[] = [
   {
-    id: "prod-001",
-    sku: "LH-MILK-900G",
-    name: "Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g",
-    parentCategory: "Sữa & Chế phẩm sữa",
-    subCategory: "Sữa bột công thức",
-    category: "Sữa & Chế phẩm sữa / Sữa bột công thức",
-    categoryId: "cat-milk-powder",
-    baseUnit: "Lon",
-    packagingSpec: "24 lon/thùng",
+    id: 'prod-001',
+    sku: 'LH-MILK-900G',
+    name: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
+    parentCategory: 'Sữa & Chế phẩm sữa',
+    subCategory: 'Sữa bột công thức',
+    category: 'Sữa & Chế phẩm sữa / Sữa bột công thức',
+    categoryId: 'cat-milk-powder',
+    baseUnit: 'Lon',
+    packagingSpec: '24 lon/thùng',
     units: [
-      { unitName: "Lon", conversionRate: 1, isBaseUnit: true },
-      { unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
-      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+      { unitName: 'Lon', conversionRate: 1, isBaseUnit: true },
+      { unitName: 'Lốc', conversionRate: 6, isBaseUnit: false },
+      { unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
     ],
     price: 520000,
     costPrice: 380000,
     margin: 26.92,
     stockQuantity: 340,
-    status: "ACTIVE",
-    barcode: "8936012345011",
+    status: 'ACTIVE',
+    barcode: '8936012345011',
     hasTransactions: true,
-    imageUrl: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&auto=format&fit=crop&q=80",
-    description: "Dòng sữa dinh dưỡng cao cấp bổ sung Canxi, DHA cho trẻ nhỏ và người cao tuổi",
-    createdAt: "2026-01-15T08:00:00Z",
+    imageUrl:
+      'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&auto=format&fit=crop&q=80',
+    description: 'Dòng sữa dinh dưỡng cao cấp bổ sung Canxi, DHA cho trẻ nhỏ và người cao tuổi',
+    createdAt: '2026-01-15T08:00:00Z',
   },
   {
-    id: "prod-002",
-    sku: "LH-NUT-180ML",
-    name: "Sữa Hạt Óc Chó Hạnh Nhân Organic 180ml",
-    parentCategory: "Sữa & Chế phẩm sữa",
-    subCategory: "Sữa hạt organic",
-    category: "Sữa & Chế phẩm sữa / Sữa hạt organic",
-    categoryId: "cat-milk-nut",
-    baseUnit: "Hộp",
-    packagingSpec: "48 hộp/thùng (12 lốc x 4 hộp)",
+    id: 'prod-002',
+    sku: 'LH-NUT-180ML',
+    name: 'Sữa Hạt Óc Chó Hạnh Nhân Organic 180ml',
+    parentCategory: 'Sữa & Chế phẩm sữa',
+    subCategory: 'Sữa hạt organic',
+    category: 'Sữa & Chế phẩm sữa / Sữa hạt organic',
+    categoryId: 'cat-milk-nut',
+    baseUnit: 'Hộp',
+    packagingSpec: '48 hộp/thùng (12 lốc x 4 hộp)',
     units: [
-      { unitName: "Hộp", conversionRate: 1, isBaseUnit: true },
-      { unitName: "Lốc", conversionRate: 4, isBaseUnit: false },
-      { unitName: "Thùng", conversionRate: 48, isBaseUnit: false },
+      { unitName: 'Hộp', conversionRate: 1, isBaseUnit: true },
+      { unitName: 'Lốc', conversionRate: 4, isBaseUnit: false },
+      { unitName: 'Thùng', conversionRate: 48, isBaseUnit: false },
     ],
     price: 18000,
     costPrice: 11500,
     margin: 36.11,
     stockQuantity: 1200,
-    status: "ACTIVE",
-    barcode: "8936012345028",
+    status: 'ACTIVE',
+    barcode: '8936012345028',
     hasTransactions: true,
-    imageUrl: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=200&auto=format&fit=crop&q=80",
-    description: "Sữa hạt thuần chay ít đường, giàu omega-3 tốt cho tim mạch và trí não",
-    createdAt: "2026-01-18T09:30:00Z",
+    imageUrl:
+      'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=200&auto=format&fit=crop&q=80',
+    description: 'Sữa hạt thuần chay ít đường, giàu omega-3 tốt cho tim mạch và trí não',
+    createdAt: '2026-01-18T09:30:00Z',
   },
   {
-    id: "prod-003",
-    sku: "LH-NEST-70ML",
-    name: "Nước Yến Sào Chưng Đường Phèn Loha Nest 70ml",
-    parentCategory: "Nước yến & Bổ dưỡng",
-    subCategory: "Nước yến chưng sẵn",
-    category: "Nước yến & Bổ dưỡng / Nước yến chưng sẵn",
-    categoryId: "cat-nest-ready",
-    baseUnit: "Hũ",
-    packagingSpec: "30 hũ/thùng (5 hộp x 6 hũ)",
+    id: 'prod-003',
+    sku: 'LH-NEST-70ML',
+    name: 'Nước Yến Sào Chưng Đường Phèn Loha Nest 70ml',
+    parentCategory: 'Nước yến & Bổ dưỡng',
+    subCategory: 'Nước yến chưng sẵn',
+    category: 'Nước yến & Bổ dưỡng / Nước yến chưng sẵn',
+    categoryId: 'cat-nest-ready',
+    baseUnit: 'Hũ',
+    packagingSpec: '30 hũ/thùng (5 hộp x 6 hũ)',
     units: [
-      { unitName: "Hũ", conversionRate: 1, isBaseUnit: true },
-      { unitName: "Hộp", conversionRate: 6, isBaseUnit: false },
-      { unitName: "Thùng", conversionRate: 30, isBaseUnit: false },
+      { unitName: 'Hũ', conversionRate: 1, isBaseUnit: true },
+      { unitName: 'Hộp', conversionRate: 6, isBaseUnit: false },
+      { unitName: 'Thùng', conversionRate: 30, isBaseUnit: false },
     ],
     price: 65000,
     costPrice: 42000,
     margin: 35.38,
     stockQuantity: 580,
-    status: "ACTIVE",
-    barcode: "8936012345035",
+    status: 'ACTIVE',
+    barcode: '8936012345035',
     hasTransactions: true,
-    imageUrl: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=200&auto=format&fit=crop&q=80",
-    description: "Tổ yến đảo thiên nhiên chưng đường phèn thanh mát bồi bổ khí huyết",
-    createdAt: "2026-02-01T10:15:00Z",
+    imageUrl:
+      'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=200&auto=format&fit=crop&q=80',
+    description: 'Tổ yến đảo thiên nhiên chưng đường phèn thanh mát bồi bổ khí huyết',
+    createdAt: '2026-02-01T10:15:00Z',
   },
   {
-    id: "prod-004",
-    sku: "LH-CEREAL-500G",
-    name: "Ngũ Cốc Dinh Dưỡng Hạt Mầm Loha Meal 500g",
-    parentCategory: "Ngũ cốc & Hạt dinh dưỡng",
-    subCategory: "Ngũ cốc hạt mầm",
-    category: "Ngũ cốc & Hạt dinh dưỡng / Ngũ cốc hạt mầm",
-    categoryId: "cat-cereal-sprout",
-    baseUnit: "Túi",
-    packagingSpec: "20 túi/thùng",
+    id: 'prod-004',
+    sku: 'LH-CEREAL-500G',
+    name: 'Ngũ Cốc Dinh Dưỡng Hạt Mầm Loha Meal 500g',
+    parentCategory: 'Ngũ cốc & Hạt dinh dưỡng',
+    subCategory: 'Ngũ cốc hạt mầm',
+    category: 'Ngũ cốc & Hạt dinh dưỡng / Ngũ cốc hạt mầm',
+    categoryId: 'cat-cereal-sprout',
+    baseUnit: 'Túi',
+    packagingSpec: '20 túi/thùng',
     units: [
-      { unitName: "Túi", conversionRate: 1, isBaseUnit: true },
-      { unitName: "Thùng", conversionRate: 20, isBaseUnit: false },
+      { unitName: 'Túi', conversionRate: 1, isBaseUnit: true },
+      { unitName: 'Thùng', conversionRate: 20, isBaseUnit: false },
     ],
     price: 145000,
     costPrice: 95000,
     margin: 34.48,
     stockQuantity: 410,
-    status: "ACTIVE",
-    barcode: "8936012345042",
+    status: 'ACTIVE',
+    barcode: '8936012345042',
     hasTransactions: true,
-    imageUrl: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=200&auto=format&fit=crop&q=80",
-    description: "Hỗn hợp 12 loại hạt mầm nướng chín nguyên chất dồi dào chất xơ",
-    createdAt: "2026-02-10T14:20:00Z",
+    imageUrl:
+      'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=200&auto=format&fit=crop&q=80',
+    description: 'Hỗn hợp 12 loại hạt mầm nướng chín nguyên chất dồi dào chất xơ',
+    createdAt: '2026-02-10T14:20:00Z',
   },
   {
-    id: "prod-005",
-    sku: "LH-COLLAGEN-50ML",
-    name: "Nước Uống Collagen Đông Trùng Hạ Thảo 50ml",
-    parentCategory: "Thực phẩm chức năng",
-    subCategory: "Collagen & Chống lão hóa",
-    category: "Thực phẩm chức năng / Collagen & Chống lão hóa",
-    categoryId: "cat-supp-collagen",
-    baseUnit: "Chai",
-    packagingSpec: "24 chai/thùng (4 lốc x 6 chai)",
+    id: 'prod-005',
+    sku: 'LH-COLLAGEN-50ML',
+    name: 'Nước Uống Collagen Đông Trùng Hạ Thảo 50ml',
+    parentCategory: 'Thực phẩm chức năng',
+    subCategory: 'Collagen & Chống lão hóa',
+    category: 'Thực phẩm chức năng / Collagen & Chống lão hóa',
+    categoryId: 'cat-supp-collagen',
+    baseUnit: 'Chai',
+    packagingSpec: '24 chai/thùng (4 lốc x 6 chai)',
     units: [
-      { unitName: "Chai", conversionRate: 1, isBaseUnit: true },
-      { unitName: "Hộp", conversionRate: 6, isBaseUnit: false },
-      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+      { unitName: 'Chai', conversionRate: 1, isBaseUnit: true },
+      { unitName: 'Hộp', conversionRate: 6, isBaseUnit: false },
+      { unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
     ],
     price: 85000,
     costPrice: 55000,
     margin: 35.29,
     stockQuantity: 260,
-    status: "ACTIVE",
-    barcode: "8936012345059",
+    status: 'ACTIVE',
+    barcode: '8936012345059',
     hasTransactions: true,
-    imageUrl: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=200&auto=format&fit=crop&q=80",
-    description: "Collagen peptit thủy phân kết hợp chiết xuất đông trùng hạ thảo tươi",
-    createdAt: "2026-02-15T11:00:00Z",
+    imageUrl:
+      'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=200&auto=format&fit=crop&q=80',
+    description: 'Collagen peptit thủy phân kết hợp chiết xuất đông trùng hạ thảo tươi',
+    createdAt: '2026-02-15T11:00:00Z',
   },
   {
-    id: "prod-006",
-    sku: "LH-TEA-350ML",
-    name: "Trà Thảo Mộc Hoa Cúc La Hán Quả 350ml",
-    parentCategory: "Nước giải khát & Trà",
-    subCategory: "Trà thảo mộc thanh nhiệt",
-    category: "Nước giải khát & Trà / Trà thảo mộc thanh nhiệt",
-    categoryId: "cat-bev-tea",
-    baseUnit: "Lon",
-    packagingSpec: "24 lon/thùng",
+    id: 'prod-006',
+    sku: 'LH-TEA-350ML',
+    name: 'Trà Thảo Mộc Hoa Cúc La Hán Quả 350ml',
+    parentCategory: 'Nước giải khát & Trà',
+    subCategory: 'Trà thảo mộc thanh nhiệt',
+    category: 'Nước giải khát & Trà / Trà thảo mộc thanh nhiệt',
+    categoryId: 'cat-bev-tea',
+    baseUnit: 'Lon',
+    packagingSpec: '24 lon/thùng',
     units: [
-      { unitName: "Lon", conversionRate: 1, isBaseUnit: true },
-      { unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
-      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+      { unitName: 'Lon', conversionRate: 1, isBaseUnit: true },
+      { unitName: 'Lốc', conversionRate: 6, isBaseUnit: false },
+      { unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
     ],
     price: 15000,
     costPrice: 9200,
     margin: 38.67,
     stockQuantity: 890,
-    status: "ACTIVE",
-    barcode: "8936012345066",
+    status: 'ACTIVE',
+    barcode: '8936012345066',
     hasTransactions: true,
-    imageUrl: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=200&auto=format&fit=crop&q=80",
-    description: "Trà hoa cúc nguyên bông nấu la hán quả thanh nhiệt giải độc",
-    createdAt: "2026-02-20T16:00:00Z",
+    imageUrl:
+      'https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=200&auto=format&fit=crop&q=80',
+    description: 'Trà hoa cúc nguyên bông nấu la hán quả thanh nhiệt giải độc',
+    createdAt: '2026-02-20T16:00:00Z',
   },
   {
-    id: "prod-007",
-    sku: "LH-WATER-500ML",
-    name: "Nước Khoáng Kiềm Thiên Nhiên Loha Ion 500ml",
-    parentCategory: "Nước giải khát & Trà",
-    subCategory: "Nước khoáng thiên nhiên",
-    category: "Nước giải khát & Trà / Nước khoáng thiên nhiên",
-    categoryId: "cat-bev-water",
-    baseUnit: "Chai",
-    packagingSpec: "24 chai/thùng",
+    id: 'prod-007',
+    sku: 'LH-WATER-500ML',
+    name: 'Nước Khoáng Kiềm Thiên Nhiên Loha Ion 500ml',
+    parentCategory: 'Nước giải khát & Trà',
+    subCategory: 'Nước khoáng thiên nhiên',
+    category: 'Nước giải khát & Trà / Nước khoáng thiên nhiên',
+    categoryId: 'cat-bev-water',
+    baseUnit: 'Chai',
+    packagingSpec: '24 chai/thùng',
     units: [
-      { unitName: "Chai", conversionRate: 1, isBaseUnit: true },
-      { unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
-      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+      { unitName: 'Chai', conversionRate: 1, isBaseUnit: true },
+      { unitName: 'Lốc', conversionRate: 6, isBaseUnit: false },
+      { unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
     ],
     price: 12000,
     costPrice: 6800,
     margin: 43.33,
     stockQuantity: 1500,
-    status: "ACTIVE",
-    barcode: "8936012345073",
+    status: 'ACTIVE',
+    barcode: '8936012345073',
     hasTransactions: false,
-    imageUrl: "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=200&auto=format&fit=crop&q=80",
-    description: "Nước khoáng kiềm pH 9.0 khai thác từ mạch nước ngầm núi cao",
-    createdAt: "2026-03-01T08:30:00Z",
+    imageUrl:
+      'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=200&auto=format&fit=crop&q=80',
+    description: 'Nước khoáng kiềm pH 9.0 khai thác từ mạch nước ngầm núi cao',
+    createdAt: '2026-03-01T08:30:00Z',
   },
   {
-    id: "prod-008",
-    sku: "LH-MILK-PAST-1L",
-    name: "Sữa Tươi Thanh Trùng Nguyên Chất 1 Lít",
-    parentCategory: "Sữa & Chế phẩm sữa",
-    subCategory: "Sữa tươi & Tiệt trùng",
-    category: "Sữa & Chế phẩm sữa / Sữa tươi & Tiệt trùng",
-    categoryId: "cat-milk-ready",
-    baseUnit: "Chai",
-    packagingSpec: "12 chai/thùng",
+    id: 'prod-008',
+    sku: 'LH-MILK-PAST-1L',
+    name: 'Sữa Tươi Thanh Trùng Nguyên Chất 1 Lít',
+    parentCategory: 'Sữa & Chế phẩm sữa',
+    subCategory: 'Sữa tươi & Tiệt trùng',
+    category: 'Sữa & Chế phẩm sữa / Sữa tươi & Tiệt trùng',
+    categoryId: 'cat-milk-ready',
+    baseUnit: 'Chai',
+    packagingSpec: '12 chai/thùng',
     units: [
-      { unitName: "Chai", conversionRate: 1, isBaseUnit: true },
-      { unitName: "Thùng", conversionRate: 12, isBaseUnit: false },
+      { unitName: 'Chai', conversionRate: 1, isBaseUnit: true },
+      { unitName: 'Thùng', conversionRate: 12, isBaseUnit: false },
     ],
     price: 38000,
     costPrice: 26000,
     margin: 31.58,
     stockQuantity: 180,
-    status: "ACTIVE",
-    barcode: "8936012345080",
+    status: 'ACTIVE',
+    barcode: '8936012345080',
     hasTransactions: false,
-    imageUrl: "https://images.unsplash.com/photo-1528750997573-59b89d56f4f7?w=200&auto=format&fit=crop&q=80",
-    description: "100% sữa bò tươi thanh trùng bảo quản lạnh 2-4 độ C",
-    createdAt: "2026-03-05T09:10:00Z",
+    imageUrl:
+      'https://images.unsplash.com/photo-1528750997573-59b89d56f4f7?w=200&auto=format&fit=crop&q=80',
+    description: '100% sữa bò tươi thanh trùng bảo quản lạnh 2-4 độ C',
+    createdAt: '2026-03-05T09:10:00Z',
   },
   {
-    id: "prod-009",
-    sku: "LH-NEST-PREM-100G",
-    name: "Hộp Quà Yến Sào Tinh Chế Thượng Hạng 100g",
-    parentCategory: "Nước yến & Bổ dưỡng",
-    subCategory: "Tổ yến sào tinh chế",
-    category: "Nước yến & Bổ dưỡng / Tổ yến sào tinh chế",
-    categoryId: "cat-nest-pure",
-    baseUnit: "Hộp",
-    packagingSpec: "10 hộp/thùng",
+    id: 'prod-009',
+    sku: 'LH-NEST-PREM-100G',
+    name: 'Hộp Quà Yến Sào Tinh Chế Thượng Hạng 100g',
+    parentCategory: 'Nước yến & Bổ dưỡng',
+    subCategory: 'Tổ yến sào tinh chế',
+    category: 'Nước yến & Bổ dưỡng / Tổ yến sào tinh chế',
+    categoryId: 'cat-nest-pure',
+    baseUnit: 'Hộp',
+    packagingSpec: '10 hộp/thùng',
     units: [
-      { unitName: "Hộp", conversionRate: 1, isBaseUnit: true },
-      { unitName: "Thùng", conversionRate: 10, isBaseUnit: false },
+      { unitName: 'Hộp', conversionRate: 1, isBaseUnit: true },
+      { unitName: 'Thùng', conversionRate: 10, isBaseUnit: false },
     ],
     price: 4200000,
     costPrice: 3100000,
     margin: 26.19,
     stockQuantity: 45,
-    status: "ACTIVE",
-    barcode: "8936012345097",
+    status: 'ACTIVE',
+    barcode: '8936012345097',
     hasTransactions: false,
-    imageUrl: "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=200&auto=format&fit=crop&q=80",
-    description: "Tổ yến tai to đều sạch lông sấy khô tiệt trùng kèm đường phèn táo đỏ",
-    createdAt: "2026-03-10T14:40:00Z",
+    imageUrl:
+      'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=200&auto=format&fit=crop&q=80',
+    description: 'Tổ yến tai to đều sạch lông sấy khô tiệt trùng kèm đường phèn táo đỏ',
+    createdAt: '2026-03-10T14:40:00Z',
   },
   {
-    id: "prod-010",
-    sku: "LH-NUTS-MIX-250G",
-    name: "Hạt Hỗn Hợp Macca Óc Chó Hạnh Nhân Sấy Giòn 250g",
-    parentCategory: "Ngũ cốc & Hạt dinh dưỡng",
-    subCategory: "Hạt dinh dưỡng sấy giòn",
-    category: "Ngũ cốc & Hạt dinh dưỡng / Hạt dinh dưỡng sấy giòn",
-    categoryId: "cat-cereal-nuts",
-    baseUnit: "Hũ",
-    packagingSpec: "24 hũ/thùng",
+    id: 'prod-010',
+    sku: 'LH-NUTS-MIX-250G',
+    name: 'Hạt Hỗn Hợp Macca Óc Chó Hạnh Nhân Sấy Giòn 250g',
+    parentCategory: 'Ngũ cốc & Hạt dinh dưỡng',
+    subCategory: 'Hạt dinh dưỡng sấy giòn',
+    category: 'Ngũ cốc & Hạt dinh dưỡng / Hạt dinh dưỡng sấy giòn',
+    categoryId: 'cat-cereal-nuts',
+    baseUnit: 'Hũ',
+    packagingSpec: '24 hũ/thùng',
     units: [
-      { unitName: "Hũ", conversionRate: 1, isBaseUnit: true },
-      { unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
-      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+      { unitName: 'Hũ', conversionRate: 1, isBaseUnit: true },
+      { unitName: 'Lốc', conversionRate: 6, isBaseUnit: false },
+      { unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
     ],
     price: 135000,
     costPrice: 88000,
     margin: 34.81,
     stockQuantity: 320,
-    status: "ACTIVE",
-    barcode: "8936012345103",
+    status: 'ACTIVE',
+    barcode: '8936012345103',
     hasTransactions: false,
-    imageUrl: "https://images.unsplash.com/photo-1508061253366-f7da158b6d46?w=200&auto=format&fit=crop&q=80",
-    description: "Hạt dinh dưỡng nhập khẩu sấy mộc không muối thơm ngậy giòn tan",
-    createdAt: "2026-03-12T15:20:00Z",
+    imageUrl:
+      'https://images.unsplash.com/photo-1508061253366-f7da158b6d46?w=200&auto=format&fit=crop&q=80',
+    description: 'Hạt dinh dưỡng nhập khẩu sấy mộc không muối thơm ngậy giòn tan',
+    createdAt: '2026-03-12T15:20:00Z',
   },
   {
-    id: "prod-011",
-    sku: "LH-OLD-COFFEE-CAN",
-    name: "Cà Phê Sữa Đóng Lon Loha Classic 240ml (Mẫu Cũ)",
-    parentCategory: "Nước giải khát & Trà",
-    subCategory: "Trà thảo mộc thanh nhiệt",
-    category: "Nước giải khát & Trà / Trà thảo mộc thanh nhiệt",
-    categoryId: "cat-bev-tea",
-    baseUnit: "Lon",
-    packagingSpec: "24 lon/thùng",
+    id: 'prod-011',
+    sku: 'LH-OLD-COFFEE-CAN',
+    name: 'Cà Phê Sữa Đóng Lon Loha Classic 240ml (Mẫu Cũ)',
+    parentCategory: 'Nước giải khát & Trà',
+    subCategory: 'Trà thảo mộc thanh nhiệt',
+    category: 'Nước giải khát & Trà / Trà thảo mộc thanh nhiệt',
+    categoryId: 'cat-bev-tea',
+    baseUnit: 'Lon',
+    packagingSpec: '24 lon/thùng',
     units: [
-      { unitName: "Lon", conversionRate: 1, isBaseUnit: true },
-      { unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
-      { unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+      { unitName: 'Lon', conversionRate: 1, isBaseUnit: true },
+      { unitName: 'Lốc', conversionRate: 6, isBaseUnit: false },
+      { unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
     ],
     price: 14000,
     costPrice: 9000,
     margin: 35.71,
     stockQuantity: 0,
-    status: "INACTIVE",
-    barcode: "8936012345110",
+    status: 'INACTIVE',
+    barcode: '8936012345110',
     hasTransactions: true,
-    description: "Sản phẩm phiên bản cũ năm 2025, hiện đã ngừng kinh doanh để thay thế mẫu mới",
-    createdAt: "2025-06-10T10:00:00Z",
+    description: 'Sản phẩm phiên bản cũ năm 2025, hiện đã ngừng kinh doanh để thay thế mẫu mới',
+    createdAt: '2025-06-10T10:00:00Z',
   },
 ];
 
@@ -383,7 +465,7 @@ export let MOCK_PRODUCTS: Product[] = [
 const checkCanViewCost = (): boolean => {
   const user = tokenStorage.getUser();
   const roles = user?.roles || [];
-  return roles.includes("ADMIN") || roles.includes("SALES_MANAGER");
+  return roles.includes('ADMIN') || roles.includes('SALES_MANAGER');
 };
 
 /**
@@ -417,10 +499,14 @@ export const productsService = {
             name: String(n.name),
             code: String(n.code),
             level: Number(n.level),
-            parentId: n.parentId ? String(n.parentId) : (n.parent_id ? String(n.parent_id) : null),
+            parentId: n.parentId ? String(n.parentId) : n.parent_id ? String(n.parent_id) : null,
             productCount: Number(n.productCount ?? n.product_count ?? 0),
-            children: Array.isArray(n.children) ? mapTree(n.children as Record<string, unknown>[]) : [],
-            subCategories: Array.isArray(n.children) ? mapTree(n.children as Record<string, unknown>[]) : [],
+            children: Array.isArray(n.children)
+              ? mapTree(n.children as Record<string, unknown>[])
+              : [],
+            subCategories: Array.isArray(n.children)
+              ? mapTree(n.children as Record<string, unknown>[])
+              : [],
           }));
         };
         return mapTree(response.data);
@@ -438,7 +524,7 @@ export const productsService = {
     const {
       page = 1,
       limit = 20,
-      search = "",
+      search = '',
       categoryId,
       category,
       parentCategory,
@@ -487,11 +573,15 @@ export const productsService = {
       }
 
       if (parentCategory && parentCategory !== 'ALL') {
-        filtered = filtered.filter((p) => p.parentCategory === parentCategory || p.category?.includes(parentCategory));
+        filtered = filtered.filter(
+          (p) => p.parentCategory === parentCategory || p.category?.includes(parentCategory)
+        );
       }
 
       if (subCategory && subCategory !== 'ALL') {
-        filtered = filtered.filter((p) => p.subCategory === subCategory || p.category?.includes(subCategory));
+        filtered = filtered.filter(
+          (p) => p.subCategory === subCategory || p.category?.includes(subCategory)
+        );
       }
 
       if (status && status !== 'ALL') {
@@ -501,7 +591,9 @@ export const productsService = {
       const total = filtered.length;
       const totalPages = Math.ceil(total / limit) || 1;
       const startIndex = (page - 1) * limit;
-      const pagedData = filtered.slice(startIndex, startIndex + limit).map((p) => sanitizeProduct(p, canViewCost));
+      const pagedData = filtered
+        .slice(startIndex, startIndex + limit)
+        .map((p) => sanitizeProduct(p, canViewCost));
 
       return {
         data: pagedData,
@@ -539,7 +631,9 @@ export const productsService = {
       const total = filtered.length;
       const totalPages = Math.ceil(total / limit) || 1;
       const startIndex = (page - 1) * limit;
-      const pagedData = filtered.slice(startIndex, startIndex + limit).map((p) => sanitizeProduct(p, canViewCost));
+      const pagedData = filtered
+        .slice(startIndex, startIndex + limit)
+        .map((p) => sanitizeProduct(p, canViewCost));
 
       return {
         data: pagedData,
@@ -564,7 +658,7 @@ export const productsService = {
       const found = MOCK_PRODUCTS.find(
         (p) => p.id === id || p.sku.toLowerCase() === id.toLowerCase()
       );
-      if (!found) throw new Error("Sản phẩm không tồn tại trên hệ thống!");
+      if (!found) throw new Error('Sản phẩm không tồn tại trên hệ thống!');
       return sanitizeProduct(found, canViewCost);
     }
   },
@@ -577,7 +671,7 @@ export const productsService = {
     const cleanSku = payload.sku.trim().toUpperCase().replace(/\s+/g, '');
 
     if (!cleanSku) {
-      throw new Error("Mã SKU không được để trống!");
+      throw new Error('Mã SKU không được để trống!');
     }
 
     try {
@@ -597,9 +691,7 @@ export const productsService = {
       }
 
       // Mock Fallback
-      const isDuplicate = MOCK_PRODUCTS.some(
-        (p) => p.sku.toUpperCase() === cleanSku
-      );
+      const isDuplicate = MOCK_PRODUCTS.some((p) => p.sku.toUpperCase() === cleanSku);
 
       if (isDuplicate) {
         throw new Error(`Mã SKU [${cleanSku}] đã tồn tại trên hệ thống. Vui lòng đặt mã khác!`);
@@ -616,13 +708,15 @@ export const productsService = {
         name: payload.name.trim(),
         parentCategory: payload.parentCategory,
         subCategory: payload.subCategory,
-        category: payload.category || `${payload.parentCategory || ''} / ${payload.subCategory || ''}`,
+        category:
+          payload.category || `${payload.parentCategory || ''} / ${payload.subCategory || ''}`,
         categoryId: payload.categoryId,
         baseUnit: payload.baseUnit,
         packagingSpec: payload.packagingSpec,
-        units: payload.units && payload.units.length > 0
-          ? payload.units
-          : [{ unitName: payload.baseUnit, conversionRate: 1, isBaseUnit: true }],
+        units:
+          payload.units && payload.units.length > 0
+            ? payload.units
+            : [{ unitName: payload.baseUnit, conversionRate: 1, isBaseUnit: true }],
         price: Number(payload.price),
         costPrice: payload.costPrice !== undefined ? Number(payload.costPrice) : undefined,
         margin,
@@ -661,7 +755,9 @@ export const productsService = {
           stockQuantity:
             resProduct.stockQuantity !== undefined && resProduct.stockQuantity !== null
               ? resProduct.stockQuantity
-              : (payload.stockQuantity !== undefined ? payload.stockQuantity : currentStock),
+              : payload.stockQuantity !== undefined
+                ? payload.stockQuantity
+                : currentStock,
         };
       }
 
@@ -679,7 +775,7 @@ export const productsService = {
 
       const index = MOCK_PRODUCTS.findIndex((p) => p.id === id || p.sku === id);
       if (index === -1) {
-        throw new Error("Sản phẩm cần cập nhật không tồn tại!");
+        throw new Error('Sản phẩm cần cập nhật không tồn tại!');
       }
 
       const existing = MOCK_PRODUCTS[index];
@@ -714,7 +810,8 @@ export const productsService = {
 
       // Tính lại biên lợi nhuận
       if (existing.price > 0 && existing.costPrice !== undefined) {
-        existing.margin = Math.round(((existing.price - existing.costPrice) / existing.price) * 10000) / 100;
+        existing.margin =
+          Math.round(((existing.price - existing.costPrice) / existing.price) * 10000) / 100;
       }
 
       existing.updatedAt = new Date().toISOString();
@@ -728,7 +825,9 @@ export const productsService = {
    */
   async deleteProduct(id: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await apiClient.delete<{ success: boolean; message: string }>(`/products/${id}`);
+      const response = await apiClient.delete<{ success: boolean; message: string }>(
+        `/products/${id}`
+      );
       return response.data;
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
@@ -742,7 +841,7 @@ export const productsService = {
 
       const found = MOCK_PRODUCTS.find((p) => p.id === id || p.sku === id);
       if (!found) {
-        throw new Error("Không tìm thấy sản phẩm cần xóa!");
+        throw new Error('Không tìm thấy sản phẩm cần xóa!');
       }
 
       if (found.hasTransactions) {
@@ -782,11 +881,15 @@ export const productsService = {
   async previewImport(file: File): Promise<PreviewImportResult> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await apiClient.post<PreviewImportResult>('/products/import/preview', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await apiClient.post<PreviewImportResult>(
+      '/products/import/preview',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
     return response.data;
   },
 
@@ -794,7 +897,9 @@ export const productsService = {
    * Xác nhận nhập dữ liệu từ file Excel
    */
   async confirmImport(items: ImportProductItemDto[]): Promise<ConfirmImportResult> {
-    const response = await apiClient.post<ConfirmImportResult>('/products/import/confirm', { items });
+    const response = await apiClient.post<ConfirmImportResult>('/products/import/confirm', {
+      items,
+    });
     return response.data;
   },
 };

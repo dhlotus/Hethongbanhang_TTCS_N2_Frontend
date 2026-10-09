@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Plus, Trash2, Save, AlertCircle, Check, Sparkles } from 'lucide-react';
-import type { DiscountPolicy, CreateDiscountPolicyPayload } from '../services/discount-policies.service';
+import type {
+  DiscountPolicy,
+  CreateDiscountPolicyPayload,
+} from '../services/discount-policies.service';
 import { productsService } from '../services/products.service';
 import { categoriesService } from '../services/categories.service';
 
@@ -46,9 +49,7 @@ const QuantityInput: React.FC<QuantityInputProps> = ({
   allowNull = false,
   hasError = false,
 }) => {
-  const [displayValue, setDisplayValue] = useState<string>(
-    value === null ? '' : String(value)
-  );
+  const [displayValue, setDisplayValue] = useState<string>(value === null ? '' : String(value));
 
   useEffect(() => {
     setDisplayValue(value === null ? '' : String(value));
@@ -270,7 +271,9 @@ const DiscountValueInput: React.FC<DiscountValueInputProps> = ({
               className="text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-800 bg-slate-50 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-between transition-colors cursor-pointer"
             >
               <span>{s.label}</span>
-              <span className="text-[10px] font-normal text-blue-600 bg-blue-100/60 px-1.5 py-0.5 rounded">chọn</span>
+              <span className="text-[10px] font-normal text-blue-600 bg-blue-100/60 px-1.5 py-0.5 rounded">
+                chọn
+              </span>
             </button>
           ))}
         </div>
@@ -357,12 +360,12 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
         } else {
           const q = val.trim().toLowerCase();
           const filtered = cachedCategories.filter(
-            c => c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
+            (c) => c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
           );
           setSuggestions(filtered.slice(0, 20));
         }
       } catch (err) {
-        console.error('Lỗi tìm kiếm đối tượng:', err);
+        // Xử lý ngầm hoặc ignore
       } finally {
         setIsSearching(false);
       }
@@ -382,14 +385,18 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
     if (!trimmed) return;
 
     if (row.type === 'SKU') {
-      const existsInCache = cachedProducts.find(p => p.code.toLowerCase() === trimmed.toLowerCase());
+      const existsInCache = cachedProducts.find(
+        (p) => p.code.toLowerCase() === trimmed.toLowerCase()
+      );
       if (existsInCache) {
         handleSelect(existsInCache);
         return;
       }
       try {
         const res = await productsService.getProducts({ search: trimmed, limit: 10 });
-        const exactMatch = (res.data || []).find((p: any) => p.sku.toLowerCase() === trimmed.toLowerCase());
+        const exactMatch = (res.data || []).find(
+          (p: any) => p.sku.toLowerCase() === trimmed.toLowerCase()
+        );
         if (exactMatch) {
           handleSelect({ code: exactMatch.sku, name: exactMatch.name });
           return;
@@ -398,7 +405,7 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
       setRowError('Mã sản phẩm/nhóm hàng không tồn tại trong danh mục');
       onErrorChange('Mã sản phẩm/nhóm hàng không tồn tại trong danh mục');
     } else {
-      const found = cachedCategories.find(c => c.code.toLowerCase() === trimmed.toLowerCase());
+      const found = cachedCategories.find((c) => c.code.toLowerCase() === trimmed.toLowerCase());
       if (found) {
         handleSelect(found);
       } else {
@@ -455,7 +462,9 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 border border-blue-100 text-blue-800 text-xs font-medium animate-fadeIn"
               >
                 <span className="font-semibold text-blue-900">[{item.code}]</span>
-                <span className="truncate max-w-[180px]" title={item.name}>{item.name}</span>
+                <span className="truncate max-w-[180px]" title={item.name}>
+                  {item.name}
+                </span>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -519,7 +528,7 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
               ) : (
                 suggestions.map((item) => {
                   const isSelected = row.items.some(
-                    t => t.code.toLowerCase() === item.code.toLowerCase()
+                    (t) => t.code.toLowerCase() === item.code.toLowerCase()
                   );
                   return (
                     <button
@@ -533,7 +542,9 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
                       }`}
                     >
                       <div className="truncate pr-2">
-                        <span className="font-mono font-semibold text-slate-900">[{item.code}]</span>
+                        <span className="font-mono font-semibold text-slate-900">
+                          [{item.code}]
+                        </span>
                         <span className="text-slate-600 ml-1.5">- {item.name}</span>
                       </div>
                       {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0" />}
@@ -584,7 +595,9 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
     appliedProductSkus: [],
     discountType: 'PERCENTAGE',
     startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+    endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
+      .toISOString()
+      .split('T')[0],
     status: 'ACTIVE',
     tiers: [],
   });
@@ -610,21 +623,27 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
   useEffect(() => {
     if (!isOpen) return;
 
-    productsService.getProducts({ limit: 100 }).then(res => {
-      const items: TargetItem[] = (res.data || []).map((p: any) => ({
-        code: p.sku,
-        name: p.name,
-      }));
-      setCachedProducts(items);
-    }).catch(() => {});
+    productsService
+      .getProducts({ limit: 100 })
+      .then((res) => {
+        const items: TargetItem[] = (res.data || []).map((p: any) => ({
+          code: p.sku,
+          name: p.name,
+        }));
+        setCachedProducts(items);
+      })
+      .catch(() => {});
 
-    categoriesService.getCategories().then(cats => {
-      const items: TargetItem[] = (cats || []).map((c: any) => ({
-        code: c.code,
-        name: c.name,
-      }));
-      setCachedCategories(items);
-    }).catch(() => {});
+    categoriesService
+      .getCategories()
+      .then((cats) => {
+        const items: TargetItem[] = (cats || []).map((c: any) => ({
+          code: c.code,
+          name: c.name,
+        }));
+        setCachedCategories(items);
+      })
+      .catch(() => {});
   }, [isOpen]);
 
   // Khởi tạo dữ liệu khi mở Modal
@@ -637,7 +656,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
           initialScopeRows.push({
             id: 'scope-cat',
             type: 'CATEGORY',
-            items: initialData.appliedCategoryIds.map(code => ({ code, name: code })),
+            items: initialData.appliedCategoryIds.map((code) => ({ code, name: code })),
           });
         }
 
@@ -645,22 +664,27 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
           initialScopeRows.push({
             id: 'scope-sku',
             type: 'SKU',
-            items: initialData.appliedProductSkus.map(code => ({ code, name: code })),
+            items: initialData.appliedProductSkus.map((code) => ({ code, name: code })),
           });
         }
 
         if (initialScopeRows.length === 0) {
-          const rawIds: string[] = initialData.targetIds && initialData.targetIds.length > 0
-            ? initialData.targetIds
-            : initialData.targetId
-              ? initialData.targetId.split(',').map(s => s.trim()).filter(Boolean)
-              : [];
+          const rawIds: string[] =
+            initialData.targetIds && initialData.targetIds.length > 0
+              ? initialData.targetIds
+              : initialData.targetId
+                ? initialData.targetId
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                : [];
 
-          const type: 'SKU' | 'CATEGORY' = initialData.targetType === 'CATEGORY' ? 'CATEGORY' : 'SKU';
+          const type: 'SKU' | 'CATEGORY' =
+            initialData.targetType === 'CATEGORY' ? 'CATEGORY' : 'SKU';
           initialScopeRows.push({
             id: 'scope-default',
             type,
-            items: rawIds.map(code => ({ code, name: code })),
+            items: rawIds.map((code) => ({ code, name: code })),
           });
         }
 
@@ -677,12 +701,10 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
           startDate: initialData.startDate.split('T')[0],
           endDate: initialData.endDate.split('T')[0],
           status: initialData.status,
-          tiers: initialData.tiers.map(t => ({ ...t })),
+          tiers: initialData.tiers.map((t) => ({ ...t })),
         });
       } else {
-        setScopeRows([
-          { id: 'scope-1', type: 'CATEGORY', items: [] },
-        ]);
+        setScopeRows([{ id: 'scope-1', type: 'CATEGORY', items: [] }]);
         setFormData({
           code: `DP-${Date.now().toString().slice(-6)}`,
           name: '',
@@ -693,7 +715,9 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
           appliedProductSkus: [],
           discountType: 'PERCENTAGE',
           startDate: new Date().toISOString().split('T')[0],
-          endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+          endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
+            .toISOString()
+            .split('T')[0],
           status: 'ACTIVE',
           tiers: [{ minQuantity: 1, maxQuantity: null, discountValue: 0 }],
         });
@@ -722,13 +746,13 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
   // Cập nhật tên từ cache khi nạp xong
   useEffect(() => {
     if (scopeRows.length > 0 && (cachedProducts.length > 0 || cachedCategories.length > 0)) {
-      setScopeRows(prev =>
-        prev.map(row => {
+      setScopeRows((prev) =>
+        prev.map((row) => {
           const cache = row.type === 'SKU' ? cachedProducts : cachedCategories;
           return {
             ...row,
-            items: row.items.map(item => {
-              const found = cache.find(c => c.code.toLowerCase() === item.code.toLowerCase());
+            items: row.items.map((item) => {
+              const found = cache.find((c) => c.code.toLowerCase() === item.code.toLowerCase());
               return found ? { code: found.code, name: found.name } : item;
             }),
           };
@@ -744,15 +768,12 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
     if (scopeRows.length >= 2) return;
     const existingType = scopeRows[0]?.type || 'CATEGORY';
     const newType = existingType === 'CATEGORY' ? 'SKU' : 'CATEGORY';
-    setScopeRows(prev => [
-      ...prev,
-      { id: `scope-${Date.now()}`, type: newType, items: [] },
-    ]);
+    setScopeRows((prev) => [...prev, { id: `scope-${Date.now()}`, type: newType, items: [] }]);
   };
 
   const handleRemoveScopeRow = (rowId: string) => {
-    setScopeRows(prev => prev.filter(r => r.id !== rowId));
-    setRowErrors(prev => {
+    setScopeRows((prev) => prev.filter((r) => r.id !== rowId));
+    setRowErrors((prev) => {
       const next = { ...prev };
       delete next[rowId];
       return next;
@@ -760,34 +781,33 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
   };
 
   const handleChangeRowType = (rowId: string, newType: 'SKU' | 'CATEGORY') => {
-    setScopeRows(prev =>
-      prev.map(r => (r.id === rowId ? { ...r, type: newType, items: [] } : r))
+    setScopeRows((prev) =>
+      prev.map((r) => (r.id === rowId ? { ...r, type: newType, items: [] } : r))
     );
   };
 
   const handleAddItemToRow = (rowId: string, item: TargetItem) => {
-    setScopeRows(prev =>
-      prev.map(r => {
+    setScopeRows((prev) =>
+      prev.map((r) => {
         if (r.id !== rowId) return r;
-        if (r.items.some(i => i.code.toLowerCase() === item.code.toLowerCase())) return r;
+        if (r.items.some((i) => i.code.toLowerCase() === item.code.toLowerCase())) return r;
         return { ...r, items: [...r.items, item] };
       })
     );
   };
 
   const handleRemoveItemFromRow = (rowId: string, code: string) => {
-    setScopeRows(prev =>
-      prev.map(r => {
+    setScopeRows((prev) =>
+      prev.map((r) => {
         if (r.id !== rowId) return r;
-        return { ...r, items: r.items.filter(i => i.code.toLowerCase() !== code.toLowerCase()) };
+        return { ...r, items: r.items.filter((i) => i.code.toLowerCase() !== code.toLowerCase()) };
       })
     );
   };
 
-
   // Kiểm tra lỗi logic vi phạm bắt buộc chặn Lưu
   const hasLogicError = useMemo(() => {
-    return formData.tiers.some(tier => {
+    return formData.tiers.some((tier) => {
       if (formData.discountType === 'PERCENTAGE') {
         return tier.discountValue < 0 || tier.discountValue > 100;
       } else {
@@ -797,14 +817,16 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
   }, [formData.tiers, formData.discountType]);
 
   const hasQMaxError = useMemo(() => {
-    return formData.tiers.some(tier => tier.maxQuantity !== null && tier.maxQuantity <= tier.minQuantity);
+    return formData.tiers.some(
+      (tier) => tier.maxQuantity !== null && tier.maxQuantity <= tier.minQuantity
+    );
   }, [formData.tiers]);
 
   const totalSelectedCount = useMemo(() => {
     return scopeRows.reduce((acc, r) => acc + r.items.length, 0);
   }, [scopeRows]);
 
-  const hasMasterDataErrors = Object.values(rowErrors).some(err => Boolean(err));
+  const hasMasterDataErrors = Object.values(rowErrors).some((err) => Boolean(err));
 
   // Trạng thái vô hiệu hóa nút Lưu (Bắt buộc phải tích checkbox xác nhận áp chót)
   const isSaveDisabled = useMemo(() => {
@@ -835,8 +857,10 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) newErrors.name = 'Tên chính sách không được để trống';
-    if (totalSelectedCount === 0) newErrors.targetId = 'Vui lòng chọn ít nhất 1 sản phẩm hoặc nhóm hàng';
-    if (formData.startDate > formData.endDate) newErrors.date = 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu';
+    if (totalSelectedCount === 0)
+      newErrors.targetId = 'Vui lòng chọn ít nhất 1 sản phẩm hoặc nhóm hàng';
+    if (formData.startDate > formData.endDate)
+      newErrors.date = 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu';
 
     if (formData.tiers.length === 0) {
       newErrors.tiers = 'Phải có ít nhất 1 nấc chiết khấu';
@@ -885,11 +909,11 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
     if (!validate()) return;
 
     const catCodes = scopeRows
-      .filter(r => r.type === 'CATEGORY')
-      .flatMap(r => r.items.map(i => i.code));
+      .filter((r) => r.type === 'CATEGORY')
+      .flatMap((r) => r.items.map((i) => i.code));
     const skuCodes = scopeRows
-      .filter(r => r.type === 'SKU')
-      .flatMap(r => r.items.map(i => i.code));
+      .filter((r) => r.type === 'SKU')
+      .flatMap((r) => r.items.map((i) => i.code));
 
     const appliedCategoryIds = Array.from(new Set(catCodes));
     const appliedProductSkus = Array.from(new Set(skuCodes));
@@ -922,7 +946,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
   };
 
   const handleAddTier = () => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const lastTier = prev.tiers[prev.tiers.length - 1];
       let newMin = 1;
       if (lastTier) {
@@ -940,7 +964,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
   };
 
   const handleRemoveTier = (index: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       tiers: prev.tiers.filter((_, i) => i !== index),
     }));
@@ -948,10 +972,10 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
 
   const handleTierChange = (
     index: number,
-    field: keyof typeof formData.tiers[0],
+    field: keyof (typeof formData.tiers)[0],
     value: number | null
   ) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const newTiers = [...prev.tiers];
       newTiers[index] = { ...newTiers[index], [field]: value };
       return { ...prev, tiers: newTiers };
@@ -1042,7 +1066,6 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
           <form id="discount-policy-form" onSubmit={handleSubmit} className="space-y-6">
-            
             {/* 1. Thông tin chung */}
             <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
               <h3 className="text-sm font-semibold text-slate-800">Thông tin chung</h3>
@@ -1050,11 +1073,13 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
               {/* Dòng 1: Mã chính sách & Tên chính sách */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Mã chính sách</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Mã chính sách
+                  </label>
                   <input
                     type="text"
                     value={formData.code}
-                    onChange={(e) => setFormData(p => ({ ...p, code: e.target.value }))}
+                    onChange={(e) => setFormData((p) => ({ ...p, code: e.target.value }))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-600 focus:outline-none"
                     placeholder="Mã tự động"
                   />
@@ -1066,9 +1091,11 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                   <input
                     type="text"
                     value={formData.name}
-                    onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))}
+                    onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${
-                      errors.name ? 'border-rose-300 focus:ring-rose-200' : 'border-slate-200 focus:ring-blue-100'
+                      errors.name
+                        ? 'border-rose-300 focus:ring-rose-200'
+                        : 'border-slate-200 focus:ring-blue-100'
                     }`}
                     placeholder="Ví dụ: Chiết khấu sản lượng Tháng 10"
                   />
@@ -1091,8 +1118,8 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                 <div className="space-y-2">
                   {scopeRows.map((row) => {
                     const disabledTypes = scopeRows
-                      .filter(r => r.id !== row.id)
-                      .map(r => r.type);
+                      .filter((r) => r.id !== row.id)
+                      .map((r) => r.type);
 
                     return (
                       <ScopeRowItem
@@ -1107,7 +1134,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                         cachedProducts={cachedProducts}
                         cachedCategories={cachedCategories}
                         onErrorChange={(err) => {
-                          setRowErrors(prev => ({ ...prev, [row.id]: err || '' }));
+                          setRowErrors((prev) => ({ ...prev, [row.id]: err || '' }));
                         }}
                       />
                     );
@@ -1126,7 +1153,9 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                   }`}
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  {canAddScopeRow ? '+ Thêm phạm vi áp dụng' : 'Đã chọn tối đa 2 phạm vi (Nhóm hàng & SKU lẻ)'}
+                  {canAddScopeRow
+                    ? '+ Thêm phạm vi áp dụng'
+                    : 'Đã chọn tối đa 2 phạm vi (Nhóm hàng & SKU lẻ)'}
                 </button>
 
                 {errors.targetId && (
@@ -1145,7 +1174,9 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                   </label>
                   <select
                     value={formData.discountType}
-                    onChange={(e) => setFormData(p => ({ ...p, discountType: e.target.value as any }))}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, discountType: e.target.value as any }))
+                    }
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   >
                     <option value="PERCENTAGE">% Phần trăm</option>
@@ -1153,10 +1184,12 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Trạng thái</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Trạng thái
+                  </label>
                   <select
                     value={formData.status}
-                    onChange={(e) => setFormData(p => ({ ...p, status: e.target.value as any }))}
+                    onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value as any }))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   >
                     <option value="ACTIVE">Kích hoạt</option>
@@ -1174,7 +1207,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                   <input
                     type="date"
                     value={formData.startDate}
-                    onChange={(e) => setFormData(p => ({ ...p, startDate: e.target.value }))}
+                    onChange={(e) => setFormData((p) => ({ ...p, startDate: e.target.value }))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
@@ -1185,7 +1218,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                   <input
                     type="date"
                     value={formData.endDate}
-                    onChange={(e) => setFormData(p => ({ ...p, endDate: e.target.value }))}
+                    onChange={(e) => setFormData((p) => ({ ...p, endDate: e.target.value }))}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
@@ -1197,7 +1230,9 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
             <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-800">Cấu hình nấc chiết khấu theo sản lượng</h3>
+                  <h3 className="text-sm font-semibold text-slate-800">
+                    Cấu hình nấc chiết khấu theo sản lượng
+                  </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
                     Hỗ trợ mức giảm 0% hoặc 0 VNĐ để tạm dừng chiết khấu tại nấc chỉ định.
                   </p>
@@ -1223,18 +1258,27 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                 <table className="w-full text-left text-sm border-separate border-spacing-0">
                   <thead>
                     <tr className="text-slate-500 font-medium bg-slate-50">
-                      <th className="py-2.5 px-3 border-b border-slate-200 w-12 text-center rounded-tl-lg">STT</th>
-                      <th className="py-2.5 px-3 border-b border-slate-200 w-48">Từ số lượng (Q_min)</th>
-                      <th className="py-2.5 px-3 border-b border-slate-200 w-56">Đến số lượng (Q_max)</th>
+                      <th className="py-2.5 px-3 border-b border-slate-200 w-12 text-center rounded-tl-lg">
+                        STT
+                      </th>
+                      <th className="py-2.5 px-3 border-b border-slate-200 w-48">
+                        Từ số lượng (Q_min)
+                      </th>
+                      <th className="py-2.5 px-3 border-b border-slate-200 w-56">
+                        Đến số lượng (Q_max)
+                      </th>
                       <th className="py-2.5 px-3 border-b border-slate-200">
                         Mức giảm ({formData.discountType === 'PERCENTAGE' ? '%' : 'VNĐ'})
                       </th>
-                      <th className="py-2.5 px-3 border-b border-slate-200 w-16 text-center rounded-tr-lg">Xóa</th>
+                      <th className="py-2.5 px-3 border-b border-slate-200 w-16 text-center rounded-tr-lg">
+                        Xóa
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {formData.tiers.map((tier, idx) => {
-                      const isQMaxInvalid = tier.maxQuantity !== null && tier.maxQuantity <= tier.minQuantity;
+                      const isQMaxInvalid =
+                        tier.maxQuantity !== null && tier.maxQuantity <= tier.minQuantity;
                       const tierNotice = getTierNotice(tier.discountValue, formData.discountType);
 
                       return (
@@ -1263,7 +1307,8 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                             />
                             {isQMaxInvalid && (
                               <p className="mt-1 text-[11px] font-semibold text-rose-500 leading-tight">
-                                Q<sub>max</sub> ({tier.maxQuantity}) phải lớn hơn Q<sub>min</sub> ({tier.minQuantity})
+                                Q<sub>max</sub> ({tier.maxQuantity}) phải lớn hơn Q<sub>min</sub> (
+                                {tier.minQuantity})
                               </p>
                             )}
                           </td>
@@ -1299,7 +1344,10 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
 
                     {formData.tiers.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-slate-400 text-sm border-b border-slate-100">
+                        <td
+                          colSpan={5}
+                          className="py-8 text-center text-slate-400 text-sm border-b border-slate-100"
+                        >
                           Chưa có nấc chiết khấu nào. Vui lòng thêm ít nhất 1 nấc.
                         </td>
                       </tr>
@@ -1308,7 +1356,6 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                 </table>
               </div>
             </div>
-
           </form>
         </div>
 

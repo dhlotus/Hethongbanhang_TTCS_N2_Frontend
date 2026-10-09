@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { ShieldAlert, X, Lock } from "lucide-react";
-import { Button } from "./button";
+import React, { useState, useEffect, useCallback } from 'react';
+import { ShieldAlert, X, Lock } from 'lucide-react';
+import { Button } from './button';
 
 export interface AccountLockedModalProps {
   isOpen: boolean;
@@ -36,20 +36,20 @@ export const AccountLockedModal: React.FC<AccountLockedModalProps> = ({
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         handleClose();
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, handleClose]);
 
   if (!isOpen) return null;
 
   const displayReason =
     reason ||
-    "Tài khoản hiện đang bị tạm khóa theo quyết định của Quản trị viên hệ thống để bảo đảm an toàn dữ liệu.";
+    'Tài khoản hiện đang bị tạm khóa theo quyết định của Quản trị viên hệ thống để bảo đảm an toàn dữ liệu.';
 
   return (
     <div
@@ -57,7 +57,7 @@ export const AccountLockedModal: React.FC<AccountLockedModalProps> = ({
       aria-modal="true"
       aria-labelledby="locked-modal-title"
       className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/35 backdrop-blur-[2px] ${
-        isClosing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"
+        isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
       }`}
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
@@ -65,7 +65,7 @@ export const AccountLockedModal: React.FC<AccountLockedModalProps> = ({
     >
       <div
         className={`relative w-full max-w-md bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xl p-6 sm:p-7 overflow-hidden text-slate-800 ${
-          isClosing ? "animate-modal-out" : "animate-modal-in"
+          isClosing ? 'animate-modal-out' : 'animate-modal-in'
         }`}
       >
         {/* Nút đóng góc phải trên */}
@@ -91,7 +91,8 @@ export const AccountLockedModal: React.FC<AccountLockedModalProps> = ({
             Tài khoản đã bị khóa
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-xs">
-            Quyền truy cập vào hệ thống LOHA SALES của tài khoản này đã bị tạm dừng bởi Quản trị viên.
+            Quyền truy cập vào hệ thống LOHA SALES của tài khoản này đã bị tạm dừng bởi Quản trị
+            viên.
           </p>
         </div>
 
@@ -108,7 +109,8 @@ export const AccountLockedModal: React.FC<AccountLockedModalProps> = ({
 
         {/* Hướng dẫn liên hệ hỗ trợ ngắn gọn */}
         <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs text-slate-600 text-center leading-relaxed">
-          Nếu bạn cho rằng đây là một sự nhầm lẫn hoặc cần mở lại tài khoản, vui lòng liên hệ trực tiếp với Quản trị viên hệ thống để được hỗ trợ.
+          Nếu bạn cho rằng đây là một sự nhầm lẫn hoặc cần mở lại tài khoản, vui lòng liên hệ trực
+          tiếp với Quản trị viên hệ thống để được hỗ trợ.
         </div>
 
         {/* Nút hành động */}

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Wifi, WifiOff } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { Wifi, WifiOff } from 'lucide-react';
 
 /**
  * Component hiển thị trạng thái kết nối mạng (Network Status Indicator)
@@ -9,7 +9,7 @@ import { Wifi, WifiOff } from "lucide-react";
  */
 export const NetworkStatusIndicator: React.FC = () => {
   const [isOnline, setIsOnline] = useState<boolean>(() => {
-    return typeof navigator !== "undefined" ? navigator.onLine : true;
+    return typeof navigator !== 'undefined' ? navigator.onLine : true;
   });
   const [showReconnected, setShowReconnected] = useState<boolean>(false);
 
@@ -31,13 +31,13 @@ export const NetworkStatusIndicator: React.FC = () => {
       if (reconnectTimer) clearTimeout(reconnectTimer);
     };
 
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
     return () => {
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, []);
 

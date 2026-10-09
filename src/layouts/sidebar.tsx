@@ -1,17 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { NavLink, Link, useLocation } from "react-router-dom";
-import {
-  X,
-  ChevronRight,
-  ChevronLeft,
-} from "lucide-react";
-import logoImg from "../assets/logo.png";
-import { getStoredUser } from "../utils/navigation";
-import { tokenStorage } from "../utils/token-storage";
-import {
-  getNavigationItems,
-  type MenuItem,
-} from "../utils/navigation-config";
+import React, { useState, useEffect } from 'react';
+import { NavLink, Link, useLocation } from 'react-router-dom';
+import { X, ChevronRight, ChevronLeft } from 'lucide-react';
+import logoImg from '../assets/logo.png';
+import { getStoredUser } from '../utils/navigation';
+import { tokenStorage } from '../utils/token-storage';
+import { getNavigationItems, type MenuItem } from '../utils/navigation-config';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -47,13 +40,13 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
       setCurrentUser(u);
     };
 
-    window.addEventListener("storage", syncUser);
-    window.addEventListener("user-updated", syncUser);
+    window.addEventListener('storage', syncUser);
+    window.addEventListener('user-updated', syncUser);
     syncUser();
 
     return () => {
-      window.removeEventListener("storage", syncUser);
-      window.removeEventListener("user-updated", syncUser);
+      window.removeEventListener('storage', syncUser);
+      window.removeEventListener('user-updated', syncUser);
     };
   }, [location.pathname]);
 
@@ -68,7 +61,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
         {/* Header Logo + Toggle: Chuyển đổi trạng thái đóng/mở siêu mượt mà không bị nhảy layout */}
         <div
           className={`border-b border-slate-100 transition-[height,padding] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden flex flex-col justify-between ${
-            isCollapsed ? "h-[96px] pb-3" : "h-[56px] pb-3"
+            isCollapsed ? 'h-[96px] pb-3' : 'h-[56px] pb-3'
           }`}
         >
           {/* Hàng 1: Logo Icon + Tên LOHA SALES + Nút thu gọn (<) khi mở rộng */}
@@ -80,17 +73,13 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               title="LOHA SALES"
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md overflow-hidden group-hover:scale-105 transition-transform duration-200">
-                <img
-                  src={logoImg}
-                  alt="LOHA SALES"
-                  className="h-full w-full object-cover"
-                />
+                <img src={logoImg} alt="LOHA SALES" className="h-full w-full object-cover" />
               </div>
               <div
                 className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
                   isCollapsed
-                    ? "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
-                    : "max-w-[150px] opacity-100 translate-x-0"
+                    ? 'max-w-0 opacity-0 -translate-x-2 pointer-events-none'
+                    : 'max-w-[150px] opacity-100 translate-x-0'
                 }`}
               >
                 <span className="text-base font-bold tracking-tight text-slate-900 group-hover:text-[var(--color-primary)] transition-colors">
@@ -106,8 +95,8 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                 onClick={onToggleCollapse}
                 className={`group/collapse hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer active:scale-95 ${
                   isCollapsed
-                    ? "opacity-0 scale-75 max-w-0 pointer-events-none"
-                    : "opacity-100 scale-100 max-w-8"
+                    ? 'opacity-0 scale-75 max-w-0 pointer-events-none'
+                    : 'opacity-100 scale-100 max-w-8'
                 }`}
                 title="Thu gọn menu"
                 aria-label="Thu gọn menu"
@@ -122,8 +111,8 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
             <div
               className={`flex items-center justify-center w-full transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
                 isCollapsed
-                  ? "opacity-100 scale-100 translate-y-0 h-8 mt-1"
-                  : "opacity-0 scale-75 -translate-y-2 h-0 pointer-events-none overflow-hidden"
+                  ? 'opacity-100 scale-100 translate-y-0 h-8 mt-1'
+                  : 'opacity-0 scale-75 -translate-y-2 h-0 pointer-events-none overflow-hidden'
               }`}
             >
               <button
@@ -148,11 +137,11 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isItemActive =
-                  item.path === "/catalog/products"
-                    ? location.pathname === "/catalog/products" ||
-                      location.pathname.startsWith("/catalog/categories")
+                  item.path === '/catalog/products'
+                    ? location.pathname === '/catalog/products' ||
+                      location.pathname.startsWith('/catalog/categories')
                     : location.pathname === item.path ||
-                      location.pathname.startsWith(item.path + "/");
+                      location.pathname.startsWith(item.path + '/');
 
                 return (
                   <NavLink
@@ -162,8 +151,8 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                     title={isCollapsed ? item.name : undefined}
                     className={`group relative flex items-center px-3 py-2 min-h-[44px] rounded-md text-sm font-semibold transition-colors duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1 ${
                       isItemActive
-                        ? "bg-[var(--color-primary-light)] text-[var(--color-primary)] font-bold"
-                        : "text-slate-700 hover:bg-slate-50/90 hover:text-slate-900"
+                        ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-bold'
+                        : 'text-slate-700 hover:bg-slate-50/90 hover:text-slate-900'
                     }`}
                   >
                     <div className="flex items-center w-full min-w-0">
@@ -177,8 +166,8 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                         <Icon
                           className={`h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
                             isItemActive
-                              ? "text-[var(--color-primary)]"
-                              : "text-slate-500 group-hover:text-slate-800"
+                              ? 'text-[var(--color-primary)]'
+                              : 'text-slate-500 group-hover:text-slate-800'
                           }`}
                         />
                       </div>
@@ -187,8 +176,8 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                       <span
                         className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] tracking-tight ${
                           isCollapsed
-                            ? "max-w-0 opacity-0 -translate-x-2.5 pointer-events-none"
-                            : "max-w-[190px] opacity-100 translate-x-0 ml-3"
+                            ? 'max-w-0 opacity-0 -translate-x-2.5 pointer-events-none'
+                            : 'max-w-[190px] opacity-100 translate-x-0 ml-3'
                         }`}
                       >
                         {item.name}
@@ -199,8 +188,8 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                     <div
                       className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] shrink-0 ${
                         !isCollapsed && isItemActive
-                          ? "max-w-5 opacity-100 ml-1"
-                          : "max-w-0 opacity-0 pointer-events-none"
+                          ? 'max-w-5 opacity-100 ml-1'
+                          : 'max-w-0 opacity-0 pointer-events-none'
                       }`}
                     >
                       <ChevronRight className="h-4 w-4 text-[var(--color-primary)] shrink-0" />
@@ -221,7 +210,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
+                if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   onToggleCollapse();
                 }
@@ -250,13 +239,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* 1. Desktop Sidebar */}
       <aside
         className={`hidden h-full shrink-0 border-r border-slate-100 bg-white lg:flex lg:flex-col transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-          isCollapsed ? "w-[76px]" : "w-[280px]"
+          isCollapsed ? 'w-[76px]' : 'w-[280px]'
         }`}
       >
-        <SidebarNavContent
-          isCollapsed={isCollapsed}
-          onToggleCollapse={onToggleCollapse}
-        />
+        <SidebarNavContent isCollapsed={isCollapsed} onToggleCollapse={onToggleCollapse} />
       </aside>
 
       {/* 2. Mobile Drawer (Tối ưu tuyệt đối cho màn hình 360px) */}

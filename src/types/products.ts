@@ -25,7 +25,7 @@ export interface ProductUnit {
   id?: string;
   unitName: string;
   conversionRate: number; // Hệ số quy đổi về đơn vị cơ sở (e.g. 1 Thùng = 24 Lon -> conversionRate = 24)
-  isBaseUnit?: boolean;    // true nếu là đơn vị cơ sở
+  isBaseUnit?: boolean; // true nếu là đơn vị cơ sở
   barcode?: string;
   price?: number;
   costPrice?: number;
@@ -41,11 +41,11 @@ export interface Product {
   category: string;
   categoryId?: string;
   parentCategory?: string; // Nhóm hàng Cấp 1 (VD: Sữa & Chế phẩm sữa)
-  subCategory?: string;    // Nhóm hàng Cấp 2 hoặc Cấp 3 (VD: Sữa bột công thức / Sữa bột cho trẻ em)
-  baseUnit: string;        // ĐVT cơ sở (VD: Lon, Chai, Hộp, Túi, Cái...)
-  packagingSpec?: string;  // Quy cách đóng gói (VD: 24 lon/thùng, 12 chai/lốc)
-  units?: ProductUnit[];   // Danh sách đơn vị tính quy đổi đa cấp (SN-23)
-  price: number;           // Giá bán niêm yết
+  subCategory?: string; // Nhóm hàng Cấp 2 hoặc Cấp 3 (VD: Sữa bột công thức / Sữa bột cho trẻ em)
+  baseUnit: string; // ĐVT cơ sở (VD: Lon, Chai, Hộp, Túi, Cái...)
+  packagingSpec?: string; // Quy cách đóng gói (VD: 24 lon/thùng, 12 chai/lốc)
+  units?: ProductUnit[]; // Danh sách đơn vị tính quy đổi đa cấp (SN-23)
+  price: number; // Giá bán niêm yết
   /**
    * Giá vốn nhạy cảm (Cost Price - SN-10):
    * Chỉ tồn tại khi đăng nhập bằng vai trò ADMIN hoặc SALES_MANAGER.
@@ -110,7 +110,7 @@ export interface UpdateProductPayload extends Partial<CreateProductPayload> {}
 export interface AdjustStockPayload {
   productSku: string;
   quantityChange: number; // Số lượng theo đơn vị gọi hàng (unit)
-  unit?: string;          // Đơn vị gọi hàng (lon, lốc, thùng...). Nếu không truyền, mặc định là đơn vị cơ sở
+  unit?: string; // Đơn vị gọi hàng (lon, lốc, thùng...). Nếu không truyền, mặc định là đơn vị cơ sở
   reason: string;
   referenceCode?: string; // Mã phiếu kho / chứng từ tham chiếu
   warehouseLocation?: string;
@@ -143,7 +143,7 @@ export interface InventoryTransaction {
   transactionType: 'IMPORT' | 'EXPORT' | 'ADJUSTMENT' | 'TRANSFER' | 'ORDER';
   inputQuantity: number;
   inputUnit: string;
-  conversionRate: number;     // Snapshot hệ số quy đổi bất biến tại thời điểm phát sinh
+  conversionRate: number; // Snapshot hệ số quy đổi bất biến tại thời điểm phát sinh
   baseQuantityChange: number; // Đã quy về đơn vị cơ sở
   baseUnit: string;
   previousStock: number;
@@ -166,7 +166,7 @@ export interface ImportProductItemDto {
   stockQuantity: number;
   barcode?: string;
   description?: string;
-  status: "NEW" | "UPDATE";
+  status: 'NEW' | 'UPDATE';
   errors: string[];
   isValid: boolean;
 }

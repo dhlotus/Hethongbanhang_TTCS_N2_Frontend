@@ -1,5 +1,5 @@
-import React, { useRef, useId } from "react";
-import { Calendar, X, AlertCircle } from "lucide-react";
+import React, { useRef, useId } from 'react';
+import { Calendar, X, AlertCircle } from 'lucide-react';
 
 export interface DateInputProps {
   value?: string; // Định dạng YYYY-MM-DD
@@ -25,8 +25,10 @@ export interface DateInputProps {
  * Không bị ảnh hưởng bởi timezone UTC lệch ngày
  */
 export const formatVietnameseDate = (isoDate: string | undefined | null): string => {
-  if (!isoDate) return "";
-  const match = String(isoDate).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!isoDate) return '';
+  const match = String(isoDate)
+    .trim()
+    .match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (match) {
     const [, year, month, day] = match;
     return `${day}/${month}/${year}`;
@@ -42,17 +44,17 @@ export const formatVietnameseDate = (isoDate: string | undefined | null): string
  * - Tương thích tốt trên cả Desktop và Thiết bị di động
  */
 export const DateInput: React.FC<DateInputProps> = ({
-  value = "",
+  value = '',
   onChange,
   min,
   max,
   disabled = false,
-  placeholder = "dd/mm/yyyy",
+  placeholder = 'dd/mm/yyyy',
   label,
   required = false,
   error,
   hasError = false,
-  className = "",
+  className = '',
   helperText,
   showClear = true,
   compact = false,
@@ -70,7 +72,7 @@ export const DateInput: React.FC<DateInputProps> = ({
   const handleOpenPicker = () => {
     if (disabled) return;
     if (inputRef.current) {
-      if (typeof inputRef.current.showPicker === "function") {
+      if (typeof inputRef.current.showPicker === 'function') {
         try {
           inputRef.current.showPicker();
         } catch {
@@ -85,9 +87,9 @@ export const DateInput: React.FC<DateInputProps> = ({
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (disabled) return;
-    onChange?.("");
+    onChange?.('');
     if (inputRef.current) {
-      inputRef.current.value = "";
+      inputRef.current.value = '';
     }
   };
 
@@ -96,14 +98,14 @@ export const DateInput: React.FC<DateInputProps> = ({
     return (
       <div
         className={`relative inline-flex items-center group cursor-pointer transition-all ${
-          disabled ? "opacity-60 cursor-not-allowed" : ""
+          disabled ? 'opacity-60 cursor-not-allowed' : ''
         } ${className}`}
         onClick={handleOpenPicker}
         title={title || (value ? `Ngày đã chọn: ${formattedDisplay}` : placeholder)}
       >
         <span
           className={`text-xs select-none truncate ${
-            value ? "font-semibold text-slate-800" : "font-normal text-slate-400"
+            value ? 'font-semibold text-slate-800' : 'font-normal text-slate-400'
           }`}
         >
           {value ? formattedDisplay : placeholder}
@@ -114,7 +116,7 @@ export const DateInput: React.FC<DateInputProps> = ({
           ref={inputRef}
           id={inputId}
           type="date"
-          value={value || ""}
+          value={value || ''}
           min={min}
           max={max}
           disabled={disabled}
@@ -143,15 +145,15 @@ export const DateInput: React.FC<DateInputProps> = ({
         onClick={handleOpenPicker}
         className={`relative flex items-center w-full px-3 py-2 text-xs rounded-xl border transition-all cursor-pointer select-none bg-white ${
           disabled
-            ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
+            ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
             : isInvalid
-            ? "border-rose-400 bg-rose-50/30 text-rose-800 ring-2 ring-rose-100 hover:border-rose-500"
-            : "border-slate-200 hover:border-blue-400 text-slate-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100"
+              ? 'border-rose-400 bg-rose-50/30 text-rose-800 ring-2 ring-rose-100 hover:border-rose-500'
+              : 'border-slate-200 hover:border-blue-400 text-slate-800 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100'
         }`}
       >
         <Calendar
           className={`w-4 h-4 mr-2.5 shrink-0 ${
-            isInvalid ? "text-rose-500" : value ? "text-blue-600" : "text-slate-400"
+            isInvalid ? 'text-rose-500' : value ? 'text-blue-600' : 'text-slate-400'
           }`}
         />
 
@@ -160,9 +162,9 @@ export const DateInput: React.FC<DateInputProps> = ({
           className={`flex-1 truncate font-medium ${
             value
               ? isInvalid
-                ? "font-semibold text-rose-900"
-                : "font-semibold text-slate-900"
-              : "text-slate-400"
+                ? 'font-semibold text-rose-900'
+                : 'font-semibold text-slate-900'
+              : 'text-slate-400'
           }`}
         >
           {value ? formattedDisplay : placeholder}
@@ -185,7 +187,7 @@ export const DateInput: React.FC<DateInputProps> = ({
           ref={inputRef}
           id={inputId}
           type="date"
-          value={value || ""}
+          value={value || ''}
           min={min}
           max={max}
           disabled={disabled}
@@ -204,9 +206,7 @@ export const DateInput: React.FC<DateInputProps> = ({
       )}
 
       {/* Ghi chú gợi ý nếu không có lỗi */}
-      {!error && helperText && (
-        <p className="text-[10px] text-slate-400 mt-0.5">{helperText}</p>
-      )}
+      {!error && helperText && <p className="text-[10px] text-slate-400 mt-0.5">{helperText}</p>}
     </div>
   );
 };

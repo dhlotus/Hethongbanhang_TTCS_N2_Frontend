@@ -1,6 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef } from 'react';
 
-export type TooltipPosition = "top" | "bottom" | "left" | "right";
+export type TooltipPosition = 'top' | 'bottom' | 'left' | 'right';
 
 export interface TooltipProps {
   content: React.ReactNode;
@@ -19,9 +19,9 @@ export interface TooltipProps {
 export const Tooltip: React.FC<TooltipProps> = ({
   content,
   children,
-  position = "top",
+  position = 'top',
   delay = 200,
-  className = "",
+  className = '',
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -40,17 +40,19 @@ export const Tooltip: React.FC<TooltipProps> = ({
   };
 
   const positionClasses = {
-    top: "bottom-full left-1/2 -translate-x-1/2 mb-2",
-    bottom: "top-full left-1/2 -translate-x-1/2 mt-2",
-    left: "right-full top-1/2 -translate-y-1/2 mr-2",
-    right: "left-full top-1/2 -translate-y-1/2 ml-2",
+    top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
+    bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
+    left: 'right-full top-1/2 -translate-y-1/2 mr-2',
+    right: 'left-full top-1/2 -translate-y-1/2 ml-2',
   }[position];
 
   const arrowClasses = {
-    top: "top-full left-1/2 -translate-x-1/2 border-t-slate-900 border-x-transparent border-b-transparent",
-    bottom: "bottom-full left-1/2 -translate-x-1/2 border-b-slate-900 border-x-transparent border-t-transparent",
-    left: "left-full top-1/2 -translate-y-1/2 border-l-slate-900 border-y-transparent border-r-transparent",
-    right: "right-full top-1/2 -translate-y-1/2 border-r-slate-900 border-y-transparent border-l-transparent",
+    top: 'top-full left-1/2 -translate-x-1/2 border-t-slate-900 border-x-transparent border-b-transparent',
+    bottom:
+      'bottom-full left-1/2 -translate-x-1/2 border-b-slate-900 border-x-transparent border-t-transparent',
+    left: 'left-full top-1/2 -translate-y-1/2 border-l-slate-900 border-y-transparent border-r-transparent',
+    right:
+      'right-full top-1/2 -translate-y-1/2 border-r-slate-900 border-y-transparent border-l-transparent',
   }[position];
 
   if (!content) return <>{children}</>;
@@ -72,10 +74,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
         >
           {content}
           {/* Mũi tên chỉ hướng */}
-          <div
-            className={`absolute w-0 h-0 border-4 ${arrowClasses}`}
-            aria-hidden="true"
-          />
+          <div className={`absolute w-0 h-0 border-4 ${arrowClasses}`} aria-hidden="true" />
         </div>
       )}
     </div>

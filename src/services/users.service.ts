@@ -35,13 +35,15 @@ export const usersService = {
   /**
    * Lấy danh sách người dùng phân trang, tìm kiếm và lọc vai trò/trạng thái
    */
-  async getUsers(params: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    role?: string;
-    status?: string;
-  } = {}): Promise<PaginatedUsersResponse> {
+  async getUsers(
+    params: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      role?: string;
+      status?: string;
+    } = {}
+  ): Promise<PaginatedUsersResponse> {
     const response = await apiClient.get<PaginatedUsersResponse>('/users', {
       params,
     });
@@ -75,14 +77,8 @@ export const usersService = {
   /**
    * Cập nhật thông tin nhân sự
    */
-  async updateUser(
-    id: string,
-    payload: UpdateUserPayload,
-  ): Promise<UserManagementItem> {
-    const response = await apiClient.patch<UserManagementItem>(
-      `/users/${id}`,
-      payload,
-    );
+  async updateUser(id: string, payload: UpdateUserPayload): Promise<UserManagementItem> {
+    const response = await apiClient.patch<UserManagementItem>(`/users/${id}`, payload);
     return response.data;
   },
 
@@ -91,11 +87,11 @@ export const usersService = {
    */
   async updateUserStatus(
     id: string,
-    payload: UpdateUserStatusPayload,
+    payload: UpdateUserStatusPayload
   ): Promise<UpdateUserStatusResponse> {
     const response = await apiClient.patch<UpdateUserStatusResponse>(
       `/users/${id}/status`,
-      payload,
+      payload
     );
     return response.data;
   },
@@ -105,7 +101,7 @@ export const usersService = {
    */
   async getAssignedCustomers(id: string): Promise<AssignedCustomersResponse> {
     const response = await apiClient.get<AssignedCustomersResponse>(
-      `/users/${id}/assigned-customers`,
+      `/users/${id}/assigned-customers`
     );
     return response.data;
   },
@@ -113,9 +109,7 @@ export const usersService = {
   /**
    * Admin sinh mã cấp đổi mật khẩu cho nhân sự (SN-10 Extension)
    */
-  async generateResetCode(
-    id: string,
-  ): Promise<{ resetCode: string; user: UserManagementItem }> {
+  async generateResetCode(id: string): Promise<{ resetCode: string; user: UserManagementItem }> {
     const response = await apiClient.post<{
       resetCode: string;
       user: UserManagementItem;
@@ -161,11 +155,9 @@ export const usersService = {
   async importUsersFromExcel(file: File): Promise<ExcelImportResponse> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await apiClient.post<ExcelImportResponse>(
-      '/users/import-excel',
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
-    );
+    const response = await apiClient.post<ExcelImportResponse>('/users/import-excel', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   },
 };

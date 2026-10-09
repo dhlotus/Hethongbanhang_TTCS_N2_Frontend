@@ -1,5 +1,5 @@
-import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Shield,
   Layers,
@@ -9,9 +9,9 @@ import {
   Package,
   ArrowRight,
   TrendingUp,
-} from "lucide-react";
-import { getStoredUser } from "../utils/navigation";
-import { getUserContext } from "../utils/navigation-config";
+} from 'lucide-react';
+import { getStoredUser } from '../utils/navigation';
+import { getUserContext } from '../utils/navigation-config';
 
 interface RoleModulePageProps {
   title: string;
@@ -58,9 +58,7 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
               </span>
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-              {title}
-            </h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
             <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
               {subtitle}
             </p>
@@ -90,9 +88,7 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium text-slate-400">Tài khoản xác thực</p>
-              <p className="text-sm font-bold text-slate-800 truncate">
-                {context.fullName}
-              </p>
+              <p className="text-sm font-bold text-slate-800 truncate">{context.fullName}</p>
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
@@ -117,7 +113,10 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
           </div>
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Phạm vi công tác</span>
-            <span className="font-semibold text-slate-700 truncate max-w-[170px]" title={context.locationText}>
+            <span
+              className="font-semibold text-slate-700 truncate max-w-[170px]"
+              title={context.locationText}
+            >
               {context.locationText}
             </span>
           </div>
@@ -150,12 +149,10 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-2xs">
           <TrendingUp className="h-6 w-6" />
         </div>
-        <h3 className="mt-4 text-base font-bold text-slate-800">
-          Phân hệ {title}
-        </h3>
+        <h3 className="mt-4 text-base font-bold text-slate-800">Phân hệ {title}</h3>
         <p className="mt-1 text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
-          Giao diện và điều hướng phân quyền đã được thiết lập thành công theo tiêu chuẩn LOHA SALES.
-          Dữ liệu và các biểu mẫu tương tác chi tiết của phân hệ này đã sẵn sàng kết nối.
+          Giao diện và điều hướng phân quyền đã được thiết lập thành công theo tiêu chuẩn LOHA
+          SALES. Dữ liệu và các biểu mẫu tương tác chi tiết của phân hệ này đã sẵn sàng kết nối.
         </p>
         <div className="mt-5 flex justify-center flex-wrap gap-2">
           <div className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600">

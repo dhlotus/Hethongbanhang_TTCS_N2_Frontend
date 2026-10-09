@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
-import { useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useNavigate } from 'react-router-dom';
 import {
   Lock,
   KeyRound,
@@ -14,16 +14,13 @@ import {
   ShieldAlert,
   CheckCircle2,
   RotateCcw,
-} from "lucide-react";
-import { Input } from "../components/input";
-import { Button } from "../components/button";
-import { showToast } from "../components/toast";
-import {
-  changePasswordSchema,
-  type ChangePasswordFormData,
-} from "../utils/validation";
-import { authService } from "../services/auth.service";
-import { tokenStorage } from "../utils/token-storage";
+} from 'lucide-react';
+import { Input } from '../components/input';
+import { Button } from '../components/button';
+import { showToast } from '../components/toast';
+import { changePasswordSchema, type ChangePasswordFormData } from '../utils/validation';
+import { authService } from '../services/auth.service';
+import { tokenStorage } from '../utils/token-storage';
 
 /**
  * Trang Đổi mật khẩu (Change Password Page):
@@ -42,7 +39,7 @@ export const ChangePasswordPage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    document.title = "Đổi mật khẩu | LOHA SALES";
+    document.title = 'Đổi mật khẩu | LOHA SALES';
   }, []);
 
   const {
@@ -55,14 +52,14 @@ export const ChangePasswordPage: React.FC = () => {
   } = useForm<ChangePasswordFormData>({
     resolver: zodResolver(changePasswordSchema),
     defaultValues: {
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
     },
-    mode: "onChange",
+    mode: 'onChange',
   });
 
-  const watchNewPassword = useWatch({ control, name: "newPassword" }) || "";
+  const watchNewPassword = useWatch({ control, name: 'newPassword' }) || '';
 
   // Bộ đếm ngược 3 giây khi đổi mật khẩu thành công
   useEffect(() => {
@@ -70,7 +67,7 @@ export const ChangePasswordPage: React.FC = () => {
 
     if (countdown <= 0) {
       tokenStorage.clearAuthData();
-      navigate("/auth/login", { replace: true });
+      navigate('/auth/login', { replace: true });
       return;
     }
 
@@ -83,47 +80,47 @@ export const ChangePasswordPage: React.FC = () => {
 
   const handleImmediateLoginRedirect = () => {
     tokenStorage.clearAuthData();
-    navigate("/auth/login", { replace: true });
+    navigate('/auth/login', { replace: true });
   };
 
   // Tính toán độ mạnh mật khẩu và danh sách tiêu chí
   const passwordCriteria = [
     {
-      id: "length",
-      label: "Tối thiểu 8 ký tự",
+      id: 'length',
+      label: 'Tối thiểu 8 ký tự',
       met: watchNewPassword.length >= 8,
     },
     {
-      id: "letter",
-      label: "Chứa chữ cái (a-z, A-Z)",
+      id: 'letter',
+      label: 'Chứa chữ cái (a-z, A-Z)',
       met: /[A-Za-z]/.test(watchNewPassword),
     },
     {
-      id: "number",
-      label: "Chứa chữ số (0-9)",
+      id: 'number',
+      label: 'Chứa chữ số (0-9)',
       met: /\d/.test(watchNewPassword),
     },
   ];
 
   const metCount = passwordCriteria.filter((c) => c.met).length;
 
-  let strengthLabel = "Chưa nhập";
-  let strengthColor = "bg-slate-200";
-  let strengthTextColor = "text-slate-400";
+  let strengthLabel = 'Chưa nhập';
+  let strengthColor = 'bg-slate-200';
+  let strengthTextColor = 'text-slate-400';
 
   if (watchNewPassword.length > 0) {
     if (metCount === 1) {
-      strengthLabel = "Yếu";
-      strengthColor = "bg-rose-500";
-      strengthTextColor = "text-rose-600";
+      strengthLabel = 'Yếu';
+      strengthColor = 'bg-rose-500';
+      strengthTextColor = 'text-rose-600';
     } else if (metCount === 2) {
-      strengthLabel = "Trung bình";
-      strengthColor = "bg-amber-500";
-      strengthTextColor = "text-amber-600";
+      strengthLabel = 'Trung bình';
+      strengthColor = 'bg-amber-500';
+      strengthTextColor = 'text-amber-600';
     } else if (metCount === 3) {
-      strengthLabel = "Mạnh";
-      strengthColor = "bg-emerald-500";
-      strengthTextColor = "text-emerald-600";
+      strengthLabel = 'Mạnh';
+      strengthColor = 'bg-emerald-500';
+      strengthTextColor = 'text-emerald-600';
     }
   }
 
@@ -140,24 +137,22 @@ export const ChangePasswordPage: React.FC = () => {
       reset();
     } catch (error: unknown) {
       const err = error as Error;
-      const message =
-        err.message || "Không thể đổi mật khẩu. Vui lòng kiểm tra lại thông tin!";
+      const message = err.message || 'Không thể đổi mật khẩu. Vui lòng kiểm tra lại thông tin!';
 
       // Nếu là lỗi sai mật khẩu hiện tại, đánh dấu lỗi đỏ ngay dưới ô nhập
-      if (message.toLowerCase().includes("mật khẩu hiện tại")) {
-        setError("currentPassword", {
-          type: "manual",
+      if (message.toLowerCase().includes('mật khẩu hiện tại')) {
+        setError('currentPassword', {
+          type: 'manual',
           message,
         });
       }
 
-      showToast("error", message);
+      showToast('error', message);
     }
   };
 
   return (
     <div className="w-full max-w-[1520px] mx-auto py-2 sm:py-4 antialiased">
-
       {/* Modal thông báo đếm ngược 3 giây lịch sự khi đổi mật khẩu thành công */}
       {successModalOpen &&
         createPortal(
@@ -178,7 +173,7 @@ export const ChangePasswordPage: React.FC = () => {
                   Đổi mật khẩu thành công!
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  Mật khẩu đã thay đổi thành công. Hệ thống sẽ đăng xuất để đảm bảo an toàn sau{" "}
+                  Mật khẩu đã thay đổi thành công. Hệ thống sẽ đăng xuất để đảm bảo an toàn sau{' '}
                   <span className="font-bold text-emerald-600 text-base">{countdown}s</span>
                 </p>
               </div>
@@ -203,7 +198,7 @@ export const ChangePasswordPage: React.FC = () => {
               </div>
             </div>
           </div>,
-          document.body,
+          document.body
         )}
 
       {/* Card Form Đổi mật khẩu độc lập, căn giữa trang trọng, chuẩn UI/UX */}
@@ -219,7 +214,8 @@ export const ChangePasswordPage: React.FC = () => {
                 Cập nhật mật khẩu tài khoản
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed">
-                Cập nhật mật khẩu mới định kỳ để bảo vệ an toàn cho tài khoản và dữ liệu kinh doanh của bạn.
+                Cập nhật mật khẩu mới định kỳ để bảo vệ an toàn cho tài khoản và dữ liệu kinh doanh
+                của bạn.
               </p>
             </div>
           </div>
@@ -229,7 +225,7 @@ export const ChangePasswordPage: React.FC = () => {
             {/* 1. Mật khẩu hiện tại */}
             <Input
               label="Mật khẩu hiện tại"
-              type={showCurrentPassword ? "text" : "password"}
+              type={showCurrentPassword ? 'text' : 'password'}
               placeholder="Nhập mật khẩu đang sử dụng"
               autoComplete="current-password"
               required
@@ -240,21 +236,25 @@ export const ChangePasswordPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  aria-label={showCurrentPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  aria-label={showCurrentPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                   disabled={isSubmitting || successModalOpen}
                   className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
                 >
-                  {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showCurrentPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               }
-              {...register("currentPassword")}
+              {...register('currentPassword')}
             />
 
             {/* 2. Mật khẩu mới */}
             <div className="space-y-2">
               <Input
                 label="Mật khẩu mới"
-                type={showNewPassword ? "text" : "password"}
+                type={showNewPassword ? 'text' : 'password'}
                 placeholder="Tối thiểu 8 ký tự (chữ cái & chữ số)"
                 autoComplete="new-password"
                 required
@@ -265,40 +265,38 @@ export const ChangePasswordPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
-                    aria-label={showNewPassword ? "Ẩn mật khẩu mới" : "Hiện mật khẩu mới"}
+                    aria-label={showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'}
                     disabled={isSubmitting || successModalOpen}
                     className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
                   >
                     {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 }
-                {...register("newPassword")}
+                {...register('newPassword')}
               />
 
               {/* Thanh gợi ý độ mạnh mật khẩu (Password Strength Indicator) */}
               <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-100 space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500 font-medium">Độ mạnh mật khẩu:</span>
-                  <span className={`font-bold ${strengthTextColor}`}>
-                    {strengthLabel}
-                  </span>
+                  <span className={`font-bold ${strengthTextColor}`}>{strengthLabel}</span>
                 </div>
 
                 {/* 3 vạch tiến độ */}
                 <div className="grid grid-cols-3 gap-1.5 h-1.5">
                   <div
                     className={`rounded-full transition-colors duration-300 ${
-                      metCount >= 1 ? strengthColor : "bg-slate-200"
+                      metCount >= 1 ? strengthColor : 'bg-slate-200'
                     }`}
                   />
                   <div
                     className={`rounded-full transition-colors duration-300 ${
-                      metCount >= 2 ? strengthColor : "bg-slate-200"
+                      metCount >= 2 ? strengthColor : 'bg-slate-200'
                     }`}
                   />
                   <div
                     className={`rounded-full transition-colors duration-300 ${
-                      metCount >= 3 ? strengthColor : "bg-slate-200"
+                      metCount >= 3 ? strengthColor : 'bg-slate-200'
                     }`}
                   />
                 </div>
@@ -309,7 +307,7 @@ export const ChangePasswordPage: React.FC = () => {
                     <div
                       key={item.id}
                       className={`flex items-center gap-1.5 font-medium transition-colors ${
-                        item.met ? "text-emerald-700" : "text-slate-400"
+                        item.met ? 'text-emerald-700' : 'text-slate-400'
                       }`}
                     >
                       {item.met ? (
@@ -327,7 +325,7 @@ export const ChangePasswordPage: React.FC = () => {
             {/* 3. Xác nhận mật khẩu mới */}
             <Input
               label="Xác nhận mật khẩu mới"
-              type={showConfirmPassword ? "text" : "password"}
+              type={showConfirmPassword ? 'text' : 'password'}
               placeholder="Nhập lại mật khẩu mới"
               autoComplete="new-password"
               required
@@ -338,21 +336,28 @@ export const ChangePasswordPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  aria-label={showConfirmPassword ? "Ẩn xác nhận mật khẩu" : "Hiện xác nhận mật khẩu"}
+                  aria-label={
+                    showConfirmPassword ? 'Ẩn xác nhận mật khẩu' : 'Hiện xác nhận mật khẩu'
+                  }
                   disabled={isSubmitting || successModalOpen}
                   className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
                 >
-                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               }
-              {...register("confirmPassword")}
+              {...register('confirmPassword')}
             />
 
             {/* Hộp nhắc nhở an toàn */}
             <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-blue-50/70 border border-blue-100 text-xs text-slate-600">
               <ShieldAlert className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
               <span className="leading-relaxed">
-                Sau khi đổi mật khẩu thành công, hệ thống sẽ đăng xuất để bạn đăng nhập lại với mật khẩu mới.
+                Sau khi đổi mật khẩu thành công, hệ thống sẽ đăng xuất để bạn đăng nhập lại với mật
+                khẩu mới.
               </span>
             </div>
 
@@ -361,9 +366,7 @@ export const ChangePasswordPage: React.FC = () => {
               <Button
                 type="submit"
                 isLoading={isSubmitting || successModalOpen}
-                loadingText={
-                  successModalOpen ? "Đang xử lý..." : "Đang đổi mật khẩu..."
-                }
+                loadingText={successModalOpen ? 'Đang xử lý...' : 'Đang đổi mật khẩu...'}
                 className="w-full sm:flex-1 h-11 text-sm font-semibold shadow-xs hover:shadow active:scale-[0.99]"
               >
                 <span>Xác nhận đổi mật khẩu</span>

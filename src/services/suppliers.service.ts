@@ -104,21 +104,13 @@ const normalizeSupplier = (raw: Record<string, unknown>): Supplier => {
     name: String(raw.name || ''),
     taxCode: (raw.taxCode as string) || (raw.tax_code as string) || undefined,
     tax_code: (raw.taxCode as string) || (raw.tax_code as string) || undefined,
-    contactName:
-      (raw.contactName as string) || (raw.contact_name as string) || undefined,
-    contact_name:
-      (raw.contactName as string) || (raw.contact_name as string) || undefined,
+    contactName: (raw.contactName as string) || (raw.contact_name as string) || undefined,
+    contact_name: (raw.contactName as string) || (raw.contact_name as string) || undefined,
     phone: (raw.phone as string) || undefined,
     email: (raw.email as string) || undefined,
     address: (raw.address as string) || undefined,
-    paymentTerms:
-      (raw.paymentTerms as string) ||
-      (raw.payment_terms as string) ||
-      undefined,
-    payment_terms:
-      (raw.paymentTerms as string) ||
-      (raw.payment_terms as string) ||
-      undefined,
+    paymentTerms: (raw.paymentTerms as string) || (raw.payment_terms as string) || undefined,
+    payment_terms: (raw.paymentTerms as string) || (raw.payment_terms as string) || undefined,
     status: (raw.status as SupplierStatus) || 'ACTIVE',
     notes: (raw.notes as string) || undefined,
     hasReceipts: Boolean(raw.hasReceipts ?? raw.has_receipts ?? false),
@@ -134,9 +126,7 @@ export const suppliersService = {
   /**
    * Lấy danh sách Nhà cung cấp (phân trang, tìm kiếm, lọc)
    */
-  async getSuppliers(
-    params: SupplierQueryParams = {},
-  ): Promise<PaginatedSuppliersResponse> {
+  async getSuppliers(params: SupplierQueryParams = {}): Promise<PaginatedSuppliersResponse> {
     const { page = 1, limit = 20, search = '', status = 'ALL' } = params;
 
     try {
@@ -144,13 +134,12 @@ export const suppliersService = {
       if (search.trim()) queryParams.search = search.trim();
       if (status !== 'ALL') queryParams.status = status;
 
-      const response = await apiClient.get<PaginatedSuppliersResponse>(
-        '/suppliers',
-        { params: queryParams },
-      );
+      const response = await apiClient.get<PaginatedSuppliersResponse>('/suppliers', {
+        params: queryParams,
+      });
 
       const items = (response.data?.data || []).map((s) =>
-        normalizeSupplier(s as unknown as Record<string, unknown>),
+        normalizeSupplier(s as unknown as Record<string, unknown>)
       );
 
       return {
@@ -173,7 +162,7 @@ export const suppliersService = {
             (s.taxCode && s.taxCode.toLowerCase().includes(q)) ||
             (s.contactName && s.contactName.toLowerCase().includes(q)) ||
             (s.phone && s.phone.includes(q)) ||
-            (s.email && s.email.toLowerCase().includes(q)),
+            (s.email && s.email.toLowerCase().includes(q))
         );
       }
 
@@ -202,14 +191,10 @@ export const suppliersService = {
   async getSupplierById(idOrCode: string): Promise<Supplier> {
     try {
       const response = await apiClient.get<Supplier>(`/suppliers/${idOrCode}`);
-      return normalizeSupplier(
-        response.data as unknown as Record<string, unknown>,
-      );
+      return normalizeSupplier(response.data as unknown as Record<string, unknown>);
     } catch {
       const found = MOCK_SUPPLIERS.find(
-        (s) =>
-          s.id === idOrCode ||
-          s.code.toLowerCase() === idOrCode.toLowerCase(),
+        (s) => s.id === idOrCode || s.code.toLowerCase() === idOrCode.toLowerCase()
       );
       if (!found) throw new Error('Không tìm thấy thông tin nhà cung cấp!');
       return found;
@@ -222,9 +207,7 @@ export const suppliersService = {
   async createSupplier(payload: CreateSupplierPayload): Promise<Supplier> {
     try {
       const response = await apiClient.post<Supplier>('/suppliers', payload);
-      const created = normalizeSupplier(
-        response.data as unknown as Record<string, unknown>,
-      );
+      const created = normalizeSupplier(response.data as unknown as Record<string, unknown>);
       MOCK_SUPPLIERS.unshift(created);
       return created;
     } catch (err: unknown) {
@@ -237,7 +220,10 @@ export const suppliersService = {
         throw new Error(Array.isArray(msg) ? msg.join(', ') : msg);
       }
 
-      console.warn('[SuppliersService] POST /suppliers thất bại hoặc chưa có backend, lưu vào bộ nhớ dự phòng:', err);
+      console.warn(
+        '[SuppliersService] POST /suppliers thất bại hoặc chưa có backend, lưu vào bộ nhớ dự phòng:',
+        err
+      );
       const newId = `22222222-0000-0000-0000-${Date.now().toString().slice(-12)}`;
       const newSupplier: Supplier = {
         id: newId,
@@ -269,18 +255,10 @@ export const suppliersService = {
   /**
    * Cập nhật thông tin Nhà cung cấp
    */
-  async updateSupplier(
-    id: string,
-    payload: UpdateSupplierPayload,
-  ): Promise<Supplier> {
+  async updateSupplier(id: string, payload: UpdateSupplierPayload): Promise<Supplier> {
     try {
-      const response = await apiClient.put<Supplier>(
-        `/suppliers/${id}`,
-        payload,
-      );
-      const updated = normalizeSupplier(
-        response.data as unknown as Record<string, unknown>,
-      );
+      const response = await apiClient.put<Supplier>(`/suppliers/${id}`, payload);
+      const updated = normalizeSupplier(response.data as unknown as Record<string, unknown>);
       const idx = MOCK_SUPPLIERS.findIndex((s) => s.id === id);
       if (idx !== -1) {
         MOCK_SUPPLIERS[idx] = updated;
@@ -295,7 +273,10 @@ export const suppliersService = {
         throw new Error(Array.isArray(msg) ? msg.join(', ') : msg);
       }
 
-      console.warn(`[SuppliersService] PUT /suppliers/${id} thất bại, cập nhật bộ nhớ dự phòng:`, err);
+      console.warn(
+        `[SuppliersService] PUT /suppliers/${id} thất bại, cập nhật bộ nhớ dự phòng:`,
+        err
+      );
       const idx = MOCK_SUPPLIERS.findIndex((s) => s.id === id);
       if (idx !== -1) {
         const current = MOCK_SUPPLIERS[idx];
@@ -315,29 +296,28 @@ export const suppliersService = {
   /**
    * Chuyển đổi trạng thái hoạt động (Active / Inactive)
    */
-  async toggleSupplierStatus(
-    id: string,
-    status?: SupplierStatus,
-  ): Promise<Supplier> {
+  async toggleSupplierStatus(id: string, status?: SupplierStatus): Promise<Supplier> {
     try {
       const response = await apiClient.patch<Supplier>(
         `/suppliers/${id}/status`,
-        status ? { status } : {},
+        status ? { status } : {}
       );
-      const updated = normalizeSupplier(
-        response.data as unknown as Record<string, unknown>,
-      );
+      const updated = normalizeSupplier(response.data as unknown as Record<string, unknown>);
       const idx = MOCK_SUPPLIERS.findIndex((s) => s.id === id);
       if (idx !== -1) {
         MOCK_SUPPLIERS[idx] = updated;
       }
       return updated;
     } catch (err: unknown) {
-      console.warn(`[SuppliersService] PATCH /suppliers/${id}/status thất bại, chuyển trạng thái trên bộ nhớ dự phòng:`, err);
+      console.warn(
+        `[SuppliersService] PATCH /suppliers/${id}/status thất bại, chuyển trạng thái trên bộ nhớ dự phòng:`,
+        err
+      );
       const idx = MOCK_SUPPLIERS.findIndex((s) => s.id === id);
       if (idx !== -1) {
         const current = MOCK_SUPPLIERS[idx];
-        const nextStatus: SupplierStatus = status || (current.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE');
+        const nextStatus: SupplierStatus =
+          status || (current.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE');
         const updated: Supplier = {
           ...current,
           status: nextStatus,
@@ -354,9 +334,7 @@ export const suppliersService = {
   /**
    * Xóa Nhà cung cấp (Bắt buộc kiểm tra ràng buộc Phiếu nhập kho)
    */
-  async deleteSupplier(
-    id: string,
-  ): Promise<{ success: boolean; message: string }> {
+  async deleteSupplier(id: string): Promise<{ success: boolean; message: string }> {
     try {
       const response = await apiClient.delete<{
         success: boolean;
@@ -365,14 +343,17 @@ export const suppliersService = {
       MOCK_SUPPLIERS = MOCK_SUPPLIERS.filter((s) => s.id !== id);
       return response.data;
     } catch (err: unknown) {
-      console.warn(`[SuppliersService] DELETE /suppliers/${id} thất bại, xóa trên bộ nhớ dự phòng:`, err);
+      console.warn(
+        `[SuppliersService] DELETE /suppliers/${id} thất bại, xóa trên bộ nhớ dự phòng:`,
+        err
+      );
       const found = MOCK_SUPPLIERS.find((s) => s.id === id);
       if (!found) {
         throw new Error(`Không tìm thấy nhà cung cấp với ID: ${id}`);
       }
       if (found.hasReceipts || found.has_receipts) {
         throw new Error(
-          `Nhà cung cấp [${found.code} - ${found.name}] đã phát sinh phiếu nhập kho trong hệ thống, không thể xóa để bảo toàn dữ liệu kế toán!`,
+          `Nhà cung cấp [${found.code} - ${found.name}] đã phát sinh phiếu nhập kho trong hệ thống, không thể xóa để bảo toàn dữ liệu kế toán!`
         );
       }
       MOCK_SUPPLIERS = MOCK_SUPPLIERS.filter((s) => s.id !== id);

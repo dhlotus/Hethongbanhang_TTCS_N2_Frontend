@@ -1,8 +1,7 @@
-import React, { forwardRef } from "react";
-import { AlertCircle } from "lucide-react";
+import React, { forwardRef } from 'react';
+import { AlertCircle } from 'lucide-react';
 
-export interface TextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string;
   error?: string;
   helperText?: string;
@@ -29,27 +28,24 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       value,
       defaultValue,
       id,
-      className = "",
+      className = '',
       rows = 3,
       ...props
     },
-    ref,
+    ref
   ) => {
     const inputId = id || props.name;
     const currentLength =
-      typeof value === "string"
+      typeof value === 'string'
         ? value.length
-        : typeof defaultValue === "string"
-        ? defaultValue.length
-        : 0;
+        : typeof defaultValue === 'string'
+          ? defaultValue.length
+          : 0;
 
     return (
       <div className="w-full text-left">
         <div className="flex items-center justify-between mb-2">
-          <label
-            htmlFor={inputId}
-            className="block text-sm font-medium text-slate-700"
-          >
+          <label htmlFor={inputId} className="block text-sm font-medium text-slate-700">
             {label} {required && <span className="text-rose-500">*</span>}
           </label>
           {showCount && maxLength && (
@@ -68,8 +64,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             defaultValue={defaultValue}
             className={`w-full min-h-[100px] p-3.5 rounded-md text-sm bg-white border text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none focus:ring-4 focus:ring-[var(--color-primary-ring)] focus:border-[var(--color-border-focus)] disabled:bg-slate-100 disabled:text-slate-400 disabled:border-[var(--color-border-disabled)] disabled:cursor-not-allowed resize-y ${
               error
-                ? "border-[var(--color-border-error)] focus:border-[var(--color-border-error)] focus:ring-rose-500/10"
-                : "border-[var(--color-border)] hover:border-[var(--color-border-hover)]"
+                ? 'border-[var(--color-border-error)] focus:border-[var(--color-border-error)] focus:ring-rose-500/10'
+                : 'border-[var(--color-border)] hover:border-[var(--color-border-hover)]'
             } ${className}`}
             {...props}
           />
@@ -84,7 +80,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         ) : null}
       </div>
     );
-  },
+  }
 );
 
-Textarea.displayName = "Textarea";
+Textarea.displayName = 'Textarea';

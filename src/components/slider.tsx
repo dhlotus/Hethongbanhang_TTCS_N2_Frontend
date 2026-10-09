@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 
 export interface SliderProps {
   label?: string;
@@ -26,15 +26,12 @@ export const Slider: React.FC<SliderProps> = ({
   step = 1,
   value,
   onChange,
-  unit = "",
+  unit = '',
   showInput = true,
   disabled = false,
-  className = "",
+  className = '',
 }) => {
-  const percentage = Math.max(
-    0,
-    Math.min(100, ((value - min) / (max - min)) * 100),
-  );
+  const percentage = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = Number(e.target.value);
@@ -46,9 +43,7 @@ export const Slider: React.FC<SliderProps> = ({
   return (
     <div className={`w-full text-left ${className}`}>
       <div className="flex items-center justify-between mb-2">
-        {label && (
-          <span className="text-sm font-medium text-slate-700">{label}</span>
-        )}
+        {label && <span className="text-sm font-medium text-slate-700">{label}</span>}
         <div className="flex items-center gap-1.5 font-mono text-sm font-bold text-[var(--color-primary)]">
           {showInput ? (
             <input

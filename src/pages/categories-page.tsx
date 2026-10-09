@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Link } from "react-router-dom";
-import { createPortal } from "react-dom";
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import {
   FolderTree,
   Folder,
@@ -24,24 +24,24 @@ import {
   TrendingUp,
   Boxes,
   Layers,
-} from "lucide-react";
-import { CategoriesTreeSkeleton } from "../components/skeletons";
-import { categoriesService } from "../services/categories.service";
-import { showToast } from "../components/toast";
-import { tokenStorage } from "../utils/token-storage";
+} from 'lucide-react';
+import { CategoriesTreeSkeleton } from '../components/skeletons';
+import { categoriesService } from '../services/categories.service';
+import { showToast } from '../components/toast';
+import { tokenStorage } from '../utils/token-storage';
 import type {
   CategoryTreeNode,
   CategoryItem,
   CreateCategoryPayload,
   UpdateCategoryPayload,
   MoveProductsPayload,
-} from "../types/categories";
+} from '../types/categories';
 
 export const CategoriesPage: React.FC = () => {
   const [treeData, setTreeData] = useState<CategoryTreeNode[]>([]);
   const [flatCategories, setFlatCategories] = useState<CategoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
   // Master-Detail Selection State
@@ -49,7 +49,7 @@ export const CategoriesPage: React.FC = () => {
   const [selectedCategoryProducts, setSelectedCategoryProducts] = useState<any[]>([]);
   const [categoryRevenue, setCategoryRevenue] = useState<number>(0);
   const [loadingProducts, setLoadingProducts] = useState<boolean>(false);
-  const [activeRightTab, setActiveRightTab] = useState<"products" | "analytics">("products");
+  const [activeRightTab, setActiveRightTab] = useState<'products' | 'analytics'>('products');
 
   // Product Pagination State
   const [productPage, setProductPage] = useState<number>(1);
@@ -58,37 +58,38 @@ export const CategoriesPage: React.FC = () => {
   // Modal State: Create / Edit
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
-  const [selectedParentId, setSelectedParentId] = useState<string>("");
-  const [formName, setFormName] = useState<string>("");
-  const [formCode, setFormCode] = useState<string>("");
-  const [formDescription, setFormDescription] = useState<string>("");
-  const [formStatus, setFormStatus] = useState<"ACTIVE" | "INACTIVE">("ACTIVE");
+  const [selectedParentId, setSelectedParentId] = useState<string>('');
+  const [formName, setFormName] = useState<string>('');
+  const [formCode, setFormCode] = useState<string>('');
+  const [formDescription, setFormDescription] = useState<string>('');
+  const [formStatus, setFormStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
 
   // Modal State: Move Products
   const [isMoveModalOpen, setIsMoveModalOpen] = useState<boolean>(false);
-  const [moveSourceId, setMoveSourceId] = useState<string>("");
-  const [moveTargetId, setMoveTargetId] = useState<string>("");
+  const [moveSourceId, setMoveSourceId] = useState<string>('');
+  const [moveTargetId, setMoveTargetId] = useState<string>('');
   const [moveSubmitting, setMoveSubmitting] = useState<boolean>(false);
   const [moveError, setMoveError] = useState<string | null>(null);
   const [sourceProducts, setSourceProducts] = useState<any[]>([]);
   const [loadingSourceProducts, setLoadingSourceProducts] = useState<boolean>(false);
-  const [moveMode, setMoveMode] = useState<"all" | "custom">("custom");
+  const [moveMode, setMoveMode] = useState<'all' | 'custom'>('custom');
   const [moveQuantityInput, setMoveQuantityInput] = useState<number>(1);
   const [selectedMoveProductIds, setSelectedMoveProductIds] = useState<string[]>([]);
-  const [moveProductSearch, setMoveProductSearch] = useState<string>("");
+  const [moveProductSearch, setMoveProductSearch] = useState<string>('');
 
   // Modal State: Delete Category (Floating modal replacing window.confirm)
   const [deleteCategoryModalOpen, setDeleteCategoryModalOpen] = useState<boolean>(false);
-  const [categoryToDelete, setCategoryToDelete] = useState<CategoryTreeNode | CategoryItem | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<CategoryTreeNode | CategoryItem | null>(
+    null
+  );
   const [isDeletingCategory, setIsDeletingCategory] = useState<boolean>(false);
   const [deleteCategoryError, setDeleteCategoryError] = useState<string | null>(null);
 
   const currentUser = tokenStorage.getUser();
   const userRoles = currentUser?.roles || (currentUser?.role ? [currentUser.role] : []);
-  const canManageCategories =
-    userRoles.includes("ADMIN") || userRoles.includes("SALES_MANAGER");
+  const canManageCategories = userRoles.includes('ADMIN') || userRoles.includes('SALES_MANAGER');
 
   // Load Tree & Flat List
   const loadData = useCallback(async () => {
@@ -136,7 +137,7 @@ export const CategoriesPage: React.FC = () => {
         });
       }
     } catch {
-      showToast("error", "Không thể tải danh mục sản phẩm");
+      showToast('error', 'Không thể tải danh mục sản phẩm');
     } finally {
       setLoading(false);
     }
@@ -172,7 +173,7 @@ export const CategoriesPage: React.FC = () => {
               setCategoryRevenue(rev);
             } else {
               const sampleRev =
-                selectedNode.id === "5" || selectedNode.code === "BEVERAGE" ? 21340000 : 0;
+                selectedNode.id === '5' || selectedNode.code === 'BEVERAGE' ? 21340000 : 0;
               setCategoryRevenue(sampleRev);
             }
           }
@@ -220,11 +221,11 @@ export const CategoriesPage: React.FC = () => {
   // Open Create Modal
   const handleOpenCreateModal = (parent?: CategoryTreeNode | CategoryItem) => {
     setEditingCategory(null);
-    setFormName("");
-    setFormCode("");
-    setFormDescription("");
-    setFormStatus("ACTIVE");
-    setSelectedParentId(parent ? parent.id : "");
+    setFormName('');
+    setFormCode('');
+    setFormDescription('');
+    setFormStatus('ACTIVE');
+    setSelectedParentId(parent ? parent.id : '');
     setFormError(null);
     // Tự động mở rộng nhóm cha nếu đang thu gọn
     if (parent) {
@@ -238,9 +239,9 @@ export const CategoriesPage: React.FC = () => {
     setEditingCategory(cat);
     setFormName(cat.name);
     setFormCode(cat.code);
-    setFormDescription(cat.description || "");
+    setFormDescription(cat.description || '');
     setFormStatus(cat.status);
-    const pId = cat.parentId || (cat as any).parent_id || "";
+    const pId = cat.parentId || (cat as any).parent_id || '';
     setSelectedParentId(pId);
     setFormError(null);
     // Tự động mở rộng nhánh cha và node này nếu đang thu gọn
@@ -257,12 +258,12 @@ export const CategoriesPage: React.FC = () => {
   const handleOpenMoveModal = async (sourceCat: CategoryTreeNode | CategoryItem) => {
     setMoveSourceId(sourceCat.id);
     const other = flatCategories.find((c) => c.id !== sourceCat.id);
-    setMoveTargetId(other ? other.id : "");
+    setMoveTargetId(other ? other.id : '');
     setMoveError(null);
-    setMoveMode("custom");
+    setMoveMode('custom');
     setSelectedMoveProductIds([]);
     setMoveQuantityInput(1);
-    setMoveProductSearch("");
+    setMoveProductSearch('');
     setIsMoveModalOpen(true);
     // Tự động mở rộng nhóm nguồn
     setExpandedNodes((prev) => new Set(prev).add(sourceCat.id));
@@ -318,8 +319,7 @@ export const CategoriesPage: React.FC = () => {
     const q = moveProductSearch.toLowerCase().trim();
     return sourceProducts.filter(
       (p: any) =>
-        (p.name && p.name.toLowerCase().includes(q)) ||
-        (p.sku && p.sku.toLowerCase().includes(q))
+        (p.name && p.name.toLowerCase().includes(q)) || (p.sku && p.sku.toLowerCase().includes(q))
     );
   }, [sourceProducts, moveProductSearch]);
 
@@ -327,11 +327,11 @@ export const CategoriesPage: React.FC = () => {
   const handleSubmitCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) {
-      setFormError("Tên nhóm hàng không được để trống.");
+      setFormError('Tên nhóm hàng không được để trống.');
       return;
     }
     if (!formCode.trim()) {
-      setFormError("Mã nhóm hàng không được để trống.");
+      setFormError('Mã nhóm hàng không được để trống.');
       return;
     }
 
@@ -348,7 +348,7 @@ export const CategoriesPage: React.FC = () => {
           status: formStatus,
         };
         await categoriesService.updateCategory(editingCategory.id, payload);
-        showToast("success", "Cập nhật nhóm hàng thành công");
+        showToast('success', 'Cập nhật nhóm hàng thành công');
       } else {
         const payload: CreateCategoryPayload = {
           name: formName.trim(),
@@ -358,7 +358,7 @@ export const CategoriesPage: React.FC = () => {
           status: formStatus,
         };
         await categoriesService.createCategory(payload);
-        showToast("success", "Tạo mới nhóm hàng thành công");
+        showToast('success', 'Tạo mới nhóm hàng thành công');
       }
       setIsModalOpen(false);
       // Đảm bảo nhóm cha luôn mở rộng sau khi thêm/sửa
@@ -381,18 +381,18 @@ export const CategoriesPage: React.FC = () => {
   const handleSubmitMove = async (e?: React.FormEvent, forceAll: boolean = false) => {
     if (e) e.preventDefault();
     if (!moveSourceId || !moveTargetId) {
-      setMoveError("Vui lòng chọn đầy đủ nhóm nguồn và nhóm đích.");
+      setMoveError('Vui lòng chọn đầy đủ nhóm nguồn và nhóm đích.');
       return;
     }
     if (moveSourceId === moveTargetId) {
-      setMoveError("Nhóm hàng đích phải khác nhóm hàng nguồn.");
+      setMoveError('Nhóm hàng đích phải khác nhóm hàng nguồn.');
       return;
     }
 
-    const isAll = forceAll || moveMode === "all";
+    const isAll = forceAll || moveMode === 'all';
 
     if (!isAll && selectedMoveProductIds.length === 0) {
-      setMoveError("Vui lòng chọn ít nhất 1 sản phẩm hoặc nhập số lượng sản phẩm cần chuyển.");
+      setMoveError('Vui lòng chọn ít nhất 1 sản phẩm hoặc nhập số lượng sản phẩm cần chuyển.');
       return;
     }
 
@@ -407,10 +407,11 @@ export const CategoriesPage: React.FC = () => {
       };
       const res = await categoriesService.moveProducts(payload);
       showToast(
-        "success",
-        res?.message || (isAll
-          ? "Đã di chuyển toàn bộ sản phẩm thành công"
-          : `Đã di chuyển ${selectedMoveProductIds.length} sản phẩm thành công`)
+        'success',
+        res?.message ||
+          (isAll
+            ? 'Đã di chuyển toàn bộ sản phẩm thành công'
+            : `Đã di chuyển ${selectedMoveProductIds.length} sản phẩm thành công`)
       );
       setIsMoveModalOpen(false);
       // Mở rộng cả nhóm nguồn và nhóm đích sau khi di chuyển sản phẩm
@@ -448,7 +449,7 @@ export const CategoriesPage: React.FC = () => {
     setDeleteCategoryError(null);
     try {
       await categoriesService.deleteCategory(categoryToDelete.id);
-      showToast("success", `Xóa nhóm hàng [${categoryToDelete.name}] thành công`);
+      showToast('success', `Xóa nhóm hàng [${categoryToDelete.name}] thành công`);
       setDeleteCategoryModalOpen(false);
       setCategoryToDelete(null);
       setDeleteCategoryError(null);
@@ -457,8 +458,7 @@ export const CategoriesPage: React.FC = () => {
       const error = err as Error;
       // Hiển thị trực tiếp lỗi trong modal, KHÔNG hiển thị ra toast ngoài
       setDeleteCategoryError(
-        error.message ||
-          "Không thể xóa nhóm hàng do đang chứa nhóm con hoặc sản phẩm."
+        error.message || 'Không thể xóa nhóm hàng do đang chứa nhóm con hoặc sản phẩm.'
       );
     } finally {
       setIsDeletingCategory(false);
@@ -471,8 +471,7 @@ export const CategoriesPage: React.FC = () => {
     const q = searchQuery.toLowerCase().trim();
 
     const filterNode = (node: CategoryTreeNode): CategoryTreeNode | null => {
-      const isMatch =
-        node.name.toLowerCase().includes(q) || node.code.toLowerCase().includes(q);
+      const isMatch = node.name.toLowerCase().includes(q) || node.code.toLowerCase().includes(q);
       const filteredChildren = (node.children || [])
         .map(filterNode)
         .filter((child): child is CategoryTreeNode => child !== null);
@@ -486,17 +485,14 @@ export const CategoriesPage: React.FC = () => {
       return null;
     };
 
-    return treeData
-      .map(filterNode)
-      .filter((n): n is CategoryTreeNode => n !== null);
+    return treeData.map(filterNode).filter((n): n is CategoryTreeNode => n !== null);
   }, [treeData, searchQuery]);
 
   // Breadcrumbs path calculation for selected node
   const breadcrumbs = useMemo(() => {
     if (!selectedNode) return [];
     const crumbs: CategoryItem[] = [];
-    let currentId: string | null =
-      selectedNode.parentId || (selectedNode as any).parent_id || null;
+    let currentId: string | null = selectedNode.parentId || (selectedNode as any).parent_id || null;
 
     while (currentId) {
       const parent = flatCategories.find((c) => c.id === currentId);
@@ -526,7 +522,6 @@ export const CategoriesPage: React.FC = () => {
     return selectedCategoryProducts.slice(start, start + productLimit);
   }, [selectedCategoryProducts, productPage, productLimit]);
 
-
   // Sidebar Tree Node Renderer
   const renderSidebarTreeNode = (node: CategoryTreeNode) => {
     const isExpanded = expandedNodes.has(node.id);
@@ -535,10 +530,10 @@ export const CategoriesPage: React.FC = () => {
 
     const levelBadgeColor =
       node.level === 1
-        ? "bg-blue-50 text-blue-700 border-blue-200"
+        ? 'bg-blue-50 text-blue-700 border-blue-200'
         : node.level === 2
-          ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-          : "bg-emerald-50 text-emerald-700 border-emerald-200";
+          ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+          : 'bg-emerald-50 text-emerald-700 border-emerald-200';
 
     return (
       <div key={node.id} className="relative flex flex-col">
@@ -550,10 +545,11 @@ export const CategoriesPage: React.FC = () => {
               toggleExpand(node.id);
             }
           }}
-          className={`group flex items-center justify-between gap-2 p-2.5 rounded-xl border transition-all cursor-pointer select-none ${isSelected
-              ? "bg-blue-50/80 border-blue-400 ring-2 ring-blue-500/20 shadow-2xs text-blue-900"
-              : "bg-white border-transparent hover:bg-slate-50 hover:border-slate-200/80 text-slate-800"
-            }`}
+          className={`group flex items-center justify-between gap-2 p-2.5 rounded-xl border transition-all cursor-pointer select-none ${
+            isSelected
+              ? 'bg-blue-50/80 border-blue-400 ring-2 ring-blue-500/20 shadow-2xs text-blue-900'
+              : 'bg-white border-transparent hover:bg-slate-50 hover:border-slate-200/80 text-slate-800'
+          }`}
         >
           {/* Left item: Expander + Folder Icon + Name + Badge */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -574,12 +570,13 @@ export const CategoriesPage: React.FC = () => {
             )}
 
             <div
-              className={`flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-lg ${node.level === 1
-                  ? "bg-blue-100/70 text-blue-600"
+              className={`flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-lg ${
+                node.level === 1
+                  ? 'bg-blue-100/70 text-blue-600'
                   : node.level === 2
-                    ? "bg-indigo-100/70 text-indigo-600"
-                    : "bg-emerald-100/70 text-emerald-600"
-                }`}
+                    ? 'bg-indigo-100/70 text-indigo-600'
+                    : 'bg-emerald-100/70 text-emerald-600'
+              }`}
             >
               {hasChildren ? (
                 isExpanded ? (
@@ -606,8 +603,9 @@ export const CategoriesPage: React.FC = () => {
           {/* Right item: Quick Action Icons (Hover) */}
           {canManageCategories && (
             <div
-              className={`flex items-center gap-0.5 shrink-0 ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                } transition-opacity`}
+              className={`flex items-center gap-0.5 shrink-0 ${
+                isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              } transition-opacity`}
             >
               <button
                 type="button"
@@ -668,11 +666,10 @@ export const CategoriesPage: React.FC = () => {
   // Tạo URL điều hướng sang Danh mục sản phẩm chuẩn hóa theo Cấp 1 và Cấp 2
   const getProductDetailUrl = (p: any) => {
     const targetCat =
-      flatCategories.find((c) => c.id === p.categoryId || c.code === p.categoryId) ||
-      selectedNode;
+      flatCategories.find((c) => c.id === p.categoryId || c.code === p.categoryId) || selectedNode;
 
-    let pCat = "";
-    let sCat = "";
+    let pCat = '';
+    let sCat = '';
 
     if (targetCat) {
       if (targetCat.level === 1) {
@@ -702,8 +699,8 @@ export const CategoriesPage: React.FC = () => {
     if (!sCat && p.subCategory) sCat = p.subCategory;
 
     const params = new URLSearchParams();
-    if (pCat) params.set("parentCategory", pCat);
-    if (sCat) params.set("subCategory", sCat);
+    if (pCat) params.set('parentCategory', pCat);
+    if (sCat) params.set('subCategory', sCat);
 
     return `/catalog/products?${params.toString()}`;
   };
@@ -736,7 +733,7 @@ export const CategoriesPage: React.FC = () => {
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all cursor-pointer"
             title="Tải lại toàn bộ cây danh mục"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin text-blue-600" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-blue-600' : ''}`} />
             <span>Làm mới</span>
           </button>
 
@@ -782,7 +779,7 @@ export const CategoriesPage: React.FC = () => {
             {searchQuery && (
               <button
                 type="button"
-                onClick={() => setSearchQuery("")}
+                onClick={() => setSearchQuery('')}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
                 <X className="h-3.5 w-3.5" />
@@ -838,11 +835,10 @@ export const CategoriesPage: React.FC = () => {
           {!selectedNode ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-400 space-y-3 flex-1 my-auto">
               <FolderTree className="h-12 w-12 text-slate-300" />
-              <p className="text-sm font-semibold text-slate-600">
-                Chưa chọn nhóm hàng nào
-              </p>
+              <p className="text-sm font-semibold text-slate-600">Chưa chọn nhóm hàng nào</p>
               <p className="text-xs text-slate-400 max-w-sm text-center">
-                Vui lòng nhấp chọn một nhóm hàng ở cột cây bên trái để xem chi tiết, quản lý nhóm con và điều chuyển sản phẩm.
+                Vui lòng nhấp chọn một nhóm hàng ở cột cây bên trái để xem chi tiết, quản lý nhóm
+                con và điều chuyển sản phẩm.
               </p>
             </div>
           ) : (
@@ -882,16 +878,17 @@ export const CategoriesPage: React.FC = () => {
                       {selectedNode.name}
                     </h2>
                     <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${selectedNode.level === 1
-                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                        selectedNode.level === 1
+                          ? 'bg-blue-50 text-blue-700 border-blue-200'
                           : selectedNode.level === 2
-                            ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                            : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        }`}
+                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      }`}
                     >
                       Cấp {selectedNode.level}
                     </span>
-                    {selectedNode.status === "INACTIVE" && (
+                    {selectedNode.status === 'INACTIVE' && (
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
                         Ngừng KD
                       </span>
@@ -951,7 +948,7 @@ export const CategoriesPage: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-xl sm:text-2xl font-bold text-slate-900">
-                      {selectedCategoryProducts.length.toLocaleString("vi-VN")}{" "}
+                      {selectedCategoryProducts.length.toLocaleString('vi-VN')}{' '}
                       <span className="text-xs font-semibold text-slate-500">sản phẩm</span>
                     </p>
                     <p className="text-[11px] text-blue-600/80 mt-0.5">
@@ -970,7 +967,7 @@ export const CategoriesPage: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-xl sm:text-2xl font-bold text-slate-900">
-                      {categoryRevenue.toLocaleString("vi-VN")}{" "}
+                      {categoryRevenue.toLocaleString('vi-VN')}{' '}
                       <span className="text-xs font-semibold text-slate-500">đ</span>
                     </p>
                     <p className="text-[11px] text-emerald-600/80 mt-0.5">
@@ -985,11 +982,12 @@ export const CategoriesPage: React.FC = () => {
                 <div className="flex items-center gap-6 text-xs font-semibold">
                   <button
                     type="button"
-                    onClick={() => setActiveRightTab("products")}
-                    className={`pb-3 border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${activeRightTab === "products"
-                        ? "border-indigo-600 text-indigo-700 font-bold"
-                        : "border-transparent text-slate-500 hover:text-slate-800"
-                      }`}
+                    onClick={() => setActiveRightTab('products')}
+                    className={`pb-3 border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      activeRightTab === 'products'
+                        ? 'border-indigo-600 text-indigo-700 font-bold'
+                        : 'border-transparent text-slate-500 hover:text-slate-800'
+                    }`}
                   >
                     <Package className="h-4 w-4" />
                     <span>Sản phẩm</span>
@@ -997,11 +995,12 @@ export const CategoriesPage: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => setActiveRightTab("analytics")}
-                    className={`pb-3 border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${activeRightTab === "analytics"
-                        ? "border-indigo-600 text-indigo-700 font-bold"
-                        : "border-transparent text-slate-500 hover:text-slate-800"
-                      }`}
+                    onClick={() => setActiveRightTab('analytics')}
+                    className={`pb-3 border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      activeRightTab === 'analytics'
+                        ? 'border-indigo-600 text-indigo-700 font-bold'
+                        : 'border-transparent text-slate-500 hover:text-slate-800'
+                    }`}
                   >
                     <TrendingUp className="h-4 w-4" />
                     <span>Báo cáo doanh số ngành hàng</span>
@@ -1010,16 +1009,14 @@ export const CategoriesPage: React.FC = () => {
               </div>
 
               {/* 5. Tab Content */}
-              {activeRightTab === "products" ? (
+              {activeRightTab === 'products' ? (
                 <div className="space-y-6">
                   {/* Subsection 1: Nhóm con trực thuộc */}
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wide">
                         <Folder className="h-3.5 w-3.5 text-indigo-600" />
-                        <span>
-                          NHÓM CON TRỰC THUỘC ({selectedNode.children?.length || 0})
-                        </span>
+                        <span>NHÓM CON TRỰC THUỘC ({selectedNode.children?.length || 0})</span>
                       </div>
                       <div className="flex items-center gap-2">
                         {parentCategory && (
@@ -1076,9 +1073,7 @@ export const CategoriesPage: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wide">
                         <Package className="h-3.5 w-3.5 text-indigo-500" />
-                        <span>
-                          SẢN PHẨM TRONG NHÓM ({totalProducts})
-                        </span>
+                        <span>SẢN PHẨM TRONG NHÓM ({totalProducts})</span>
                       </div>
                     </div>
 
@@ -1130,7 +1125,10 @@ export const CategoriesPage: React.FC = () => {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                               {paginatedProducts.map((p) => (
-                                <tr key={p.id || p.sku} className="hover:bg-slate-50/70 transition-colors">
+                                <tr
+                                  key={p.id || p.sku}
+                                  className="hover:bg-slate-50/70 transition-colors"
+                                >
                                   <td className="py-2 px-3.5 font-mono font-medium text-blue-600">
                                     {p.sku}
                                   </td>
@@ -1138,17 +1136,18 @@ export const CategoriesPage: React.FC = () => {
                                     {p.name}
                                   </td>
                                   <td className="py-2 px-3.5 text-center text-slate-600">
-                                    {p.baseUnit || p.unit || "-"}
+                                    {p.baseUnit || p.unit || '-'}
                                   </td>
                                   <td className="py-2 px-3.5 text-right font-medium text-slate-900">
-                                    {Number(p.price || 0).toLocaleString("vi-VN")} đ
+                                    {Number(p.price || 0).toLocaleString('vi-VN')} đ
                                   </td>
                                   <td className="py-2 px-3.5 text-center">
                                     <span
-                                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${(p.stockQuantity ?? 0) > 0
-                                          ? "bg-emerald-50 text-emerald-700"
-                                          : "bg-rose-50 text-rose-700"
-                                        }`}
+                                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                        (p.stockQuantity ?? 0) > 0
+                                          ? 'bg-emerald-50 text-emerald-700'
+                                          : 'bg-rose-50 text-rose-700'
+                                      }`}
                                     >
                                       {p.stockQuantity ?? 0}
                                     </span>
@@ -1177,10 +1176,11 @@ export const CategoriesPage: React.FC = () => {
                         <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 border-t border-slate-100 text-xs text-slate-500 bg-slate-50/40 whitespace-nowrap overflow-hidden">
                           <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
                             <div>
-                              Hiển thị{" "}
+                              Hiển thị{' '}
                               <strong>
-                                {totalProducts === 0 ? 0 : (productPage - 1) * productLimit + 1} - {Math.min(productPage * productLimit, totalProducts)}
-                              </strong>{" "}
+                                {totalProducts === 0 ? 0 : (productPage - 1) * productLimit + 1} -{' '}
+                                {Math.min(productPage * productLimit, totalProducts)}
+                              </strong>{' '}
                               trong <strong>{totalProducts}</strong> sản phẩm
                             </div>
 
@@ -1233,8 +1233,8 @@ export const CategoriesPage: React.FC = () => {
                                         onClick={() => setProductPage(p)}
                                         className={`h-6.5 min-w-6.5 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                                           productPage === p
-                                            ? "bg-blue-600 text-white shadow-2xs shadow-blue-600/30"
-                                            : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                                            ? 'bg-blue-600 text-white shadow-2xs shadow-blue-600/30'
+                                            : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                                         }`}
                                       >
                                         {p}
@@ -1247,7 +1247,9 @@ export const CategoriesPage: React.FC = () => {
                             <button
                               type="button"
                               disabled={productPage >= totalProductPages}
-                              onClick={() => setProductPage((p) => Math.min(totalProductPages, p + 1))}
+                              onClick={() =>
+                                setProductPage((p) => Math.min(totalProductPages, p + 1))
+                              }
                               className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2 py-1 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
                             >
                               <span>Sau</span>
@@ -1267,7 +1269,8 @@ export const CategoriesPage: React.FC = () => {
                     Báo cáo Phân tích Ngành hàng [{selectedNode.name}]
                   </h4>
                   <p className="text-xs text-slate-400 max-w-md mx-auto">
-                    Hệ thống đang tổng hợp dữ liệu doanh số và tốc độ tiêu thụ theo từng chu kỳ kinh doanh của nhóm này.
+                    Hệ thống đang tổng hợp dữ liệu doanh số và tốc độ tiêu thụ theo từng chu kỳ kinh
+                    doanh của nhóm này.
                   </p>
                 </div>
               )}
@@ -1290,12 +1293,12 @@ export const CategoriesPage: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
-                    {editingCategory ? "Cập nhật Nhóm Hàng" : "Thêm Mới Nhóm Hàng"}
+                    {editingCategory ? 'Cập nhật Nhóm Hàng' : 'Thêm Mới Nhóm Hàng'}
                   </h3>
                   <p className="text-xs text-slate-500">
                     {editingCategory
                       ? `Mã định danh: ${editingCategory.code}`
-                      : "Cấu trúc cây đa cấp (Cấp 1, Cấp 2, Cấp 3)"}
+                      : 'Cấu trúc cây đa cấp (Cấp 1, Cấp 2, Cấp 3)'}
                   </p>
                 </div>
               </div>
@@ -1333,7 +1336,7 @@ export const CategoriesPage: React.FC = () => {
                 <input
                   type="text"
                   value={formCode}
-                  onChange={(e) => setFormCode(e.target.value.toUpperCase().replace(/\s+/g, "_"))}
+                  onChange={(e) => setFormCode(e.target.value.toUpperCase().replace(/\s+/g, '_'))}
                   placeholder="Ví dụ: MILK_POWDER, NEST_READY..."
                   className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-mono font-medium text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   required
@@ -1358,7 +1361,7 @@ export const CategoriesPage: React.FC = () => {
                     .filter((c) => !editingCategory || c.id !== editingCategory.id)
                     .map((cat) => (
                       <option key={cat.id} value={cat.id}>
-                        {"  ".repeat(Math.max(0, cat.level - 1))}
+                        {'  '.repeat(Math.max(0, cat.level - 1))}
                         [Cấp {cat.level}] {cat.name} ({cat.code})
                       </option>
                     ))}
@@ -1392,8 +1395,8 @@ export const CategoriesPage: React.FC = () => {
                     <input
                       type="radio"
                       name="status"
-                      checked={formStatus === "ACTIVE"}
-                      onChange={() => setFormStatus("ACTIVE")}
+                      checked={formStatus === 'ACTIVE'}
+                      onChange={() => setFormStatus('ACTIVE')}
                       className="text-blue-600 focus:ring-blue-500"
                     />
                     <span>Hoạt động</span>
@@ -1402,8 +1405,8 @@ export const CategoriesPage: React.FC = () => {
                     <input
                       type="radio"
                       name="status"
-                      checked={formStatus === "INACTIVE"}
-                      onChange={() => setFormStatus("INACTIVE")}
+                      checked={formStatus === 'INACTIVE'}
+                      onChange={() => setFormStatus('INACTIVE')}
                       className="text-blue-600 focus:ring-blue-500"
                     />
                     <span>Ngừng kinh doanh</span>
@@ -1431,7 +1434,7 @@ export const CategoriesPage: React.FC = () => {
                       <span>Đang lưu...</span>
                     </>
                   ) : (
-                    <span>{editingCategory ? "Lưu thay đổi" : "Tạo nhóm hàng"}</span>
+                    <span>{editingCategory ? 'Lưu thay đổi' : 'Tạo nhóm hàng'}</span>
                   )}
                 </button>
               </div>
@@ -1456,9 +1459,7 @@ export const CategoriesPage: React.FC = () => {
                   <ArrowRightLeft className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    Di chuyển Sản phẩm
-                  </h3>
+                  <h3 className="text-base font-bold text-slate-900">Di chuyển Sản phẩm</h3>
                   <p className="text-xs text-slate-500">
                     Chuyển theo số lượng hoặc chuyển toàn bộ sang nhóm hàng đích
                   </p>
@@ -1467,7 +1468,10 @@ export const CategoriesPage: React.FC = () => {
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={(e) => handleSubmitMove(e, false)} className="p-6 space-y-4 overflow-y-auto flex-1">
+            <form
+              onSubmit={(e) => handleSubmitMove(e, false)}
+              className="p-6 space-y-4 overflow-y-auto flex-1"
+            >
               {moveError && (
                 <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
                   <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
@@ -1493,7 +1497,8 @@ export const CategoriesPage: React.FC = () => {
                   ))}
                 </select>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Hiện có: <strong className="text-indigo-600">{sourceProducts.length}</strong> sản phẩm trong nhóm này
+                  Hiện có: <strong className="text-indigo-600">{sourceProducts.length}</strong> sản
+                  phẩm trong nhóm này
                 </p>
               </div>
 
@@ -1513,7 +1518,7 @@ export const CategoriesPage: React.FC = () => {
                     .filter((c) => c.id !== moveSourceId)
                     .map((cat) => (
                       <option key={cat.id} value={cat.id}>
-                        {"  ".repeat(Math.max(0, cat.level - 1))}
+                        {'  '.repeat(Math.max(0, cat.level - 1))}
                         [Cấp {cat.level}] {cat.name} ({cat.code})
                       </option>
                     ))}
@@ -1529,23 +1534,23 @@ export const CategoriesPage: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
-                    onClick={() => setMoveMode("custom")}
+                    onClick={() => setMoveMode('custom')}
                     className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                      moveMode === "custom"
-                        ? "border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-500/20 text-indigo-950"
-                        : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                      moveMode === 'custom'
+                        ? 'border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-500/20 text-indigo-950'
+                        : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
                     }`}
                   >
                     <div className="flex items-center justify-between w-full mb-1">
                       <span className="text-xs font-bold">Chuyển theo số lượng</span>
                       <span
                         className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                          moveMode === "custom"
-                            ? "border-indigo-600 bg-indigo-600 text-white"
-                            : "border-slate-300"
+                          moveMode === 'custom'
+                            ? 'border-indigo-600 bg-indigo-600 text-white'
+                            : 'border-slate-300'
                         }`}
                       >
-                        {moveMode === "custom" && (
+                        {moveMode === 'custom' && (
                           <span className="w-1.5 h-1.5 rounded-full bg-white" />
                         )}
                       </span>
@@ -1557,11 +1562,11 @@ export const CategoriesPage: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => setMoveMode("all")}
+                    onClick={() => setMoveMode('all')}
                     className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                      moveMode === "all"
-                        ? "border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-500/20 text-indigo-950"
-                        : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                      moveMode === 'all'
+                        ? 'border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-500/20 text-indigo-950'
+                        : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
                     }`}
                   >
                     <div className="flex items-center justify-between w-full mb-1">
@@ -1570,24 +1575,22 @@ export const CategoriesPage: React.FC = () => {
                       </span>
                       <span
                         className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                          moveMode === "all"
-                            ? "border-indigo-600 bg-indigo-600 text-white"
-                            : "border-slate-300"
+                          moveMode === 'all'
+                            ? 'border-indigo-600 bg-indigo-600 text-white'
+                            : 'border-slate-300'
                         }`}
                       >
-                        {moveMode === "all" && (
+                        {moveMode === 'all' && (
                           <span className="w-1.5 h-1.5 rounded-full bg-white" />
                         )}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500">
-                      Chuyển toàn bộ sản phẩm của nhánh
-                    </p>
+                    <p className="text-[11px] text-slate-500">Chuyển toàn bộ sản phẩm của nhánh</p>
                   </button>
                 </div>
 
                 {/* Khu vực chọn số lượng chi tiết */}
-                {moveMode === "custom" && (
+                {moveMode === 'custom' && (
                   <div className="p-3.5 rounded-2xl border border-indigo-100 bg-indigo-50/30 space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
@@ -1603,9 +1606,7 @@ export const CategoriesPage: React.FC = () => {
                           disabled={loadingSourceProducts || sourceProducts.length === 0}
                           className="w-20 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-center text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         />
-                        <span className="text-xs text-slate-500">
-                          / {sourceProducts.length} SP
-                        </span>
+                        <span className="text-xs text-slate-500">/ {sourceProducts.length} SP</span>
                       </div>
 
                       <div className="flex items-center gap-2 text-[11px]">
@@ -1655,7 +1656,7 @@ export const CategoriesPage: React.FC = () => {
                               key={pId}
                               onClick={() => handleToggleProductSelection(pId)}
                               className={`flex items-center justify-between p-2 rounded-lg transition-colors cursor-pointer text-xs ${
-                                isChecked ? "bg-indigo-50/80" : "hover:bg-slate-50"
+                                isChecked ? 'bg-indigo-50/80' : 'hover:bg-slate-50'
                               }`}
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
@@ -1666,17 +1667,20 @@ export const CategoriesPage: React.FC = () => {
                                   className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer pointer-events-none"
                                 />
                                 <div className="min-w-0">
-                                  <p className="font-semibold text-slate-800 truncate" title={p.name}>
+                                  <p
+                                    className="font-semibold text-slate-800 truncate"
+                                    title={p.name}
+                                  >
                                     {p.name}
                                   </p>
                                   <p className="text-[11px] font-mono text-blue-600">
-                                    {p.sku} {p.baseUnit ? `• ${p.baseUnit}` : ""}
+                                    {p.sku} {p.baseUnit ? `• ${p.baseUnit}` : ''}
                                   </p>
                                 </div>
                               </div>
                               <div className="text-right shrink-0 ml-2">
                                 <span className="text-[11px] font-medium text-slate-600">
-                                  {Number(p.price || 0).toLocaleString("vi-VN")} đ
+                                  {Number(p.price || 0).toLocaleString('vi-VN')} đ
                                 </span>
                               </div>
                             </div>
@@ -1687,7 +1691,9 @@ export const CategoriesPage: React.FC = () => {
 
                     <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
                       <span>
-                        Đã chọn: <strong className="text-indigo-700">{selectedMoveProductIds.length}</strong> / {sourceProducts.length} sản phẩm
+                        Đã chọn:{' '}
+                        <strong className="text-indigo-700">{selectedMoveProductIds.length}</strong>{' '}
+                        / {sourceProducts.length} sản phẩm
                       </span>
                     </div>
                   </div>
@@ -1695,18 +1701,20 @@ export const CategoriesPage: React.FC = () => {
               </div>
 
               {/* Thông báo hướng dẫn */}
-              {moveMode === "all" ? (
+              {moveMode === 'all' ? (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800 text-xs flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                   <span>
-                    Thao tác này sẽ chuyển toàn bộ mặt hàng thuộc nhóm nguồn (và nhóm con) sang nhóm đích, giải phóng nhóm nguồn để bạn có thể xóa nếu cần.
+                    Thao tác này sẽ chuyển toàn bộ mặt hàng thuộc nhóm nguồn (và nhóm con) sang nhóm
+                    đích, giải phóng nhóm nguồn để bạn có thể xóa nếu cần.
                   </span>
                 </div>
               ) : (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-blue-800 text-xs flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                   <span>
-                    Sẽ di chuyển đúng <strong>{selectedMoveProductIds.length}</strong> sản phẩm đã chọn sang nhóm đích, các sản phẩm còn lại vẫn được giữ nguyên.
+                    Sẽ di chuyển đúng <strong>{selectedMoveProductIds.length}</strong> sản phẩm đã
+                    chọn sang nhóm đích, các sản phẩm còn lại vẫn được giữ nguyên.
                   </span>
                 </div>
               )}
@@ -1725,8 +1733,7 @@ export const CategoriesPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={
-                    moveSubmitting ||
-                    (moveMode === "custom" && selectedMoveProductIds.length === 0)
+                    moveSubmitting || (moveMode === 'custom' && selectedMoveProductIds.length === 0)
                   }
                   className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-xs cursor-pointer whitespace-nowrap"
                 >
@@ -1737,7 +1744,7 @@ export const CategoriesPage: React.FC = () => {
                     </>
                   ) : (
                     <span>
-                      {moveMode === "all"
+                      {moveMode === 'all'
                         ? `Xác nhận chuyển (${sourceProducts.length} SP)`
                         : `Xác nhận chuyển (${selectedMoveProductIds.length} SP)`}
                     </span>
@@ -1752,171 +1759,169 @@ export const CategoriesPage: React.FC = () => {
       {/* ===================================================================== */}
       {/* 5. MODAL XÁC NHẬN XÓA NHÓM HÀNG NỔI (THAY THẾ WINDOW.CONFIRM)         */}
       {/* ===================================================================== */}
-      {deleteCategoryModalOpen && categoryToDelete && typeof document !== "undefined" && (() => {
-        const deleteTargetChildCount =
-          (categoryToDelete as any).children?.length ??
-          flatCategories.filter(
-            (c) =>
-              c.parentId === categoryToDelete.id ||
-              (c as any).parent_id === categoryToDelete.id
-          ).length;
+      {deleteCategoryModalOpen &&
+        categoryToDelete &&
+        typeof document !== 'undefined' &&
+        (() => {
+          const deleteTargetChildCount =
+            (categoryToDelete as any).children?.length ??
+            flatCategories.filter(
+              (c) =>
+                c.parentId === categoryToDelete.id || (c as any).parent_id === categoryToDelete.id
+            ).length;
 
-        const deleteTargetProductCount =
-          categoryToDelete.productCount ??
-          (categoryToDelete as any).product_count ??
-          0;
+          const deleteTargetProductCount =
+            categoryToDelete.productCount ?? (categoryToDelete as any).product_count ?? 0;
 
-        const cannotDeleteReason =
-          deleteCategoryError ||
-          (deleteTargetChildCount > 0
-            ? `Nhóm hàng đang chứa ${deleteTargetChildCount} nhóm con trực thuộc. Bạn phải di chuyển hoặc xóa các nhóm con này trước.`
-            : deleteTargetProductCount > 0
-            ? `Nhóm hàng đang chứa ${deleteTargetProductCount} sản phẩm. Không thể xóa nhóm hàng khi vẫn còn sản phẩm.`
-            : null);
+          const cannotDeleteReason =
+            deleteCategoryError ||
+            (deleteTargetChildCount > 0
+              ? `Nhóm hàng đang chứa ${deleteTargetChildCount} nhóm con trực thuộc. Bạn phải di chuyển hoặc xóa các nhóm con này trước.`
+              : deleteTargetProductCount > 0
+                ? `Nhóm hàng đang chứa ${deleteTargetProductCount} sản phẩm. Không thể xóa nhóm hàng khi vẫn còn sản phẩm.`
+                : null);
 
-        return createPortal(
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[2px] animate-modal-backdrop-in"
-            onClick={(e) => {
-              if (e.target === e.currentTarget && !isDeletingCategory) {
-                setDeleteCategoryModalOpen(false);
-              }
-            }}
-          >
-            <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 animate-modal-in text-slate-800">
-              <div className="flex items-center gap-3.5 mb-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 shadow-2xs shrink-0">
-                  <Trash2 className="h-6 w-6 stroke-[2.2]" />
+          return createPortal(
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[2px] animate-modal-backdrop-in"
+              onClick={(e) => {
+                if (e.target === e.currentTarget && !isDeletingCategory) {
+                  setDeleteCategoryModalOpen(false);
+                }
+              }}
+            >
+              <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 animate-modal-in text-slate-800">
+                <div className="flex items-center gap-3.5 mb-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 shadow-2xs shrink-0">
+                    <Trash2 className="h-6 w-6 stroke-[2.2]" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">Xác nhận Xóa Nhóm hàng</h3>
+                    <p className="text-xs text-slate-500">
+                      Mã nhóm:{' '}
+                      <span className="font-mono font-bold text-slate-800">
+                        {categoryToDelete.code}
+                      </span>
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    Xác nhận Xóa Nhóm hàng
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Mã nhóm: <span className="font-mono font-bold text-slate-800">{categoryToDelete.code}</span>
-                  </p>
-                </div>
-              </div>
 
-              {/* Thông tin chi tiết nhóm hàng */}
-              <div className="rounded-2xl bg-slate-50 p-4 border border-slate-200/80 text-xs space-y-2 mb-4">
-                <div className="flex justify-between items-center text-slate-600">
-                  <span>Tên nhóm hàng:</span>
-                  <span className="font-bold text-slate-900">{categoryToDelete.name}</span>
-                </div>
-                <div className="flex justify-between items-center text-slate-600">
-                  <span>Cấp phân loại:</span>
-                  <span className="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                    Cấp {categoryToDelete.level}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-slate-600">
-                  <span>Số lượng sản phẩm:</span>
-                  <span
-                    className={`font-bold px-2 py-0.5 rounded-md ${
-                      deleteTargetProductCount > 0
-                        ? "text-rose-700 bg-rose-50 border border-rose-200"
-                        : "text-emerald-700 bg-emerald-50 border border-emerald-200"
-                    }`}
-                  >
-                    {deleteTargetProductCount} sản phẩm
-                  </span>
-                </div>
-                {deleteTargetChildCount > 0 && (
+                {/* Thông tin chi tiết nhóm hàng */}
+                <div className="rounded-2xl bg-slate-50 p-4 border border-slate-200/80 text-xs space-y-2 mb-4">
                   <div className="flex justify-between items-center text-slate-600">
-                    <span>Nhóm con trực thuộc:</span>
-                    <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
-                      {deleteTargetChildCount} nhóm con
+                    <span>Tên nhóm hàng:</span>
+                    <span className="font-bold text-slate-900">{categoryToDelete.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span>Cấp phân loại:</span>
+                    <span className="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                      Cấp {categoryToDelete.level}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span>Số lượng sản phẩm:</span>
+                    <span
+                      className={`font-bold px-2 py-0.5 rounded-md ${
+                        deleteTargetProductCount > 0
+                          ? 'text-rose-700 bg-rose-50 border border-rose-200'
+                          : 'text-emerald-700 bg-emerald-50 border border-emerald-200'
+                      }`}
+                    >
+                      {deleteTargetProductCount} sản phẩm
+                    </span>
+                  </div>
+                  {deleteTargetChildCount > 0 && (
+                    <div className="flex justify-between items-center text-slate-600">
+                      <span>Nhóm con trực thuộc:</span>
+                      <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                        {deleteTargetChildCount} nhóm con
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Hiển thị lỗi / lý do KHÔNG CHO XÓA NGAY TRONG MODAL */}
+                {cannotDeleteReason ? (
+                  <div className="rounded-2xl bg-rose-50/90 border border-rose-200 p-3.5 text-xs text-rose-800 space-y-2.5 mb-5 shadow-2xs">
+                    <div className="flex items-start gap-2.5">
+                      <AlertCircle className="h-4.5 w-4.5 text-rose-600 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-bold text-rose-900">Không thể xóa nhóm hàng này!</p>
+                        <p className="text-rose-700 leading-relaxed">{cannotDeleteReason}</p>
+                      </div>
+                    </div>
+
+                    {deleteTargetProductCount > 0 && (
+                      <div className="pt-2 border-t border-rose-200/60 flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-rose-600 italic">
+                          Giải phóng nhóm để xóa:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDeleteCategoryModalOpen(false);
+                            handleOpenMoveModal(categoryToDelete);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-[11px] font-semibold hover:bg-indigo-700 transition-all cursor-pointer shadow-2xs"
+                        >
+                          <ArrowRightLeft className="h-3 w-3" />
+                          <span>Chuyển {deleteTargetProductCount} SP sang nhóm khác</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl bg-amber-50/80 p-3.5 border border-amber-200/80 text-xs text-amber-800 flex items-start gap-2.5 mb-5">
+                    <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                    <span>
+                      Nhóm hàng này đủ điều kiện xóa (không chứa sản phẩm và không có nhóm con). Bạn
+                      có chắc chắn muốn xóa?
                     </span>
                   </div>
                 )}
-              </div>
 
-              {/* Hiển thị lỗi / lý do KHÔNG CHO XÓA NGAY TRONG MODAL */}
-              {cannotDeleteReason ? (
-                <div className="rounded-2xl bg-rose-50/90 border border-rose-200 p-3.5 text-xs text-rose-800 space-y-2.5 mb-5 shadow-2xs">
-                  <div className="flex items-start gap-2.5">
-                    <AlertCircle className="h-4.5 w-4.5 text-rose-600 shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <p className="font-bold text-rose-900">
-                        Không thể xóa nhóm hàng này!
-                      </p>
-                      <p className="text-rose-700 leading-relaxed">
-                        {cannotDeleteReason}
-                      </p>
-                    </div>
-                  </div>
+                {/* Modal Actions */}
+                <div className="flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    disabled={isDeletingCategory}
+                    onClick={() => setDeleteCategoryModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
+                  >
+                    {cannotDeleteReason ? 'Đóng' : 'Hủy bỏ'}
+                  </button>
 
-                  {deleteTargetProductCount > 0 && (
-                    <div className="pt-2 border-t border-rose-200/60 flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-rose-600 italic">
-                        Giải phóng nhóm để xóa:
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDeleteCategoryModalOpen(false);
-                          handleOpenMoveModal(categoryToDelete);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-[11px] font-semibold hover:bg-indigo-700 transition-all cursor-pointer shadow-2xs"
-                      >
-                        <ArrowRightLeft className="h-3 w-3" />
-                        <span>Chuyển {deleteTargetProductCount} SP sang nhóm khác</span>
-                      </button>
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    disabled={isDeletingCategory || Boolean(cannotDeleteReason)}
+                    onClick={handleConfirmDeleteCategory}
+                    className={`inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-semibold shadow-xs transition-all ${
+                      cannotDeleteReason
+                        ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
+                        : 'bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer'
+                    }`}
+                    title={cannotDeleteReason || 'Xác nhận xóa nhóm hàng'}
+                  >
+                    {isDeletingCategory ? (
+                      <>
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        <span>Đang xóa...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Xác nhận xóa</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-              ) : (
-                <div className="rounded-2xl bg-amber-50/80 p-3.5 border border-amber-200/80 text-xs text-amber-800 flex items-start gap-2.5 mb-5">
-                  <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                  <span>
-                    Nhóm hàng này đủ điều kiện xóa (không chứa sản phẩm và không có nhóm con). Bạn có chắc chắn muốn xóa?
-                  </span>
-                </div>
-              )}
-
-              {/* Modal Actions */}
-              <div className="flex items-center justify-end gap-2.5">
-                <button
-                  type="button"
-                  disabled={isDeletingCategory}
-                  onClick={() => setDeleteCategoryModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-                >
-                  {cannotDeleteReason ? "Đóng" : "Hủy bỏ"}
-                </button>
-
-                <button
-                  type="button"
-                  disabled={isDeletingCategory || Boolean(cannotDeleteReason)}
-                  onClick={handleConfirmDeleteCategory}
-                  className={`inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-semibold shadow-xs transition-all ${
-                    cannotDeleteReason
-                      ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
-                      : "bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer"
-                  }`}
-                  title={cannotDeleteReason || "Xác nhận xóa nhóm hàng"}
-                >
-                  {isDeletingCategory ? (
-                    <>
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                      <span>Đang xóa...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="h-3.5 w-3.5" />
-                      <span>Xác nhận xóa</span>
-                    </>
-                  )}
-                </button>
               </div>
-            </div>
-          </div>,
-          document.body
-        );
-      })()}
+            </div>,
+            document.body
+          );
+        })()}
     </div>
   );
 };

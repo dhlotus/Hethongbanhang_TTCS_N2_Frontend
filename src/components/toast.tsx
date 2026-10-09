@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
-import { createPortal } from "react-dom";
-import { CheckCircle2, AlertCircle, X } from "lucide-react";
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { CheckCircle2, AlertCircle, X } from 'lucide-react';
 
-export type ToastType = "success" | "error" | "warning" | "info";
+export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 export interface ToastOptions {
   id?: string;
@@ -20,27 +20,27 @@ export interface ToastProps {
 }
 
 // Chuẩn hóa nghiêm ngặt chỉ 2 trạng thái: Xanh lá (Success) và Đỏ (Error)
-const normalizeType = (type?: ToastType): "success" | "error" => {
-  if (type === "success" || type === "info") return "success";
-  return "error"; // "error" | "warning" hoặc các trường hợp khác đều quy về Đỏ (Error)
+const normalizeType = (type?: ToastType): 'success' | 'error' => {
+  if (type === 'success' || type === 'info') return 'success';
+  return 'error'; // "error" | "warning" hoặc các trường hợp khác đều quy về Đỏ (Error)
 };
 
 const STYLES = {
   success: {
     icon: CheckCircle2,
-    iconColor: "text-emerald-600",
-    containerBg: "bg-emerald-50/95 text-slate-800 border-emerald-200/90",
-    borderLeft: "border-l-4 border-l-emerald-600",
-    progressBar: "bg-emerald-600",
-    defaultTitle: "Thao tác thành công",
+    iconColor: 'text-emerald-600',
+    containerBg: 'bg-emerald-50/95 text-slate-800 border-emerald-200/90',
+    borderLeft: 'border-l-4 border-l-emerald-600',
+    progressBar: 'bg-emerald-600',
+    defaultTitle: 'Thao tác thành công',
   },
   error: {
     icon: AlertCircle,
-    iconColor: "text-rose-600",
-    containerBg: "bg-rose-50/95 text-slate-800 border-rose-200/90",
-    borderLeft: "border-l-4 border-l-rose-600",
-    progressBar: "bg-rose-600",
-    defaultTitle: "Thao tác thất bại",
+    iconColor: 'text-rose-600',
+    containerBg: 'bg-rose-50/95 text-slate-800 border-rose-200/90',
+    borderLeft: 'border-l-4 border-l-rose-600',
+    progressBar: 'bg-rose-600',
+    defaultTitle: 'Thao tác thất bại',
   },
 };
 
@@ -63,13 +63,7 @@ interface ToastItemProps {
   onClose: (id: string) => void;
 }
 
-const ToastItem: React.FC<ToastItemProps> = ({
-  id,
-  type,
-  title,
-  duration,
-  onClose,
-}) => {
+const ToastItem: React.FC<ToastItemProps> = ({ id, type, title, duration, onClose }) => {
   const [isClosing, setIsClosing] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -127,9 +121,7 @@ const ToastItem: React.FC<ToastItemProps> = ({
       className={`pointer-events-auto relative flex items-center gap-3.5 w-[390px] sm:w-[420px] max-w-[calc(100vw-2rem)] min-h-[52px] rounded-md px-4 py-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] border overflow-hidden transition-all duration-200 ease-out transform ${
         style.containerBg
       } ${style.borderLeft} ${
-        isClosing || !isVisible
-          ? "translate-x-[110%] opacity-0"
-          : "translate-x-0 opacity-100"
+        isClosing || !isVisible ? 'translate-x-[110%] opacity-0' : 'translate-x-0 opacity-100'
       }`}
     >
       {/* Icon trạng thái đặt bên trái tiêu đề, kích thước rõ ràng, nổi bật */}
@@ -189,8 +181,18 @@ class ToastManager {
   }
 
   show(options: ToastOptions) {
+    const text = (options.title || '').trim();
+    if (!text) return;
+
+    // Quy tắc 81: Không hiển thị thông báo trùng lặp đang hiển thị trên màn hình
+    const isDuplicate = this.toasts.some(
+      (t) => t.title.toLowerCase() === text.toLowerCase() && t.type === options.type
+    );
+    if (isDuplicate) return;
+
     const item: ToastOptions = {
       ...options,
+      title: text,
       id: options.id || `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     };
 
@@ -219,15 +221,13 @@ export const showToast = (
   duration: number = 3500
 ) => {
   // Lấy dòng tiêu đề ngắn gọn nhất từ title hoặc message
-  const text = (title || message || "").trim();
+  const text = (title || message || '').trim();
   toastManager.show({ type, title: text, duration });
 };
 
 export const toast = {
-  success: (title: string, duration?: number) =>
-    showToast("success", title, undefined, duration),
-  error: (title: string, duration?: number) =>
-    showToast("error", title, undefined, duration),
+  success: (title: string, duration?: number) => showToast('success', title, undefined, duration),
+  error: (title: string, duration?: number) => showToast('error', title, undefined, duration),
 };
 
 /**
@@ -238,9 +238,7 @@ export const toast = {
  * - Khoảng cách đồng đều gap-2.5, khi một Toast biến mất thì các Toast còn lại trượt lên
  */
 export const ToastContainer: React.FC = () => {
-  const [toasts, setToasts] = useState<ToastOptions[]>(() =>
-    toastManager.getToasts()
-  );
+  const [toasts, setToasts] = useState<ToastOptions[]>(() => toastManager.getToasts());
 
   useEffect(() => {
     return toastManager.subscribe(() => {
@@ -268,7 +266,7 @@ export const ToastContainer: React.FC = () => {
     </div>
   );
 
-  if (typeof document === "undefined") {
+  if (typeof document === 'undefined') {
     return content;
   }
 
@@ -279,13 +277,13 @@ export const ToastContainer: React.FC = () => {
  * Component Toast tương thích ngược cho các màn hình vẫn dùng <Toast ... /> trực tiếp
  */
 export const Toast: React.FC<ToastProps> = ({
-  type = "error",
+  type = 'error',
   title,
   message,
   onClose,
   duration = 3500,
 }) => {
-  const text = (title || message || "").trim();
+  const text = (title || message || '').trim();
   return (
     <ToastItem
       id="standalone-toast"

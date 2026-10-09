@@ -1,5 +1,5 @@
-import React from "react";
-import { CheckCircle2 } from "lucide-react";
+import React from 'react';
+import { CheckCircle2 } from 'lucide-react';
 
 export interface SuccessStateProps {
   title: string;
@@ -18,7 +18,7 @@ export const SuccessState: React.FC<SuccessStateProps> = ({
   title,
   description,
   action,
-  className = "",
+  className = '',
 }) => {
   return (
     <div
@@ -28,9 +28,7 @@ export const SuccessState: React.FC<SuccessStateProps> = ({
         <CheckCircle2 className="w-9 h-9 stroke-[2.2]" />
       </div>
 
-      <h3 className="text-lg font-bold text-slate-900 tracking-tight">
-        {title}
-      </h3>
+      <h3 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h3>
 
       {description && (
         <div className="mt-1.5 text-xs sm:text-sm text-slate-500 max-w-md leading-relaxed">

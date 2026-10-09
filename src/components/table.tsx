@@ -1,12 +1,21 @@
-import React from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown, Inbox, AlertCircle, Loader2 } from "lucide-react";
+import React from 'react';
+import {
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Inbox,
+  AlertCircle,
+  Loader2,
+  Search,
+  FilterX,
+} from 'lucide-react';
 
-export type SortDirection = "asc" | "desc" | null;
+export type SortDirection = 'asc' | 'desc' | null;
 
 export interface Column<T> {
   key: string;
   header: React.ReactNode;
-  align?: "left" | "center" | "right";
+  align?: 'left' | 'center' | 'right';
   width?: string;
   sortable?: boolean;
   render?: (row: T, index: number) => React.ReactNode;
@@ -18,7 +27,10 @@ export interface TableProps<T> {
   keyExtractor: (row: T, index: number) => string | number;
   isLoading?: boolean;
   isEmpty?: boolean;
+  emptyType?: 'initial' | 'search' | 'filter';
+  emptyTitle?: string;
   emptyText?: string;
+  emptyAction?: React.ReactNode;
   error?: string | null;
   onRetry?: () => void;
   sortKey?: string;
@@ -40,22 +52,42 @@ export function Table<T>({
   keyExtractor,
   isLoading = false,
   isEmpty = false,
-  emptyText = "Không có dữ liệu hiển thị",
+  emptyType = 'initial',
+  emptyTitle,
+  emptyText,
+  emptyAction,
   error = null,
   onRetry,
   sortKey,
   sortDirection,
   onSort,
-  className = "",
+  className = '',
   rowClassName,
 }: TableProps<T>) {
   const isDataEmpty = isEmpty || (!isLoading && (!data || data.length === 0));
 
-  const getAlignClass = (align?: "left" | "center" | "right") => {
-    if (align === "right") return "text-right";
-    if (align === "center") return "text-center";
-    return "text-left";
+  const getAlignClass = (align?: 'left' | 'center' | 'right') => {
+    if (align === 'right') return 'text-right';
+    if (align === 'center') return 'text-center';
+    return 'text-left';
   };
+
+  const resolvedEmptyText =
+    emptyText ||
+    (emptyType === 'search'
+      ? 'Không tìm thấy dữ liệu nào phù hợp với từ khóa tìm kiếm'
+      : emptyType === 'filter'
+        ? 'Không có bản ghi nào phù hợp với bộ lọc hiện tại'
+        : 'Chưa có dữ liệu hiển thị');
+
+  const resolvedEmptyIcon =
+    emptyType === 'search' ? (
+      <Search className="w-8 h-8 text-slate-300 stroke-[1.6]" />
+    ) : emptyType === 'filter' ? (
+      <FilterX className="w-8 h-8 text-slate-300 stroke-[1.6]" />
+    ) : (
+      <Inbox className="w-8 h-8 text-slate-300 stroke-[1.6]" />
+    );
 
   return (
     <div
@@ -72,24 +104,24 @@ export function Table<T>({
                     key={col.key}
                     style={{ width: col.width }}
                     className={`bg-slate-50 border-b border-slate-200/80 py-3.5 px-4 font-semibold select-none ${getAlignClass(
-                      col.align,
-                    )} ${col.sortable ? "cursor-pointer hover:bg-slate-100/80" : ""}`}
+                      col.align
+                    )} ${col.sortable ? 'cursor-pointer hover:bg-slate-100/80' : ''}`}
                     onClick={() => col.sortable && onSort?.(col.key)}
                   >
                     <div
                       className={`inline-flex items-center gap-1.5 ${
-                        col.align === "right"
-                          ? "justify-end"
-                          : col.align === "center"
-                          ? "justify-center"
-                          : "justify-start"
+                        col.align === 'right'
+                          ? 'justify-end'
+                          : col.align === 'center'
+                            ? 'justify-center'
+                            : 'justify-start'
                       }`}
                     >
                       <span>{col.header}</span>
                       {col.sortable && (
                         <span className="text-slate-400">
                           {isCurrentSort ? (
-                            sortDirection === "asc" ? (
+                            sortDirection === 'asc' ? (
                               <ArrowUp className="w-3.5 h-3.5 text-[var(--color-primary)]" />
                             ) : (
                               <ArrowDown className="w-3.5 h-3.5 text-[var(--color-primary)]" />
@@ -108,10 +140,7 @@ export function Table<T>({
           <tbody>
             {isLoading ? (
               <tr>
-                <td
-                  colSpan={columns.length}
-                  className="py-12 text-center text-slate-500"
-                >
+                <td colSpan={columns.length} className="py-12 text-center text-slate-500">
                   <div className="flex flex-col items-center justify-center gap-2.5">
                     <Loader2 className="w-6 h-6 animate-spin text-[var(--color-primary)]" />
                     <span className="text-xs font-medium">Đang tải dữ liệu...</span>
@@ -120,10 +149,7 @@ export function Table<T>({
               </tr>
             ) : error ? (
               <tr>
-                <td
-                  colSpan={columns.length}
-                  className="py-12 text-center text-rose-600"
-                >
+                <td colSpan={columns.length} className="py-12 text-center text-rose-600">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <AlertCircle className="w-7 h-7 text-rose-500" />
                     <span className="text-xs font-semibold">{error}</span>
@@ -141,13 +167,16 @@ export function Table<T>({
               </tr>
             ) : isDataEmpty ? (
               <tr>
-                <td
-                  colSpan={columns.length}
-                  className="py-12 text-center text-slate-400"
-                >
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <Inbox className="w-8 h-8 text-slate-300 stroke-[1.5]" />
-                    <span className="text-xs font-medium">{emptyText}</span>
+                <td colSpan={columns.length} className="py-12 px-4 text-center text-slate-400">
+                  <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+                    {resolvedEmptyIcon}
+                    {emptyTitle && (
+                      <span className="text-sm font-semibold text-slate-700">{emptyTitle}</span>
+                    )}
+                    <span className="text-xs font-medium text-slate-500 leading-relaxed">
+                      {resolvedEmptyText}
+                    </span>
+                    {emptyAction && <div className="mt-2">{emptyAction}</div>}
                   </div>
                 </td>
               </tr>
@@ -156,19 +185,17 @@ export function Table<T>({
                 <tr
                   key={keyExtractor(row, index)}
                   className={`hover:bg-slate-50/70 transition-colors ${
-                    rowClassName ? rowClassName(row, index) : ""
+                    rowClassName ? rowClassName(row, index) : ''
                   }`}
                 >
                   {columns.map((col) => (
                     <td
                       key={col.key}
                       className={`py-3.5 px-4 text-slate-700 border-b border-slate-100 last:border-b-0 ${getAlignClass(
-                        col.align,
+                        col.align
                       )}`}
                     >
-                      {col.render
-                        ? col.render(row, index)
-                        : (row as any)[col.key]}
+                      {col.render ? col.render(row, index) : (row as any)[col.key]}
                     </td>
                   ))}
                 </tr>

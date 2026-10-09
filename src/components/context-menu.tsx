@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface ContextMenuItem {
   key: string;
   label: React.ReactNode;
   icon?: React.ReactNode;
-  variant?: "default" | "danger";
+  variant?: 'default' | 'danger';
   disabled?: boolean;
   divider?: boolean;
   onClick?: () => void;
@@ -23,11 +23,7 @@ export interface ContextMenuProps {
  * - Tự động định vị và không bị tràn khỏi viewport màn hình
  * - Đóng an toàn khi click ra ngoài hoặc nhấn phím Escape
  */
-export const ContextMenu: React.FC<ContextMenuProps> = ({
-  items,
-  children,
-  className = "",
-}) => {
+export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children, className = '' }) => {
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -52,16 +48,16 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         closeMenu();
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [position]);
 
@@ -82,15 +78,11 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             {items.map((item) => {
               if (item.divider) {
                 return (
-                  <div
-                    key={item.key}
-                    className="my-1 border-t border-slate-100"
-                    role="separator"
-                  />
+                  <div key={item.key} className="my-1 border-t border-slate-100" role="separator" />
                 );
               }
 
-              const isDanger = item.variant === "danger";
+              const isDanger = item.variant === 'danger';
 
               return (
                 <button
@@ -106,10 +98,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                   }}
                   className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold transition-colors cursor-pointer text-left ${
                     item.disabled
-                      ? "opacity-50 cursor-not-allowed"
+                      ? 'opacity-50 cursor-not-allowed'
                       : isDanger
-                      ? "text-rose-600 hover:bg-rose-50 active:bg-rose-100"
-                      : "text-slate-700 hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100"
+                        ? 'text-rose-600 hover:bg-rose-50 active:bg-rose-100'
+                        : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100'
                   }`}
                 >
                   {item.icon && <span className="shrink-0">{item.icon}</span>}
@@ -118,7 +110,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               );
             })}
           </div>,
-          document.body,
+          document.body
         )}
     </>
   );

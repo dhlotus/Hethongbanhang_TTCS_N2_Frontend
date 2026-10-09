@@ -1,7 +1,7 @@
-import React from "react";
-import { AlertCircle, ShieldAlert, CheckCircle2, Info, X } from "lucide-react";
+import React from 'react';
+import { AlertCircle, ShieldAlert, CheckCircle2, Info, X } from 'lucide-react';
 
-export type AlertType = "info" | "success" | "warning" | "error";
+export type AlertType = 'info' | 'success' | 'warning' | 'error';
 
 export interface AlertProps {
   type?: AlertType;
@@ -20,41 +20,41 @@ export interface AlertProps {
  * - Hỗ trợ nút hành động (action) và nút đóng (onClose)
  */
 export const Alert: React.FC<AlertProps> = ({
-  type = "info",
+  type = 'info',
   title,
   message,
   children,
   action,
   onClose,
-  className = "",
+  className = '',
 }) => {
   const content = children || message;
   if (!content && !title) return null;
 
   const config = {
     info: {
-      wrapperClass: "bg-sky-50/90 border-sky-200/90 text-sky-950",
+      wrapperClass: 'bg-sky-50/90 border-sky-200/90 text-sky-950',
       icon: <Info className="w-5 h-5 text-sky-600 shrink-0 mt-0.5" />,
-      defaultTitle: "Thông tin",
-      textColor: "text-sky-800",
+      defaultTitle: 'Thông tin',
+      textColor: 'text-sky-800',
     },
     success: {
-      wrapperClass: "bg-emerald-50/90 border-emerald-200/90 text-emerald-950",
+      wrapperClass: 'bg-emerald-50/90 border-emerald-200/90 text-emerald-950',
       icon: <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />,
-      defaultTitle: "Thành công",
-      textColor: "text-emerald-800",
+      defaultTitle: 'Thành công',
+      textColor: 'text-emerald-800',
     },
     warning: {
-      wrapperClass: "bg-amber-50/90 border-amber-200/90 text-amber-950",
+      wrapperClass: 'bg-amber-50/90 border-amber-200/90 text-amber-950',
       icon: <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />,
-      defaultTitle: "Cảnh báo",
-      textColor: "text-amber-800",
+      defaultTitle: 'Cảnh báo',
+      textColor: 'text-amber-800',
     },
     error: {
-      wrapperClass: "bg-rose-50/90 border-rose-200/90 text-rose-950",
+      wrapperClass: 'bg-rose-50/90 border-rose-200/90 text-rose-950',
       icon: <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />,
-      defaultTitle: "Có lỗi xảy ra",
-      textColor: "text-rose-800",
+      defaultTitle: 'Có lỗi xảy ra',
+      textColor: 'text-rose-800',
     },
   }[type];
 
@@ -69,9 +69,7 @@ export const Alert: React.FC<AlertProps> = ({
           {title || config.defaultTitle}
         </strong>
         {content && (
-          <div className={`text-xs sm:text-sm leading-relaxed ${config.textColor}`}>
-            {content}
-          </div>
+          <div className={`text-xs sm:text-sm leading-relaxed ${config.textColor}`}>{content}</div>
         )}
         {action && <div className="mt-2.5">{action}</div>}
       </div>

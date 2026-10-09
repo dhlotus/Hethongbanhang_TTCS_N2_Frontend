@@ -42,7 +42,9 @@ export const CustomersPage: React.FC = () => {
   const [selectedRegion, setSelectedRegion] = useState<string>('ALL');
 
   // Modal quản lý điểm giao hàng (SN-31 & SN-32)
-  const [selectedCustomerForDelivery, setSelectedCustomerForDelivery] = useState<Customer | null>(null);
+  const [selectedCustomerForDelivery, setSelectedCustomerForDelivery] = useState<Customer | null>(
+    null
+  );
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState<boolean>(false);
 
   // Modal thêm đại lý mới
@@ -103,7 +105,11 @@ export const CustomersPage: React.FC = () => {
   const handleRefresh = async () => {
     setRefreshing(true);
     await loadCustomers(searchInput.trim() || undefined);
-    showToast('success', 'Đồng bộ hoàn tất', 'Dữ liệu đại lý và điểm giao hàng đã được cập nhật mới nhất.');
+    showToast(
+      'success',
+      'Đồng bộ hoàn tất',
+      'Dữ liệu đại lý và điểm giao hàng đã được cập nhật mới nhất.'
+    );
   };
 
   // Lọc dữ liệu đại lý theo từ khóa, nhóm, vùng và trạng thái
@@ -145,7 +151,11 @@ export const CustomersPage: React.FC = () => {
       return;
     }
     if (!formData.address.trim()) {
-      showToast('error', 'Thiếu thông tin', 'Vui lòng nhập địa chỉ trụ sở / kinh doanh của đại lý.');
+      showToast(
+        'error',
+        'Thiếu thông tin',
+        'Vui lòng nhập địa chỉ trụ sở / kinh doanh của đại lý.'
+      );
       return;
     }
 
@@ -161,7 +171,7 @@ export const CustomersPage: React.FC = () => {
       showToast(
         'success',
         'Thêm đại lý thành công',
-        `Đại lý "${newCustomer.name}" đã được tạo và đồng bộ ngay vào hệ thống!`,
+        `Đại lý "${newCustomer.name}" đã được tạo và đồng bộ ngay vào hệ thống!`
       );
 
       // Đóng modal và reset form
@@ -202,14 +212,12 @@ export const CustomersPage: React.FC = () => {
 
     setCustomers((prev) =>
       prev.map((c) =>
-        c.id === selectedCustomerForDelivery.id
-          ? { ...c, deliveryPoints: updatedPoints }
-          : c,
-      ),
+        c.id === selectedCustomerForDelivery.id ? { ...c, deliveryPoints: updatedPoints } : c
+      )
     );
 
     setSelectedCustomerForDelivery((prev) =>
-      prev ? { ...prev, deliveryPoints: updatedPoints } : null,
+      prev ? { ...prev, deliveryPoints: updatedPoints } : null
     );
   };
 
@@ -249,7 +257,8 @@ export const CustomersPage: React.FC = () => {
             Quản lý Đại lý & Điểm giao hàng
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Danh sách khách hàng B2B, điểm giao hàng (SN-31 & SN-32), hạn mức công nợ và đồng bộ tạo đơn
+            Danh sách khách hàng B2B, điểm giao hàng (SN-31 & SN-32), hạn mức công nợ và đồng bộ tạo
+            đơn
           </p>
         </div>
 
@@ -261,7 +270,9 @@ export const CustomersPage: React.FC = () => {
             className="flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
             title="Đồng bộ danh sách"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-[var(--color-primary)]' : 'text-slate-500'}`} />
+            <RefreshCw
+              className={`w-4 h-4 ${refreshing ? 'animate-spin text-[var(--color-primary)]' : 'text-slate-500'}`}
+            />
             <span className="hidden sm:inline">Làm mới</span>
           </button>
 
@@ -423,14 +434,14 @@ export const CustomersPage: React.FC = () => {
                 {filteredCustomers.map((customer) => {
                   const debtPercent =
                     customer.creditLimit > 0
-                      ? Math.min(100, Math.round((customer.currentDebt / customer.creditLimit) * 100))
+                      ? Math.min(
+                          100,
+                          Math.round((customer.currentDebt / customer.creditLimit) * 100)
+                        )
                       : 0;
 
                   return (
-                    <tr
-                      key={customer.id}
-                      className="hover:bg-slate-50/60 transition-colors group"
-                    >
+                    <tr key={customer.id} className="hover:bg-slate-50/60 transition-colors group">
                       {/* Cột 1: Mã & Tên Đại lý */}
                       <td className="px-4 py-3.5">
                         <div className="font-semibold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors">
@@ -440,7 +451,10 @@ export const CustomersPage: React.FC = () => {
                           {customer.code} • {customer.region || 'Miền Nam'}
                         </div>
                         {customer.address && (
-                          <div className="text-xs text-slate-400 line-clamp-1 mt-0.5" title={customer.address}>
+                          <div
+                            className="text-xs text-slate-400 line-clamp-1 mt-0.5"
+                            title={customer.address}
+                          >
                             {customer.address}
                           </div>
                         )}
@@ -499,8 +513,8 @@ export const CustomersPage: React.FC = () => {
                               debtPercent > 80
                                 ? 'bg-rose-500'
                                 : debtPercent > 50
-                                ? 'bg-amber-500'
-                                : 'bg-[var(--color-primary)]'
+                                  ? 'bg-amber-500'
+                                  : 'bg-[var(--color-primary)]'
                             }`}
                             style={{ width: `${debtPercent}%` }}
                           />
@@ -636,9 +650,7 @@ export const CustomersPage: React.FC = () => {
 
                 {/* Phân nhóm */}
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Phân nhóm đại lý
-                  </label>
+                  <label className="text-xs font-semibold text-slate-700">Phân nhóm đại lý</label>
                   <select
                     value={formData.customerGroup}
                     onChange={(e) => setFormData({ ...formData, customerGroup: e.target.value })}
@@ -668,9 +680,7 @@ export const CustomersPage: React.FC = () => {
 
                 {/* Email */}
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Email liên hệ
-                  </label>
+                  <label className="text-xs font-semibold text-slate-700">Email liên hệ</label>
                   <input
                     type="email"
                     placeholder="VD: daily@gmail.com"
@@ -705,16 +715,16 @@ export const CustomersPage: React.FC = () => {
                     min="0"
                     step="1000000"
                     value={formData.creditLimit}
-                    onChange={(e) => setFormData({ ...formData, creditLimit: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, creditLimit: Number(e.target.value) })
+                    }
                     className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
                   />
                 </div>
 
                 {/* Khu vực */}
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Khu vực địa bàn
-                  </label>
+                  <label className="text-xs font-semibold text-slate-700">Khu vực địa bàn</label>
                   <select
                     value={formData.region}
                     onChange={(e) => setFormData({ ...formData, region: e.target.value })}
@@ -737,7 +747,9 @@ export const CustomersPage: React.FC = () => {
                       type="text"
                       placeholder="Tên điểm giao (VD: Kho chính, Showroom)"
                       value={formData.deliveryPointName}
-                      onChange={(e) => setFormData({ ...formData, deliveryPointName: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, deliveryPointName: e.target.value })
+                      }
                       className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white"
                     />
                     <input

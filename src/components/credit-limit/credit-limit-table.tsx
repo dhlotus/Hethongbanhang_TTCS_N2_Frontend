@@ -53,9 +53,7 @@ export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
     return (
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm p-12 text-center">
         <ShieldAlert className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-        <h4 className="text-base font-semibold text-slate-700 mb-1">
-          Không tìm thấy đại lý nào
-        </h4>
+        <h4 className="text-base font-semibold text-slate-700 mb-1">Không tìm thấy đại lý nào</h4>
         <p className="text-xs text-slate-500">
           Hãy thử thay đổi từ khóa tìm kiếm hoặc bộ lọc trạng thái.
         </p>
@@ -90,10 +88,7 @@ export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
               const isWarning = item.status === CreditStatus.WARNING;
 
               return (
-                <tr
-                  key={item.id}
-                  className="hover:bg-slate-50/80 transition-colors group"
-                >
+                <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group">
                   {/* Cột 1: Thông tin đại lý */}
                   <td className="py-3.5 px-4">
                     <div className="font-bold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors text-sm">
@@ -118,9 +113,7 @@ export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
                       <span>{item.salesRepName || 'Chưa phân công'}</span>
                     </div>
                     {item.region && (
-                      <span className="text-[11px] text-slate-400 pl-5">
-                        {item.region}
-                      </span>
+                      <span className="text-[11px] text-slate-400 pl-5">{item.region}</span>
                     )}
                   </td>
 
@@ -184,9 +177,7 @@ export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
 
                   {/* Cột 6: Thời hạn nợ */}
                   <td className="py-3.5 px-4 text-center">
-                    <div className="font-semibold text-slate-800">
-                      {item.maxDebtDays} ngày
-                    </div>
+                    <div className="font-semibold text-slate-800">{item.maxDebtDays} ngày</div>
                     <span className="text-[10px] text-slate-400 uppercase font-mono">
                       {item.paymentTerms}
                     </span>
@@ -269,11 +260,7 @@ export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
                               : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'
                         }`}
                       >
-                        {isBlocked ? (
-                          <Unlock className="h-4 w-4" />
-                        ) : (
-                          <Lock className="h-4 w-4" />
-                        )}
+                        {isBlocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                       </button>
                     </div>
                   </td>

@@ -31,12 +31,12 @@ export const ProductPriceHistoryModal: React.FC<ProductPriceHistoryModalProps> =
           setHistory(data);
         } catch (err) {
           setError('Không thể tải lịch sử thay đổi giá. Vui lòng thử lại sau.');
-          console.error(err);
+          // Có thể log lên server nếu cần
         } finally {
           setIsLoading(false);
         }
       };
-      
+
       fetchHistory();
     }
   }, [isOpen, productId]);
@@ -55,7 +55,7 @@ export const ProductPriceHistoryModal: React.FC<ProductPriceHistoryModalProps> =
         minute: '2-digit',
         day: '2-digit',
         month: '2-digit',
-        year: 'numeric'
+        year: 'numeric',
       }).format(date);
     } catch {
       return dateString;
@@ -64,7 +64,7 @@ export const ProductPriceHistoryModal: React.FC<ProductPriceHistoryModalProps> =
 
   const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-      <div 
+      <div
         className="w-full max-w-2xl bg-white rounded-xl shadow-xl flex flex-col overflow-hidden max-h-[90vh]"
         role="dialog"
         aria-modal="true"
@@ -80,9 +80,7 @@ export const ProductPriceHistoryModal: React.FC<ProductPriceHistoryModalProps> =
               <h2 id="price-history-title" className="text-lg font-semibold text-slate-800">
                 Lịch sử thay đổi giá
               </h2>
-              <p className="text-sm text-slate-500 font-medium">
-                {productName}
-              </p>
+              <p className="text-sm text-slate-500 font-medium">{productName}</p>
             </div>
           </div>
           <button
@@ -115,13 +113,15 @@ export const ProductPriceHistoryModal: React.FC<ProductPriceHistoryModalProps> =
           ) : (
             <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
               {history.map((item) => (
-                <div key={item.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                  
+                <div
+                  key={item.id}
+                  className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active"
+                >
                   {/* Timeline marker */}
                   <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-slate-50 bg-white shadow-sm shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 text-blue-500">
                     <div className="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
                   </div>
-                  
+
                   {/* Card */}
                   <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl bg-white shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-100 transition-all">
                     <div className="flex items-center justify-between mb-3">
@@ -129,7 +129,7 @@ export const ProductPriceHistoryModal: React.FC<ProductPriceHistoryModalProps> =
                         {formatDate(item.changedAt)}
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg mb-3">
                       <div className="flex flex-col items-center flex-1">
                         <span className="text-xs text-slate-500 mb-1">Giá cũ</span>
@@ -137,11 +137,11 @@ export const ProductPriceHistoryModal: React.FC<ProductPriceHistoryModalProps> =
                           {formatCurrency(item.oldPrice)}
                         </span>
                       </div>
-                      
+
                       <div className="text-slate-300 px-2">
                         <ArrowRight className="w-5 h-5 text-blue-400" />
                       </div>
-                      
+
                       <div className="flex flex-col items-center flex-1">
                         <span className="text-xs text-blue-600 font-medium mb-1">Giá mới</span>
                         <span className="font-bold text-blue-700 text-lg">
@@ -149,10 +149,13 @@ export const ProductPriceHistoryModal: React.FC<ProductPriceHistoryModalProps> =
                         </span>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2 text-sm text-slate-600 mt-2">
                       <User className="w-4 h-4 text-slate-400" />
-                      <span>Thực hiện bởi: <span className="font-medium text-slate-800">{item.changedBy}</span></span>
+                      <span>
+                        Thực hiện bởi:{' '}
+                        <span className="font-medium text-slate-800">{item.changedBy}</span>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -160,7 +163,7 @@ export const ProductPriceHistoryModal: React.FC<ProductPriceHistoryModalProps> =
             </div>
           )}
         </div>
-        
+
         {/* Footer */}
         <div className="px-6 py-4 bg-white border-t border-slate-100 flex justify-end">
           <button

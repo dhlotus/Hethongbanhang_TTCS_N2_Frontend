@@ -18,15 +18,10 @@ export const creditLimitService = {
    * Lấy danh sách hạn mức công nợ kèm tìm kiếm và phân trang
    * GET /api/credit-limit
    */
-  async getCreditLimits(
-    params?: QueryCreditLimitParams,
-  ): Promise<PaginatedCreditLimitResponse> {
-    const res = await apiClient.get<PaginatedCreditLimitResponse>(
-      '/credit-limit',
-      {
-        params,
-      },
-    );
+  async getCreditLimits(params?: QueryCreditLimitParams): Promise<PaginatedCreditLimitResponse> {
+    const res = await apiClient.get<PaginatedCreditLimitResponse>('/credit-limit', {
+      params,
+    });
     return res.data;
   },
 
@@ -44,9 +39,7 @@ export const creditLimitService = {
    * GET /api/credit-limit/:agencyId
    */
   async getCreditLimitById(agencyId: string): Promise<CreditLimit> {
-    const res = await apiClient.get<CreditLimit>(
-      `/credit-limit/${agencyId}`,
-    );
+    const res = await apiClient.get<CreditLimit>(`/credit-limit/${agencyId}`);
     return res.data;
   },
 
@@ -54,19 +47,13 @@ export const creditLimitService = {
    * Lấy lịch sử các lần điều chỉnh hạn mức công nợ của đại lý (CreditLimitLog)
    * GET /api/credit-limit/:agencyId/logs
    */
-  async getCreditLimitLogs(
-    agencyId: string,
-  ): Promise<CreditLimitLog[]> {
-    const res = await apiClient.get<CreditLimitLog[]>(
-      `/credit-limit/${agencyId}/logs`,
-    );
+  async getCreditLimitLogs(agencyId: string): Promise<CreditLimitLog[]> {
+    const res = await apiClient.get<CreditLimitLog[]>(`/credit-limit/${agencyId}/logs`);
     return res.data;
   },
 
   /** Alias phục vụ tương thích */
-  async getCreditLimitHistory(
-    agencyId: string,
-  ): Promise<CreditLimitLog[]> {
+  async getCreditLimitHistory(agencyId: string): Promise<CreditLimitLog[]> {
     return this.getCreditLimitLogs(agencyId);
   },
 
@@ -76,12 +63,9 @@ export const creditLimitService = {
    */
   async updateCreditLimit(
     agencyId: string,
-    payload: UpdateCreditLimitPayload,
+    payload: UpdateCreditLimitPayload
   ): Promise<CreditLimit> {
-    const res = await apiClient.put<CreditLimit>(
-      `/credit-limit/${agencyId}`,
-      payload,
-    );
+    const res = await apiClient.put<CreditLimit>(`/credit-limit/${agencyId}`, payload);
     return res.data;
   },
 
@@ -91,12 +75,9 @@ export const creditLimitService = {
    */
   async updateCreditStatus(
     agencyId: string,
-    payload: UpdateCreditStatusPayload,
+    payload: UpdateCreditStatusPayload
   ): Promise<CreditLimit> {
-    const res = await apiClient.patch<CreditLimit>(
-      `/credit-limit/${agencyId}/status`,
-      payload,
-    );
+    const res = await apiClient.patch<CreditLimit>(`/credit-limit/${agencyId}/status`, payload);
     return res.data;
   },
 };

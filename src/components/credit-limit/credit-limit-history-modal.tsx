@@ -1,9 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, History, Clock, User, ArrowRight, FileText } from 'lucide-react';
-import type {
-  CreditLimitHistory,
-  CreditLimitItem,
-} from '../../types/credit-limit';
+import type { CreditLimitHistory, CreditLimitItem } from '../../types/credit-limit';
 import { creditLimitService } from '../../services/credit-limit.service';
 
 interface CreditLimitHistoryModalProps {
@@ -85,14 +82,14 @@ export const CreditLimitHistoryModal: React.FC<CreditLimitHistoryModalProps> = (
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center gap-2">
               <div className="h-6 w-6 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs text-slate-500">
-                Đang tải lịch sử điều chỉnh...
-              </span>
+              <span className="text-xs text-slate-500">Đang tải lịch sử điều chỉnh...</span>
             </div>
           ) : histories.length === 0 ? (
             <div className="py-12 text-center text-slate-400">
               <FileText className="h-10 w-10 mx-auto text-slate-300 mb-2" />
-              <p className="text-sm">Chưa có lịch sử điều chỉnh nào được ghi nhận cho đại lý này.</p>
+              <p className="text-sm">
+                Chưa có lịch sử điều chỉnh nào được ghi nhận cho đại lý này.
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -151,15 +148,11 @@ export const CreditLimitHistoryModal: React.FC<CreditLimitHistoryModalProps> = (
                       </div>
 
                       <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                        <div className="text-slate-500 mb-1">
-                          Thời hạn nợ & Điều khoản
-                        </div>
+                        <div className="text-slate-500 mb-1">Thời hạn nợ & Điều khoản</div>
                         <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                           <span>{h.oldMaxDebtDays} ngày</span>
                           <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
-                          <span className="text-slate-900">
-                            {h.newMaxDebtDays} ngày
-                          </span>
+                          <span className="text-slate-900">{h.newMaxDebtDays} ngày</span>
                           <span className="text-xs font-normal text-slate-500">
                             ({h.newPaymentTerms})
                           </span>
@@ -169,8 +162,7 @@ export const CreditLimitHistoryModal: React.FC<CreditLimitHistoryModalProps> = (
 
                     {/* Hàng 3: Lý do ghi nhận */}
                     <div className="text-xs text-slate-700 bg-amber-50/50 p-2.5 rounded-lg border border-amber-100">
-                      <strong className="text-amber-900">Lý do điều chỉnh:</strong>{' '}
-                      {h.reason}
+                      <strong className="text-amber-900">Lý do điều chỉnh:</strong> {h.reason}
                     </div>
                   </div>
                 );

@@ -1,15 +1,9 @@
-import React from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
-import {
-  FileQuestion,
-  Home,
-  ArrowLeft,
-  Compass,
-  Search,
-} from "lucide-react";
-import logoImg from "../assets/logo.png";
-import { getStoredUser, getRedirectPathByUser, getRedirectPathByRole } from "../utils/navigation";
-import { tokenStorage } from "../utils/token-storage";
+import React from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { FileQuestion, Home, ArrowLeft, Compass, Search } from 'lucide-react';
+import logoImg from '../assets/logo.png';
+import { getStoredUser, getRedirectPathByUser, getRedirectPathByRole } from '../utils/navigation';
+import { tokenStorage } from '../utils/token-storage';
 
 interface NotFoundPageProps {
   standalone?: boolean;
@@ -30,7 +24,11 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({ standalone = false }
 
   // Xác định đường dẫn trang chủ tối ưu: nếu đã đăng nhập thì về theo Role thông qua getRedirectPathByRole, nếu chưa thì về /login
   const role = user?.roles?.[0] || user?.role;
-  const homePath = token ? (role ? getRedirectPathByRole(role) : getRedirectPathByUser(user)) : "/login";
+  const homePath = token
+    ? role
+      ? getRedirectPathByRole(role)
+      : getRedirectPathByUser(user)
+    : '/login';
 
   const handleGoBack = () => {
     if (window.history.length > 1) {
@@ -64,8 +62,8 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({ standalone = false }
           Không tìm thấy trang
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-md mx-auto mb-6">
-          Địa chỉ liên kết bạn đang tìm kiếm không tồn tại, đã bị di dời hoặc bạn đã nhập sai đường dẫn.
-          Vui lòng kiểm tra lại URL hoặc quay về trang làm việc.
+          Địa chỉ liên kết bạn đang tìm kiếm không tồn tại, đã bị di dời hoặc bạn đã nhập sai đường
+          dẫn. Vui lòng kiểm tra lại URL hoặc quay về trang làm việc.
         </p>
 
         {/* 4. Thông tin đường dẫn đã truy cập */}
@@ -95,7 +93,7 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({ standalone = false }
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.98] transition-all focus:outline-none cursor-pointer"
           >
             <Home className="h-4 w-4" />
-            <span>{token ? "Về trang chủ của bạn" : "Đăng nhập hệ thống"}</span>
+            <span>{token ? 'Về trang chủ của bạn' : 'Đăng nhập hệ thống'}</span>
           </Link>
         </div>
       </div>
@@ -117,9 +115,7 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({ standalone = false }
             <div className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden shadow-xs">
               <img src={logoImg} alt="LOHA SALES" className="w-full h-full object-cover" />
             </div>
-            <span className="text-base font-bold text-slate-900 tracking-tight">
-              LOHA SALES
-            </span>
+            <span className="text-base font-bold text-slate-900 tracking-tight">LOHA SALES</span>
           </Link>
 
           <Link
@@ -141,9 +137,5 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({ standalone = false }
   }
 
   // Mặc định: Hiển thị tự nhiên bên trong khung Layout chính
-  return (
-    <div className="min-h-[70vh] flex items-center justify-center">
-      {content}
-    </div>
-  );
+  return <div className="min-h-[70vh] flex items-center justify-center">{content}</div>;
 };

@@ -76,9 +76,7 @@ export const CreditLimitPage: React.FC = () => {
     } catch (err: unknown) {
       showToast(
         'error',
-        err instanceof Error
-          ? err.message
-          : 'Không thể tải số liệu thống kê hạn mức.',
+        err instanceof Error ? err.message : 'Không thể tải số liệu thống kê hạn mức.'
       );
     } finally {
       setStatsLoading(false);
@@ -103,9 +101,7 @@ export const CreditLimitPage: React.FC = () => {
     } catch (err: unknown) {
       showToast(
         'error',
-        err instanceof Error
-          ? err.message
-          : 'Không thể tải danh sách hạn mức công nợ.',
+        err instanceof Error ? err.message : 'Không thể tải danh sách hạn mức công nợ.'
       );
     } finally {
       setLoading(false);
@@ -123,7 +119,7 @@ export const CreditLimitPage: React.FC = () => {
   // Xử lý Cập nhật Hạn mức (Bọc trong try-catch và hiển thị thông báo)
   const handleUpdateLimit = async (
     agencyId: string,
-    payload: UpdateCreditLimitPayload,
+    payload: UpdateCreditLimitPayload
   ): Promise<void> => {
     try {
       setModalSubmitting(true);
@@ -132,10 +128,7 @@ export const CreditLimitPage: React.FC = () => {
       setSelectedItemForEdit(null);
       await Promise.all([fetchCreditLimits(), fetchStats()]);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : 'Lỗi khi cập nhật hạn mức công nợ.';
+      const msg = err instanceof Error ? err.message : 'Lỗi khi cập nhật hạn mức công nợ.';
       showToast('error', msg);
       throw err;
     } finally {
@@ -146,7 +139,7 @@ export const CreditLimitPage: React.FC = () => {
   // Xử lý Khóa / Mở khóa Hạn mức (Bọc trong try-catch và hiển thị thông báo)
   const handleUpdateStatus = async (
     agencyId: string,
-    payload: UpdateCreditStatusPayload,
+    payload: UpdateCreditStatusPayload
   ): Promise<void> => {
     try {
       setModalSubmitting(true);
@@ -155,15 +148,12 @@ export const CreditLimitPage: React.FC = () => {
         'success',
         payload.status === CreditStatus.BLOCKED
           ? 'Đã khóa hạn mức tín dụng của đại lý thành công!'
-          : 'Đã mở khóa hạn mức tín dụng của đại lý thành công!',
+          : 'Đã mở khóa hạn mức tín dụng của đại lý thành công!'
       );
       setSelectedItemForStatus(null);
       await Promise.all([fetchCreditLimits(), fetchStats()]);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : 'Lỗi khi cập nhật trạng thái hạn mức.';
+      const msg = err instanceof Error ? err.message : 'Lỗi khi cập nhật trạng thái hạn mức.';
       showToast('error', msg);
       throw err;
     } finally {
@@ -187,7 +177,8 @@ export const CreditLimitPage: React.FC = () => {
             </h1>
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            Thiết lập hạn mức tín dụng mua buôn, thời hạn nợ gối đầu và giám sát an toàn dòng tiền cho từng đại lý.
+            Thiết lập hạn mức tín dụng mua buôn, thời hạn nợ gối đầu và giám sát an toàn dòng tiền
+            cho từng đại lý.
           </p>
         </div>
 
@@ -195,7 +186,9 @@ export const CreditLimitPage: React.FC = () => {
           {!canEditCreditLimit && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
               <ShieldAlert className="h-4 w-4 text-amber-600" />
-              <span>Chế độ chỉ xem (Chỉ Kế toán công nợ / Quản lý kinh doanh mới có quyền chỉnh sửa)</span>
+              <span>
+                Chế độ chỉ xem (Chỉ Kế toán công nợ / Quản lý kinh doanh mới có quyền chỉnh sửa)
+              </span>
             </div>
           )}
 
@@ -296,8 +289,8 @@ export const CreditLimitPage: React.FC = () => {
       {totalItems > 0 && (
         <div className="flex items-center justify-between text-xs text-slate-500 px-1">
           <div>
-            Hiển thị <strong>{items.length}</strong> trên tổng số{' '}
-            <strong>{totalItems}</strong> đại lý
+            Hiển thị <strong>{items.length}</strong> trên tổng số <strong>{totalItems}</strong> đại
+            lý
           </div>
 
           <div className="flex items-center gap-2">
