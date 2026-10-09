@@ -133,70 +133,92 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
         {/* ===================================================================== */}
         <div className="mt-4 flex-1 flex flex-col min-h-0 overflow-y-auto pr-0.5">
           <div onClick={(e) => isCollapsed && e.stopPropagation()}>
-            <nav className="space-y-2">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const isItemActive =
-                  item.path === '/catalog/products'
-                    ? location.pathname === '/catalog/products' ||
-                      location.pathname.startsWith('/catalog/categories')
-                    : location.pathname === item.path ||
-                      location.pathname.startsWith(item.path + '/');
-
-                return (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    onClick={onItemClick}
-                    title={isCollapsed ? item.name : undefined}
-                    className={`group relative flex items-center px-3 py-2 min-h-[44px] rounded-md text-sm font-semibold transition-colors duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1 ${
-                      isItemActive
-                        ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-bold'
-                        : 'text-slate-700 hover:bg-slate-50/90 hover:text-slate-900'
-                    }`}
-                  >
-                    <div className="flex items-center w-full min-w-0">
-                      {/* Thanh định vị Active nhỏ ở bên trái */}
-                      {isItemActive && (
-                        <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[var(--color-primary)]" />
-                      )}
-
-                      {/* Icon vị trí cố định tuyệt đối mượt mà */}
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center">
-                        <Icon
-                          className={`h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
-                            isItemActive
-                              ? 'text-[var(--color-primary)]'
-                              : 'text-slate-500 group-hover:text-slate-800'
-                          }`}
-                        />
-                      </div>
-
-                      {/* Tên Menu co giãn mượt mà không bao giờ giật */}
-                      <span
-                        className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] tracking-tight ${
-                          isCollapsed
-                            ? 'max-w-0 opacity-0 -translate-x-2.5 pointer-events-none'
-                            : 'max-w-[190px] opacity-100 translate-x-0 ml-3'
-                        }`}
-                      >
-                        {item.name}
+            <nav className="space-y-4">
+              {Object.entries(
+                menuItems.reduce((acc, item) => {
+                  const category = item.category || 'Khác';
+                  if (!acc[category]) acc[category] = [];
+                  acc[category].push(item);
+                  return acc;
+                }, {} as Record<string, MenuItem[]>)
+              ).map(([category, items], groupIndex) => (
+                <div key={category} className="space-y-1">
+                  {!isCollapsed ? (
+                    <div className="px-3 py-1.5 mt-1">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        {category}
                       </span>
                     </div>
+                  ) : (
+                    groupIndex > 0 && <div className="mx-3 my-2 border-t border-slate-100" />
+                  )}
+                  <div className="space-y-1">
+                    {items.map((item) => {
+                      const Icon = item.icon;
+                      const isItemActive =
+                        item.path === '/catalog/products'
+                          ? location.pathname === '/catalog/products' ||
+                            location.pathname.startsWith('/catalog/categories')
+                          : location.pathname === item.path ||
+                            location.pathname.startsWith(item.path + '/');
 
-                    {/* Mũi tên bên phải co giãn mượt mà */}
-                    <div
-                      className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] shrink-0 ${
-                        !isCollapsed && isItemActive
-                          ? 'max-w-5 opacity-100 ml-1'
-                          : 'max-w-0 opacity-0 pointer-events-none'
-                      }`}
-                    >
-                      <ChevronRight className="h-4 w-4 text-[var(--color-primary)] shrink-0" />
-                    </div>
-                  </NavLink>
-                );
-              })}
+                      return (
+                        <NavLink
+                          key={item.path}
+                          to={item.path}
+                          onClick={onItemClick}
+                          title={isCollapsed ? item.name : undefined}
+                          className={`group relative flex items-center px-3 py-2 min-h-[44px] rounded-md text-sm font-semibold transition-colors duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1 ${
+                            isItemActive
+                              ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-bold'
+                              : 'text-slate-700 hover:bg-slate-50/90 hover:text-slate-900'
+                          }`}
+                        >
+                          <div className="flex items-center w-full min-w-0">
+                            {/* Thanh định vị Active nhỏ ở bên trái */}
+                            {isItemActive && (
+                              <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[var(--color-primary)]" />
+                            )}
+
+                            {/* Icon vị trí cố định tuyệt đối mượt mà */}
+                            <div className="flex h-6 w-6 shrink-0 items-center justify-center">
+                              <Icon
+                                className={`h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                                  isItemActive
+                                    ? 'text-[var(--color-primary)]'
+                                    : 'text-slate-500 group-hover:text-slate-800'
+                                }`}
+                              />
+                            </div>
+
+                            {/* Tên Menu co giãn mượt mà không bao giờ giật */}
+                            <span
+                              className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] tracking-tight ${
+                                isCollapsed
+                                  ? 'max-w-0 opacity-0 -translate-x-2.5 pointer-events-none'
+                                  : 'max-w-[190px] opacity-100 translate-x-0 ml-3'
+                              }`}
+                            >
+                              {item.name}
+                            </span>
+                          </div>
+
+                          {/* Mũi tên bên phải co giãn mượt mà */}
+                          <div
+                            className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] shrink-0 ${
+                              !isCollapsed && isItemActive
+                                ? 'max-w-5 opacity-100 ml-1'
+                                : 'max-w-0 opacity-0 pointer-events-none'
+                            }`}
+                          >
+                            <ChevronRight className="h-4 w-4 text-[var(--color-primary)] shrink-0" />
+                          </div>
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </nav>
           </div>
 
