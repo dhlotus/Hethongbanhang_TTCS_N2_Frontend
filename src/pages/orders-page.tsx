@@ -740,7 +740,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[94vh] flex flex-col shadow-2xl">
@@ -1707,7 +1707,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         </div>
       </div>
     )}
-  </>
+    </>,
+    document.body
   );
 };
 
