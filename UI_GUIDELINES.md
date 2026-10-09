@@ -1050,3 +1050,196 @@ LOHA SALES ưu tiên:
 * Không làm mất file đã chọn khi một file khác Upload thất bại.
 * Khu vực Upload phải có vùng click và Drop Zone đủ lớn, dễ nhận biết.
 
+## 23. Table — Bảng dữ liệu
+
+* Dùng để hiển thị dữ liệu có cấu trúc, cần so sánh hoặc quản lý nhiều bản ghi.
+
+* Header phải rõ ràng, tên cột ngắn gọn, dễ hiểu.
+
+* Căn lề thống nhất: văn bản căn trái, số liệu căn phải, trạng thái và thao tác theo một quy tắc chung.
+
+* Chiều rộng cột phù hợp nội dung; không để chữ tràn hoặc làm vỡ bố cục.
+
+* Chuẩn hóa chiều cao dòng, padding, font, đường phân cách và màu nền.
+
+* Hover dòng chỉ dùng để hỗ trợ theo dõi, không dùng màu quá nổi bật.
+
+* Trạng thái dữ liệu sử dụng Badge theo Semantic Color System.
+
+* Các thao tác trên dòng phải có vị trí và cách hiển thị nhất quán.
+
+* Bảng cần có Loading, Empty State, Error State.
+
+* Có Pagination khi dữ liệu nhiều; Search và Filter khi cần.
+
+* Responsive phải có phương án phù hợp, không để bảng tràn màn hình ngoài ý muốn.
+
+* Chỉ cho phép Sort ở các cột có ý nghĩa sắp xếp.
+
+## 24. Card — Thẻ nội dung
+
+* Dùng để nhóm các thông tin có liên quan thành một khối.
+
+* Card cùng loại phải thống nhất về padding, radius, border, background và shadow.
+
+* Thứ tự nội dung phải rõ ràng: tiêu đề → nội dung → thông tin phụ → hành động.
+
+* Chỉ dùng Shadow khi cần phân biệt lớp; ưu tiên giao diện nhẹ, sạch.
+
+* Không lồng quá nhiều Card khiến giao diện rối.
+
+* Card có thể click phải thể hiện rõ khả năng tương tác.
+
+* Không làm toàn bộ Card clickable nếu bên trong có nhiều hành động độc lập.
+
+## 25. Badge / Tag — Nhãn trạng thái
+
+* Badge dùng để thể hiện trạng thái, số lượng hoặc thông tin ngắn.
+
+* Tag dùng để phân loại hoặc gắn nhãn dữ liệu.
+
+* Màu sắc phải có ý nghĩa nhất quán:
+
+  * Success: xanh lá.
+
+  * Error/Danger: đỏ.
+
+  * Warning: vàng/cam.
+
+  * Info: xanh dương.
+
+  * Neutral: xám.
+
+* Không dùng màu chỉ để trang trí.
+
+* Nội dung ngắn gọn, dễ hiểu; không nhồi nhiều chữ.
+
+* Kích thước, padding, font và radius phải thống nhất.
+
+* Cùng một trạng thái phải dùng cùng màu và cách gọi trên toàn hệ thống.
+
+## 26. Avatar — Ảnh đại diện
+
+* Ưu tiên ảnh thật; nếu không có ảnh, dùng chữ cái đại diện hoặc ảnh mặc định.
+
+* Chuẩn hóa kích thước theo ngữ cảnh: Header, danh sách, bảng, trang hồ sơ.
+
+* Avatar phải giữ tỷ lệ vuông và crop ảnh nhất quán.
+
+* Nếu dùng chữ cái đại diện, căn giữa và đảm bảo dễ đọc.
+
+* Không dùng màu ngẫu nhiên gây mất đồng bộ thương hiệu.
+
+* Nếu Avatar có thể click, phải thể hiện khả năng tương tác và có trạng thái Focus phù hợp.
+
+* Không dùng Avatar thay cho thông tin định danh quan trọng.
+
+## 27. List — Danh sách
+
+* Các mục trong cùng danh sách phải có cấu trúc và khoảng cách nhất quán.
+
+* Thông tin quan trọng đặt trước; thông tin phụ đặt sau.
+
+* Căn chỉnh icon, tiêu đề, mô tả và hành động thống nhất.
+
+* Dùng Divider khi cần phân tách các mục.
+
+* Hover chỉ áp dụng cho mục có tương tác.
+
+* Nếu mục có thể click, phải thể hiện rõ khả năng tương tác.
+
+* Danh sách dài cần có phân trang, cuộn hoặc cơ chế tải thêm phù hợp.
+
+* Phải có Loading, Empty State và Error State khi lấy dữ liệu động.
+
+## 28. Pagination — Phân trang
+
+* Dùng khi dữ liệu được chia thành nhiều trang.
+
+* Hiển thị rõ trang hiện tại và các thao tác Trang trước / Trang sau.
+
+* Trang hiện tại phải được phân biệt rõ bằng Primary Color.
+
+* Vô hiệu hóa nút khi không thể chuyển tiếp hoặc quay lại.
+
+* Kích thước nút và khoảng cách phải thống nhất.
+
+* Nếu phù hợp, hiển thị tổng số bản ghi và lựa chọn số dòng mỗi trang.
+
+* Khi đổi trang, phải giữ Search/Filter hiện tại nếu không có lý do nghiệp vụ để đặt lại.
+
+* Không hiển thị quá nhiều số trang gây rối giao diện.
+
+* Với dữ liệu thay đổi, phải xử lý trường hợp trang hiện tại không còn bản ghi.
+
+## 29. Tabs — Các tab nội dung
+
+* Dùng để chuyển giữa các nhóm nội dung liên quan trong cùng một khu vực.
+
+* Tên tab phải ngắn gọn, phân biệt rõ nội dung.
+
+* Tab đang chọn phải có trạng thái Active rõ ràng, dùng Primary Color theo Design System.
+
+* Chuẩn hóa kiểu tab, chiều cao, padding và khoảng cách.
+
+* Không dùng Tabs thay cho điều hướng chính giữa các phân hệ lớn.
+
+* Giữ trạng thái tab khi phù hợp với luồng công việc.
+
+* Nội dung tab phải thay đổi đúng khi người dùng chuyển tab.
+
+* Nếu có số lượng hoặc trạng thái kèm theo, hiển thị theo một quy tắc thống nhất.
+
+## 30. Accordion — Nội dung thu gọn
+
+* Dùng để thu gọn/mở rộng các nhóm nội dung có liên quan.
+
+* Tiêu đề phải mô tả rõ nội dung bên trong.
+
+* Icon mở/đóng phải thống nhất và thể hiện đúng trạng thái.
+
+* Có vùng click đủ lớn, không chỉ giới hạn ở icon.
+
+* Chuẩn hóa padding, khoảng cách và Divider.
+
+* Nội dung mở rộng không được làm vỡ bố cục.
+
+* Quy định rõ được mở nhiều mục cùng lúc hay chỉ một mục; áp dụng nhất quán theo từng nhóm.
+
+* Không dùng Accordion cho nội dung cần người dùng nhìn thấy liên tục.
+
+## 31. Tooltip — Chú thích khi rê chuột
+
+* Dùng để giải thích ngắn cho Icon Button, biểu tượng hoặc thông tin khó hiểu.
+
+* Nội dung ngắn gọn, đúng trọng tâm.
+
+* Hiển thị khi Hover hoặc Focus bằng bàn phím.
+
+* Đặt gần đối tượng, tránh bị che hoặc vượt khỏi viewport.
+
+* Thời gian xuất hiện và biến mất phải nhất quán.
+
+* Không đưa nội dung dài, biểu mẫu hoặc hành động phức tạp vào Tooltip.
+
+* Không dùng Tooltip thay cho Label hoặc thông báo lỗi quan trọng.
+
+* Trên thiết bị cảm ứng, không phụ thuộc hoàn toàn vào Hover.
+
+## 32. Popover — Bảng thông tin nổi
+
+* Dùng để hiển thị thông tin bổ sung hoặc thao tác nhỏ liên quan đến một đối tượng.
+
+* Phân biệt rõ với Tooltip: Popover có thể chứa nội dung tương tác.
+
+* Mở theo hành động rõ ràng như click hoặc nhấn nút.
+
+* Đặt gần đối tượng kích hoạt, tự điều chỉnh khi gần mép màn hình.
+
+* Có thể đóng bằng cách click ra ngoài hoặc nhấn `Esc` khi phù hợp.
+
+* Chuẩn hóa background, border, radius, shadow và padding.
+
+* Không để Popover che mất nội dung hoặc thao tác quan trọng.
+
+* Nếu nội dung dài hoặc có nhiều bước, dùng Modal hoặc trang riêng thay vì Popover.

@@ -43,6 +43,36 @@ export * from "./slider";
 // 22. File Upload / Image Upload
 export * from "./file-upload";
 
+// 23. Table
+export * from "./table";
+
+// 24. Card
+export * from "./card";
+
+// 25. Badge / Tag
+export * from "./badge";
+
+// 26. Avatar
+export * from "./avatar";
+
+// 27. List
+export * from "./list";
+
+// 28. Pagination
+export * from "./pagination";
+
+// 29. Tabs
+export * from "./tabs";
+
+// 30. Accordion
+export * from "./accordion";
+
+// 31. Tooltip
+export * from "./tooltip";
+
+// 32. Popover
+export * from "./popover";
+
 // Other standard feedback components
 export * from "./toast";
 export * from "./alert";

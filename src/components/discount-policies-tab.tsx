@@ -3,6 +3,7 @@ import { Plus, CheckCircle2, X, Edit2, Trash2 } from 'lucide-react';
 import { showToast } from './toast';
 import { Button } from './button';
 import { IconButton } from './icon-button';
+import { Badge } from './badge';
 import { discountPoliciesService } from '../services/discount-policies.service';
 import type { DiscountPolicy, CreateDiscountPolicyPayload } from '../services/discount-policies.service';
 import { DiscountPolicyFormModal } from './discount-policy-form-modal';
@@ -129,15 +130,13 @@ export const DiscountPoliciesTab: React.FC = () => {
                   </td>
                   <td className="py-3.5 px-4 text-center">
                     {p.status === 'ACTIVE' ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      <Badge variant="success" icon={<CheckCircle2 className="w-3.5 h-3.5" />}>
                         Đang hiệu lực
-                      </span>
+                      </Badge>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-600/20">
-                        <X className="w-3.5 h-3.5" />
+                      <Badge variant="neutral" icon={<X className="w-3.5 h-3.5" />}>
                         Không hiệu lực
-                      </span>
+                      </Badge>
                     )}
                   </td>
                   <td className="py-3.5 px-4 text-center">
