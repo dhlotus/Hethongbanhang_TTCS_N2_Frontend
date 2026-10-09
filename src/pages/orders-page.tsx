@@ -21,6 +21,7 @@ import {
   Truck,
   Loader2,
   Building2,
+  Bookmark,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ordersService } from '../services/orders.service';
@@ -721,6 +722,48 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     }
   };
 
+  /** Lưu đơn hàng dạng Bản nháp (SN-38: Lưu nháp được và mở lại tiếp tục gõ) */
+  const handleSaveAsDraft = async () => {
+    if (!selectedCustomer) {
+      showToast('error', 'Chưa chọn đại lý', 'Vui lòng chọn đại lý trước khi lưu bản nháp');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const draftOrder = await ordersService.createOrder({
+        customerId: selectedCustomer.id,
+        deliveryPoint: Object.keys(deliveryPoint).length > 0 ? deliveryPoint : undefined,
+        deliveryDate,
+        lines: lines.map((l) => ({
+          productId: l.productId,
+          productSku: l.productSku,
+          productName: l.productName,
+          unit: l.unit,
+          baseUnit: l.baseUnit,
+          conversionRate: l.conversionRate,
+          quantity: l.quantity,
+          unitPrice: l.unitPrice,
+          listPrice: l.listPrice,
+          discountPercent: l.discountPercent,
+          stockAvailable: l.stockAvailable,
+        })),
+        note,
+        status: 'DRAFT',
+      });
+
+      ordersService.clearDraft(DRAFT_KEY);
+      showToast('success', 'Lưu nháp thành công', `Đơn hàng ${draftOrder.orderCode} đã được lưu nháp.`);
+      onCreated?.(draftOrder);
+      handleClose();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Không thể lưu bản nháp';
+      showToast('error', msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleClose = () => {
     setStep(1);
     setSelectedCustomer(null);
@@ -1341,7 +1384,19 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
           <div className="flex items-center gap-2">
             {step === 2 && lines.length > 0 && (
-              <span className="text-xs text-slate-400 italic">Nháp đã lưu tự động</span>
+              <span className="hidden sm:inline text-xs text-slate-400 italic">Nháp đã lưu tự động</span>
+            )}
+            {step === 2 && (
+              <button
+                type="button"
+                onClick={handleSaveAsDraft}
+                disabled={isSubmitting || !selectedCustomer}
+                className="px-3.5 py-2 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-colors inline-flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
+                title="Lưu lại đơn ở trạng thái nháp để xử lý hoặc duyệt sau"
+              >
+                <Bookmark className="w-4 h-4 text-amber-600" />
+                <span>Lưu nháp</span>
+              </button>
             )}
             {step === 1 ? (
               <button
