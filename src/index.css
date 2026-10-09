@@ -196,6 +196,75 @@
 }
 
 /* ========================================================================= */
+/* FLUID & RESPONSIVE TYPOGRAPHY (CHỐNG MỎI MẮT TRÊN MÀN HÌNH ĐỘ PHÂN GIẢI CAO) */
+/* ========================================================================= */
+html {
+  font-size: 15px; /* Mobile / Small screens: 15px rõ nét, không bị co quá nhỏ */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 15.5px; /* Tablet & Laptop tiêu chuẩn */
+  }
+}
+
+@media (min-width: 1280px) {
+  html {
+    font-size: 16px; /* Desktop Full HD tiêu chuẩn */
+  }
+}
+
+@media (min-width: 1600px) {
+  html {
+    font-size: 16.5px; /* Màn hình 2K / 4K HiDPI: Tự động tỷ lệ linh hoạt tránh mỏi mắt */
+  }
+}
+
+body {
+  font-family: var(--font-family);
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
+  line-height: var(--line-height-normal);
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+/* Tabular figures cho dữ liệu tài chính, doanh số, công nợ căn chỉnh thẳng hàng */
+.tabular-nums,
+[data-numeric='true'] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ========================================================================= */
+/* TỐI ƯU HÓA KHOẢNG TRẮNG & TYPOGRAPHY CHO MỌI BẢNG DỮ LIỆU TOÀN HỆ THỐNG   */
+/* ========================================================================= */
+table th {
+  padding-top: 0.875rem !important;
+  padding-bottom: 0.875rem !important;
+  letter-spacing: 0.025em;
+  font-weight: 600;
+}
+
+table td {
+  padding-top: 0.875rem !important;
+  padding-bottom: 0.875rem !important;
+  line-height: 1.5;
+}
+
+/* Tự động kích hoạt Tabular Numbers cho tất cả các con số, tiền tệ trong bảng */
+table td {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tăng cường khoảng thở và nét chữ cho nhãn & văn bản phụ */
+label,
+dt {
+  letter-spacing: 0.01em;
+}
+
+/* ========================================================================= */
 /* 3.3 CẤP ĐỘ SỬ DỤNG TYPOGRAPHY (UI_GUIDELINES)                             */
 /* ========================================================================= */
 .typography-display {
@@ -818,16 +887,15 @@ html {
 @keyframes pageSlideFadeIn {
   from {
     opacity: 0;
-    transform: translateY(2px);
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
 
 .page-transition {
-  animation: pageSlideFadeIn 180ms ease-out forwards;
+  animation: pageSlideFadeIn 180ms ease-out;
+  transform: none !important;
 }
 
 /* 75, 76 & 78. Tôn trọng thiết lập prefers-reduced-motion của người dùng */

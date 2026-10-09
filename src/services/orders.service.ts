@@ -593,6 +593,21 @@ export const ordersService = {
    * Tạo đơn hàng mới (SN-38 & SN-39)
    */
   async createOrder(payload: CreateOrderPayload): Promise<Order> {
+    // Kiểm tra tồn khả dụng theo Task SN-42: Kiểm soát tồn khả dụng
+    for (const line of payload.lines) {
+      const prod = MOCK_PRODUCTS.find((p) => p.id === line.productId || p.sku === line.productSku);
+      const available = prod
+        ? (prod.availableStock ?? prod.availableQuantity ?? prod.stockQuantity)
+        : (line.availableStock ?? line.stockAvailable ?? 9999);
+      const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
+      const maxInUnit = convRate > 1 ? Math.floor(available / convRate) : available;
+      if (line.quantity > maxInUnit) {
+        throw new Error(
+          `Sản phẩm ${line.productName || line.productSku} vượt quá tồn khả dụng (Tồn kho: ${maxInUnit}, Đặt: ${line.quantity})`,
+        );
+      }
+    }
+
     const token = tokenStorage.getAccessToken();
     const isDemo = token?.startsWith('demo-jwt-');
 
@@ -637,19 +652,6 @@ export const ordersService = {
       throw new Error(
         `Đại lý đang có khoản nợ quá hạn ${overdueDays} ngày (vượt quá ${maxDebtDays} ngày cho phép). Hệ thống tạm khóa quyền tạo đơn hàng mới cho đại lý này.`
       );
-    }
-
-    // Kiểm tra tồn khả dụng theo Task SN-39 (Demo fallback)
-    for (const line of payload.lines) {
-      const prod = MOCK_PRODUCTS.find((p) => p.id === line.productId || p.sku === line.productSku);
-      const available = prod ? (prod.availableStock ?? prod.stockQuantity) : (line.stockAvailable ?? 9999);
-      const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
-      const maxInUnit = convRate > 1 ? Math.floor(available / convRate) : available;
-      if (line.quantity > maxInUnit) {
-        throw new Error(
-          `Sản phẩm ${line.productName || line.productSku} vượt quá tồn khả dụng (Còn tối đa ${maxInUnit} ${line.unit})`,
-        );
-      }
     }
 
     // Tính lineTotal từng dòng
@@ -851,6 +853,57 @@ export const ordersService = {
 
     const res = await apiClient.post<Order | { data: Order }>(`/orders/${orderId}/clone`);
     return (res.data as { data?: Order })?.data ?? (res.data as Order);
+  },
+
+  /**
+   * Cập nhật đơn hàng (Chỉnh sửa / Tiếp tục gõ đơn nháp SN-39)
+   */
+  async updateOrder(id: string, payload: Partial<CreateOrderPayload>): Promise<Order> {
+    const token = tokenStorage.getAccessToken();
+    const isDemo = token?.startsWith('demo-jwt-');
+    if (!isDemo) {
+      try {
+        const res = await apiClient.put<Order | { data: Order }>(`/orders/${id}`, payload);
+        const updated = (res.data as { data?: Order })?.data ?? (res.data as Order);
+        const all = getStoredDemoOrders();
+        const idx = all.findIndex((o) => o.id === id);
+        if (idx !== -1) {
+          all[idx] = updated;
+          saveStoredDemoOrders(all);
+        }
+        return updated;
+      } catch (apiError: any) {
+        if (apiError?.response) {
+          const errMsg =
+            apiError.response.data?.message || apiError.message || 'Lỗi khi cập nhật đơn hàng';
+          throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+        }
+      }
+    }
+
+    const all = getStoredDemoOrders();
+    const idx = all.findIndex((o) => o.id === id);
+    if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${id}`);
+    const existing = all[idx];
+    const lines = (payload.lines || existing.lines).map((l) => ({
+      ...l,
+      baseQuantity: Math.round(l.quantity * (l.conversionRate || 1)),
+      lineTotal: l.quantity * l.unitPrice,
+    }));
+    const totals = calcOrderTotals(lines);
+    const updatedOrder: Order = {
+      ...existing,
+      ...totals,
+      lines,
+      deliveryDate: payload.deliveryDate || existing.deliveryDate,
+      deliveryPoint: (payload.deliveryPoint as Order['deliveryPoint']) || existing.deliveryPoint,
+      note: payload.note !== undefined ? payload.note : existing.note,
+      status: payload.status || existing.status,
+      updatedAt: new Date().toISOString(),
+    };
+    all[idx] = updatedOrder;
+    saveStoredDemoOrders(all);
+    return updatedOrder;
   },
 };
 
