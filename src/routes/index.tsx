@@ -1,20 +1,29 @@
-import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { LoginPage } from "../pages/login-page";
-import { ForgotPasswordPage } from "../pages/forgot-password-page";
-import { ResetPasswordPage } from "../pages/reset-password-page";
-import { ChangePasswordPage } from "../pages/change-password-page";
-import { RoleModulePage } from "../pages/role-module-page";
-import { ProductsPage } from "../pages/products-page";
-import { UsersPage } from "../pages/users-page";
-import { NotFoundPage } from "../pages/not-found-page";
-import { ForbiddenPage } from "../pages/forbidden-page";
-import { ProtectedRoute } from "../components/protected-route";
-import { RoleGuard } from "../components/role-guard";
-import { NetworkStatusIndicator } from "../components/network-status-indicator";
-import { AdminLayout } from "../layouts/admin-layout";
-import { getRedirectPathByUser, getStoredUser } from "../utils/navigation";
-import { tokenStorage } from "../utils/token-storage";
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { LoginPage } from '../pages/login-page';
+import { ForgotPasswordPage } from '../pages/forgot-password-page';
+import { ResetPasswordPage } from '../pages/reset-password-page';
+import { ChangePasswordPage } from '../pages/change-password-page';
+import { RoleModulePage } from '../pages/role-module-page';
+import { ProductsPage } from '../pages/products-page';
+import { PriceListsPage } from '../pages/price-lists-page';
+import { SuppliersPage } from '../pages/suppliers-page';
+import { CategoriesPage } from '../pages/categories-page';
+import { UsersPage } from '../pages/users-page';
+import { AuditLogsPage } from '../pages/audit-logs-page';
+import { ProfilePage } from '../pages/profile-page';
+import { OrdersPage } from '../pages/orders-page';
+import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
+import { CustomersPage } from '../pages/customers-page';
+import { InventoryStockPage } from '../pages/inventory-stock-page';
+import { NotFoundPage } from '../pages/not-found-page';
+import { ForbiddenPage } from '../pages/forbidden-page';
+import { ProtectedRoute } from '../components/protected-route';
+import { RoleGuard } from '../components/role-guard';
+import { NetworkStatusIndicator } from '../components/network-status-indicator';
+import { AdminLayout } from '../layouts/admin-layout';
+import { getRedirectPathByUser, getStoredUser } from '../utils/navigation';
+import { tokenStorage } from '../utils/token-storage';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -211,21 +220,19 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={["SALES_REP", "WAREHOUSE_KEEPER", "WAREHOUSE_MANAGER"]}
+                  allowedRoles={[
+                    'ADMIN',
+                    'SALES_REP',
+                    'SALES_MANAGER',
+                    'WAREHOUSE_KEEPER',
+                    'WAREHOUSE_MANAGER',
+                    'ACCOUNTANT',
+                  ]}
                   moduleName="Tra cứu Tồn kho Khả dụng"
                 />
               }
             >
-              <Route
-                path="/inventory/stock"
-                element={
-                  <RoleModulePage
-                    title="Sổ Tồn kho Tổng hợp & Lô hàng"
-                    subtitle="Theo dõi số lượng tồn thực tế, tồn khả dụng, cảnh báo chạm mức tối thiểu và tra cứu kho"
-                    requiredRole="Kho vận & Quản trị"
-                  />
-                }
-              />
+              <Route path="/inventory/stock" element={<InventoryStockPage />} />
             </Route>
 
             <Route

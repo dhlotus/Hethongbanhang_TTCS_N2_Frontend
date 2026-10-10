@@ -82,7 +82,28 @@ export interface CreateProductPayload {
   description?: string;
 }
 
-export interface UpdateProductPayload extends Partial<CreateProductPayload> {}
+export type UpdateProductPayload = Partial<CreateProductPayload>;
+
+export type StockStatusType = 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+
+export interface StockOverviewItem {
+  id: string;
+  sku: string;
+  name: string;
+  category: string;
+  parentCategory: string;
+  subCategory?: string;
+  physicalStock: number;   // 1. Tồn thực tế
+  reservedStock: number;   // 2. Tồn tạm giữ
+  availableStock: number;  // 3. Tồn khả thi (Có thể bán = Tồn thực tế - Tồn tạm giữ)
+  stockQuantity: number;
+  baseUnit: string;
+  units: ProductUnit[];
+  warehouse: string;
+  warehouseId?: string;
+  status: StockStatusType;
+  imageUrl?: string;
+}
 
 export interface AdjustStockPayload {
   productSku: string;

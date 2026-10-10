@@ -78,3 +78,18 @@ export const USER_ROLES = {
 } as const;
 
 export type UserRoleType = (typeof USER_ROLES)[keyof typeof USER_ROLES];
+
+/**
+ * Enum vai trò người dùng chuẩn hóa (SN-34 Code Convention)
+ */
+export enum Role {
+  ADMIN = 'ADMIN',
+  SALES_REP = 'SALES_REP',
+  SALES_MANAGER = 'SALES_MANAGER',
+  BUSINESS_MANAGER = 'BUSINESS_MANAGER',
+  WAREHOUSE_KEEPER = 'WAREHOUSE_KEEPER',
+  WAREHOUSE_MANAGER = 'WAREHOUSE_MANAGER',
+  ACCOUNTANT = 'ACCOUNTANT',
+  ACCOUNTANT_DEBT = 'ACCOUNTANT_DEBT',
+  CUSTOMER = 'CUSTOMER',
+}
