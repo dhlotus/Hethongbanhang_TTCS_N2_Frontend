@@ -14,6 +14,7 @@ import type {
   OrderStatus,
   PaginatedOrdersResponse,
 } from '../types/order';
+import type { ApproveOrderResponse } from '../types/inventory.types';
 import type { Product } from '../types/products';
 
 /** Key lưu draft đơn hàng vào localStorage */
@@ -1010,12 +1011,14 @@ export const ordersService = {
           saveStoredDemoOrders(all);
         }
         return updated;
-      } catch (apiError: any) {
-        if (apiError?.response) {
+      } catch (apiError: unknown) {
+        if (apiError && typeof apiError === 'object' && 'response' in apiError) {
+          const axiosErr = apiError as { response?: { data?: { message?: string | string[] } } };
           const errMsg =
-            apiError.response.data?.message || apiError.message || 'Lỗi khi cập nhật đơn hàng';
+            axiosErr.response?.data?.message || 'Lỗi khi cập nhật đơn hàng';
           throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
         }
+        throw apiError;
       }
     }
 
@@ -1042,6 +1045,108 @@ export const ordersService = {
     all[idx] = updatedOrder;
     saveStoredDemoOrders(all);
     return updatedOrder;
+  },
+
+  /**
+   * Duyệt đơn hàng và kích hoạt giữ chỗ tồn kho 24h (SN-180 - Sprint 5)
+   * Phân quyền: SALES_MANAGER, ADMIN
+   */
+  async approveOrder(orderId: string): Promise<ApproveOrderResponse> {
+    const token = tokenStorage.getAccessToken();
+    const isDemo = token?.startsWith('demo-jwt-');
+
+    if (!isDemo) {
+      try {
+        const res = await apiClient.post<ApproveOrderResponse>(`/orders/${orderId}/approve`);
+        return res.data;
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'response' in err) {
+          const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+          const errMsg = axiosErr.response?.data?.message;
+          if (errMsg) {
+            throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+          }
+        }
+        throw err;
+      }
+    }
+
+    const all = getStoredDemoOrders();
+    const idx = all.findIndex((o) => o.id === orderId);
+    if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${orderId}`);
+
+    const existing = all[idx];
+    const user = tokenStorage.getUser();
+    const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+    existing.status = 'APPROVED';
+    existing.approvedAt = new Date().toISOString();
+    existing.approverId = user?.id || 'mgr-demo';
+    existing.reservedUntil = expiry;
+
+    all[idx] = existing;
+    saveStoredDemoOrders(all);
+
+    return {
+      success: true,
+      message: 'Đã duyệt đơn và kích hoạt giữ chỗ tồn kho 24 giờ thành công',
+      orderId,
+      status: 'APPROVED',
+      reservedUntil: expiry,
+      itemsReserved: existing.lines?.length || 0,
+    };
+  },
+
+  /**
+   * Hủy đơn hàng và tự động nhả tồn giữ chỗ vào kho khả dụng (SN-180 - Sprint 5)
+   */
+  async cancelOrder(orderId: string, reason: string): Promise<Order> {
+    if (!reason || !reason.trim()) {
+      throw new Error('Bắt buộc phải nhập lý do hủy đơn hàng');
+    }
+
+    const token = tokenStorage.getAccessToken();
+    const isDemo = token?.startsWith('demo-jwt-');
+
+    if (!isDemo) {
+      try {
+        const res = await apiClient.post<Order | { data: Order }>(`/orders/${orderId}/cancel`, {
+          reason: reason.trim(),
+        });
+        const updated = (res.data as { data?: Order })?.data ?? (res.data as Order);
+        const all = getStoredDemoOrders();
+        const idx = all.findIndex((o) => o.id === orderId);
+        if (idx !== -1) {
+          all[idx] = updated;
+          saveStoredDemoOrders(all);
+        }
+        return updated;
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'response' in err) {
+          const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+          const errMsg = axiosErr.response?.data?.message;
+          if (errMsg) {
+            throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+          }
+        }
+        throw err;
+      }
+    }
+
+    const all = getStoredDemoOrders();
+    const idx = all.findIndex((o) => o.id === orderId);
+    if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${orderId}`);
+
+    const existing = all[idx];
+    existing.status = 'CANCELLED';
+    existing.cancelReason = reason.trim();
+    existing.reservedUntil = undefined;
+    existing.updatedAt = new Date().toISOString();
+
+    all[idx] = existing;
+    saveStoredDemoOrders(all);
+
+    return existing;
   },
 };
 

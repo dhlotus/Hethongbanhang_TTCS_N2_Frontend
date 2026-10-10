@@ -8,6 +8,7 @@ import type {
   InventoryTransaction,
   StockAdjustmentResponse,
 } from '../types/products';
+import type { StockItem, StockReservation } from '../types/inventory.types';
 
 const DEMO_TRANSACTIONS_KEY = 'loha_inventory_transactions';
 
@@ -103,6 +104,91 @@ export const inventoryService = {
 
     const response = await apiClient.get('/inventory/stock');
     return response.data;
+  },
+
+  /**
+   * Lấy sổ tồn kho chuẩn 3 cột: Tồn thực tế, Đang giữ chỗ, Tồn khả dụng (SN-180)
+   */
+  async getStocks(): Promise<StockItem[]> {
+    const token = tokenStorage.getAccessToken();
+    if (token && token.startsWith('demo-jwt-')) {
+      return MOCK_PRODUCTS.map((p: Product) => {
+        const physical = p.stockQuantity || 0;
+        const reserved = 0;
+        const available = Math.max(0, physical - reserved);
+        return {
+          sku: p.sku,
+          name: p.name,
+          physicalQuantity: physical,
+          reservedQuantity: reserved,
+          availableQuantity: available,
+          baseUnit: p.baseUnit,
+          warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
+          units: (p.units || []).map((u: ProductUnit) => ({
+            unitName: u.unitName,
+            conversionRate: u.conversionRate,
+            isBaseUnit: Boolean(u.isBaseUnit),
+          })),
+          activeReservations: [],
+        };
+      });
+    }
+
+    try {
+      const response = await apiClient.get<StockItem[]>('/inventory/stocks');
+      return response.data;
+    } catch {
+      // Fallback endpoint cũ nếu chưa có /stocks
+      const response = await apiClient.get<Array<{
+        sku: string;
+        name: string;
+        physicalQuantity?: number;
+        physicalStockQuantity?: number;
+        stockQuantity?: number;
+        reservedQuantity?: number;
+        availableQuantity?: number;
+        baseUnit: string;
+        warehouse?: string;
+        units?: Array<{ unitName: string; conversionRate: number; isBaseUnit: boolean }>;
+        activeReservations?: StockReservation[];
+      }>>('/inventory/stock');
+
+      return (response.data || []).map((item) => {
+        const physical = item.physicalQuantity ?? item.physicalStockQuantity ?? item.stockQuantity ?? 0;
+        const reserved = item.reservedQuantity ?? 0;
+        const available = item.availableQuantity ?? Math.max(0, physical - reserved);
+        return {
+          sku: item.sku,
+          name: item.name,
+          physicalQuantity: physical,
+          reservedQuantity: reserved,
+          availableQuantity: available,
+          baseUnit: item.baseUnit,
+          warehouse: item.warehouse || 'Kho Tổng Miền Nam - LOHA WH01',
+          units: item.units,
+          activeReservations: item.activeReservations || [],
+        };
+      });
+    }
+  },
+
+  /**
+   * Lấy danh sách nhật ký giữ chỗ tồn kho (SN-180)
+   */
+  async getReservations(orderId?: string): Promise<StockReservation[]> {
+    const token = tokenStorage.getAccessToken();
+    if (token && token.startsWith('demo-jwt-')) {
+      return [];
+    }
+
+    try {
+      const response = await apiClient.get<StockReservation[]>('/inventory/reservations', {
+        params: orderId ? { orderId } : undefined,
+      });
+      return response.data;
+    } catch {
+      return [];
+    }
   },
 
   /**

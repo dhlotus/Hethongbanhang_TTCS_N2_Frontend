@@ -103,6 +103,10 @@ export interface Order {
   approvalReasons?: string[];
   isCreditLimitExceeded?: boolean; // Cờ vượt hạn mức công nợ (SN-41)
   creditLimitExceededAmount?: number; // Số tiền vượt hạn mức (VND)
+  cancelReason?: string; // Lý do hủy đơn (SN-180)
+  approverId?: string; // ID người duyệt đơn (SN-180)
+  approvedAt?: string; // Thời gian duyệt đơn (SN-180)
+  reservedUntil?: string; // Hạn giữ chỗ tồn kho (24h sau duyệt) (SN-180)
   createdAt?: string;
   updatedAt?: string;
 }

@@ -152,3 +152,33 @@
 - **Trạng thái kiểm thử:**
   - Frontend ESLint: `npx eslint` -> 0 lỗi, 0 warnings.
   - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, build production hoàn tất trong 2.35s.
+
+### [Sprint 5] - [SN-180]: Giao Diện Quản Lý Sổ Tồn Kho 3 Cột, Giữ Chỗ Tồn Kho & Nhả Tồn Khi Duyệt/Hủy Đơn
+- **Thời gian hoàn thành:** 2026-10-10
+- **Mã Jira / Task:** SN-180 (Parent Story: SN-229 / S5-06 - Sprint 5)
+- **Tiêu đề:** "Là Nhân viên kinh doanh, tôi muốn có tồn được giữ chỗ ngay khi đơn được duyệt, để chắc chắn hàng đã chốt cho khách của mình không bị người khác bán mất."
+- **Tiêu chí chấp nhận (AC) đã đạt 100%:**
+  1. **AC1 - Đơn duyệt giữ chỗ tồn kho 24 giờ:**
+     - Nút "Duyệt đơn" dành riêng cho Sales Manager và Admin trên cả màn hình danh sách, card mobile và chi tiết đơn hàng.
+     - Khi bấm duyệt, hiển thị Modal xác nhận cảnh báo giữ chỗ: Toàn bộ sản phẩm được giữ chỗ an toàn trong 24 giờ, tồn khả dụng giảm tương ứng để không ai bán mất.
+     - Badge trạng thái trực quan: Đã duyệt (Đang giữ chỗ) kèm hiển thị thời hạn giữ chỗ 24h.
+  2. **AC2 - Tự động nhả tồn khi hủy đơn:**
+     - Nút "Hủy đơn" trên bảng và modal chi tiết với form bắt buộc nhập lý do hủy.
+     - Cảnh báo rõ ràng: Toàn bộ số lượng tồn kho đang giữ chỗ cho đơn này được TỰ ĐỘNG HOÀN LẠI vào kho khả dụng ngay lập tức.
+     - Trong modal chi tiết, hiển thị lý do hủy và xác nhận đã nhả tồn giữ chỗ đầy đủ.
+  3. **AC3 - Sổ Tồn kho 3 Cột (UI_GUIDELINES.md):**
+     - Xây dựng trang StockListPage tại route /inventory/stock.
+     - 3 thẻ Metric Card tổng hợp: Tồn thực tế (Physical - xám/xanh), Đang giữ chỗ (Reserved - cam/amber), Tồn khả dụng (Available - xanh ngọc).
+     - Bảng sổ tồn kho hiển thị rõ ràng 3 cột theo chuẩn công thức: Tồn khả dụng = Tồn thực tế - Đang giữ chỗ.
+     - Click vào số lượng giữ chỗ mở Modal chi tiết xem danh sách các đơn hàng và số lượng đang giữ chỗ (ACTIVE).
+- **Danh sách file tạo mới / thay đổi (Frontend):**
+  - src/types/inventory.types.ts: Tạo mới các interface StockItem, StockReservation, ApproveOrderResponse, CancelOrderPayload.
+  - src/types/order.ts: Bổ sung các trường cancelReason, approverId, approvedAt, reservedUntil vào interface Order.
+  - src/services/inventory.service.ts: Bổ sung method getStocks() và getReservations().
+  - src/services/orders.service.ts: Bổ sung method approveOrder(orderId) và cancelOrder(orderId, reason).
+  - src/pages/inventory/stock-list-page.tsx: Tạo mới trang Sổ tồn kho 3 cột, 3 metric cards, bộ lọc và modal xem chi tiết đơn giữ chỗ.
+  - src/routes/index.tsx: Cấu hình route /inventory/stock trỏ về StockListPage phân quyền cho Admin, Sales Manager, Sales Rep, Warehouse.
+  - src/pages/orders-page.tsx: Cập nhật OrderStatusBadge hỗ trợ Đã duyệt (Đang giữ chỗ) kèm thời hạn; thêm nút và modal Duyệt đơn & Giữ chỗ 24h; thêm nút và modal Hủy đơn bắt buộc lý do kèm nhả tồn.
+- **Trạng thái kiểm thử:**
+  - Frontend Build: 
+pm run build (	sc -b && vite build) -> 0 lỗi, compile thành công 100%.
