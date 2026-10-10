@@ -601,7 +601,7 @@ export const ordersService = {
     // Kiểm tra tồn khả dụng theo Task SN-42: Kiểm soát tồn khả dụng
     const allStoredOrders = getStoredDemoOrders();
     const demoReservedMap = new Map<string, number>();
-    const activeStatuses = ['PENDING', 'PENDING_APPROVAL', 'APPROVED', 'PROCESSING'];
+    const activeStatuses = ['APPROVED', 'PROCESSING'];
     for (const ord of allStoredOrders) {
       if (!activeStatuses.includes(ord.status || '')) continue;
       for (const l of ord.lines || []) {
@@ -617,9 +617,7 @@ export const ordersService = {
         (line.productSku ? demoReservedMap.get(line.productSku.toUpperCase()) : 0) || 0;
       const physical = prod?.stockQuantity ?? 0;
       const calculatedAvail = Math.max(0, physical - reserved);
-      const available = line.availableStock !== undefined
-        ? Math.min(line.availableStock, calculatedAvail)
-        : (prod ? calculatedAvail : (line.stockAvailable ?? 9999));
+      const available = calculatedAvail;
 
       const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
       const maxInUnit = convRate > 1 ? Math.floor(available / convRate) : available;
@@ -883,7 +881,7 @@ export const ordersService = {
     if (token?.startsWith('demo-jwt-')) {
       const allOrders = getStoredDemoOrders();
       const activeReservedMap = new Map<string, number>();
-      const activeStatuses = ['PENDING', 'PENDING_APPROVAL', 'APPROVED', 'PROCESSING'];
+      const activeStatuses = ['APPROVED', 'PROCESSING'];
       for (const ord of allOrders) {
         if (!activeStatuses.includes(ord.status || '')) continue;
         for (const line of ord.lines || []) {
@@ -925,7 +923,7 @@ export const ordersService = {
       let availableBySku = new Map<string, number>();
       try {
         const stockRows = await inventoryService.getStockOverview();
-        availableBySku = new Map(stockRows.map((stock) => [stock.sku.toUpperCase(), stock.stockQuantity]));
+        availableBySku = new Map(stockRows.map((stock) => [stock.sku.toUpperCase(), (stock as { availableQuantity?: number; stockQuantity?: number }).availableQuantity ?? stock.stockQuantity]));
       } catch {}
 
       return products.map((product) => {
@@ -1115,9 +1113,9 @@ export const ordersService = {
         });
         const updated = (res.data as { data?: Order })?.data ?? (res.data as Order);
         const all = getStoredDemoOrders();
-        const idx = all.findIndex((o) => o.id === orderId);
+        const idx = all.findIndex((o) => o.id === orderId || o.orderCode === orderId);
         if (idx !== -1) {
-          all[idx] = updated;
+          all[idx] = { ...all[idx], ...updated, status: 'CANCELLED', cancelReason: reason.trim() };
           saveStoredDemoOrders(all);
         }
         return updated;
@@ -1134,7 +1132,7 @@ export const ordersService = {
     }
 
     const all = getStoredDemoOrders();
-    const idx = all.findIndex((o) => o.id === orderId);
+    const idx = all.findIndex((o) => o.id === orderId || o.orderCode === orderId);
     if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${orderId}`);
 
     const existing = all[idx];

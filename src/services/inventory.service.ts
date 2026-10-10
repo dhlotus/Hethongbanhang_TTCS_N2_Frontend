@@ -79,31 +79,24 @@ export const inventoryService = {
       stockQuantity: number;
       physicalStockQuantity: number;
       reservedQuantity: number;
+      availableQuantity: number;
       baseUnit: string;
       units: Array<{ unitName: string; conversionRate: number; isBaseUnit: boolean }>;
       warehouse: string;
     }>
   > {
-    const token = tokenStorage.getAccessToken();
-    if (token && token.startsWith('demo-jwt-')) {
-      return MOCK_PRODUCTS.map((p: Product) => ({
-        sku: p.sku,
-        name: p.name,
-        stockQuantity: p.stockQuantity,
-        physicalStockQuantity: p.stockQuantity,
-        reservedQuantity: 0,
-        baseUnit: p.baseUnit,
-        units: (p.units || []).map((u: ProductUnit) => ({
-          unitName: u.unitName,
-          conversionRate: u.conversionRate,
-          isBaseUnit: Boolean(u.isBaseUnit),
-        })),
-        warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
-      }));
-    }
-
-    const response = await apiClient.get('/inventory/stock');
-    return response.data;
+    const stocks = await this.getStocks();
+    return stocks.map((s) => ({
+      sku: s.sku,
+      name: s.name,
+      stockQuantity: s.availableQuantity,
+      physicalStockQuantity: s.physicalQuantity,
+      reservedQuantity: s.reservedQuantity,
+      availableQuantity: s.availableQuantity,
+      baseUnit: s.baseUnit,
+      units: s.units || [],
+      warehouse: s.warehouse,
+    }));
   },
 
   /**
@@ -222,7 +215,17 @@ export const inventoryService = {
   async getReservations(orderId?: string): Promise<StockReservation[]> {
     const token = tokenStorage.getAccessToken();
     if (token && token.startsWith('demo-jwt-')) {
-      return [];
+      const stocks = await this.getStocks();
+      const allRes: StockReservation[] = [];
+      for (const s of stocks) {
+        if (s.activeReservations) {
+          allRes.push(...s.activeReservations);
+        }
+      }
+      if (orderId) {
+        return allRes.filter((r) => r.orderId === orderId);
+      }
+      return allRes;
     }
 
     try {
