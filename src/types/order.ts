@@ -48,6 +48,10 @@ export interface OrderLine {
   lineTotal: number; // Thành tiền = quantity × unitPrice
   stockAvailable?: number; // Tồn khả dụng tham khảo (hiển thị UI)
   minPrice?: number;
+  deliveredQuantity?: number; // Số lượng thực tế đã giao (SN-170)
+  deliveredBaseQuantity?: number; // Số lượng cơ sở thực tế đã giao
+  isShortDelivery?: boolean; // Cờ báo dòng hàng bị giao thiếu
+  shortDeliveryReason?: string; // Lý do giao thiếu
   requiresApproval?: boolean;
   availableStock?: number; // Tồn khả dụng (SN-39)
   priceListId?: string;
@@ -58,10 +62,6 @@ export interface OrderLine {
   manualPrice?: string;
   pricingLoading?: boolean;
   pricingError?: string;
-  deliveredQuantity?: number;
-  deliveredBaseQuantity?: number;
-  isShortDelivery?: boolean;
-  shortDeliveryReason?: string;
 }
 
 /** Alias cho OrderLine phục vụ tính tương thích (SN-38 / SN-39) */
@@ -198,7 +198,15 @@ export interface CustomerDebtStatus {
   warningMessage?: string;
 }
 
-/** Kiểu dữ liệu Đặt lại đơn hàng theo giá hiện hành (SN-174) */
+/** Mặt hàng ngừng kinh doanh khi đặt lại đơn (SN-174) */
+export interface DiscontinuedProductItem {
+  lineId?: string;
+  productSku: string;
+  productName: string;
+  reason?: string;
+}
+
+/** Mặt hàng khả dụng trong bản xem trước đặt lại đơn (SN-174) */
 export interface ReorderPreviewItem {
   lineId: string;
   productId: string;
@@ -215,25 +223,20 @@ export interface ReorderPreviewItem {
   isPriceChanged: boolean;
 }
 
-export interface DiscontinuedProductItem {
-  lineId?: string;
-  productSku: string;
-  productName: string;
-  reason: string;
-}
-
+/** Dữ liệu xem trước khi đặt lại đơn hàng cũ (SN-174) */
 export interface ReorderPreviewResponse {
   orderId: string;
   orderCode: string;
   customerId: string;
   customerName: string;
-  customerGroup: string;
+  customerGroup?: string;
   deliveryPoint?: DeliveryPoint;
   availableItems: ReorderPreviewItem[];
   discontinuedItems: DiscontinuedProductItem[];
   warningMessage?: string;
 }
 
+/** Payload gửi lên khi đặt lại đơn hàng (SN-174) */
 export interface ReorderPayload {
   selectedLineIds?: string[];
   items?: Array<{ productSku: string; quantity: number }>;

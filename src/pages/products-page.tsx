@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
@@ -41,6 +41,138 @@ import type {
   InventoryTransaction,
 } from '../types/products';
 
+// ──────────────────────────────────────────────────────────────────────────
+// QUERY PARAM MAPPINGS CHO DANH MỤC SẢN PHẨM (URL STATE MANAGEMENT)
+// ──────────────────────────────────────────────────────────────────────────
+
+const STATUS_TO_PARAM: Record<ProductStatus, string> = {
+  ACTIVE: 'active',
+  INACTIVE: 'inactive',
+};
+
+const PARAM_TO_STATUS: Record<string, ProductStatus> = {
+  active: 'ACTIVE',
+  inactive: 'INACTIVE',
+};
+
+const parseStatusParam = (param: string | null): ProductStatus | 'ALL' => {
+  if (!param) return 'ALL';
+  const lower = param.toLowerCase().trim();
+  return PARAM_TO_STATUS[lower] || 'ALL';
+};
+
+/**
+ * Tạo slug chuẩn cho Nhóm hàng Cấp 1 để hiển thị đẹp trên URL (ví dụ c1_milk)
+ */
+const getCategoryParamSlug = (cat: ProductCategory): string => {
+  if (cat.code) {
+    return `c1_${cat.code.toLowerCase().replace(/-/g, '_')}`;
+  }
+  if (cat.id) {
+    return cat.id.replace(/^cat-/, 'c1_').replace(/-/g, '_');
+  }
+  return cat.name;
+};
+
+/**
+ * Tạo slug chuẩn cho Nhóm hàng Cấp 2 (ví dụ milk_powder)
+ */
+const getSubCategoryParamSlug = (sub: ProductCategory): string => {
+  if (sub.code) {
+    return sub.code.toLowerCase().replace(/-/g, '_');
+  }
+  if (sub.id) {
+    return sub.id.replace(/^cat-/, '').replace(/-/g, '_');
+  }
+  return sub.name;
+};
+
+/**
+ * Phân tích và truy vết nhóm hàng từ param `category` hoặc `categoryId`
+ */
+const resolveCategoryFromParam = (
+  paramVal: string | null,
+  categories: ProductCategory[]
+): { parentCategory: string; subCategory: string; categoryId: string } | null => {
+  if (!paramVal || paramVal === 'ALL') return null;
+  const raw = paramVal.trim();
+  const lower = raw.toLowerCase();
+  const clean = lower.replace(/^c1_|^c2_|^cat-/, '').replace(/-/g, '_');
+
+  for (const c1 of categories) {
+    const c1Code = (c1.code || '').toLowerCase().replace(/-/g, '_');
+    const c1Id = (c1.id || '').toLowerCase().replace(/^cat-/, '').replace(/-/g, '_');
+    const c1Name = c1.name.toLowerCase();
+
+    // Khớp Cấp 1
+    if (
+      lower === c1.id.toLowerCase() ||
+      lower === (c1.code || '').toLowerCase() ||
+      lower === `c1_${c1Code}` ||
+      clean === c1Code ||
+      clean === c1Id ||
+      lower === c1Name ||
+      raw === c1.name
+    ) {
+      return { parentCategory: c1.name, subCategory: 'ALL', categoryId: c1.id };
+    }
+
+    // Khớp Cấp 2
+    for (const c2 of c1.subCategories || c1.children || []) {
+      const c2Code = (c2.code || '').toLowerCase().replace(/-/g, '_');
+      const c2Id = (c2.id || '').toLowerCase().replace(/^cat-/, '').replace(/-/g, '_');
+      const c2Name = c2.name.toLowerCase();
+
+      if (
+        lower === c2.id.toLowerCase() ||
+        lower === (c2.code || '').toLowerCase() ||
+        clean === c2Code ||
+        clean === c2Id ||
+        clean === `${c1Code}_${c2Code}` ||
+        lower === c2Name ||
+        raw === c2.name
+      ) {
+        return { parentCategory: c1.name, subCategory: c2.name, categoryId: c2.id };
+      }
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Phân tích nhóm hàng Cấp 2 từ param `subCategory`
+ */
+const resolveSubCategoryFromParam = (
+  subParamVal: string | null,
+  parentName: string,
+  categories: ProductCategory[]
+): string => {
+  if (!subParamVal || subParamVal === 'ALL') return 'ALL';
+  const parent = categories.find((c) => c.name === parentName);
+  if (!parent) return 'ALL';
+
+  const raw = subParamVal.trim();
+  const lower = raw.toLowerCase();
+  const clean = lower.replace(/^c2_|^cat-/, '').replace(/-/g, '_');
+
+  for (const sub of parent.subCategories || parent.children || []) {
+    const subCode = (sub.code || '').toLowerCase().replace(/-/g, '_');
+    const subId = (sub.id || '').toLowerCase().replace(/^cat-/, '').replace(/-/g, '_');
+    if (
+      lower === sub.id.toLowerCase() ||
+      lower === (sub.code || '').toLowerCase() ||
+      clean === subCode ||
+      clean === subId ||
+      lower === sub.name.toLowerCase() ||
+      raw === sub.name
+    ) {
+      return sub.name;
+    }
+  }
+  return 'ALL';
+};
+
 const formatCurrency = (val?: number): string => {
   if (val === undefined || val === null) return '---';
   return new Intl.NumberFormat('vi-VN', {
@@ -50,31 +182,52 @@ const formatCurrency = (val?: number): string => {
 };
 
 export const ProductsPage: React.FC = () => {
+  // URL Query Params & State Management
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Khôi phục giá trị ban đầu từ URL Query Parameters
+  const initialSearch = searchParams.get('search') || searchParams.get('sku') || '';
+  const initialStatus = parseStatusParam(searchParams.get('status'));
+  const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+
+  // Suy luận nhóm hàng ban đầu từ URL
+  const rawCatParam =
+    searchParams.get('category') ||
+    searchParams.get('categoryId') ||
+    searchParams.get('parentCategory');
+  const rawSubParam = searchParams.get('subCategory');
+
+  const initialCatResolved = resolveCategoryFromParam(rawCatParam, PRODUCT_CATEGORIES);
+  const initialParentCategory = initialCatResolved
+    ? initialCatResolved.parentCategory
+    : searchParams.get('parentCategory') || 'ALL';
+  const initialSubCategory = initialCatResolved
+    ? (rawSubParam
+        ? resolveSubCategoryFromParam(rawSubParam, initialParentCategory, PRODUCT_CATEGORIES)
+        : initialCatResolved.subCategory)
+    : searchParams.get('subCategory') || 'ALL';
+  const initialCategoryId = initialCatResolved
+    ? initialCatResolved.categoryId
+    : searchParams.get('categoryId') || 'ALL';
+
   // Dữ liệu sản phẩm & Phân trang
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage);
   const [limit, setLimit] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
-
-  // URL Query Params (Hỗ trợ mở từ Cây danh mục)
-  const [searchParams, setSearchParams] = useSearchParams();
-  const urlCategoryId = searchParams.get('categoryId');
-  const urlSearch = searchParams.get('search') || searchParams.get('sku') || '';
-  const urlParentCategory = searchParams.get('parentCategory');
-  const urlSubCategory = searchParams.get('subCategory');
 
   // Danh mục phân cấp động
   const [categoriesList, setCategoriesList] = useState<ProductCategory[]>(PRODUCT_CATEGORIES);
 
   // Bộ lọc & Tìm kiếm (Debounced)
-  const [searchInput, setSearchInput] = useState(urlSearch);
-  const [searchTerm, setSearchTerm] = useState(urlSearch);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(urlCategoryId || 'ALL');
-  const [selectedParentCategory, setSelectedParentCategory] = useState(urlParentCategory || 'ALL');
-  const [selectedSubCategory, setSelectedSubCategory] = useState(urlSubCategory || 'ALL');
-  const [selectedStatus, setSelectedStatus] = useState<ProductStatus | 'ALL'>('ALL');
+  const [searchInput, setSearchInput] = useState(initialSearch);
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(initialCategoryId);
+  const [selectedParentCategory, setSelectedParentCategory] = useState<string>(initialParentCategory);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string>(initialSubCategory);
+  const [selectedStatus, setSelectedStatus] = useState<ProductStatus | 'ALL'>(initialStatus);
 
   // Drawer bộ lọc nâng cao cho Mobile & Tablet (< lg)
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
@@ -164,65 +317,213 @@ export const ProductsPage: React.FC = () => {
     };
   }, []);
 
-  // Cập nhật bộ lọc khi URL query params thay đổi
+  // Cập nhật query parameters an toàn lên URL mà không reload lại toàn bộ trang
+  const updateUrlParams = useCallback(
+    (updates: {
+      parentCategory?: string;
+      subCategory?: string;
+      status?: ProductStatus | 'ALL';
+      search?: string;
+      page?: number;
+    }) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+
+          // 1. Nhóm hàng Cấp 1 (?category=c1_milk)
+          const targetParent =
+            updates.parentCategory !== undefined ? updates.parentCategory : selectedParentCategory;
+          if (targetParent && targetParent !== 'ALL') {
+            const foundCat = categoriesList.find((c) => c.name === targetParent);
+            if (foundCat) {
+              next.set('category', getCategoryParamSlug(foundCat));
+            } else {
+              next.set('category', targetParent);
+            }
+          } else {
+            next.delete('category');
+            next.delete('categoryId');
+            next.delete('parentCategory');
+          }
+
+          // 2. Nhóm hàng Cấp 2 (?subCategory=milk_powder)
+          const targetSub =
+            updates.subCategory !== undefined ? updates.subCategory : selectedSubCategory;
+          if (targetParent && targetParent !== 'ALL' && targetSub && targetSub !== 'ALL') {
+            const parentCat = categoriesList.find((c) => c.name === targetParent);
+            const foundSub = (parentCat?.subCategories || parentCat?.children || []).find(
+              (s) => s.name === targetSub
+            );
+            if (foundSub) {
+              next.set('subCategory', getSubCategoryParamSlug(foundSub));
+            } else {
+              next.set('subCategory', targetSub);
+            }
+          } else {
+            next.delete('subCategory');
+          }
+
+          // 3. Trạng thái kinh doanh (?status=active|inactive)
+          const targetStatus = updates.status !== undefined ? updates.status : selectedStatus;
+          if (targetStatus && targetStatus !== 'ALL' && STATUS_TO_PARAM[targetStatus]) {
+            next.set('status', STATUS_TO_PARAM[targetStatus]);
+          } else {
+            next.delete('status');
+          }
+
+          // 4. Từ khóa tìm kiếm (?search=...)
+          const targetSearch = updates.search !== undefined ? updates.search : searchTerm;
+          const trimmed = targetSearch.trim();
+          if (trimmed) {
+            next.set('search', trimmed);
+          } else {
+            next.delete('search');
+            next.delete('sku');
+          }
+
+          // 5. Phân trang (?page=...)
+          const targetPage = updates.page !== undefined ? updates.page : page;
+          if (targetPage > 1) {
+            next.set('page', String(targetPage));
+          } else {
+            next.delete('page');
+          }
+
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [
+      setSearchParams,
+      selectedParentCategory,
+      selectedSubCategory,
+      selectedStatus,
+      searchTerm,
+      page,
+      categoriesList,
+    ]
+  );
+
+  const isInitialSearchMount = useRef(true);
+
+  // Debounce tìm kiếm 400ms để không gây giật lag và không spam URL history
   useEffect(() => {
-    const s = searchParams.get('search') || searchParams.get('sku') || '';
-    if (s) {
-      setSearchInput(s);
-      setSearchTerm(s);
+    if (isInitialSearchMount.current) {
+      isInitialSearchMount.current = false;
+      return;
     }
-    const cId = searchParams.get('categoryId');
-    if (cId) setSelectedCategoryId(cId);
 
-    const pCat = searchParams.get('parentCategory');
-    if (pCat) setSelectedParentCategory(pCat);
+    const timer = setTimeout(() => {
+      const trimmed = searchInput.trim();
+      if (trimmed !== searchTerm) {
+        setSearchTerm(trimmed);
+        setPage(1);
+        updateUrlParams({ search: trimmed, page: 1 });
+      }
+    }, 400);
 
-    const sCat = searchParams.get('subCategory');
-    if (sCat) setSelectedSubCategory(sCat);
-  }, [searchParams]);
+    return () => clearTimeout(timer);
+  }, [searchInput, searchTerm, updateUrlParams]);
 
-  // Tự động suy luận Cấp 1 và Cấp 2 khi danh mục tải về từ backend
+  // Lắng nghe thay đổi của URL Search Params (khi F5, bấm link chia sẻ hoặc Back/Forward trên browser)
+  useEffect(() => {
+    const rawCat =
+      searchParams.get('category') ||
+      searchParams.get('categoryId') ||
+      searchParams.get('parentCategory');
+    const rawSub = searchParams.get('subCategory');
+
+    const resolved = resolveCategoryFromParam(rawCat, categoriesList);
+    if (resolved) {
+      if (resolved.parentCategory !== selectedParentCategory) {
+        setSelectedParentCategory(resolved.parentCategory);
+      }
+      const finalSub = rawSub
+        ? resolveSubCategoryFromParam(rawSub, resolved.parentCategory, categoriesList)
+        : resolved.subCategory;
+      if (finalSub !== selectedSubCategory) {
+        setSelectedSubCategory(finalSub);
+      }
+      if (resolved.categoryId !== selectedCategoryId) {
+        setSelectedCategoryId(resolved.categoryId);
+      }
+    } else if (!rawCat) {
+      if (selectedParentCategory !== 'ALL') setSelectedParentCategory('ALL');
+      if (selectedSubCategory !== 'ALL') setSelectedSubCategory('ALL');
+      if (selectedCategoryId !== 'ALL') setSelectedCategoryId('ALL');
+    }
+
+    const urlStatus = parseStatusParam(searchParams.get('status'));
+    if (urlStatus !== selectedStatus) {
+      setSelectedStatus(urlStatus);
+    }
+
+    const urlSearch = searchParams.get('search') || searchParams.get('sku') || '';
+    if (urlSearch !== searchTerm) {
+      setSearchTerm(urlSearch);
+      setSearchInput(urlSearch);
+    }
+
+    const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    if (urlPage !== page) {
+      setPage(urlPage);
+    }
+  }, [searchParams, categoriesList]);
+
+  // Tự động phân giải nhóm hàng khi danh mục tải về từ Backend
   useEffect(() => {
     if (!categoriesList || categoriesList.length === 0) return;
-    const cId = searchParams.get('categoryId');
-    if (!cId || cId === 'ALL') return;
+    const rawCat =
+      searchParams.get('category') ||
+      searchParams.get('categoryId') ||
+      searchParams.get('parentCategory');
+    if (!rawCat || rawCat === 'ALL') return;
 
-    for (const c1 of categoriesList) {
-      if (c1.id === cId || c1.code === cId) {
-        setSelectedParentCategory(c1.name);
-        return;
-      }
-      for (const c2 of c1.subCategories || c1.children || []) {
-        if (c2.id === cId || c2.code === cId) {
-          setSelectedParentCategory(c1.name);
-          setSelectedSubCategory(c2.name);
-          return;
-        }
-        for (const c3 of c2.subCategories || c2.children || []) {
-          if (c3.id === cId || c3.code === cId) {
-            setSelectedParentCategory(c1.name);
-            setSelectedSubCategory(c2.name);
-            return;
-          }
-        }
-      }
+    const resolved = resolveCategoryFromParam(rawCat, categoriesList);
+    if (resolved) {
+      setSelectedParentCategory(resolved.parentCategory);
+      const rawSub = searchParams.get('subCategory');
+      const finalSub = rawSub
+        ? resolveSubCategoryFromParam(rawSub, resolved.parentCategory, categoriesList)
+        : resolved.subCategory;
+      setSelectedSubCategory(finalSub);
+      setSelectedCategoryId(resolved.categoryId);
     }
   }, [categoriesList, searchParams]);
 
-  // Debounce tìm kiếm sau 300ms
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setSearchTerm(searchInput.trim());
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [searchInput]);
+  // Handlers thay đổi bộ lọc & phân trang
+  const handleParentCategoryChange = (newParent: string) => {
+    setSelectedParentCategory(newParent);
+    setSelectedSubCategory('ALL');
+    setSelectedCategoryId('ALL');
+    setPage(1);
+    updateUrlParams({ parentCategory: newParent, subCategory: 'ALL', page: 1 });
+  };
+
+  const handleSubCategoryChange = (newSub: string) => {
+    setSelectedSubCategory(newSub);
+    setSelectedCategoryId('ALL');
+    setPage(1);
+    updateUrlParams({ subCategory: newSub, page: 1 });
+  };
+
+  const handleStatusChange = (newStatus: ProductStatus | 'ALL') => {
+    setSelectedStatus(newStatus);
+    setPage(1);
+    updateUrlParams({ status: newStatus, page: 1 });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    updateUrlParams({ page: newPage });
+  };
 
   // Danh sách Nhóm hàng Cấp 2 tương ứng theo Cấp 1 đang chọn
   const subCategoriesForFilter = useMemo(() => {
     if (selectedParentCategory === 'ALL') return [];
     const found = categoriesList.find((c) => c.name === selectedParentCategory);
-    return found?.subCategories || [];
+    return found?.subCategories || found?.children || [];
   }, [selectedParentCategory, categoriesList]);
 
   // Đếm số lượng bộ lọc nâng cao đang được kích hoạt (không tính tìm kiếm văn bản)
@@ -243,8 +544,8 @@ export const ProductsPage: React.FC = () => {
     setSelectedCategoryId('ALL');
     setSearchInput('');
     setSearchTerm('');
-    setSearchParams({});
     setPage(1);
+    setSearchParams({}, { replace: true });
   }, [setSearchParams]);
 
   // Tải danh sách sản phẩm từ Service
@@ -255,7 +556,7 @@ export const ProductsPage: React.FC = () => {
         page,
         limit,
         search: searchTerm,
-        categoryId: selectedCategoryId !== 'ALL' ? selectedCategoryId : urlCategoryId || undefined,
+        categoryId: selectedCategoryId !== 'ALL' ? selectedCategoryId : undefined,
         parentCategory: selectedParentCategory !== 'ALL' ? selectedParentCategory : undefined,
         subCategory: selectedSubCategory !== 'ALL' ? selectedSubCategory : undefined,
         status: selectedStatus !== 'ALL' ? selectedStatus : undefined,
@@ -280,7 +581,6 @@ export const ProductsPage: React.FC = () => {
     limit,
     searchTerm,
     selectedCategoryId,
-    urlCategoryId,
     selectedParentCategory,
     selectedSubCategory,
     selectedStatus,
@@ -498,8 +798,14 @@ export const ProductsPage: React.FC = () => {
             {searchInput && (
               <button
                 type="button"
-                onClick={() => setSearchInput('')}
+                onClick={() => {
+                  setSearchInput('');
+                  setSearchTerm('');
+                  setPage(1);
+                  updateUrlParams({ search: '', page: 1 });
+                }}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                title="Xóa từ khóa tìm kiếm"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -542,8 +848,14 @@ export const ProductsPage: React.FC = () => {
             {searchInput && (
               <button
                 type="button"
-                onClick={() => setSearchInput('')}
+                onClick={() => {
+                  setSearchInput('');
+                  setSearchTerm('');
+                  setPage(1);
+                  updateUrlParams({ search: '', page: 1 });
+                }}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                title="Xóa từ khóa tìm kiếm"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -554,12 +866,7 @@ export const ProductsPage: React.FC = () => {
           <div className="relative">
             <select
               value={selectedParentCategory}
-              onChange={(e) => {
-                setSelectedParentCategory(e.target.value);
-                setSelectedSubCategory('ALL');
-                setSelectedCategoryId('ALL');
-                setPage(1);
-              }}
+              onChange={(e) => handleParentCategoryChange(e.target.value)}
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
             >
               <option value="ALL">Tất cả Nhóm Cấp 1</option>
@@ -575,11 +882,7 @@ export const ProductsPage: React.FC = () => {
           <div className="relative">
             <select
               value={selectedSubCategory}
-              onChange={(e) => {
-                setSelectedSubCategory(e.target.value);
-                setSelectedCategoryId('ALL');
-                setPage(1);
-              }}
+              onChange={(e) => handleSubCategoryChange(e.target.value)}
               disabled={selectedParentCategory === 'ALL' || subCategoriesForFilter.length === 0}
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer"
             >
@@ -598,10 +901,7 @@ export const ProductsPage: React.FC = () => {
           <div className="relative">
             <select
               value={selectedStatus}
-              onChange={(e) => {
-                setSelectedStatus(e.target.value as ProductStatus | 'ALL');
-                setPage(1);
-              }}
+              onChange={(e) => handleStatusChange(e.target.value as ProductStatus | 'ALL')}
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
             >
               <option value="ALL">Tất cả Trạng thái</option>
@@ -611,25 +911,85 @@ export const ProductsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Tổng kết kết quả & Đặt lại bộ lọc */}
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
-          <div>
+        {/* Tổng kết kết quả & Đặt lại bộ lọc & Filter Badges */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
+          <div className="flex flex-wrap items-center gap-1.5">
             {activeFilterCount > 0 || searchTerm ? (
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-medium transition-all cursor-pointer"
-                title="Đặt lại toàn bộ bộ lọc"
-              >
-                <RotateCcw className="h-3 w-3" />
-                <span>Đặt lại bộ lọc</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-medium transition-all cursor-pointer mr-1"
+                  title="Đặt lại toàn bộ bộ lọc"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  <span>Đặt lại bộ lọc</span>
+                </button>
+
+                {/* Chips hiển thị trực quan các bộ lọc URL đang active */}
+                {selectedParentCategory !== 'ALL' && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-semibold">
+                    <span>Cấp 1: {selectedParentCategory}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleParentCategoryChange('ALL')}
+                      className="hover:text-blue-900 cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+
+                {selectedSubCategory !== 'ALL' && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-semibold">
+                    <span>Cấp 2: {selectedSubCategory}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleSubCategoryChange('ALL')}
+                      className="hover:text-indigo-900 cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+
+                {selectedStatus !== 'ALL' && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-semibold">
+                    <span>Trạng thái: {selectedStatus === 'ACTIVE' ? 'Đang KD' : 'Ngừng KD'}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleStatusChange('ALL')}
+                      className="hover:text-amber-900 cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+
+                {searchTerm && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-semibold">
+                    <span>Tìm: &ldquo;{searchTerm}&rdquo;</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchInput('');
+                        setSearchTerm('');
+                        setPage(1);
+                        updateUrlParams({ search: '', page: 1 });
+                      }}
+                      className="hover:text-slate-900 cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+              </>
             ) : (
               <span className="text-slate-400 italic">Tất cả sản phẩm</span>
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 font-medium shrink-0">
+          <div className="flex items-center gap-1.5 font-medium shrink-0 ml-auto">
             <Boxes className="h-4 w-4 text-slate-400" />
             <span>
               Tìm thấy: <strong>{total}</strong> SKU sản phẩm
@@ -1277,7 +1637,7 @@ export const ProductsPage: React.FC = () => {
                 value={limit}
                 onChange={(e) => {
                   setLimit(Number(e.target.value));
-                  setPage(1);
+                  handlePageChange(1);
                 }}
                 className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
               >
@@ -1292,7 +1652,7 @@ export const ProductsPage: React.FC = () => {
             <button
               type="button"
               disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              onClick={() => handlePageChange(Math.max(1, page - 1))}
               className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -1312,7 +1672,7 @@ export const ProductsPage: React.FC = () => {
                       )}
                       <button
                         type="button"
-                        onClick={() => setPage(p)}
+                        onClick={() => handlePageChange(p)}
                         className={`h-7 min-w-7 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                           page === p
                             ? 'bg-blue-600 text-white shadow-2xs shadow-blue-600/30'
@@ -1329,7 +1689,7 @@ export const ProductsPage: React.FC = () => {
             <button
               type="button"
               disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
               className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
             >
               <span>Sau</span>
@@ -1861,12 +2221,7 @@ export const ProductsPage: React.FC = () => {
                   </label>
                   <select
                     value={selectedParentCategory}
-                    onChange={(e) => {
-                      setSelectedParentCategory(e.target.value);
-                      setSelectedSubCategory('ALL');
-                      setSelectedCategoryId('ALL');
-                      setPage(1);
-                    }}
+                    onChange={(e) => handleParentCategoryChange(e.target.value)}
                     className="w-full h-11 px-3.5 text-xs rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
                   >
                     <option value="ALL">Tất cả Nhóm Cấp 1</option>
@@ -1885,11 +2240,7 @@ export const ProductsPage: React.FC = () => {
                   </label>
                   <select
                     value={selectedSubCategory}
-                    onChange={(e) => {
-                      setSelectedSubCategory(e.target.value);
-                      setSelectedCategoryId('ALL');
-                      setPage(1);
-                    }}
+                    onChange={(e) => handleSubCategoryChange(e.target.value)}
                     disabled={
                       selectedParentCategory === 'ALL' || subCategoriesForFilter.length === 0
                     }
@@ -1915,10 +2266,7 @@ export const ProductsPage: React.FC = () => {
                   </label>
                   <select
                     value={selectedStatus}
-                    onChange={(e) => {
-                      setSelectedStatus(e.target.value as ProductStatus | 'ALL');
-                      setPage(1);
-                    }}
+                    onChange={(e) => handleStatusChange(e.target.value as ProductStatus | 'ALL')}
                     className="w-full h-11 px-3.5 text-xs rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
                   >
                     <option value="ALL">Tất cả Trạng thái</option>
@@ -1941,7 +2289,7 @@ export const ProductsPage: React.FC = () => {
                       type="button"
                       onClick={() => {
                         setSelectedCategoryId('ALL');
-                        setSearchParams({});
+                        updateUrlParams({ parentCategory: 'ALL', subCategory: 'ALL', page: 1 });
                       }}
                       className="inline-flex items-center gap-1 text-xs text-blue-700 underline font-semibold hover:text-blue-900 cursor-pointer pt-1"
                     >
