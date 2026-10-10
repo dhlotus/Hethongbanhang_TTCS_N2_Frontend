@@ -339,7 +339,7 @@ export function saveStoredCustomers(customers: Customer[]): void {
 /**
  * Lọc danh sách đại lý từ kho lưu trữ đồng bộ
  */
-function filterDemoCustomers(params: CustomerFilterParams = {}): PaginatedCustomersResponse {
+export function filterDemoCustomers(params: CustomerFilterParams = {}): PaginatedCustomersResponse {
   let list = getStoredCustomers();
 
   // RBAC Scoping cho chế độ demo / offline
@@ -464,9 +464,30 @@ export const customerService = {
   },
 
   /**
-   * Lấy danh sách đại lý có hỗ trợ tìm kiếm nhanh & lọc đa tiêu chí phân trang (SN-37)
+   * Lấy danh sách đại lý có hỗ trợ tìm kiếm nhanh & lọc đa tiêu chí phân trang Server-side (SN-37)
    */
   async getCustomers(params: CustomerFilterParams = {}): Promise<PaginatedCustomersResponse> {
+    const cleanParams: Record<string, string | number> = {
+      page: params.page || 1,
+      limit: params.limit || 20,
+    };
+
+    if (params.search && params.search.trim()) {
+      cleanParams.search = params.search.trim();
+    }
+    if (params.region && params.region !== 'ALL') {
+      cleanParams.region = params.region.trim();
+    }
+    if (params.customerGroup && params.customerGroup !== 'ALL') {
+      cleanParams.customerGroup = params.customerGroup.trim();
+    }
+    if (params.status && (params.status as string) !== 'ALL') {
+      cleanParams.status = params.status;
+    }
+    if (params.salesRepId && params.salesRepId !== 'ALL') {
+      cleanParams.salesRepId = params.salesRepId.trim();
+    }
+
     const token = tokenStorage.getAccessToken();
     if (token?.startsWith('demo-jwt-')) {
       return filterDemoCustomers(params);
@@ -474,14 +495,14 @@ export const customerService = {
 
     try {
       const res = await apiClient.get<PaginatedCustomersResponse | Customer[]>('/customers', {
-        params,
+        params: cleanParams,
       });
 
       // Nếu backend trả về mảng trực tiếp (phiên bản cũ)
       if (Array.isArray(res.data)) {
         const total = res.data.length;
-        const page = params.page || 1;
-        const limit = params.limit || 20;
+        const page = Number(cleanParams.page) || 1;
+        const limit = Number(cleanParams.limit) || 20;
         if (res.data.length > 0) {
           saveStoredCustomers(res.data);
         }
@@ -498,7 +519,13 @@ export const customerService = {
       if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
         saveStoredCustomers(res.data.data);
       }
-      return res.data;
+      return {
+        data: res.data.data || [],
+        total: typeof res.data.total === 'number' ? res.data.total : (res.data.data?.length || 0),
+        page: res.data.page || Number(cleanParams.page) || 1,
+        limit: res.data.limit || Number(cleanParams.limit) || 20,
+        totalPages: res.data.totalPages || 1,
+      };
     } catch {
       // Fallback an toàn khi offline hoặc dev demo
       return filterDemoCustomers(params);

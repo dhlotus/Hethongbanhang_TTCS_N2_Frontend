@@ -122,9 +122,11 @@ export const CustomersPage: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>(initialStatus);
   const [selectedRegion, setSelectedRegion] = useState<string>(initialRegion);
 
-  // Phân trang danh sách đại lý (10 - 20 - 50 dòng/trang)
+  // Phân trang danh sách đại lý (10 - 20 - 50 dòng/trang) - Server-side
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
   const [pageSize, setPageSize] = useState<number>(10);
+  const [totalItems, setTotalItems] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(1);
 
   // Modal quản lý điểm giao hàng (SN-31 & SN-32)
   const [selectedCustomerForDelivery, setSelectedCustomerForDelivery] = useState<Customer | null>(
@@ -249,27 +251,80 @@ export const CustomersPage: React.FC = () => {
     [setSearchParams, selectedRegion, selectedGroup, selectedStatus, searchTerm, currentPage]
   );
 
+  // Tải danh sách đại lý từ Server-side API theo đầy đủ bộ lọc (SN-37 & Server-Side Pagination)
+  const loadCustomers = useCallback(
+    async (params?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      region?: string;
+      customerGroup?: string;
+      status?: string;
+    }) => {
+      try {
+        setLoading(true);
+        const targetPage = params?.page !== undefined ? params.page : currentPage;
+        const targetLimit = params?.limit !== undefined ? params.limit : pageSize;
+        const targetSearch = params?.search !== undefined ? params.search : searchTerm;
+        const targetRegion = params?.region !== undefined ? params.region : selectedRegion;
+        const targetGroup =
+          params?.customerGroup !== undefined ? params.customerGroup : selectedGroup;
+        const targetStatus = params?.status !== undefined ? params.status : selectedStatus;
+
+        const res = await customerService.getCustomers({
+          page: targetPage,
+          limit: targetLimit,
+          search: targetSearch.trim() || undefined,
+          region: targetRegion !== 'ALL' ? targetRegion : undefined,
+          customerGroup: targetGroup !== 'ALL' ? targetGroup : undefined,
+          status: targetStatus !== 'ALL' ? targetStatus : undefined,
+        });
+
+        setCustomers(res.data || []);
+        setTotalItems(typeof res.total === 'number' ? res.total : (res.data ? res.data.length : 0));
+        setTotalPages(res.totalPages || 1);
+      } catch {
+        showToast('error', 'Lỗi tải dữ liệu', 'Không thể nạp danh sách đại lý từ hệ thống.');
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [currentPage, pageSize, searchTerm, selectedRegion, selectedGroup, selectedStatus]
+  );
+
   const handleRegionChange = (newRegion: string) => {
     setSelectedRegion(newRegion);
     setCurrentPage(1);
     updateUrlParams({ region: newRegion, page: 1 });
+    void loadCustomers({ region: newRegion, page: 1 });
   };
 
   const handleGroupChange = (newGroup: string) => {
     setSelectedGroup(newGroup);
     setCurrentPage(1);
     updateUrlParams({ group: newGroup, page: 1 });
+    void loadCustomers({ customerGroup: newGroup, page: 1 });
   };
 
   const handleStatusChange = (newStatus: string) => {
     setSelectedStatus(newStatus);
     setCurrentPage(1);
     updateUrlParams({ status: newStatus, page: 1 });
+    void loadCustomers({ status: newStatus, page: 1 });
   };
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
     updateUrlParams({ page: newPage });
+    void loadCustomers({ page: newPage });
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    updateUrlParams({ page: 1 });
+    void loadCustomers({ limit: newSize, page: 1 });
   };
 
   const handleResetFilters = () => {
@@ -280,11 +335,18 @@ export const CustomersPage: React.FC = () => {
     setSelectedRegion('ALL');
     setCurrentPage(1);
     setSearchParams({}, { replace: true });
+    void loadCustomers({
+      page: 1,
+      search: '',
+      region: 'ALL',
+      customerGroup: 'ALL',
+      status: 'ALL',
+    });
   };
 
   const isInitialSearchMount = useRef(true);
 
-  // Debounce tìm kiếm (400ms) để không gây spam URL và giật lag giao diện
+  // Debounce tìm kiếm (400ms) để gọi Server-side search không spam request
   useEffect(() => {
     if (isInitialSearchMount.current) {
       isInitialSearchMount.current = false;
@@ -297,66 +359,71 @@ export const CustomersPage: React.FC = () => {
         setSearchTerm(trimmed);
         setCurrentPage(1);
         updateUrlParams({ search: trimmed, page: 1 });
+        void loadCustomers({ search: trimmed, page: 1 });
       }
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [searchInput, searchTerm, updateUrlParams]);
+  }, [searchInput, searchTerm, updateUrlParams, loadCustomers]);
 
   // Lắng nghe thay đổi của URL Search Params (khi F5, dán link hoặc Back/Forward trên browser)
   useEffect(() => {
     const urlRegion = parseRegionParam(searchParams.get('region'));
+    const urlGroup = parseGroupParam(searchParams.get('group'));
+    const urlStatus = parseStatusParam(searchParams.get('status'));
+    const urlSearch = searchParams.get('search') || '';
+    const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+
+    let changed = false;
     if (urlRegion !== selectedRegion) {
       setSelectedRegion(urlRegion);
+      changed = true;
     }
-
-    const urlGroup = parseGroupParam(searchParams.get('group'));
     if (urlGroup !== selectedGroup) {
       setSelectedGroup(urlGroup);
+      changed = true;
     }
-
-    const urlStatus = parseStatusParam(searchParams.get('status'));
     if (urlStatus !== selectedStatus) {
       setSelectedStatus(urlStatus);
+      changed = true;
     }
-
-    const urlSearch = searchParams.get('search') || '';
     if (urlSearch !== searchTerm) {
       setSearchTerm(urlSearch);
       setSearchInput(urlSearch);
+      changed = true;
     }
-
-    const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
     if (urlPage !== currentPage) {
       setCurrentPage(urlPage);
+      changed = true;
+    }
+
+    if (changed) {
+      void loadCustomers({
+        region: urlRegion,
+        customerGroup: urlGroup,
+        status: urlStatus,
+        search: urlSearch,
+        page: urlPage,
+      });
     }
   }, [searchParams]);
 
-  // Tải danh sách đại lý từ API / Persistent Storage
-  const loadCustomers = useCallback(async (keyword?: string) => {
-    try {
-      setLoading(true);
-      const res = await customerService.getCustomers({
-        search: keyword,
-        limit: 100,
-      });
-      setCustomers(res.data || []);
-    } catch {
-      showToast('error', 'Lỗi tải dữ liệu', 'Không thể nạp danh sách đại lý từ hệ thống.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
+  // Khởi tạo tải dữ liệu lần đầu với các tham số từ URL
   useEffect(() => {
-    loadCustomers(initialSearch || undefined);
-  }, [loadCustomers]);
+    void loadCustomers({
+      search: initialSearch || undefined,
+      region: initialRegion,
+      customerGroup: initialGroup,
+      status: initialStatus,
+      page: initialPage,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Lắng nghe sự kiện đồng bộ từ Tạo đơn hàng (SN-38) hoặc Tab khác
   useEffect(() => {
     const handleSync = () => {
-      void loadCustomers(searchTerm.trim() || undefined);
+      void loadCustomers();
     };
 
     window.addEventListener('loha_customers_updated', handleSync);
@@ -366,61 +433,27 @@ export const CustomersPage: React.FC = () => {
       window.removeEventListener('loha_customers_updated', handleSync);
       window.removeEventListener('storage', handleSync);
     };
-  }, [loadCustomers, searchTerm]);
+  }, [loadCustomers]);
 
-  // Làm mới dữ liệu
+  // Làm mới dữ liệu từ server
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadCustomers(searchTerm.trim() || undefined);
+    await loadCustomers();
     showToast(
       'success',
       'Đồng bộ hoàn tất',
-      'Dữ liệu đại lý và điểm giao hàng đã được cập nhật mới nhất.'
+      'Dữ liệu đại lý và điểm giao hàng đã được cập nhật mới nhất từ máy chủ.'
     );
   };
 
-  // Lọc dữ liệu đại lý theo từ khóa, nhóm, vùng và trạng thái
-  const filteredCustomers = useMemo(() => {
-    return customers.filter((c) => {
-      const matchSearch =
-        !searchTerm.trim() ||
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.phone.includes(searchTerm.trim());
-
-      const matchGroup = selectedGroup === 'ALL' || c.customerGroup === selectedGroup;
-      const matchStatus = selectedStatus === 'ALL' || c.status === selectedStatus;
-      const matchRegion = selectedRegion === 'ALL' || c.region === selectedRegion;
-
-      return matchSearch && matchGroup && matchStatus && matchRegion;
-    });
-  }, [customers, searchTerm, selectedGroup, selectedStatus, selectedRegion]);
-
-  // Tính toán phân trang
-  const totalItems = filteredCustomers.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-
-  // Tự động điều chỉnh trang hiện tại nếu vượt quá tổng số trang sau khi lọc
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
-
-  // Danh sách đại lý được phân chia trang hiển thị thực tế
-  const paginatedCustomers = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredCustomers.slice(start, start + pageSize);
-  }, [filteredCustomers, currentPage, pageSize]);
-
-  // Thống kê nhanh KPI
+  // Thống kê nhanh KPI từ server-side pagination & mảng customers
   const stats = useMemo(() => {
-    const total = customers.length;
+    const total = totalItems;
     const active = customers.filter((c) => c.status === 'ACTIVE').length;
     const totalCredit = customers.reduce((sum, c) => sum + (c.creditLimit || 0), 0);
     const totalDebt = customers.reduce((sum, c) => sum + (c.currentDebt || 0), 0);
     return { total, active, totalCredit, totalDebt };
-  }, [customers]);
+  }, [totalItems, customers]);
 
   // Xử lý tạo mới đại lý & đồng bộ ngay lập tức
   const handleCreateCustomer = async (e: React.FormEvent) => {
@@ -475,8 +508,8 @@ export const CustomersPage: React.FC = () => {
         receiverName: '',
       });
 
-      // Cập nhật state danh sách ngay lập tức để người dùng thấy đại lý nhảy vào bảng
-      setCustomers((prev) => [newCustomer, ...prev]);
+      // Tải lại danh sách từ server ở trang 1 để cập nhật dữ liệu đại lý mới
+      void loadCustomers({ page: 1 });
     } catch {
       showToast('error', 'Lỗi tạo đại lý', 'Không thể tạo đại lý mới. Vui lòng thử lại.');
     } finally {
@@ -504,13 +537,6 @@ export const CustomersPage: React.FC = () => {
     try {
       setIsLockSubmitting(true);
       const updated = await customerService.lockCustomer(lockModalCustomer.id, reason.trim());
-      setCustomers((prev) =>
-        prev.map((c) =>
-          c.id === lockModalCustomer.id
-            ? { ...c, status: 'LOCKED', lockReason: reason.trim() }
-            : c
-        )
-      );
       showToast(
         'warning',
         'Đã khóa giao dịch',
@@ -518,6 +544,7 @@ export const CustomersPage: React.FC = () => {
       );
       setIsLockModalOpen(false);
       setLockModalCustomer(null);
+      void loadCustomers();
     } catch (err: unknown) {
       showToast(
         'error',
@@ -535,13 +562,6 @@ export const CustomersPage: React.FC = () => {
     try {
       setIsLockSubmitting(true);
       const updated = await customerService.unlockCustomer(lockModalCustomer.id);
-      setCustomers((prev) =>
-        prev.map((c) =>
-          c.id === lockModalCustomer.id
-            ? { ...c, status: 'ACTIVE', lockReason: undefined }
-            : c
-        )
-      );
       showToast(
         'success',
         'Đã mở khóa giao dịch',
@@ -549,6 +569,7 @@ export const CustomersPage: React.FC = () => {
       );
       setIsLockModalOpen(false);
       setLockModalCustomer(null);
+      void loadCustomers();
     } catch (err: unknown) {
       showToast(
         'error',
@@ -752,7 +773,7 @@ export const CustomersPage: React.FC = () => {
             <RefreshCw className="w-7 h-7 animate-spin mx-auto mb-2 text-blue-600" />
             <p className="text-sm font-medium">Đang tải danh sách đại lý...</p>
           </div>
-        ) : filteredCustomers.length === 0 ? (
+        ) : customers.length === 0 ? (
           <div className="py-16 text-center text-slate-400 space-y-3">
             <Building2 className="w-10 h-10 mx-auto text-slate-300" />
             <p className="text-sm font-medium">Không tìm thấy đại lý phù hợp với điều kiện lọc</p>
@@ -780,7 +801,7 @@ export const CustomersPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                {paginatedCustomers.map((customer) => {
+                {customers.map((customer) => {
                   const debtPercent =
                     customer.creditLimit > 0
                       ? Math.min(
@@ -970,7 +991,7 @@ export const CustomersPage: React.FC = () => {
           </div>
 
           {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN BẢNG (KHÔNG ĐÈ NỘI DUNG) ── */}
-          {filteredCustomers.length > 0 && (
+          {totalItems > 0 && (
             <Pagination
               variant="default"
               currentPage={currentPage}
@@ -981,10 +1002,7 @@ export const CustomersPage: React.FC = () => {
               itemLabel="đại lý"
               showFirstLast={true}
               onPageChange={(page) => handlePageChange(page)}
-              onPageSizeChange={(newSize) => {
-                setPageSize(newSize);
-                handlePageChange(1);
-              }}
+              onPageSizeChange={handlePageSizeChange}
             />
           )}
         </>
