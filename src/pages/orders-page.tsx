@@ -2334,21 +2334,29 @@ export const OrdersPage: React.FC = () => {
   const urlCustomerId = searchParams.get('customerId');
   const shouldOpenCreate = searchParams.get('createOrder') === 'true' || !!urlCustomerId;
 
+  // 1. Phân giải status ban đầu từ URL (?status=pending hoặc ?status=PENDING)
+  const getInitialStatus = (): OrderStatus | 'ALL' => {
+    const raw = searchParams.get('status');
+    if (!raw) return 'ALL';
+    const found = STATUS_TABS.find(
+      (tab) => tab.key.toLowerCase() === raw.toLowerCase()
+    );
+    return found ? (found.key as OrderStatus | 'ALL') : 'ALL';
+  };
+
+  const initialSearch = searchParams.get('search') || '';
+  const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState<number>(initialPage);
   const [totalPages, setTotalPages] = useState(1);
   const limit = 10;
 
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>(() => {
-    const requestedStatus = searchParams.get('status');
-    return STATUS_TABS.some((tab) => tab.key === requestedStatus)
-      ? requestedStatus as OrderStatus
-      : 'ALL';
-  });
-  const [searchInput, setSearchInput] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>(getInitialStatus);
+  const [searchInput, setSearchInput] = useState<string>(initialSearch);
+  const [searchTerm, setSearchTerm] = useState<string>(initialSearch);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -2363,6 +2371,84 @@ export const OrdersPage: React.FC = () => {
 
   // Nhận customerId từ URL query param (Đồng bộ từ trang Quản lý đại lý)
   const [initialCustomerId, setInitialCustomerId] = useState<string | undefined>(undefined);
+
+  // Đồng bộ hóa URL Search Params an toàn, không reload trang
+  const updateUrlParams = useCallback(
+    (updates: { status?: OrderStatus | 'ALL'; search?: string; page?: number }) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+
+          // Cập nhật status
+          const targetStatus = updates.status !== undefined ? updates.status : statusFilter;
+          if (targetStatus && targetStatus !== 'ALL') {
+            next.set('status', targetStatus.toLowerCase());
+          } else {
+            next.delete('status');
+          }
+
+          // Cập nhật search
+          const targetSearch = updates.search !== undefined ? updates.search : searchTerm;
+          const trimmed = targetSearch.trim();
+          if (trimmed) {
+            next.set('search', trimmed);
+          } else {
+            next.delete('search');
+          }
+
+          // Cập nhật page
+          const targetPage = updates.page !== undefined ? updates.page : page;
+          if (targetPage > 1 || next.has('status') || next.has('search')) {
+            next.set('page', String(targetPage));
+          } else {
+            next.delete('page');
+          }
+
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams, statusFilter, searchTerm, page]
+  );
+
+  const handleStatusChange = (newStatus: OrderStatus | 'ALL') => {
+    setStatusFilter(newStatus);
+    setPage(1);
+    updateUrlParams({ status: newStatus, page: 1 });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    const targetPage = Math.max(1, Math.min(totalPages, newPage));
+    setPage(targetPage);
+    updateUrlParams({ page: targetPage });
+  };
+
+  // Lắng nghe thay đổi của URL từ trình duyệt (khi Back / Forward hoặc chia sẻ liên kết)
+  useEffect(() => {
+    const rawStatus = searchParams.get('status');
+    let targetStatus: OrderStatus | 'ALL' = 'ALL';
+    if (rawStatus) {
+      const found = STATUS_TABS.find(
+        (tab) => tab.key.toLowerCase() === rawStatus.toLowerCase()
+      );
+      if (found) targetStatus = found.key as OrderStatus | 'ALL';
+    }
+    if (targetStatus !== statusFilter) {
+      setStatusFilter(targetStatus);
+    }
+
+    const urlSearch = searchParams.get('search') || '';
+    if (urlSearch !== searchTerm) {
+      setSearchTerm(urlSearch);
+      setSearchInput(urlSearch);
+    }
+
+    const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    if (urlPage !== page) {
+      setPage(urlPage);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const cid = searchParams.get('customerId');
@@ -2406,14 +2492,26 @@ export const OrdersPage: React.FC = () => {
     }
   };
 
-  // Debounce search
+  const isInitialSearchMount = useRef(true);
+
+  // Debounce search input (400ms) để tối ưu hiệu suất và đồng bộ URL mượt mà
   useEffect(() => {
-    const t = setTimeout(() => {
-      setSearchTerm(searchInput);
-      setPage(1);
+    if (isInitialSearchMount.current) {
+      isInitialSearchMount.current = false;
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const nextSearch = searchInput.trim();
+      if (nextSearch !== searchTerm) {
+        setSearchTerm(nextSearch);
+        setPage(1);
+        updateUrlParams({ search: nextSearch, page: 1 });
+      }
     }, 400);
-    return () => clearTimeout(t);
-  }, [searchInput]);
+
+    return () => clearTimeout(timer);
+  }, [searchInput, searchTerm, updateUrlParams]);
 
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -2589,10 +2687,7 @@ export const OrdersPage: React.FC = () => {
             {STATUS_TABS.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => {
-                  setStatusFilter(tab.key as OrderStatus | 'ALL');
-                  setPage(1);
-                }}
+                onClick={() => handleStatusChange(tab.key as OrderStatus | 'ALL')}
                 className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                   statusFilter === tab.key
                     ? 'bg-blue-600 text-white'
@@ -2833,7 +2928,7 @@ export const OrdersPage: React.FC = () => {
             </span>
             <div className="flex items-center gap-1">
               <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                onClick={() => handlePageChange(page - 1)}
                 disabled={page <= 1}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
@@ -2843,7 +2938,7 @@ export const OrdersPage: React.FC = () => {
                 {page} / {totalPages}
               </span>
               <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() => handlePageChange(page + 1)}
                 disabled={page >= totalPages}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
