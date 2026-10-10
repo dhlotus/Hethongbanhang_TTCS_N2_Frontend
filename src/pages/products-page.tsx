@@ -703,8 +703,9 @@ export const ProductsPage: React.FC = () => {
       showToast('success', 'Điều chỉnh tồn kho thành công');
       setAdjustModalOpen(false);
       await loadProducts();
-    } catch {
-      showToast('error', 'Không thể điều chỉnh tồn kho');
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Không thể điều chỉnh tồn kho';
+      showToast('error', errMsg);
     } finally {
       setAdjusting(false);
     }
