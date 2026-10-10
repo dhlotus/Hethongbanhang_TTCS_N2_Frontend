@@ -2,7 +2,7 @@ import { apiClient } from './api';
 import { inventoryService } from './inventory.service';
 import { tokenStorage } from '../utils/token-storage';
 import { MOCK_PRODUCTS } from './products.service';
-import { customerService } from './customer.service';
+import { customerService, getStoredCustomers, saveStoredCustomers } from './customer.service';
 import { orderPricingService } from './order-pricing.service';
 import type {
   CreateOrderPayload,
@@ -699,7 +699,7 @@ export const ordersService = {
       // Fallback cục bộ khi chưa có kết nối API
     }
 
-    const storedCustomers = customerService.getStoredCustomers();
+    const storedCustomers = getStoredCustomers();
     const c =
       storedCustomers.find((x) => x.id === customerId || x.code === customerId) ||
       DEMO_CUSTOMERS.find((x) => x.id === customerId || x.code === customerId) ||
@@ -944,7 +944,7 @@ export const ordersService = {
       );
     }
 
-    const storedCustomers = customerService.getStoredCustomers();
+    const storedCustomers = getStoredCustomers();
     const customer =
       targetCustomer ||
       storedCustomers.find((c) => c.id === payload.customerId) ||
@@ -1043,14 +1043,14 @@ export const ordersService = {
 
     // Cập nhật công nợ thực tế của đại lý vào hệ thống lưu trữ đồng bộ
     try {
-      const storedCusts = customerService.getStoredCustomers();
+      const storedCusts = getStoredCustomers();
       const custIdx = storedCusts.findIndex((x) => x.id === payload.customerId || x.code === payload.customerId);
       if (custIdx !== -1) {
         storedCusts[custIdx] = {
           ...storedCusts[custIdx],
           currentDebt: (storedCusts[custIdx].currentDebt || 0) + (newOrder.grandTotal || 0),
         };
-        customerService.saveStoredCustomers(storedCusts);
+        saveStoredCustomers(storedCusts);
       }
     } catch {
       // ignore
