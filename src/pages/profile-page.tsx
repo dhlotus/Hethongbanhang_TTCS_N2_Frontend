@@ -135,7 +135,7 @@ export const ProfilePage: React.FC = () => {
   // Đồng bộ thông tin profile mới nhất từ backend khi vào trang
   const fetchProfile = useCallback(async () => {
     const token = tokenStorage.getAccessToken();
-    if (!token || token.startsWith('demo-jwt-')) return;
+    if (!token) return;
 
     setIsFetchingProfile(true);
     try {
@@ -180,20 +180,6 @@ export const ProfilePage: React.FC = () => {
 
   // Đổi ảnh đại diện
   const handleAvatarConfirm = async (croppedFile: File): Promise<void> => {
-    const token = tokenStorage.getAccessToken();
-
-    if (token?.startsWith('demo-jwt-')) {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      const demoUrl = URL.createObjectURL(croppedFile);
-      const updatedUser: AuthUser = { ...(user as AuthUser), avatarUrl: demoUrl };
-      tokenStorage.setUser(updatedUser);
-      setUser(updatedUser);
-      setShowUploadModal(false);
-      showToast('success', 'Cập nhật ảnh đại diện thành công');
-      window.dispatchEvent(new CustomEvent('avatar-updated', { detail: demoUrl }));
-      return;
-    }
-
     try {
       const response = await usersService.uploadAvatar(croppedFile);
       const newAvatarUrl = response.data?.avatarUrl;
@@ -324,21 +310,18 @@ export const ProfilePage: React.FC = () => {
         throw new Error('Không tìm thấy thông tin người dùng. Vui lòng tải lại trang.');
       }
 
-      const token = tokenStorage.getAccessToken();
       let updatedUser: Partial<AuthUser> = { ...payload };
 
-      if (!token?.startsWith('demo-jwt-')) {
-        try {
-          updatedUser = await usersService.updateMyProfile(payload);
-        } catch {
-          // Fallback nếu API backend chưa có endpoint này
-          if (currentUser.id) {
-            try {
-              const res = await usersService.updateUser(currentUser.id, payload as any);
-              updatedUser = { ...res, avatarUrl: res.avatarUrl || undefined };
-            } catch {
-              // Tiếp tục với dữ liệu local
-            }
+      try {
+        updatedUser = await usersService.updateMyProfile(payload);
+      } catch {
+        // Fallback nếu API backend chưa có endpoint này
+        if (currentUser.id) {
+          try {
+            const res = await usersService.updateUser(currentUser.id, payload as any);
+            updatedUser = { ...res, avatarUrl: res.avatarUrl || undefined };
+          } catch {
+            // Tiếp tục với dữ liệu local
           }
         }
       }

@@ -46,7 +46,7 @@ export const AdminLayout: React.FC = () => {
   useEffect(() => {
     const checkActiveStatus = async () => {
       const token = tokenStorage.getAccessToken();
-      if (!token || token.startsWith('demo-jwt-')) {
+      if (!token) {
         return;
       }
       try {
