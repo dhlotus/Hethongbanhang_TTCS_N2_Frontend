@@ -75,19 +75,6 @@ const getCategoryParamSlug = (cat: ProductCategory): string => {
 };
 
 /**
- * Tạo slug chuẩn cho Nhóm hàng Cấp 2 (ví dụ milk_powder)
- */
-const getSubCategoryParamSlug = (sub: ProductCategory): string => {
-  if (sub.code) {
-    return sub.code.toLowerCase().replace(/-/g, '_');
-  }
-  if (sub.id) {
-    return sub.id.replace(/^cat-/, '').replace(/-/g, '_');
-  }
-  return sub.name;
-};
-
-/**
  * Phân tích và truy vết nhóm hàng từ param `category` hoặc `categoryId`
  */
 const resolveCategoryFromParam = (
@@ -330,15 +317,16 @@ export const ProductsPage: React.FC = () => {
         (prev) => {
           const next = new URLSearchParams(prev);
 
-          // 1. Nhóm hàng Cấp 1 (?category=c1_milk)
+          // 1. Nhóm hàng Cấp 1 (?parentCategory=... & ?category=...)
           const targetParent =
             updates.parentCategory !== undefined ? updates.parentCategory : selectedParentCategory;
           if (targetParent && targetParent !== 'ALL') {
+            next.set('parentCategory', targetParent);
             const foundCat = categoriesList.find((c) => c.name === targetParent);
             if (foundCat) {
               next.set('category', getCategoryParamSlug(foundCat));
             } else {
-              next.set('category', targetParent);
+              next.delete('category');
             }
           } else {
             next.delete('category');
@@ -346,19 +334,11 @@ export const ProductsPage: React.FC = () => {
             next.delete('parentCategory');
           }
 
-          // 2. Nhóm hàng Cấp 2 (?subCategory=milk_powder)
+          // 2. Nhóm hàng Cấp 2 (?subCategory=...)
           const targetSub =
             updates.subCategory !== undefined ? updates.subCategory : selectedSubCategory;
           if (targetParent && targetParent !== 'ALL' && targetSub && targetSub !== 'ALL') {
-            const parentCat = categoriesList.find((c) => c.name === targetParent);
-            const foundSub = (parentCat?.subCategories || parentCat?.children || []).find(
-              (s) => s.name === targetSub
-            );
-            if (foundSub) {
-              next.set('subCategory', getSubCategoryParamSlug(foundSub));
-            } else {
-              next.set('subCategory', targetSub);
-            }
+            next.set('subCategory', targetSub);
           } else {
             next.delete('subCategory');
           }
@@ -428,30 +408,50 @@ export const ProductsPage: React.FC = () => {
 
   // Lắng nghe thay đổi của URL Search Params (khi F5, bấm link chia sẻ hoặc Back/Forward trên browser)
   useEffect(() => {
+    const parentParam = searchParams.get('parentCategory');
+    const subParam = searchParams.get('subCategory');
     const rawCat =
       searchParams.get('category') ||
-      searchParams.get('categoryId') ||
-      searchParams.get('parentCategory');
-    const rawSub = searchParams.get('subCategory');
+      searchParams.get('categoryId');
 
-    const resolved = resolveCategoryFromParam(rawCat, categoriesList);
-    if (resolved) {
-      if (resolved.parentCategory !== selectedParentCategory) {
-        setSelectedParentCategory(resolved.parentCategory);
+    let resolvedParent = 'ALL';
+    let resolvedSub = 'ALL';
+    let resolvedCatId = 'ALL';
+
+    if (parentParam && parentParam !== 'ALL') {
+      resolvedParent = parentParam;
+      if (subParam && subParam !== 'ALL') {
+        resolvedSub = subParam;
       }
-      const finalSub = rawSub
-        ? resolveSubCategoryFromParam(rawSub, resolved.parentCategory, categoriesList)
-        : resolved.subCategory;
-      if (finalSub !== selectedSubCategory) {
-        setSelectedSubCategory(finalSub);
+      const foundParent = categoriesList.find((c) => c.name === parentParam);
+      if (foundParent) {
+        resolvedCatId = foundParent.id;
+        if (resolvedSub !== 'ALL') {
+          const foundSub = (foundParent.subCategories || foundParent.children || []).find(
+            (s) => s.name === resolvedSub
+          );
+          if (foundSub) resolvedCatId = foundSub.id;
+        }
       }
-      if (resolved.categoryId !== selectedCategoryId) {
-        setSelectedCategoryId(resolved.categoryId);
+    } else if (rawCat && rawCat !== 'ALL') {
+      const resolved = resolveCategoryFromParam(rawCat, categoriesList);
+      if (resolved) {
+        resolvedParent = resolved.parentCategory;
+        resolvedSub = subParam
+          ? resolveSubCategoryFromParam(subParam, resolved.parentCategory, categoriesList)
+          : resolved.subCategory;
+        resolvedCatId = resolved.categoryId;
       }
-    } else if (!rawCat) {
-      if (selectedParentCategory !== 'ALL') setSelectedParentCategory('ALL');
-      if (selectedSubCategory !== 'ALL') setSelectedSubCategory('ALL');
-      if (selectedCategoryId !== 'ALL') setSelectedCategoryId('ALL');
+    }
+
+    if (resolvedParent !== selectedParentCategory) {
+      setSelectedParentCategory(resolvedParent);
+    }
+    if (resolvedSub !== selectedSubCategory) {
+      setSelectedSubCategory(resolvedSub);
+    }
+    if (resolvedCatId !== selectedCategoryId) {
+      setSelectedCategoryId(resolvedCatId);
     }
 
     const urlStatus = parseStatusParam(searchParams.get('status'));
@@ -470,27 +470,6 @@ export const ProductsPage: React.FC = () => {
       setPage(urlPage);
     }
   }, [searchParams, categoriesList]);
-
-  // Tự động phân giải nhóm hàng khi danh mục tải về từ Backend
-  useEffect(() => {
-    if (!categoriesList || categoriesList.length === 0) return;
-    const rawCat =
-      searchParams.get('category') ||
-      searchParams.get('categoryId') ||
-      searchParams.get('parentCategory');
-    if (!rawCat || rawCat === 'ALL') return;
-
-    const resolved = resolveCategoryFromParam(rawCat, categoriesList);
-    if (resolved) {
-      setSelectedParentCategory(resolved.parentCategory);
-      const rawSub = searchParams.get('subCategory');
-      const finalSub = rawSub
-        ? resolveSubCategoryFromParam(rawSub, resolved.parentCategory, categoriesList)
-        : resolved.subCategory;
-      setSelectedSubCategory(finalSub);
-      setSelectedCategoryId(resolved.categoryId);
-    }
-  }, [categoriesList, searchParams]);
 
   // Handlers thay đổi bộ lọc & phân trang
   const handleParentCategoryChange = (newParent: string) => {
@@ -571,8 +550,11 @@ export const ProductsPage: React.FC = () => {
         setTotal(res.length);
         setTotalPages(Math.ceil(res.length / limit) || 1);
       }
-    } catch {
-      showToast('error', 'Không thể tải danh sách sản phẩm');
+    } catch (err: unknown) {
+      showToast(
+        'error',
+        err instanceof Error ? err.message : 'Không thể tải danh sách sản phẩm từ máy chủ'
+      );
     } finally {
       setLoading(false);
     }
@@ -604,14 +586,19 @@ export const ProductsPage: React.FC = () => {
 
   // Xử lý submit thêm hoặc sửa sản phẩm
   const handleFormSubmit = async (payload: CreateProductPayload) => {
-    if (editingProduct) {
-      await productsService.updateProduct(editingProduct.id, payload);
-      showToast('success', 'Cập nhật sản phẩm thành công');
-    } else {
-      await productsService.createProduct(payload);
-      showToast('success', 'Tạo sản phẩm mới thành công');
+    try {
+      if (editingProduct) {
+        await productsService.updateProduct(editingProduct.id, payload);
+        showToast('success', 'Cập nhật sản phẩm thành công');
+      } else {
+        await productsService.createProduct(payload);
+        showToast('success', 'Tạo sản phẩm mới thành công');
+      }
+      setFormModalOpen(false);
+      await loadProducts();
+    } catch (err: unknown) {
+      showToast('error', err instanceof Error ? err.message : 'Lỗi khi lưu sản phẩm');
     }
-    await loadProducts();
   };
 
   // Bật/tắt trạng thái kinh doanh
@@ -627,8 +614,11 @@ export const ProductsPage: React.FC = () => {
           : 'Chuyển ngừng kinh doanh sản phẩm thành công'
       );
       await loadProducts();
-    } catch {
-      showToast('error', 'Không thể cập nhật trạng thái sản phẩm');
+    } catch (err: unknown) {
+      showToast(
+        'error',
+        err instanceof Error ? err.message : 'Không thể cập nhật trạng thái sản phẩm'
+      );
     }
   };
 
@@ -652,8 +642,8 @@ export const ProductsPage: React.FC = () => {
       setDeleteModalOpen(false);
       setProductToDelete(null);
       await loadProducts();
-    } catch {
-      showToast('error', 'Không thể xóa sản phẩm');
+    } catch (err: unknown) {
+      showToast('error', err instanceof Error ? err.message : 'Không thể xóa sản phẩm');
     } finally {
       setIsDeleting(false);
     }
