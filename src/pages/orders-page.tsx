@@ -2357,8 +2357,9 @@ export const OrdersPage: React.FC = () => {
       setCancelingOrder(null);
       setOrders((current) => current.map((item) => item.id === updatedOrder.id ? updatedOrder : item));
       setViewOrder((current) => current?.id === updatedOrder.id ? updatedOrder : current);
-    } catch (err: any) {
-      throw new Error(err.message || 'Lỗi khi hủy đơn hàng');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Lỗi khi hủy đơn hàng';
+      throw new Error(message);
     }
   };
 

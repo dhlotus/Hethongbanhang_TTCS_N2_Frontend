@@ -32,8 +32,9 @@ export const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
     try {
       await onConfirm(reason.trim());
       setReason('');
-    } catch (err: any) {
-      setError(err.message || 'Có lỗi xảy ra khi hủy đơn hàng.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Có lỗi xảy ra khi hủy đơn hàng.';
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }
