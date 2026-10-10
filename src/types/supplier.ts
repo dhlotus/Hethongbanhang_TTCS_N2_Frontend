@@ -33,12 +33,20 @@ export interface SupplierQueryParams {
   status?: SupplierStatus | 'ALL';
 }
 
+export interface SupplierSummary {
+  total: number;
+  active: number;
+  inactive: number;
+  withReceipts: number;
+}
+
 export interface PaginatedSuppliersResponse {
   data: Supplier[];
   total: number;
   page: number;
   limit: number;
   totalPages: number;
+  summary?: SupplierSummary;
 }
 
 export interface CreateSupplierPayload {
