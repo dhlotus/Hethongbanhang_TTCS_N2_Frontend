@@ -1,5 +1,6 @@
 import { apiClient } from './api';
 import { inventoryService } from './inventory.service';
+import { warehouseService } from './warehouse.service';
 import { tokenStorage } from '../utils/token-storage';
 import { MOCK_PRODUCTS } from './products.service';
 import { customerService, getStoredCustomers } from './customer.service';
@@ -1014,44 +1015,45 @@ export const ordersService = {
   /**
    * Tìm kiếm sản phẩm để thêm vào dòng hàng
    */
-  async searchProducts(query: string = '', limit: number = 100): Promise<Product[]> {
+  async searchProducts(query: string = '', limit: number = 100, customerId?: string): Promise<Product[]> {
+    const res = await apiClient.get<{ data: Product[] }>('/products', {
+      params: { search: query || undefined, limit, status: 'ACTIVE' },
+    });
+    const products = res.data.data ?? [];
+    const warehouseId = customerId
+      ? (await warehouseService.getAgencyDefault(customerId)).warehouseId
+      : undefined;
+    const stockRows = await inventoryService.getStockOverview(warehouseId);
+    const availableBySku = new Map(
+      stockRows.map((stock) => [stock.sku.toUpperCase(), stock.stockQuantity]),
+    );
 
-    try {
-      const res = await apiClient.get<{ data: Product[] }>('/products', {
-        params: { search: query || undefined, limit, status: 'ACTIVE' },
-      });
-      const products = res.data.data ?? [];
-      let availableBySku = new Map<string, number>();
-      try {
-        const stockRows = await inventoryService.getStockOverview();
-        availableBySku = new Map(stockRows.map((stock) => [stock.sku.toUpperCase(), stock.stockQuantity]));
-      } catch { }
+    return products.map((product) => {
+      const knownProduct = MOCK_PRODUCTS.find(
+        (candidate) => candidate.sku.toUpperCase() === product.sku.toUpperCase(),
+      );
+      const hasPackagingUnits = (product.units ?? []).some(
+        (unit) => unit.conversionRate > 1,
+      );
+      const units = hasPackagingUnits
+        ? product.units
+        : knownProduct?.units?.some((unit) => unit.conversionRate > 1)
+          ? knownProduct.units
+          : product.units;
 
-      return products.map((product) => {
-        const knownProduct = MOCK_PRODUCTS.find(
-          (candidate) => candidate.sku.toUpperCase() === product.sku.toUpperCase(),
-        );
-        const hasPackagingUnits = (product.units ?? []).some(
-          (unit) => unit.conversionRate > 1,
-        );
-        const units = hasPackagingUnits
-          ? product.units
-          : knownProduct?.units?.some((unit) => unit.conversionRate > 1)
-            ? knownProduct.units
-            : product.units;
-
-        // Ưu tiên availableStock do backend tính toán chuẩn xác
-        const availableStock = product.availableStock ?? product.availableQuantity ?? availableBySku.get(product.sku.toUpperCase()) ?? product.stockQuantity ?? 0;
-        return {
-          ...product,
-          units,
-          availableStock,
-          availableQuantity: availableStock,
-        };
-      });
-    } catch {
-      return [];
-    }
+      // Tồn theo kho của đại lý là nguồn số lượng khả dụng khi tạo đơn.
+      const availableStock = availableBySku.get(product.sku.toUpperCase())
+        ?? product.availableStock
+        ?? product.availableQuantity
+        ?? product.stockQuantity
+        ?? 0;
+      return {
+        ...product,
+        units,
+        availableStock,
+        availableQuantity: availableStock,
+      };
+    });
   },
 
   /**

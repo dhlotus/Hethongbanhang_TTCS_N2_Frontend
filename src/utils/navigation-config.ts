@@ -339,6 +339,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Kiểm soát Kho',
     },
     {
+      id: 'inventory-warehouses',
+      name: 'Quản lý kho & vị trí',
+      path: '/inventory/warehouses',
+      icon: Warehouse,
+      category: 'Kiểm soát Kho',
+    },
+    {
       id: 'inventory-audits',
       name: 'Kiểm kê kho hàng',
       path: '/inventory/audits',
@@ -476,6 +483,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       id: 'inventory-stock',
       name: 'Quản lý tồn kho & Lô hàng',
       path: '/inventory/stock',
+      icon: Warehouse,
+      category: 'Nghiệp vụ Kinh doanh & Kho vận',
+    },
+    {
+      id: 'inventory-warehouses',
+      name: 'Quản lý kho & vị trí',
+      path: '/inventory/warehouses',
       icon: Warehouse,
       category: 'Nghiệp vụ Kinh doanh & Kho vận',
     },
