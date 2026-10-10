@@ -195,6 +195,24 @@ export const inventoryService = {
       const action = payload.quantityChange >= 0 ? 'Nhập kho' : 'Xuất kho';
       const sign = payload.quantityChange >= 0 ? '+' : '';
 
+      try {
+        window.dispatchEvent(
+          new CustomEvent('loha_inventory_updated', {
+            detail: {
+              sku: product.sku,
+              id: product.id,
+              newStock: product.stockQuantity,
+              previousStock: previousQuantity,
+            },
+          })
+        );
+        window.dispatchEvent(
+          new CustomEvent('loha_products_updated', {
+            detail: product,
+          })
+        );
+      } catch {}
+
       return {
         success: true,
         message: `${action} thành công: ${sign}${payload.quantityChange} ${unitName} (Quy đổi: ${sign}${baseQuantityChange} ${product.baseUnit}). Tồn mới: ${product.stockQuantity} ${product.baseUnit}.`,
@@ -217,6 +235,10 @@ export const inventoryService = {
 
     try {
       const response = await apiClient.put<StockAdjustmentResponse>('/inventory/adjust', payload);
+      try {
+        window.dispatchEvent(new CustomEvent('loha_inventory_updated', { detail: response.data }));
+        window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: response.data }));
+      } catch {}
       return response.data;
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {

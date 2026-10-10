@@ -164,7 +164,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
 /**
  * Danh sách sản phẩm mẫu phong phú phục vụ demo / fallback
  */
-export let MOCK_PRODUCTS: Product[] = [
+const INITIAL_MOCK_PRODUCTS: Product[] = [
   {
     id: 'prod-001',
     sku: 'LH-MILK-900G',
@@ -459,6 +459,27 @@ export let MOCK_PRODUCTS: Product[] = [
   },
 ];
 
+export const DEMO_PRODUCTS_KEY = 'loha_demo_products';
+
+export const getStoredDemoProducts = (): Product[] => {
+  try {
+    const raw = localStorage.getItem(DEMO_PRODUCTS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return [...INITIAL_MOCK_PRODUCTS];
+};
+
+export const saveStoredDemoProducts = (products: Product[]) => {
+  try {
+    localStorage.setItem(DEMO_PRODUCTS_KEY, JSON.stringify(products));
+  } catch {}
+};
+
+export let MOCK_PRODUCTS: Product[] = getStoredDemoProducts();
+
 /**
  * Kiểm tra xem người dùng hiện tại có quyền xem Giá vốn & Biên lợi nhuận hay không
  */
@@ -716,6 +737,9 @@ export const productsService = {
         ...payload,
         sku: cleanSku,
       });
+      try {
+        window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: response.data }));
+      } catch {}
       return sanitizeProduct(response.data, canViewCost);
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
@@ -768,6 +792,10 @@ export const productsService = {
       };
 
       MOCK_PRODUCTS.unshift(newProduct);
+      saveStoredDemoProducts(MOCK_PRODUCTS);
+      try {
+        window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: newProduct }));
+      } catch {}
       return sanitizeProduct(newProduct, canViewCost);
     }
   },
@@ -796,8 +824,12 @@ export const productsService = {
                 ? payload.stockQuantity
                 : currentStock,
         };
+        saveStoredDemoProducts(MOCK_PRODUCTS);
       }
 
+      try {
+        window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: resProduct }));
+      } catch {}
       return sanitizeProduct(resProduct, canViewCost);
     } catch (err: unknown) {
       // Nếu máy chủ backend trả về lỗi nghiệp vụ (400, 403, 404, 409...), hiển thị thông báo chính xác từ server
@@ -869,6 +901,10 @@ export const productsService = {
 
       existing.updatedAt = new Date().toISOString();
       MOCK_PRODUCTS[index] = existing;
+      saveStoredDemoProducts(MOCK_PRODUCTS);
+      try {
+        window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: existing }));
+      } catch {}
       return sanitizeProduct(existing, canViewCost);
     }
   },
@@ -904,6 +940,10 @@ export const productsService = {
       }
 
       MOCK_PRODUCTS = MOCK_PRODUCTS.filter((p) => p.id !== found.id);
+      saveStoredDemoProducts(MOCK_PRODUCTS);
+      try {
+        window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: { id } }));
+      } catch {}
       return {
         success: true,
         message: `Đã xóa thành công sản phẩm [${found.sku}] khỏi danh mục.`,

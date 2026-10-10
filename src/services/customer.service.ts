@@ -482,6 +482,9 @@ export const customerService = {
         const total = res.data.length;
         const page = params.page || 1;
         const limit = params.limit || 20;
+        if (res.data.length > 0) {
+          saveStoredCustomers(res.data);
+        }
         return {
           data: res.data,
           total,
@@ -492,6 +495,9 @@ export const customerService = {
       }
 
       // Format chuẩn theo PaginatedCustomersResponse (SN-37)
+      if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
+        saveStoredCustomers(res.data.data);
+      }
       return res.data;
     } catch {
       // Fallback an toàn khi offline hoặc dev demo
