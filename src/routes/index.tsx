@@ -78,13 +78,21 @@ export const AppRoutes: React.FC = () => {
                 />
               }
             >
-              {/* SN-49: Cổng Đặt hàng Đại lý B2B */}
               <Route path="/portal" element={<AgencyPortalPage />} />
               <Route path="/portal/orders" element={<AgencyPortalPage />} />
-
+              <Route
+                path="/portal/tracking"
+                element={
+                  <RoleModulePage
+                    title="Theo dõi Đơn hàng & Giao hàng"
+                    subtitle="Tra cứu lộ trình vận chuyển, tình trạng đóng gói xuất kho và biên bản bàn giao"
+                    requiredRole="Đại lý B2B"
+                  />
+                }
+              />
               {/* SN-170 & SN-174: Cổng Đơn hàng Đại lý & Theo dõi vận chuyển */}
+              <Route path="/portal/orders" element={<PortalOrdersPage />} />
               <Route path="/portal/tracking" element={<PortalOrdersPage />} />
-              <Route path="/portal/my-orders" element={<PortalOrdersPage />} />
               <Route
                 path="/portal/debt"
                 element={
@@ -407,7 +415,7 @@ export const AppRoutes: React.FC = () => {
             {/* ------------------------------------------------------------- */}
             {/* Dashboard Điều hành Doanh nghiệp (truy cập dựa theo role bên trong Component) */}
             <Route path="/dashboard" element={<DashboardPage />} />
-            
+
             {/* Danh mục sản phẩm (giá vốn tự động ẩn trên server theo SN-10) */}
             <Route path="/catalog/products" element={<ProductsPage />} />
             <Route path="/products" element={<ProductsPage />} />

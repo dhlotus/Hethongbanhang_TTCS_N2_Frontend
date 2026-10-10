@@ -8,6 +8,48 @@ import type {
   InventoryTransaction,
   StockAdjustmentResponse,
 } from '../types/products';
+import type { LowStockAlert, StockBalance } from '../types/inventory.types';
+
+const DEMO_MIN_STOCK_KEY = 'loha_inventory_min_stock';
+const DEMO_WAREHOUSE_ID = 'WH01';
+
+const getDemoMinStockLevels = (): Record<string, number> => {
+  try {
+    const raw = localStorage.getItem(DEMO_MIN_STOCK_KEY);
+    if (raw) return JSON.parse(raw) as Record<string, number>;
+  } catch {}
+  return {};
+};
+
+const saveDemoMinStockLevels = (levels: Record<string, number>): void => {
+  try {
+    localStorage.setItem(DEMO_MIN_STOCK_KEY, JSON.stringify(levels));
+  } catch {}
+};
+
+const buildDemoStockBalances = (): StockBalance[] => {
+  const levels = getDemoMinStockLevels();
+  return MOCK_PRODUCTS.map((p: Product) => {
+    const minStockLevel = levels[p.sku.toUpperCase()] ?? 0;
+    return {
+      sku: p.sku,
+      name: p.name,
+      stockQuantity: p.stockQuantity,
+      physicalStockQuantity: p.stockQuantity,
+      reservedQuantity: 0,
+      baseUnit: p.baseUnit,
+      units: (p.units || []).map((u: ProductUnit) => ({
+        unitName: u.unitName,
+        conversionRate: u.conversionRate,
+        isBaseUnit: Boolean(u.isBaseUnit),
+      })),
+      warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
+      warehouseId: DEMO_WAREHOUSE_ID,
+      minStockLevel,
+      isBelowMinStock: minStockLevel > 0 && p.stockQuantity <= minStockLevel,
+    };
+  });
+};
 
 const DEMO_TRANSACTIONS_KEY = 'loha_inventory_transactions';
 
@@ -71,37 +113,78 @@ export const inventoryService = {
   /**
    * Lấy tổng quan tồn kho
    */
-  async getStockOverview(): Promise<
-    Array<{
-      sku: string;
-      name: string;
-      stockQuantity: number;
-      physicalStockQuantity: number;
-      reservedQuantity: number;
-      baseUnit: string;
-      units: Array<{ unitName: string; conversionRate: number; isBaseUnit: boolean }>;
-      warehouse: string;
-    }>
-  > {
+  async getStockOverview(): Promise<StockBalance[]> {
     const token = tokenStorage.getAccessToken();
     if (token && token.startsWith('demo-jwt-')) {
-      return MOCK_PRODUCTS.map((p: Product) => ({
-        sku: p.sku,
-        name: p.name,
-        stockQuantity: p.stockQuantity,
-        physicalStockQuantity: p.stockQuantity,
-        reservedQuantity: 0,
-        baseUnit: p.baseUnit,
-        units: (p.units || []).map((u: ProductUnit) => ({
-          unitName: u.unitName,
-          conversionRate: u.conversionRate,
-          isBaseUnit: Boolean(u.isBaseUnit),
-        })),
-        warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
-      }));
+      return buildDemoStockBalances();
     }
 
-    const response = await apiClient.get('/inventory/stock');
+    const response = await apiClient.get<StockBalance[]>('/inventory/stock');
+    return response.data;
+  },
+
+  /**
+   * Khai báo mức tồn tối thiểu theo SKU tại kho (SN-183)
+   */
+  async updateMinStockLevel(
+    warehouseId: string,
+    sku: string,
+    minStock: number,
+  ): Promise<StockBalance> {
+    const token = tokenStorage.getAccessToken();
+    if (token && token.startsWith('demo-jwt-')) {
+      const levels = getDemoMinStockLevels();
+      levels[sku.trim().toUpperCase()] = minStock;
+      saveDemoMinStockLevels(levels);
+      const updated = buildDemoStockBalances().find(
+        (row) => row.sku.toUpperCase() === sku.trim().toUpperCase(),
+      );
+      if (!updated) throw new Error(`Không tìm thấy sản phẩm có SKU ${sku}`);
+      return updated;
+    }
+
+    try {
+      const response = await apiClient.patch<StockBalance>(
+        `/inventory/stock-balances/warehouses/${encodeURIComponent(warehouseId)}/sku/${encodeURIComponent(sku)}/min-stock`,
+        { minStock },
+      );
+      return response.data;
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+        const serverMsg = axiosErr.response?.data?.message;
+        if (serverMsg) {
+          throw new Error(Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg);
+        }
+      }
+      throw err;
+    }
+  },
+
+  /**
+   * Danh sách SKU dưới mức tồn tối thiểu, hụt nhiều nhất lên đầu (SN-183)
+   */
+  async getLowStockAlerts(warehouseId?: string): Promise<LowStockAlert[]> {
+    const token = tokenStorage.getAccessToken();
+    if (token && token.startsWith('demo-jwt-')) {
+      return buildDemoStockBalances()
+        .filter((row) => !warehouseId || row.warehouseId === warehouseId)
+        .filter((row) => row.isBelowMinStock === true)
+        .map((row): LowStockAlert => {
+          const minStockLevel = row.minStockLevel ?? 0;
+          return {
+            ...row,
+            minStockLevel,
+            isBelowMinStock: true,
+            shortage: minStockLevel - row.stockQuantity,
+          };
+        })
+        .sort((a, b) => b.shortage - a.shortage);
+    }
+
+    const response = await apiClient.get<LowStockAlert[]>('/inventory/alerts/low-stock', {
+      params: warehouseId ? { warehouseId } : undefined,
+    });
     return response.data;
   },
 
