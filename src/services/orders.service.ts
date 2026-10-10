@@ -743,22 +743,65 @@ export const ordersService = {
   },
 
   /**
-   * Lấy danh sách đơn hàng phân trang (SN-38)
+   * Lấy danh sách đơn hàng phân trang (SN-38 & SN-46)
    * Kết nối Server-side GET /api/orders trực tiếp, hỗ trợ đầy đủ query parameters
    */
   async getOrders(params: OrderQueryParams = {}): Promise<PaginatedOrdersResponse> {
     const token = tokenStorage.getAccessToken();
     if (token?.startsWith('demo-jwt-')) {
-      const all = getStoredDemoOrders();
-      let filtered =
-        params.status && params.status !== 'ALL'
-          ? all.filter((o) => o.status === params.status)
-          : all;
+      let filtered = getStoredDemoOrders();
 
-      if (params.customerId) {
-        filtered = filtered.filter((o) => o.customerId === params.customerId);
+      if (params.status && params.status !== 'ALL') {
+        filtered = filtered.filter((o) => o.status === params.status);
+      }
+      if (params.customerId && params.customerId !== 'ALL') {
+        filtered = filtered.filter(
+          (o) => o.customerId === params.customerId || o.customerCode === params.customerId,
+        );
+      }
+      const repFilter = params.salesRepId || params.assignedUser;
+      if (repFilter && repFilter !== 'ALL') {
+        const qRep = repFilter.toLowerCase().trim();
+        filtered = filtered.filter(
+          (o) =>
+            o.salesRepId === repFilter ||
+            (o.salesRepName && o.salesRepName.toLowerCase().includes(qRep)),
+        );
+      }
+      if (params.region && params.region !== 'ALL') {
+        const qReg = params.region.toLowerCase().trim();
+        filtered = filtered.filter(
+          (o) =>
+            (o.deliveryPoint?.address && o.deliveryPoint.address.toLowerCase().includes(qReg)) ||
+            (o.customerName && o.customerName.toLowerCase().includes(qReg)),
+        );
+      }
+      if (params.fromDate) {
+        const fromTime = new Date(params.fromDate).getTime();
+        if (!isNaN(fromTime)) {
+          filtered = filtered.filter((o) => o.createdAt && new Date(o.createdAt).getTime() >= fromTime);
+        }
+      }
+      if (params.toDate) {
+        const toDateObj = new Date(params.toDate);
+        toDateObj.setHours(23, 59, 59, 999);
+        const toTime = toDateObj.getTime();
+        if (!isNaN(toTime)) {
+          filtered = filtered.filter((o) => o.createdAt && new Date(o.createdAt).getTime() <= toTime);
+        }
+      }
+      if (params.search) {
+        const q = params.search.toLowerCase().trim();
+        filtered = filtered.filter(
+          (o) =>
+            (o.orderCode && o.orderCode.toLowerCase().includes(q)) ||
+            (o.customerName && o.customerName.toLowerCase().includes(q)) ||
+            (o.customerCode && o.customerCode.toLowerCase().includes(q)) ||
+            (o.salesRepName && o.salesRepName.toLowerCase().includes(q)),
+        );
       }
 
+      const totalAmount = filtered.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
       const page = params.page ?? 1;
       const limit = params.limit ?? 10;
       const start = (page - 1) * limit;
@@ -767,6 +810,7 @@ export const ordersService = {
       return {
         data,
         total: filtered.length,
+        totalAmount,
         page,
         limit,
         totalPages: Math.max(1, Math.ceil(filtered.length / limit)),
@@ -790,6 +834,12 @@ export const ordersService = {
     if (params.salesRepId) {
       cleanParams.salesRepId = params.salesRepId;
     }
+    if (params.assignedUser) {
+      cleanParams.assignedUser = params.assignedUser;
+    }
+    if (params.region && params.region !== 'ALL') {
+      cleanParams.region = params.region;
+    }
     if (params.fromDate) {
       cleanParams.fromDate = params.fromDate;
     }
@@ -797,30 +847,42 @@ export const ordersService = {
       cleanParams.toDate = params.toDate;
     }
 
-    const res = await apiClient.get<PaginatedOrdersResponse | Order[]>('/orders', {
-      params: cleanParams,
-    });
+    try {
+      const res = await apiClient.get<PaginatedOrdersResponse | Order[]>('/orders', {
+        params: cleanParams,
+      });
 
-    if (Array.isArray(res.data)) {
-      const total = res.data.length;
-      const page = Number(cleanParams.page) || 1;
-      const limit = Number(cleanParams.limit) || 10;
+      if (Array.isArray(res.data)) {
+        const total = res.data.length;
+        const page = Number(cleanParams.page) || 1;
+        const limit = Number(cleanParams.limit) || 10;
+        const totalAmount = res.data.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+        return {
+          data: res.data,
+          total,
+          totalAmount,
+          page,
+          limit,
+          totalPages: Math.max(1, Math.ceil(total / limit)),
+        };
+      }
+
+      const totalAmount =
+        res.data?.totalAmount !== undefined
+          ? res.data.totalAmount
+          : (res.data?.data || []).reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+
       return {
-        data: res.data,
-        total,
-        page,
-        limit,
-        totalPages: Math.max(1, Math.ceil(total / limit)),
+        data: res.data?.data || [],
+        total: typeof res.data?.total === 'number' ? res.data.total : (res.data?.data?.length || 0),
+        totalAmount,
+        page: res.data?.page || Number(cleanParams.page) || 1,
+        limit: res.data?.limit || Number(cleanParams.limit) || 10,
+        totalPages: res.data?.totalPages || 1,
       };
+    } catch {
+      return { data: [], total: 0, totalAmount: 0, page: 1, limit: 10, totalPages: 1 };
     }
-
-    return {
-      data: res.data?.data || [],
-      total: typeof res.data?.total === 'number' ? res.data.total : (res.data?.data?.length || 0),
-      page: res.data?.page || Number(cleanParams.page) || 1,
-      limit: res.data?.limit || Number(cleanParams.limit) || 10,
-      totalPages: res.data?.totalPages || 1,
-    };
   },
 
   /**

@@ -114,6 +114,7 @@ export interface Order {
   creditLimitExceededAmount?: number; // Số tiền vượt hạn mức (VND)
   cancelReason?: string; // Lý do hủy đơn (SN-45)
   isShortDelivery?: boolean; // Cờ đánh dấu đơn có giao thiếu (SN-170)
+  region?: string; // Khu vực đại lý / đơn hàng (SN-46)
   createdAt?: string;
   updatedAt?: string;
 }
@@ -158,6 +159,7 @@ export type UpdateOrderPayload = Partial<CreateOrderPayload> & {
 export interface PaginatedOrdersResponse {
   data: Order[];
   total: number;
+  totalAmount?: number;
   page: number;
   limit: number;
   totalPages: number;
@@ -171,6 +173,8 @@ export interface OrderQueryParams {
   status?: OrderStatus | 'ALL';
   customerId?: string;
   salesRepId?: string;
+  assignedUser?: string;
+  region?: string;
   fromDate?: string;
   toDate?: string;
 }
