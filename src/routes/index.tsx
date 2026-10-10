@@ -16,6 +16,8 @@ import { OrdersPage } from '../pages/orders-page';
 import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
 import { CustomersPage } from '../pages/customers-page';
 import { InventoryAuditsPage } from '../pages/inventory-audits-page';
+import { InventoryReceiptsPage } from '../pages/inventory-receipts-page';
+import { CreateInventoryReceiptPage } from '../pages/create-inventory-receipt-page';
 import { PortalOrdersPage } from '../pages/portal-orders-page';
 import { NotFoundPage } from '../pages/not-found-page';
 import { ForbiddenPage } from '../pages/forbidden-page';
@@ -241,13 +243,11 @@ export const AppRoutes: React.FC = () => {
             >
               <Route
                 path="/inventory/receipts"
-                element={
-                  <RoleModulePage
-                    title="Nhập kho Hàng hóa & Nhà cung cấp"
-                    subtitle="Tạo và quản lý phiếu nhập kho, kiểm tra quy cách đóng gói và nhập thông tin số lô HSD"
-                    requiredRole="Nhân viên kho / Quản lý kho"
-                  />
-                }
+                element={<InventoryReceiptsPage />}
+              />
+              <Route
+                path="/inventory/receipts/create"
+                element={<CreateInventoryReceiptPage />}
               />
               <Route
                 path="/inventory/issues"
