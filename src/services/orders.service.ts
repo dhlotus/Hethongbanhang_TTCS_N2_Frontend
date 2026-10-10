@@ -609,7 +609,7 @@ const saveStoredDemoOrders = (list: Order[]): void => {
 
 
 /** Tính tổng đơn hàng từ danh sách dòng hàng */
-const calcOrderTotals = (
+export const calcOrderTotals = (
   lines: Order['lines']
 ): { subtotal: number; totalDiscount: number; grandTotal: number } => {
   let subtotal = 0;
@@ -626,7 +626,7 @@ const calcOrderTotals = (
 };
 
 /** Tạo mã đơn hàng tự động */
-const generateOrderCode = (): string => {
+export const generateOrderCode = (): string => {
   const now = new Date();
   const yy = now.getFullYear().toString().slice(-2);
   const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -687,92 +687,77 @@ export const ordersService = {
   },
 
   /**
-   * Lấy thông tin & trạng thái công nợ thời gian thực của đại lý (SN-41)
-   */
+ * Lấy thông tin & trạng thái công nợ thời gian thực của đại lý (SN-41 & SN-49)
+ */
   async getDebtStatus(customerId: string): Promise<CustomerDebtStatus> {
-    const token = tokenStorage.getAccessToken();
-    if (token?.startsWith('demo-jwt-')) {
-      const c = DEMO_CUSTOMERS.find((x) => x.id === customerId);
-      if (!c) throw new Error('Không tìm thấy thông tin đại lý');
-      const creditLimit = c.creditLimit || 0;
-      const currentDebt = c.currentDebt || 0;
-      const maxDebtDays = c.maxDebtDays || 30;
-      const overdueAmount = c.overdueAmount || 0;
-      const overdueDays = c.overdueDays || 0;
-      const availableLimit = Math.max(0, creditLimit - currentDebt);
-      const canCreateOrder = !(overdueDays > maxDebtDays && overdueAmount > 0);
-      let blockReason: string | undefined;
-      let warningMessage: string | undefined;
-
-      if (!canCreateOrder) {
-        blockReason = `Đại lý đang có khoản nợ quá hạn ${overdueDays} ngày (vượt quá ${maxDebtDays} ngày cho phép) với số tiền ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(overdueAmount)}. Hệ thống tạm khóa quyền tạo đơn hàng mới cho đại lý này.`;
-      } else if (overdueAmount > 0) {
-        warningMessage = `Đại lý đang có khoản nợ quá hạn ${overdueDays}/${maxDebtDays} ngày (${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(overdueAmount)}). Vui lòng lưu ý đôn đốc thanh toán.`;
-      } else if (currentDebt >= creditLimit) {
-        warningMessage = `Đại lý đã sử dụng hết hạn mức công nợ được cấp. Đơn hàng mới sẽ được chuyển sang trạng thái chờ phê duyệt.`;
-      } else if (availableLimit < creditLimit * 0.2) {
-        warningMessage = `Hạn mức công nợ khả dụng của đại lý chỉ còn ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(availableLimit)} (dưới 20%). Lưu ý kiểm tra giá trị đơn hàng.`;
-      }
-
-      return {
-        customerId: c.id,
-        customerCode: c.code,
-        customerName: c.name,
-        creditLimit,
-        currentDebt,
-        availableLimit,
-        maxDebtDays,
-        overdueAmount,
-        overdueDays,
-        canCreateOrder,
-        blockReason,
-        warningMessage,
-      };
-    }
-
     try {
       const res = await apiClient.get<CustomerDebtStatus>(`/customers/${customerId}/debt-status`);
-      return res.data;
+      if (res.data && (res.data.creditLimit !== undefined || res.data.availableLimit !== undefined)) {
+        return res.data;
+      }
     } catch {
-      // Fallback nếu không gọi được API
-      const c = DEMO_CUSTOMERS.find((x) => x.id === customerId);
-      const creditLimit = c?.creditLimit || 0;
-      const currentDebt = c?.currentDebt || 0;
-      const maxDebtDays = c?.maxDebtDays || 30;
-      const overdueAmount = c?.overdueAmount || 0;
-      const overdueDays = c?.overdueDays || 0;
-      const availableLimit = Math.max(0, creditLimit - currentDebt);
-      const canCreateOrder = !(overdueDays > maxDebtDays && overdueAmount > 0);
-
-      return {
-        customerId,
-        customerCode: c?.code || 'DL-UNKNOWN',
-        customerName: c?.name || 'Đại lý',
-        creditLimit,
-        currentDebt,
-        availableLimit,
-        maxDebtDays,
-        overdueAmount,
-        overdueDays,
-        canCreateOrder,
-        blockReason: !canCreateOrder
-          ? `Đại lý đang có khoản nợ quá hạn ${overdueDays} ngày (vượt quá ${maxDebtDays} ngày cho phép). Hệ thống khóa tạo đơn.`
-          : undefined,
-      };
+      // Fallback cục bộ khi chưa có kết nối API
     }
+
+    const storedCustomers = customerService.getStoredCustomers();
+    const c =
+      storedCustomers.find((x) => x.id === customerId || x.code === customerId) ||
+      DEMO_CUSTOMERS.find((x) => x.id === customerId || x.code === customerId) ||
+      MOCK_CUSTOMERS.find((x) => x.id === customerId || x.code === customerId);
+
+    const creditLimit = typeof c?.creditLimit === 'number' ? c.creditLimit : 50000000;
+    const currentDebt = typeof c?.currentDebt === 'number' ? c.currentDebt : 0;
+    const maxDebtDays = typeof c?.maxDebtDays === 'number' ? c.maxDebtDays : 30;
+    const overdueAmount = (c as any)?.overdueAmount ?? 0;
+    const overdueDays = (c as any)?.overdueDays ?? 0;
+    const availableLimit = Math.max(0, creditLimit - currentDebt);
+    const canCreateOrder = !(overdueDays > maxDebtDays && overdueAmount > 0);
+
+    let blockReason: string | undefined;
+    let warningMessage: string | undefined;
+
+    if (!canCreateOrder) {
+      blockReason = `Đại lý đang có khoản nợ quá hạn ${overdueDays} ngày (vượt quá ${maxDebtDays} ngày cho phép) với số tiền ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(overdueAmount)}. Hệ thống tạm khóa quyền tạo đơn hàng mới cho đại lý này.`;
+    } else if (overdueAmount > 0) {
+      warningMessage = `Đại lý đang có khoản nợ quá hạn ${overdueDays}/${maxDebtDays} ngày (${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(overdueAmount)}). Vui lòng lưu ý đôn đốc thanh toán.`;
+    } else if (currentDebt >= creditLimit) {
+      warningMessage = `Đại lý đã sử dụng hết hạn mức công nợ được cấp. Đơn hàng mới sẽ được chuyển sang trạng thái chờ phê duyệt.`;
+    } else if (availableLimit < creditLimit * 0.2) {
+      warningMessage = `Hạn mức công nợ khả dụng của đại lý chỉ còn ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(availableLimit)} (dưới 20%). Lưu ý kiểm tra giá trị đơn hàng.`;
+    }
+
+    return {
+      customerId: c?.id || customerId,
+      customerCode: c?.code || customerId,
+      customerName: c?.name || 'Đại lý',
+      creditLimit,
+      currentDebt,
+      availableLimit,
+      maxDebtDays,
+      overdueAmount,
+      overdueDays,
+      canCreateOrder,
+      blockReason,
+      warningMessage,
+    };
   },
 
   /**
    * Lấy danh sách đơn hàng phân trang (SN-38)
+   * Kết nối Server-side GET /api/orders trực tiếp, hỗ trợ đầy đủ query parameters
    */
   async getOrders(params: OrderQueryParams = {}): Promise<PaginatedOrdersResponse> {
     const token = tokenStorage.getAccessToken();
     if (token?.startsWith('demo-jwt-')) {
       const all = getStoredDemoOrders();
-      const filtered =
+      let filtered =
         params.status && params.status !== 'ALL'
           ? all.filter((o) => o.status === params.status)
           : all;
+
+      if (params.customerId) {
+        filtered = filtered.filter((o) => o.customerId === params.customerId);
+      }
 
       const page = params.page ?? 1;
       const limit = params.limit ?? 10;
@@ -788,34 +773,128 @@ export const ordersService = {
       };
     }
 
-    try {
-      const res = await apiClient.get<PaginatedOrdersResponse>('/orders', { params });
-      return res.data;
-    } catch {
-      return { data: [], total: 0, page: 1, limit: 10, totalPages: 1 };
+    const cleanParams: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 10,
+    };
+
+    if (params.status && params.status !== 'ALL') {
+      cleanParams.status = params.status;
     }
+    if (params.search && params.search.trim()) {
+      cleanParams.search = params.search.trim();
+    }
+    if (params.customerId) {
+      cleanParams.customerId = params.customerId;
+    }
+    if (params.salesRepId) {
+      cleanParams.salesRepId = params.salesRepId;
+    }
+    if (params.fromDate) {
+      cleanParams.fromDate = params.fromDate;
+    }
+    if (params.toDate) {
+      cleanParams.toDate = params.toDate;
+    }
+
+    const res = await apiClient.get<PaginatedOrdersResponse | Order[]>('/orders', {
+      params: cleanParams,
+    });
+
+    if (Array.isArray(res.data)) {
+      const total = res.data.length;
+      const page = Number(cleanParams.page) || 1;
+      const limit = Number(cleanParams.limit) || 10;
+      return {
+        data: res.data,
+        total,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      };
+    }
+
+    return {
+      data: res.data?.data || [],
+      total: typeof res.data?.total === 'number' ? res.data.total : (res.data?.data?.length || 0),
+      page: res.data?.page || Number(cleanParams.page) || 1,
+      limit: res.data?.limit || Number(cleanParams.limit) || 10,
+      totalPages: res.data?.totalPages || 1,
+    };
   },
 
   /**
-   * Lấy chi tiết 1 đơn hàng theo ID
+   * Hủy đơn hàng đang ở trạng thái Chờ duyệt (SN-49)
+   */
+  async cancelOrder(orderId: string, reason?: string): Promise<Order> {
+    try {
+      const res = await apiClient.patch<Order>(`/orders/${orderId}/status`, {
+        status: 'CANCELLED',
+        reason: reason || 'Đại lý hủy đơn',
+      });
+      if (res.data) {
+        // Đồng bộ local
+        const all = getStoredDemoOrders();
+        const idx = all.findIndex((o) => o.id === orderId || o.orderCode === orderId);
+        if (idx !== -1) {
+          all[idx] = { ...all[idx], status: 'CANCELLED' };
+          saveStoredDemoOrders(all);
+        }
+        return res.data;
+      }
+    } catch {
+      // API fallback
+    }
+
+    const all = getStoredDemoOrders();
+    const ord = all.find((o) => o.id === orderId || o.orderCode === orderId);
+    if (!ord) throw new Error('Không tìm thấy đơn hàng cần hủy');
+    ord.status = 'CANCELLED';
+    if (reason) ord.note = ord.note ? `${ord.note} [Lý do hủy: ${reason}]` : `[Lý do hủy: ${reason}]`;
+    saveStoredDemoOrders(all);
+    return ord;
+  },
+
+  /**
+   * Lấy chi tiết 1 đơn hàng theo ID trực tiếp từ máy chủ (SN-38)
    */
   async getOrderById(id: string): Promise<Order> {
-    const token = tokenStorage.getAccessToken();
-    if (token?.startsWith('demo-jwt-')) {
-      const all = getStoredDemoOrders();
-      const found = all.find((o) => o.id === id);
-      if (!found) throw new Error(`Không tìm thấy đơn hàng ${id}`);
-      return found;
-    }
-    const res = await apiClient.get<Order>(`/orders/${id}`);
-    return res.data;
+    const res = await apiClient.get<Order | { data: Order }>(`/orders/${id}`);
+    return (res.data as { data?: Order })?.data ?? (res.data as Order);
   },
 
   /**
    * Tạo đơn hàng mới (SN-38 & SN-39)
    */
   async createOrder(payload: CreateOrderPayload): Promise<Order> {
-    // Kiểm tra tồn khả dụng theo Task SN-42: Kiểm soát tồn khả dụng
+    const token = tokenStorage.getAccessToken();
+    const isDemo = token?.startsWith('demo-jwt-');
+
+    // 1. Nếu có kết nối Backend thực tế, gửi trực tiếp lên API để Backend DB xác thực tồn kho & lưu đơn
+    if (!isDemo) {
+      try {
+        const res = await apiClient.post<Order>('/orders', payload);
+        const all = getStoredDemoOrders();
+        all.unshift(res.data);
+        saveStoredDemoOrders(all);
+
+        try {
+          window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: res.data }));
+          window.dispatchEvent(new CustomEvent('loha_inventory_updated', { detail: { lines: res.data.lines } }));
+        } catch { }
+
+        return res.data;
+      } catch (apiError: unknown) {
+        const errObj = apiError as { response?: { data?: { message?: string | string[] } }; message?: string };
+        if (errObj?.response?.data?.message) {
+          const errMsg = errObj.response.data.message;
+          throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+        }
+        throw new Error(errObj?.message || 'Không thể kết nối máy chủ để lưu đơn hàng');
+      }
+    }
+
+    // 2. Chế độ Demo offline fallback: Kiểm tra tồn khả dụng theo Task SN-42
     const allStoredOrders = getStoredDemoOrders();
     const demoReservedMap = new Map<string, number>();
     const activeStatuses = ['PENDING', 'PENDING_APPROVAL', 'APPROVED', 'PROCESSING'];
@@ -828,14 +907,14 @@ export const ordersService = {
       }
     }
 
-    for (const line of payload.lines) {
+    for (const line of (payload.lines || [])) {
       const prod = MOCK_PRODUCTS.find((p) => p.id === line.productId || p.sku === line.productSku);
       const reserved = (line.productId ? demoReservedMap.get(line.productId) : 0) ||
         (line.productSku ? demoReservedMap.get(line.productSku.toUpperCase()) : 0) || 0;
       const physical = prod?.stockQuantity ?? 0;
       const calculatedAvail = Math.max(0, physical - reserved);
       const available = line.availableStock !== undefined
-        ? Math.min(line.availableStock, calculatedAvail)
+        ? line.availableStock
         : (prod ? calculatedAvail : (line.stockAvailable ?? 9999));
 
       const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
@@ -853,34 +932,6 @@ export const ordersService = {
         throw new Error(
           `Sản phẩm ${productName} vượt quá tồn khả dụng (Hàng trong kho đã hết / Vượt quá tồn khả dụng: Còn tối đa ${maxInUnit} ${unitName}, Đặt: ${line.quantity})`,
         );
-      }
-    }
-
-    const token = tokenStorage.getAccessToken();
-    const isDemo = token?.startsWith('demo-jwt-');
-
-    if (!isDemo) {
-      try {
-        const res = await apiClient.post<Order>('/orders', payload);
-        const all = getStoredDemoOrders();
-        all.unshift(res.data);
-        saveStoredDemoOrders(all);
-        return res.data;
-      } catch (apiError: unknown) {
-        if (
-          typeof apiError === 'object' &&
-          apiError !== null &&
-          'response' in apiError
-        ) {
-          const res = (apiError as { response?: { data?: { message?: string | string[] } } }).response;
-          const fallbackMsg =
-            'message' in apiError && typeof apiError.message === 'string'
-              ? apiError.message
-              : 'Lỗi khi tạo đơn hàng trên máy chủ';
-          const errMsg = res?.data?.message || fallbackMsg;
-          throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
-        }
-        throw new Error(apiError instanceof Error ? apiError.message : 'Không thể kết nối máy chủ để lưu đơn hàng');
       }
     }
 
@@ -913,7 +964,7 @@ export const ordersService = {
     }
 
     // Tính lineTotal từng dòng
-    const lines = payload.lines.map((l) => ({
+    const lines = (payload.lines || []).map((l) => ({
       ...l,
       id: `line-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       baseQuantity: Math.round(l.quantity * (l.conversionRate || 1)),
@@ -947,8 +998,10 @@ export const ordersService = {
       (customer as { customerGroup?: string })?.customerGroup ||
       payload.customerGroup ||
       'AGENT_LEVEL_2';
-    const salesRepId = currentUser?.id || payload.salesRepId || '';
-    const salesRepName = currentUser?.fullName || currentUser?.username || payload.salesRepName || 'NVKD';
+    const customerObj = customer as any;
+    const assignedSalesRepId = payload.assignedSalesRepId || payload.salesRepId || customerObj?.salesRepId || customerObj?.salesRep?.id || '';
+    const salesRepId = payload.salesRepId || customerObj?.salesRepId || customerObj?.salesRep?.id || currentUser?.id || '';
+    const salesRepName = payload.salesRepName || customerObj?.salesRepName || customerObj?.salesRep?.name || currentUser?.fullName || currentUser?.username || 'NVKD';
 
     const newOrder: Order = {
       id: `order-${Date.now()}`,
@@ -959,6 +1012,8 @@ export const ordersService = {
       customerGroup,
       salesRepId,
       salesRepName,
+      assignedSalesRepId,
+      createdSource: payload.createdSource || 'SALES_APP',
       deliveryPoint: payload.deliveryPoint as Order['deliveryPoint'],
       deliveryDate: payload.deliveryDate,
       lines,
@@ -981,6 +1036,26 @@ export const ordersService = {
     const all = getStoredDemoOrders();
     all.unshift(newOrder);
     saveStoredDemoOrders(all);
+
+    try {
+      window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: newOrder }));
+    } catch { }
+
+    // Cập nhật công nợ thực tế của đại lý vào hệ thống lưu trữ đồng bộ
+    try {
+      const storedCusts = customerService.getStoredCustomers();
+      const custIdx = storedCusts.findIndex((x) => x.id === payload.customerId || x.code === payload.customerId);
+      if (custIdx !== -1) {
+        storedCusts[custIdx] = {
+          ...storedCusts[custIdx],
+          currentDebt: (storedCusts[custIdx].currentDebt || 0) + (newOrder.grandTotal || 0),
+        };
+        customerService.saveStoredCustomers(storedCusts);
+      }
+    } catch {
+      // ignore
+    }
+
     return newOrder;
   },
 
@@ -1031,20 +1106,6 @@ export const ordersService = {
    * Cập nhật trạng thái đơn hàng (APPROVED, CANCELLED...)
    */
   async updateOrderStatus(id: string, status: OrderStatus, reason?: string): Promise<Order> {
-    const token = tokenStorage.getAccessToken();
-    if (token?.startsWith('demo-jwt-')) {
-      const all = getStoredDemoOrders();
-      const idx = all.findIndex((o) => o.id === id);
-      if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${id}`);
-      all[idx] = { 
-        ...all[idx], 
-        status, 
-        updatedAt: new Date().toISOString(),
-        ...(reason && status === 'CANCELLED' ? { cancelReason: reason } : {})
-      };
-      saveStoredDemoOrders(all);
-      return all[idx];
-    }
     const payload: any = { status };
     if (reason) payload.reason = reason;
     const res = await apiClient.patch<Order>(`/orders/${id}/status`, payload);
@@ -1083,9 +1144,23 @@ export const ordersService = {
         createdAt,
       });
       localStorage.setItem(DEMO_APPROVAL_HISTORY_KEY, JSON.stringify(history));
+      try {
+        window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: all[idx] }));
+      } catch { }
       return all[idx];
     }
     const res = await apiClient.post<Order>(`/orders/${id}/decision`, { action, comment });
+    if (res.data) {
+      const all = getStoredDemoOrders();
+      const idx = all.findIndex((order) => order.id === id || order.orderCode === id);
+      if (idx !== -1) {
+        all[idx] = res.data;
+        saveStoredDemoOrders(all);
+      }
+      try {
+        window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: res.data }));
+      } catch { }
+    }
     return res.data;
   },
 
@@ -1111,7 +1186,7 @@ export const ordersService = {
   /**
    * Tìm kiếm sản phẩm để thêm vào dòng hàng (dùng mock hoặc API)
    */
-  async searchProducts(query: string): Promise<Product[]> {
+  async searchProducts(query: string = '', limit: number = 100): Promise<Product[]> {
     const token = tokenStorage.getAccessToken();
     if (token?.startsWith('demo-jwt-')) {
       const allOrders = getStoredDemoOrders();
@@ -1142,24 +1217,24 @@ export const ordersService = {
         };
       });
 
-      if (!query.trim()) return source.slice(0, 8);
+      if (!query.trim()) return source.slice(0, limit);
       const q = query.toLowerCase();
       return source.filter(
         (p: Product) =>
           p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q),
-      ).slice(0, 10);
+      ).slice(0, limit);
     }
 
     try {
       const res = await apiClient.get<{ data: Product[] }>('/products', {
-        params: { search: query, limit: 10, status: 'ACTIVE' },
+        params: { search: query || undefined, limit, status: 'ACTIVE' },
       });
       const products = res.data.data ?? [];
       let availableBySku = new Map<string, number>();
       try {
         const stockRows = await inventoryService.getStockOverview();
         availableBySku = new Map(stockRows.map((stock) => [stock.sku.toUpperCase(), stock.stockQuantity]));
-      } catch {}
+      } catch { }
 
       return products.map((product) => {
         const knownProduct = MOCK_PRODUCTS.find(
@@ -1231,60 +1306,32 @@ export const ordersService = {
    * Cập nhật đơn hàng (Chỉnh sửa / Tiếp tục gõ đơn nháp SN-39)
    */
   async updateOrder(id: string, payload: Partial<CreateOrderPayload>): Promise<Order> {
-    const token = tokenStorage.getAccessToken();
-    const isDemo = token?.startsWith('demo-jwt-');
-    if (!isDemo) {
-      try {
-        const res = await apiClient.put<Order | { data: Order }>(`/orders/${id}`, payload);
-        const updated = (res.data as { data?: Order })?.data ?? (res.data as Order);
-        const all = getStoredDemoOrders();
-        const idx = all.findIndex((o) => o.id === id);
-        if (idx !== -1) {
-          all[idx] = updated;
-          saveStoredDemoOrders(all);
-        }
-        return updated;
-      } catch (apiError: unknown) {
-        if (
-          typeof apiError === 'object' &&
-          apiError !== null &&
-          'response' in apiError
-        ) {
-          const res = (apiError as { response?: { data?: { message?: string | string[] } } }).response;
-          const fallbackMsg =
-            'message' in apiError && typeof apiError.message === 'string'
-              ? apiError.message
-              : 'Lỗi khi cập nhật đơn hàng';
-          const errMsg = res?.data?.message || fallbackMsg;
-          throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
-        }
-        throw new Error(apiError instanceof Error ? apiError.message : 'Không thể kết nối máy chủ để cập nhật đơn hàng');
+    try {
+      const res = await apiClient.put<Order | { data: Order }>(`/orders/${id}`, payload);
+      const updated = (res.data as { data?: Order })?.data ?? (res.data as Order);
+      const all = getStoredDemoOrders();
+      const idx = all.findIndex((o) => o.id === id);
+      if (idx !== -1) {
+        all[idx] = updated;
+        saveStoredDemoOrders(all);
       }
+      return updated;
+    } catch (apiError: unknown) {
+      if (
+        typeof apiError === 'object' &&
+        apiError !== null &&
+        'response' in apiError
+      ) {
+        const res = (apiError as { response?: { data?: { message?: string | string[] } } }).response;
+        const fallbackMsg =
+          'message' in apiError && typeof apiError.message === 'string'
+            ? apiError.message
+            : 'Lỗi khi cập nhật đơn hàng';
+        const errMsg = res?.data?.message || fallbackMsg;
+        throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+      }
+      throw new Error(apiError instanceof Error ? apiError.message : 'Không thể kết nối máy chủ để cập nhật đơn hàng');
     }
-
-    const all = getStoredDemoOrders();
-    const idx = all.findIndex((o) => o.id === id);
-    if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${id}`);
-    const existing = all[idx];
-    const lines = (payload.lines || existing.lines).map((l) => ({
-      ...l,
-      baseQuantity: Math.round(l.quantity * (l.conversionRate || 1)),
-      lineTotal: l.quantity * l.unitPrice,
-    }));
-    const totals = calcOrderTotals(lines);
-    const updatedOrder: Order = {
-      ...existing,
-      ...totals,
-      lines,
-      deliveryDate: payload.deliveryDate || existing.deliveryDate,
-      deliveryPoint: (payload.deliveryPoint as Order['deliveryPoint']) || existing.deliveryPoint,
-      note: payload.note !== undefined ? payload.note : existing.note,
-      status: payload.status || existing.status,
-      updatedAt: new Date().toISOString(),
-    };
-    all[idx] = updatedOrder;
-    saveStoredDemoOrders(all);
-    return updatedOrder;
   },
 
   /**
@@ -1499,8 +1546,8 @@ export const ordersService = {
     }
   },
 
-  
-async reorder(
+
+  async reorder(
     orderId: string,
     payload: ReorderPayload
   ): Promise<{ newOrder: Order; discontinuedItems: DiscontinuedProductItem[]; message: string }> {
@@ -1549,11 +1596,10 @@ async reorder(
       lines: newLines,
       note:
         payload.note ||
-        `[Đặt lại từ đơn ${preview.orderCode}] ${
-          preview.discontinuedItems.length > 0
+        `[Đặt lại từ đơn ${preview.orderCode}] ${preview.discontinuedItems.length > 0
             ? `(Đã loại bỏ ${preview.discontinuedItems.length} mặt hàng ngừng kinh doanh)`
             : ''
-        }`.trim(),
+          }`.trim(),
       status: 'PENDING',
     };
 
@@ -1562,11 +1608,10 @@ async reorder(
     return {
       newOrder,
       discontinuedItems: preview.discontinuedItems,
-      message: `Đã đặt lại đơn hàng thành công (Mã đơn: ${newOrder.orderCode}).${
-        preview.discontinuedItems.length > 0
+      message: `Đã đặt lại đơn hàng thành công (Mã đơn: ${newOrder.orderCode}).${preview.discontinuedItems.length > 0
           ? ` Đã loại bỏ ${preview.discontinuedItems.length} mặt hàng ngừng kinh doanh.`
           : ''
-      }`,
+        }`,
     };
   },
 };

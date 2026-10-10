@@ -488,32 +488,48 @@ export const customerService = {
       cleanParams.salesRepId = params.salesRepId.trim();
     }
 
-    const res = await apiClient.get<PaginatedCustomersResponse | Customer[]>('/customers', {
-      params: cleanParams,
-    });
-
-    // Nếu backend trả về mảng trực tiếp (phiên bản cũ)
-    if (Array.isArray(res.data)) {
-      const total = res.data.length;
-      const page = Number(cleanParams.page) || 1;
-      const limit = Number(cleanParams.limit) || 20;
-      return {
-        data: res.data,
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit) || 1,
-      };
+    const token = tokenStorage.getAccessToken();
+    if (token?.startsWith('demo-jwt-')) {
+      return filterDemoCustomers(params);
     }
 
-    // Format chuẩn theo PaginatedCustomersResponse (SN-37)
-    return {
-      data: res.data.data || [],
-      total: typeof res.data.total === 'number' ? res.data.total : (res.data.data?.length || 0),
-      page: res.data.page || Number(cleanParams.page) || 1,
-      limit: res.data.limit || Number(cleanParams.limit) || 20,
-      totalPages: res.data.totalPages || 1,
-    };
+    try {
+      const res = await apiClient.get<PaginatedCustomersResponse | Customer[]>('/customers', {
+        params: cleanParams,
+      });
+
+      // Nếu backend trả về mảng trực tiếp (phiên bản cũ)
+      if (Array.isArray(res.data)) {
+        const total = res.data.length;
+        const page = Number(cleanParams.page) || 1;
+        const limit = Number(cleanParams.limit) || 20;
+        if (res.data.length > 0) {
+          saveStoredCustomers(res.data);
+        }
+        return {
+          data: res.data,
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit) || 1,
+        };
+      }
+
+      // Format chuẩn theo PaginatedCustomersResponse (SN-37)
+      if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
+        saveStoredCustomers(res.data.data);
+      }
+      return {
+        data: res.data.data || [],
+        total: typeof res.data.total === 'number' ? res.data.total : (res.data.data?.length || 0),
+        page: res.data.page || Number(cleanParams.page) || 1,
+        limit: res.data.limit || Number(cleanParams.limit) || 20,
+        totalPages: res.data.totalPages || 1,
+      };
+    } catch {
+      // Fallback an toàn khi offline hoặc dev demo
+      return filterDemoCustomers(params);
+    }
   },
 
   /**
