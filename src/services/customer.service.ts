@@ -711,6 +711,57 @@ export const customerService = {
     }
   },
 
+  /**
+   * Xóa hồ sơ đại lý (SN-30 AC4)
+   * Chặn xóa nếu đại lý đã có giao dịch hoặc còn công nợ, ném lỗi rõ ràng
+   */
+  async deleteCustomer(id: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const res = await apiClient.delete<{ success: boolean; message: string }>(`/customers/${id}`);
+      return res.data;
+    } catch (err: unknown) {
+      const list = getStoredCustomers();
+      const target = list.find((c) => c.id === id);
+      if (target) {
+        if ((target.currentDebt || 0) > 0) {
+          throw new Error(
+            `Đại lý "${target.name}" đã phát sinh giao dịch hoặc còn công nợ (${(target.currentDebt || 0).toLocaleString('vi-VN')} đ), không thể xóa. Chỉ được phép chuyển sang trạng thái Ngừng giao dịch.`
+          );
+        }
+        const filtered = list.filter((c) => c.id !== id);
+        saveStoredCustomers(filtered);
+        return { success: true, message: `Đã xóa đại lý "${target.name}" thành công.` };
+      }
+      throw err;
+    }
+  },
+
+  /**
+   * Ngừng giao dịch với đại lý (SN-30 AC4: Chuyển sang trạng thái INACTIVE)
+   */
+  async deactivateCustomer(id: string): Promise<Customer> {
+    try {
+      const res = await apiClient.patch<Customer>(`/customers/${id}/deactivate`);
+      return res.data;
+    } catch {
+      const list = getStoredCustomers();
+      const custIndex = list.findIndex((c) => c.id === id);
+      if (custIndex >= 0) {
+        list[custIndex] = {
+          ...list[custIndex],
+          status: CustomerStatus.INACTIVE,
+          updatedAt: new Date().toISOString(),
+        };
+        saveStoredCustomers(list);
+        return list[custIndex];
+      }
+      throw new Error('Không tìm thấy đại lý');
+    }
+  },
+
+  /**
+   * Đọc danh sách đại lý đã lưu
+   */
   getStoredCustomers,
   saveStoredCustomers,
 };
