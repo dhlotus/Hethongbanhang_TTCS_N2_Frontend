@@ -2,8 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   ShoppingCart,
   Lock,
-  Percent,
-  Award,
   Package,
   AlertCircle,
   AlertTriangle,
@@ -764,7 +762,7 @@ export const AgencyPortalPage: React.FC = () => {
         );
 
         if (live) {
-          const isPriceChanged = cartItem.unitPrice !== live.agencyPrice || cartItem.listPrice !== live.retailPrice;
+          const isPriceChanged = cartItem.unitPrice !== live.agencyPrice || cartItem.listPrice !== live.agencyPrice;
           const isStockChanged = cartItem.availableStock !== live.availableStock;
           const isQtyExceeded = cartItem.quantity > live.availableStock;
 
@@ -773,7 +771,7 @@ export const AgencyPortalPage: React.FC = () => {
             nextCart[prodId] = {
               ...cartItem,
               unitPrice: live.agencyPrice,
-              listPrice: live.retailPrice,
+              listPrice: live.agencyPrice,
               availableStock: live.availableStock,
               quantity: live.availableStock <= 0 ? 0 : Math.min(cartItem.quantity, live.availableStock),
               product: live,
@@ -795,10 +793,8 @@ export const AgencyPortalPage: React.FC = () => {
 
   // ──────────────────────────────────────────────────────────────────────────
   // TÍNH MỨC CHIẾT KHẤU ĐỒNG BỘ THEO CHÍNH SÁCH SẢN LƯỢNG HỆ THỐNG (SN-28 / SN-49)
-  // - Nếu sản phẩm thuộc chính sách chiết khấu sản lượng của hệ thống:
-  //   Mức chiết khấu % biến thiên linh hoạt theo số lượng mua thực tế (1 món = 0%, 10-49 = 2%, v.v.)
-  // - Nếu sản phẩm không thuộc chính sách sản lượng:
-  //   Áp dụng chiết khấu theo bảng giá phân cấp đại lý
+  // - Giá niêm yết của đơn hàng luôn lấy từ đúng bảng giá của cấp đại lý đó (agencyPrice)
+  // - Nếu sản phẩm đạt nấc chiết khấu sản lượng của hệ thống, giảm tiếp trên đơn giá đại lý
   // ──────────────────────────────────────────────────────────────────────────
   const getItemEffectiveDiscount = useCallback((item: CartItem) => {
     const policyInfo = getApplicablePolicyInfo(
@@ -808,11 +804,16 @@ export const AgencyPortalPage: React.FC = () => {
       item.quantity
     );
 
-    const basePrice = item.listPrice || item.product.price || item.unitPrice;
+    // Giá niêm yết của đại lý: lấy từ đúng giá bảng giá của cấp đại lý đó (agencyPrice)
+    const basePrice =
+      (item.product as unknown as { agencyPrice?: number })?.agencyPrice ||
+      item.unitPrice ||
+      item.listPrice ||
+      item.product.price;
 
     const effectiveDiscountPercent = policyInfo.policy
       ? policyInfo.discountPercent
-      : (item.listPrice > item.unitPrice ? Math.round(((item.listPrice - item.unitPrice) / item.listPrice) * 100) : 0);
+      : 0;
 
     const effectiveUnitPrice = effectiveDiscountPercent > 0
       ? Math.round(basePrice * (1 - effectiveDiscountPercent / 100))
@@ -905,7 +906,7 @@ export const AgencyPortalPage: React.FC = () => {
         quantity: 1,
         unit: product.baseUnit || 'Cái',
         unitPrice: product.agencyPrice,
-        listPrice: product.retailPrice,
+        listPrice: product.agencyPrice,
         conversionRate: 1,
         availableStock: product.availableStock,
       },
@@ -2505,227 +2506,74 @@ export const AgencyPortalPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* BẢNG CHÍNH SÁCH GIÁ & CHIẾT KHẤU ĐẠI LÝ (KẾT NỐI TỪ BẢNG CHÍNH SÁCH DÙNG CHUNG CỦA HỆ THỐNG) */}
-                  <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-3.5">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-indigo-100/80 pb-3 gap-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
-                          <Percent className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h4 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
-                            <span>Chính Sách Chiết Khấu Sản Lượng Hệ Thống</span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">
-                              Đang áp dụng
-                            </span>
-                          </h4>
-                          <p className="text-[11px] text-slate-500">
-                            Bảng giá cơ sở: <strong className="text-indigo-700">{effectivePriceList?.name || 'Bảng giá chuẩn'}</strong> • Cấp đại lý: <strong className="text-slate-700">{groupBadge.label}</strong>
-                          </p>
-                        </div>
-                      </div>
-                      <span className={`self-start sm:self-auto px-2.5 py-1 rounded-xl text-[11px] font-bold border ${groupBadge.className}`}>
-                        {groupBadge.label}
-                      </span>
-                    </div>
+                  {/* BẢNG KÊ CHI TIẾT CHIẾT KHẤU TỪNG MẶT HÀNG TRONG ĐƠN HÀNG */}
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-[11px] text-slate-500 font-semibold bg-slate-50/70">
+                          <th className="py-2.5 px-3 text-left">Tên sản phẩm</th>
+                          <th className="py-2.5 px-2 text-right">Giá bán</th>
+                          <th className="py-2.5 px-2 text-center">Chiết khấu</th>
+                          <th className="py-2.5 px-2 text-right">Giá sau chiết khấu</th>
+                          <th className="py-2.5 px-2 text-center">Số lượng</th>
+                          <th className="py-2.5 px-3 text-right">Tổng tiền</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {Object.values(cart).map((item) => {
+                          const calc = getItemEffectiveDiscount(item);
+                          const { basePrice, effectiveDiscountPercent, effectiveUnitPrice } = calc;
+                          const lineTotal = effectiveUnitPrice * item.quantity;
 
-                    {/* HIỂN THỊ CÁC CHÍNH SÁCH CHIẾT KHẤU DÙNG CHUNG KHỚP VỚI ĐƠN HÀNG */}
-                    {discountPolicies.length > 0 && (
-                      <div className="space-y-3">
-                        {discountPolicies
-                          .filter((pol) => {
-                            // Chỉ hiển thị các chính sách áp dụng cho các sản phẩm trong giỏ
-                            if (pol.status !== 'ACTIVE') return false;
-                            const cartProductIds = Object.values(cart).map((it) => it.product.id);
-                            const cartSkus = Object.values(cart).map((it) => (it.product.sku || '').toUpperCase());
-                            const cartCatIds = Object.values(cart).map((it) => it.product.categoryId || '');
-                            
-                            const matchSku = pol.appliedProductSkus?.some((s) => cartProductIds.includes(s) || cartSkus.includes(s.toUpperCase()) || s === 'all');
-                            const matchTarget = pol.targetIds?.some((id) => cartProductIds.includes(id) || cartSkus.includes(id.toUpperCase()));
-                            const matchCat = pol.appliedCategoryIds?.some((c) => cartCatIds.includes(c) || c === 'all');
-                            return matchSku || matchTarget || matchCat || pol.targetType === 'HYBRID' || pol.code === 'DISC-VOL-01';
-                          })
-                          .slice(0, 2)
-                          .map((policy) => {
-                            // Tìm sản phẩm trong giỏ ứng với chính sách này
-                            const relevantItems = Object.values(cart).filter((it) => {
-                              const s = it.product.sku || '';
-                              const id = it.product.id || '';
-                              return (
-                                policy.appliedProductSkus?.includes(id) ||
-                                policy.appliedProductSkus?.includes(s) ||
-                                policy.targetIds?.includes(id) ||
-                                policy.targetIds?.includes(s) ||
-                                policy.code === 'DISC-VOL-01'
-                              );
-                            });
-                            const totalQtyInPolicy = relevantItems.reduce((sum, it) => sum + it.quantity, 0);
-
-                            return (
-                              <div key={policy.id || policy.code} className="bg-white rounded-xl border border-indigo-100/90 p-3 shadow-2xs space-y-2.5">
-                                <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-100 pb-2">
-                                  <div className="flex items-center gap-1.5">
-                                    <Tag className="w-3.5 h-3.5 text-indigo-600" />
-                                    <span className="font-bold text-xs text-slate-800">
-                                      {policy.name}
-                                    </span>
-                                    <span className="font-mono text-[10px] text-slate-500 font-semibold px-1.5 py-0.5 rounded bg-slate-100">
-                                      {policy.code}
-                                    </span>
-                                  </div>
-                                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                    Đang hiệu lực ({policy.startDate} ~ {policy.endDate})
+                          return (
+                            <tr key={`discount-table-${item.product.id}`} className="hover:bg-indigo-50/30 transition-colors">
+                              <td className="py-2.5 px-3 text-left">
+                                <div className="font-semibold text-slate-800 line-clamp-1" title={item.product.name}>
+                                  {item.product.name}
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-2 text-right font-mono text-slate-500">
+                                {basePrice > effectiveUnitPrice ? (
+                                  <span className="line-through text-slate-400">{formatVND(basePrice)}</span>
+                                ) : (
+                                  <span>{formatVND(basePrice)}</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-2 text-center font-bold">
+                                {effectiveDiscountPercent > 0 ? (
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                                    -{effectiveDiscountPercent}%
                                   </span>
-                                </div>
-
-                                {/* BẢNG CẤU HÌNH NẤC CHIẾT KHẤU THEO SẢN LƯỢNG (GIỐNG GIAO DIỆN HỆ THỐNG DÙNG CHUNG) */}
-                                <div className="overflow-x-auto">
-                                  <table className="w-full text-left text-[11px]">
-                                    <thead>
-                                      <tr className="border-b border-slate-100 text-slate-500 bg-slate-50/80 font-semibold">
-                                        <th className="py-1.5 px-2 text-center w-10">STT</th>
-                                        <th className="py-1.5 px-2.5 text-center">Từ số lượng (Q_min)</th>
-                                        <th className="py-1.5 px-2.5 text-center">Đến số lượng (Q_max)</th>
-                                        <th className="py-1.5 px-2.5 text-center">Mức giảm (%)</th>
-                                        <th className="py-1.5 px-3 text-right">Trạng thái đơn hàng của bạn</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                      {policy.tiers.map((tier, idx) => {
-                                        const min = Number(tier.minQuantity) || 0;
-                                        const max = tier.maxQuantity ? Number(tier.maxQuantity) : Infinity;
-                                        const isMatched = totalQtyInPolicy >= min && totalQtyInPolicy <= max;
-                                        const isSurpassed = totalQtyInPolicy > max;
-                                        const isUpcoming = totalQtyInPolicy < min;
-
-                                        return (
-                                          <tr
-                                            key={tier.id || idx}
-                                            className={
-                                              isMatched
-                                                ? 'bg-emerald-50/90 font-bold text-emerald-950 transition-colors ring-1 ring-emerald-300 rounded'
-                                                : 'text-slate-600 hover:bg-slate-50/50'
-                                            }
-                                          >
-                                            <td className="py-1.5 px-2 text-center text-slate-400 font-mono">{idx + 1}</td>
-                                            <td className="py-1.5 px-2.5 text-center font-mono font-medium">{tier.minQuantity}</td>
-                                            <td className="py-1.5 px-2.5 text-center font-mono font-medium">
-                                              {tier.maxQuantity ? tier.maxQuantity : 'Không giới hạn'}
-                                            </td>
-                                            <td className="py-1.5 px-2.5 text-center font-mono font-bold text-indigo-600">
-                                              {tier.discountValue}%
-                                            </td>
-                                            <td className="py-1.5 px-3 text-right">
-                                              {isMatched ? (
-                                                <span className="inline-flex items-center gap-1 text-emerald-700 font-bold text-[10.5px]">
-                                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                                  ✓ ĐANG ÁP DỤNG (Đạt {totalQtyInPolicy} món - Giảm {tier.discountValue}%)
-                                                </span>
-                                              ) : isSurpassed ? (
-                                                <span className="text-slate-400 text-[10px]">Đã vượt qua</span>
-                                              ) : isUpcoming ? (
-                                                <span className="text-indigo-600 font-medium text-[10px]">
-                                                  Thiếu +{min - totalQtyInPolicy} món để nhận {tier.discountValue}%
-                                                </span>
-                                              ) : null}
-                                            </td>
-                                          </tr>
-                                        );
-                                      })}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    )}
-
-                    {/* BẢNG KÊ CHI TIẾT CHIẾT KHẤU TỪNG MẶT HÀNG TRONG ĐƠN HÀNG */}
-                    <div className="overflow-x-auto rounded-xl border border-indigo-100/70 bg-white shadow-2xs">
-                      <table className="w-full text-left text-xs">
-                        <thead>
-                          <tr className="border-b border-slate-100 text-[11px] text-slate-500 font-semibold bg-slate-50/70">
-                            <th className="py-2.5 px-3">Sản phẩm & ĐVT</th>
-                            <th className="py-2.5 px-2 text-right">Giá niêm yết</th>
-                            <th className="py-2.5 px-2 text-center">Chính sách áp dụng</th>
-                            <th className="py-2.5 px-2 text-center">% Chiết khấu</th>
-                            <th className="py-2.5 px-2 text-right">Đơn giá sau CK</th>
-                            <th className="py-2.5 px-2 text-center">Số lượng</th>
-                            <th className="py-2.5 px-3 text-right">Tiết kiệm được</th>
+                                ) : (
+                                  <span className="text-slate-400 text-[10px] font-medium">0%</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-2 text-right font-mono font-bold text-indigo-600">
+                                {formatVND(effectiveUnitPrice)}
+                              </td>
+                              <td className="py-2.5 px-2 text-center font-bold text-slate-700">
+                                {item.quantity} {item.unit}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                                {formatVND(lineTotal)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      {Object.values(cart).length > 1 && (
+                        <tfoot className="border-t-2 border-slate-200 bg-slate-50/90 font-bold">
+                          <tr>
+                            <td colSpan={5} className="py-2.5 px-3 text-left text-slate-800 text-xs sm:text-sm font-bold">
+                              Tổng
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-600 text-xs sm:text-sm">
+                              {formatVND(cartTotals.grandTotal)}
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {Object.values(cart).map((item) => {
-                            const calc = getItemEffectiveDiscount(item);
-                            const { policyInfo, basePrice, effectiveDiscountPercent, effectiveUnitPrice, itemDiscountTotal } = calc;
-
-                            return (
-                              <tr key={`discount-table-${item.product.id}`} className="hover:bg-indigo-50/30 transition-colors">
-                                <td className="py-2.5 px-3">
-                                  <div className="font-semibold text-slate-800 line-clamp-1" title={item.product.name}>
-                                    {item.product.name}
-                                  </div>
-                                  <span className="text-[10px] text-indigo-600 font-bold uppercase">
-                                    ĐVT: {item.unit}
-                                  </span>
-                                </td>
-                                <td className="py-2.5 px-2 text-right font-mono text-slate-400">
-                                  {basePrice > effectiveUnitPrice ? (
-                                    <span className="line-through">{formatVND(basePrice)}</span>
-                                  ) : (
-                                    <span>{formatVND(basePrice)}</span>
-                                  )}
-                                </td>
-                                <td className="py-2.5 px-2 text-center">
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold bg-indigo-50 text-indigo-700">
-                                    {policyInfo.policy?.code || 'BẢNG GIÁ ĐẠI LÝ'}
-                                  </span>
-                                </td>
-                                <td className="py-2.5 px-2 text-center font-bold">
-                                  {effectiveDiscountPercent > 0 ? (
-                                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold">
-                                      -{effectiveDiscountPercent}%
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-400 text-[10px] font-medium">0% (Chưa đạt nấc)</span>
-                                  )}
-                                </td>
-                                <td className="py-2.5 px-2 text-right font-mono font-bold text-indigo-600">
-                                  {formatVND(effectiveUnitPrice)}
-                                </td>
-                                <td className="py-2.5 px-2 text-center font-bold text-slate-700">
-                                  {item.quantity} {item.unit}
-                                </td>
-                                <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-600">
-                                  {itemDiscountTotal > 0 ? `+${formatVND(itemDiscountTotal)}` : '0 đ'}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* TỔNG KẾT QUYỀN LỢI CHIẾT KHẤU ĐƯỢC GIẢM */}
-                    <div className="pt-2 border-t border-indigo-100/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-1.5 text-emerald-700 font-medium text-[11px] flex-wrap">
-                        <Sparkles className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
-                        <span>Đơn hàng của bạn được giảm chính xác:</span>
-                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold font-mono text-xs">
-                          {cartTotals.avgDiscountPercent}%
-                        </span>
-                        <span>(Tiết kiệm:</span>
-                        <strong className="font-bold text-emerald-800 font-mono">
-                          {formatVND(cartTotals.totalDiscount)}
-                        </strong>
-                        <span>)</span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 flex items-center gap-1">
-                        <Award className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                        <span>Hạn mức nợ tối đa: <strong className="text-slate-700">{currentCustomer?.maxDebtDays || 30} ngày</strong></span>
-                      </div>
-                    </div>
+                        </tfoot>
+                      )}
+                    </table>
                   </div>
 
                   {/* Tổng kết & Cảnh báo công nợ */}

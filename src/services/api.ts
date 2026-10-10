@@ -125,7 +125,9 @@ apiClient.interceptors.response.use(
 
     // Nếu request này đã retry một lần nhưng vẫn nhận lại 401 -> Phiên không còn giá trị
     if (originalRequest._retry) {
-      handleSessionTimeout();
+      if (!tokenStorage.getAccessToken()?.startsWith('demo-jwt-')) {
+        handleSessionTimeout();
+      }
       return Promise.reject(error);
     }
 
@@ -153,7 +155,9 @@ apiClient.interceptors.response.use(
     // Không tồn tại Refresh Token -> Phiên làm việc coi như đã kết thúc
     if (!currentRefreshToken) {
       isRefreshing = false;
-      handleSessionTimeout();
+      if (!tokenStorage.getAccessToken()?.startsWith('demo-jwt-')) {
+        handleSessionTimeout();
+      }
       return Promise.reject(error);
     }
 
@@ -172,8 +176,9 @@ apiClient.interceptors.response.use(
           refreshToken: currentRefreshToken,
         });
 
-        newAccessToken = refreshResponse.data.accessToken;
-        newRefreshToken = refreshResponse.data.refreshToken;
+        const resBody = refreshResponse.data as Record<string, any>;
+        newAccessToken = resBody.accessToken || resBody.access_token || '';
+        newRefreshToken = resBody.refreshToken || resBody.refresh_token;
       }
 
       // Lưu trữ cặp token mới vào localStorage
@@ -191,7 +196,9 @@ apiClient.interceptors.response.use(
     } catch (refreshError: unknown) {
       // Refresh Token thất bại (hết hạn hoặc bị thu hồi) -> Dọn dẹp & thông báo Session Timeout
       processQueue(refreshError, null);
-      handleSessionTimeout();
+      if (!currentRefreshToken?.startsWith('demo-jwt-')) {
+        handleSessionTimeout();
+      }
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

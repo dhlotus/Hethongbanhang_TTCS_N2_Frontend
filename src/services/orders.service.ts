@@ -1147,19 +1147,52 @@ export const ordersService = {
       } catch { }
       return all[idx];
     }
-    const res = await apiClient.post<Order>(`/orders/${id}/decision`, { action, comment });
-    if (res.data) {
-      const all = getStoredDemoOrders();
-      const idx = all.findIndex((order) => order.id === id || order.orderCode === id);
-      if (idx !== -1) {
-        all[idx] = res.data;
-        saveStoredDemoOrders(all);
+    try {
+      const res = await apiClient.post<Order>(`/orders/${id}/decision`, { action, comment });
+      if (res.data) {
+        const all = getStoredDemoOrders();
+        const idx = all.findIndex((order) => order.id === id || order.orderCode === id);
+        if (idx !== -1) {
+          all[idx] = res.data;
+          saveStoredDemoOrders(all);
+        }
+        try {
+          window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: res.data }));
+        } catch { }
       }
-      try {
-        window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: res.data }));
-      } catch { }
+      return res.data;
+    } catch (apiError: unknown) {
+      const errObj = apiError as {
+        response?: { status?: number; data?: { message?: string | string[] } };
+        message?: string;
+      };
+
+      // Fallback cho đơn hàng lưu cục bộ nếu backend trả về 404
+      if (errObj?.response?.status === 404) {
+        const all = getStoredDemoOrders();
+        const idx = all.findIndex((order) => order.id === id || order.orderCode === id);
+        if (idx !== -1) {
+          const nextStatus: Record<OrderApprovalAction, OrderStatus> = {
+            APPROVE: 'APPROVED',
+            REJECT: 'REJECTED',
+            RETURN_FOR_UPDATE: 'RETURNED_FOR_UPDATE',
+          };
+          const createdAt = new Date().toISOString();
+          all[idx] = { ...all[idx], status: nextStatus[action], updatedAt: createdAt };
+          saveStoredDemoOrders(all);
+          try {
+            window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: all[idx] }));
+          } catch { }
+          return all[idx];
+        }
+      }
+
+      if (errObj?.response?.data?.message) {
+        const msg = errObj.response.data.message;
+        throw new Error(Array.isArray(msg) ? msg.join(', ') : msg);
+      }
+      throw new Error(errObj?.message || 'Không thể cập nhật quyết định đơn hàng');
     }
-    return res.data;
   },
 
   async getApprovalHistory(orderId: string): Promise<OrderApprovalHistory[]> {
@@ -1169,8 +1202,14 @@ export const ordersService = {
         .filter((entry) => entry.orderId === orderId)
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     }
-    const res = await apiClient.get<OrderApprovalHistory[]>(`/orders/${orderId}/approval-history`);
-    return res.data;
+    try {
+      const res = await apiClient.get<OrderApprovalHistory[]>(`/orders/${orderId}/approval-history`);
+      return res.data;
+    } catch {
+      return this.readDemoApprovalHistory()
+        .filter((entry) => entry.orderId === orderId)
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    }
   },
 
   readDemoApprovalHistory(): OrderApprovalHistory[] {
