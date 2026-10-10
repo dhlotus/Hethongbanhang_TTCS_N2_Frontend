@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Building2,
   Plus,
@@ -27,26 +27,103 @@ import { Pagination } from '../components/pagination';
 import { customerService } from '../services/customer.service';
 import type { Customer, CreateCustomerPayload, DeliveryPoint } from '../types/customer.types';
 
+// ──────────────────────────────────────────────────────────────────────────
+// QUERY PARAM MAPPINGS CHO BỘ LỌC ĐẠI LÝ (URL STATE MANAGEMENT)
+// ──────────────────────────────────────────────────────────────────────────
+
+const REGION_TO_PARAM: Record<string, string> = {
+  'Miền Bắc': 'north',
+  'Miền Trung': 'central',
+  'Miền Nam': 'south',
+};
+
+const PARAM_TO_REGION: Record<string, string> = {
+  north: 'Miền Bắc',
+  central: 'Miền Trung',
+  south: 'Miền Nam',
+  mien_bac: 'Miền Bắc',
+  mien_trung: 'Miền Trung',
+  mien_nam: 'Miền Nam',
+  'miền bắc': 'Miền Bắc',
+  'miền trung': 'Miền Trung',
+  'miền nam': 'Miền Nam',
+};
+
+const GROUP_TO_PARAM: Record<string, string> = {
+  AGENT_LEVEL_1: 'level1',
+  AGENT_LEVEL_2: 'level2',
+  WHOLESALE: 'wholesale',
+  RETAIL: 'retail',
+};
+
+const PARAM_TO_GROUP: Record<string, string> = {
+  level1: 'AGENT_LEVEL_1',
+  level2: 'AGENT_LEVEL_2',
+  wholesale: 'WHOLESALE',
+  retail: 'RETAIL',
+  agent_level_1: 'AGENT_LEVEL_1',
+  agent_level_2: 'AGENT_LEVEL_2',
+};
+
+const STATUS_TO_PARAM: Record<string, string> = {
+  ACTIVE: 'active',
+  LOCKED: 'locked',
+  INACTIVE: 'inactive',
+};
+
+const PARAM_TO_STATUS: Record<string, string> = {
+  active: 'ACTIVE',
+  locked: 'LOCKED',
+  inactive: 'INACTIVE',
+};
+
+const parseRegionParam = (param: string | null): string => {
+  if (!param) return 'ALL';
+  const lower = param.toLowerCase().trim();
+  return PARAM_TO_REGION[lower] || 'ALL';
+};
+
+const parseGroupParam = (param: string | null): string => {
+  if (!param) return 'ALL';
+  const lower = param.toLowerCase().trim();
+  return PARAM_TO_GROUP[lower] || 'ALL';
+};
+
+const parseStatusParam = (param: string | null): string => {
+  if (!param) return 'ALL';
+  const lower = param.toLowerCase().trim();
+  return PARAM_TO_STATUS[lower] || 'ALL';
+};
+
 /**
  * Trang Quản lý Đại lý & Hạn mức tín dụng (SN-31, SN-32, SN-37 & Đồng bộ dữ liệu)
  * Tuân thủ triệt để UI_GUIDELINES.md và CODE_CONVENTION.md
  */
 export const CustomersPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Khởi tạo các giá trị lọc ban đầu từ URL Query Parameters
+  const initialRegion = parseRegionParam(searchParams.get('region'));
+  const initialGroup = parseGroupParam(searchParams.get('group'));
+  const initialStatus = parseStatusParam(searchParams.get('status'));
+  const initialSearch = searchParams.get('search') || '';
+  const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
 
   // State danh sách đại lý & tải dữ liệu
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  // Bộ lọc & tìm kiếm (Hỗ trợ SN-37 đa tiêu chí)
-  const [searchInput, setSearchInput] = useState<string>('');
-  const [selectedGroup, setSelectedGroup] = useState<string>('ALL');
-  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
-  const [selectedRegion, setSelectedRegion] = useState<string>('ALL');
+  // Bộ lọc & tìm kiếm (Hỗ trợ SN-37 đa tiêu chí & đồng bộ URL)
+  const [searchInput, setSearchInput] = useState<string>(initialSearch);
+  const [searchTerm, setSearchTerm] = useState<string>(initialSearch);
+  const [selectedGroup, setSelectedGroup] = useState<string>(initialGroup);
+  const [selectedStatus, setSelectedStatus] = useState<string>(initialStatus);
+  const [selectedRegion, setSelectedRegion] = useState<string>(initialRegion);
 
   // Phân trang danh sách đại lý (10 - 20 - 50 dòng/trang)
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [currentPage, setCurrentPage] = useState<number>(initialPage);
   const [pageSize, setPageSize] = useState<number>(10);
 
   // Modal quản lý điểm giao hàng (SN-31 & SN-32)
@@ -104,6 +181,157 @@ export const CustomersPage: React.FC = () => {
     }
   }, [isCreateModalOpen, submitting]);
 
+  // Đồng bộ hóa URL Search Params an toàn, giữ nguyên các param khác và không reload trang
+  const updateUrlParams = useCallback(
+    (updates: {
+      region?: string;
+      group?: string;
+      status?: string;
+      search?: string;
+      page?: number;
+    }) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+
+          // Khu vực
+          const targetRegion = updates.region !== undefined ? updates.region : selectedRegion;
+          if (targetRegion && targetRegion !== 'ALL' && REGION_TO_PARAM[targetRegion]) {
+            next.set('region', REGION_TO_PARAM[targetRegion]);
+          } else {
+            next.delete('region');
+          }
+
+          // Phân nhóm
+          const targetGroup = updates.group !== undefined ? updates.group : selectedGroup;
+          if (targetGroup && targetGroup !== 'ALL' && GROUP_TO_PARAM[targetGroup]) {
+            next.set('group', GROUP_TO_PARAM[targetGroup]);
+          } else {
+            next.delete('group');
+          }
+
+          // Trạng thái
+          const targetStatus = updates.status !== undefined ? updates.status : selectedStatus;
+          if (targetStatus && targetStatus !== 'ALL' && STATUS_TO_PARAM[targetStatus]) {
+            next.set('status', STATUS_TO_PARAM[targetStatus]);
+          } else {
+            next.delete('status');
+          }
+
+          // Tìm kiếm
+          const targetSearch = updates.search !== undefined ? updates.search : searchTerm;
+          const trimmed = targetSearch.trim();
+          if (trimmed) {
+            next.set('search', trimmed);
+          } else {
+            next.delete('search');
+          }
+
+          // Phân trang
+          const targetPage = updates.page !== undefined ? updates.page : currentPage;
+          if (
+            targetPage > 1 ||
+            next.has('region') ||
+            next.has('group') ||
+            next.has('status') ||
+            next.has('search')
+          ) {
+            next.set('page', String(targetPage));
+          } else {
+            next.delete('page');
+          }
+
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams, selectedRegion, selectedGroup, selectedStatus, searchTerm, currentPage]
+  );
+
+  const handleRegionChange = (newRegion: string) => {
+    setSelectedRegion(newRegion);
+    setCurrentPage(1);
+    updateUrlParams({ region: newRegion, page: 1 });
+  };
+
+  const handleGroupChange = (newGroup: string) => {
+    setSelectedGroup(newGroup);
+    setCurrentPage(1);
+    updateUrlParams({ group: newGroup, page: 1 });
+  };
+
+  const handleStatusChange = (newStatus: string) => {
+    setSelectedStatus(newStatus);
+    setCurrentPage(1);
+    updateUrlParams({ status: newStatus, page: 1 });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    updateUrlParams({ page: newPage });
+  };
+
+  const handleResetFilters = () => {
+    setSearchInput('');
+    setSearchTerm('');
+    setSelectedGroup('ALL');
+    setSelectedStatus('ALL');
+    setSelectedRegion('ALL');
+    setCurrentPage(1);
+    setSearchParams({}, { replace: true });
+  };
+
+  const isInitialSearchMount = useRef(true);
+
+  // Debounce tìm kiếm (400ms) để không gây spam URL và giật lag giao diện
+  useEffect(() => {
+    if (isInitialSearchMount.current) {
+      isInitialSearchMount.current = false;
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const trimmed = searchInput.trim();
+      if (trimmed !== searchTerm) {
+        setSearchTerm(trimmed);
+        setCurrentPage(1);
+        updateUrlParams({ search: trimmed, page: 1 });
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [searchInput, searchTerm, updateUrlParams]);
+
+  // Lắng nghe thay đổi của URL Search Params (khi F5, dán link hoặc Back/Forward trên browser)
+  useEffect(() => {
+    const urlRegion = parseRegionParam(searchParams.get('region'));
+    if (urlRegion !== selectedRegion) {
+      setSelectedRegion(urlRegion);
+    }
+
+    const urlGroup = parseGroupParam(searchParams.get('group'));
+    if (urlGroup !== selectedGroup) {
+      setSelectedGroup(urlGroup);
+    }
+
+    const urlStatus = parseStatusParam(searchParams.get('status'));
+    if (urlStatus !== selectedStatus) {
+      setSelectedStatus(urlStatus);
+    }
+
+    const urlSearch = searchParams.get('search') || '';
+    if (urlSearch !== searchTerm) {
+      setSearchTerm(urlSearch);
+      setSearchInput(urlSearch);
+    }
+
+    const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    if (urlPage !== currentPage) {
+      setCurrentPage(urlPage);
+    }
+  }, [searchParams]);
+
   // Tải danh sách đại lý từ API / Persistent Storage
   const loadCustomers = useCallback(async (keyword?: string) => {
     try {
@@ -122,13 +350,13 @@ export const CustomersPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadCustomers();
+    loadCustomers(initialSearch || undefined);
   }, [loadCustomers]);
 
   // Lắng nghe sự kiện đồng bộ từ Tạo đơn hàng (SN-38) hoặc Tab khác
   useEffect(() => {
     const handleSync = () => {
-      void loadCustomers(searchInput.trim() || undefined);
+      void loadCustomers(searchTerm.trim() || undefined);
     };
 
     window.addEventListener('loha_customers_updated', handleSync);
@@ -138,12 +366,12 @@ export const CustomersPage: React.FC = () => {
       window.removeEventListener('loha_customers_updated', handleSync);
       window.removeEventListener('storage', handleSync);
     };
-  }, [loadCustomers, searchInput]);
+  }, [loadCustomers, searchTerm]);
 
   // Làm mới dữ liệu
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadCustomers(searchInput.trim() || undefined);
+    await loadCustomers(searchTerm.trim() || undefined);
     showToast(
       'success',
       'Đồng bộ hoàn tất',
@@ -155,10 +383,10 @@ export const CustomersPage: React.FC = () => {
   const filteredCustomers = useMemo(() => {
     return customers.filter((c) => {
       const matchSearch =
-        !searchInput.trim() ||
-        c.name.toLowerCase().includes(searchInput.toLowerCase()) ||
-        c.code.toLowerCase().includes(searchInput.toLowerCase()) ||
-        c.phone.includes(searchInput.trim());
+        !searchTerm.trim() ||
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.phone.includes(searchTerm.trim());
 
       const matchGroup = selectedGroup === 'ALL' || c.customerGroup === selectedGroup;
       const matchStatus = selectedStatus === 'ALL' || c.status === selectedStatus;
@@ -166,12 +394,7 @@ export const CustomersPage: React.FC = () => {
 
       return matchSearch && matchGroup && matchStatus && matchRegion;
     });
-  }, [customers, searchInput, selectedGroup, selectedStatus, selectedRegion]);
-
-  // Tự động reset về trang 1 khi thay đổi điều kiện tìm kiếm / lọc
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchInput, selectedGroup, selectedStatus, selectedRegion]);
+  }, [customers, searchTerm, selectedGroup, selectedStatus, selectedRegion]);
 
   // Tính toán phân trang
   const totalItems = filteredCustomers.length;
@@ -380,36 +603,47 @@ export const CustomersPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 py-4 pb-24">
-      {/* ── HEADER CTA ── */}
-      <div className="flex items-center justify-end gap-2.5 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
-        <button
-          type="button"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
-          title="Đồng bộ danh sách"
-        >
-          <RefreshCw
-            className={`w-4 h-4 ${refreshing ? 'animate-spin text-[var(--color-primary)]' : 'text-slate-500'}`}
-          />
-          <span className="hidden sm:inline">Làm mới</span>
-        </button>
+    <div className="space-y-6">
+      {/* ── HEADER GIỐNG TRANG ĐƠN HÀNG BÁN BUÔN ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <Building2 className="w-6 h-6 text-blue-600" />
+            Đại lý & Hạn mức nợ
+          </h1>
+          <p className="text-sm text-slate-500 mt-2">
+            Quản lý danh sách khách hàng đại lý, theo dõi hạn mức tín dụng và công nợ
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+            title="Đồng bộ danh sách"
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-600' : 'text-slate-500'}`}
+            />
+            <span>Làm mới</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-white bg-[var(--color-primary)] hover:opacity-90 rounded-lg shadow-sm transition-all active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Thêm đại lý mới</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-xs cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Thêm đại lý mới</span>
+          </button>
+        </div>
       </div>
 
       {/* ── THỐNG KÊ NHANH KPI (CARD-BASED UI) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-[var(--color-primary)] shrink-0">
+        <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-blue-600 shrink-0">
             <Building2 className="w-5 h-5" />
           </div>
           <div className="min-w-0">
@@ -418,8 +652,8 @@ export const CustomersPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+        <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div className="min-w-0">
@@ -428,8 +662,8 @@ export const CustomersPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+        <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
             <CreditCard className="w-5 h-5" />
           </div>
           <div className="min-w-0 truncate">
@@ -440,8 +674,8 @@ export const CustomersPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+        <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
             <AlertCircle className="w-5 h-5" />
           </div>
           <div className="min-w-0 truncate">
@@ -454,7 +688,7 @@ export const CustomersPage: React.FC = () => {
       </div>
 
       {/* ── THANH TÌM KIẾM & BỘ LỌC ĐA TIÊU CHÍ (SN-37) ── */}
-      <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col lg:flex-row gap-3 items-center justify-between">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col lg:flex-row gap-3 items-center justify-between">
         <div className="relative w-full lg:max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -462,21 +696,21 @@ export const CustomersPage: React.FC = () => {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Tìm theo tên đại lý, mã hoặc số điện thoại..."
-            className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-slate-50/50 hover:bg-white transition-colors"
+            className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white placeholder-slate-400"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
             <Filter className="w-3.5 h-3.5 text-slate-400" />
             <span className="hidden md:inline">Lọc:</span>
           </div>
 
           <select
             value={selectedRegion}
-            onChange={(e) => setSelectedRegion(e.target.value)}
+            onChange={(e) => handleRegionChange(e.target.value)}
             aria-label="Lọc theo khu vực"
-            className="text-xs sm:text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:border-[var(--color-primary)]"
+            className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
             <option value="ALL">Tất cả khu vực</option>
             <option value="Miền Nam">Miền Nam</option>
@@ -486,9 +720,9 @@ export const CustomersPage: React.FC = () => {
 
           <select
             value={selectedGroup}
-            onChange={(e) => setSelectedGroup(e.target.value)}
+            onChange={(e) => handleGroupChange(e.target.value)}
             aria-label="Lọc theo nhóm đại lý"
-            className="text-xs sm:text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:border-[var(--color-primary)]"
+            className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
             <option value="ALL">Tất cả phân nhóm</option>
             <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
@@ -499,9 +733,9 @@ export const CustomersPage: React.FC = () => {
 
           <select
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
+            onChange={(e) => handleStatusChange(e.target.value)}
             aria-label="Lọc theo trạng thái hoạt động"
-            className="text-xs sm:text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:border-[var(--color-primary)]"
+            className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
             <option value="ALL">Tất cả trạng thái</option>
             <option value="ACTIVE">Đang hoạt động</option>
@@ -512,10 +746,10 @@ export const CustomersPage: React.FC = () => {
       </div>
 
       {/* ── BẢNG DANH SÁCH ĐẠI LÝ ── */}
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
         {loading ? (
           <div className="py-16 text-center text-slate-400">
-            <RefreshCw className="w-7 h-7 animate-spin mx-auto mb-2 text-[var(--color-primary)]" />
+            <RefreshCw className="w-7 h-7 animate-spin mx-auto mb-2 text-blue-600" />
             <p className="text-sm font-medium">Đang tải danh sách đại lý...</p>
           </div>
         ) : filteredCustomers.length === 0 ? (
@@ -524,39 +758,35 @@ export const CustomersPage: React.FC = () => {
             <p className="text-sm font-medium">Không tìm thấy đại lý phù hợp với điều kiện lọc</p>
             <button
               type="button"
-              onClick={() => {
-                setSearchInput('');
-                setSelectedGroup('ALL');
-                setSelectedStatus('ALL');
-                setSelectedRegion('ALL');
-              }}
-              className="text-xs text-[var(--color-primary)] hover:underline font-medium"
+              onClick={handleResetFilters}
+              className="text-xs text-blue-600 hover:underline font-medium cursor-pointer"
             >
               Xóa bộ lọc
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs sm:text-sm text-slate-600">
-              <thead className="bg-slate-50/80 text-slate-600 text-xs uppercase font-semibold border-b border-slate-100">
-                <tr>
-                  <th className="px-4 py-3.5">Mã & Tên Đại Lý</th>
-                  <th className="px-4 py-3.5">Liên Hệ</th>
-                  <th className="px-4 py-3.5">Phân Nhóm & Phụ Trách</th>
-                  <th className="px-4 py-3.5">Hạn Mức & Dư Nợ</th>
-                  <th className="px-4 py-3.5">Điểm Giao Hàng (SN-31)</th>
-                  <th className="px-4 py-3.5">Trạng Thái</th>
-                  <th className="px-4 py-3.5 text-right">Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm text-slate-600">
+                <thead className="bg-slate-50/70 text-slate-500 text-xs uppercase font-semibold border-b border-slate-100 tracking-wide">
+                  <tr>
+                    <th className="px-4 py-3.5">Mã & Tên Đại Lý</th>
+                    <th className="px-4 py-3.5">Liên Hệ</th>
+                    <th className="px-4 py-3.5">Phân Nhóm & Phụ Trách</th>
+                    <th className="px-4 py-3.5">Hạn Mức & Dư Nợ</th>
+                    <th className="px-4 py-3.5">Điểm Giao Hàng (SN-31)</th>
+                    <th className="px-4 py-3.5">Trạng Thái</th>
+                    <th className="px-4 py-3.5 text-right">Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
                 {paginatedCustomers.map((customer) => {
                   const debtPercent =
                     customer.creditLimit > 0
                       ? Math.min(
-                          100,
-                          Math.round((customer.currentDebt / customer.creditLimit) * 100)
-                        )
+                        100,
+                        Math.round((customer.currentDebt / customer.creditLimit) * 100)
+                      )
                       : 0;
 
                   return (
@@ -597,11 +827,10 @@ export const CustomersPage: React.FC = () => {
                       <td className="px-4 py-3.5">
                         <div>
                           <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              customer.customerGroup === 'AGENT_LEVEL_1'
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${customer.customerGroup === 'AGENT_LEVEL_1'
                                 ? 'bg-indigo-50 text-[var(--color-primary)] border border-indigo-100'
                                 : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                            }`}
+                              }`}
                           >
                             {getGroupLabel(customer.customerGroup)}
                           </span>
@@ -619,22 +848,20 @@ export const CustomersPage: React.FC = () => {
                         <div className="flex justify-between items-center text-xs mb-1">
                           <span className="text-slate-500">Dư nợ:</span>
                           <span
-                            className={`font-semibold ${
-                              debtPercent > 80 ? 'text-rose-600 font-bold' : 'text-slate-800'
-                            }`}
+                            className={`font-semibold ${debtPercent > 80 ? 'text-rose-600 font-bold' : 'text-slate-800'
+                              }`}
                           >
                             {formatVnd(customer.currentDebt || 0)}
                           </span>
                         </div>
                         <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all ${
-                              debtPercent > 80
+                            className={`h-full rounded-full transition-all ${debtPercent > 80
                                 ? 'bg-rose-500'
                                 : debtPercent > 50
                                   ? 'bg-amber-500'
                                   : 'bg-[var(--color-primary)]'
-                            }`}
+                              }`}
                             style={{ width: `${debtPercent}%` }}
                           />
                         </div>
@@ -720,11 +947,10 @@ export const CustomersPage: React.FC = () => {
                             onClick={() => {
                               navigate(`/sales/orders?customerId=${customer.id}`);
                             }}
-                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                              customer.status === 'LOCKED'
+                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-all ${customer.status === 'LOCKED'
                                 ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400'
                                 : 'text-[var(--color-primary)] bg-indigo-50 hover:bg-[var(--color-primary)] hover:text-white'
-                            }`}
+                              }`}
                             title={
                               customer.status === 'LOCKED'
                                 ? 'Đại lý đang bị khóa giao dịch, không thể lên đơn!'
@@ -742,29 +968,28 @@ export const CustomersPage: React.FC = () => {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
 
-      {/* ── THANH PHÂN TRANG NỔI TÁCH RỜI (STICKY FLOATING BOTTOM) ── */}
-      {!loading && filteredCustomers.length > 0 && (
-        <div className="sticky bottom-4 z-30 transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
-          <Pagination
-            variant="floating"
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={totalItems}
-            pageSize={pageSize}
-            pageSizeOptions={[10, 20, 50]}
-            itemLabel="đại lý"
-            showFirstLast={true}
-            onPageChange={(page) => setCurrentPage(page)}
-            onPageSizeChange={(newSize) => {
-              setPageSize(newSize);
-              setCurrentPage(1);
-            }}
-          />
-        </div>
+          {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN BẢNG (KHÔNG ĐÈ NỘI DUNG) ── */}
+          {filteredCustomers.length > 0 && (
+            <Pagination
+              variant="default"
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              pageSizeOptions={[10, 20, 50]}
+              itemLabel="đại lý"
+              showFirstLast={true}
+              onPageChange={(page) => handlePageChange(page)}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                handlePageChange(1);
+              }}
+            />
+          )}
+        </>
       )}
+    </div>
 
       {/* ── MODAL THÊM ĐẠI LÝ MỚI (CỐ ĐỊNH GIỮA MÀN HÌNH - KHÔNG TRƯỢT) ── */}
       {isCreateModalOpen &&
