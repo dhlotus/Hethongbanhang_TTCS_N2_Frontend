@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Plus,
   RefreshCw,
@@ -35,12 +36,74 @@ import type {
   CreatePriceListPayload,
 } from '../types/price-list';
 
+// ──────────────────────────────────────────────────────────────────────────
+// QUERY PARAM MAPPINGS CHO BẢNG GIÁ & CHIẾT KHẤU (URL STATE MANAGEMENT)
+// ──────────────────────────────────────────────────────────────────────────
+
 const CUSTOMER_GROUP_TABS: { key: string; label: string }[] = [
   { key: 'ALL', label: 'Tất cả Nhóm' },
   { key: 'AGENT_LEVEL_1', label: 'Đại lý Cấp 1' },
   { key: 'AGENT_LEVEL_2', label: 'Đại lý Cấp 2' },
   { key: 'RETAIL', label: 'Bán lẻ Niêm yết' },
 ];
+
+const TAB_TO_PARAM: Record<'BASE' | 'DISCOUNT', string> = {
+  BASE: 'base',
+  DISCOUNT: 'discount',
+};
+
+const PARAM_TO_TAB: Record<string, 'BASE' | 'DISCOUNT'> = {
+  base: 'BASE',
+  discount: 'DISCOUNT',
+  base_price: 'BASE',
+  policies: 'DISCOUNT',
+};
+
+const parseTabParam = (param: string | null): 'BASE' | 'DISCOUNT' => {
+  if (!param) return 'BASE';
+  const lower = param.toLowerCase().trim();
+  return PARAM_TO_TAB[lower] || 'BASE';
+};
+
+const STATUS_TO_PARAM: Record<PriceListStatusType, string> = {
+  ACTIVE: 'active',
+  DRAFT: 'draft',
+  INACTIVE: 'inactive',
+  EXPIRED: 'expired',
+};
+
+const PARAM_TO_STATUS: Record<string, PriceListStatusType> = {
+  active: 'ACTIVE',
+  draft: 'DRAFT',
+  inactive: 'INACTIVE',
+  expired: 'EXPIRED',
+};
+
+const parseStatusParam = (param: string | null): PriceListStatusType | 'ALL' => {
+  if (!param) return 'ALL';
+  const lower = param.toLowerCase().trim();
+  return PARAM_TO_STATUS[lower] || 'ALL';
+};
+
+const GROUP_TO_PARAM: Record<string, string> = {
+  AGENT_LEVEL_1: 'level1',
+  AGENT_LEVEL_2: 'level2',
+  RETAIL: 'retail',
+};
+
+const PARAM_TO_GROUP: Record<string, string> = {
+  level1: 'AGENT_LEVEL_1',
+  level2: 'AGENT_LEVEL_2',
+  retail: 'RETAIL',
+  agent_level_1: 'AGENT_LEVEL_1',
+  agent_level_2: 'AGENT_LEVEL_2',
+};
+
+const parseGroupParam = (param: string | null): string => {
+  if (!param) return 'ALL';
+  const lower = param.toLowerCase().trim();
+  return PARAM_TO_GROUP[lower] || 'ALL';
+};
 
 /** Định dạng ngày hiển thị chuẩn Việt Nam: DD/MM/YYYY */
 const formatDate = (dateStr?: string): string => {
@@ -57,20 +120,31 @@ const formatDate = (dateStr?: string): string => {
 };
 
 export const PriceListsPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Khôi phục trạng thái ban đầu từ URL Search Params (F5 / Bookmark / Share Link)
+  const initialTab = parseTabParam(searchParams.get('tab'));
+  const initialStatus = parseStatusParam(searchParams.get('status'));
+  const initialGroup = parseGroupParam(searchParams.get('group'));
+  const initialSearch = searchParams.get('search') || '';
+  const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+
+  // Tab cấp cao (Bảng giá cơ sở vs Chính sách chiết khấu sản lượng)
+  const [activeTab, setActiveTab] = useState<'BASE' | 'DISCOUNT'>(initialTab);
+
   // Dữ liệu bảng giá & Phân trang
   const [priceLists, setPriceLists] = useState<PriceList[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage);
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
-  const [activeTab, setActiveTab] = useState<'BASE' | 'DISCOUNT'>('BASE');
 
   // Bộ lọc & Tìm kiếm (Debounced)
-  const [searchInput, setSearchInput] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedGroup, setSelectedGroup] = useState<string>('ALL');
-  const [selectedStatus, setSelectedStatus] = useState<PriceListStatusType | 'ALL'>('ALL');
+  const [searchInput, setSearchInput] = useState(initialSearch);
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [selectedGroup, setSelectedGroup] = useState<string>(initialGroup);
+  const [selectedStatus, setSelectedStatus] = useState<PriceListStatusType | 'ALL'>(initialStatus);
 
   // Quản lý dropdown thao tác 3 chấm
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
@@ -106,14 +180,139 @@ export const PriceListsPage: React.FC = () => {
     return () => document.removeEventListener('click', handleDocClick);
   }, []);
 
-  // Debounce ô tìm kiếm sau 300ms
+  // Cập nhật query parameters an toàn lên URL mà không reload lại toàn bộ trang
+  const updateUrlParams = useCallback(
+    (updates: {
+      tab?: 'BASE' | 'DISCOUNT';
+      status?: PriceListStatusType | 'ALL';
+      group?: string;
+      search?: string;
+      page?: number;
+    }) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+
+          // 1. Tab hiển thị: ?tab=base | ?tab=discount
+          const targetTab = updates.tab !== undefined ? updates.tab : activeTab;
+          next.set('tab', TAB_TO_PARAM[targetTab]);
+
+          // 2. Trạng thái: ?status=active | draft | expired | inactive
+          const targetStatus = updates.status !== undefined ? updates.status : selectedStatus;
+          if (targetStatus && targetStatus !== 'ALL' && STATUS_TO_PARAM[targetStatus]) {
+            next.set('status', STATUS_TO_PARAM[targetStatus]);
+          } else {
+            next.delete('status');
+          }
+
+          // 3. Phân nhóm khách hàng: ?group=level1 | level2 | retail
+          const targetGroup = updates.group !== undefined ? updates.group : selectedGroup;
+          if (targetGroup && targetGroup !== 'ALL' && GROUP_TO_PARAM[targetGroup]) {
+            next.set('group', GROUP_TO_PARAM[targetGroup]);
+          } else {
+            next.delete('group');
+          }
+
+          // 4. Tìm kiếm: ?search=...
+          const targetSearch = updates.search !== undefined ? updates.search : searchTerm;
+          const trimmed = targetSearch.trim();
+          if (trimmed) {
+            next.set('search', trimmed);
+          } else {
+            next.delete('search');
+          }
+
+          // 5. Phân trang: ?page=...
+          const targetPage = updates.page !== undefined ? updates.page : page;
+          if (targetPage > 1) {
+            next.set('page', String(targetPage));
+          } else {
+            next.delete('page');
+          }
+
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams, activeTab, selectedStatus, selectedGroup, searchTerm, page]
+  );
+
+  const isInitialSearchMount = useRef(true);
+
+  // Debounce ô tìm kiếm sau 400ms để tránh giật lag và không spam URL
   useEffect(() => {
+    if (isInitialSearchMount.current) {
+      isInitialSearchMount.current = false;
+      return;
+    }
+
     const handler = setTimeout(() => {
-      setSearchTerm(searchInput.trim());
-      setPage(1);
-    }, 300);
+      const trimmed = searchInput.trim();
+      if (trimmed !== searchTerm) {
+        setSearchTerm(trimmed);
+        setPage(1);
+        updateUrlParams({ search: trimmed, page: 1 });
+      }
+    }, 400);
+
     return () => clearTimeout(handler);
-  }, [searchInput]);
+  }, [searchInput, searchTerm, updateUrlParams]);
+
+  // Lắng nghe thay đổi của URL Search Params (khi F5, bấm link chia sẻ hoặc Back/Forward trên browser)
+  useEffect(() => {
+    const urlTab = parseTabParam(searchParams.get('tab'));
+    if (urlTab !== activeTab) {
+      setActiveTab(urlTab);
+    }
+
+    const urlStatus = parseStatusParam(searchParams.get('status'));
+    if (urlStatus !== selectedStatus) {
+      setSelectedStatus(urlStatus);
+    }
+
+    const urlGroup = parseGroupParam(searchParams.get('group'));
+    if (urlGroup !== selectedGroup) {
+      setSelectedGroup(urlGroup);
+    }
+
+    const urlSearch = searchParams.get('search') || '';
+    if (urlSearch !== searchTerm) {
+      setSearchTerm(urlSearch);
+      setSearchInput(urlSearch);
+    }
+
+    const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    if (urlPage !== page) {
+      setPage(urlPage);
+    }
+  }, [searchParams, activeTab, selectedStatus, selectedGroup, searchTerm, page]);
+
+  // Chuyển đổi tab hiển thị
+  const handleTabChange = (newTab: 'BASE' | 'DISCOUNT') => {
+    setActiveTab(newTab);
+    updateUrlParams({ tab: newTab });
+  };
+
+  // Thay đổi bộ lọc trạng thái
+  const handleStatusChange = (newStatus: PriceListStatusType | 'ALL') => {
+    setSelectedStatus(newStatus);
+    setPage(1);
+    updateUrlParams({ status: newStatus, page: 1 });
+  };
+
+  // Thay đổi nhóm khách hàng
+  const handleGroupChange = (newGroup: string) => {
+    setSelectedGroup(newGroup);
+    setPage(1);
+    updateUrlParams({ group: newGroup, page: 1 });
+  };
+
+  // Chuyển trang
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    updateUrlParams({ page: newPage });
+  };
 
   // Đặt lại toàn bộ bộ lọc bảng giá
   const handleResetFilters = useCallback(() => {
@@ -122,7 +321,8 @@ export const PriceListsPage: React.FC = () => {
     setSelectedGroup('ALL');
     setSelectedStatus('ALL');
     setPage(1);
-  }, []);
+    updateUrlParams({ search: '', status: 'ALL', group: 'ALL', page: 1 });
+  }, [updateUrlParams]);
 
   // Tải danh sách bảng giá từ Service
   const loadPriceLists = useCallback(async () => {
@@ -147,8 +347,10 @@ export const PriceListsPage: React.FC = () => {
   }, [page, limit, searchTerm, selectedGroup, selectedStatus]);
 
   useEffect(() => {
-    loadPriceLists();
-  }, [loadPriceLists]);
+    if (activeTab === 'BASE') {
+      loadPriceLists();
+    }
+  }, [loadPriceLists, activeTab]);
 
   // Thống kê Metrics Header
   const metrics = useMemo(() => {
@@ -323,7 +525,7 @@ export const PriceListsPage: React.FC = () => {
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100 text-sm mb-4">
         <button
           type="button"
-          onClick={() => setActiveTab('BASE')}
+          onClick={() => handleTabChange('BASE')}
           className={`px-4 py-2 rounded-t-xl font-semibold transition-all whitespace-nowrap cursor-pointer border-b-2 ${
             activeTab === 'BASE'
               ? 'border-blue-600 text-blue-600 bg-blue-50/50'
@@ -334,7 +536,7 @@ export const PriceListsPage: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('DISCOUNT')}
+          onClick={() => handleTabChange('DISCOUNT')}
           className={`px-4 py-2 rounded-t-xl font-semibold transition-all whitespace-nowrap cursor-pointer border-b-2 ${
             activeTab === 'DISCOUNT'
               ? 'border-blue-600 text-blue-600 bg-blue-50/50'
@@ -439,10 +641,7 @@ export const PriceListsPage: React.FC = () => {
                   <button
                     key={tab.key}
                     type="button"
-                    onClick={() => {
-                      setSelectedGroup(tab.key);
-                      setPage(1);
-                    }}
+                    onClick={() => handleGroupChange(tab.key)}
                     className={`px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
                       isActive
                         ? 'bg-blue-600 text-white shadow-2xs'
@@ -469,8 +668,14 @@ export const PriceListsPage: React.FC = () => {
                 {searchInput && (
                   <button
                     type="button"
-                    onClick={() => setSearchInput('')}
+                    onClick={() => {
+                      setSearchInput('');
+                      setSearchTerm('');
+                      setPage(1);
+                      updateUrlParams({ search: '', page: 1 });
+                    }}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                    title="Xóa tìm kiếm"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -481,10 +686,7 @@ export const PriceListsPage: React.FC = () => {
               <div className="sm:w-44">
                 <select
                   value={selectedStatus}
-                  onChange={(e) => {
-                    setSelectedStatus(e.target.value as PriceListStatusType | 'ALL');
-                    setPage(1);
-                  }}
+                  onChange={(e) => handleStatusChange(e.target.value as PriceListStatusType | 'ALL')}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
                 >
                   <option value="ALL">Tất cả Trạng thái</option>
@@ -509,6 +711,19 @@ export const PriceListsPage: React.FC = () => {
                 <span className="hidden sm:inline">Làm mới</span>
               </button>
 
+              {/* Nút Bỏ lọc nếu có bộ lọc */}
+              {(searchTerm || selectedStatus !== 'ALL' || selectedGroup !== 'ALL') && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/50 px-3.5 py-2 text-xs font-semibold text-rose-700 shadow-2xs hover:bg-rose-100/60 active:scale-[0.98] transition-all cursor-pointer shrink-0"
+                  title="Đặt lại toàn bộ bộ lọc"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 text-rose-500" />
+                  <span>Bỏ lọc</span>
+                </button>
+              )}
+
               {/* Nút Thêm mới bảng giá */}
               {canManage && (
                 <button
@@ -519,6 +734,21 @@ export const PriceListsPage: React.FC = () => {
                   <Plus className="h-4 w-4" />
                   <span>Thêm mới bảng giá</span>
                 </button>
+              )}
+            </div>
+
+            {/* Thông tin kết quả tìm kiếm và bộ lọc đang áp dụng */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 font-medium pt-2 border-t border-slate-100 gap-1.5">
+              <div>
+                Hiển thị <strong className="text-slate-900 font-semibold">{priceLists.length}</strong> /{' '}
+                {total} bảng giá
+              </div>
+              {(searchTerm || selectedStatus !== 'ALL' || selectedGroup !== 'ALL') && (
+                <div className="text-[11px] text-blue-600 font-medium">
+                  Đang lọc URL: {selectedStatus !== 'ALL' && `Trạng thái: ${selectedStatus} `}
+                  {selectedGroup !== 'ALL' && `• Nhóm: ${selectedGroup} `}
+                  {searchTerm && `• Từ khóa: "${searchTerm}"`}
+                </div>
               )}
             </div>
           </div>
@@ -798,7 +1028,7 @@ export const PriceListsPage: React.FC = () => {
                     value={limit}
                     onChange={(e) => {
                       setLimit(Number(e.target.value));
-                      setPage(1);
+                      handlePageChange(1);
                     }}
                     className="px-2 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
                   >
@@ -813,7 +1043,7 @@ export const PriceListsPage: React.FC = () => {
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    onClick={() => handlePageChange(Math.max(1, page - 1))}
                     disabled={page <= 1}
                     className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                   >
@@ -826,7 +1056,7 @@ export const PriceListsPage: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
                     disabled={page >= totalPages}
                     className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                   >

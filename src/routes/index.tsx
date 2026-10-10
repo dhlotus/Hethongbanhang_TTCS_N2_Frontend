@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from '../pages/login-page';
 import { ForgotPasswordPage } from '../pages/forgot-password-page';
@@ -15,6 +15,7 @@ import { ProfilePage } from '../pages/profile-page';
 import { OrdersPage } from '../pages/orders-page';
 import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
 import { CustomersPage } from '../pages/customers-page';
+import { PortalOrdersPage } from '../pages/portal-orders-page';
 import { NotFoundPage } from '../pages/not-found-page';
 import { ForbiddenPage } from '../pages/forbidden-page';
 import { ProtectedRoute } from '../components/protected-route';
@@ -77,18 +78,13 @@ export const AppRoutes: React.FC = () => {
                 />
               }
             >
+              {/* SN-49: Cổng Đặt hàng Đại lý B2B */}
               <Route path="/portal" element={<AgencyPortalPage />} />
               <Route path="/portal/orders" element={<AgencyPortalPage />} />
-              <Route
-                path="/portal/tracking"
-                element={
-                  <RoleModulePage
-                    title="Theo dõi Đơn hàng & Giao hàng"
-                    subtitle="Tra cứu lộ trình vận chuyển, tình trạng đóng gói xuất kho và biên bản bàn giao"
-                    requiredRole="Đại lý B2B"
-                  />
-                }
-              />
+
+              {/* SN-170 & SN-174: Cổng Đơn hàng Đại lý & Theo dõi vận chuyển */}
+              <Route path="/portal/tracking" element={<PortalOrdersPage />} />
+              <Route path="/portal/my-orders" element={<PortalOrdersPage />} />
               <Route
                 path="/portal/debt"
                 element={
@@ -180,6 +176,7 @@ export const AppRoutes: React.FC = () => {
               }
             >
               <Route path="/catalog/pricing" element={<PriceListsPage />} />
+              <Route path="/pricing" element={<PriceListsPage />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
@@ -398,9 +395,11 @@ export const AppRoutes: React.FC = () => {
             >
               {/* 1. Quản lý người dùng & Phân quyền (SN-10) */}
               <Route path="/system/users" element={<UsersPage />} />
+              <Route path="/users" element={<UsersPage />} />
 
               {/* 2. Nhật ký hệ thống (Audit Logs - Task SN-142 / SN-19) */}
               <Route path="/system/audit-logs" element={<AuditLogsPage />} />
+              <Route path="/audit-logs" element={<AuditLogsPage />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
@@ -411,6 +410,7 @@ export const AppRoutes: React.FC = () => {
             
             {/* Danh mục sản phẩm (giá vốn tự động ẩn trên server theo SN-10) */}
             <Route path="/catalog/products" element={<ProductsPage />} />
+            <Route path="/products" element={<ProductsPage />} />
             {/* Quản lý Cây nhóm hàng đa cấp (Tree Structure - SN-150 / SN-22) */}
             <Route path="/catalog/categories" element={<CategoriesPage />} />
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   TrendingUp,
   Package,
@@ -35,6 +36,9 @@ const formatCurrency = (val: number): string => {
 };
 
 import { getStoredUser } from '../utils/navigation';
+
+const VALID_RANGES = ['today', 'this_month', 'this_quarter', 'custom'] as const;
+type TimeRangeType = (typeof VALID_RANGES)[number];
 
 interface DashboardMetrics {
   todaySales: number;
@@ -116,11 +120,19 @@ const DEFAULT_DASHBOARD_DATA: DashboardOverviewResponse = {
 };
 
 export const DashboardPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Khởi tạo state từ URL search params
+  const paramRange = searchParams.get('range');
+  const initialRange: TimeRangeType = (paramRange && VALID_RANGES.includes(paramRange as TimeRangeType))
+    ? (paramRange as TimeRangeType)
+    : 'today';
+
   const [data, setData] = useState<DashboardOverviewResponse>(DEFAULT_DASHBOARD_DATA);
   const [loading, setLoading] = useState(false);
-  const [timeRange, setTimeRange] = useState('today');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [timeRange, setTimeRange] = useState<string>(initialRange);
+  const [startDate, setStartDate] = useState<string>(searchParams.get('start') || '');
+  const [endDate, setEndDate] = useState<string>(searchParams.get('end') || '');
   const [lastUpdatedTime, setLastUpdatedTime] = useState<string>(
     new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
   );
@@ -138,10 +150,20 @@ export const DashboardPage: React.FC = () => {
   );
   const isSalesRep = roles.includes('SALES_REP');
 
-  const fetchData = async () => {
+  const fetchData = async (overrideRange?: string, overrideStart?: string, overrideEnd?: string) => {
     try {
       setLoading(true);
-      const res = await apiClient.get('/dashboard/overview', { params: { timeRange, startDate, endDate } });
+      const activeRange = overrideRange ?? timeRange;
+      const activeStart = overrideStart ?? startDate;
+      const activeEnd = overrideEnd ?? endDate;
+
+      const params: Record<string, string> = { timeRange: activeRange };
+      if (activeRange === 'custom') {
+        if (activeStart) params.startDate = activeStart;
+        if (activeEnd) params.endDate = activeEnd;
+      }
+
+      const res = await apiClient.get('/dashboard/overview', { params });
       if (res.data && res.data.metrics && res.data.charts) {
         setData(res.data);
       } else {
@@ -149,7 +171,7 @@ export const DashboardPage: React.FC = () => {
       }
       setLastUpdatedTime(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
     } catch {
-      // Khi backend chưa có endpoint /dashboard/overview, dùng dữ liệu mẫu chuẩn để không bị trắng trang
+      // Khi backend chưa có endpoint /dashboard/overview hoặc có lỗi mạng, dùng dữ liệu mẫu chuẩn để không bị trắng trang
       setData(DEFAULT_DASHBOARD_DATA);
       setLastUpdatedTime(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
     } finally {
@@ -157,9 +179,70 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
+  // Đồng bộ hóa khi thay đổi lựa chọn khoảng thời gian trên dropdown
+  const handleTimeRangeChange = (newRange: string) => {
+    setTimeRange(newRange);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('range', newRange);
+      if (newRange !== 'custom') {
+        next.delete('start');
+        next.delete('end');
+      }
+      return next;
+    }, { replace: true });
+  };
+
+  // Đồng bộ hóa khi người dùng lọc ngày tùy chọn
+  const handleCustomFilterSubmit = () => {
+    if (startDate && endDate) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('range', 'custom');
+        next.set('start', startDate);
+        next.set('end', endDate);
+        return next;
+      }, { replace: true });
+      fetchData('custom', startDate, endDate);
+    }
+  };
+
+  // Lắng nghe URL Search Params để khôi phục State khi F5, dán link hoặc thao tác Back/Forward của trình duyệt
+  useEffect(() => {
+    const currentRange = searchParams.get('range');
+    const validRange: TimeRangeType = (currentRange && VALID_RANGES.includes(currentRange as TimeRangeType))
+      ? (currentRange as TimeRangeType)
+      : 'today';
+
+    if (!currentRange) {
+      // Nếu chưa có param trên URL, cập nhật URL thành ?range=today để đồng bộ và dễ share link
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('range', 'today');
+        return next;
+      }, { replace: true });
+    }
+
+    if (validRange !== timeRange) {
+      setTimeRange(validRange);
+    }
+
+    const currentStart = searchParams.get('start') || '';
+    const currentEnd = searchParams.get('end') || '';
+    if (currentStart !== startDate) setStartDate(currentStart);
+    if (currentEnd !== endDate) setEndDate(currentEnd);
+  }, [searchParams]);
+
+  // Tự động gọi API lấy dữ liệu khi timeRange thay đổi hoặc tải trang
   useEffect(() => {
     if (timeRange !== 'custom') {
-      fetchData();
+      fetchData(timeRange);
+    } else {
+      const currentStart = searchParams.get('start') || startDate;
+      const currentEnd = searchParams.get('end') || endDate;
+      if (currentStart && currentEnd) {
+        fetchData('custom', currentStart, currentEnd);
+      }
     }
   }, [timeRange]);
 
@@ -219,7 +302,7 @@ export const DashboardPage: React.FC = () => {
                 onChange={(e) => setEndDate(e.target.value)}
               />
               <button 
-                onClick={fetchData}
+                onClick={handleCustomFilterSubmit}
                 className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-white shadow-xs hover:bg-indigo-700 active:scale-95 transition-all"
               >
                 Lọc
@@ -241,16 +324,16 @@ export const DashboardPage: React.FC = () => {
               </button>
             }
             items={[
-              { key: 'today', label: 'Hôm nay', onClick: () => setTimeRange('today') },
-              { key: 'this_month', label: 'Tháng này', onClick: () => setTimeRange('this_month') },
-              { key: 'this_quarter', label: 'Quý này', onClick: () => setTimeRange('this_quarter') },
-              { key: 'custom', label: 'Tùy chỉnh ngày', onClick: () => setTimeRange('custom') },
+              { key: 'today', label: 'Hôm nay', onClick: () => handleTimeRangeChange('today') },
+              { key: 'this_month', label: 'Tháng này', onClick: () => handleTimeRangeChange('this_month') },
+              { key: 'this_quarter', label: 'Quý này', onClick: () => handleTimeRangeChange('this_quarter') },
+              { key: 'custom', label: 'Tùy chỉnh ngày', onClick: () => handleTimeRangeChange('custom') },
             ]}
           />
 
           <button 
             type="button"
-            onClick={fetchData} 
+            onClick={() => fetchData()} 
             disabled={loading}
             className="inline-flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
             title="Tải lại dữ liệu tức thì"
@@ -397,8 +480,8 @@ export const DashboardPage: React.FC = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="date" tickFormatter={(val) => val.slice(8,10) + '/' + val.slice(5,7)} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
-                  <YAxis tickFormatter={(val) => (val / 1000000).toFixed(0) + 'M'} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="date" tickFormatter={(val: string) => val.slice(8,10) + '/' + val.slice(5,7)} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+                  <YAxis tickFormatter={(val: number) => (val / 1000000).toFixed(0) + 'M'} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
                   <Tooltip 
                     formatter={(value: any) => [formatCurrency(value), 'Doanh số']} 
                     labelFormatter={(label: any) => `Ngày: ${label}`}
@@ -425,12 +508,12 @@ export const DashboardPage: React.FC = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={highRiskAgencies} layout="vertical" margin={{ top: 5, right: 15, left: -5, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                  <XAxis type="number" tickFormatter={(val) => (val / 1000000).toFixed(0) + 'M'} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+                  <XAxis type="number" tickFormatter={(val: number) => (val / 1000000).toFixed(0) + 'M'} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
                   <YAxis 
                     dataKey="customerName" 
                     type="category" 
                     width={130} 
-                    tickFormatter={(val) => (val && val.length > 16 ? val.slice(0, 15) + '…' : val)}
+                    tickFormatter={(val: string) => (val && val.length > 16 ? val.slice(0, 15) + '…' : val)}
                     tick={{ fill: '#475569', fontSize: 11 }} 
                     tickLine={false} 
                     axisLine={{ stroke: '#e2e8f0' }} 

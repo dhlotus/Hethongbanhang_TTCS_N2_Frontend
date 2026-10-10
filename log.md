@@ -124,7 +124,36 @@
   - `src/types/order.ts`: Bổ sung `receiverName` và `roadNote` vào interface `DeliveryPoint`.
   - `src/pages/orders-page.tsx`: Tích hợp nút mở modal In / Xuất PDF trên Bảng Desktop, Card Mobile và Modal chi tiết đơn.
 - **Trạng thái kiểm thử:**
-  - ✅ Build Production: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, build hoàn tất.---
+  - ✅ Build Production: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, build hoàn tất.
+
+
+
+### [Sprint 4] - [SN-43]: Giao Diện Gợi Ý Mặt Hàng Khi Gõ Đơn & Thêm Nhanh Đơn Gần Nhất (1-Click Reorder)
+- **Thời gian hoàn thành:** 2026-10-09
+- **Mã Jira / Task:** SN-43 (Parent Story: SN-39 / S4-04 - Sprint 4)
+- **Tiêu đề:** "Là Nhân viên kinh doanh, tôi muốn xem lịch sử mua hàng của đại lý ngay khi gõ đơn, để gợi ý đúng mặt hàng khách vẫn lấy đều thay vì phải hỏi lại."
+- **Tiêu chí chấp nhận (AC) đã đạt 100%:**
+  1. **AC1 - Gợi ý mặt hàng thường mua trong 3 tháng:**
+     - Ngay khi Sales Rep chọn đại lý, tự động tải danh sách mặt hàng đại lý thường lấy trong 3 tháng qua.
+     - Hiển thị đầy đủ thông tin: Tên sản phẩm, SKU, badge "SL bình quân: X (Đơn vị)", số lần đã mua, ngày mua gần nhất và số lượng lần cuối.
+     - Ô chỉnh nhanh số lượng gợi ý (khởi tạo mặc định bằng số lượng bình quân) kèm nút to "+ Thêm vào đơn" hoặc badge "✓ Đã có trong đơn" nếu hàng đã nằm trong đơn.
+  2. **AC2 - Thêm nhanh cả nhóm hàng đã mua lần trước (1-Click Reorder):**
+     - Hiển thị banner/card đơn hàng thành công gần nhất: Mã đơn, ngày mua, tổng tiền và số lượng mặt hàng.
+     - Nút hành động nhanh "⚡ Thêm nhanh nhóm hàng lần trước": 1 chạm tự động đổ toàn bộ danh sách mặt hàng và số lượng của đơn cũ vào bảng đơn hàng đang gõ dở, áp dụng chiết khấu tự động theo chính sách hiện hành (calculateDiscount) kèm toast thông báo rõ ràng.
+  3. **AC3 - Tương thích phân quyền & Trải nghiệm thực địa (UI_GUIDELINES.md):**
+     - Hiển thị thông báo thân thiện nếu không có quyền phụ trách đại lý (403 Forbidden).
+     - Phân tách rõ ràng trạng thái Đang tải (Skeleton), Trống (Empty state: "Đại lý chưa có lịch sử mua hàng trong 3 tháng qua").
+     - Tối ưu Mobile/Tablet với nút bấm to >= 44px, bo góc mềm mại, hệ màu Indigo-Purple đồng nhất với thương hiệu LOHA SALES.
+- **Danh sách file tạo mới / thay đổi:**
+  - `src/types/order-suggestion.types.ts` (Tạo mới: SuggestedProductItem, LatestOrderItem, LatestOrderSummary, CustomerPurchaseHistoryResponse khớp 100% với Backend).
+  - `src/services/order-suggestions.service.ts` (Tạo mới: orderSuggestionsService gọi API tập trung qua apiClient kèm fallback demo an toàn).
+  - `src/components/order-suggestions-panel.tsx` (Tạo mới: Component widget hiển thị lịch sử gợi ý 3 tháng và nút 1-click reorder).
+  - `src/pages/orders-page.tsx` (Cập nhật: Tích hợp OrderSuggestionsPanel vào Bước 2 tạo đơn hàng, các handler handleAddSuggestedItem và handleReorderPreviousOrder).
+- **Trạng thái kiểm thử:**
+  - Frontend ESLint: `npx eslint` -> 0 lỗi, 0 warnings.
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, build production hoàn tất trong 2.35s.
+
+---
 
 ### [Sprint 4] - [SN-49 & SN-42]: Portal Đặt Hàng Đại Lý 2 Bước, Bảng Chiết Khấu & Đơn Vị Tính, Đồng Bộ Đơn Hàng & Duyệt Real-Time Toàn Hệ Thống
 - **Thời gian hoàn thành:** 2026-10-10

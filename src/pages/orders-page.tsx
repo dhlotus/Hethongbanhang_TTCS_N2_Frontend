@@ -28,12 +28,14 @@ import {
   XCircle,
   CornerUpLeft,
   History,
+  RotateCcw,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ordersService } from '../services/orders.service';
 import { customersService } from '../services/customers.service';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
 import { OrderPrintModal } from '../components/order-print-modal';
+import { ReorderModal } from '../components/reorder-modal';
 import type { Customer, DeliveryPoint as CustomerDeliveryPoint } from '../types/customer.types';
 import { getStoredUser } from '../utils/navigation';
 import { orderPricingService } from '../services/order-pricing.service';
@@ -2207,7 +2209,12 @@ export const OrdersPage: React.FC = () => {
   const [approvalHistory, setApprovalHistory] = useState<OrderApprovalHistory[]>([]);
   const [isLoadingApprovalHistory, setIsLoadingApprovalHistory] = useState(false);
   const [printOrder, setPrintOrder] = useState<Order | null>(null);
+  const [selectedOrderForReorder, setSelectedOrderForReorder] = useState<Order | null>(null);
   const [isCloning, setIsCloning] = useState<string | null>(null);
+
+  const handleReorderSuccess = (_newOrder: Order) => {
+    setRefreshKey((key) => key + 1);
+  };
 
   // Nhận customerId từ URL query param (Đồng bộ từ trang Quản lý đại lý)
   const [initialCustomerId, setInitialCustomerId] = useState<string | undefined>(undefined);
@@ -2537,6 +2544,14 @@ export const OrdersPage: React.FC = () => {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <OrderStatusBadge status={order.status} />
+                          {(order.isShortDelivery ||
+                            order.lines?.some(
+                              (l) => l.deliveredQuantity !== undefined && l.deliveredQuantity < l.quantity,
+                            )) && (
+                            <span className="mt-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                              <AlertTriangle className="w-2.5 h-2.5" /> Giao thiếu
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1">
@@ -2560,6 +2575,14 @@ export const OrdersPage: React.FC = () => {
                               title="Xem chi tiết đơn hàng"
                             >
                               <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOrderForReorder(order)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                              title="Đặt lại đơn này theo giá hiện hành (SN-174)"
+                            >
+                              <RotateCcw className="w-4 h-4" />
                             </button>
                             <button
                               type="button"
@@ -2650,6 +2673,15 @@ export const OrdersPage: React.FC = () => {
                       >
                         <Eye className="w-3.5 h-3.5 text-slate-500" />
                         <span>Chi tiết</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrderForReorder(order)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors cursor-pointer min-h-[36px]"
+                        title="Đặt lại đơn (SN-174)"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Đặt lại</span>
                       </button>
                       <button
                         type="button"
@@ -2816,34 +2848,72 @@ export const OrdersPage: React.FC = () => {
                 </div>
               </section>
 
+              {/* Cảnh báo Giao thiếu hàng nếu có (SN-170) */}
+              {(viewOrder.isShortDelivery ||
+                viewOrder.lines.some(
+                  (l) => l.deliveredQuantity !== undefined && l.deliveredQuantity < l.quantity,
+                )) && (
+                <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 text-xs flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Đơn hàng được ghi nhận giao thiếu một số dòng hàng (SN-170)</p>
+                    <p className="mt-0.5 text-amber-800 leading-relaxed">
+                      Kho vận và nhân viên giao hàng đã ghi nhận chênh lệch số lượng thực giao so với số lượng đặt. Vui lòng đối chiếu với biên bản giao nhận.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Danh sách dòng hàng */}
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <div className="px-3 py-2 bg-slate-50 text-xs font-semibold text-slate-500 border-b border-slate-200">
                   Danh sách hàng
                 </div>
-                {viewOrder.lines.map((line, i) => (
-                  <div
-                    key={i}
-                    className="px-3 py-2.5 border-b border-slate-100 last:border-0"
-                  >
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-800 truncate">
-                          {line.productName}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {line.quantity} {line.unit} × {formatCurrency(line.unitPrice)}
-                          {line.discountPercent > 0 && (
-                            <span className="ml-1 text-green-600">(-{line.discountPercent}%)</span>
+                {viewOrder.lines.map((line, i) => {
+                  const isLineShort =
+                    line.isShortDelivery ||
+                    (line.deliveredQuantity !== undefined && line.deliveredQuantity < line.quantity);
+
+                  return (
+                    <div
+                      key={i}
+                      className={`px-3 py-2.5 border-b border-slate-100 last:border-0 ${
+                        isLineShort ? 'bg-amber-50/40' : ''
+                      }`}
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">
+                            {line.productName}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {line.quantity} {line.unit} × {formatCurrency(line.unitPrice)}
+                            {line.discountPercent > 0 && (
+                              <span className="ml-1 text-green-600">(-{line.discountPercent}%)</span>
+                            )}
+                          </p>
+                          {/* Hiển thị số lượng thực giao nếu có giao thiếu (SN-170) */}
+                          {isLineShort && (
+                            <div className="mt-1 space-y-0.5">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                                <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                Thực giao: {line.deliveredQuantity} / {line.quantity} {line.unit} (Thiếu {line.quantity - (line.deliveredQuantity || 0)} {line.unit})
+                              </span>
+                              {line.shortDeliveryReason && (
+                                <p className="text-[11px] text-amber-700 italic">
+                                  Lý do: {line.shortDeliveryReason}
+                                </p>
+                              )}
+                            </div>
                           )}
-                        </p>
+                        </div>
+                        <span className="text-sm font-semibold text-slate-800 shrink-0">
+                          {formatCurrency(line.lineTotal)}
+                        </span>
                       </div>
-                      <span className="text-sm font-semibold text-slate-800 shrink-0">
-                        {formatCurrency(line.lineTotal)}
-                      </span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Tổng kết */}
@@ -2884,6 +2954,20 @@ export const OrdersPage: React.FC = () => {
 
             <div className="px-5 py-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ord = viewOrder;
+                    setViewOrder(null);
+                    setSelectedOrderForReorder(ord);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition-colors cursor-pointer"
+                  title="Đặt lại đơn hàng này theo bảng giá hiện hành (SN-174)"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Đặt lại đơn</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => void handleCloneOrder(viewOrder)}
@@ -2976,6 +3060,16 @@ export const OrdersPage: React.FC = () => {
         isOpen={Boolean(printOrder)}
         onClose={() => setPrintOrder(null)}
       />
+
+      {/* Modal Đặt lại đơn hàng theo giá hiện hành (SN-174) */}
+      {selectedOrderForReorder && (
+        <ReorderModal
+          order={selectedOrderForReorder}
+          isOpen={Boolean(selectedOrderForReorder)}
+          onClose={() => setSelectedOrderForReorder(null)}
+          onSuccess={handleReorderSuccess}
+        />
+      )}
 
       {decisionAction && viewOrder && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
