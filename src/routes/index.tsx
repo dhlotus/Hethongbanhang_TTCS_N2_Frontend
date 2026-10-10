@@ -390,6 +390,7 @@ export const AppRoutes: React.FC = () => {
             >
               {/* 1. Quản lý người dùng & Phân quyền (SN-10) */}
               <Route path="/system/users" element={<UsersPage />} />
+              <Route path="/users" element={<UsersPage />} />
 
               {/* 2. Nhật ký hệ thống (Audit Logs - Task SN-142 / SN-19) */}
               <Route path="/system/audit-logs" element={<AuditLogsPage />} />
