@@ -18,10 +18,12 @@ import { inventoryService } from "../services/inventory.service";
 import type { StockBalance } from "../types/inventory.types";
 import { MinStockModal } from "../components/inventory/min-stock-modal";
 import { Pagination } from "../components/pagination";
+import { warehouseService } from "../services/warehouse.service";
+import type { Warehouse } from "../types/warehouse.types";
 
 type InventoryTab = "stock" | "alerts";
 
-const DEFAULT_WAREHOUSE_ID = "WH01";
+const DEFAULT_WAREHOUSE_ID = "11111111-0000-0000-0000-000000000001";
 
 interface RoleModulePageProps {
   title: string;
@@ -44,6 +46,8 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
   const user = getStoredUser();
   const context = getUserContext(user);
   const [stockRows, setStockRows] = useState<StockBalance[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState(DEFAULT_WAREHOUSE_ID);
   const [editingItem, setEditingItem] = useState<StockBalance | null>(null);
   const [activeTab, setActiveTab] = useState<InventoryTab>("stock");
   const [pageSize, setPageSize] = useState<number>(10);
@@ -52,12 +56,19 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
   const isInventoryPage = location.pathname === "/inventory/stock";
 
   const reloadStock = (): Promise<void> =>
-    inventoryService.getStockOverview().then(setStockRows).catch(() => setStockRows([]));
+    inventoryService.getStockOverview(selectedWarehouseId).then(setStockRows).catch(() => setStockRows([]));
 
   useEffect(() => {
     if (!isInventoryPage) return;
-    void reloadStock();
+    void warehouseService.getWarehouses().then((rows) => {
+      setWarehouses(rows);
+      if (rows.length && !rows.some((row) => row.id === selectedWarehouseId)) setSelectedWarehouseId(rows[0].id);
+    }).catch(() => setWarehouses([]));
   }, [isInventoryPage]);
+
+  useEffect(() => {
+    if (isInventoryPage) void reloadStock();
+  }, [isInventoryPage, selectedWarehouseId]);
 
   const alertRows = stockRows
     .filter((row) => row.isBelowMinStock === true)
@@ -240,7 +251,10 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
           {activeTab === "stock" ? (
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
               <div className="border-b border-slate-100 px-5 py-4">
-                <h2 className="text-sm font-bold text-slate-800">Tồn thực tế và hàng đang giữ cho đơn</h2>
+                <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-sm font-bold text-slate-800">Tồn thực tế và hàng đang giữ cho đơn</h2>
+                <select value={selectedWarehouseId} onChange={(event) => setSelectedWarehouseId(event.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                  {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.code} · {warehouse.name}</option>)}
+                </select></div>
                 <p className="mt-1 text-xs text-slate-500">Tồn khả dụng là số lượng có thể tiếp tục bán hoặc xuất kho.</p>
               </div>
               <div className="overflow-x-auto">

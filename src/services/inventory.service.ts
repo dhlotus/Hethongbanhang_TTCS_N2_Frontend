@@ -11,8 +11,10 @@ export const inventoryService = {
    * Lấy tổng quan tồn kho khả dụng và đơn vị quy đổi
    * GET /inventory/stock
    */
-  async getStockOverview(): Promise<StockBalance[]> {
-    const response = await apiClient.get<StockBalance[]>('/inventory/stock');
+  async getStockOverview(warehouseId?: string): Promise<StockBalance[]> {
+    const response = await apiClient.get<StockBalance[]>('/inventory/stock', {
+      params: warehouseId ? { warehouseId } : undefined,
+    });
     return response.data;
   },
 
