@@ -1,15 +1,18 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
   Shield,
   Layers,
+  Sparkles,
   CheckCircle2,
+  MapPin,
   Package,
   ArrowRight,
   TrendingUp,
-} from 'lucide-react';
-import { getStoredUser } from '../utils/navigation';
-import { getUserContext } from '../utils/navigation-config';
+} from "lucide-react";
+import { getStoredUser } from "../utils/navigation";
+import { getUserContext } from "../utils/navigation-config";
+import { inventoryService } from "../services/inventory.service";
 
 interface RoleModulePageProps {
   title: string;
@@ -25,25 +28,69 @@ interface RoleModulePageProps {
  */
 export const RoleModulePage: React.FC<RoleModulePageProps> = ({
   title,
+  subtitle,
   requiredRole,
 }) => {
   const location = useLocation();
   const user = getStoredUser();
   const context = getUserContext(user);
+  const [stockRows, setStockRows] = useState<Array<{
+    sku: string;
+    name: string;
+    stockQuantity: number;
+    physicalStockQuantity?: number;
+    reservedQuantity?: number;
+    baseUnit: string;
+  }>>([]);
+  const isInventoryPage = location.pathname === "/inventory/stock";
+
+  useEffect(() => {
+    if (!isInventoryPage) return;
+    void inventoryService.getStockOverview().then(setStockRows).catch(() => setStockRows([]));
+  }, [isInventoryPage]);
 
   return (
     <div className="space-y-6">
       {/* =================================================================== */}
       {/* 1. Header Banner của Phân hệ                                        */}
       {/* =================================================================== */}
-      <div className="flex items-center justify-end gap-2.5 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
-        <Link
-          to="/catalog/products"
-          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-blue-600 transition-colors"
-        >
-          <Package className="h-4 w-4 text-slate-400" />
-          <span>Tra cứu Sản phẩm</span>
-        </Link>
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-7 shadow-xs">
+        <div className="absolute -top-12 -right-12 h-48 w-48 rounded-full bg-blue-50/60 blur-2xl pointer-events-none" />
+
+        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ${context.badgeClass}`}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>{context.roleLabel}</span>
+              </span>
+
+              <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
+                <MapPin className="h-3 w-3 text-slate-400" />
+                <span>{context.locationText}</span>
+              </span>
+            </div>
+
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+              {title}
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
+              {subtitle}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 self-start md:self-auto">
+            <Link
+              to="/catalog/products"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-blue-600 transition-colors"
+            >
+              <Package className="h-4 w-4 text-slate-400" />
+              <span>Tra cứu Sản phẩm</span>
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* =================================================================== */}
@@ -58,7 +105,9 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium text-slate-400">Tài khoản xác thực</p>
-              <p className="text-sm font-bold text-slate-800 truncate">{context.fullName}</p>
+              <p className="text-sm font-bold text-slate-800 truncate">
+                {context.fullName}
+              </p>
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
@@ -83,10 +132,7 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
           </div>
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Phạm vi công tác</span>
-            <span
-              className="font-semibold text-slate-700 truncate max-w-[170px]"
-              title={context.locationText}
-            >
+            <span className="font-semibold text-slate-700 truncate max-w-[170px]" title={context.locationText}>
               {context.locationText}
             </span>
           </div>
@@ -115,14 +161,50 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
       {/* =================================================================== */}
       {/* 3. Vùng nội dung trống sẵn sàng cho nghiệp vụ (Placeholder)         */}
       {/* =================================================================== */}
+      {isInventoryPage ? (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+          <div className="border-b border-slate-100 px-5 py-4">
+            <h2 className="text-sm font-bold text-slate-800">Tồn thực tế và hàng đang giữ cho đơn</h2>
+            <p className="mt-1 text-xs text-slate-500">Tồn khả dụng là số lượng có thể tiếp tục bán hoặc xuất kho.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] text-left text-sm">
+              <thead className="bg-slate-50 text-xs text-slate-500">
+                <tr>
+                  <th className="px-5 py-3 font-semibold">Sản phẩm</th>
+                  <th className="px-5 py-3 text-right font-semibold">Tồn thực tế</th>
+                  <th className="px-5 py-3 text-right font-semibold">Đang giữ</th>
+                  <th className="px-5 py-3 text-right font-semibold">Khả dụng</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {stockRows.map((item) => (
+                  <tr key={item.sku}>
+                    <td className="px-5 py-3">
+                      <div className="font-medium text-slate-800">{item.name}</div>
+                      <div className="text-xs text-slate-400">{item.sku}</div>
+                    </td>
+                    <td className="px-5 py-3 text-right text-slate-600">{(item.physicalStockQuantity ?? item.stockQuantity).toLocaleString("vi-VN")} {item.baseUnit}</td>
+                    <td className="px-5 py-3 text-right font-medium text-amber-700">{(item.reservedQuantity ?? 0).toLocaleString("vi-VN")} {item.baseUnit}</td>
+                    <td className="px-5 py-3 text-right font-bold text-emerald-700">{item.stockQuantity.toLocaleString("vi-VN")} {item.baseUnit}</td>
+                  </tr>
+                ))}
+                {stockRows.length === 0 && <tr><td colSpan={4} className="px-5 py-10 text-center text-sm text-slate-400">Chưa tải được dữ liệu tồn kho.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
       <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-8 sm:p-12 text-center">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-2xs">
           <TrendingUp className="h-6 w-6" />
         </div>
-        <h3 className="mt-4 text-base font-bold text-slate-800">Phân hệ {title}</h3>
+        <h3 className="mt-4 text-base font-bold text-slate-800">
+          Phân hệ {title}
+        </h3>
         <p className="mt-1 text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
-          Giao diện và điều hướng phân quyền đã được thiết lập thành công theo tiêu chuẩn LOHA
-          SALES. Dữ liệu và các biểu mẫu tương tác chi tiết của phân hệ này đã sẵn sàng kết nối.
+          Giao diện và điều hướng phân quyền đã được thiết lập thành công theo tiêu chuẩn LOHA SALES.
+          Dữ liệu và các biểu mẫu tương tác chi tiết của phân hệ này đã sẵn sàng kết nối.
         </p>
         <div className="mt-5 flex justify-center flex-wrap gap-2">
           <div className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600">
@@ -132,6 +214,7 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

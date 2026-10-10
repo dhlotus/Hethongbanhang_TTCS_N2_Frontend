@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from '../pages/login-page';
 import { ForgotPasswordPage } from '../pages/forgot-password-page';
@@ -161,13 +161,7 @@ export const AppRoutes: React.FC = () => {
             >
               <Route
                 path="/sales/approvals"
-                element={
-                  <RoleModulePage
-                    title="Phê duyệt Đơn hàng (Duyệt đơn)"
-                    subtitle="Xét duyệt các đơn hàng vượt hạn mức công nợ, chiết khấu đặc biệt hoặc dưới giá sàn"
-                    requiredRole="Quản lý kinh doanh"
-                  />
-                }
+                element={<Navigate to="/sales/orders?status=PENDING_APPROVAL" replace />}
               />
               <Route
                 path="/reports/sales"
