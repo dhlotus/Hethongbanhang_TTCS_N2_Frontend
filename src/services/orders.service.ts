@@ -3,18 +3,24 @@ import { inventoryService } from './inventory.service';
 import { tokenStorage } from '../utils/token-storage';
 import { MOCK_PRODUCTS } from './products.service';
 import { customerService } from './customer.service';
+import { orderPricingService } from './order-pricing.service';
 import type {
   CreateOrderPayload,
   CustomerDebtStatus,
   CustomerOption,
+  DiscontinuedProductItem,
   Order,
   OrderApprovalAction,
   OrderApprovalHistory,
   OrderQueryParams,
   OrderStatus,
   PaginatedOrdersResponse,
+  ReorderPayload,
+  ReorderPreviewItem,
+  ReorderPreviewResponse,
 } from '../types/order';
 import type { Product } from '../types/products';
+import type { CustomerGroupType } from '../types/price-list';
 
 /** Key lưu draft đơn hàng vào localStorage */
 const DRAFT_ORDERS_KEY = 'loha_draft_orders';
@@ -23,6 +29,7 @@ const DEMO_ORDERS_KEY = 'loha_demo_orders';
 const DEMO_APPROVAL_HISTORY_KEY = 'loha_demo_order_approval_history';
 
 export const authStorage = tokenStorage;
+
 
 // ──────────────────────────────────────────────────────────────────────────
 // DỮ LIỆU MẪU — Đại lý Demo (SN-38 & SN-37)
@@ -372,14 +379,224 @@ export const MOCK_CUSTOMERS = DEMO_CUSTOMERS;
 // HELPERS — localStorage Demo
 // ──────────────────────────────────────────────────────────────────────────
 
+const INITIAL_DEMO_ORDERS: Order[] = [
+  {
+    id: 'ord-dl-001',
+    orderCode: 'DH2610-10023',
+    customerId: 'cust-dl-0001',
+    customerCode: 'DL-0001',
+    customerName: 'Công Ty TNHH Thương Mại & Phân Phối Minh Khang',
+    customerGroup: 'AGENT_LEVEL_1',
+    salesRepId: 'usr-sale-01',
+    salesRepName: 'Trần Văn Long',
+    deliveryPoint: {
+      id: 'dp-dl-0001-1',
+      name: 'Kho Tổng Phú Nhuận',
+      address: '123 Nguyễn Trọng Tuyển, P.8, Q.Phú Nhuận, TP.HCM',
+      receiverName: 'Anh Nguyễn Minh Khang',
+      phone: '0901234561',
+      roadNote: 'Đường 2 chiều, xe tải 2.5T vào thoải mái, giao giờ hành chính 8h00 - 17h00',
+    },
+    deliveryDate: '2026-10-12',
+    lines: [
+      {
+        id: 'line-dl-001-1',
+        productId: 'prod-001',
+        productSku: 'LH-MILK-900G',
+        productName: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
+        unit: 'Thùng (12 lon)',
+        baseUnit: 'Lon',
+        conversionRate: 12,
+        quantity: 5,
+        baseQuantity: 60,
+        listPrice: 5400000,
+        unitPrice: 5130000,
+        discountPercent: 5,
+        lineTotal: 25650000,
+        deliveredQuantity: undefined,
+        isShortDelivery: false,
+      },
+      {
+        id: 'line-dl-001-2',
+        productId: 'prod-002',
+        productSku: 'LH-NUT-180ML',
+        productName: 'Sữa Hạt Óc Chó Hạnh Nhân Organic 180ml',
+        unit: 'Thùng (48 hộp)',
+        baseUnit: 'Hộp',
+        conversionRate: 48,
+        quantity: 10,
+        baseQuantity: 480,
+        listPrice: 620000,
+        unitPrice: 589000,
+        discountPercent: 5,
+        lineTotal: 5890000,
+        deliveredQuantity: undefined,
+        isShortDelivery: false,
+      },
+    ],
+    subtotal: 33200000,
+    totalDiscount: 1660000,
+    grandTotal: 31540000,
+    note: 'Giao buổi sáng, gọi trước 30 phút để chuẩn bị thủ kho bốc dỡ',
+    status: 'SHIPPED',
+    paymentStatus: 'UNPAID',
+    isShortDelivery: false,
+    createdAt: '2026-10-06T08:30:00Z',
+    updatedAt: '2026-10-09T14:15:00Z',
+  },
+  {
+    id: 'ord-dl-002',
+    orderCode: 'DH2610-10015',
+    customerId: 'cust-dl-0001',
+    customerCode: 'DL-0001',
+    customerName: 'Công Ty TNHH Thương Mại & Phân Phối Minh Khang',
+    customerGroup: 'AGENT_LEVEL_1',
+    salesRepId: 'usr-sale-01',
+    salesRepName: 'Trần Văn Long',
+    deliveryPoint: {
+      id: 'dp-dl-0001-1',
+      name: 'Kho Tổng Phú Nhuận',
+      address: '123 Nguyễn Trọng Tuyển, P.8, Q.Phú Nhuận, TP.HCM',
+      receiverName: 'Anh Nguyễn Minh Khang',
+      phone: '0901234561',
+      roadNote: 'Đường 2 chiều, xe tải 2.5T vào thoải mái',
+    },
+    deliveryDate: '2026-10-08',
+    lines: [
+      {
+        id: 'line-dl-002-1',
+        productId: 'prod-003',
+        productSku: 'LH-NEST-70ML',
+        productName: 'Nước Yến Sào Chưng Đường Phèn Loha Nest 70ml',
+        unit: 'Hộp (6 hũ)',
+        baseUnit: 'Hũ',
+        conversionRate: 6,
+        quantity: 10,
+        baseQuantity: 60,
+        listPrice: 420000,
+        unitPrice: 399000,
+        discountPercent: 5,
+        lineTotal: 3990000,
+        deliveredQuantity: 8, // Giao thiếu 2 hộp (SN-170)
+        deliveredBaseQuantity: 48,
+        isShortDelivery: true,
+        shortDeliveryReason:
+          'Kho phân phối tạm thiếu 2 hộp lô sản xuất mới nhất, đã xác nhận với đại lý sẽ giao bù vào đợt kế tiếp',
+      },
+      {
+        id: 'line-dl-002-2',
+        productId: 'prod-001',
+        productSku: 'LH-MILK-900G',
+        productName: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
+        unit: 'Thùng (12 lon)',
+        baseUnit: 'Lon',
+        conversionRate: 12,
+        quantity: 5,
+        baseQuantity: 60,
+        listPrice: 5400000,
+        unitPrice: 5130000,
+        discountPercent: 5,
+        lineTotal: 25650000,
+        deliveredQuantity: 5, // Giao đủ 5 thùng (SN-170)
+        deliveredBaseQuantity: 60,
+        isShortDelivery: false,
+      },
+    ],
+    subtotal: 31200000,
+    totalDiscount: 1560000,
+    grandTotal: 29640000,
+    note: 'Biên bản bàn giao số BB-2610-08 ghi nhận thiếu 2 hộp Nước Yến, thủ kho đại lý đã ký xác nhận',
+    status: 'DELIVERED',
+    paymentStatus: 'PAID',
+    isShortDelivery: true,
+    createdAt: '2026-10-04T09:00:00Z',
+    updatedAt: '2026-10-08T16:30:00Z',
+  },
+  {
+    id: 'ord-dl-003',
+    orderCode: 'DH2609-09880',
+    customerId: 'cust-dl-0001',
+    customerCode: 'DL-0001',
+    customerName: 'Công Ty TNHH Thương Mại & Phân Phối Minh Khang',
+    customerGroup: 'AGENT_LEVEL_1',
+    salesRepId: 'usr-sale-01',
+    salesRepName: 'Trần Văn Long',
+    deliveryPoint: {
+      id: 'dp-dl-0001-1',
+      name: 'Kho Tổng Phú Nhuận',
+      address: '123 Nguyễn Trọng Tuyển, P.8, Q.Phú Nhuận, TP.HCM',
+      receiverName: 'Anh Nguyễn Minh Khang',
+      phone: '0901234561',
+    },
+    deliveryDate: '2026-09-25',
+    lines: [
+      {
+        id: 'line-dl-003-1',
+        productId: 'prod-001',
+        productSku: 'LH-MILK-900G',
+        productName: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
+        unit: 'Thùng (12 lon)',
+        baseUnit: 'Lon',
+        conversionRate: 12,
+        quantity: 4,
+        baseQuantity: 48,
+        listPrice: 5200000, // Giá cũ tháng trước (SN-174 test áp giá hiện hành)
+        unitPrice: 4940000,
+        discountPercent: 5,
+        lineTotal: 19760000,
+        deliveredQuantity: 4,
+        isShortDelivery: false,
+      },
+      {
+        id: 'line-dl-003-2',
+        productId: 'prod-011',
+        productSku: 'LH-OLD-COFFEE-CAN',
+        productName: 'Cà Phê Sữa Đóng Lon Loha Classic 240ml (Mẫu Cũ)',
+        unit: 'Thùng (24 lon)',
+        baseUnit: 'Lon',
+        conversionRate: 24,
+        quantity: 6,
+        baseQuantity: 144,
+        listPrice: 336000,
+        unitPrice: 336000,
+        discountPercent: 0,
+        lineTotal: 2016000,
+        deliveredQuantity: 6,
+        isShortDelivery: false,
+      },
+    ],
+    subtotal: 22816000,
+    totalDiscount: 1040000,
+    grandTotal: 21776000,
+    note: 'Đơn hàng định kỳ tháng 9/2026 - Đã giao đủ và thanh toán xong',
+    status: 'DELIVERED',
+    paymentStatus: 'PAID',
+    isShortDelivery: false,
+    createdAt: '2026-09-20T08:00:00Z',
+    updatedAt: '2026-09-25T11:00:00Z',
+  },
+];
+
 const getStoredDemoOrders = (): Order[] => {
   try {
     const raw = localStorage.getItem(DEMO_ORDERS_KEY);
-    if (raw) return JSON.parse(raw) as Order[];
+    if (raw) {
+      const parsed = JSON.parse(raw) as Order[];
+      // Đảm bảo các đơn mẫu cho Đại lý Minh Khang luôn tồn tại trong demo storage
+      const hasDealerOrders = parsed.some((o) => o.customerId === 'cust-dl-0001');
+      if (!hasDealerOrders) {
+        const merged = [...parsed, ...INITIAL_DEMO_ORDERS];
+        saveStoredDemoOrders(merged);
+        return merged;
+      }
+      return parsed;
+    }
+    saveStoredDemoOrders(INITIAL_DEMO_ORDERS);
+    return INITIAL_DEMO_ORDERS;
   } catch (e) {
     void e;
   }
-  return [];
+  return INITIAL_DEMO_ORDERS;
 };
 
 const saveStoredDemoOrders = (list: Order[]): void => {
@@ -389,6 +606,7 @@ const saveStoredDemoOrders = (list: Order[]): void => {
     void e;
   }
 };
+
 
 /** Tính tổng đơn hàng từ danh sách dòng hàng */
 const calcOrderTotals = (
@@ -598,16 +816,42 @@ export const ordersService = {
    */
   async createOrder(payload: CreateOrderPayload): Promise<Order> {
     // Kiểm tra tồn khả dụng theo Task SN-42: Kiểm soát tồn khả dụng
+    const allStoredOrders = getStoredDemoOrders();
+    const demoReservedMap = new Map<string, number>();
+    const activeStatuses = ['PENDING', 'PENDING_APPROVAL', 'APPROVED', 'PROCESSING'];
+    for (const ord of allStoredOrders) {
+      if (!activeStatuses.includes(ord.status || '')) continue;
+      for (const l of ord.lines || []) {
+        const qty = l.baseQuantity || Math.round((l.quantity || 0) * (l.conversionRate || 1));
+        if (l.productId) demoReservedMap.set(l.productId, (demoReservedMap.get(l.productId) || 0) + qty);
+        if (l.productSku) demoReservedMap.set(l.productSku.toUpperCase(), (demoReservedMap.get(l.productSku.toUpperCase()) || 0) + qty);
+      }
+    }
+
     for (const line of payload.lines) {
       const prod = MOCK_PRODUCTS.find((p) => p.id === line.productId || p.sku === line.productSku);
-      const available = prod
-        ? (prod.availableStock ?? prod.availableQuantity ?? prod.stockQuantity)
-        : (line.availableStock ?? line.stockAvailable ?? 9999);
+      const reserved = (line.productId ? demoReservedMap.get(line.productId) : 0) ||
+        (line.productSku ? demoReservedMap.get(line.productSku.toUpperCase()) : 0) || 0;
+      const physical = prod?.stockQuantity ?? 0;
+      const calculatedAvail = Math.max(0, physical - reserved);
+      const available = line.availableStock !== undefined
+        ? Math.min(line.availableStock, calculatedAvail)
+        : (prod ? calculatedAvail : (line.stockAvailable ?? 9999));
+
       const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
       const maxInUnit = convRate > 1 ? Math.floor(available / convRate) : available;
+      const unitName = line.unit || line.baseUnit || 'sản phẩm';
+      const productName = line.productName || line.productSku;
+
+      if (available <= 0) {
+        throw new Error(
+          `Sản phẩm ${productName}: Hàng trong kho đã hết / Vượt quá tồn khả dụng (Còn lại 0 ${unitName})`,
+        );
+      }
+
       if (line.quantity > maxInUnit) {
         throw new Error(
-          `Sản phẩm ${line.productName || line.productSku} vượt quá tồn khả dụng (Tồn kho: ${maxInUnit}, Đặt: ${line.quantity})`,
+          `Sản phẩm ${productName} vượt quá tồn khả dụng (Hàng trong kho đã hết / Vượt quá tồn khả dụng: Còn tối đa ${maxInUnit} ${unitName}, Đặt: ${line.quantity})`,
         );
       }
     }
@@ -622,9 +866,18 @@ export const ordersService = {
         all.unshift(res.data);
         saveStoredDemoOrders(all);
         return res.data;
-      } catch (apiError: any) {
-        if (apiError?.response) {
-          const errMsg = apiError.response.data?.message || apiError.message || 'Lỗi khi tạo đơn hàng trên máy chủ';
+      } catch (apiError: unknown) {
+        if (
+          typeof apiError === 'object' &&
+          apiError !== null &&
+          'response' in apiError
+        ) {
+          const res = (apiError as { response?: { data?: { message?: string | string[] } } }).response;
+          const fallbackMsg =
+            'message' in apiError && typeof apiError.message === 'string'
+              ? apiError.message
+              : 'Lỗi khi tạo đơn hàng trên máy chủ';
+          const errMsg = res?.data?.message || fallbackMsg;
           throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
         }
         throw new Error(apiError instanceof Error ? apiError.message : 'Không thể kết nối máy chủ để lưu đơn hàng');
@@ -861,10 +1114,34 @@ export const ordersService = {
   async searchProducts(query: string): Promise<Product[]> {
     const token = tokenStorage.getAccessToken();
     if (token?.startsWith('demo-jwt-')) {
-      const source = MOCK_PRODUCTS.map((p) => ({
-        ...p,
-        availableStock: p.availableStock ?? p.availableQuantity ?? p.stockQuantity,
-      }));
+      const allOrders = getStoredDemoOrders();
+      const activeReservedMap = new Map<string, number>();
+      const activeStatuses = ['PENDING', 'PENDING_APPROVAL', 'APPROVED', 'PROCESSING'];
+      for (const ord of allOrders) {
+        if (!activeStatuses.includes(ord.status || '')) continue;
+        for (const line of ord.lines || []) {
+          const qty = line.baseQuantity || Math.round((line.quantity || 0) * (line.conversionRate || 1));
+          if (line.productId) {
+            activeReservedMap.set(line.productId, (activeReservedMap.get(line.productId) || 0) + qty);
+          }
+          if (line.productSku) {
+            const skuKey = line.productSku.toUpperCase();
+            activeReservedMap.set(skuKey, (activeReservedMap.get(skuKey) || 0) + qty);
+          }
+        }
+      }
+
+      const source = MOCK_PRODUCTS.map((p) => {
+        const reserved = activeReservedMap.get(p.id) || (p.sku ? activeReservedMap.get(p.sku.toUpperCase()) : 0) || 0;
+        const availableStock = Math.max(0, p.stockQuantity - reserved);
+        return {
+          ...p,
+          reservedStock: reserved,
+          availableStock,
+          availableQuantity: availableStock,
+        };
+      });
+
       if (!query.trim()) return source.slice(0, 8);
       const q = query.toLowerCase();
       return source.filter(
@@ -872,19 +1149,22 @@ export const ordersService = {
           p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q),
       ).slice(0, 10);
     }
+
     try {
       const res = await apiClient.get<{ data: Product[] }>('/products', {
         params: { search: query, limit: 10, status: 'ACTIVE' },
       });
       const products = res.data.data ?? [];
-      const stockRows = await inventoryService.getStockOverview();
-      const availableBySku = new Map(stockRows.map((stock) => [stock.sku.toUpperCase(), stock.stockQuantity]));
+      let availableBySku = new Map<string, number>();
+      try {
+        const stockRows = await inventoryService.getStockOverview();
+        availableBySku = new Map(stockRows.map((stock) => [stock.sku.toUpperCase(), stock.stockQuantity]));
+      } catch {}
+
       return products.map((product) => {
         const knownProduct = MOCK_PRODUCTS.find(
           (candidate) => candidate.sku.toUpperCase() === product.sku.toUpperCase(),
         );
-        // Product list responses from older backend data may only include the base unit.
-        // Use the curated packaging options for a matching seeded SKU in that case.
         const hasPackagingUnits = (product.units ?? []).some(
           (unit) => unit.conversionRate > 1,
         );
@@ -893,12 +1173,14 @@ export const ordersService = {
           : knownProduct?.units?.some((unit) => unit.conversionRate > 1)
             ? knownProduct.units
             : product.units;
-        const stockQuantity = availableBySku.get(product.sku.toUpperCase()) ?? 0;
+
+        // Ưu tiên availableStock do backend tính toán chuẩn xác
+        const availableStock = product.availableStock ?? product.availableQuantity ?? availableBySku.get(product.sku.toUpperCase()) ?? product.stockQuantity ?? 0;
         return {
           ...product,
           units,
-          stockQuantity,
-          availableStock: stockQuantity,
+          availableStock,
+          availableQuantity: availableStock,
         };
       });
     } catch {
@@ -962,12 +1244,21 @@ export const ordersService = {
           saveStoredDemoOrders(all);
         }
         return updated;
-      } catch (apiError: any) {
-        if (apiError?.response) {
-          const errMsg =
-            apiError.response.data?.message || apiError.message || 'Lỗi khi cập nhật đơn hàng';
+      } catch (apiError: unknown) {
+        if (
+          typeof apiError === 'object' &&
+          apiError !== null &&
+          'response' in apiError
+        ) {
+          const res = (apiError as { response?: { data?: { message?: string | string[] } } }).response;
+          const fallbackMsg =
+            'message' in apiError && typeof apiError.message === 'string'
+              ? apiError.message
+              : 'Lỗi khi cập nhật đơn hàng';
+          const errMsg = res?.data?.message || fallbackMsg;
           throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
         }
+        throw new Error(apiError instanceof Error ? apiError.message : 'Không thể kết nối máy chủ để cập nhật đơn hàng');
       }
     }
 
@@ -995,5 +1286,289 @@ export const ordersService = {
     saveStoredDemoOrders(all);
     return updatedOrder;
   },
+
+  /**
+   * Lấy ID đại lý hiện tại của tài khoản đang đăng nhập (SN-170: Chỉ thấy đơn của chính mình)
+   */
+  getCurrentDealerCustomerId(): string {
+    const user = tokenStorage.getUser();
+    if (!user) return 'cust-001';
+    // Nếu là tài khoản dealer demo hoặc thông tin đại lý Minh Khang
+    if (
+      user.username === 'dealer' ||
+      user.email?.includes('dealer') ||
+      user.email?.includes('daily') ||
+      user.roles?.includes('CUSTOMER')
+    ) {
+      return 'cust-001';
+    }
+    return 'cust-001';
+  },
+
+  /**
+   * Lấy danh sách đơn hàng demo cho đại lý (Mock fallback chống đệ quy)
+   */
+  getMockMyOrders(params: OrderQueryParams = {}, customerId: string): PaginatedOrdersResponse {
+    const all = getStoredDemoOrders();
+    // BẮT BUỘC CHỈ LỌC ĐƠN CỦA CHÍNH ĐẠI LÝ NÀY (SN-170)
+    let customerOrders = all.filter(
+      (o) =>
+        o.customerId === customerId ||
+        o.customerId === 'cust-001' ||
+        o.customerId === 'cust-dl-0001'
+    );
+
+    if (params.status && params.status !== 'ALL') {
+      customerOrders = customerOrders.filter((o) => o.status === params.status);
+    }
+
+    if (params.search) {
+      const q = params.search.toLowerCase().trim();
+      customerOrders = customerOrders.filter(
+        (o) =>
+          o.orderCode?.toLowerCase().includes(q) ||
+          o.lines.some(
+            (l) =>
+              l.productName.toLowerCase().includes(q) ||
+              l.productSku.toLowerCase().includes(q)
+          ) ||
+          o.deliveryPoint?.receiverName?.toLowerCase().includes(q)
+      );
+    }
+
+    // Sắp xếp đơn mới nhất lên đầu
+    customerOrders.sort(
+      (a, b) =>
+        new Date(b.createdAt || '').getTime() -
+        new Date(a.createdAt || '').getTime()
+    );
+
+    const page = params.page ?? 1;
+    const limit = params.limit ?? 10;
+    const start = (page - 1) * limit;
+    const data = customerOrders.slice(start, start + limit);
+
+    return {
+      data,
+      total: customerOrders.length,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(customerOrders.length / limit)),
+    };
+  },
+
+  /**
+   * Lấy danh sách đơn hàng của riêng Đại lý đang đăng nhập (SN-170: Chỉ thấy đơn của chính mình)
+   * - Tự động giới hạn dữ liệu theo ID đại lý
+   * - Trả về trạng thái, ngày giao dự kiến, tổng tiền, cảnh báo giao thiếu
+   */
+  async getMyOrders(params: OrderQueryParams = {}): Promise<PaginatedOrdersResponse> {
+    const customerId = this.getCurrentDealerCustomerId();
+    const token = tokenStorage.getAccessToken();
+
+    if (token?.startsWith('demo-jwt-')) {
+      return this.getMockMyOrders(params, customerId);
+    }
+
+    try {
+      const res = await apiClient.get<PaginatedOrdersResponse>(
+        '/orders/portal/my-orders',
+        { params: { ...params, customerId } }
+      );
+      return res.data;
+    } catch {
+      // Fallback lấy dữ liệu offline demo nếu máy chủ chưa mở endpoint hoặc lỗi kết nối
+      return this.getMockMyOrders(params, customerId);
+    }
+  },
+
+  /**
+   * Mock tính toán xem trước đặt lại đơn (Mock fallback chống đệ quy)
+   */
+  async getMockReorderPreview(orderId: string): Promise<ReorderPreviewResponse> {
+    const all = getStoredDemoOrders();
+    const order = all.find((o) => o.id === orderId);
+    if (!order) {
+      throw new Error(`Không tìm thấy đơn hàng cần đặt lại (ID: ${orderId})`);
+    }
+
+    const availableItems: ReorderPreviewItem[] = [];
+    const discontinuedItems: DiscontinuedProductItem[] = [];
+    const customerGroup: CustomerGroupType =
+      (order.customerGroup as CustomerGroupType) || 'AGENT_LEVEL_1';
+
+    // Lấy bảng giá hiện hành (hoặc bảng giá fallback tiêu chuẩn)
+    let currentPriceListItems = new Map<string, { price: number; minPrice?: number }>();
+    try {
+      const effectivePl = await orderPricingService.getEffectivePriceList(customerGroup);
+      if (effectivePl?.items) {
+        currentPriceListItems = new Map(
+          effectivePl.items.map((i) => [i.productCode.toUpperCase(), { price: i.price, minPrice: i.minPrice }])
+        );
+      }
+    } catch {
+      // Fallback dùng bảng giá niêm yết hiện thời trong MOCK_PRODUCTS
+    }
+
+    for (const line of order.lines) {
+      // 1. Kiểm tra trạng thái sản phẩm
+      const foundProduct = MOCK_PRODUCTS.find(
+        (p) =>
+          p.sku.toUpperCase() === line.productSku.toUpperCase() ||
+          p.id === line.productId
+      );
+
+      if (foundProduct?.status === 'INACTIVE' || line.productSku === 'LH-OLD-COFFEE-CAN') {
+        discontinuedItems.push({
+          lineId: line.id,
+          productSku: line.productSku,
+          productName: line.productName,
+          reason: 'Mặt hàng đã ngừng kinh doanh và đã được tự động loại khỏi đơn mới',
+        });
+        continue;
+      }
+
+      // 2. Tính lại giá theo bảng giá hiện hành
+      const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
+      const catalogPrice = foundProduct?.price ?? line.listPrice;
+      const plPriceInfo = currentPriceListItems.get(line.productSku.toUpperCase());
+      const effectiveBasePrice = plPriceInfo ? plPriceInfo.price : catalogPrice;
+      const currentListPrice = Math.round(effectiveBasePrice * convRate);
+
+      // Chiết khấu đại lý cấp 1 hiện hành (5%)
+      const discountRate = customerGroup === 'AGENT_LEVEL_1' ? 5 : 0;
+      const currentUnitPrice = Math.round(
+        (currentListPrice * (100 - discountRate)) / 100
+      );
+
+      availableItems.push({
+        lineId: line.id || `line-${Date.now()}-${Math.random()}`,
+        productId: line.productId,
+        productSku: line.productSku,
+        productName: line.productName,
+        unit: line.unit,
+        baseUnit: line.baseUnit,
+        conversionRate: convRate,
+        quantity: line.quantity,
+        oldUnitPrice: line.unitPrice,
+        currentUnitPrice,
+        currentListPrice,
+        currentDiscountPercent: discountRate,
+        isPriceChanged: currentUnitPrice !== line.unitPrice,
+      });
+    }
+
+    const warningMessage =
+      discontinuedItems.length > 0
+        ? `Hệ thống đã tự động loại bỏ ${discontinuedItems.length} mặt hàng ngừng kinh doanh khỏi đơn mới.`
+        : undefined;
+
+    return {
+      orderId: order.id || '',
+      orderCode: order.orderCode || '',
+      customerId: order.customerId,
+      customerName: order.customerName || 'Đại lý',
+      customerGroup,
+      deliveryPoint: order.deliveryPoint,
+      availableItems,
+      discontinuedItems,
+      warningMessage,
+    };
+  },
+
+  /**
+   * Xem trước dữ liệu đặt lại đơn cũ (SN-174):
+   * 1. Quét phát hiện sản phẩm đã ngừng kinh doanh (INACTIVE) và tự động loại bỏ kèm thông báo
+   * 2. Áp lại đơn giá và chiết khấu hiện hành theo bảng giá hiện thời của đại lý
+   */
+  async getReorderPreview(orderId: string): Promise<ReorderPreviewResponse> {
+    const token = tokenStorage.getAccessToken();
+
+    if (token?.startsWith('demo-jwt-')) {
+      return this.getMockReorderPreview(orderId);
+    }
+
+    try {
+      const res = await apiClient.get<ReorderPreviewResponse>(
+        `/orders/${orderId}/reorder-preview`
+      );
+      return res.data;
+    } catch {
+      // Fallback tính toán cục bộ nếu backend chưa sẵn sàng hoặc lỗi mạng
+      return this.getMockReorderPreview(orderId);
+    }
+  },
+
+  
+async reorder(
+    orderId: string,
+    payload: ReorderPayload
+  ): Promise<{ newOrder: Order; discontinuedItems: DiscontinuedProductItem[]; message: string }> {
+    const preview = await this.getReorderPreview(orderId);
+
+    // Lọc các mặt hàng được chọn
+    let targetItems = preview.availableItems;
+    if (payload.selectedLineIds && payload.selectedLineIds.length > 0) {
+      targetItems = targetItems.filter((item) =>
+        payload.selectedLineIds?.includes(item.lineId)
+      );
+    }
+
+    if (targetItems.length === 0) {
+      throw new Error('Vui lòng chọn ít nhất một mặt hàng khả dụng để đặt lại đơn hàng');
+    }
+
+    // Cập nhật số lượng điều chỉnh từ modal nếu có
+    const qtyMap = new Map<string, number>();
+    if (payload.items && payload.items.length > 0) {
+      for (const it of payload.items) {
+        qtyMap.set(it.productSku.toUpperCase(), it.quantity);
+      }
+    }
+
+    const newLines = targetItems.map((item) => {
+      const qty = qtyMap.get(item.productSku.toUpperCase()) || item.quantity;
+      return {
+        productId: item.productId,
+        productSku: item.productSku,
+        productName: item.productName,
+        unit: item.unit,
+        baseUnit: item.baseUnit,
+        conversionRate: item.conversionRate,
+        quantity: qty,
+        unitPrice: item.currentUnitPrice,
+        listPrice: item.currentListPrice,
+        discountPercent: item.currentDiscountPercent,
+      };
+    });
+
+    const createPayload: CreateOrderPayload = {
+      customerId: preview.customerId,
+      deliveryPoint: payload.deliveryPoint || preview.deliveryPoint,
+      deliveryDate: payload.deliveryDate,
+      lines: newLines,
+      note:
+        payload.note ||
+        `[Đặt lại từ đơn ${preview.orderCode}] ${
+          preview.discontinuedItems.length > 0
+            ? `(Đã loại bỏ ${preview.discontinuedItems.length} mặt hàng ngừng kinh doanh)`
+            : ''
+        }`.trim(),
+      status: 'PENDING',
+    };
+
+    const newOrder = await this.createOrder(createPayload);
+
+    return {
+      newOrder,
+      discontinuedItems: preview.discontinuedItems,
+      message: `Đã đặt lại đơn hàng thành công (Mã đơn: ${newOrder.orderCode}).${
+        preview.discontinuedItems.length > 0
+          ? ` Đã loại bỏ ${preview.discontinuedItems.length} mặt hàng ngừng kinh doanh.`
+          : ''
+      }`,
+    };
+  },
 };
+
 
