@@ -29,10 +29,15 @@ import {
   CornerUpLeft,
   History,
   RotateCcw,
+  Filter,
+  Calendar,
+  TrendingUp,
+  UserCheck,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ordersService } from '../services/orders.service';
 import { customersService } from '../services/customers.service';
+import { usersService } from '../services/users.service';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
 import { OrderPrintModal } from '../components/order-print-modal';
 import { ReorderModal } from '../components/reorder-modal';
@@ -2195,6 +2200,7 @@ export const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+  const [totalAmount, setTotalAmount] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const limit = 10;
@@ -2207,6 +2213,17 @@ export const OrdersPage: React.FC = () => {
   });
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // ── SN-46: Bộ lọc đa tiêu chí cho Quản lý kinh doanh ──
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('ALL');
+  const [selectedSalesRepId, setSelectedSalesRepId] = useState<string>('ALL');
+  const [selectedRegion, setSelectedRegion] = useState<string>('ALL');
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
+
+  // Danh sách đại lý & nhân viên kinh doanh cho dropdown lọc
+  const [customerOptions, setCustomerOptions] = useState<{ id: string; name: string; code?: string }[]>([]);
+  const [salesRepOptions, setSalesRepOptions] = useState<{ id: string; name: string }[]>([]);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -2247,6 +2264,83 @@ export const OrdersPage: React.FC = () => {
   const isAdmin = user?.roles?.includes('ADMIN');
   const isSalesRep = user?.roles?.includes('SALES_REP');
   const isSalesManager = user?.roles?.includes('SALES_MANAGER');
+  const canViewAllRep = isAdmin || isSalesManager;
+
+  // Tải danh sách đại lý cho dropdown bộ lọc
+  useEffect(() => {
+    ordersService.getCustomers().then((list) => {
+      if (Array.isArray(list)) {
+        setCustomerOptions(list.map((c) => ({ id: c.id, name: c.name, code: c.code })));
+      }
+    }).catch(() => {});
+  }, []);
+
+  // Tải danh sách nhân viên kinh doanh cho dropdown bộ lọc
+  useEffect(() => {
+    const defaultReps = [
+      { id: 'usr-sales-001', name: 'Nguyễn Văn An (NVKD)' },
+      { id: 'usr-sales-002', name: 'Trần Văn Nam (NVKD)' },
+      { id: 'usr-sales-003', name: 'Lê Hoàng Trưởng Phòng (QLKD)' },
+      { id: 'usr-sales-004', name: 'Phạm Minh Đức (NVKD)' },
+    ];
+    setSalesRepOptions(defaultReps);
+
+    usersService.getUsers({ limit: 50 }).then((res) => {
+      if (res?.data && res.data.length > 0) {
+        const reps = res.data
+          .filter((u) => u.roles?.includes('SALES_REP') || u.roles?.includes('SALES_MANAGER'))
+          .map((u) => ({
+            id: u.id,
+            name: `${u.fullName} (${u.roles?.includes('SALES_MANAGER') ? 'QLKD' : 'NVKD'})`,
+          }));
+        if (reps.length > 0) {
+          setSalesRepOptions(reps);
+        }
+      }
+    }).catch(() => {});
+  }, []);
+
+  const handleCustomerChange = (val: string) => {
+    setSelectedCustomerId(val);
+    setPage(1);
+  };
+  const handleSalesRepChange = (val: string) => {
+    setSelectedSalesRepId(val);
+    setPage(1);
+  };
+  const handleRegionChange = (val: string) => {
+    setSelectedRegion(val);
+    setPage(1);
+  };
+  const handleFromDateChange = (val: string) => {
+    setFromDate(val);
+    setPage(1);
+  };
+  const handleToDateChange = (val: string) => {
+    setToDate(val);
+    setPage(1);
+  };
+
+  const handleResetFilters = () => {
+    setSearchInput('');
+    setSearchTerm('');
+    setStatusFilter('ALL');
+    setSelectedCustomerId('ALL');
+    setSelectedSalesRepId('ALL');
+    setSelectedRegion('ALL');
+    setFromDate('');
+    setToDate('');
+    setPage(1);
+  };
+
+  const hasActiveFilters =
+    statusFilter !== 'ALL' ||
+    searchTerm !== '' ||
+    selectedCustomerId !== 'ALL' ||
+    (canViewAllRep && selectedSalesRepId !== 'ALL') ||
+    selectedRegion !== 'ALL' ||
+    fromDate !== '' ||
+    toDate !== '';
 
   // Tự động mở modal khi có createOrder hoặc customerId trên URL
   useEffect(() => {
@@ -2297,16 +2391,26 @@ export const OrdersPage: React.FC = () => {
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
+        const effectiveSalesRep = !canViewAllRep
+          ? (user?.id || user?.fullName)
+          : (selectedSalesRepId !== 'ALL' ? selectedSalesRepId : undefined);
+
         const res = await ordersService.getOrders({
           page,
           limit,
           status: statusFilter,
           search: searchTerm || undefined,
+          customerId: selectedCustomerId !== 'ALL' ? selectedCustomerId : undefined,
+          salesRepId: effectiveSalesRep,
+          region: selectedRegion !== 'ALL' ? selectedRegion : undefined,
+          fromDate: fromDate || undefined,
+          toDate: toDate || undefined,
         });
         if (isMounted) {
           setOrders(res.data);
           setTotal(res.total);
           setTotalPages(res.totalPages);
+          setTotalAmount(res.totalAmount ?? 0);
         }
       } catch {
         if (isMounted) {
@@ -2323,7 +2427,21 @@ export const OrdersPage: React.FC = () => {
       isMounted = false;
       clearTimeout(timer);
     };
-  }, [page, limit, statusFilter, searchTerm, refreshKey]);
+  }, [
+    page,
+    limit,
+    statusFilter,
+    searchTerm,
+    selectedCustomerId,
+    selectedSalesRepId,
+    selectedRegion,
+    fromDate,
+    toDate,
+    refreshKey,
+    canViewAllRep,
+    user?.id,
+    user?.fullName,
+  ]);
 
   useEffect(() => {
     let isMounted = true;
@@ -2462,21 +2580,221 @@ export const OrdersPage: React.FC = () => {
           )}
         </div>
 
-        {/* Thanh tìm kiếm & bộ lọc */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Tìm kiếm mã đơn, tên đại lý..."
-              className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+        {/* ── THỐNG KÊ DOANH SỐ & TỔNG TIỀN ĐANG LỌC (SN-46) ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {/* Card 1: Tổng số đơn hàng */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <ShoppingCart className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-slate-500">Số đơn đang lọc</p>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="text-xl font-bold text-slate-900">{total}</span>
+                <span className="text-xs text-slate-400">đơn</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Tổng tiền tập kết quả đang lọc (Tiêu chí then chốt SN-46) */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5 bg-gradient-to-br from-white via-white to-emerald-50/40">
+            <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-medium text-slate-500">Tổng tiền đang lọc</p>
+                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded-full">
+                  Toàn tập lọc
+                </span>
+              </div>
+              <p className="text-lg sm:text-xl font-bold text-emerald-700 mt-0.5 truncate" title={formatCurrency(totalAmount)}>
+                {formatCurrency(totalAmount)}
+              </p>
+            </div>
+          </div>
+
+          {/* Card 3: Phân quyền & Phạm vi xem */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5">
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+              canViewAllRep ? 'bg-indigo-50 text-indigo-600' : 'bg-amber-50 text-amber-600'
+            }`}>
+              {canViewAllRep ? <Building2 className="w-5 h-5" /> : <UserCheck className="w-5 h-5" />}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-slate-500">Phạm vi dữ liệu (RBAC)</p>
+              <p className="text-sm font-bold text-slate-900 mt-0.5 truncate">
+                {canViewAllRep ? 'Toàn công ty' : (user?.fullName || user?.username || 'Cá nhân')}
+              </p>
+              <p className="text-[11px] text-slate-400 truncate">
+                {canViewAllRep ? 'Quyền: Quản lý kinh doanh' : 'Chỉ xem đơn do bạn phụ trách'}
+              </p>
+            </div>
+          </div>
+
+          {/* Card 4: Tình trạng bộ lọc */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-11 h-11 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                <Filter className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-slate-500">Bộ lọc hiện tại</p>
+                <p className="text-sm font-semibold text-slate-800 mt-0.5 truncate">
+                  {hasActiveFilters ? 'Đang lọc đa tiêu chí' : 'Mặc định (Tất cả)'}
+                </p>
+              </div>
+            </div>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium hover:underline inline-flex items-center gap-1 shrink-0"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Đặt lại
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── BỘ LỌC ĐA TIÊU CHÍ (SN-46) ── */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3.5 shadow-sm">
+          {/* Hàng 1: Ô tìm kiếm + Date Pickers */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+            {/* Ô tìm kiếm từ khóa */}
+            <div className="relative md:col-span-6 lg:col-span-6">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Tìm mã đơn, tên đại lý, mã đại lý, nhân viên..."
+                className="w-full pl-10 pr-9 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50/50 hover:bg-white transition-colors"
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => setSearchInput('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Từ ngày */}
+            <div className="md:col-span-3 lg:col-span-3 flex items-center gap-2 bg-slate-50/60 border border-slate-200 rounded-xl px-3 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20">
+              <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <label className="block text-[10px] text-slate-400 font-medium leading-none">Từ ngày</label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => handleFromDateChange(e.target.value)}
+                  className="w-full text-xs text-slate-700 bg-transparent focus:outline-none cursor-pointer"
+                />
+              </div>
+            </div>
+
+            {/* Đến ngày */}
+            <div className="md:col-span-3 lg:col-span-3 flex items-center gap-2 bg-slate-50/60 border border-slate-200 rounded-xl px-3 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20">
+              <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <label className="block text-[10px] text-slate-400 font-medium leading-none">Đến ngày</label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => handleToDateChange(e.target.value)}
+                  className="w-full text-xs text-slate-700 bg-transparent focus:outline-none cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Hàng 2: Dropdown Lọc Đại lý, Nhân viên, Khu vực & Nút Reset */}
+          <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-100">
+            {/* Dropdown Đại lý */}
+            <div className="min-w-[180px] flex-1 sm:flex-initial">
+              <select
+                value={selectedCustomerId}
+                onChange={(e) => handleCustomerChange(e.target.value)}
+                aria-label="Lọc theo đại lý"
+                className="w-full text-xs sm:text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              >
+                <option value="ALL">🏢 Tất cả đại lý</option>
+                {customerOptions.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} {c.code ? `(${c.code})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Dropdown Nhân viên kinh doanh (Khóa nếu SALES_REP, Mở nếu QLKD / Admin) */}
+            <div className="min-w-[200px] flex-1 sm:flex-initial">
+              <select
+                value={canViewAllRep ? selectedSalesRepId : (user?.id || user?.fullName || 'CURRENT_USER')}
+                onChange={(e) => handleSalesRepChange(e.target.value)}
+                disabled={!canViewAllRep}
+                aria-label="Lọc theo nhân viên kinh doanh"
+                title={!canViewAllRep ? 'Bạn chỉ có quyền xem đơn do mình phụ trách' : 'Lọc theo nhân viên kinh doanh'}
+                className={`w-full text-xs sm:text-sm border rounded-xl px-3 py-2 transition-colors focus:outline-none ${
+                  !canViewAllRep
+                    ? 'bg-slate-100 text-slate-500 border-slate-200 cursor-not-allowed opacity-90'
+                    : 'bg-white text-slate-700 border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
+              >
+                {!canViewAllRep ? (
+                  <option value={user?.id || user?.fullName || 'CURRENT_USER'}>
+                    👤 {user?.fullName || user?.username || 'Tôi (NVKD)'} (Chỉ xem đơn phụ trách)
+                  </option>
+                ) : (
+                  <>
+                    <option value="ALL">👥 Tất cả nhân viên kinh doanh</option>
+                    {salesRepOptions.map((rep) => (
+                      <option key={rep.id} value={rep.id}>
+                        👤 {rep.name}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+            </div>
+
+            {/* Dropdown Khu vực */}
+            <div className="min-w-[150px] flex-1 sm:flex-initial">
+              <select
+                value={selectedRegion}
+                onChange={(e) => handleRegionChange(e.target.value)}
+                aria-label="Lọc theo khu vực"
+                className="w-full text-xs sm:text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              >
+                <option value="ALL">📍 Tất cả khu vực</option>
+                <option value="Miền Bắc">Miền Bắc</option>
+                <option value="Miền Trung">Miền Trung</option>
+                <option value="Miền Nam">Miền Nam</option>
+                <option value="Đông Nam Bộ">Đông Nam Bộ</option>
+                <option value="Tây Nam Bộ">Tây Nam Bộ</option>
+              </select>
+            </div>
+
+            {/* Nút Đặt lại bộ lọc */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors shrink-0"
+                title="Đặt lại toàn bộ tiêu chí lọc"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Xóa bộ lọc</span>
+              </button>
+            )}
           </div>
 
           {/* Tabs trạng thái — cuộn ngang trên mobile */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin pt-1">
             {STATUS_TABS.map((tab) => (
               <button
                 key={tab.key}
@@ -2497,23 +2815,43 @@ export const OrdersPage: React.FC = () => {
         </div>
 
         {/* Danh sách đơn hàng */}
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
           {loading ? (
             <div className="p-8 text-center">
               <RefreshCw className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-3" />
-              <p className="text-sm text-slate-500">Đang tải đơn hàng...</p>
+              <p className="text-sm text-slate-500">Đang tải danh sách đơn hàng...</p>
             </div>
           ) : orders.length === 0 ? (
-            <div className="p-10 text-center text-slate-400">
-              <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-25" />
-              <p className="text-sm font-medium">Chưa có đơn hàng nào</p>
-              {(isSalesRep || isSalesManager || isAdmin) && (
-                <button
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="mt-3 text-sm text-blue-600 hover:underline"
-                >
-                  + Tạo đơn hàng đầu tiên
-                </button>
+            <div className="p-10 text-center text-slate-400 space-y-2">
+              <ShoppingCart className="w-12 h-12 mx-auto mb-2 opacity-25" />
+              <p className="text-sm font-medium text-slate-700">
+                {hasActiveFilters
+                  ? 'Không tìm thấy đơn hàng nào phù hợp với bộ lọc'
+                  : 'Chưa có đơn hàng nào'}
+              </p>
+              {hasActiveFilters ? (
+                <>
+                  <p className="text-xs text-slate-500">
+                    Hãy thử đổi từ khóa tìm kiếm, chọn đại lý khác, nới rộng khoảng thời gian hoặc xóa bộ lọc.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg font-medium transition-colors"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Xóa bộ lọc
+                  </button>
+                </>
+              ) : (
+                (isSalesRep || isSalesManager || isAdmin) && (
+                  <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="mt-3 text-sm text-blue-600 hover:underline inline-block"
+                  >
+                    + Tạo đơn hàng đầu tiên
+                  </button>
+                )
               )}
             </div>
           ) : (
@@ -2528,6 +2866,9 @@ export const OrdersPage: React.FC = () => {
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                         Đại lý
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        NVKD / Khu vực
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                         Ngày giao
@@ -2561,6 +2902,12 @@ export const OrdersPage: React.FC = () => {
                         <td className="px-4 py-3">
                           <p className="text-slate-700 font-medium">{order.customerName}</p>
                           <p className="text-xs text-slate-400">{order.customerCode}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-slate-700 font-medium">{order.salesRepName || '—'}</p>
+                          <p className="text-xs text-slate-400">
+                            {order.region || (order.deliveryPoint?.address?.includes('Hà Nội') ? 'Miền Bắc' : order.deliveryPoint?.address?.includes('Đà Nẵng') ? 'Miền Trung' : 'Miền Nam')}
+                          </p>
                         </td>
                         <td className="px-4 py-3 text-slate-600">
                           {formatDate(order.deliveryDate)}
@@ -2657,6 +3004,10 @@ export const OrdersPage: React.FC = () => {
                           </p>
                           <p className="text-xs text-slate-500 mt-0.5 font-mono">
                             {order.orderCode} · {formatDate(order.createdAt)}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {order.salesRepName ? `NVKD: ${order.salesRepName}` : ''}
+                            {order.region ? ` · ${order.region}` : ''}
                           </p>
                           {(order.status === 'PENDING_APPROVAL' || order.status === 'PENDING') && (
                             <p className="mt-1 line-clamp-2 text-xs font-medium text-amber-700">
