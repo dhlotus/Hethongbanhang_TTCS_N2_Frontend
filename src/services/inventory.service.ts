@@ -128,10 +128,23 @@ export const inventoryService = {
         const activeReservations: StockReservation[] = [];
         let reserved = 0;
 
+        const isSkuMatch = (a: string, b: string) => {
+          const sa = (a || '').trim().toUpperCase();
+          const sb = (b || '').trim().toUpperCase();
+          if (sa === sb) return true;
+          if (
+            (sa === 'LH-MILK-900G' || sa === 'LH-MILK-POWDER-900G') &&
+            (sb === 'LH-MILK-900G' || sb === 'LH-MILK-POWDER-900G')
+          ) {
+            return true;
+          }
+          return false;
+        };
+
         for (const order of approvedOrders) {
           for (const line of order.lines || []) {
             const lineSku = (line.productSku || line.productId || '').toUpperCase();
-            if (lineSku === skuUpper) {
+            if (isSkuMatch(lineSku, skuUpper) || (line.productId && line.productId === p.id)) {
               const qty = line.baseQuantity ?? Math.round(line.quantity * (line.conversionRate || 1));
               reserved += qty;
               activeReservations.push({
@@ -141,6 +154,7 @@ export const inventoryService = {
                 productId: p.id,
                 productSku: p.sku,
                 productName: p.name,
+                customerName: (order as { customerName?: string }).customerName,
                 warehouseId: 'wh-main',
                 quantity: qty,
                 status: 'ACTIVE',

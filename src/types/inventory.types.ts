@@ -8,6 +8,7 @@ export interface StockReservation {
   id: string;
   orderId: string;
   orderCode?: string;
+  customerName?: string;
   productId: string;
   productSku?: string;
   productName?: string;
