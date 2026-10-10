@@ -112,10 +112,54 @@ export const inventoryService = {
   async getStocks(): Promise<StockItem[]> {
     const token = tokenStorage.getAccessToken();
     if (token && token.startsWith('demo-jwt-')) {
+      let demoOrders: Array<{
+        id?: string;
+        orderCode?: string;
+        status?: string;
+        reservedUntil?: string;
+        createdAt?: string;
+        lines?: Array<{ productSku?: string; productId?: string; quantity: number; baseQuantity?: number; conversionRate?: number }>;
+      }> = [];
+      try {
+        const rawOrders = localStorage.getItem('loha_demo_orders');
+        if (rawOrders) demoOrders = JSON.parse(rawOrders);
+      } catch {}
+
+      // Lọc các đơn đang giữ chỗ (APPROVED)
+      const approvedOrders = demoOrders.filter((o) => o.status === 'APPROVED');
+
       return MOCK_PRODUCTS.map((p: Product) => {
-        const physical = p.stockQuantity || 0;
-        const reserved = 0;
+        const physical = p.stockQuantity || 100;
+        const skuUpper = p.sku.toUpperCase();
+
+        const activeReservations: StockReservation[] = [];
+        let reserved = 0;
+
+        for (const order of approvedOrders) {
+          for (const line of order.lines || []) {
+            const lineSku = (line.productSku || line.productId || '').toUpperCase();
+            if (lineSku === skuUpper) {
+              const qty = line.baseQuantity ?? Math.round(line.quantity * (line.conversionRate || 1));
+              reserved += qty;
+              activeReservations.push({
+                id: `res-demo-${order.id}-${line.productSku || p.sku}`,
+                orderId: order.id || '',
+                orderCode: order.orderCode || order.id || '',
+                productId: p.id,
+                productSku: p.sku,
+                productName: p.name,
+                warehouseId: 'wh-main',
+                quantity: qty,
+                status: 'ACTIVE',
+                expiredAt: order.reservedUntil || new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+                createdAt: order.createdAt || new Date().toISOString(),
+              });
+            }
+          }
+        }
+
         const available = Math.max(0, physical - reserved);
+
         return {
           sku: p.sku,
           name: p.name,
@@ -129,7 +173,7 @@ export const inventoryService = {
             conversionRate: u.conversionRate,
             isBaseUnit: Boolean(u.isBaseUnit),
           })),
-          activeReservations: [],
+          activeReservations,
         };
       });
     }
