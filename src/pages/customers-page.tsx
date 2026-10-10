@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Building2,
   Plus,
@@ -27,26 +27,103 @@ import { Pagination } from '../components/pagination';
 import { customerService } from '../services/customer.service';
 import type { Customer, CreateCustomerPayload, DeliveryPoint } from '../types/customer.types';
 
+// ──────────────────────────────────────────────────────────────────────────
+// QUERY PARAM MAPPINGS CHO BỘ LỌC ĐẠI LÝ (URL STATE MANAGEMENT)
+// ──────────────────────────────────────────────────────────────────────────
+
+const REGION_TO_PARAM: Record<string, string> = {
+  'Miền Bắc': 'north',
+  'Miền Trung': 'central',
+  'Miền Nam': 'south',
+};
+
+const PARAM_TO_REGION: Record<string, string> = {
+  north: 'Miền Bắc',
+  central: 'Miền Trung',
+  south: 'Miền Nam',
+  mien_bac: 'Miền Bắc',
+  mien_trung: 'Miền Trung',
+  mien_nam: 'Miền Nam',
+  'miền bắc': 'Miền Bắc',
+  'miền trung': 'Miền Trung',
+  'miền nam': 'Miền Nam',
+};
+
+const GROUP_TO_PARAM: Record<string, string> = {
+  AGENT_LEVEL_1: 'level1',
+  AGENT_LEVEL_2: 'level2',
+  WHOLESALE: 'wholesale',
+  RETAIL: 'retail',
+};
+
+const PARAM_TO_GROUP: Record<string, string> = {
+  level1: 'AGENT_LEVEL_1',
+  level2: 'AGENT_LEVEL_2',
+  wholesale: 'WHOLESALE',
+  retail: 'RETAIL',
+  agent_level_1: 'AGENT_LEVEL_1',
+  agent_level_2: 'AGENT_LEVEL_2',
+};
+
+const STATUS_TO_PARAM: Record<string, string> = {
+  ACTIVE: 'active',
+  LOCKED: 'locked',
+  INACTIVE: 'inactive',
+};
+
+const PARAM_TO_STATUS: Record<string, string> = {
+  active: 'ACTIVE',
+  locked: 'LOCKED',
+  inactive: 'INACTIVE',
+};
+
+const parseRegionParam = (param: string | null): string => {
+  if (!param) return 'ALL';
+  const lower = param.toLowerCase().trim();
+  return PARAM_TO_REGION[lower] || 'ALL';
+};
+
+const parseGroupParam = (param: string | null): string => {
+  if (!param) return 'ALL';
+  const lower = param.toLowerCase().trim();
+  return PARAM_TO_GROUP[lower] || 'ALL';
+};
+
+const parseStatusParam = (param: string | null): string => {
+  if (!param) return 'ALL';
+  const lower = param.toLowerCase().trim();
+  return PARAM_TO_STATUS[lower] || 'ALL';
+};
+
 /**
  * Trang Quản lý Đại lý & Hạn mức tín dụng (SN-31, SN-32, SN-37 & Đồng bộ dữ liệu)
  * Tuân thủ triệt để UI_GUIDELINES.md và CODE_CONVENTION.md
  */
 export const CustomersPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Khởi tạo các giá trị lọc ban đầu từ URL Query Parameters
+  const initialRegion = parseRegionParam(searchParams.get('region'));
+  const initialGroup = parseGroupParam(searchParams.get('group'));
+  const initialStatus = parseStatusParam(searchParams.get('status'));
+  const initialSearch = searchParams.get('search') || '';
+  const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
 
   // State danh sách đại lý & tải dữ liệu
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  // Bộ lọc & tìm kiếm (Hỗ trợ SN-37 đa tiêu chí)
-  const [searchInput, setSearchInput] = useState<string>('');
-  const [selectedGroup, setSelectedGroup] = useState<string>('ALL');
-  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
-  const [selectedRegion, setSelectedRegion] = useState<string>('ALL');
+  // Bộ lọc & tìm kiếm (Hỗ trợ SN-37 đa tiêu chí & đồng bộ URL)
+  const [searchInput, setSearchInput] = useState<string>(initialSearch);
+  const [searchTerm, setSearchTerm] = useState<string>(initialSearch);
+  const [selectedGroup, setSelectedGroup] = useState<string>(initialGroup);
+  const [selectedStatus, setSelectedStatus] = useState<string>(initialStatus);
+  const [selectedRegion, setSelectedRegion] = useState<string>(initialRegion);
 
   // Phân trang danh sách đại lý (10 - 20 - 50 dòng/trang)
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [currentPage, setCurrentPage] = useState<number>(initialPage);
   const [pageSize, setPageSize] = useState<number>(10);
 
   // Modal quản lý điểm giao hàng (SN-31 & SN-32)
@@ -104,6 +181,157 @@ export const CustomersPage: React.FC = () => {
     }
   }, [isCreateModalOpen, submitting]);
 
+  // Đồng bộ hóa URL Search Params an toàn, giữ nguyên các param khác và không reload trang
+  const updateUrlParams = useCallback(
+    (updates: {
+      region?: string;
+      group?: string;
+      status?: string;
+      search?: string;
+      page?: number;
+    }) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+
+          // Khu vực
+          const targetRegion = updates.region !== undefined ? updates.region : selectedRegion;
+          if (targetRegion && targetRegion !== 'ALL' && REGION_TO_PARAM[targetRegion]) {
+            next.set('region', REGION_TO_PARAM[targetRegion]);
+          } else {
+            next.delete('region');
+          }
+
+          // Phân nhóm
+          const targetGroup = updates.group !== undefined ? updates.group : selectedGroup;
+          if (targetGroup && targetGroup !== 'ALL' && GROUP_TO_PARAM[targetGroup]) {
+            next.set('group', GROUP_TO_PARAM[targetGroup]);
+          } else {
+            next.delete('group');
+          }
+
+          // Trạng thái
+          const targetStatus = updates.status !== undefined ? updates.status : selectedStatus;
+          if (targetStatus && targetStatus !== 'ALL' && STATUS_TO_PARAM[targetStatus]) {
+            next.set('status', STATUS_TO_PARAM[targetStatus]);
+          } else {
+            next.delete('status');
+          }
+
+          // Tìm kiếm
+          const targetSearch = updates.search !== undefined ? updates.search : searchTerm;
+          const trimmed = targetSearch.trim();
+          if (trimmed) {
+            next.set('search', trimmed);
+          } else {
+            next.delete('search');
+          }
+
+          // Phân trang
+          const targetPage = updates.page !== undefined ? updates.page : currentPage;
+          if (
+            targetPage > 1 ||
+            next.has('region') ||
+            next.has('group') ||
+            next.has('status') ||
+            next.has('search')
+          ) {
+            next.set('page', String(targetPage));
+          } else {
+            next.delete('page');
+          }
+
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams, selectedRegion, selectedGroup, selectedStatus, searchTerm, currentPage]
+  );
+
+  const handleRegionChange = (newRegion: string) => {
+    setSelectedRegion(newRegion);
+    setCurrentPage(1);
+    updateUrlParams({ region: newRegion, page: 1 });
+  };
+
+  const handleGroupChange = (newGroup: string) => {
+    setSelectedGroup(newGroup);
+    setCurrentPage(1);
+    updateUrlParams({ group: newGroup, page: 1 });
+  };
+
+  const handleStatusChange = (newStatus: string) => {
+    setSelectedStatus(newStatus);
+    setCurrentPage(1);
+    updateUrlParams({ status: newStatus, page: 1 });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    updateUrlParams({ page: newPage });
+  };
+
+  const handleResetFilters = () => {
+    setSearchInput('');
+    setSearchTerm('');
+    setSelectedGroup('ALL');
+    setSelectedStatus('ALL');
+    setSelectedRegion('ALL');
+    setCurrentPage(1);
+    setSearchParams({}, { replace: true });
+  };
+
+  const isInitialSearchMount = useRef(true);
+
+  // Debounce tìm kiếm (400ms) để không gây spam URL và giật lag giao diện
+  useEffect(() => {
+    if (isInitialSearchMount.current) {
+      isInitialSearchMount.current = false;
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const trimmed = searchInput.trim();
+      if (trimmed !== searchTerm) {
+        setSearchTerm(trimmed);
+        setCurrentPage(1);
+        updateUrlParams({ search: trimmed, page: 1 });
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [searchInput, searchTerm, updateUrlParams]);
+
+  // Lắng nghe thay đổi của URL Search Params (khi F5, dán link hoặc Back/Forward trên browser)
+  useEffect(() => {
+    const urlRegion = parseRegionParam(searchParams.get('region'));
+    if (urlRegion !== selectedRegion) {
+      setSelectedRegion(urlRegion);
+    }
+
+    const urlGroup = parseGroupParam(searchParams.get('group'));
+    if (urlGroup !== selectedGroup) {
+      setSelectedGroup(urlGroup);
+    }
+
+    const urlStatus = parseStatusParam(searchParams.get('status'));
+    if (urlStatus !== selectedStatus) {
+      setSelectedStatus(urlStatus);
+    }
+
+    const urlSearch = searchParams.get('search') || '';
+    if (urlSearch !== searchTerm) {
+      setSearchTerm(urlSearch);
+      setSearchInput(urlSearch);
+    }
+
+    const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    if (urlPage !== currentPage) {
+      setCurrentPage(urlPage);
+    }
+  }, [searchParams]);
+
   // Tải danh sách đại lý từ API / Persistent Storage
   const loadCustomers = useCallback(async (keyword?: string) => {
     try {
@@ -122,13 +350,13 @@ export const CustomersPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadCustomers();
+    loadCustomers(initialSearch || undefined);
   }, [loadCustomers]);
 
   // Lắng nghe sự kiện đồng bộ từ Tạo đơn hàng (SN-38) hoặc Tab khác
   useEffect(() => {
     const handleSync = () => {
-      void loadCustomers(searchInput.trim() || undefined);
+      void loadCustomers(searchTerm.trim() || undefined);
     };
 
     window.addEventListener('loha_customers_updated', handleSync);
@@ -138,12 +366,12 @@ export const CustomersPage: React.FC = () => {
       window.removeEventListener('loha_customers_updated', handleSync);
       window.removeEventListener('storage', handleSync);
     };
-  }, [loadCustomers, searchInput]);
+  }, [loadCustomers, searchTerm]);
 
   // Làm mới dữ liệu
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadCustomers(searchInput.trim() || undefined);
+    await loadCustomers(searchTerm.trim() || undefined);
     showToast(
       'success',
       'Đồng bộ hoàn tất',
@@ -155,10 +383,10 @@ export const CustomersPage: React.FC = () => {
   const filteredCustomers = useMemo(() => {
     return customers.filter((c) => {
       const matchSearch =
-        !searchInput.trim() ||
-        c.name.toLowerCase().includes(searchInput.toLowerCase()) ||
-        c.code.toLowerCase().includes(searchInput.toLowerCase()) ||
-        c.phone.includes(searchInput.trim());
+        !searchTerm.trim() ||
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.phone.includes(searchTerm.trim());
 
       const matchGroup = selectedGroup === 'ALL' || c.customerGroup === selectedGroup;
       const matchStatus = selectedStatus === 'ALL' || c.status === selectedStatus;
@@ -166,12 +394,7 @@ export const CustomersPage: React.FC = () => {
 
       return matchSearch && matchGroup && matchStatus && matchRegion;
     });
-  }, [customers, searchInput, selectedGroup, selectedStatus, selectedRegion]);
-
-  // Tự động reset về trang 1 khi thay đổi điều kiện tìm kiếm / lọc
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchInput, selectedGroup, selectedStatus, selectedRegion]);
+  }, [customers, searchTerm, selectedGroup, selectedStatus, selectedRegion]);
 
   // Tính toán phân trang
   const totalItems = filteredCustomers.length;
@@ -485,7 +708,7 @@ export const CustomersPage: React.FC = () => {
 
           <select
             value={selectedRegion}
-            onChange={(e) => setSelectedRegion(e.target.value)}
+            onChange={(e) => handleRegionChange(e.target.value)}
             aria-label="Lọc theo khu vực"
             className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
@@ -497,7 +720,7 @@ export const CustomersPage: React.FC = () => {
 
           <select
             value={selectedGroup}
-            onChange={(e) => setSelectedGroup(e.target.value)}
+            onChange={(e) => handleGroupChange(e.target.value)}
             aria-label="Lọc theo nhóm đại lý"
             className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
@@ -510,7 +733,7 @@ export const CustomersPage: React.FC = () => {
 
           <select
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
+            onChange={(e) => handleStatusChange(e.target.value)}
             aria-label="Lọc theo trạng thái hoạt động"
             className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
@@ -535,12 +758,7 @@ export const CustomersPage: React.FC = () => {
             <p className="text-sm font-medium">Không tìm thấy đại lý phù hợp với điều kiện lọc</p>
             <button
               type="button"
-              onClick={() => {
-                setSearchInput('');
-                setSelectedGroup('ALL');
-                setSelectedStatus('ALL');
-                setSelectedRegion('ALL');
-              }}
+              onClick={handleResetFilters}
               className="text-xs text-blue-600 hover:underline font-medium cursor-pointer"
             >
               Xóa bộ lọc
@@ -762,10 +980,10 @@ export const CustomersPage: React.FC = () => {
               pageSizeOptions={[10, 20, 50]}
               itemLabel="đại lý"
               showFirstLast={true}
-              onPageChange={(page) => setCurrentPage(page)}
+              onPageChange={(page) => handlePageChange(page)}
               onPageSizeChange={(newSize) => {
                 setPageSize(newSize);
-                setCurrentPage(1);
+                handlePageChange(1);
               }}
             />
           )}

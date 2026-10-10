@@ -58,6 +58,10 @@ export interface OrderLine {
   manualPrice?: string;
   pricingLoading?: boolean;
   pricingError?: string;
+  deliveredQuantity?: number;
+  deliveredBaseQuantity?: number;
+  isShortDelivery?: boolean;
+  shortDeliveryReason?: string;
 }
 
 /** Alias cho OrderLine phục vụ tính tương thích (SN-38 / SN-39) */
@@ -107,6 +111,7 @@ export interface Order {
   approverId?: string; // ID người duyệt đơn (SN-180)
   approvedAt?: string; // Thời gian duyệt đơn (SN-180)
   reservedUntil?: string; // Hạn giữ chỗ tồn kho (24h sau duyệt) (SN-180)
+  isShortDelivery?: boolean; // Cờ đơn hàng bị giao thiếu (SN-170)
   createdAt?: string;
   updatedAt?: string;
 }
@@ -192,3 +197,48 @@ export interface CustomerDebtStatus {
   blockReason?: string;
   warningMessage?: string;
 }
+
+/** Kiểu dữ liệu Đặt lại đơn hàng theo giá hiện hành (SN-174) */
+export interface ReorderPreviewItem {
+  lineId: string;
+  productId: string;
+  productSku: string;
+  productName: string;
+  unit: string;
+  baseUnit: string;
+  conversionRate: number;
+  quantity: number;
+  oldUnitPrice: number;
+  currentUnitPrice: number;
+  currentListPrice: number;
+  currentDiscountPercent: number;
+  isPriceChanged: boolean;
+}
+
+export interface DiscontinuedProductItem {
+  lineId?: string;
+  productSku: string;
+  productName: string;
+  reason: string;
+}
+
+export interface ReorderPreviewResponse {
+  orderId: string;
+  orderCode: string;
+  customerId: string;
+  customerName: string;
+  customerGroup: string;
+  deliveryPoint?: DeliveryPoint;
+  availableItems: ReorderPreviewItem[];
+  discontinuedItems: DiscontinuedProductItem[];
+  warningMessage?: string;
+}
+
+export interface ReorderPayload {
+  selectedLineIds?: string[];
+  items?: Array<{ productSku: string; quantity: number }>;
+  deliveryPoint?: DeliveryPoint;
+  deliveryDate?: string;
+  note?: string;
+}
+

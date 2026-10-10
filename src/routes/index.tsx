@@ -16,6 +16,7 @@ import { OrdersPage } from '../pages/orders-page';
 import { StockListPage } from '../pages/inventory/stock-list-page';
 import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
 import { CustomersPage } from '../pages/customers-page';
+import { PortalOrdersPage } from '../pages/portal-orders-page';
 import { NotFoundPage } from '../pages/not-found-page';
 import { ForbiddenPage } from '../pages/forbidden-page';
 import { ProtectedRoute } from '../components/protected-route';
@@ -77,26 +78,9 @@ export const AppRoutes: React.FC = () => {
                 />
               }
             >
-              <Route
-                path="/portal/orders"
-                element={
-                  <RoleModulePage
-                    title="Cổng Đặt hàng Đại lý"
-                    subtitle="Tìm kiếm sản phẩm, đặt hàng sỉ theo chính sách giá đại lý và kiểm tra hạn mức"
-                    requiredRole="Đại lý B2B"
-                  />
-                }
-              />
-              <Route
-                path="/portal/tracking"
-                element={
-                  <RoleModulePage
-                    title="Theo dõi Đơn hàng & Giao hàng"
-                    subtitle="Tra cứu lộ trình vận chuyển, tình trạng đóng gói xuất kho và biên bản bàn giao"
-                    requiredRole="Đại lý B2B"
-                  />
-                }
-              />
+              {/* SN-170 & SN-174: Cổng Đơn hàng Đại lý & Theo dõi vận chuyển */}
+              <Route path="/portal/orders" element={<PortalOrdersPage />} />
+              <Route path="/portal/tracking" element={<PortalOrdersPage />} />
               <Route
                 path="/portal/debt"
                 element={
