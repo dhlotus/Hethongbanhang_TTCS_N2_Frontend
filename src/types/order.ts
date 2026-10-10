@@ -14,7 +14,8 @@ export type OrderStatus =
   | 'SHIPPED' // Đã xuất kho / giao vận
   | 'DELIVERED' // Giao thành công
   | 'CANCELLED' // Đã hủy
-  | 'RETURNED'; // Hoàn hàng
+  | 'RETURNED' // Hoàn hàng
+  | 'CLOSED'; // Đã đóng
 
 export type OrderApprovalAction = 'APPROVE' | 'REJECT' | 'RETURN_FOR_UPDATE';
 
@@ -111,7 +112,8 @@ export interface Order {
   approvalReasons?: string[];
   isCreditLimitExceeded?: boolean; // Cờ vượt hạn mức công nợ (SN-41)
   creditLimitExceededAmount?: number; // Số tiền vượt hạn mức (VND)
-  isShortDelivery?: boolean; // Cờ đánh dấu đơn giao thiếu hàng (SN-170)
+  cancelReason?: string; // Lý do hủy đơn (SN-45)
+  isShortDelivery?: boolean; // Cờ đánh dấu đơn có giao thiếu (SN-170)
   createdAt?: string;
   updatedAt?: string;
 }

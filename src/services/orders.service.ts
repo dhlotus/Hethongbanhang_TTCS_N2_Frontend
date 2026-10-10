@@ -1105,8 +1105,10 @@ export const ordersService = {
   /**
    * Cập nhật trạng thái đơn hàng (APPROVED, CANCELLED...)
    */
-  async updateOrderStatus(id: string, status: OrderStatus): Promise<Order> {
-    const res = await apiClient.patch<Order>(`/orders/${id}/status`, { status });
+  async updateOrderStatus(id: string, status: OrderStatus, reason?: string): Promise<Order> {
+    const payload: any = { status };
+    if (reason) payload.reason = reason;
+    const res = await apiClient.patch<Order>(`/orders/${id}/status`, payload);
     return res.data;
   },
 
