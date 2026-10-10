@@ -2340,6 +2340,7 @@ export const OrdersPage: React.FC = () => {
   const handleOrderCreated = (order: Order) => {
     setOrders((prev) => [order, ...prev]);
     setTotal((t) => t + 1);
+    setRefreshKey((k) => k + 1);
   };
 
   /** Sao chép một đơn cũ thành đơn mới ở trạng thái Nháp (SN-48) */

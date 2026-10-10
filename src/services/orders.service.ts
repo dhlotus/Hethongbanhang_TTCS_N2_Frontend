@@ -609,7 +609,7 @@ const saveStoredDemoOrders = (list: Order[]): void => {
 
 
 /** Tính tổng đơn hàng từ danh sách dòng hàng */
-const calcOrderTotals = (
+export const calcOrderTotals = (
   lines: Order['lines']
 ): { subtotal: number; totalDiscount: number; grandTotal: number } => {
   let subtotal = 0;
@@ -626,7 +626,7 @@ const calcOrderTotals = (
 };
 
 /** Tạo mã đơn hàng tự động */
-const generateOrderCode = (): string => {
+export const generateOrderCode = (): string => {
   const now = new Date();
   const yy = now.getFullYear().toString().slice(-2);
   const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -744,6 +744,7 @@ export const ordersService = {
 
   /**
    * Lấy danh sách đơn hàng phân trang (SN-38)
+   * Kết nối Server-side GET /api/orders trực tiếp, hỗ trợ đầy đủ query parameters
    */
   async getOrders(params: OrderQueryParams = {}): Promise<PaginatedOrdersResponse> {
     const token = tokenStorage.getAccessToken();
@@ -772,12 +773,54 @@ export const ordersService = {
       };
     }
 
-    try {
-      const res = await apiClient.get<PaginatedOrdersResponse>('/orders', { params });
-      return res.data;
-    } catch {
-      return { data: [], total: 0, page: 1, limit: 10, totalPages: 1 };
+    const cleanParams: Record<string, string | number> = {
+      page: params.page ?? 1,
+      limit: params.limit ?? 10,
+    };
+
+    if (params.status && params.status !== 'ALL') {
+      cleanParams.status = params.status;
     }
+    if (params.search && params.search.trim()) {
+      cleanParams.search = params.search.trim();
+    }
+    if (params.customerId) {
+      cleanParams.customerId = params.customerId;
+    }
+    if (params.salesRepId) {
+      cleanParams.salesRepId = params.salesRepId;
+    }
+    if (params.fromDate) {
+      cleanParams.fromDate = params.fromDate;
+    }
+    if (params.toDate) {
+      cleanParams.toDate = params.toDate;
+    }
+
+    const res = await apiClient.get<PaginatedOrdersResponse | Order[]>('/orders', {
+      params: cleanParams,
+    });
+
+    if (Array.isArray(res.data)) {
+      const total = res.data.length;
+      const page = Number(cleanParams.page) || 1;
+      const limit = Number(cleanParams.limit) || 10;
+      return {
+        data: res.data,
+        total,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      };
+    }
+
+    return {
+      data: res.data?.data || [],
+      total: typeof res.data?.total === 'number' ? res.data.total : (res.data?.data?.length || 0),
+      page: res.data?.page || Number(cleanParams.page) || 1,
+      limit: res.data?.limit || Number(cleanParams.limit) || 10,
+      totalPages: res.data?.totalPages || 1,
+    };
   },
 
   /**
@@ -813,18 +856,11 @@ export const ordersService = {
   },
 
   /**
-   * Lấy chi tiết 1 đơn hàng theo ID
+   * Lấy chi tiết 1 đơn hàng theo ID trực tiếp từ máy chủ (SN-38)
    */
   async getOrderById(id: string): Promise<Order> {
-    const token = tokenStorage.getAccessToken();
-    if (token?.startsWith('demo-jwt-')) {
-      const all = getStoredDemoOrders();
-      const found = all.find((o) => o.id === id);
-      if (!found) throw new Error(`Không tìm thấy đơn hàng ${id}`);
-      return found;
-    }
-    const res = await apiClient.get<Order>(`/orders/${id}`);
-    return res.data;
+    const res = await apiClient.get<Order | { data: Order }>(`/orders/${id}`);
+    return (res.data as { data?: Order })?.data ?? (res.data as Order);
   },
 
   /**
@@ -1070,15 +1106,6 @@ export const ordersService = {
    * Cập nhật trạng thái đơn hàng (APPROVED, CANCELLED...)
    */
   async updateOrderStatus(id: string, status: OrderStatus): Promise<Order> {
-    const token = tokenStorage.getAccessToken();
-    if (token?.startsWith('demo-jwt-')) {
-      const all = getStoredDemoOrders();
-      const idx = all.findIndex((o) => o.id === id);
-      if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${id}`);
-      all[idx] = { ...all[idx], status, updatedAt: new Date().toISOString() };
-      saveStoredDemoOrders(all);
-      return all[idx];
-    }
     const res = await apiClient.patch<Order>(`/orders/${id}/status`, { status });
     return res.data;
   },
@@ -1277,60 +1304,32 @@ export const ordersService = {
    * Cập nhật đơn hàng (Chỉnh sửa / Tiếp tục gõ đơn nháp SN-39)
    */
   async updateOrder(id: string, payload: Partial<CreateOrderPayload>): Promise<Order> {
-    const token = tokenStorage.getAccessToken();
-    const isDemo = token?.startsWith('demo-jwt-');
-    if (!isDemo) {
-      try {
-        const res = await apiClient.put<Order | { data: Order }>(`/orders/${id}`, payload);
-        const updated = (res.data as { data?: Order })?.data ?? (res.data as Order);
-        const all = getStoredDemoOrders();
-        const idx = all.findIndex((o) => o.id === id);
-        if (idx !== -1) {
-          all[idx] = updated;
-          saveStoredDemoOrders(all);
-        }
-        return updated;
-      } catch (apiError: unknown) {
-        if (
-          typeof apiError === 'object' &&
-          apiError !== null &&
-          'response' in apiError
-        ) {
-          const res = (apiError as { response?: { data?: { message?: string | string[] } } }).response;
-          const fallbackMsg =
-            'message' in apiError && typeof apiError.message === 'string'
-              ? apiError.message
-              : 'Lỗi khi cập nhật đơn hàng';
-          const errMsg = res?.data?.message || fallbackMsg;
-          throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
-        }
-        throw new Error(apiError instanceof Error ? apiError.message : 'Không thể kết nối máy chủ để cập nhật đơn hàng');
+    try {
+      const res = await apiClient.put<Order | { data: Order }>(`/orders/${id}`, payload);
+      const updated = (res.data as { data?: Order })?.data ?? (res.data as Order);
+      const all = getStoredDemoOrders();
+      const idx = all.findIndex((o) => o.id === id);
+      if (idx !== -1) {
+        all[idx] = updated;
+        saveStoredDemoOrders(all);
       }
+      return updated;
+    } catch (apiError: unknown) {
+      if (
+        typeof apiError === 'object' &&
+        apiError !== null &&
+        'response' in apiError
+      ) {
+        const res = (apiError as { response?: { data?: { message?: string | string[] } } }).response;
+        const fallbackMsg =
+          'message' in apiError && typeof apiError.message === 'string'
+            ? apiError.message
+            : 'Lỗi khi cập nhật đơn hàng';
+        const errMsg = res?.data?.message || fallbackMsg;
+        throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+      }
+      throw new Error(apiError instanceof Error ? apiError.message : 'Không thể kết nối máy chủ để cập nhật đơn hàng');
     }
-
-    const all = getStoredDemoOrders();
-    const idx = all.findIndex((o) => o.id === id);
-    if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${id}`);
-    const existing = all[idx];
-    const lines = (payload.lines || existing.lines).map((l) => ({
-      ...l,
-      baseQuantity: Math.round(l.quantity * (l.conversionRate || 1)),
-      lineTotal: l.quantity * l.unitPrice,
-    }));
-    const totals = calcOrderTotals(lines);
-    const updatedOrder: Order = {
-      ...existing,
-      ...totals,
-      lines,
-      deliveryDate: payload.deliveryDate || existing.deliveryDate,
-      deliveryPoint: (payload.deliveryPoint as Order['deliveryPoint']) || existing.deliveryPoint,
-      note: payload.note !== undefined ? payload.note : existing.note,
-      status: payload.status || existing.status,
-      updatedAt: new Date().toISOString(),
-    };
-    all[idx] = updatedOrder;
-    saveStoredDemoOrders(all);
-    return updatedOrder;
   },
 
   /**
