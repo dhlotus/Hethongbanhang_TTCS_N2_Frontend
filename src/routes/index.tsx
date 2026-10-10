@@ -436,12 +436,12 @@ export const AppRoutes: React.FC = () => {
           </Route>
 
           {/* Alias routes tương thích ngược */}
-          <Route path="/admin/dashboard" element={<Navigate to="/system/users" replace />} />
-          <Route path="/sales/dashboard" element={<Navigate to="/sales/orders" replace />} />
-          <Route path="/warehouse/dashboard" element={<Navigate to="/inventory/stock" replace />} />
+          <Route path="/admin/dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/sales/dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/warehouse/dashboard" element={<Navigate to="/dashboard" replace />} />
           <Route
             path="/accountant/dashboard"
-            element={<Navigate to="/accounting/invoices" replace />}
+            element={<Navigate to="/dashboard" replace />}
           />
           <Route path="/customer/portal" element={<Navigate to="/portal/orders" replace />} />
         </Route>
