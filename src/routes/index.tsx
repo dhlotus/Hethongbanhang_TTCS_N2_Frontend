@@ -25,6 +25,7 @@ import { AdminLayout } from '../layouts/admin-layout';
 import { getRedirectPathByUser, getStoredUser } from '../utils/navigation';
 import { tokenStorage } from '../utils/token-storage';
 import { DashboardPage } from '../pages/dashboard-page';
+import { AgencyPortalPage } from '../pages/agency-portal-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -72,14 +73,18 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={['CUSTOMER']}
+                  allowedRoles={['CUSTOMER', 'ADMIN', 'SALES_REP', 'SALES_MANAGER']}
                   moduleName="Cổng Dịch vụ & Đặt hàng Đại lý B2B"
                 />
               }
             >
+              {/* SN-49: Cổng Đặt hàng Đại lý B2B */}
+              <Route path="/portal" element={<AgencyPortalPage />} />
+              <Route path="/portal/orders" element={<AgencyPortalPage />} />
+
               {/* SN-170 & SN-174: Cổng Đơn hàng Đại lý & Theo dõi vận chuyển */}
-              <Route path="/portal/orders" element={<PortalOrdersPage />} />
               <Route path="/portal/tracking" element={<PortalOrdersPage />} />
+              <Route path="/portal/my-orders" element={<PortalOrdersPage />} />
               <Route
                 path="/portal/debt"
                 element={

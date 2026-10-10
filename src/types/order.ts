@@ -55,6 +55,8 @@ export interface OrderLine {
   requiresApproval?: boolean;
   availableStock?: number; // Tồn khả dụng (SN-39)
   priceListId?: string;
+  assignedSalesRepId?: string;
+  createdSource?: string;
   notes?: string;
   baseListPrice?: number;
   unitOptions?: Array<{ unitName: string; conversionRate: number }>;
@@ -89,6 +91,8 @@ export interface Order {
   customerGroup?: string; // Nhóm đại lý (AGENT_LEVEL_1, AGENT_LEVEL_2, RETAIL)
   salesRepId?: string; // ID nhân viên kinh doanh phụ trách
   salesRepName?: string;
+  assignedSalesRepId?: string;
+  createdSource?: string;
   deliveryPoint?: DeliveryPoint;
   deliveryDate?: string; // Ngày giao hàng mong muốn (YYYY-MM-DD)
   lines: OrderLine[];
@@ -112,6 +116,14 @@ export interface Order {
   updatedAt?: string;
 }
 
+export interface PortalOrderItemPayload {
+  productId: string;
+  quantity: number;
+  price: number;
+  discountPercent?: number;
+  unit?: string;
+}
+
 /** Payload tạo đơn hàng mới */
 export interface CreateOrderPayload {
   customerId: string;
@@ -120,10 +132,13 @@ export interface CreateOrderPayload {
   customerGroup?: string;
   salesRepId?: string;
   salesRepName?: string;
+  assignedSalesRepId?: string;
+  createdSource?: string;
   deliveryPoint?: Partial<DeliveryPoint> | Record<string, unknown>;
+  deliveryAddress?: string;
   deliveryDate?: string;
-  lines: Omit<OrderLine, 'id' | 'lineTotal' | 'baseQuantity'>[];
-  items?: Omit<OrderLine, 'id' | 'lineTotal' | 'baseQuantity'>[];
+  lines?: Omit<OrderLine, 'id' | 'lineTotal' | 'baseQuantity'>[];
+  items?: PortalOrderItemPayload[] | Omit<OrderLine, 'id' | 'lineTotal' | 'baseQuantity'>[];
   note?: string;
   warningNote?: string;
   priceListId?: string;

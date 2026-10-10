@@ -2269,6 +2269,19 @@ export const OrdersPage: React.FC = () => {
 
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Lắng nghe sự kiện đơn hàng thời gian thực toàn hệ thống (Real-time Sync SN-49)
+  useEffect(() => {
+    const handleOrdersUpdated = () => {
+      setRefreshKey((k) => k + 1);
+    };
+    window.addEventListener('loha_orders_updated', handleOrdersUpdated);
+    window.addEventListener('storage', handleOrdersUpdated);
+    return () => {
+      window.removeEventListener('loha_orders_updated', handleOrdersUpdated);
+      window.removeEventListener('storage', handleOrdersUpdated);
+    };
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     const timer = setTimeout(async () => {
