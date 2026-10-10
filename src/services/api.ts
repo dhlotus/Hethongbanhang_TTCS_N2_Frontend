@@ -125,9 +125,7 @@ apiClient.interceptors.response.use(
 
     // Nếu request này đã retry một lần nhưng vẫn nhận lại 401 -> Phiên không còn giá trị
     if (originalRequest._retry) {
-      if (!tokenStorage.getAccessToken()?.startsWith('demo-jwt-')) {
-        handleSessionTimeout();
-      }
+      handleSessionTimeout();
       return Promise.reject(error);
     }
 
@@ -155,31 +153,19 @@ apiClient.interceptors.response.use(
     // Không tồn tại Refresh Token -> Phiên làm việc coi như đã kết thúc
     if (!currentRefreshToken) {
       isRefreshing = false;
-      if (!tokenStorage.getAccessToken()?.startsWith('demo-jwt-')) {
-        handleSessionTimeout();
-      }
+      handleSessionTimeout();
       return Promise.reject(error);
     }
 
     try {
-      let newAccessToken = '';
-      let newRefreshToken: string | undefined = undefined;
+      // Gọi API backend chính thức: POST /auth/refresh
+      const refreshResponse = await refreshClient.post<TokenResponse>('/auth/refresh', {
+        refreshToken: currentRefreshToken,
+      });
 
-      // Hỗ trợ tài khoản Demo khi chạy thử nghiệm độc lập chưa bật Backend
-      if (currentRefreshToken.startsWith('demo-jwt-')) {
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        newAccessToken = `demo-jwt-refreshed-${Date.now()}-access-token`;
-        newRefreshToken = currentRefreshToken;
-      } else {
-        // Gọi API backend: POST /auth/refresh
-        const refreshResponse = await refreshClient.post<TokenResponse>('/auth/refresh', {
-          refreshToken: currentRefreshToken,
-        });
-
-        const resBody = refreshResponse.data as Record<string, any>;
-        newAccessToken = resBody.accessToken || resBody.access_token || '';
-        newRefreshToken = resBody.refreshToken || resBody.refresh_token;
-      }
+      const resBody = refreshResponse.data as Record<string, any>;
+      const newAccessToken = resBody.accessToken || resBody.access_token || '';
+      const newRefreshToken = resBody.refreshToken || resBody.refresh_token;
 
       // Lưu trữ cặp token mới vào localStorage
       tokenStorage.setTokens(newAccessToken, newRefreshToken);
@@ -196,9 +182,7 @@ apiClient.interceptors.response.use(
     } catch (refreshError: unknown) {
       // Refresh Token thất bại (hết hạn hoặc bị thu hồi) -> Dọn dẹp & thông báo Session Timeout
       processQueue(refreshError, null);
-      if (!currentRefreshToken?.startsWith('demo-jwt-')) {
-        handleSessionTimeout();
-      }
+      handleSessionTimeout();
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

@@ -28,6 +28,7 @@ import { NetworkStatusIndicator } from '../components/network-status-indicator';
 import { AdminLayout } from '../layouts/admin-layout';
 import { getRedirectPathByUser, getStoredUser } from '../utils/navigation';
 import { tokenStorage } from '../utils/token-storage';
+import { WarehousesPage } from '../pages/warehouses-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -72,6 +73,12 @@ export const AppRoutes: React.FC = () => {
             {/* ------------------------------------------------------------- */}
             {/* PHÂN HỆ 1: ĐẠI LÝ / KHÁCH HÀNG B2B (CUSTOMER)                 */}
             {/* ------------------------------------------------------------- */}
+            <Route
+              element={<RoleGuard allowedRoles={['ADMIN', 'WAREHOUSE_MANAGER']} moduleName="Quản lý kho & vị trí lưu trữ" />}
+            >
+              <Route path="/inventory/warehouses" element={<WarehousesPage />} />
+            </Route>
+
             <Route
               element={
                 <RoleGuard

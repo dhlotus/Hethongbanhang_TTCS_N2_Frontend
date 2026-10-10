@@ -116,12 +116,22 @@ export const inventoryService = {
   /**
    * Lấy danh sách sổ tồn kho minh bạch 3 cột (thực tế, tạm giữ, khả thi)
    */
-  async getStockOverview(params?: {
-    warehouse?: string;
-    category?: string;
-    status?: string;
-    search?: string;
-  }): Promise<StockOverviewItem[]> {
+  async getStockOverview(
+    paramsOrWarehouseId?:
+      | string
+      | {
+          warehouse?: string;
+          category?: string;
+          status?: string;
+          search?: string;
+          warehouseId?: string;
+        },
+  ): Promise<StockOverviewItem[]> {
+    const params =
+      typeof paramsOrWarehouseId === 'string'
+        ? { warehouseId: paramsOrWarehouseId, warehouse: paramsOrWarehouseId }
+        : paramsOrWarehouseId;
+
     const token = tokenStorage.getAccessToken();
 
     let items: StockOverviewItem[];
@@ -159,9 +169,10 @@ export const inventoryService = {
       items = items.filter((i) => i.status === params.status);
     }
 
-    if (params?.warehouse && params.warehouse !== 'ALL') {
+    const warehouseFilter = params?.warehouseId || params?.warehouse;
+    if (warehouseFilter && warehouseFilter !== 'ALL') {
       items = items.filter(
-        (i) => i.warehouse === params.warehouse || i.warehouseId === params.warehouse,
+        (i) => i.warehouse === warehouseFilter || i.warehouseId === warehouseFilter,
       );
     }
 
@@ -188,7 +199,7 @@ export const inventoryService = {
         const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
         const serverMsg = axiosErr.response?.data?.message;
         if (serverMsg) {
-          throw new Error(Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg);
+          throw new Error(Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg, { cause: err });
         }
       }
       throw err;
@@ -240,10 +251,8 @@ export const inventoryService = {
 
     try {
       const response = await apiClient.put<StockAdjustmentResponse>('/inventory/adjust', payload);
-      try {
-        window.dispatchEvent(new CustomEvent('loha_inventory_updated', { detail: response.data }));
-        window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: response.data }));
-      } catch {}
+      window.dispatchEvent(new CustomEvent('loha_inventory_updated', { detail: response.data }));
+      window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: response.data }));
       return response.data;
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
@@ -281,7 +290,7 @@ export const inventoryService = {
         const serverMsg = axiosErr.response?.data?.message;
         if (serverMsg) {
           const msg = Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg;
-          throw new Error(msg);
+          throw new Error(msg, { cause: err });
         }
       }
       throw err;
