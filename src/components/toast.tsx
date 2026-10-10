@@ -118,18 +118,18 @@ const ToastItem: React.FC<ToastItemProps> = ({ id, type, title, duration, onClos
       aria-live="assertive"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className={`pointer-events-auto relative flex items-center gap-3.5 w-[390px] sm:w-[420px] max-w-[calc(100vw-2rem)] min-h-[52px] rounded-md px-4 py-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] border overflow-hidden transition-all duration-200 ease-out transform ${
+      className={`pointer-events-auto relative flex items-start gap-3 w-[420px] sm:w-[500px] max-w-[calc(100vw-2rem)] min-h-[52px] rounded-md px-4 py-3.5 shadow-[0_4px_14px_rgba(0,0,0,0.08)] border overflow-hidden transition-all duration-200 ease-out transform ${
         style.containerBg
       } ${style.borderLeft} ${
         isClosing || !isVisible ? 'translate-x-[110%] opacity-0' : 'translate-x-0 opacity-100'
       }`}
     >
       {/* Icon trạng thái đặt bên trái tiêu đề, kích thước rõ ràng, nổi bật */}
-      <IconComponent className={`w-5 h-5 shrink-0 ${style.iconColor}`} />
+      <IconComponent className={`w-5 h-5 shrink-0 mt-0.5 ${style.iconColor}`} />
 
-      {/* Tiêu đề là nội dung chính, font semi-bold dễ đọc, 1 hàng duy nhất (không có mô tả phụ) */}
+      {/* Tiêu đề/Thông báo hiển thị đầy đủ, không bị cắt ngắn */}
       <span
-        className="text-[14px] sm:text-[14.5px] font-semibold text-slate-800 truncate flex-1 leading-normal select-none"
+        className="text-[13px] sm:text-[14px] font-semibold text-slate-800 break-words flex-1 leading-snug select-none pr-1"
         title={displayTitle}
       >
         {displayTitle}
@@ -140,7 +140,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ id, type, title, duration, onClos
         type="button"
         onClick={handleClose}
         aria-label="Đóng thông báo"
-        className="text-slate-400 hover:text-slate-700 hover:bg-black/5 w-7 h-7 rounded-sm transition-colors cursor-pointer shrink-0 ml-1 flex items-center justify-center"
+        className="text-slate-400 hover:text-slate-700 hover:bg-black/5 w-6 h-6 rounded-sm transition-colors cursor-pointer shrink-0 flex items-center justify-center -mr-1 -mt-0.5"
       >
         <X className="w-4 h-4" />
       </button>

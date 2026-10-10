@@ -678,16 +678,21 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   /** Thêm sản phẩm vào dòng hàng */
   const handleAddProduct = useCallback((product: Product) => {
     if (!effectivePriceList) {
-      showToast('error', priceListError || 'No effective price list for this customer');
+      showToast('error', priceListError || 'Chưa có bảng giá hiệu lực cho đại lý này');
       return;
     }
     if (lines.some((line) => line.productId === product.id)) {
-      showToast('warning', 'Product is already in this order');
+      showToast('warning', 'Sản phẩm đã có trong đơn hàng');
+      return;
+    }
+    const available = product.availableStock ?? product.availableQuantity ?? product.stockQuantity ?? 0;
+    if (available <= 0) {
+      showToast('error', `Sản phẩm ${product.name || product.sku}: Hàng trong kho đã hết / Vượt quá tồn khả dụng (Còn lại 0 ${product.baseUnit})`);
       return;
     }
     const priceItem = getPriceListItem(effectivePriceList, { productId: product.id, productSku: product.sku });
     if (!priceItem) {
-      showToast('error', 'This SKU is not in the customer price list');
+      showToast('error', 'Sản phẩm này chưa có giá trong bảng giá của đại lý');
       return;
     }
 
@@ -708,8 +713,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       unitOptions: getAvailableProductUnits(product),
       discountPercent: 0,
       lineTotal: Math.round(priceItem.price),
-      stockAvailable: product.availableStock ?? product.availableQuantity ?? product.stockQuantity,
-      availableStock: product.availableStock ?? product.availableQuantity ?? product.stockQuantity,
+      stockAvailable: available,
+      availableStock: available,
       pricingLoading: true,
     };
     setLines((current) => [...current, line]);
@@ -1452,30 +1457,63 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
                 {/* Kết quả tìm kiếm */}
                 {searchResults.length > 0 && (
-                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm max-h-44 overflow-y-auto">
+                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm max-h-56 overflow-y-auto">
                     {searchResults.map((p) => {
                       const priceItem = effectivePriceList
                         ? getPriceListItem(effectivePriceList, { productId: p.id, productSku: p.sku })
                         : undefined;
-                      return <button
-                        key={p.id}
-                        onClick={() => handleAddProduct(p)}
-                        disabled={lines.some((l) => l.productId === p.id) || !priceItem || isLoadingPriceList}
-                        title={priceItem ? undefined : `SKU ${p.sku} has no item in the effective price list`}
-                        className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-blue-50 border-b border-slate-100 last:border-0 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-slate-800 leading-snug">
-                            {p.name}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {p.sku} · {p.baseUnit} · Tồn: {p.stockQuantity}
-                          </p>
-                        </div>
-                        <span className="text-sm font-semibold text-blue-600 shrink-0 ml-3">
-                          {priceItem ? formatCurrency(priceItem.price) : 'Không có giá hiệu lực'}
-                        </span>
-                      </button>;
+                      const available = p.availableStock ?? p.availableQuantity ?? (p.stockQuantity ?? 0);
+                      const isOutOfStock = available <= 0;
+                      const isAlreadyAdded = lines.some((l) => l.productId === p.id);
+                      const isDisabled = isAlreadyAdded || !priceItem || isLoadingPriceList || isOutOfStock;
+
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => handleAddProduct(p)}
+                          disabled={isDisabled}
+                          title={
+                            isOutOfStock
+                              ? `Sản phẩm ${p.sku} đã hết hàng trong kho / Vượt quá tồn khả dụng`
+                              : isAlreadyAdded
+                              ? 'Sản phẩm đã có trong đơn hàng'
+                              : !priceItem
+                              ? `SKU ${p.sku} chưa có giá trong bảng giá hiệu lực`
+                              : undefined
+                          }
+                          className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between border-b border-slate-100 last:border-0 transition-colors ${
+                            isOutOfStock
+                              ? 'bg-rose-50/40 opacity-75 cursor-not-allowed'
+                              : isDisabled
+                              ? 'opacity-40 cursor-not-allowed bg-slate-50/50'
+                              : 'hover:bg-blue-50/80 cursor-pointer'
+                          }`}
+                        >
+                          <div className="flex-1 min-w-0 pr-3">
+                            <p className="text-sm font-medium text-slate-800 leading-snug truncate">
+                              {p.name}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs mt-1">
+                              <span className="text-slate-500 font-mono">{p.sku} · {p.baseUnit}</span>
+                              {isOutOfStock ? (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-700">
+                                  Hết hàng (Tồn: 0)
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700">
+                                  Tồn khả dụng: {available}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className={`text-sm font-semibold ${isOutOfStock ? 'text-slate-400 line-through' : 'text-blue-600'}`}>
+                              {priceItem ? formatCurrency(priceItem.price) : 'Không có giá hiệu lực'}
+                            </span>
+                          </div>
+                        </button>
+                      );
                     })}
                   </div>
                 )}
@@ -1517,7 +1555,11 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                             <span className="text-slate-500">{line.productSku}</span>
                             <span className="text-slate-300">·</span>
                             <span className={isExceeded ? 'font-semibold text-rose-600' : 'text-slate-500'}>
-                              Tồn khả dụng: {available} {line.baseUnit}
+                              {available <= 0 ? (
+                                <span className="font-bold text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded">Hết hàng (Tồn: 0 {line.baseUnit})</span>
+                              ) : (
+                                `Tồn khả dụng: ${available} ${line.baseUnit}`
+                              )}
                             </span>
                           </div>
                         </div>
@@ -1572,7 +1614,9 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                             <span>
-                              Sản phẩm {line.productName} vượt quá tồn khả dụng (Tồn: {available}, Đặt: {line.quantity})
+                              {available <= 0
+                                ? `Sản phẩm ${line.productName}: Hàng trong kho đã hết / Vượt quá tồn khả dụng (Còn lại 0 ${line.baseUnit})`
+                                : `Sản phẩm ${line.productName} vượt quá tồn khả dụng (Tồn: ${available}, Đặt: ${line.quantity})`}
                             </span>
                           </div>
                           {available > 0 ? (

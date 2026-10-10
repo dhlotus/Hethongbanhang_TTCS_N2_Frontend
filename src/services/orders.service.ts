@@ -598,16 +598,42 @@ export const ordersService = {
    */
   async createOrder(payload: CreateOrderPayload): Promise<Order> {
     // Kiểm tra tồn khả dụng theo Task SN-42: Kiểm soát tồn khả dụng
+    const allStoredOrders = getStoredDemoOrders();
+    const demoReservedMap = new Map<string, number>();
+    const activeStatuses = ['PENDING', 'PENDING_APPROVAL', 'APPROVED', 'PROCESSING'];
+    for (const ord of allStoredOrders) {
+      if (!activeStatuses.includes(ord.status || '')) continue;
+      for (const l of ord.lines || []) {
+        const qty = l.baseQuantity || Math.round((l.quantity || 0) * (l.conversionRate || 1));
+        if (l.productId) demoReservedMap.set(l.productId, (demoReservedMap.get(l.productId) || 0) + qty);
+        if (l.productSku) demoReservedMap.set(l.productSku.toUpperCase(), (demoReservedMap.get(l.productSku.toUpperCase()) || 0) + qty);
+      }
+    }
+
     for (const line of payload.lines) {
       const prod = MOCK_PRODUCTS.find((p) => p.id === line.productId || p.sku === line.productSku);
-      const available = prod
-        ? (prod.availableStock ?? prod.availableQuantity ?? prod.stockQuantity)
-        : (line.availableStock ?? line.stockAvailable ?? 9999);
+      const reserved = (line.productId ? demoReservedMap.get(line.productId) : 0) ||
+        (line.productSku ? demoReservedMap.get(line.productSku.toUpperCase()) : 0) || 0;
+      const physical = prod?.stockQuantity ?? 0;
+      const calculatedAvail = Math.max(0, physical - reserved);
+      const available = line.availableStock !== undefined
+        ? Math.min(line.availableStock, calculatedAvail)
+        : (prod ? calculatedAvail : (line.stockAvailable ?? 9999));
+
       const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
       const maxInUnit = convRate > 1 ? Math.floor(available / convRate) : available;
+      const unitName = line.unit || line.baseUnit || 'sản phẩm';
+      const productName = line.productName || line.productSku;
+
+      if (available <= 0) {
+        throw new Error(
+          `Sản phẩm ${productName}: Hàng trong kho đã hết / Vượt quá tồn khả dụng (Còn lại 0 ${unitName})`,
+        );
+      }
+
       if (line.quantity > maxInUnit) {
         throw new Error(
-          `Sản phẩm ${line.productName || line.productSku} vượt quá tồn khả dụng (Tồn kho: ${maxInUnit}, Đặt: ${line.quantity})`,
+          `Sản phẩm ${productName} vượt quá tồn khả dụng (Hàng trong kho đã hết / Vượt quá tồn khả dụng: Còn tối đa ${maxInUnit} ${unitName}, Đặt: ${line.quantity})`,
         );
       }
     }
@@ -854,10 +880,34 @@ export const ordersService = {
   async searchProducts(query: string): Promise<Product[]> {
     const token = tokenStorage.getAccessToken();
     if (token?.startsWith('demo-jwt-')) {
-      const source = MOCK_PRODUCTS.map((p) => ({
-        ...p,
-        availableStock: p.availableStock ?? p.availableQuantity ?? p.stockQuantity,
-      }));
+      const allOrders = getStoredDemoOrders();
+      const activeReservedMap = new Map<string, number>();
+      const activeStatuses = ['PENDING', 'PENDING_APPROVAL', 'APPROVED', 'PROCESSING'];
+      for (const ord of allOrders) {
+        if (!activeStatuses.includes(ord.status || '')) continue;
+        for (const line of ord.lines || []) {
+          const qty = line.baseQuantity || Math.round((line.quantity || 0) * (line.conversionRate || 1));
+          if (line.productId) {
+            activeReservedMap.set(line.productId, (activeReservedMap.get(line.productId) || 0) + qty);
+          }
+          if (line.productSku) {
+            const skuKey = line.productSku.toUpperCase();
+            activeReservedMap.set(skuKey, (activeReservedMap.get(skuKey) || 0) + qty);
+          }
+        }
+      }
+
+      const source = MOCK_PRODUCTS.map((p) => {
+        const reserved = activeReservedMap.get(p.id) || (p.sku ? activeReservedMap.get(p.sku.toUpperCase()) : 0) || 0;
+        const availableStock = Math.max(0, p.stockQuantity - reserved);
+        return {
+          ...p,
+          reservedStock: reserved,
+          availableStock,
+          availableQuantity: availableStock,
+        };
+      });
+
       if (!query.trim()) return source.slice(0, 8);
       const q = query.toLowerCase();
       return source.filter(
@@ -865,19 +915,22 @@ export const ordersService = {
           p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q),
       ).slice(0, 10);
     }
+
     try {
       const res = await apiClient.get<{ data: Product[] }>('/products', {
         params: { search: query, limit: 10, status: 'ACTIVE' },
       });
       const products = res.data.data ?? [];
-      const stockRows = await inventoryService.getStockOverview();
-      const availableBySku = new Map(stockRows.map((stock) => [stock.sku.toUpperCase(), stock.stockQuantity]));
+      let availableBySku = new Map<string, number>();
+      try {
+        const stockRows = await inventoryService.getStockOverview();
+        availableBySku = new Map(stockRows.map((stock) => [stock.sku.toUpperCase(), stock.stockQuantity]));
+      } catch {}
+
       return products.map((product) => {
         const knownProduct = MOCK_PRODUCTS.find(
           (candidate) => candidate.sku.toUpperCase() === product.sku.toUpperCase(),
         );
-        // Product list responses from older backend data may only include the base unit.
-        // Use the curated packaging options for a matching seeded SKU in that case.
         const hasPackagingUnits = (product.units ?? []).some(
           (unit) => unit.conversionRate > 1,
         );
@@ -886,12 +939,14 @@ export const ordersService = {
           : knownProduct?.units?.some((unit) => unit.conversionRate > 1)
             ? knownProduct.units
             : product.units;
-        const stockQuantity = availableBySku.get(product.sku.toUpperCase()) ?? 0;
+
+        // Ưu tiên availableStock do backend tính toán chuẩn xác
+        const availableStock = product.availableStock ?? product.availableQuantity ?? availableBySku.get(product.sku.toUpperCase()) ?? product.stockQuantity ?? 0;
         return {
           ...product,
           units,
-          stockQuantity,
-          availableStock: stockQuantity,
+          availableStock,
+          availableQuantity: availableStock,
         };
       });
     } catch {
