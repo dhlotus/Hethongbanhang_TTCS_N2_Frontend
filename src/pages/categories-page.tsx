@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
@@ -36,6 +36,7 @@ import type {
   UpdateCategoryPayload,
   MoveProductsPayload,
 } from '../types/categories';
+import type { Product } from '../types/products';
 
 export const CategoriesPage: React.FC = () => {
   const [treeData, setTreeData] = useState<CategoryTreeNode[]>([]);
@@ -46,10 +47,12 @@ export const CategoriesPage: React.FC = () => {
 
   // Master-Detail Selection State
   const [selectedNode, setSelectedNode] = useState<CategoryTreeNode | null>(null);
-  const [selectedCategoryProducts, setSelectedCategoryProducts] = useState<any[]>([]);
+  const [selectedCategoryProducts, setSelectedCategoryProducts] = useState<Product[]>([]);
+  const [totalProducts, setTotalProducts] = useState<number>(0);
   const [categoryRevenue, setCategoryRevenue] = useState<number>(0);
   const [loadingProducts, setLoadingProducts] = useState<boolean>(false);
   const [activeRightTab, setActiveRightTab] = useState<'products' | 'analytics'>('products');
+  const prevSelectedNodeIdRef = useRef<string | null>(null);
 
   // Product Pagination State
   const [productPage, setProductPage] = useState<number>(1);
@@ -72,7 +75,7 @@ export const CategoriesPage: React.FC = () => {
   const [moveTargetId, setMoveTargetId] = useState<string>('');
   const [moveSubmitting, setMoveSubmitting] = useState<boolean>(false);
   const [moveError, setMoveError] = useState<string | null>(null);
-  const [sourceProducts, setSourceProducts] = useState<any[]>([]);
+  const [sourceProducts, setSourceProducts] = useState<Product[]>([]);
   const [loadingSourceProducts, setLoadingSourceProducts] = useState<boolean>(false);
   const [moveMode, setMoveMode] = useState<'all' | 'custom'>('custom');
   const [moveQuantityInput, setMoveQuantityInput] = useState<number>(1);
@@ -147,35 +150,54 @@ export const CategoriesPage: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  // Fetch products and revenue when selected node changes
+  // Fetch products with backend pagination when selected node or pagination changes
   useEffect(() => {
     if (selectedNode) {
-      setProductPage(1);
+      if (prevSelectedNodeIdRef.current !== selectedNode.id) {
+        prevSelectedNodeIdRef.current = selectedNode.id;
+        if (productPage !== 1) {
+          setProductPage(1);
+          return;
+        }
+      }
+
       let isMounted = true;
       setLoadingProducts(true);
       categoriesService
-        .getProductsByCategory(selectedNode.id)
-        .then((items) => {
-          if (isMounted) setSelectedCategoryProducts(items || []);
+        .getProductsByCategory(selectedNode.id, productPage, productLimit)
+        .then((res) => {
+          if (isMounted) {
+            const items = Array.isArray(res) ? res : (res?.data || []);
+            const total = Array.isArray(res) ? res.length : (res?.total ?? items.length);
+            setSelectedCategoryProducts(items);
+            setTotalProducts(total);
+          }
         })
         .catch(() => {
-          if (isMounted) setSelectedCategoryProducts([]);
+          if (isMounted) {
+            setSelectedCategoryProducts([]);
+            setTotalProducts(0);
+          }
         })
         .finally(() => {
           if (isMounted) setLoadingProducts(false);
         });
 
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [selectedNode?.id, productPage, productLimit]);
+
+  // Fetch category revenue based on real orders without hardcoded sampleRev
+  useEffect(() => {
+    if (selectedNode) {
+      let isMounted = true;
       categoriesService
         .getCategoryRevenue(selectedNode.id)
         .then((rev) => {
           if (isMounted) {
-            if (rev > 0) {
-              setCategoryRevenue(rev);
-            } else {
-              const sampleRev =
-                selectedNode.id === '5' || selectedNode.code === 'BEVERAGE' ? 21340000 : 0;
-              setCategoryRevenue(sampleRev);
-            }
+            setCategoryRevenue(rev || 0);
           }
         })
         .catch(() => {
@@ -186,7 +208,7 @@ export const CategoriesPage: React.FC = () => {
         isMounted = false;
       };
     }
-  }, [selectedNode?.id, selectedNode?.code]);
+  }, [selectedNode?.id]);
 
   // Toggle Node Expand/Collapse
   const toggleExpand = (nodeId: string, e?: React.MouseEvent) => {
@@ -423,8 +445,11 @@ export const CategoriesPage: React.FC = () => {
       });
       await loadData();
       if (selectedNode && (selectedNode.id === moveSourceId || selectedNode.id === moveTargetId)) {
-        categoriesService.getProductsByCategory(selectedNode.id).then((items) => {
-          setSelectedCategoryProducts(items || []);
+        categoriesService.getProductsByCategory(selectedNode.id, productPage, productLimit).then((res) => {
+          const items = Array.isArray(res) ? res : (res?.data || []);
+          const total = Array.isArray(res) ? res.length : (res?.total ?? items.length);
+          setSelectedCategoryProducts(items);
+          setTotalProducts(total);
         });
       }
     } catch (err: unknown) {
@@ -514,13 +539,9 @@ export const CategoriesPage: React.FC = () => {
     return flatCategories.find((c) => c.id === pId) || null;
   }, [selectedNode, flatCategories]);
 
-  // Product Pagination calculations
-  const totalProducts = selectedCategoryProducts.length;
+  // Product Pagination calculations (Server-side paginated)
   const totalProductPages = Math.max(1, Math.ceil(totalProducts / productLimit));
-  const paginatedProducts = useMemo(() => {
-    const start = (productPage - 1) * productLimit;
-    return selectedCategoryProducts.slice(start, start + productLimit);
-  }, [selectedCategoryProducts, productPage, productLimit]);
+  const paginatedProducts = selectedCategoryProducts;
 
   // Sidebar Tree Node Renderer
   const renderSidebarTreeNode = (node: CategoryTreeNode) => {
@@ -664,7 +685,7 @@ export const CategoriesPage: React.FC = () => {
   };
 
   // Tạo URL điều hướng sang Danh mục sản phẩm chuẩn hóa theo Cấp 1 và Cấp 2
-  const getProductDetailUrl = (p: any) => {
+  const getProductDetailUrl = (p: Product) => {
     const targetCat =
       flatCategories.find((c) => c.id === p.categoryId || c.code === p.categoryId) || selectedNode;
 
@@ -931,7 +952,7 @@ export const CategoriesPage: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-xl sm:text-2xl font-bold text-slate-900">
-                      {selectedCategoryProducts.length.toLocaleString('vi-VN')}{' '}
+                      {totalProducts.toLocaleString('vi-VN')}{' '}
                       <span className="text-xs font-semibold text-slate-500">sản phẩm</span>
                     </p>
                     <p className="text-[11px] text-blue-600/80 mt-0.5">
@@ -1119,7 +1140,7 @@ export const CategoriesPage: React.FC = () => {
                                     {p.name}
                                   </td>
                                   <td className="py-2 px-3.5 text-center text-slate-600">
-                                    {p.baseUnit || p.unit || '-'}
+                                    {p.baseUnit || (p as any).unit || '-'}
                                   </td>
                                   <td className="py-2 px-3.5 text-right font-medium text-slate-900">
                                     {Number(p.price || 0).toLocaleString('vi-VN')} đ

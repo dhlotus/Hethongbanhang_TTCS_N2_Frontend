@@ -6,6 +6,7 @@ import type {
   UpdateCategoryPayload,
   MoveProductsPayload,
 } from '../types/categories';
+import type { Product, PaginatedProductsResponse } from '../types/products';
 
 export const categoriesService = {
   /**
@@ -38,15 +39,33 @@ export const categoriesService = {
 
   /**
    * Lấy danh sách sản phẩm thuộc một nhóm hàng (và toàn bộ phân loại con)
-   * GET /api/categories/:id/products
+   * GET /api/categories/:id/products?page=...&limit=...
    */
-  async getProductsByCategory(id: string): Promise<any[]> {
+  async getProductsByCategory(
+    id: string,
+    page?: number,
+    limit?: number
+  ): Promise<PaginatedProductsResponse> {
     try {
-      const response = await apiClient.get<any[]>(`/categories/${id}/products`);
+      const response = await apiClient.get<PaginatedProductsResponse | Product[]>(
+        `/categories/${id}/products`,
+        {
+          params: page !== undefined || limit !== undefined ? { page, limit } : undefined,
+        }
+      );
+      if (Array.isArray(response.data)) {
+        return {
+          data: response.data,
+          total: response.data.length,
+          page: page || 1,
+          limit: limit || response.data.length,
+          totalPages: 1,
+        };
+      }
       return response.data;
     } catch (err: unknown) {
       this.handleError(err, 'Không thể tải danh sách sản phẩm theo nhóm.');
-      return [];
+      return { data: [], total: 0, page: page || 1, limit: limit || 10, totalPages: 0 };
     }
   },
 
