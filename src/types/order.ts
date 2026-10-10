@@ -63,9 +63,6 @@ export interface OrderLine {
   manualPrice?: string;
   pricingLoading?: boolean;
   pricingError?: string;
-  deliveredQuantity?: number; // Số lượng thực giao (SN-170)
-  shortDeliveryReason?: string; // Lý do giao thiếu (SN-170)
-  isShortDelivery?: boolean; // Cờ đánh dấu dòng hàng giao thiếu (SN-170)
 }
 
 /** Alias cho OrderLine phục vụ tính tương thích (SN-38 / SN-39) */
