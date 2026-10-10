@@ -59,6 +59,9 @@ export interface OrderLine {
   manualPrice?: string;
   pricingLoading?: boolean;
   pricingError?: string;
+  deliveredQuantity?: number; // Số lượng thực giao (SN-170)
+  shortDeliveryReason?: string; // Lý do giao thiếu (SN-170)
+  isShortDelivery?: boolean; // Cờ đánh dấu dòng hàng giao thiếu (SN-170)
 }
 
 /** Alias cho OrderLine phục vụ tính tương thích (SN-38 / SN-39) */
@@ -105,6 +108,7 @@ export interface Order {
   isCreditLimitExceeded?: boolean; // Cờ vượt hạn mức công nợ (SN-41)
   creditLimitExceededAmount?: number; // Số tiền vượt hạn mức (VND)
   cancelReason?: string; // Lý do hủy đơn (SN-45)
+  isShortDelivery?: boolean; // Cờ đánh dấu đơn có giao thiếu (SN-170)
   createdAt?: string;
   updatedAt?: string;
 }
