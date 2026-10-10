@@ -28,18 +28,18 @@ import {
   XCircle,
   CornerUpLeft,
   History,
+  RotateCcw,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ordersService } from '../services/orders.service';
 import { customersService } from '../services/customers.service';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
 import { OrderPrintModal } from '../components/order-print-modal';
+import { ReorderModal } from '../components/reorder-modal';
 import type { Customer, DeliveryPoint as CustomerDeliveryPoint } from '../types/customer.types';
 import { getStoredUser } from '../utils/navigation';
 import { orderPricingService } from '../services/order-pricing.service';
 import type { PriceList, CustomerGroupType } from '../types/price-list';
-import { OrderSuggestionsPanel } from '../components/order-suggestions-panel';
-import type { SuggestedProductItem, LatestOrderItem } from '../types/order-suggestion.types';
 import type {
   Order,
   OrderLine,
@@ -568,10 +568,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     if (open && initialCustomerId && customers.length > 0 && !selectedCustomer) {
       const matched = customers.find((c) => c.id === initialCustomerId);
       if (matched) {
-        const timer = setTimeout(() => {
-          void handleSelectCustomer(matched);
-        }, 0);
-        return () => clearTimeout(timer);
+        void handleSelectCustomer(matched);
       }
     }
   }, [open, initialCustomerId, customers, selectedCustomer, handleSelectCustomer]);
@@ -640,47 +637,44 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   // Tự động truy vấn thông tin công nợ thời gian thực khi chọn đại lý (Task SN-41)
   useEffect(() => {
     let active = true;
-    const timer = setTimeout(() => {
-      if (!selectedCustomer) {
-        if (active) setDebtStatus(null);
-        return;
-      }
+    if (!selectedCustomer) {
+      setDebtStatus(null);
+      return;
+    }
 
+    const fetchDebt = async () => {
       setIsLoadingDebt(true);
-      ordersService
-        .getDebtStatus(selectedCustomer.id)
-        .then((res) => {
-          if (active) setDebtStatus(res);
-        })
-        .catch(() => {
-          if (active) {
-            const cLimit = selectedCustomer.creditLimit || 0;
-            const cDebt = selectedCustomer.currentDebt || 0;
-            setDebtStatus({
-              customerId: selectedCustomer.id,
-              customerCode: selectedCustomer.code,
-              customerName: selectedCustomer.name,
-              creditLimit: cLimit,
-              currentDebt: cDebt,
-              availableLimit: Math.max(0, cLimit - cDebt),
-              maxDebtDays: selectedCustomer.maxDebtDays || 30,
-              overdueAmount: selectedCustomer.overdueAmount || 0,
-              overdueDays: selectedCustomer.overdueDays || 0,
-              canCreateOrder: !(
-                (selectedCustomer.overdueDays || 0) > (selectedCustomer.maxDebtDays || 30) &&
-                (selectedCustomer.overdueAmount || 0) > 0
-              ),
-            });
-          }
-        })
-        .finally(() => {
-          if (active) setIsLoadingDebt(false);
-        });
-    }, 0);
+      try {
+        const res = await ordersService.getDebtStatus(selectedCustomer.id);
+        if (active) setDebtStatus(res);
+      } catch {
+        if (active) {
+          const cLimit = selectedCustomer.creditLimit || 0;
+          const cDebt = selectedCustomer.currentDebt || 0;
+          setDebtStatus({
+            customerId: selectedCustomer.id,
+            customerCode: selectedCustomer.code,
+            customerName: selectedCustomer.name,
+            creditLimit: cLimit,
+            currentDebt: cDebt,
+            availableLimit: Math.max(0, cLimit - cDebt),
+            maxDebtDays: selectedCustomer.maxDebtDays || 30,
+            overdueAmount: selectedCustomer.overdueAmount || 0,
+            overdueDays: selectedCustomer.overdueDays || 0,
+            canCreateOrder: !(
+              (selectedCustomer.overdueDays || 0) > (selectedCustomer.maxDebtDays || 30) &&
+              (selectedCustomer.overdueAmount || 0) > 0
+            ),
+          });
+        }
+      } finally {
+        if (active) setIsLoadingDebt(false);
+      }
+    };
 
+    fetchDebt();
     return () => {
       active = false;
-      clearTimeout(timer);
     };
   }, [selectedCustomer]);
   /** Thêm sản phẩm vào dòng hàng */
@@ -787,138 +781,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const handleRemoveLine = useCallback((lineId: string) => {
     setLines((prev) => prev.filter((l) => l.id !== lineId));
   }, []);
-
-  /** Thêm mặt hàng gợi ý theo lịch sử mua hàng 3 tháng (SN-43 AC1) */
-  const handleAddSuggestedItem = useCallback(
-    (item: SuggestedProductItem, quantity: number) => {
-      const targetQty = Math.max(1, quantity);
-      const listPrice = item.price;
-      const unit = item.unit || item.baseUnit;
-      const conversionRate = item.conversionRate || 1;
-
-      let lineToRefresh: OrderLine | null = null;
-
-      setLines((prev) => {
-        const existingIdx = prev.findIndex(
-          (l) =>
-            l.productId === item.productId ||
-            (Boolean(l.productSku) && Boolean(item.sku) && l.productSku.toUpperCase() === item.sku.toUpperCase()),
-        );
-
-        if (existingIdx !== -1) {
-          const nextLines = [...prev];
-          const curr = nextLines[existingIdx];
-          const newQty = curr.quantity + targetQty;
-          const updatedLine: OrderLine = {
-            ...curr,
-            quantity: newQty,
-            baseQuantity: Math.round(newQty * (curr.conversionRate || 1)),
-            lineTotal: Math.round(newQty * curr.unitPrice),
-          };
-          nextLines[existingIdx] = updatedLine;
-          lineToRefresh = updatedLine;
-          return nextLines;
-        }
-
-        const newLine: OrderLine = {
-          id: `line-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-          productId: item.productId,
-          productSku: item.sku,
-          productName: item.productName,
-          unit,
-          baseUnit: item.baseUnit,
-          conversionRate,
-          quantity: targetQty,
-          baseQuantity: Math.round(targetQty * conversionRate),
-          unitPrice: Math.round(listPrice),
-          listPrice: Math.round(listPrice),
-          discountPercent: 0,
-          lineTotal: Math.round(targetQty * listPrice),
-        };
-        lineToRefresh = newLine;
-        return [...prev, newLine];
-      });
-
-      if (lineToRefresh && effectivePriceList) {
-        refreshLinePricing(lineToRefresh, effectivePriceList);
-      }
-
-      showToast(
-        'success',
-        `Đã thêm ${targetQty} ${unit} ${item.productName} vào đơn hàng!`,
-      );
-    },
-    [effectivePriceList, refreshLinePricing],
-  );
-
-  /** Thêm nhanh toàn bộ nhóm hàng từ đơn thành công gần nhất (SN-43 AC2 1-Click Reorder) */
-  const handleReorderPreviousOrder = useCallback(
-    (items: LatestOrderItem[]) => {
-      if (!items || items.length === 0) return;
-
-      const linesToRefresh: OrderLine[] = [];
-
-      setLines((prev) => {
-        const merged = [...prev];
-
-        for (const item of items) {
-          const targetQty = Math.max(1, item.quantity);
-          const listPrice = item.listPrice || item.unitPrice;
-          const unit = item.unit || item.baseUnit;
-          const conversionRate = item.conversionRate || 1;
-
-          const existingIdx = merged.findIndex(
-            (l) =>
-              l.productId === item.productId ||
-              (Boolean(l.productSku) && Boolean(item.sku) && l.productSku.toUpperCase() === item.sku.toUpperCase()),
-          );
-
-          if (existingIdx !== -1) {
-            const curr = merged[existingIdx];
-            const newQty = curr.quantity + targetQty;
-            const updatedLine: OrderLine = {
-              ...curr,
-              quantity: newQty,
-              baseQuantity: Math.round(newQty * (curr.conversionRate || 1)),
-              lineTotal: Math.round(newQty * curr.unitPrice),
-            };
-            merged[existingIdx] = updatedLine;
-            linesToRefresh.push(updatedLine);
-          } else {
-            const newLine: OrderLine = {
-              id: `line-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-              productId: item.productId,
-              productSku: item.sku,
-              productName: item.productName,
-              unit,
-              baseUnit: item.baseUnit,
-              conversionRate,
-              quantity: targetQty,
-              baseQuantity: Math.round(targetQty * conversionRate),
-              unitPrice: Math.round(listPrice),
-              listPrice: Math.round(listPrice),
-              discountPercent: 0,
-              lineTotal: Math.round(targetQty * listPrice),
-            };
-            merged.push(newLine);
-            linesToRefresh.push(newLine);
-          }
-        }
-
-        return merged;
-      });
-
-      if (effectivePriceList) {
-        linesToRefresh.forEach((line) => refreshLinePricing(line, effectivePriceList));
-      }
-
-      showToast(
-        'success',
-        `Đã thêm nhanh ${items.length} mặt hàng từ đơn gần nhất vào đơn mới!`,
-      );
-    },
-    [effectivePriceList, refreshLinePricing],
-  );
 
   /** Đổi nhanh về số lượng tồn khả dụng tối đa (SN-42) */
   const updateLineQuantity = useCallback(
@@ -1575,18 +1437,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           {/* ── BƯỚC 2: Thêm sản phẩm ── */}
           {step === 2 && (
             <>
-              {/* Widget Gợi ý mặt hàng thường mua & 1-Click Reorder (SN-43) */}
-              {selectedCustomer && (
-                <OrderSuggestionsPanel
-                  customerId={selectedCustomer.id}
-                  customerName={selectedCustomer.name}
-                  existingProductIds={lines.map((l) => l.productId)}
-                  existingProductSkus={lines.map((l) => (l.productSku || '').toUpperCase())}
-                  onAddSuggestedItem={handleAddSuggestedItem}
-                  onReorderPreviousOrder={handleReorderPreviousOrder}
-                />
-              )}
-
               {/* Tìm kiếm sản phẩm */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-slate-700">
@@ -2334,29 +2184,21 @@ export const OrdersPage: React.FC = () => {
   const urlCustomerId = searchParams.get('customerId');
   const shouldOpenCreate = searchParams.get('createOrder') === 'true' || !!urlCustomerId;
 
-  // 1. Phân giải status ban đầu từ URL (?status=pending hoặc ?status=PENDING)
-  const getInitialStatus = (): OrderStatus | 'ALL' => {
-    const raw = searchParams.get('status');
-    if (!raw) return 'ALL';
-    const found = STATUS_TABS.find(
-      (tab) => tab.key.toLowerCase() === raw.toLowerCase()
-    );
-    return found ? (found.key as OrderStatus | 'ALL') : 'ALL';
-  };
-
-  const initialSearch = searchParams.get('search') || '';
-  const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
-
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState<number>(initialPage);
+  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const limit = 10;
 
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>(getInitialStatus);
-  const [searchInput, setSearchInput] = useState<string>(initialSearch);
-  const [searchTerm, setSearchTerm] = useState<string>(initialSearch);
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>(() => {
+    const requestedStatus = searchParams.get('status');
+    return STATUS_TABS.some((tab) => tab.key === requestedStatus)
+      ? requestedStatus as OrderStatus
+      : 'ALL';
+  });
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -2367,103 +2209,27 @@ export const OrdersPage: React.FC = () => {
   const [approvalHistory, setApprovalHistory] = useState<OrderApprovalHistory[]>([]);
   const [isLoadingApprovalHistory, setIsLoadingApprovalHistory] = useState(false);
   const [printOrder, setPrintOrder] = useState<Order | null>(null);
+  const [selectedOrderForReorder, setSelectedOrderForReorder] = useState<Order | null>(null);
   const [isCloning, setIsCloning] = useState<string | null>(null);
+
+  const handleReorderSuccess = (_newOrder: Order) => {
+    setRefreshKey((key) => key + 1);
+  };
 
   // Nhận customerId từ URL query param (Đồng bộ từ trang Quản lý đại lý)
   const [initialCustomerId, setInitialCustomerId] = useState<string | undefined>(undefined);
 
-  // Đồng bộ hóa URL Search Params an toàn, không reload trang
-  const updateUrlParams = useCallback(
-    (updates: { status?: OrderStatus | 'ALL'; search?: string; page?: number }) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-
-          // Cập nhật status
-          const targetStatus = updates.status !== undefined ? updates.status : statusFilter;
-          if (targetStatus && targetStatus !== 'ALL') {
-            next.set('status', targetStatus.toLowerCase());
-          } else {
-            next.delete('status');
-          }
-
-          // Cập nhật search
-          const targetSearch = updates.search !== undefined ? updates.search : searchTerm;
-          const trimmed = targetSearch.trim();
-          if (trimmed) {
-            next.set('search', trimmed);
-          } else {
-            next.delete('search');
-          }
-
-          // Cập nhật page
-          const targetPage = updates.page !== undefined ? updates.page : page;
-          if (targetPage > 1 || next.has('status') || next.has('search')) {
-            next.set('page', String(targetPage));
-          } else {
-            next.delete('page');
-          }
-
-          return next;
-        },
-        { replace: true }
-      );
-    },
-    [setSearchParams, statusFilter, searchTerm, page]
-  );
-
-  const handleStatusChange = (newStatus: OrderStatus | 'ALL') => {
-    setStatusFilter(newStatus);
-    setPage(1);
-    updateUrlParams({ status: newStatus, page: 1 });
-  };
-
-  const handlePageChange = (newPage: number) => {
-    const targetPage = Math.max(1, Math.min(totalPages, newPage));
-    setPage(targetPage);
-    updateUrlParams({ page: targetPage });
-  };
-
-  // Lắng nghe thay đổi của URL từ trình duyệt (khi Back / Forward hoặc chia sẻ liên kết)
-  useEffect(() => {
-    const rawStatus = searchParams.get('status');
-    let targetStatus: OrderStatus | 'ALL' = 'ALL';
-    if (rawStatus) {
-      const found = STATUS_TABS.find(
-        (tab) => tab.key.toLowerCase() === rawStatus.toLowerCase()
-      );
-      if (found) targetStatus = found.key as OrderStatus | 'ALL';
-    }
-    if (targetStatus !== statusFilter) {
-      setStatusFilter(targetStatus);
-    }
-
-    const urlSearch = searchParams.get('search') || '';
-    if (urlSearch !== searchTerm) {
-      setSearchTerm(urlSearch);
-      setSearchInput(urlSearch);
-    }
-
-    const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
-    if (urlPage !== page) {
-      setPage(urlPage);
-    }
-  }, [searchParams]);
-
   useEffect(() => {
     const cid = searchParams.get('customerId');
     if (cid) {
-      const timer = setTimeout(() => {
-        setInitialCustomerId(cid);
-        setEditingOrder(null);
-        setIsCreateModalOpen(true);
-        setSearchParams((prev) => {
-          const next = new URLSearchParams(prev);
-          next.delete('customerId');
-          return next;
-        }, { replace: true });
-      }, 0);
-      return () => clearTimeout(timer);
+      setInitialCustomerId(cid);
+      setEditingOrder(null);
+      setIsCreateModalOpen(true);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('customerId');
+        return next;
+      }, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
@@ -2492,26 +2258,14 @@ export const OrdersPage: React.FC = () => {
     }
   };
 
-  const isInitialSearchMount = useRef(true);
-
-  // Debounce search input (400ms) để tối ưu hiệu suất và đồng bộ URL mượt mà
+  // Debounce search
   useEffect(() => {
-    if (isInitialSearchMount.current) {
-      isInitialSearchMount.current = false;
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      const nextSearch = searchInput.trim();
-      if (nextSearch !== searchTerm) {
-        setSearchTerm(nextSearch);
-        setPage(1);
-        updateUrlParams({ search: nextSearch, page: 1 });
-      }
+    const t = setTimeout(() => {
+      setSearchTerm(searchInput);
+      setPage(1);
     }, 400);
-
-    return () => clearTimeout(timer);
-  }, [searchInput, searchTerm, updateUrlParams]);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -2687,7 +2441,10 @@ export const OrdersPage: React.FC = () => {
             {STATUS_TABS.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => handleStatusChange(tab.key as OrderStatus | 'ALL')}
+                onClick={() => {
+                  setStatusFilter(tab.key as OrderStatus | 'ALL');
+                  setPage(1);
+                }}
                 className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                   statusFilter === tab.key
                     ? 'bg-blue-600 text-white'
@@ -2774,6 +2531,14 @@ export const OrdersPage: React.FC = () => {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <OrderStatusBadge status={order.status} />
+                          {(order.isShortDelivery ||
+                            order.lines?.some(
+                              (l) => l.deliveredQuantity !== undefined && l.deliveredQuantity < l.quantity,
+                            )) && (
+                            <span className="mt-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                              <AlertTriangle className="w-2.5 h-2.5" /> Giao thiếu
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1">
@@ -2797,6 +2562,14 @@ export const OrdersPage: React.FC = () => {
                               title="Xem chi tiết đơn hàng"
                             >
                               <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOrderForReorder(order)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                              title="Đặt lại đơn này theo giá hiện hành (SN-174)"
+                            >
+                              <RotateCcw className="w-4 h-4" />
                             </button>
                             <button
                               type="button"
@@ -2890,6 +2663,15 @@ export const OrdersPage: React.FC = () => {
                       </button>
                       <button
                         type="button"
+                        onClick={() => setSelectedOrderForReorder(order)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors cursor-pointer min-h-[36px]"
+                        title="Đặt lại đơn (SN-174)"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Đặt lại</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => void handleCloneOrder(order)}
                         disabled={isCloning === order.id}
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer min-h-[36px]"
@@ -2928,7 +2710,7 @@ export const OrdersPage: React.FC = () => {
             </span>
             <div className="flex items-center gap-1">
               <button
-                onClick={() => handlePageChange(page - 1)}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
@@ -2938,7 +2720,7 @@ export const OrdersPage: React.FC = () => {
                 {page} / {totalPages}
               </span>
               <button
-                onClick={() => handlePageChange(page + 1)}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
@@ -3053,34 +2835,72 @@ export const OrdersPage: React.FC = () => {
                 </div>
               </section>
 
+              {/* Cảnh báo Giao thiếu hàng nếu có (SN-170) */}
+              {(viewOrder.isShortDelivery ||
+                viewOrder.lines.some(
+                  (l) => l.deliveredQuantity !== undefined && l.deliveredQuantity < l.quantity,
+                )) && (
+                <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 text-xs flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Đơn hàng được ghi nhận giao thiếu một số dòng hàng (SN-170)</p>
+                    <p className="mt-0.5 text-amber-800 leading-relaxed">
+                      Kho vận và nhân viên giao hàng đã ghi nhận chênh lệch số lượng thực giao so với số lượng đặt. Vui lòng đối chiếu với biên bản giao nhận.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Danh sách dòng hàng */}
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <div className="px-3 py-2 bg-slate-50 text-xs font-semibold text-slate-500 border-b border-slate-200">
                   Danh sách hàng
                 </div>
-                {viewOrder.lines.map((line, i) => (
-                  <div
-                    key={i}
-                    className="px-3 py-2.5 border-b border-slate-100 last:border-0"
-                  >
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-800 truncate">
-                          {line.productName}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {line.quantity} {line.unit} × {formatCurrency(line.unitPrice)}
-                          {line.discountPercent > 0 && (
-                            <span className="ml-1 text-green-600">(-{line.discountPercent}%)</span>
+                {viewOrder.lines.map((line, i) => {
+                  const isLineShort =
+                    line.isShortDelivery ||
+                    (line.deliveredQuantity !== undefined && line.deliveredQuantity < line.quantity);
+
+                  return (
+                    <div
+                      key={i}
+                      className={`px-3 py-2.5 border-b border-slate-100 last:border-0 ${
+                        isLineShort ? 'bg-amber-50/40' : ''
+                      }`}
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">
+                            {line.productName}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {line.quantity} {line.unit} × {formatCurrency(line.unitPrice)}
+                            {line.discountPercent > 0 && (
+                              <span className="ml-1 text-green-600">(-{line.discountPercent}%)</span>
+                            )}
+                          </p>
+                          {/* Hiển thị số lượng thực giao nếu có giao thiếu (SN-170) */}
+                          {isLineShort && (
+                            <div className="mt-1 space-y-0.5">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                                <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                Thực giao: {line.deliveredQuantity} / {line.quantity} {line.unit} (Thiếu {line.quantity - (line.deliveredQuantity || 0)} {line.unit})
+                              </span>
+                              {line.shortDeliveryReason && (
+                                <p className="text-[11px] text-amber-700 italic">
+                                  Lý do: {line.shortDeliveryReason}
+                                </p>
+                              )}
+                            </div>
                           )}
-                        </p>
+                        </div>
+                        <span className="text-sm font-semibold text-slate-800 shrink-0">
+                          {formatCurrency(line.lineTotal)}
+                        </span>
                       </div>
-                      <span className="text-sm font-semibold text-slate-800 shrink-0">
-                        {formatCurrency(line.lineTotal)}
-                      </span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Tổng kết */}
@@ -3121,6 +2941,20 @@ export const OrdersPage: React.FC = () => {
 
             <div className="px-5 py-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ord = viewOrder;
+                    setViewOrder(null);
+                    setSelectedOrderForReorder(ord);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition-colors cursor-pointer"
+                  title="Đặt lại đơn hàng này theo bảng giá hiện hành (SN-174)"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Đặt lại đơn</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => void handleCloneOrder(viewOrder)}
@@ -3213,6 +3047,16 @@ export const OrdersPage: React.FC = () => {
         isOpen={Boolean(printOrder)}
         onClose={() => setPrintOrder(null)}
       />
+
+      {/* Modal Đặt lại đơn hàng theo giá hiện hành (SN-174) */}
+      {selectedOrderForReorder && (
+        <ReorderModal
+          order={selectedOrderForReorder}
+          isOpen={Boolean(selectedOrderForReorder)}
+          onClose={() => setSelectedOrderForReorder(null)}
+          onSuccess={handleReorderSuccess}
+        />
+      )}
 
       {decisionAction && viewOrder && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
