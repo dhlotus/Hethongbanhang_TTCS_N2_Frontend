@@ -171,6 +171,7 @@ export const AppRoutes: React.FC = () => {
               }
             >
               <Route path="/catalog/pricing" element={<PriceListsPage />} />
+              <Route path="/pricing" element={<PriceListsPage />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
@@ -389,9 +390,11 @@ export const AppRoutes: React.FC = () => {
             >
               {/* 1. Quản lý người dùng & Phân quyền (SN-10) */}
               <Route path="/system/users" element={<UsersPage />} />
+              <Route path="/users" element={<UsersPage />} />
 
               {/* 2. Nhật ký hệ thống (Audit Logs - Task SN-142 / SN-19) */}
               <Route path="/system/audit-logs" element={<AuditLogsPage />} />
+              <Route path="/audit-logs" element={<AuditLogsPage />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
@@ -402,6 +405,7 @@ export const AppRoutes: React.FC = () => {
             
             {/* Danh mục sản phẩm (giá vốn tự động ẩn trên server theo SN-10) */}
             <Route path="/catalog/products" element={<ProductsPage />} />
+            <Route path="/products" element={<ProductsPage />} />
             {/* Quản lý Cây nhóm hàng đa cấp (Tree Structure - SN-150 / SN-22) */}
             <Route path="/catalog/categories" element={<CategoriesPage />} />
 

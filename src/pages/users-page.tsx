@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
   Users,
@@ -26,6 +27,7 @@ import {
   Eye,
   FileSpreadsheet,
   RotateCcw,
+  Tag,
 } from 'lucide-react';
 import { UsersTableSkeleton, UsersMobileCardSkeleton } from '../components/skeletons';
 import { ExcelImportModal } from '../components/excel-import-modal';
@@ -113,13 +115,77 @@ const LOCK_REASON_PRESETS = [
   'Nhân sự đã nghỉ việc / Chấm dứt hợp đồng',
 ];
 
+/**
+ * Bản đồ ánh xạ Role sang URL Query Parameter slug chuẩn
+ * Ví dụ: SALES_REP -> sales, ADMIN -> admin
+ */
+const ROLE_TO_PARAM_MAP: Record<string, string> = {
+  ADMIN: 'admin',
+  SALES_REP: 'sales',
+  SALES_MANAGER: 'sales_manager',
+  WAREHOUSE_MANAGER: 'warehouse_manager',
+  WAREHOUSE_KEEPER: 'warehouse_keeper',
+  ACCOUNTANT: 'accountant',
+  CUSTOMER: 'customer',
+};
+
+const getRoleParamSlug = (roleKey: string): string => {
+  return ROLE_TO_PARAM_MAP[roleKey] || roleKey.toLowerCase();
+};
+
+/**
+ * Phân tích tham số role từ URL sang mã vai trò chuẩn hệ thống
+ */
+const parseRoleParam = (param: string | null): string => {
+  if (!param) return '';
+  const lower = param.toLowerCase().trim();
+  if (lower === 'admin') return 'ADMIN';
+  if (lower === 'sales' || lower === 'sales_rep' || lower === 'salerep') return 'SALES_REP';
+  if (lower === 'sales_manager' || lower === 'salesmanager') return 'SALES_MANAGER';
+  if (lower === 'warehouse_manager' || lower === 'warehousemanager') return 'WAREHOUSE_MANAGER';
+  if (lower === 'warehouse_keeper' || lower === 'warehousekeeper' || lower === 'warehouse')
+    return 'WAREHOUSE_KEEPER';
+  if (lower === 'accountant') return 'ACCOUNTANT';
+  if (lower === 'customer') return 'CUSTOMER';
+  const upper = param.toUpperCase().trim();
+  if (ROLE_CONFIG[upper]) return upper;
+  return '';
+};
+
+/**
+ * Bản đồ ánh xạ Trạng thái sang URL slug
+ * Ví dụ: ACTIVE -> active, LOCKED -> locked
+ */
+const getStatusParamSlug = (status: string): string => {
+  if (status === 'ACTIVE') return 'active';
+  if (status === 'LOCKED') return 'locked';
+  return '';
+};
+
+const parseStatusParam = (param: string | null): string => {
+  if (!param) return '';
+  const lower = param.toLowerCase().trim();
+  if (lower === 'active') return 'ACTIVE';
+  if (lower === 'locked' || lower === 'lock' || lower === 'inactive') return 'LOCKED';
+  const upper = param.toUpperCase().trim();
+  if (upper === 'ACTIVE' || upper === 'LOCKED') return upper;
+  return '';
+};
+
 export const UsersPage: React.FC = () => {
   const currentAdmin = getStoredUser();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Khôi phục giá trị ban đầu từ URL Query Parameters khi tải lại trang hoặc chia sẻ link
+  const initialSearch = (searchParams.get('search') || searchParams.get('q') || '').trim();
+  const initialRole = parseRoleParam(searchParams.get('role'));
+  const initialStatus = parseStatusParam(searchParams.get('status'));
+  const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
 
   // Danh sách và phân trang (Mặc định 20 dòng / trang theo chuẩn SN-13)
   const [users, setUsers] = useState<UserManagementItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage);
   const [limit, setLimit] = useState(20);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -131,18 +197,136 @@ export const UsersPage: React.FC = () => {
   });
 
   // Bộ lọc & Tìm kiếm mượt mà có Debounce (350ms)
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [searchInput, setSearchInput] = useState(initialSearch);
+  const [search, setSearch] = useState(initialSearch);
+  const [roleFilter, setRoleFilter] = useState<string>(initialRole);
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
 
+  // Cập nhật query parameters an toàn lên URL mà không reload lại toàn bộ trang
+  const updateUrlParams = useCallback(
+    (updates: {
+      role?: string;
+      status?: string;
+      search?: string;
+      page?: number;
+    }) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+
+          // 1. Vai trò (?role=sales)
+          const targetRole = updates.role !== undefined ? updates.role : roleFilter;
+          if (targetRole) {
+            next.set('role', getRoleParamSlug(targetRole));
+          } else {
+            next.delete('role');
+          }
+
+          // 2. Trạng thái (?status=active|locked)
+          const targetStatus = updates.status !== undefined ? updates.status : statusFilter;
+          if (targetStatus) {
+            next.set('status', getStatusParamSlug(targetStatus));
+          } else {
+            next.delete('status');
+          }
+
+          // 3. Từ khóa tìm kiếm (?search=...)
+          const targetSearch = updates.search !== undefined ? updates.search : search;
+          const trimmedSearch = (targetSearch || '').trim();
+          if (trimmedSearch) {
+            next.set('search', trimmedSearch);
+            next.delete('q');
+          } else {
+            next.delete('search');
+            next.delete('q');
+          }
+
+          // 4. Phân trang (?page=...)
+          const targetPage = updates.page !== undefined ? updates.page : page;
+          if (targetPage > 1) {
+            next.set('page', String(targetPage));
+          } else {
+            if (prev.has('page')) {
+              next.set('page', '1');
+            } else {
+              next.delete('page');
+            }
+          }
+
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [roleFilter, statusFilter, search, page, setSearchParams]
+  );
+
+  const isInitialSearchMount = useRef(true);
+
+  // Debounce tìm kiếm 350ms để không gây giật lag và không spam URL history
   useEffect(() => {
+    if (isInitialSearchMount.current) {
+      isInitialSearchMount.current = false;
+      return;
+    }
+
     const handler = setTimeout(() => {
-      setSearch(searchInput.trim());
-      setPage(1);
+      const trimmed = searchInput.trim();
+      if (trimmed !== search) {
+        setSearch(trimmed);
+        setPage(1);
+        updateUrlParams({ search: trimmed, page: 1 });
+      }
     }, 350);
+
     return () => clearTimeout(handler);
-  }, [searchInput]);
+  }, [searchInput, search, updateUrlParams]);
+
+  // Lắng nghe thay đổi của URL search parameters (khi F5, bấm link chia sẻ hoặc Back/Forward trên browser)
+  useEffect(() => {
+    const urlRole = parseRoleParam(searchParams.get('role'));
+    const urlStatus = parseStatusParam(searchParams.get('status'));
+    const urlSearch = (searchParams.get('search') || searchParams.get('q') || '').trim();
+    const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+
+    if (urlRole !== roleFilter) {
+      setRoleFilter(urlRole);
+    }
+    if (urlStatus !== statusFilter) {
+      setStatusFilter(urlStatus);
+    }
+    if (urlSearch !== search) {
+      setSearch(urlSearch);
+      setSearchInput(urlSearch);
+    }
+    if (urlPage !== page) {
+      setPage(urlPage);
+    }
+  }, [searchParams]);
+
+  // Handlers thay đổi bộ lọc
+  const handleRoleChange = (newRole: string) => {
+    setRoleFilter(newRole);
+    setPage(1);
+    updateUrlParams({ role: newRole, page: 1 });
+  };
+
+  const handleStatusChange = (newStatus: string) => {
+    setStatusFilter(newStatus);
+    setPage(1);
+    updateUrlParams({ status: newStatus, page: 1 });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    updateUrlParams({ page: newPage });
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
+    updateUrlParams({ page: 1 });
+  };
 
   // Đặt lại toàn bộ bộ lọc nhân sự về trạng thái ban đầu
   const handleResetFilters = useCallback(() => {
@@ -151,7 +335,8 @@ export const UsersPage: React.FC = () => {
     setRoleFilter('');
     setStatusFilter('');
     setPage(1);
-  }, []);
+    setSearchParams({}, { replace: true });
+  }, [setSearchParams]);
 
   // Modal Tạo / Chỉnh sửa & Quản lý Lỗi Validate
   const [modalOpen, setModalOpen] = useState(false);
@@ -640,6 +825,7 @@ export const UsersPage: React.FC = () => {
                   setSearchInput('');
                   setSearch('');
                   setPage(1);
+                  updateUrlParams({ search: '', page: 1 });
                 }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 title="Xóa tìm kiếm"
@@ -652,11 +838,8 @@ export const UsersPage: React.FC = () => {
           {/* Bộ lọc vai trò */}
           <select
             value={roleFilter}
-            onChange={(e) => {
-              setRoleFilter(e.target.value);
-              setPage(1);
-            }}
-            className="rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs font-medium text-slate-700 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+            onChange={(e) => handleRoleChange(e.target.value)}
+            className="rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs font-medium text-slate-700 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer"
           >
             <option value="">Tất cả vai trò (7)</option>
             {Object.keys(ROLE_CONFIG).map((roleKey) => (
@@ -669,11 +852,8 @@ export const UsersPage: React.FC = () => {
           {/* Bộ lọc trạng thái */}
           <select
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
-            className="rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs font-medium text-slate-700 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+            onChange={(e) => handleStatusChange(e.target.value)}
+            className="rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs font-medium text-slate-700 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer"
           >
             <option value="">Tất cả trạng thái</option>
             <option value="ACTIVE">Đang hoạt động</option>
@@ -691,7 +871,7 @@ export const UsersPage: React.FC = () => {
             }}
             disabled={loading}
             title="Làm mới danh sách"
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-2xs"
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-2xs cursor-pointer active:scale-95"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Làm mới</span>
@@ -702,7 +882,7 @@ export const UsersPage: React.FC = () => {
             type="button"
             onClick={() => setImportModalOpen(true)}
             title="Import nhân sự từ file Excel (.xlsx)"
-            className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-[0.98] transition-all shadow-2xs"
+            className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-[0.98] transition-all shadow-2xs cursor-pointer"
           >
             <FileSpreadsheet className="h-4 w-4" />
             <span className="hidden sm:inline">Import Excel</span>
@@ -711,13 +891,85 @@ export const UsersPage: React.FC = () => {
           <button
             type="button"
             onClick={handleOpenCreateModal}
-            className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-purple-700 active:scale-[0.98] transition-all"
+            className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-purple-700 active:scale-[0.98] transition-all cursor-pointer shadow-xs"
           >
             <UserPlus className="h-4 w-4" />
             <span>Thêm nhân sự mới</span>
           </button>
         </div>
       </div>
+
+      {/* Filter Badges: Hiển thị trực quan các bộ lọc URL đang kích hoạt */}
+      {(roleFilter || statusFilter || search) && (
+        <div className="flex flex-wrap items-center gap-1.5 px-1 text-xs">
+          <span className="inline-flex items-center gap-1 text-slate-400 font-medium mr-1 text-[11px]">
+            <Tag className="w-3 h-3 text-slate-400" />
+            <span>Đang lọc:</span>
+          </span>
+
+          {roleFilter && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-50 border border-purple-200 text-purple-700 text-[11px] font-semibold">
+              <span>Vai trò: {ROLE_CONFIG[roleFilter]?.label || roleFilter}</span>
+              <button
+                type="button"
+                onClick={() => handleRoleChange('')}
+                className="hover:text-purple-900 cursor-pointer p-0.5"
+                title="Gỡ lọc vai trò"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+
+          {statusFilter && (
+            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[11px] font-semibold ${
+              statusFilter === 'ACTIVE'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : 'bg-rose-50 border-rose-200 text-rose-700'
+            }`}>
+              <span>
+                Trạng thái: {statusFilter === 'ACTIVE' ? 'Đang hoạt động' : 'Đang bị khóa'}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleStatusChange('')}
+                className="hover:opacity-75 cursor-pointer p-0.5"
+                title="Gỡ lọc trạng thái"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+
+          {search && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-semibold">
+              <span>Tìm: &ldquo;{search}&rdquo;</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput('');
+                  setSearch('');
+                  setPage(1);
+                  updateUrlParams({ search: '', page: 1 });
+                }}
+                className="hover:text-slate-900 cursor-pointer p-0.5"
+                title="Gỡ tìm kiếm"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            className="inline-flex items-center gap-1 text-[11px] text-rose-600 hover:text-rose-800 font-semibold underline ml-1 cursor-pointer"
+          >
+            <RotateCcw className="w-3 h-3" />
+            <span>Đặt lại bộ lọc</span>
+          </button>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 4. DATA TABLE: BẢNG DỮ LIỆU NGƯỜI DÙNG                                    */}
@@ -1091,11 +1343,8 @@ export const UsersPage: React.FC = () => {
               <span className="text-slate-400">Số dòng/trang:</span>
               <select
                 value={limit}
-                onChange={(e) => {
-                  setLimit(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                onChange={(e) => handleLimitChange(Number(e.target.value))}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer"
               >
                 <option value={10}>10 dòng</option>
                 <option value={20}>20 dòng (Chuẩn)</option>
@@ -1108,8 +1357,8 @@ export const UsersPage: React.FC = () => {
             <button
               type="button"
               disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
+              onClick={() => handlePageChange(Math.max(1, page - 1))}
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
             >
               <ChevronLeft className="h-4 w-4" />
               <span>Trước</span>
@@ -1128,8 +1377,8 @@ export const UsersPage: React.FC = () => {
                       )}
                       <button
                         type="button"
-                        onClick={() => setPage(p)}
-                        className={`h-7 min-w-7 px-2 rounded-lg text-xs font-semibold transition-all ${
+                        onClick={() => handlePageChange(p)}
+                        className={`h-7 min-w-7 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                           page === p
                             ? 'bg-purple-600 text-white'
                             : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
@@ -1145,8 +1394,8 @@ export const UsersPage: React.FC = () => {
             <button
               type="button"
               disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs"
+              onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
             >
               <span>Sau</span>
               <ChevronRight className="h-4 w-4" />
