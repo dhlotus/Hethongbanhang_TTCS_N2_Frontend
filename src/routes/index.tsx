@@ -15,6 +15,7 @@ import { ProfilePage } from '../pages/profile-page';
 import { OrdersPage } from '../pages/orders-page';
 import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
 import { CustomersPage } from '../pages/customers-page';
+import { InventoryAuditsPage } from '../pages/inventory-audits-page';
 import { PortalOrdersPage } from '../pages/portal-orders-page';
 import { NotFoundPage } from '../pages/not-found-page';
 import { ForbiddenPage } from '../pages/forbidden-page';
@@ -233,7 +234,7 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={['WAREHOUSE_KEEPER', 'WAREHOUSE_MANAGER']}
+                  allowedRoles={['WAREHOUSE_KEEPER', 'WAREHOUSE_MANAGER', 'ADMIN']}
                   moduleName="Quản lý Nhập Xuất Kho & Kiểm kê"
                 />
               }
@@ -260,13 +261,7 @@ export const AppRoutes: React.FC = () => {
               />
               <Route
                 path="/inventory/audits"
-                element={
-                  <RoleModulePage
-                    title="Kiểm kê Kho hàng"
-                    subtitle="Lập biên bản kiểm kê định kỳ, đối chiếu số liệu thực tế so với sổ sách phần mềm"
-                    requiredRole="Thủ kho / Quản lý kho"
-                  />
-                }
+                element={<InventoryAuditsPage />}
               />
             </Route>
 
