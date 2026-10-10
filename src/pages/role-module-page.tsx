@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Shield,
@@ -55,20 +55,22 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
   const [alertPage, setAlertPage] = useState<number>(1);
   const isInventoryPage = location.pathname === "/inventory/stock";
 
-  const reloadStock = (): Promise<void> =>
-    inventoryService.getStockOverview(selectedWarehouseId).then(setStockRows).catch(() => setStockRows([]));
+  const reloadStock = useCallback((): Promise<void> =>
+    inventoryService.getStockOverview(selectedWarehouseId).then(setStockRows).catch(() => setStockRows([])),
+    [selectedWarehouseId],
+  );
 
   useEffect(() => {
     if (!isInventoryPage) return;
     void warehouseService.getWarehouses().then((rows) => {
       setWarehouses(rows);
-      if (rows.length && !rows.some((row) => row.id === selectedWarehouseId)) setSelectedWarehouseId(rows[0].id);
+      setSelectedWarehouseId((current) => rows.some((row) => row.id === current) ? current : rows[0]?.id || DEFAULT_WAREHOUSE_ID);
     }).catch(() => setWarehouses([]));
   }, [isInventoryPage]);
 
   useEffect(() => {
     if (isInventoryPage) void reloadStock();
-  }, [isInventoryPage, selectedWarehouseId]);
+  }, [isInventoryPage, reloadStock]);
 
   const alertRows = stockRows
     .filter((row) => row.isBelowMinStock === true)

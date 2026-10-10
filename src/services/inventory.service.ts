@@ -38,7 +38,7 @@ export const inventoryService = {
         const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
         const serverMsg = axiosErr.response?.data?.message;
         if (serverMsg) {
-          throw new Error(Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg);
+          throw new Error(Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg, { cause: err });
         }
       }
       throw err;
@@ -64,10 +64,8 @@ export const inventoryService = {
   async adjustStock(payload: AdjustStockPayload): Promise<StockAdjustmentResponse> {
     try {
       const response = await apiClient.put<StockAdjustmentResponse>('/inventory/adjust', payload);
-      try {
-        window.dispatchEvent(new CustomEvent('loha_inventory_updated', { detail: response.data }));
-        window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: response.data }));
-      } catch {}
+      window.dispatchEvent(new CustomEvent('loha_inventory_updated', { detail: response.data }));
+      window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: response.data }));
       return response.data;
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
@@ -75,7 +73,7 @@ export const inventoryService = {
         const serverMsg = axiosErr.response?.data?.message;
         if (serverMsg) {
           const msg = Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg;
-          throw new Error(msg);
+          throw new Error(msg, { cause: err });
         }
       }
       throw err;
@@ -98,7 +96,7 @@ export const inventoryService = {
         const serverMsg = axiosErr.response?.data?.message;
         if (serverMsg) {
           const msg = Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg;
-          throw new Error(msg);
+          throw new Error(msg, { cause: err });
         }
       }
       throw err;
