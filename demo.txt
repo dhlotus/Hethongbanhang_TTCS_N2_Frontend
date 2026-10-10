@@ -1,4 +1,4 @@
-1	Quản trị hệ thống	quantrihethong@loha.vn
+1	Quản trị hệ thống	quantrihethong@loha.vn          password: 123456abc  
 2	Nhân viên kinh doanh	nhanvienkinhdoanh@loha.vn
 3	Quản lý kinh doanh	quanlykinhdoanh@loha.vn
 4	Thủ kho	thukho@loha.vn
@@ -6,4 +6,7 @@
 6	Kế toán công nợ	ketoan@loha.vn
 7	Đại lý / Khách hàng B2B	daily@loha.vn
 
-password: 123456
+password: 123456  
+
+frontend: npm run dev
+backend: npm run start:dev

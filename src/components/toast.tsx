@@ -1,116 +1,296 @@
-import React, { useEffect, useState } from "react";
-import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { CheckCircle2, AlertCircle, X } from 'lucide-react';
 
-export type ToastType = "error" | "warning" | "success" | "info";
+export type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+export interface ToastOptions {
+  id?: string;
+  type: ToastType;
+  title: string;
+  duration?: number;
+}
 
 export interface ToastProps {
   type?: ToastType;
   title?: string;
-  message: string;
-  onClose: () => void;
+  message?: string;
+  onClose?: () => void;
   duration?: number;
 }
 
-const ICONS = {
-  error: AlertCircle,
-  warning: AlertTriangle,
-  success: CheckCircle2,
-  info: Info,
+// Chuẩn hóa nghiêm ngặt chỉ 2 trạng thái: Xanh lá (Success) và Đỏ (Error)
+const normalizeType = (type?: ToastType): 'success' | 'error' => {
+  if (type === 'success' || type === 'info') return 'success';
+  return 'error'; // "error" | "warning" hoặc các trường hợp khác đều quy về Đỏ (Error)
 };
 
 const STYLES = {
-  error: {
-    iconBg: "bg-rose-50 text-rose-600 border-rose-100",
-    barBg: "bg-rose-500",
-    defaultTitle: "Đăng nhập thất bại",
-  },
-  warning: {
-    iconBg: "bg-amber-50 text-amber-600 border-amber-100",
-    barBg: "bg-amber-500",
-    defaultTitle: "Cảnh báo bảo mật",
-  },
   success: {
-    iconBg: "bg-emerald-50 text-emerald-600 border-emerald-100",
-    barBg: "bg-emerald-500",
-    defaultTitle: "Thành công",
+    icon: CheckCircle2,
+    iconColor: 'text-emerald-600',
+    containerBg: 'bg-emerald-50/95 text-slate-800 border-emerald-200/90',
+    borderLeft: 'border-l-4 border-l-emerald-600',
+    progressBar: 'bg-emerald-600',
+    defaultTitle: 'Thao tác thành công',
   },
-  info: {
-    iconBg: "bg-blue-50 text-blue-600 border-blue-100",
-    barBg: "bg-blue-500",
-    defaultTitle: "Thông báo",
+  error: {
+    icon: AlertCircle,
+    iconColor: 'text-rose-600',
+    containerBg: 'bg-rose-50/95 text-slate-800 border-rose-200/90',
+    borderLeft: 'border-l-4 border-l-rose-600',
+    progressBar: 'bg-rose-600',
+    defaultTitle: 'Thao tác thất bại',
   },
 };
 
 /**
- * Toast Component hiển thị thông báo nổi ở góc màn hình:
- * - Không chiếm dụng không gian trong Form, giữ layout ổn định tuyệt đối
- * - Tự động biến mất sau một khoảng thời gian (default: 4000ms)
- * - Tương thích mượt mà trên cả Mobile và Desktop
+ * Từng Toast đơn lẻ với bộ đếm thời gian và thanh Progress bar độc lập hoàn toàn
+ * Thiết kế dạng Notification Banner phẳng, tối giản, thanh lịch chuẩn Enterprise SaaS:
+ * - Kích thước thanh ngang 380-420px, bo góc nhẹ 3px
+ * - Nền màu rất nhạt theo trạng thái (xanh lá nhạt / đỏ nhạt)
+ * - Vạch màu mảnh 3.5px ở cạnh trái
+ * - Icon trạng thái rõ ràng (w-5 h-5) đặt bên trái tiêu đề
+ * - Tiêu đề font semi-bold / medium rõ nét, 1 dòng duy nhất, không có mô tả phụ
+ * - Nút X đóng nhỏ gọn ở cạnh phải
+ * - Thanh progress bar mảnh 2.5px ở đáy
  */
-export const Toast: React.FC<ToastProps> = ({
-  type = "error",
-  title,
-  message,
-  onClose,
-  duration = 4000,
-}) => {
-  const [isClosing, setIsClosing] = useState(false);
+interface ToastItemProps {
+  id: string;
+  type: ToastType;
+  title: string;
+  duration: number;
+  onClose: (id: string) => void;
+}
 
-  const handleClose = () => {
+const ToastItem: React.FC<ToastItemProps> = ({ id, type, title, duration, onClose }) => {
+  const [isClosing, setIsClosing] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [progress, setProgress] = useState(100);
+
+  const remainingRef = useRef(duration);
+  const normalized = normalizeType(type);
+  const style = STYLES[normalized];
+  const IconComponent = style.icon;
+  const displayTitle = title || style.defaultTitle;
+
+  const handleClose = useCallback(() => {
     if (isClosing) return;
     setIsClosing(true);
     setTimeout(() => {
-      onClose();
-    }, 250);
-  };
+      onClose(id);
+    }, 200);
+  }, [id, isClosing, onClose]);
 
+  // Hiệu ứng trượt nhanh từ bên phải vào
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+    }, 20);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Bộ đếm thời gian độc lập cho từng Toast kèm Progress bar
   useEffect(() => {
     if (duration <= 0) return;
-    const timer = setTimeout(() => {
-      handleClose();
-    }, duration);
-    return () => clearTimeout(timer);
-  }, [duration]);
 
-  const IconComponent = ICONS[type];
-  const style = STYLES[type];
-  const displayTitle = title || style.defaultTitle;
+    const tick = 25; // Cập nhật mỗi 25ms cho chuyển động mượt mà
+    const interval = setInterval(() => {
+      if (!isPaused && !isClosing) {
+        remainingRef.current -= tick;
+        const pct = Math.max(0, (remainingRef.current / duration) * 100);
+        setProgress(pct);
+
+        if (remainingRef.current <= 0) {
+          clearInterval(interval);
+          handleClose();
+        }
+      }
+    }, tick);
+
+    return () => clearInterval(interval);
+  }, [duration, isPaused, isClosing, handleClose]);
 
   return (
     <div
       role="alert"
       aria-live="assertive"
-      className={`fixed top-4 right-4 sm:top-6 sm:right-6 z-[9999] w-[calc(100%-2rem)] max-w-sm sm:max-w-md bg-white rounded-2xl border border-slate-200/90 shadow-[0_12px_40px_rgba(0,0,0,0.12)] p-4 flex items-start gap-3.5 transition-all ${
-        isClosing ? "animate-toast-out" : "animate-toast-in"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      className={`pointer-events-auto relative flex items-start gap-3 w-[420px] sm:w-[500px] max-w-[calc(100vw-2rem)] min-h-[52px] rounded-md px-4 py-3.5 shadow-[0_4px_14px_rgba(0,0,0,0.08)] border overflow-hidden transition-all duration-200 ease-out transform ${
+        style.containerBg
+      } ${style.borderLeft} ${
+        isClosing || !isVisible ? 'translate-x-[110%] opacity-0' : 'translate-x-0 opacity-100'
       }`}
     >
-      {/* Icon trạng thái */}
-      <div
-        className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 mt-0.5 ${style.iconBg}`}
+      {/* Icon trạng thái đặt bên trái tiêu đề, kích thước rõ ràng, nổi bật */}
+      <IconComponent className={`w-5 h-5 shrink-0 mt-0.5 ${style.iconColor}`} />
+
+      {/* Tiêu đề/Thông báo hiển thị đầy đủ, không bị cắt ngắn */}
+      <span
+        className="text-[13px] sm:text-[14px] font-semibold text-slate-800 break-words flex-1 leading-snug select-none pr-1"
+        title={displayTitle}
       >
-        <IconComponent className="w-5 h-5" />
-      </div>
+        {displayTitle}
+      </span>
 
-      {/* Nội dung thông báo */}
-      <div className="flex-1 min-w-0 text-left pr-1">
-        <h4 className="text-sm font-bold text-slate-900 tracking-tight leading-tight">
-          {displayTitle}
-        </h4>
-        <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-          {message}
-        </p>
-      </div>
-
-      {/* Nút đóng */}
+      {/* Nút X đóng nhỏ, đơn giản, dễ bấm ở góc phải */}
       <button
         type="button"
         onClick={handleClose}
         aria-label="Đóng thông báo"
-        className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1 rounded-lg transition-colors cursor-pointer shrink-0"
+        className="text-slate-400 hover:text-slate-700 hover:bg-black/5 w-6 h-6 rounded-sm transition-colors cursor-pointer shrink-0 flex items-center justify-center -mr-1 -mt-0.5"
       >
         <X className="w-4 h-4" />
       </button>
+
+      {/* Progress bar đếm ngược rất mảnh 2.5px ở cạnh dưới Toast */}
+      {duration > 0 && (
+        <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-black/5">
+          <div
+            className={`h-full transition-all duration-75 ease-linear ${style.progressBar}`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 };
 
+// =============================================================================
+// QUẢN LÝ TOAST SYSTEM TOÀN HỆ THỐNG (CONCURRENT MULTI-TOAST STACK)
+// =============================================================================
+class ToastManager {
+  private toasts: ToastOptions[] = [];
+  private listeners: Array<() => void> = [];
+
+  subscribe(listener: () => void) {
+    this.listeners.push(listener);
+    return () => {
+      this.listeners = this.listeners.filter((l) => l !== listener);
+    };
+  }
+
+  private notify() {
+    this.listeners.forEach((l) => l());
+  }
+
+  getToasts(): ToastOptions[] {
+    return this.toasts;
+  }
+
+  show(options: ToastOptions) {
+    const text = (options.title || '').trim();
+    if (!text) return;
+
+    // Quy tắc 81: Không hiển thị thông báo trùng lặp đang hiển thị trên màn hình
+    const isDuplicate = this.toasts.some(
+      (t) => t.title.toLowerCase() === text.toLowerCase() && t.type === options.type
+    );
+    if (isDuplicate) return;
+
+    const item: ToastOptions = {
+      ...options,
+      title: text,
+      id: options.id || `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    };
+
+    // Toast mới luôn được đưa lên VỊ TRÍ TRÊN CÙNG, các toast cũ tự động đẩy xuống dưới
+    this.toasts = [item, ...this.toasts.slice(0, 4)];
+    this.notify();
+  }
+
+  remove(id: string) {
+    this.toasts = this.toasts.filter((t) => t.id !== id);
+    this.notify();
+  }
+}
+
+export const toastManager = new ToastManager();
+
+/**
+ * Hàm gọi Toast toàn cục tiện lợi (Hỗ trợ gọi từ bất kỳ đâu trong phần mềm)
+ * - Tự động trích xuất tiêu đề ngắn gọn
+ * - Đảm bảo chỉ có 1 dòng tiêu đề duy nhất
+ */
+export const showToast = (
+  type: ToastType,
+  title?: string,
+  message?: string,
+  duration: number = 3500
+) => {
+  // Lấy dòng tiêu đề ngắn gọn nhất từ title hoặc message
+  const text = (title || message || '').trim();
+  toastManager.show({ type, title: text, duration });
+};
+
+export const toast = {
+  success: (title: string, duration?: number) => showToast('success', title, undefined, duration),
+  error: (title: string, duration?: number) => showToast('error', title, undefined, duration),
+};
+
+/**
+ * Container hiển thị Toast toàn hệ thống:
+ * - Vị trí cố định trượt từ bên phải vào, luôn nằm bên dưới Header (top-[72px])
+ * - Z-index: z-[25] (thấp hơn Header z-30 và Dropdown Avatar z-50 -> không che Dropdown hay Header)
+ * - Khi có nhiều Toast: hiển thị đồng thời, Toast mới ở trên cùng, Toast cũ trượt xuống
+ * - Khoảng cách đồng đều gap-2.5, khi một Toast biến mất thì các Toast còn lại trượt lên
+ */
+export const ToastContainer: React.FC = () => {
+  const [toasts, setToasts] = useState<ToastOptions[]>(() => toastManager.getToasts());
+
+  useEffect(() => {
+    return toastManager.subscribe(() => {
+      setToasts([...toastManager.getToasts()]);
+    });
+  }, []);
+
+  if (toasts.length === 0) return null;
+
+  const content = (
+    <div
+      aria-live="polite"
+      className="fixed top-[72px] right-3 sm:right-6 z-[25] flex flex-col gap-2.5 pointer-events-none w-auto items-end"
+    >
+      {toasts.map((item) => (
+        <ToastItem
+          key={item.id}
+          id={item.id!}
+          type={item.type}
+          title={item.title}
+          duration={item.duration || 3500}
+          onClose={(id) => toastManager.remove(id)}
+        />
+      ))}
+    </div>
+  );
+
+  if (typeof document === 'undefined') {
+    return content;
+  }
+
+  return createPortal(content, document.body);
+};
+
+/**
+ * Component Toast tương thích ngược cho các màn hình vẫn dùng <Toast ... /> trực tiếp
+ */
+export const Toast: React.FC<ToastProps> = ({
+  type = 'error',
+  title,
+  message,
+  onClose,
+  duration = 3500,
+}) => {
+  const text = (title || message || '').trim();
+  return (
+    <ToastItem
+      id="standalone-toast"
+      type={type}
+      title={text}
+      duration={duration}
+      onClose={() => onClose?.()}
+    />
+  );
+};

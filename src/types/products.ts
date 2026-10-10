@@ -7,13 +7,32 @@ export interface ProductCategory {
   id: string;
   name: string;
   code: string;
-  level: 1 | 2;
-  parentId?: string;
+  level: number;
+  parentId?: string | null;
+  parent_id?: string | null;
+  description?: string | null;
+  productCount?: number;
+  product_count?: number;
   subCategories?: ProductCategory[];
+  children?: ProductCategory[];
 }
 
 /**
- * Thực thể Sản phẩm / SKU chuẩn hóa hệ thống LOHA SALES (SN-139 & SN-20)
+ * Đơn vị tính quy đổi của Sản phẩm (SN-23):
+ * Cho phép 1 SKU khai báo nhiều đơn vị: lon, lốc, thùng kèm hệ số quy đổi về đơn vị cơ sở
+ */
+export interface ProductUnit {
+  id?: string;
+  unitName: string;
+  conversionRate: number; // Hệ số quy đổi về đơn vị cơ sở (e.g. 1 Thùng = 24 Lon -> conversionRate = 24)
+  isBaseUnit?: boolean; // true nếu là đơn vị cơ sở
+  barcode?: string;
+  price?: number;
+  costPrice?: number;
+}
+
+/**
+ * Thực thể Sản phẩm / SKU chuẩn hóa hệ thống LOHA SALES (SN-139, SN-20 & SN-23)
  */
 export interface Product {
   id: string;
@@ -22,10 +41,11 @@ export interface Product {
   category: string;
   categoryId?: string;
   parentCategory?: string; // Nhóm hàng Cấp 1 (VD: Sữa & Chế phẩm sữa)
-  subCategory?: string;    // Nhóm hàng Cấp 2 (VD: Sữa hạt dinh dưỡng)
-  baseUnit: string;        // ĐVT cơ sở (VD: Lon, Chai, Hộp, Túi, Cái...)
-  packagingSpec?: string;  // Quy cách đóng gói (VD: 24 lon/thùng, 12 chai/lốc)
-  price: number;           // Giá bán niêm yết
+  subCategory?: string; // Nhóm hàng Cấp 2 hoặc Cấp 3 (VD: Sữa bột công thức / Sữa bột cho trẻ em)
+  baseUnit: string; // ĐVT cơ sở (VD: Lon, Chai, Hộp, Túi, Cái...)
+  packagingSpec?: string; // Quy cách đóng gói (VD: 24 lon/thùng, 12 chai/lốc)
+  units?: ProductUnit[]; // Danh sách đơn vị tính quy đổi đa cấp (SN-23)
+  price: number; // Giá bán niêm yết
   /**
    * Giá vốn nhạy cảm (Cost Price - SN-10):
    * Chỉ tồn tại khi đăng nhập bằng vai trò ADMIN hoặc SALES_MANAGER.
@@ -38,6 +58,10 @@ export interface Product {
    */
   margin?: number;
   stockQuantity: number;
+  availableStock?: number;
+  availableQuantity?: number;
+  physicalStock?: number;
+  reservedStock?: number;
   status: ProductStatus;
   imageUrl?: string;
   barcode?: string;
@@ -51,6 +75,7 @@ export interface ProductQueryParams {
   page?: number;
   limit?: number;
   search?: string;
+  categoryId?: string;
   category?: string;
   parentCategory?: string;
   subCategory?: string;
@@ -73,9 +98,11 @@ export interface CreateProductPayload {
   parentCategory?: string;
   subCategory?: string;
   baseUnit: string;
-  packagingSpec: string;
+  packagingSpec?: string;
+  units?: ProductUnit[];
   price: number;
   costPrice?: number;
+  stockQuantity?: number;
   status: ProductStatus;
   imageUrl?: string;
   barcode?: string;
@@ -84,31 +111,29 @@ export interface CreateProductPayload {
 
 export type UpdateProductPayload = Partial<CreateProductPayload>;
 
+import type { StockBalance, StockUnit } from './inventory.types';
+
 export type StockStatusType = 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
 
-export interface StockOverviewItem {
+export interface StockOverviewItem extends StockBalance {
   id: string;
-  sku: string;
-  name: string;
   category: string;
   parentCategory: string;
   subCategory?: string;
   physicalStock: number;   // 1. Tồn thực tế
   reservedStock: number;   // 2. Tồn tạm giữ
   availableStock: number;  // 3. Tồn khả thi (Có thể bán = Tồn thực tế - Tồn tạm giữ)
-  stockQuantity: number;
-  baseUnit: string;
-  units: ProductUnit[];
-  warehouse: string;
-  warehouseId?: string;
+  units: StockUnit[];
   status: StockStatusType;
   imageUrl?: string;
 }
 
 export interface AdjustStockPayload {
   productSku: string;
-  quantityChange: number;
+  quantityChange: number; // Số lượng theo đơn vị gọi hàng (unit)
+  unit?: string; // Đơn vị gọi hàng (lon, lốc, thùng...). Nếu không truyền, mặc định là đơn vị cơ sở
   reason: string;
+  referenceCode?: string; // Mã phiếu kho / chứng từ tham chiếu
   warehouseLocation?: string;
 }
 
@@ -116,10 +141,75 @@ export interface StockAdjustmentResponse {
   success: boolean;
   message: string;
   sku: string;
+  productName?: string;
+  inputQuantity?: number;
+  inputUnit?: string;
+  conversionRate?: number;
+  baseQuantityChange?: number;
+  baseUnit?: string;
   previousQuantity: number;
   newQuantity: number;
   quantityChange: number;
   reason: string;
+  referenceCode?: string;
   adjustedBy: string;
   timestamp: string;
+}
+
+export interface InventoryTransaction {
+  id: string;
+  productId: string;
+  sku: string;
+  productName: string;
+  transactionType: 'IMPORT' | 'EXPORT' | 'ADJUSTMENT' | 'TRANSFER' | 'ORDER';
+  inputQuantity: number;
+  inputUnit: string;
+  conversionRate: number; // Snapshot hệ số quy đổi bất biến tại thời điểm phát sinh
+  baseQuantityChange: number; // Đã quy về đơn vị cơ sở
+  baseUnit: string;
+  previousStock: number;
+  newStock: number;
+  reason: string;
+  referenceCode: string;
+  warehouse: string;
+  performedBy: string;
+  createdAt: string;
+}
+
+export interface ImportProductItemDto {
+  row: number;
+  sku: string;
+  name: string;
+  category: string;
+  baseUnit: string;
+  price: number;
+  costPrice: number;
+  stockQuantity: number;
+  barcode?: string;
+  description?: string;
+  status: 'NEW' | 'UPDATE';
+  errors: string[];
+  isValid: boolean;
+}
+
+export interface PreviewImportResult {
+  total: number;
+  valid: number;
+  invalid: number;
+  data: ImportProductItemDto[];
+}
+
+export interface ConfirmImportResult {
+  success: number;
+  error: number;
+  errorDetails: string[];
+}
+
+export interface ProductPriceHistory {
+  id: string;
+  productId: string;
+  oldPrice: number;
+  newPrice: number;
+  changedBy: string;
+  changedAt: string;
 }

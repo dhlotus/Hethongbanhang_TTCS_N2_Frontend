@@ -39,7 +39,7 @@ export interface CreateCategoryPayload {
   status?: CategoryStatus;
 }
 
-export type UpdateCategoryPayload = Partial<CreateCategoryPayload>;
+export interface UpdateCategoryPayload extends Partial<CreateCategoryPayload> {}
 
 export interface MoveProductsPayload {
   sourceCategoryId: string;

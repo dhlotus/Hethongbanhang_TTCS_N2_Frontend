@@ -8,10 +8,16 @@ export interface AuthUser {
   username: string;
   fullName: string;
   email: string;
+  phone?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  isIdentityLocked?: boolean;
   roles: string[];
   role?: string;
   status?: string;
   assignedWarehouse?: string;
+  avatarUrl?: string;
+  createdAt?: string | Date;
 }
 
 export interface LoginResponse {
@@ -68,13 +74,13 @@ export interface ResetPasswordResponse {
 }
 
 export const USER_ROLES = {
-  ADMIN: "ADMIN",
-  SALES_REP: "SALES_REP",
-  SALES_MANAGER: "SALES_MANAGER",
-  WAREHOUSE_KEEPER: "WAREHOUSE_KEEPER",
-  WAREHOUSE_MANAGER: "WAREHOUSE_MANAGER",
-  ACCOUNTANT: "ACCOUNTANT",
-  CUSTOMER: "CUSTOMER",
+  ADMIN: 'ADMIN',
+  SALES_REP: 'SALES_REP',
+  SALES_MANAGER: 'SALES_MANAGER',
+  WAREHOUSE_KEEPER: 'WAREHOUSE_KEEPER',
+  WAREHOUSE_MANAGER: 'WAREHOUSE_MANAGER',
+  ACCOUNTANT: 'ACCOUNTANT',
+  CUSTOMER: 'CUSTOMER',
 } as const;
 
 export type UserRoleType = (typeof USER_ROLES)[keyof typeof USER_ROLES];

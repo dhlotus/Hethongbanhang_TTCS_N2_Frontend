@@ -9,6 +9,7 @@ import type {
   StockAdjustmentResponse,
   StockOverviewItem,
 } from '../types/products';
+import type { LowStockAlert, StockBalance } from '../types/inventory.types';
 
 const DEMO_TRANSACTIONS_KEY = 'loha_inventory_transactions';
 
@@ -64,14 +65,6 @@ const getStoredDemoTransactions = (): InventoryTransaction[] => {
   return initial;
 };
 
-const saveStoredDemoTransactions = (list: InventoryTransaction[]): void => {
-  try {
-    localStorage.setItem(DEMO_TRANSACTIONS_KEY, JSON.stringify(list));
-  } catch (err) {
-    console.warn('Không thể lưu dữ liệu demo vào localStorage:', err);
-  }
-};
-
 const buildMockStockOverview = (): StockOverviewItem[] => {
   return MOCK_PRODUCTS.map((p: Product, index: number) => {
     const physicalStock = p.physicalStock !== undefined ? p.physicalStock : p.stockQuantity;
@@ -101,6 +94,10 @@ const buildMockStockOverview = (): StockOverviewItem[] => {
       reservedStock,
       availableStock,
       stockQuantity: physicalStock,
+      physicalStockQuantity: physicalStock,
+      reservedQuantity: reservedStock,
+      minStockLevel: 10,
+      isBelowMinStock: availableStock <= 10,
       baseUnit: p.baseUnit,
       units: (p.units || []).map((u: ProductUnit) => ({
         unitName: u.unitName,
@@ -142,7 +139,6 @@ export const inventoryService = {
       }
     }
 
-    // Áp dụng bộ lọc client-side cho demo / fallback
     if (params?.search) {
       const q = params.search.trim().toLowerCase();
       items = items.filter(
@@ -173,7 +169,47 @@ export const inventoryService = {
   },
 
   /**
-   * Điều chỉnh tồn kho hàng hóa (Chỉ ADMIN, WAREHOUSE_KEEPER)
+   * Khai báo mức tồn tối thiểu theo SKU tại kho (SN-183)
+   * PATCH /inventory/stock-balances/warehouses/:warehouseId/sku/:sku/min-stock
+   */
+  async updateMinStockLevel(
+    warehouseId: string,
+    sku: string,
+    minStock: number,
+  ): Promise<StockBalance> {
+    try {
+      const response = await apiClient.patch<StockBalance>(
+        `/inventory/stock-balances/warehouses/${encodeURIComponent(warehouseId)}/sku/${encodeURIComponent(sku)}/min-stock`,
+        { minStock },
+      );
+      return response.data;
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+        const serverMsg = axiosErr.response?.data?.message;
+        if (serverMsg) {
+          throw new Error(Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg);
+        }
+      }
+      throw err;
+    }
+  },
+
+  /**
+   * Danh sách SKU dưới mức tồn tối thiểu, hụt nhiều nhất lên đầu (SN-183)
+   * GET /inventory/alerts/low-stock
+   */
+  async getLowStockAlerts(warehouseId?: string): Promise<LowStockAlert[]> {
+    const response = await apiClient.get<LowStockAlert[]>('/inventory/alerts/low-stock', {
+      params: warehouseId ? { warehouseId } : undefined,
+    });
+    return response.data;
+  },
+
+  /**
+   * Điều chỉnh tồn kho hàng hóa kèm quy đổi đơn vị (SN-23 & EP-04)
+   * PUT /inventory/adjust
+   * Quyền: ADMIN, WAREHOUSE_KEEPER, WAREHOUSE_MANAGER
    */
   async adjustStock(payload: AdjustStockPayload): Promise<StockAdjustmentResponse> {
     const token = tokenStorage.getAccessToken();
@@ -204,6 +240,10 @@ export const inventoryService = {
 
     try {
       const response = await apiClient.put<StockAdjustmentResponse>('/inventory/adjust', payload);
+      try {
+        window.dispatchEvent(new CustomEvent('loha_inventory_updated', { detail: response.data }));
+        window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: response.data }));
+      } catch {}
       return response.data;
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
@@ -219,7 +259,8 @@ export const inventoryService = {
   },
 
   /**
-   * Truy vấn sổ kho và lịch sử quy đổi giao dịch (SN-23)
+   * Truy vấn sổ kho và lịch sử quy đổi giao dịch nhập/xuất (SN-23)
+   * GET /inventory/transactions?sku=...
    */
   async getTransactions(sku?: string): Promise<InventoryTransaction[]> {
     const token = tokenStorage.getAccessToken();
@@ -234,10 +275,16 @@ export const inventoryService = {
         params: sku ? { sku } : undefined,
       });
       return response.data;
-    } catch {
-      const all = getStoredDemoTransactions();
-      if (!sku) return all;
-      return all.filter((t) => t.sku.toUpperCase() === sku.trim().toUpperCase());
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+        const serverMsg = axiosErr.response?.data?.message;
+        if (serverMsg) {
+          const msg = Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg;
+          throw new Error(msg);
+        }
+      }
+      throw err;
     }
   },
 };

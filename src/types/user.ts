@@ -12,6 +12,7 @@ export interface UserManagementItem {
   roles?: (UserRoleType | string)[];
   status: UserStatusType;
   assignedWarehouse?: string;
+  avatarUrl?: string | null;
   lockReason?: string | null;
   resetCode?: string | null;
   resetCodeCreatedAt?: string | null;
@@ -25,12 +26,20 @@ export interface ResetPasswordWithCodePayload {
   newPassword: string;
 }
 
+export interface UserSummaryStats {
+  total: number;
+  active: number;
+  locked: number;
+  pendingReset: number;
+}
+
 export interface PaginatedUsersResponse {
   data: UserManagementItem[];
   total: number;
   page: number;
   limit: number;
   totalPages: number;
+  summary?: UserSummaryStats;
 }
 
 export interface CreateUserPayload {
@@ -86,4 +95,49 @@ export interface UpdateUserStatusResponse extends UserManagementItem {
   assignedCustomers?: AssignedCustomerItem[];
   assignedCustomersCount?: number;
   handoverWarning?: string;
+  summary?: UserSummaryStats;
+}
+
+// ──────────────────────────────────────────────────────────────
+// SN-147: Import tài khoản hàng loạt từ Excel
+// Mapping chính xác với ImportUsersReportDto của BE
+// ──────────────────────────────────────────────────────────────
+
+/** Kết quả xử lý từng dòng (khớp với ImportRowResult của BE) */
+export interface ImportRowResult {
+  row: number;
+  rawData: {
+    fullName?: string;
+    username?: string;
+    email?: string;
+    role?: string;
+    phone?: string;
+    assignedWarehouse?: string;
+  };
+  status: 'SUCCESS' | 'FAILED';
+  createdUser?: {
+    id: string;
+    username: string;
+    fullName: string;
+    email: string;
+    role: string;
+    status: string;
+  };
+  temporaryPassword?: string;
+  errors?: string[];
+}
+
+/** Báo cáo tổng kết (khớp với ImportUsersReportDto của BE) */
+export interface ExcelImportReport {
+  totalRows: number;
+  successCount: number;
+  failedCount: number;
+  results: ImportRowResult[];
+  summary: string;
+}
+
+export interface ExcelImportResponse {
+  statusCode: number;
+  message: string;
+  data: ExcelImportReport;
 }

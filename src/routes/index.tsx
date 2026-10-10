@@ -16,6 +16,10 @@ import { OrdersPage } from '../pages/orders-page';
 import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
 import { CustomersPage } from '../pages/customers-page';
 import { InventoryStockPage } from '../pages/inventory-stock-page';
+import { InventoryAuditsPage } from '../pages/inventory-audits-page';
+import { PortalOrdersPage } from '../pages/portal-orders-page';
+import { DashboardPage } from '../pages/dashboard-page';
+import { AgencyPortalPage } from '../pages/agency-portal-page';
 import { NotFoundPage } from '../pages/not-found-page';
 import { ForbiddenPage } from '../pages/forbidden-page';
 import { ProtectedRoute } from '../components/protected-route';
@@ -71,21 +75,13 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={["CUSTOMER"]}
+                  allowedRoles={['CUSTOMER', 'ADMIN', 'SALES_REP', 'SALES_MANAGER']}
                   moduleName="Cổng Dịch vụ & Đặt hàng Đại lý B2B"
                 />
               }
             >
-              <Route
-                path="/portal/orders"
-                element={
-                  <RoleModulePage
-                    title="Cổng Đặt hàng Đại lý"
-                    subtitle="Tìm kiếm sản phẩm, đặt hàng sỉ theo chính sách giá đại lý và kiểm tra hạn mức"
-                    requiredRole="Đại lý B2B"
-                  />
-                }
-              />
+              <Route path="/portal" element={<AgencyPortalPage />} />
+              <Route path="/portal/orders" element={<AgencyPortalPage />} />
               <Route
                 path="/portal/tracking"
                 element={
@@ -96,6 +92,9 @@ export const AppRoutes: React.FC = () => {
                   />
                 }
               />
+              {/* SN-170 & SN-174: Cổng Đơn hàng Đại lý & Theo dõi vận chuyển */}
+              <Route path="/portal/orders" element={<PortalOrdersPage />} />
+              <Route path="/portal/tracking" element={<PortalOrdersPage />} />
               <Route
                 path="/portal/debt"
                 element={
@@ -124,41 +123,28 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={["SALES_REP", "SALES_MANAGER", "ACCOUNTANT"]}
+                  allowedRoles={['SALES_REP', 'SALES_MANAGER', 'ACCOUNTANT', 'ADMIN']}
                   moduleName="Quản lý Đại lý & Hạn mức Tín dụng"
                 />
               }
             >
-              <Route
-                path="/sales/customers"
-                element={
-                  <RoleModulePage
-                    title="Quản lý Đại lý & Hạn mức"
-                    subtitle="Danh sách khách hàng đại lý, phân nhóm tín dụng, công nợ và địa bàn phân công"
-                    requiredRole="Nhân viên kinh doanh / Quản lý"
-                  />
-                }
-              />
+              <Route path="/sales/customers" element={<CustomersPage />} />
+              <Route path="/customers" element={<Navigate to="/sales/customers" replace />} />
+              <Route path="/sales/credit-limit" element={<CreditLimitPage />} />
             </Route>
 
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={["SALES_REP", "SALES_MANAGER"]}
+                  allowedRoles={['ADMIN', 'SALES_REP', 'SALES_MANAGER', 'ACCOUNTANT']}
                   moduleName="Quản lý Đơn hàng Bán buôn"
                 />
               }
             >
-              <Route
-                path="/sales/orders"
-                element={
-                  <RoleModulePage
-                    title="Tạo & Quản lý Đơn hàng"
-                    subtitle="Lập đơn hàng bán buôn, kiểm tra tồn khả dụng, áp chính sách chiết khấu và theo dõi xử lý"
-                    requiredRole="Kinh doanh & Vận hành"
-                  />
-                }
-              />
+              {/* SN-38 & SN-39: Tạo & Quản lý Đơn hàng Bán buôn (đã implement) */}
+              <Route path="/sales/orders" element={<OrdersPage />} />
+              <Route path="/system/orders" element={<Navigate to="/sales/orders" replace />} />
+              <Route path="/orders" element={<Navigate to="/sales/orders" replace />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
@@ -167,20 +153,14 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={["SALES_MANAGER"]}
+                  allowedRoles={['SALES_MANAGER']}
                   moduleName="Quản lý & Điều hành Kinh doanh"
                 />
               }
             >
               <Route
                 path="/sales/approvals"
-                element={
-                  <RoleModulePage
-                    title="Phê duyệt Đơn hàng (Duyệt đơn)"
-                    subtitle="Xét duyệt các đơn hàng vượt hạn mức công nợ, chiết khấu đặc biệt hoặc dưới giá sàn"
-                    requiredRole="Quản lý kinh doanh"
-                  />
-                }
+                element={<Navigate to="/sales/orders?status=PENDING_APPROVAL" replace />}
               />
               <Route
                 path="/reports/sales"
@@ -192,26 +172,21 @@ export const AppRoutes: React.FC = () => {
                   />
                 }
               />
-              <Route
-                path="/dashboard"
-                element={
-                  <RoleModulePage
-                    title="Dashboard Điều hành Doanh nghiệp"
-                    subtitle="Bảng chỉ số vận hành tổng thể: Doanh thu, Đơn hàng chờ xuất, Tồn kho cảnh báo và Công nợ"
-                    requiredRole="Ban Quản lý & Điều hành"
-                  />
-                }
-              />
-              <Route
-                path="/catalog/pricing"
-                element={
-                  <RoleModulePage
-                    title="Bảng giá & Chiết khấu B2B"
-                    subtitle="Cấu hình ma trận bảng giá theo cấp đại lý (Cấp 1, Cấp 2), chiết khấu bậc thang và khuyến mãi"
-                    requiredRole="Quản lý kinh doanh & Admin"
-                  />
-                }
-              />
+            </Route>
+
+            {/* ------------------------------------------------------------- */}
+            {/* PHÂN HỆ QUẢN LÝ BẢNG GIÁ & CHIẾT KHẤU B2B (SN-27)              */}
+            {/* ------------------------------------------------------------- */}
+            <Route
+              element={
+                <RoleGuard
+                  allowedRoles={['ADMIN', 'SALES_MANAGER', 'SALES_REP']}
+                  moduleName="Quản lý Bảng giá & Chiết khấu B2B"
+                />
+              }
+            >
+              <Route path="/catalog/pricing" element={<PriceListsPage />} />
+              <Route path="/pricing" element={<PriceListsPage />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
@@ -235,10 +210,30 @@ export const AppRoutes: React.FC = () => {
               <Route path="/inventory/stock" element={<InventoryStockPage />} />
             </Route>
 
+            {/* ------------------------------------------------------------- */}
+            {/* PHÂN HỆ QUẢN LÝ NHÀ CUNG CẤP (SN-25)                          */}
+            {/* ------------------------------------------------------------- */}
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={["WAREHOUSE_KEEPER", "WAREHOUSE_MANAGER"]}
+                  allowedRoles={[
+                    'ADMIN',
+                    'WAREHOUSE_MANAGER',
+                    'WAREHOUSE_KEEPER',
+                    'SALES_MANAGER',
+                    'ACCOUNTANT',
+                  ]}
+                  moduleName="Quản lý Nhà cung cấp"
+                />
+              }
+            >
+              <Route path="/inventory/suppliers" element={<SuppliersPage />} />
+            </Route>
+
+            <Route
+              element={
+                <RoleGuard
+                  allowedRoles={['WAREHOUSE_KEEPER', 'WAREHOUSE_MANAGER', 'ADMIN']}
                   moduleName="Quản lý Nhập Xuất Kho & Kiểm kê"
                 />
               }
@@ -265,20 +260,14 @@ export const AppRoutes: React.FC = () => {
               />
               <Route
                 path="/inventory/audits"
-                element={
-                  <RoleModulePage
-                    title="Kiểm kê Kho hàng"
-                    subtitle="Lập biên bản kiểm kê định kỳ, đối chiếu số liệu thực tế so với sổ sách phần mềm"
-                    requiredRole="Thủ kho / Quản lý kho"
-                  />
-                }
+                element={<InventoryAuditsPage />}
               />
             </Route>
 
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={["WAREHOUSE_KEEPER"]}
+                  allowedRoles={['WAREHOUSE_KEEPER']}
                   moduleName="Điều chuyển Kho Nội bộ"
                 />
               }
@@ -298,7 +287,7 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={["WAREHOUSE_MANAGER"]}
+                  allowedRoles={['WAREHOUSE_MANAGER']}
                   moduleName="Quản trị Kho Vận & Hạn dùng (FEFO)"
                 />
               }
@@ -341,7 +330,7 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={["ACCOUNTANT"]}
+                  allowedRoles={['ACCOUNTANT']}
                   moduleName="Nghiệp vụ Hóa đơn & Thu chi Kế toán"
                 />
               }
@@ -381,7 +370,7 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={["ACCOUNTANT", "SALES_REP"]}
+                  allowedRoles={['ACCOUNTANT', 'SALES_REP']}
                   moduleName="Theo dõi Sổ Công nợ & Tuổi nợ"
                 />
               }
@@ -403,35 +392,32 @@ export const AppRoutes: React.FC = () => {
             {/* ------------------------------------------------------------- */}
             <Route
               element={
-                <RoleGuard
-                  allowedRoles={["ADMIN"]}
-                  moduleName="Quản trị Hệ thống & Người dùng"
-                />
+                <RoleGuard allowedRoles={['ADMIN']} moduleName="Quản trị Hệ thống & Người dùng" />
               }
             >
               {/* 1. Quản lý người dùng & Phân quyền (SN-10) */}
               <Route path="/system/users" element={<UsersPage />} />
+              <Route path="/users" element={<UsersPage />} />
 
-              {/* 2. Nhật ký hệ thống */}
-              <Route
-                path="/system/audit-logs"
-                element={
-                  <RoleModulePage
-                    title="Nhật ký hệ thống (Audit Logs)"
-                    subtitle="Giám sát lịch sử đăng nhập, thay đổi dữ liệu, thao tác quản trị và cảnh báo an toàn"
-                    requiredRole="Quản trị hệ thống"
-                  />
-                }
-              />
+              {/* 2. Nhật ký hệ thống (Audit Logs - Task SN-142 / SN-19) */}
+              <Route path="/system/audit-logs" element={<AuditLogsPage />} />
+              <Route path="/audit-logs" element={<AuditLogsPage />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
             {/* PHÂN HỆ MỞ CHO MỌI NHÂN SỰ ĐÃ ĐĂNG NHẬP                       */}
             {/* ------------------------------------------------------------- */}
+            {/* Dashboard Điều hành Doanh nghiệp (truy cập dựa theo role bên trong Component) */}
+            <Route path="/dashboard" element={<DashboardPage />} />
+
             {/* Danh mục sản phẩm (giá vốn tự động ẩn trên server theo SN-10) */}
             <Route path="/catalog/products" element={<ProductsPage />} />
+            <Route path="/products" element={<ProductsPage />} />
+            {/* Quản lý Cây nhóm hàng đa cấp (Tree Structure - SN-150 / SN-22) */}
+            <Route path="/catalog/categories" element={<CategoriesPage />} />
 
             {/* Cài đặt bảo mật & Đổi mật khẩu cá nhân */}
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/profile/change-password" element={<ChangePasswordPage />} />
             <Route path="/settings/security" element={<ChangePasswordPage />} />
 
@@ -444,10 +430,13 @@ export const AppRoutes: React.FC = () => {
           </Route>
 
           {/* Alias routes tương thích ngược */}
-          <Route path="/admin/dashboard" element={<Navigate to="/system/users" replace />} />
-          <Route path="/sales/dashboard" element={<Navigate to="/sales/orders" replace />} />
-          <Route path="/warehouse/dashboard" element={<Navigate to="/inventory/stock" replace />} />
-          <Route path="/accountant/dashboard" element={<Navigate to="/accounting/invoices" replace />} />
+          <Route path="/admin/dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/sales/dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/warehouse/dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route
+            path="/accountant/dashboard"
+            element={<Navigate to="/dashboard" replace />}
+          />
           <Route path="/customer/portal" element={<Navigate to="/portal/orders" replace />} />
         </Route>
 

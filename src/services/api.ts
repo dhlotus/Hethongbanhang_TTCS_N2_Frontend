@@ -1,11 +1,7 @@
-import axios, {
-  type AxiosError,
-  type AxiosInstance,
-  type InternalAxiosRequestConfig,
-} from "axios";
-import { tokenStorage } from "../utils/token-storage";
-import { handleSessionTimeout } from "../utils/session-timeout";
-import type { TokenResponse } from "../types/auth";
+import axios, { type AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
+import { tokenStorage } from '../utils/token-storage';
+import { handleSessionTimeout } from '../utils/session-timeout';
+import type { TokenResponse } from '../types/auth';
 
 /**
  * Mở rộng cấu hình request của Axios để theo dõi trạng thái thử lại (retry)
@@ -22,7 +18,7 @@ interface QueueItem {
   reject: (reason: unknown) => void;
 }
 
-const BASE_URL = import.meta.env.VITE_API_URL || "/api";
+const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 /**
  * Axios Instance chính cho toàn bộ các API nghiệp vụ trong hệ thống
@@ -30,7 +26,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || "/api";
 export const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   },
   timeout: 10000,
 });
@@ -42,7 +38,7 @@ export const apiClient: AxiosInstance = axios.create({
 export const refreshClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   },
   timeout: 10000,
 });
@@ -79,7 +75,7 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error: unknown) => Promise.reject(error),
+  (error: unknown) => Promise.reject(error)
 );
 
 /**
@@ -97,13 +93,16 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const requestUrl = originalRequest.url || "";
+    const requestUrl = originalRequest.url || '';
     const isAuthEndpoint =
-      requestUrl.includes("/auth/login") ||
-      requestUrl.includes("/auth/refresh") ||
-      requestUrl.includes("/auth/logout");
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/refresh') ||
+      requestUrl.includes('/auth/logout') ||
+      requestUrl.includes('/auth/change-password') ||
+      requestUrl.includes('/auth/forgot-password') ||
+      requestUrl.includes('/auth/reset-password');
 
-    // Nếu endpoint xác thực bị 401, trả lỗi trực tiếp để UI xử lý (tránh lặp vô hạn)
+    // Nếu endpoint xác thực bị 401, trả lỗi trực tiếp để UI xử lý (tránh lặp vô hạn và tránh timeout nhầm)
     if (isAuthEndpoint) {
       return Promise.reject(error);
     }
@@ -111,24 +110,24 @@ apiClient.interceptors.response.use(
     // Nếu tài khoản bị Khóa (LOCKED), lập tức kích hoạt đăng xuất và hiển thị thông báo khóa
     const resData = error.response?.data as { message?: string | string[] } | undefined;
     const rawMessage = Array.isArray(resData?.message)
-      ? resData.message.join(", ")
+      ? resData.message.join(', ')
       : resData?.message;
     const isLockedError =
-      typeof rawMessage === "string" &&
-      (rawMessage.toLowerCase().includes("khóa") ||
-        rawMessage.toLowerCase().includes("khoá") ||
-        rawMessage.toLowerCase().includes("locked"));
+      typeof rawMessage === 'string' &&
+      (rawMessage.toLowerCase().includes('khóa') ||
+        rawMessage.toLowerCase().includes('khoá') ||
+        rawMessage.toLowerCase().includes('locked'));
 
     if (isLockedError) {
-      handleSessionTimeout(
-        rawMessage || "Tài khoản của bạn đã bị khóa bởi Quản trị viên.",
-      );
+      handleSessionTimeout(rawMessage || 'Tài khoản của bạn đã bị khóa bởi Quản trị viên.');
       return Promise.reject(error);
     }
 
     // Nếu request này đã retry một lần nhưng vẫn nhận lại 401 -> Phiên không còn giá trị
     if (originalRequest._retry) {
-      handleSessionTimeout();
+      if (!tokenStorage.getAccessToken()?.startsWith('demo-jwt-')) {
+        handleSessionTimeout();
+      }
       return Promise.reject(error);
     }
 
@@ -156,30 +155,30 @@ apiClient.interceptors.response.use(
     // Không tồn tại Refresh Token -> Phiên làm việc coi như đã kết thúc
     if (!currentRefreshToken) {
       isRefreshing = false;
-      handleSessionTimeout();
+      if (!tokenStorage.getAccessToken()?.startsWith('demo-jwt-')) {
+        handleSessionTimeout();
+      }
       return Promise.reject(error);
     }
 
     try {
-      let newAccessToken = "";
+      let newAccessToken = '';
       let newRefreshToken: string | undefined = undefined;
 
       // Hỗ trợ tài khoản Demo khi chạy thử nghiệm độc lập chưa bật Backend
-      if (currentRefreshToken.startsWith("demo-jwt-")) {
+      if (currentRefreshToken.startsWith('demo-jwt-')) {
         await new Promise((resolve) => setTimeout(resolve, 300));
         newAccessToken = `demo-jwt-refreshed-${Date.now()}-access-token`;
         newRefreshToken = currentRefreshToken;
       } else {
         // Gọi API backend: POST /auth/refresh
-        const refreshResponse = await refreshClient.post<TokenResponse>(
-          "/auth/refresh",
-          {
-            refreshToken: currentRefreshToken,
-          },
-        );
+        const refreshResponse = await refreshClient.post<TokenResponse>('/auth/refresh', {
+          refreshToken: currentRefreshToken,
+        });
 
-        newAccessToken = refreshResponse.data.accessToken;
-        newRefreshToken = refreshResponse.data.refreshToken;
+        const resBody = refreshResponse.data as Record<string, any>;
+        newAccessToken = resBody.accessToken || resBody.access_token || '';
+        newRefreshToken = resBody.refreshToken || resBody.refresh_token;
       }
 
       // Lưu trữ cặp token mới vào localStorage
@@ -197,10 +196,12 @@ apiClient.interceptors.response.use(
     } catch (refreshError: unknown) {
       // Refresh Token thất bại (hết hạn hoặc bị thu hồi) -> Dọn dẹp & thông báo Session Timeout
       processQueue(refreshError, null);
-      handleSessionTimeout();
+      if (!currentRefreshToken?.startsWith('demo-jwt-')) {
+        handleSessionTimeout();
+      }
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;
     }
-  },
+  }
 );

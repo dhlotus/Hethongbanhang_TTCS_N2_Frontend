@@ -1,17 +1,9 @@
-import React from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
-import {
-  ShieldAlert,
-  ArrowLeft,
-  Home,
-  Lock,
-  MapPin,
-  HelpCircle,
-  ShieldX,
-} from "lucide-react";
-import { getStoredUser, getRedirectPathByUser, getRedirectPathByRole } from "../utils/navigation";
-import { getUserContext, ROLE_CONFIGS, normalizeRole } from "../utils/navigation-config";
-import type { UserRoleType } from "../types/auth";
+import React from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { ShieldAlert, ArrowLeft, Home, Lock, MapPin, HelpCircle, ShieldX } from 'lucide-react';
+import { getStoredUser, getRedirectPathByUser, getRedirectPathByRole } from '../utils/navigation';
+import { getUserContext, ROLE_CONFIGS, normalizeRole } from '../utils/navigation-config';
+import type { UserRoleType } from '../types/auth';
 
 interface ForbiddenPageProps {
   allowedRoles?: string[];
@@ -48,18 +40,21 @@ export const ForbiddenPage: React.FC<ForbiddenPageProps> = ({
   };
 
   // Chuyển đổi danh sách role yêu cầu sang tiếng Việt thân thiện
-  const formattedAllowedRoles = allowedRoles && allowedRoles.length > 0
-    ? allowedRoles.map((r) => {
-        const normalized = normalizeRole(r) as UserRoleType;
-        return ROLE_CONFIGS[normalized]?.shortLabel || r;
-      }).join(", ")
-    : "Quản trị viên hoặc vai trò chuyên trách";
+  const formattedAllowedRoles =
+    allowedRoles && allowedRoles.length > 0
+      ? allowedRoles
+          .map((r) => {
+            const normalized = normalizeRole(r) as UserRoleType;
+            return ROLE_CONFIGS[normalized]?.shortLabel || r;
+          })
+          .join(', ')
+      : 'Quản trị viên hoặc vai trò chuyên trách';
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center p-3 sm:p-4 antialiased">
       <div className="w-full max-w-xl mx-auto text-center">
         {/* Card chứa nội dung thông báo lỗi 403 */}
-        <div className="relative overflow-hidden rounded-3xl border border-amber-200/70 bg-white p-6 sm:p-10 shadow-sm">
+        <div className="relative overflow-hidden rounded-xl border border-amber-200/70 bg-white p-6 sm:p-10 shadow-sm">
           {/* Vệt sáng trang trí màu Amber dịu mắt */}
           <div className="absolute -top-16 -right-16 h-44 w-44 rounded-full bg-amber-50/70 blur-2xl pointer-events-none" />
           <div className="absolute -bottom-16 -left-16 h-44 w-44 rounded-full bg-orange-50/50 blur-2xl pointer-events-none" />
@@ -71,7 +66,7 @@ export const ForbiddenPage: React.FC<ForbiddenPageProps> = ({
           </div>
 
           {/* 2. Biểu tượng minh họa trực quan */}
-          <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-50 to-orange-50 text-amber-600 ring-8 ring-amber-50/60 shadow-2xs">
+          <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-md bg-gradient-to-tr from-amber-50 to-orange-50 text-amber-600 ring-8 ring-amber-50/60 shadow-2xs">
             <Lock className="h-9 w-9 text-amber-600" />
             <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white ring-2 ring-white">
               <ShieldX className="h-3.5 w-3.5" />
@@ -85,8 +80,9 @@ export const ForbiddenPage: React.FC<ForbiddenPageProps> = ({
           <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-md mx-auto mb-6">
             {customMessage || (
               <>
-                Tài khoản của bạn (<strong className="text-slate-700">{context.fullName}</strong>) hiện không có quyền thao tác trên phân hệ này.
-                Vui lòng kiểm tra lại quyền hạn hoặc liên hệ Quản trị viên để được cấp quyền.
+                Tài khoản của bạn (<strong className="text-slate-700">{context.fullName}</strong>)
+                hiện không có quyền thao tác trên phân hệ này. Vui lòng kiểm tra lại quyền hạn hoặc
+                liên hệ Quản trị viên để được cấp quyền.
               </>
             )}
           </p>
@@ -112,7 +108,9 @@ export const ForbiddenPage: React.FC<ForbiddenPageProps> = ({
             {/* Vai trò hiện tại của người dùng */}
             <div className="flex items-center justify-between text-xs gap-2 pt-1 border-t border-slate-100">
               <span className="text-slate-500 font-medium">Vai trò hiện tại:</span>
-              <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${context.badgeClass}`}>
+              <span
+                className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${context.badgeClass}`}
+              >
                 {context.roleLabel}
               </span>
             </div>
@@ -123,7 +121,10 @@ export const ForbiddenPage: React.FC<ForbiddenPageProps> = ({
                 <MapPin className="h-3 w-3 text-slate-400" />
                 <span>Kho / Địa bàn:</span>
               </span>
-              <span className="font-medium text-slate-700 truncate max-w-[240px]" title={context.locationText}>
+              <span
+                className="font-medium text-slate-700 truncate max-w-[240px]"
+                title={context.locationText}
+              >
                 {context.locationText}
               </span>
             </div>

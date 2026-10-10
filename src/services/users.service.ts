@@ -3,27 +3,58 @@ import type {
   AssignedCustomersResponse,
   CreateUserPayload,
   CreateUserResponse,
+  ExcelImportResponse,
   PaginatedUsersResponse,
   UpdateUserPayload,
   UpdateUserStatusPayload,
   UpdateUserStatusResponse,
   UserManagementItem,
+  UserSummaryStats,
 } from '../types/user';
+import type { AuthUser } from '../types/auth';
+
+export interface AvatarUploadData {
+  avatarUrl: string;
+}
+
+export interface UpdateMyProfilePayload {
+  fullName: string;
+  phone: string;
+  dateOfBirth?: string;
+  gender?: string;
+  isIdentityLocked?: boolean;
+}
+
+export interface AvatarUploadResponse {
+  statusCode: number;
+  message: string;
+  data: AvatarUploadData;
+}
 
 export const usersService = {
   /**
    * Lấy danh sách người dùng phân trang, tìm kiếm và lọc vai trò/trạng thái
    */
-  async getUsers(params: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    role?: string;
-    status?: string;
-  } = {}): Promise<PaginatedUsersResponse> {
+  async getUsers(
+    params: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      role?: string;
+      status?: string;
+    } = {}
+  ): Promise<PaginatedUsersResponse> {
     const response = await apiClient.get<PaginatedUsersResponse>('/users', {
       params,
     });
+    return response.data;
+  },
+
+  /**
+   * Lấy thống kê số lượng nhân sự toàn hệ thống (không phụ thuộc phân trang limit/page)
+   */
+  async getUserSummary(): Promise<UserSummaryStats> {
+    const response = await apiClient.get<UserSummaryStats>('/users/statistics');
     return response.data;
   },
 
@@ -46,14 +77,8 @@ export const usersService = {
   /**
    * Cập nhật thông tin nhân sự
    */
-  async updateUser(
-    id: string,
-    payload: UpdateUserPayload,
-  ): Promise<UserManagementItem> {
-    const response = await apiClient.patch<UserManagementItem>(
-      `/users/${id}`,
-      payload,
-    );
+  async updateUser(id: string, payload: UpdateUserPayload): Promise<UserManagementItem> {
+    const response = await apiClient.patch<UserManagementItem>(`/users/${id}`, payload);
     return response.data;
   },
 
@@ -62,11 +87,11 @@ export const usersService = {
    */
   async updateUserStatus(
     id: string,
-    payload: UpdateUserStatusPayload,
+    payload: UpdateUserStatusPayload
   ): Promise<UpdateUserStatusResponse> {
     const response = await apiClient.patch<UpdateUserStatusResponse>(
       `/users/${id}/status`,
-      payload,
+      payload
     );
     return response.data;
   },
@@ -76,7 +101,7 @@ export const usersService = {
    */
   async getAssignedCustomers(id: string): Promise<AssignedCustomersResponse> {
     const response = await apiClient.get<AssignedCustomersResponse>(
-      `/users/${id}/assigned-customers`,
+      `/users/${id}/assigned-customers`
     );
     return response.data;
   },
@@ -84,13 +109,55 @@ export const usersService = {
   /**
    * Admin sinh mã cấp đổi mật khẩu cho nhân sự (SN-10 Extension)
    */
-  async generateResetCode(
-    id: string,
-  ): Promise<{ resetCode: string; user: UserManagementItem }> {
+  async generateResetCode(id: string): Promise<{ resetCode: string; user: UserManagementItem }> {
     const response = await apiClient.post<{
       resetCode: string;
       user: UserManagementItem;
     }>(`/users/${id}/reset-code`);
+    return response.data;
+  },
+
+  /**
+   * Lấy thông tin profile của chính mình (SN-18)
+   */
+  async getMe(): Promise<AuthUser> {
+    const response = await apiClient.get<AuthUser>('/users/me');
+    return response.data;
+  },
+
+  /**
+   * Cập nhật họ tên và số điện thoại của chính mình (SN-17)
+   */
+  async updateMyProfile(payload: UpdateMyProfilePayload): Promise<AuthUser> {
+    const response = await apiClient.patch<AuthUser>('/users/me', payload);
+    return response.data;
+  },
+
+  /**
+   * Upload ảnh đại diện cá nhân (SN-144 / SN-145)
+   * Gọi POST /users/me/avatar với multipart/form-data
+   * Server trả về AvatarUploadResponse chứa avatarUrl mới
+   */
+  async uploadAvatar(file: File): Promise<AvatarUploadResponse> {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const response = await apiClient.post<AvatarUploadResponse>('/users/me/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  /**
+   * Import tài khoản nhân sự hàng loạt từ file Excel (SN-147)
+   * Gọi POST /users/import-excel với multipart/form-data chứa trường “file”
+   * Server validate từng dòng, tạo tài khoản và trả về báo cáo tổng kết
+   */
+  async importUsersFromExcel(file: File): Promise<ExcelImportResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<ExcelImportResponse>('/users/import-excel', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   },
 };

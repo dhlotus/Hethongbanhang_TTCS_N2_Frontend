@@ -41,7 +41,7 @@ export interface CreatePriceListPayload {
   items?: Omit<PriceListItem, 'id' | 'priceListId'>[];
 }
 
-export type UpdatePriceListPayload = Partial<CreatePriceListPayload>;
+export interface UpdatePriceListPayload extends Partial<CreatePriceListPayload> {}
 
 export interface ClonePriceListPayload {
   code?: string;

@@ -1,19 +1,16 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Mail, ArrowLeft, CheckCircle2, ShieldAlert, KeyRound } from "lucide-react";
-import { Button } from "../components/button";
-import { Input } from "../components/input";
-import { authService } from "../services/auth.service";
-import {
-  forgotPasswordSchema,
-  type ForgotPasswordFormData,
-} from "../utils/validation";
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Mail, ArrowLeft, CheckCircle2, ShieldAlert, KeyRound } from 'lucide-react';
+import { Button } from '../components/button';
+import { Input } from '../components/input';
+import { authService } from '../services/auth.service';
+import { forgotPasswordSchema, type ForgotPasswordFormData } from '../utils/validation';
 
 export const ForgotPasswordPage: React.FC = () => {
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
-  const [submittedEmail, setSubmittedEmail] = useState<string>("");
+  const [submittedEmail, setSubmittedEmail] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const {
@@ -24,9 +21,9 @@ export const ForgotPasswordPage: React.FC = () => {
   } = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: {
-      email: "",
+      email: '',
     },
-    mode: "onTouched",
+    mode: 'onTouched',
   });
 
   const onSubmit = async (data: ForgotPasswordFormData) => {
@@ -38,15 +35,13 @@ export const ForgotPasswordPage: React.FC = () => {
       setIsSuccess(true);
     } catch (error: unknown) {
       const err = error as Error;
-      setErrorMessage(
-        err.message || "Đã xảy ra sự cố khi gửi yêu cầu. Vui lòng thử lại sau!",
-      );
+      setErrorMessage(err.message || 'Đã xảy ra sự cố khi gửi yêu cầu. Vui lòng thử lại sau!');
     }
   };
 
   const handleResetForm = () => {
     setIsSuccess(false);
-    setSubmittedEmail("");
+    setSubmittedEmail('');
     setErrorMessage(null);
     reset();
   };
@@ -55,10 +50,10 @@ export const ForgotPasswordPage: React.FC = () => {
     <div className="w-full min-h-screen flex items-center justify-center p-4 sm:p-6 bg-slate-50 text-slate-800 antialiased">
       <div className="w-full max-w-md">
         {/* Card chứa form */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm sm:shadow-md p-6 sm:p-8 transition-all">
+        <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm sm:shadow-md p-6 sm:p-8 transition-all">
           {/* Header Icon */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 mb-3 shadow-2xs">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-md bg-blue-50 border border-blue-100 text-blue-600 mb-3 shadow-2xs">
               {isSuccess ? (
                 <CheckCircle2 className="w-6 h-6 text-emerald-600" />
               ) : (
@@ -67,17 +62,17 @@ export const ForgotPasswordPage: React.FC = () => {
             </div>
 
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              {isSuccess ? "Kiểm tra hộp thư của bạn" : "Quên mật khẩu?"}
+              {isSuccess ? 'Kiểm tra hộp thư của bạn' : 'Quên mật khẩu?'}
             </h1>
 
             <p className="text-slate-500 text-xs sm:text-sm mt-1.5 leading-relaxed">
               {isSuccess ? (
                 <>
-                  Chúng tôi đã gửi hướng dẫn đặt lại mật khẩu đến địa chỉ{" "}
+                  Chúng tôi đã gửi hướng dẫn đặt lại mật khẩu đến địa chỉ{' '}
                   <span className="font-semibold text-slate-800">{submittedEmail}</span>.
                 </>
               ) : (
-                "Nhập địa chỉ email liên kết với tài khoản của bạn để nhận liên kết đặt lại mật khẩu an toàn."
+                'Nhập địa chỉ email liên kết với tài khoản của bạn để nhận liên kết đặt lại mật khẩu an toàn.'
               )}
             </p>
           </div>
@@ -99,9 +94,16 @@ export const ForgotPasswordPage: React.FC = () => {
                   <span>Yêu cầu đã được tiếp nhận</span>
                 </div>
                 <ul className="list-disc pl-5 space-y-1 text-slate-600 text-xs">
-                  <li>Liên kết có hiệu lực trong vòng <strong>30 phút</strong>.</li>
-                  <li>Liên kết chỉ có thể sử dụng được <strong>một lần duy nhất</strong>.</li>
-                  <li>Nếu không thấy trong Hộp thư đến, vui lòng kiểm tra thư mục <strong>Spam</strong> hoặc <strong>Rác</strong>.</li>
+                  <li>
+                    Liên kết có hiệu lực trong vòng <strong>30 phút</strong>.
+                  </li>
+                  <li>
+                    Liên kết chỉ có thể sử dụng được <strong>một lần duy nhất</strong>.
+                  </li>
+                  <li>
+                    Nếu không thấy trong Hộp thư đến, vui lòng kiểm tra thư mục{' '}
+                    <strong>Spam</strong> hoặc <strong>Rác</strong>.
+                  </li>
                 </ul>
               </div>
 
@@ -136,7 +138,7 @@ export const ForgotPasswordPage: React.FC = () => {
                 disabled={isSubmitting}
                 leftIcon={<Mail className="w-4 h-4" />}
                 error={errors.email?.message}
-                {...register("email")}
+                {...register('email')}
               />
 
               <Button
