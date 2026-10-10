@@ -171,6 +171,7 @@ export const AppRoutes: React.FC = () => {
               }
             >
               <Route path="/catalog/pricing" element={<PriceListsPage />} />
+              <Route path="/pricing" element={<PriceListsPage />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
