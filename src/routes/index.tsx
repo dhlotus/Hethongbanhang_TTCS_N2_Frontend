@@ -393,6 +393,7 @@ export const AppRoutes: React.FC = () => {
 
               {/* 2. Nhật ký hệ thống (Audit Logs - Task SN-142 / SN-19) */}
               <Route path="/system/audit-logs" element={<AuditLogsPage />} />
+              <Route path="/audit-logs" element={<AuditLogsPage />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}

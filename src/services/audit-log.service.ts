@@ -386,4 +386,26 @@ export const auditLogService = {
       };
     }
   },
+
+  /**
+   * Lấy chi tiết một bản ghi nhật ký kiểm toán theo ID từ máy chủ (GET /api/audit-logs/:id)
+   */
+  async getAuditLogById(id: string): Promise<AuditLogItem | null> {
+    if (!id) return null;
+    try {
+      const res = await apiClient.get<unknown>(`/audit-logs/${id}`);
+      if (res.data && typeof res.data === 'object') {
+        const item =
+          'data' in res.data &&
+          typeof (res.data as Record<string, unknown>).data === 'object' &&
+          (res.data as Record<string, unknown>).data !== null
+            ? (res.data as Record<string, unknown>).data
+            : res.data;
+        return normalizeAuditLog(item as Record<string, unknown>);
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  },
 };
