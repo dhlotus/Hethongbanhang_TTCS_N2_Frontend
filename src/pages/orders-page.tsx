@@ -324,6 +324,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const [productQuery, setProductQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
   const [lines, setLines] = useState<OrderLine[]>([]);
   const linesRef = useRef<OrderLine[]>([]);
   linesRef.current = lines;
@@ -635,9 +636,13 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(async () => {
       setIsSearching(true);
+      setSearchError('');
       try {
-        const results = await ordersService.searchProducts(productQuery);
+        const results = await ordersService.searchProducts(productQuery, 100, selectedCustomer?.id);
         setSearchResults(results);
+      } catch {
+        setSearchResults([]);
+        setSearchError('Không thể tải tồn kho của đại lý. Vui lòng thử lại.');
       } finally {
         setIsSearching(false);
       }
@@ -645,7 +650,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
-  }, [productQuery, step]);
+  }, [productQuery, step, selectedCustomer?.id]);
 
   // Tự động truy vấn thông tin công nợ thời gian thực khi chọn đại lý (Task SN-41)
   useEffect(() => {
@@ -1471,6 +1476,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 </div>
 
                 {/* Kết quả tìm kiếm */}
+                {searchError && <p className="text-sm text-rose-600">{searchError}</p>}
                 {searchResults.length > 0 && (
                   <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm max-h-56 overflow-y-auto">
                     {searchResults.map((p) => {

@@ -58,4 +58,10 @@ export const warehouseService = {
     );
     return response.data;
   },
+  async getAgencyDefault(agencyId: string): Promise<AgencyWarehouseAssignment> {
+    const response = await apiClient.get<AgencyWarehouseAssignment>(
+      `/warehouses/agencies/${encodeURIComponent(agencyId)}/default`
+    );
+    return response.data;
+  },
 };
