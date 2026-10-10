@@ -1,6 +1,7 @@
 import { apiClient } from './api';
 import type {
   AgencyWarehouseAssignment,
+  AgencyWarehouseDetail,
   CreateLocationPayload,
   CreateWarehousePayload,
   Warehouse,
@@ -58,8 +59,8 @@ export const warehouseService = {
     );
     return response.data;
   },
-  async getAgencyDefault(agencyId: string): Promise<AgencyWarehouseAssignment> {
-    const response = await apiClient.get<AgencyWarehouseAssignment>(
+  async getAgencyDefault(agencyId: string): Promise<AgencyWarehouseDetail> {
+    const response = await apiClient.get<AgencyWarehouseDetail>(
       `/warehouses/agencies/${encodeURIComponent(agencyId)}/default`
     );
     return response.data;

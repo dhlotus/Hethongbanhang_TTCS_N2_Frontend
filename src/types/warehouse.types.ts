@@ -47,3 +47,8 @@ export interface AgencyWarehouseAssignment {
   agencyId: string;
   warehouseId: string;
 }
+
+export interface AgencyWarehouseDetail extends AgencyWarehouseAssignment {
+  warehouseCode: string;
+  warehouseName: string;
+}
