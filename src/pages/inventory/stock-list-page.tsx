@@ -6,11 +6,12 @@ import {
   AlertTriangle,
   Search,
   RefreshCw,
-  ExternalLink,
   X,
   Warehouse,
   ShieldCheck,
   Info,
+  FileText,
+  XCircle,
 } from 'lucide-react';
 import { inventoryService } from '../../services/inventory.service';
 import { ordersService } from '../../services/orders.service';
@@ -46,15 +47,68 @@ export const StockListPage: React.FC = () => {
     fetchStocks();
   }, [fetchStocks]);
 
+  // Hàm hiển thị badge tình trạng đơn hàng chuẩn hệ thống
+  const renderOrderStatusBadge = (orderStatus?: string) => {
+    const status = (orderStatus || 'APPROVED').toUpperCase();
+    switch (status) {
+      case 'DRAFT':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
+            <FileText className="h-2.5 w-2.5 text-slate-500" />
+            Nháp
+          </span>
+        );
+      case 'PENDING':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+            <Clock className="h-2.5 w-2.5 text-amber-500" />
+            Chờ duyệt
+          </span>
+        );
+      case 'PENDING_APPROVAL':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 ring-1 ring-amber-300">
+            <AlertTriangle className="h-2.5 w-2.5 text-amber-600" />
+            Cần duyệt hạn mức
+          </span>
+        );
+      case 'PROCESSING':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700 ring-1 ring-purple-200">
+            <Package className="h-2.5 w-2.5 text-purple-600" />
+            Đang soạn
+          </span>
+        );
+      case 'DELIVERED':
+      case 'COMPLETED':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-200">
+            <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600" />
+            Giao thành công
+          </span>
+        );
+      case 'CANCELLED':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+            <XCircle className="h-2.5 w-2.5 text-rose-500" />
+            Đã hủy
+          </span>
+        );
+      case 'APPROVED':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 ring-1 ring-indigo-200">
+            <CheckCircle2 className="h-2.5 w-2.5 text-indigo-600" />
+            Đã duyệt
+          </span>
+        );
+    }
+  };
+
   // Quét danh sách các đơn hàng APPROVED đang giữ chỗ cho sản phẩm được chọn
   useEffect(() => {
     if (!selectedStockForModal) {
       setModalReservations([]);
-      return;
-    }
-
-    if (selectedStockForModal.activeReservations && selectedStockForModal.activeReservations.length > 0) {
-      setModalReservations(selectedStockForModal.activeReservations);
       return;
     }
 
@@ -72,35 +126,57 @@ export const StockListPage: React.FC = () => {
       return false;
     };
 
+    const initialList: StockReservation[] = (selectedStockForModal.activeReservations || []).map((r) => ({
+      ...r,
+      status: (r.status || 'ACTIVE') as StockReservation['status'],
+      orderStatus: r.orderStatus || 'APPROVED',
+    }));
+
     ordersService
       .getOrders({ status: 'APPROVED', limit: 50 })
       .then((res) => {
         const approvedOrders = res.data || [];
-        const reservations: StockReservation[] = [];
+        const mergedList: StockReservation[] = [...initialList];
 
         for (const order of approvedOrders) {
           for (const line of order.lines || []) {
             if (isMatch(line.productSku, line.productId)) {
               const qty = line.baseQuantity ?? Math.round((line.quantity || 0) * (line.conversionRate || 1));
-              reservations.push({
-                id: `res-${order.id || order.orderCode}-${line.productSku || selectedStockForModal.sku}`,
-                orderId: order.id || order.orderCode || 'DH-ORDER',
-                orderCode: order.orderCode || order.id,
-                productId: line.productId || selectedStockForModal.sku,
-                productSku: line.productSku || selectedStockForModal.sku,
-                productName: line.productName || selectedStockForModal.name,
-                customerName: order.customerName,
-                quantity: qty,
-                status: 'ACTIVE',
-                expiredAt: order.reservedUntil || new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
-                createdAt: order.createdAt || new Date().toISOString(),
-              });
+              const existsIndex = mergedList.findIndex(
+                (existing) =>
+                  existing.orderId === order.id ||
+                  existing.orderCode === order.orderCode ||
+                  (order.orderCode && existing.orderId === order.orderCode),
+              );
+
+              if (existsIndex >= 0) {
+                mergedList[existsIndex] = {
+                  ...mergedList[existsIndex],
+                  customerName: mergedList[existsIndex].customerName || order.customerName,
+                  orderStatus: mergedList[existsIndex].orderStatus || order.status || 'APPROVED',
+                };
+              } else {
+                mergedList.push({
+                  id: `res-${order.id || order.orderCode}-${line.productSku || selectedStockForModal.sku}`,
+                  orderId: order.id || order.orderCode || 'DH-ORDER',
+                  orderCode: order.orderCode || order.id,
+                  productId: line.productId || selectedStockForModal.sku,
+                  productSku: line.productSku || selectedStockForModal.sku,
+                  productName: line.productName || selectedStockForModal.name,
+                  customerName: order.customerName,
+                  orderStatus: order.status || 'APPROVED',
+                  quantity: qty,
+                  status: 'ACTIVE',
+                  expiredAt: order.reservedUntil || new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+                  createdAt: order.createdAt || new Date().toISOString(),
+                });
+              }
             }
           }
         }
 
-        if (reservations.length > 0) {
-          setModalReservations(reservations);
+        if (mergedList.length > 0) {
+          setModalReservations(mergedList);
         } else if (selectedStockForModal.reservedQuantity > 0) {
           try {
             const raw = localStorage.getItem('loha_demo_orders');
@@ -111,7 +187,7 @@ export const StockListPage: React.FC = () => {
                   for (const l of ord.lines || []) {
                     if (isMatch(l.productSku, l.productId)) {
                       const qty = l.baseQuantity ?? Math.round((l.quantity || 0) * (l.conversionRate || 1));
-                      reservations.push({
+                      mergedList.push({
                         id: `res-demo-${ord.id}-${l.productSku || selectedStockForModal.sku}`,
                         orderId: ord.id,
                         orderCode: ord.orderCode || ord.id,
@@ -119,6 +195,7 @@ export const StockListPage: React.FC = () => {
                         productSku: l.productSku || selectedStockForModal.sku,
                         productName: l.productName || selectedStockForModal.name,
                         customerName: ord.customerName,
+                        orderStatus: ord.status || 'APPROVED',
                         quantity: qty,
                         status: 'ACTIVE',
                         expiredAt: ord.reservedUntil || new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
@@ -131,8 +208,8 @@ export const StockListPage: React.FC = () => {
             }
           } catch {}
 
-          if (reservations.length > 0) {
-            setModalReservations(reservations);
+          if (mergedList.length > 0) {
+            setModalReservations(mergedList);
           } else {
             setModalReservations([
               {
@@ -140,6 +217,8 @@ export const StockListPage: React.FC = () => {
                 orderId: 'Đơn hàng gần nhất',
                 orderCode: 'Đơn hàng vừa duyệt (Chờ xuất)',
                 productId: selectedStockForModal.sku,
+                customerName: 'Khách hàng đại lý',
+                orderStatus: 'APPROVED',
                 quantity: selectedStockForModal.reservedQuantity,
                 status: 'ACTIVE',
                 expiredAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
@@ -152,7 +231,7 @@ export const StockListPage: React.FC = () => {
         }
       })
       .catch(() => {
-        setModalReservations([]);
+        setModalReservations(initialList);
       })
       .finally(() => {
         setLoadingModalRes(false);
@@ -615,8 +694,7 @@ export const StockListPage: React.FC = () => {
                       {modalReservations.map((res: StockReservation) => (
                         <tr key={res.id} className="hover:bg-amber-50/40 transition">
                           <td className="px-3.5 py-3 font-mono font-semibold text-slate-900">
-                            <span className="inline-flex items-center gap-1.5 text-blue-600">
-                              <ExternalLink className="h-3.5 w-3.5 text-blue-500" />
+                            <span className="font-semibold text-blue-600">
                               {res.orderCode || res.orderId}
                             </span>
                           </td>
@@ -635,10 +713,7 @@ export const StockListPage: React.FC = () => {
                             </div>
                           </td>
                           <td className="px-3.5 py-3 text-center">
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                              <CheckCircle2 className="h-2.5 w-2.5" />
-                              ĐANG GIỮ
-                            </span>
+                            {renderOrderStatusBadge(res.orderStatus)}
                           </td>
                         </tr>
                       ))}
