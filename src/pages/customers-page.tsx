@@ -380,36 +380,47 @@ export const CustomersPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 py-4 pb-24">
-      {/* ── HEADER CTA ── */}
-      <div className="flex items-center justify-end gap-2.5 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
-        <button
-          type="button"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
-          title="Đồng bộ danh sách"
-        >
-          <RefreshCw
-            className={`w-4 h-4 ${refreshing ? 'animate-spin text-[var(--color-primary)]' : 'text-slate-500'}`}
-          />
-          <span className="hidden sm:inline">Làm mới</span>
-        </button>
+    <div className="space-y-6">
+      {/* ── HEADER GIỐNG TRANG ĐƠN HÀNG BÁN BUÔN ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <Building2 className="w-6 h-6 text-blue-600" />
+            Đại lý & Hạn mức nợ
+          </h1>
+          <p className="text-sm text-slate-500 mt-2">
+            Quản lý danh sách khách hàng đại lý, theo dõi hạn mức tín dụng và công nợ
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+            title="Đồng bộ danh sách"
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-600' : 'text-slate-500'}`}
+            />
+            <span>Làm mới</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-white bg-[var(--color-primary)] hover:opacity-90 rounded-lg shadow-sm transition-all active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Thêm đại lý mới</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-xs cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Thêm đại lý mới</span>
+          </button>
+        </div>
       </div>
 
       {/* ── THỐNG KÊ NHANH KPI (CARD-BASED UI) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-[var(--color-primary)] shrink-0">
+        <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-blue-600 shrink-0">
             <Building2 className="w-5 h-5" />
           </div>
           <div className="min-w-0">
@@ -418,8 +429,8 @@ export const CustomersPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+        <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div className="min-w-0">
@@ -428,8 +439,8 @@ export const CustomersPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+        <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
             <CreditCard className="w-5 h-5" />
           </div>
           <div className="min-w-0 truncate">
@@ -440,8 +451,8 @@ export const CustomersPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+        <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
             <AlertCircle className="w-5 h-5" />
           </div>
           <div className="min-w-0 truncate">
@@ -454,7 +465,7 @@ export const CustomersPage: React.FC = () => {
       </div>
 
       {/* ── THANH TÌM KIẾM & BỘ LỌC ĐA TIÊU CHÍ (SN-37) ── */}
-      <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col lg:flex-row gap-3 items-center justify-between">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col lg:flex-row gap-3 items-center justify-between">
         <div className="relative w-full lg:max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -462,12 +473,12 @@ export const CustomersPage: React.FC = () => {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Tìm theo tên đại lý, mã hoặc số điện thoại..."
-            className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-slate-50/50 hover:bg-white transition-colors"
+            className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white placeholder-slate-400"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
             <Filter className="w-3.5 h-3.5 text-slate-400" />
             <span className="hidden md:inline">Lọc:</span>
           </div>
@@ -476,7 +487,7 @@ export const CustomersPage: React.FC = () => {
             value={selectedRegion}
             onChange={(e) => setSelectedRegion(e.target.value)}
             aria-label="Lọc theo khu vực"
-            className="text-xs sm:text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:border-[var(--color-primary)]"
+            className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
             <option value="ALL">Tất cả khu vực</option>
             <option value="Miền Nam">Miền Nam</option>
@@ -488,7 +499,7 @@ export const CustomersPage: React.FC = () => {
             value={selectedGroup}
             onChange={(e) => setSelectedGroup(e.target.value)}
             aria-label="Lọc theo nhóm đại lý"
-            className="text-xs sm:text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:border-[var(--color-primary)]"
+            className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
             <option value="ALL">Tất cả phân nhóm</option>
             <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
@@ -501,7 +512,7 @@ export const CustomersPage: React.FC = () => {
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
             aria-label="Lọc theo trạng thái hoạt động"
-            className="text-xs sm:text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 focus:outline-none focus:border-[var(--color-primary)]"
+            className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
             <option value="ALL">Tất cả trạng thái</option>
             <option value="ACTIVE">Đang hoạt động</option>
@@ -512,10 +523,10 @@ export const CustomersPage: React.FC = () => {
       </div>
 
       {/* ── BẢNG DANH SÁCH ĐẠI LÝ ── */}
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
         {loading ? (
           <div className="py-16 text-center text-slate-400">
-            <RefreshCw className="w-7 h-7 animate-spin mx-auto mb-2 text-[var(--color-primary)]" />
+            <RefreshCw className="w-7 h-7 animate-spin mx-auto mb-2 text-blue-600" />
             <p className="text-sm font-medium">Đang tải danh sách đại lý...</p>
           </div>
         ) : filteredCustomers.length === 0 ? (
@@ -530,33 +541,34 @@ export const CustomersPage: React.FC = () => {
                 setSelectedStatus('ALL');
                 setSelectedRegion('ALL');
               }}
-              className="text-xs text-[var(--color-primary)] hover:underline font-medium"
+              className="text-xs text-blue-600 hover:underline font-medium cursor-pointer"
             >
               Xóa bộ lọc
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs sm:text-sm text-slate-600">
-              <thead className="bg-slate-50/80 text-slate-600 text-xs uppercase font-semibold border-b border-slate-100">
-                <tr>
-                  <th className="px-4 py-3.5">Mã & Tên Đại Lý</th>
-                  <th className="px-4 py-3.5">Liên Hệ</th>
-                  <th className="px-4 py-3.5">Phân Nhóm & Phụ Trách</th>
-                  <th className="px-4 py-3.5">Hạn Mức & Dư Nợ</th>
-                  <th className="px-4 py-3.5">Điểm Giao Hàng (SN-31)</th>
-                  <th className="px-4 py-3.5">Trạng Thái</th>
-                  <th className="px-4 py-3.5 text-right">Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm text-slate-600">
+                <thead className="bg-slate-50/70 text-slate-500 text-xs uppercase font-semibold border-b border-slate-100 tracking-wide">
+                  <tr>
+                    <th className="px-4 py-3.5">Mã & Tên Đại Lý</th>
+                    <th className="px-4 py-3.5">Liên Hệ</th>
+                    <th className="px-4 py-3.5">Phân Nhóm & Phụ Trách</th>
+                    <th className="px-4 py-3.5">Hạn Mức & Dư Nợ</th>
+                    <th className="px-4 py-3.5">Điểm Giao Hàng (SN-31)</th>
+                    <th className="px-4 py-3.5">Trạng Thái</th>
+                    <th className="px-4 py-3.5 text-right">Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
                 {paginatedCustomers.map((customer) => {
                   const debtPercent =
                     customer.creditLimit > 0
                       ? Math.min(
-                          100,
-                          Math.round((customer.currentDebt / customer.creditLimit) * 100)
-                        )
+                        100,
+                        Math.round((customer.currentDebt / customer.creditLimit) * 100)
+                      )
                       : 0;
 
                   return (
@@ -597,11 +609,10 @@ export const CustomersPage: React.FC = () => {
                       <td className="px-4 py-3.5">
                         <div>
                           <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              customer.customerGroup === 'AGENT_LEVEL_1'
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${customer.customerGroup === 'AGENT_LEVEL_1'
                                 ? 'bg-indigo-50 text-[var(--color-primary)] border border-indigo-100'
                                 : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                            }`}
+                              }`}
                           >
                             {getGroupLabel(customer.customerGroup)}
                           </span>
@@ -619,22 +630,20 @@ export const CustomersPage: React.FC = () => {
                         <div className="flex justify-between items-center text-xs mb-1">
                           <span className="text-slate-500">Dư nợ:</span>
                           <span
-                            className={`font-semibold ${
-                              debtPercent > 80 ? 'text-rose-600 font-bold' : 'text-slate-800'
-                            }`}
+                            className={`font-semibold ${debtPercent > 80 ? 'text-rose-600 font-bold' : 'text-slate-800'
+                              }`}
                           >
                             {formatVnd(customer.currentDebt || 0)}
                           </span>
                         </div>
                         <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all ${
-                              debtPercent > 80
+                            className={`h-full rounded-full transition-all ${debtPercent > 80
                                 ? 'bg-rose-500'
                                 : debtPercent > 50
                                   ? 'bg-amber-500'
                                   : 'bg-[var(--color-primary)]'
-                            }`}
+                              }`}
                             style={{ width: `${debtPercent}%` }}
                           />
                         </div>
@@ -720,11 +729,10 @@ export const CustomersPage: React.FC = () => {
                             onClick={() => {
                               navigate(`/sales/orders?customerId=${customer.id}`);
                             }}
-                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                              customer.status === 'LOCKED'
+                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-all ${customer.status === 'LOCKED'
                                 ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400'
                                 : 'text-[var(--color-primary)] bg-indigo-50 hover:bg-[var(--color-primary)] hover:text-white'
-                            }`}
+                              }`}
                             title={
                               customer.status === 'LOCKED'
                                 ? 'Đại lý đang bị khóa giao dịch, không thể lên đơn!'
@@ -742,29 +750,28 @@ export const CustomersPage: React.FC = () => {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
 
-      {/* ── THANH PHÂN TRANG NỔI TÁCH RỜI (STICKY FLOATING BOTTOM) ── */}
-      {!loading && filteredCustomers.length > 0 && (
-        <div className="sticky bottom-4 z-30 transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
-          <Pagination
-            variant="floating"
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={totalItems}
-            pageSize={pageSize}
-            pageSizeOptions={[10, 20, 50]}
-            itemLabel="đại lý"
-            showFirstLast={true}
-            onPageChange={(page) => setCurrentPage(page)}
-            onPageSizeChange={(newSize) => {
-              setPageSize(newSize);
-              setCurrentPage(1);
-            }}
-          />
-        </div>
+          {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN BẢNG (KHÔNG ĐÈ NỘI DUNG) ── */}
+          {filteredCustomers.length > 0 && (
+            <Pagination
+              variant="default"
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              pageSizeOptions={[10, 20, 50]}
+              itemLabel="đại lý"
+              showFirstLast={true}
+              onPageChange={(page) => setCurrentPage(page)}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+            />
+          )}
+        </>
       )}
+    </div>
 
       {/* ── MODAL THÊM ĐẠI LÝ MỚI (CỐ ĐỊNH GIỮA MÀN HÌNH - KHÔNG TRƯỢT) ── */}
       {isCreateModalOpen &&
