@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo } from "react";
 import {
   Calendar,
   Search,
@@ -10,11 +10,14 @@ import {
   ArrowRight,
   Filter,
   AlertCircle,
-  Tag,
-} from 'lucide-react';
-import { DateInput, formatVietnameseDate } from '../date-input';
-import type { AuditEntityType, AuditActionType, AuditLogQueryParams } from '../../types/audit-log';
-import { AUDIT_ENTITIES } from '../../services/audit-log.service';
+} from "lucide-react";
+import { DateInput, formatVietnameseDate } from "../date-input";
+import type {
+  AuditEntityType,
+  AuditActionType,
+  AuditLogQueryParams,
+} from "../../types/audit-log";
+import { AUDIT_ENTITIES } from "../../services/audit-log.service";
 
 export interface AuditFilterBarProps {
   filters: AuditLogQueryParams;
@@ -33,38 +36,12 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
   onRefresh,
   loading = false,
 }) => {
-  // Local state cho ô tìm kiếm để người dùng gõ mượt mà (60fps) không bị giật lag
-  const [searchInput, setSearchInput] = useState<string>(filters.searchUser || '');
-  const isFirstMount = useRef(true);
-
-  // Đồng bộ khi filters.searchUser thay đổi từ bên ngoài (URL popstate, reset)
-  useEffect(() => {
-    setSearchInput(filters.searchUser || '');
-  }, [filters.searchUser]);
-
-  // Debounce tìm kiếm 400ms trước khi kích hoạt cập nhật URL và gọi API
-  useEffect(() => {
-    if (isFirstMount.current) {
-      isFirstMount.current = false;
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      const trimmed = searchInput.trim();
-      if (trimmed !== (filters.searchUser || '').trim()) {
-        onFilterChange({ searchUser: trimmed, page: 1 });
-      }
-    }, 400);
-
-    return () => clearTimeout(timer);
-  }, [searchInput]);
-
   const hasActiveFilters = Boolean(
     filters.startDate ||
-    filters.endDate ||
-    filters.searchUser ||
-    (filters.entity && filters.entity !== 'ALL') ||
-    (filters.action && filters.action !== 'ALL')
+      filters.endDate ||
+      filters.searchUser ||
+      (filters.entity && filters.entity !== "ALL") ||
+      (filters.action && filters.action !== "ALL")
   );
 
   // Kiểm tra logic khoảng ngày hợp lệ
@@ -75,18 +52,18 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
   // Helper format YYYY-MM-DD theo giờ địa phương
   const formatLocalDate = (d: Date) => {
     const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
 
   // Xác định preset ngày hiện tại đang được kích hoạt
   const activePreset = useMemo(() => {
-    if (!filters.startDate && !filters.endDate) return 'all';
+    if (!filters.startDate && !filters.endDate) return "all";
 
     const todayStr = formatLocalDate(new Date());
     if (filters.startDate === todayStr && filters.endDate === todayStr) {
-      return 'today';
+      return "today";
     }
 
     const end7 = new Date();
@@ -96,7 +73,7 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
       filters.startDate === formatLocalDate(start7) &&
       filters.endDate === formatLocalDate(end7)
     ) {
-      return '7days';
+      return "7days";
     }
 
     const end30 = new Date();
@@ -106,25 +83,25 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
       filters.startDate === formatLocalDate(start30) &&
       filters.endDate === formatLocalDate(end30)
     ) {
-      return '30days';
+      return "30days";
     }
 
-    return 'custom';
+    return "custom";
   }, [filters.startDate, filters.endDate]);
 
   // Áp dụng preset ngày
-  const handleApplyPreset = (preset: 'today' | '7days' | '30days' | 'all') => {
-    if (preset === 'all') {
-      onFilterChange({ startDate: '', endDate: '', page: 1 });
+  const handleApplyPreset = (preset: "today" | "7days" | "30days" | "all") => {
+    if (preset === "all") {
+      onFilterChange({ startDate: "", endDate: "", page: 1 });
       return;
     }
 
     const today = new Date();
     const todayStr = formatLocalDate(today);
 
-    if (preset === 'today') {
+    if (preset === "today") {
       onFilterChange({ startDate: todayStr, endDate: todayStr, page: 1 });
-    } else if (preset === '7days') {
+    } else if (preset === "7days") {
       const past = new Date(today);
       past.setDate(today.getDate() - 7);
       onFilterChange({
@@ -132,7 +109,7 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
         endDate: todayStr,
         page: 1,
       });
-    } else if (preset === '30days') {
+    } else if (preset === "30days") {
       const past = new Date(today);
       past.setDate(today.getDate() - 30);
       onFilterChange({
@@ -143,26 +120,6 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
     }
   };
 
-  // Nhãn phân hệ đang chọn
-  const selectedEntityLabel = useMemo(() => {
-    if (!filters.entity || filters.entity === 'ALL') return null;
-    return AUDIT_ENTITIES.find((e) => e.value === filters.entity)?.label || filters.entity;
-  }, [filters.entity]);
-
-  // Nhãn hành động đang chọn
-  const selectedActionLabel = useMemo(() => {
-    if (!filters.action || filters.action === 'ALL') return null;
-    const map: Record<AuditActionType, string> = {
-      CREATE: 'Tạo mới (CREATE)',
-      UPDATE: 'Cập nhật (UPDATE)',
-      DELETE: 'Xóa (DELETE)',
-      APPROVE: 'Phê duyệt (APPROVE)',
-      CANCEL: 'Hủy bỏ (CANCEL)',
-      STOCK_ADJUST: 'Điều chỉnh tồn (STOCK_ADJUST)',
-    };
-    return map[filters.action] || filters.action;
-  }, [filters.action]);
-
   return (
     <div className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-xs transition-all space-y-4">
       {/* Hàng 1: Ô tìm kiếm thông minh + Các nút hành động (Làm mới, Đặt lại, Badge kết quả) */}
@@ -172,18 +129,17 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            value={filters.searchUser || ""}
+            onChange={(e) =>
+              onFilterChange({ searchUser: e.target.value, page: 1 })
+            }
             placeholder="Tìm theo tên người dùng, đối tượng hoặc nội dung thay đổi..."
             className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200/90 bg-slate-50/50 hover:bg-white placeholder-slate-400 text-slate-800 font-medium focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
           />
-          {searchInput && (
+          {filters.searchUser && (
             <button
               type="button"
-              onClick={() => {
-                setSearchInput('');
-                onFilterChange({ searchUser: '', page: 1 });
-              }}
+              onClick={() => onFilterChange({ searchUser: "", page: 1 })}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-md hover:bg-slate-200/60 transition-colors cursor-pointer"
               title="Xóa tìm kiếm"
             >
@@ -226,7 +182,7 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
             >
               <RefreshCw
                 className={`h-3.5 w-3.5 text-slate-500 ${
-                  loading ? 'animate-spin text-blue-600' : ''
+                  loading ? "animate-spin text-blue-600" : ""
                 }`}
               />
               <span className="hidden sm:inline">Làm mới nhật ký</span>
@@ -245,22 +201,24 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
             <div
               className={`inline-flex items-center rounded-xl border px-3 py-1.5 transition-all ${
                 isDateRangeInvalid
-                  ? 'border-rose-400 bg-rose-50/80 text-rose-900 ring-2 ring-rose-200'
-                  : 'border-slate-200/90 bg-slate-50/60 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100'
+                  ? "border-rose-400 bg-rose-50/80 text-rose-900 ring-2 ring-rose-200"
+                  : "border-slate-200/90 bg-slate-50/60 focus-within:bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100"
               }`}
             >
               <Calendar
                 className={`h-3.5 w-3.5 mr-2 shrink-0 ${
-                  isDateRangeInvalid ? 'text-rose-500' : 'text-blue-600'
+                  isDateRangeInvalid ? "text-rose-500" : "text-blue-600"
                 }`}
               />
 
               {/* Từ ngày */}
               <DateInput
                 compact
-                value={filters.startDate || ''}
+                value={filters.startDate || ""}
                 max={filters.endDate || undefined}
-                onChange={(val) => onFilterChange({ startDate: val, page: 1 })}
+                onChange={(val) =>
+                  onFilterChange({ startDate: val, page: 1 })
+                }
                 placeholder="Từ ngày"
                 title="Từ ngày (dd/mm/yyyy)"
                 className="min-w-[80px]"
@@ -268,16 +226,18 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
 
               <ArrowRight
                 className={`h-3 w-3 mx-1.5 shrink-0 ${
-                  isDateRangeInvalid ? 'text-rose-400' : 'text-slate-400'
+                  isDateRangeInvalid ? "text-rose-400" : "text-slate-400"
                 }`}
               />
 
               {/* Đến ngày */}
               <DateInput
                 compact
-                value={filters.endDate || ''}
+                value={filters.endDate || ""}
                 min={filters.startDate || undefined}
-                onChange={(val) => onFilterChange({ endDate: val, page: 1 })}
+                onChange={(val) =>
+                  onFilterChange({ endDate: val, page: 1 })
+                }
                 placeholder="Đến ngày"
                 title="Đến ngày (dd/mm/yyyy)"
                 className="min-w-[80px]"
@@ -286,7 +246,9 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
               {(filters.startDate || filters.endDate) && (
                 <button
                   type="button"
-                  onClick={() => onFilterChange({ startDate: '', endDate: '', page: 1 })}
+                  onClick={() =>
+                    onFilterChange({ startDate: "", endDate: "", page: 1 })
+                  }
                   className="ml-1.5 p-0.5 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-200/60 transition-colors cursor-pointer"
                   title="Xóa khoảng ngày"
                 >
@@ -300,8 +262,7 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
               <div className="flex items-center gap-1 text-[11px] font-semibold text-rose-600 animate-in fade-in">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-500" />
                 <span>
-                  Đến ngày ({formatVietnameseDate(filters.endDate)}) trước Từ ngày (
-                  {formatVietnameseDate(filters.startDate)})
+                  Đến ngày ({formatVietnameseDate(filters.endDate)}) trước Từ ngày ({formatVietnameseDate(filters.startDate)})
                 </span>
               </div>
             )}
@@ -311,44 +272,44 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
           <div className="inline-flex items-center gap-1 p-1 bg-slate-100/90 rounded-xl text-xs overflow-x-auto">
             <button
               type="button"
-              onClick={() => handleApplyPreset('today')}
+              onClick={() => handleApplyPreset("today")}
               className={`px-2.5 py-1 rounded-lg font-medium transition-all text-xs cursor-pointer whitespace-nowrap ${
-                activePreset === 'today'
-                  ? 'bg-white text-blue-600 font-semibold shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                activePreset === "today"
+                  ? "bg-white text-blue-600 font-semibold shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
               Hôm nay
             </button>
             <button
               type="button"
-              onClick={() => handleApplyPreset('7days')}
+              onClick={() => handleApplyPreset("7days")}
               className={`px-2.5 py-1 rounded-lg font-medium transition-all text-xs cursor-pointer whitespace-nowrap ${
-                activePreset === '7days'
-                  ? 'bg-white text-blue-600 font-semibold shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                activePreset === "7days"
+                  ? "bg-white text-blue-600 font-semibold shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
               7 ngày qua
             </button>
             <button
               type="button"
-              onClick={() => handleApplyPreset('30days')}
+              onClick={() => handleApplyPreset("30days")}
               className={`px-2.5 py-1 rounded-lg font-medium transition-all text-xs cursor-pointer whitespace-nowrap ${
-                activePreset === '30days'
-                  ? 'bg-white text-blue-600 font-semibold shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                activePreset === "30days"
+                  ? "bg-white text-blue-600 font-semibold shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
               30 ngày qua
             </button>
             <button
               type="button"
-              onClick={() => handleApplyPreset('all')}
+              onClick={() => handleApplyPreset("all")}
               className={`px-2.5 py-1 rounded-lg font-medium transition-all text-xs cursor-pointer whitespace-nowrap ${
-                activePreset === 'all'
-                  ? 'bg-white text-blue-600 font-semibold shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                activePreset === "all"
+                  ? "bg-white text-blue-600 font-semibold shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
               Tất cả
@@ -364,10 +325,10 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
               <Layers className="h-3.5 w-3.5 text-indigo-600" />
             </div>
             <select
-              value={filters.entity || 'ALL'}
+              value={filters.entity || "ALL"}
               onChange={(e) =>
                 onFilterChange({
-                  entity: e.target.value as AuditEntityType | 'ALL',
+                  entity: e.target.value as AuditEntityType | "ALL",
                   page: 1,
                 })
               }
@@ -388,10 +349,10 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
               <Activity className="h-3.5 w-3.5 text-emerald-600" />
             </div>
             <select
-              value={filters.action || 'ALL'}
+              value={filters.action || "ALL"}
               onChange={(e) =>
                 onFilterChange({
-                  action: e.target.value as AuditActionType | 'ALL',
+                  action: e.target.value as AuditActionType | "ALL",
                   page: 1,
                 })
               }
@@ -408,91 +369,6 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Hàng 3: Filter Chips hiển thị trực quan các bộ lọc đang kích hoạt trên URL */}
-      {hasActiveFilters && (
-        <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="inline-flex items-center gap-1 text-slate-400 font-medium mr-1 text-[11px]">
-            <Tag className="w-3 h-3 text-slate-400" />
-            <span>Đang lọc:</span>
-          </span>
-
-          {/* Chip Phân hệ */}
-          {selectedEntityLabel && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-semibold">
-              <span>Phân hệ: {selectedEntityLabel}</span>
-              <button
-                type="button"
-                onClick={() => onFilterChange({ entity: 'ALL', page: 1 })}
-                className="hover:text-indigo-900 cursor-pointer p-0.5"
-                title="Gỡ lọc phân hệ"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          )}
-
-          {/* Chip Hành động */}
-          {selectedActionLabel && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-semibold">
-              <span>Hành động: {selectedActionLabel}</span>
-              <button
-                type="button"
-                onClick={() => onFilterChange({ action: 'ALL', page: 1 })}
-                className="hover:text-emerald-900 cursor-pointer p-0.5"
-                title="Gỡ lọc hành động"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          )}
-
-          {/* Chip Khoảng ngày */}
-          {(filters.startDate || filters.endDate) && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-semibold">
-              <span>
-                Thời gian:{' '}
-                {filters.startDate ? formatVietnameseDate(filters.startDate) : '...'} -{' '}
-                {filters.endDate ? formatVietnameseDate(filters.endDate) : '...'}
-              </span>
-              <button
-                type="button"
-                onClick={() => onFilterChange({ startDate: '', endDate: '', page: 1 })}
-                className="hover:text-blue-900 cursor-pointer p-0.5"
-                title="Gỡ lọc khoảng ngày"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          )}
-
-          {/* Chip Từ khóa */}
-          {filters.searchUser && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-semibold">
-              <span>Tìm: &ldquo;{filters.searchUser}&rdquo;</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchInput('');
-                  onFilterChange({ searchUser: '', page: 1 });
-                }}
-                className="hover:text-slate-900 cursor-pointer p-0.5"
-                title="Gỡ lọc tìm kiếm"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          )}
-
-          <button
-            type="button"
-            onClick={onReset}
-            className="text-[11px] text-rose-600 hover:text-rose-800 font-semibold underline ml-1 cursor-pointer"
-          >
-            Xóa tất cả
-          </button>
-        </div>
-      )}
     </div>
   );
 };

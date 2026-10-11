@@ -1,9 +1,17 @@
-import React from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { ShieldAlert, ArrowLeft, Home, Lock, MapPin, HelpCircle, ShieldX } from 'lucide-react';
-import { getStoredUser, getRedirectPathByUser, getRedirectPathByRole } from '../utils/navigation';
-import { getUserContext, ROLE_CONFIGS, normalizeRole } from '../utils/navigation-config';
-import type { UserRoleType } from '../types/auth';
+import React from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import {
+  ShieldAlert,
+  ArrowLeft,
+  Home,
+  Lock,
+  MapPin,
+  HelpCircle,
+  ShieldX,
+} from "lucide-react";
+import { getStoredUser, getRedirectPathByUser, getRedirectPathByRole } from "../utils/navigation";
+import { getUserContext, ROLE_CONFIGS, normalizeRole } from "../utils/navigation-config";
+import type { UserRoleType } from "../types/auth";
 
 interface ForbiddenPageProps {
   allowedRoles?: string[];
@@ -40,15 +48,12 @@ export const ForbiddenPage: React.FC<ForbiddenPageProps> = ({
   };
 
   // Chuyển đổi danh sách role yêu cầu sang tiếng Việt thân thiện
-  const formattedAllowedRoles =
-    allowedRoles && allowedRoles.length > 0
-      ? allowedRoles
-          .map((r) => {
-            const normalized = normalizeRole(r) as UserRoleType;
-            return ROLE_CONFIGS[normalized]?.shortLabel || r;
-          })
-          .join(', ')
-      : 'Quản trị viên hoặc vai trò chuyên trách';
+  const formattedAllowedRoles = allowedRoles && allowedRoles.length > 0
+    ? allowedRoles.map((r) => {
+        const normalized = normalizeRole(r) as UserRoleType;
+        return ROLE_CONFIGS[normalized]?.shortLabel || r;
+      }).join(", ")
+    : "Quản trị viên hoặc vai trò chuyên trách";
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center p-3 sm:p-4 antialiased">
@@ -80,9 +85,8 @@ export const ForbiddenPage: React.FC<ForbiddenPageProps> = ({
           <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-md mx-auto mb-6">
             {customMessage || (
               <>
-                Tài khoản của bạn (<strong className="text-slate-700">{context.fullName}</strong>)
-                hiện không có quyền thao tác trên phân hệ này. Vui lòng kiểm tra lại quyền hạn hoặc
-                liên hệ Quản trị viên để được cấp quyền.
+                Tài khoản của bạn (<strong className="text-slate-700">{context.fullName}</strong>) hiện không có quyền thao tác trên phân hệ này.
+                Vui lòng kiểm tra lại quyền hạn hoặc liên hệ Quản trị viên để được cấp quyền.
               </>
             )}
           </p>
@@ -108,9 +112,7 @@ export const ForbiddenPage: React.FC<ForbiddenPageProps> = ({
             {/* Vai trò hiện tại của người dùng */}
             <div className="flex items-center justify-between text-xs gap-2 pt-1 border-t border-slate-100">
               <span className="text-slate-500 font-medium">Vai trò hiện tại:</span>
-              <span
-                className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${context.badgeClass}`}
-              >
+              <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${context.badgeClass}`}>
                 {context.roleLabel}
               </span>
             </div>
@@ -121,10 +123,7 @@ export const ForbiddenPage: React.FC<ForbiddenPageProps> = ({
                 <MapPin className="h-3 w-3 text-slate-400" />
                 <span>Kho / Địa bàn:</span>
               </span>
-              <span
-                className="font-medium text-slate-700 truncate max-w-[240px]"
-                title={context.locationText}
-              >
+              <span className="font-medium text-slate-700 truncate max-w-[240px]" title={context.locationText}>
                 {context.locationText}
               </span>
             </div>

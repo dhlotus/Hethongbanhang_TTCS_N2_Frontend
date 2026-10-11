@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Clock,
   Eye,
@@ -8,14 +8,14 @@ import {
   ChevronRight,
   User,
   Database,
-} from 'lucide-react';
-import type { AuditLogItem, AuditActionType } from '../../types/audit-log';
+} from "lucide-react";
+import type { AuditLogItem, AuditActionType } from "../../types/audit-log";
 import {
   formatAuditDateTime,
   formatUserWithRole,
   resolveEntityCode,
   resolveEntityDisplayName,
-} from '../../services/audit-log.service';
+} from "../../services/audit-log.service";
 
 interface AuditTableProps {
   logs: AuditLogItem[];
@@ -35,34 +35,34 @@ const ACTION_BADGES: Record<
   { label: string; badgeClass: string; dotClass: string }
 > = {
   CREATE: {
-    label: 'Tạo mới',
-    badgeClass: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20',
-    dotClass: 'bg-emerald-500',
+    label: "Tạo mới",
+    badgeClass: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20",
+    dotClass: "bg-emerald-500",
   },
   UPDATE: {
-    label: 'Cập nhật',
-    badgeClass: 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-700/20',
-    dotClass: 'bg-blue-500',
+    label: "Cập nhật",
+    badgeClass: "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-700/20",
+    dotClass: "bg-blue-500",
   },
   DELETE: {
-    label: 'Xóa dữ liệu',
-    badgeClass: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20',
-    dotClass: 'bg-rose-500',
+    label: "Xóa dữ liệu",
+    badgeClass: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20",
+    dotClass: "bg-rose-500",
   },
   CANCEL: {
-    label: 'Hủy bỏ',
-    badgeClass: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20',
-    dotClass: 'bg-rose-500',
+    label: "Hủy bỏ",
+    badgeClass: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20",
+    dotClass: "bg-rose-500",
   },
   APPROVE: {
-    label: 'Phê duyệt',
-    badgeClass: 'bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-700/20',
-    dotClass: 'bg-purple-500',
+    label: "Phê duyệt",
+    badgeClass: "bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-700/20",
+    dotClass: "bg-purple-500",
   },
   STOCK_ADJUST: {
-    label: 'Điều chỉnh tồn',
-    badgeClass: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20',
-    dotClass: 'bg-amber-500',
+    label: "Điều chỉnh tồn",
+    badgeClass: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20",
+    dotClass: "bg-amber-500",
   },
 };
 
@@ -74,11 +74,11 @@ function getLogSummary(log: AuditLogItem): string {
     return log.summary.trim();
   }
 
-  if (log.action === 'CREATE') return 'Khởi tạo dữ liệu mới vào hệ thống';
-  if (log.action === 'DELETE') return 'Xóa bỏ dữ liệu khỏi hệ thống';
-  if (log.action === 'STOCK_ADJUST') return 'Điều chỉnh số lượng tồn kho';
-  if (log.action === 'APPROVE') return 'Phê duyệt giao dịch thành công';
-  if (log.action === 'CANCEL') return 'Hủy bỏ giao dịch';
+  if (log.action === "CREATE") return "Khởi tạo dữ liệu mới vào hệ thống";
+  if (log.action === "DELETE") return "Xóa bỏ dữ liệu khỏi hệ thống";
+  if (log.action === "STOCK_ADJUST") return "Điều chỉnh số lượng tồn kho";
+  if (log.action === "APPROVE") return "Phê duyệt giao dịch thành công";
+  if (log.action === "CANCEL") return "Hủy bỏ giao dịch";
 
   if (log.old_values && log.new_values) {
     const diffKeys = Object.keys(log.new_values).filter(
@@ -89,7 +89,7 @@ function getLogSummary(log: AuditLogItem): string {
     }
   }
 
-  return 'Cập nhật dữ liệu hệ thống';
+  return "Cập nhật dữ liệu hệ thống";
 }
 
 export const AuditTable: React.FC<AuditTableProps> = ({
@@ -115,12 +115,18 @@ export const AuditTable: React.FC<AuditTableProps> = ({
               <th className="px-4 py-3.5 font-semibold whitespace-nowrap w-36 lg:w-40">
                 Thời gian
               </th>
-              <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Người thực hiện</th>
+              <th className="px-4 py-3.5 font-semibold whitespace-nowrap">
+                Người thực hiện
+              </th>
               <th className="px-3.5 py-3.5 font-semibold whitespace-nowrap text-center w-28">
                 Hành động
               </th>
-              <th className="px-4 py-3.5 font-semibold whitespace-nowrap">Đối tượng</th>
-              <th className="hidden lg:table-cell px-4 py-3.5 font-semibold">Nội dung thay đổi</th>
+              <th className="px-4 py-3.5 font-semibold whitespace-nowrap">
+                Đối tượng
+              </th>
+              <th className="hidden lg:table-cell px-4 py-3.5 font-semibold">
+                Nội dung thay đổi
+              </th>
               <th className="px-3.5 py-3.5 font-semibold text-center whitespace-nowrap w-24">
                 Thao tác
               </th>
@@ -131,7 +137,9 @@ export const AuditTable: React.FC<AuditTableProps> = ({
               <tr>
                 <td colSpan={6} className="py-16 text-center text-slate-400">
                   <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-500" />
-                  <span className="font-medium text-xs">Đang tải dữ liệu nhật ký hệ thống...</span>
+                  <span className="font-medium text-xs">
+                    Đang tải dữ liệu nhật ký hệ thống...
+                  </span>
                 </td>
               </tr>
             ) : logs.length === 0 ? (
@@ -150,17 +158,23 @@ export const AuditTable: React.FC<AuditTableProps> = ({
               logs.map((log) => {
                 const badgeInfo = ACTION_BADGES[log.action] || {
                   label: log.action,
-                  badgeClass: 'bg-slate-100 text-slate-700',
-                  dotClass: 'bg-slate-400',
+                  badgeClass: "bg-slate-100 text-slate-700",
+                  dotClass: "bg-slate-400",
                 };
 
                 const resolvedCode = resolveEntityCode(log);
-                const displayEntityName = resolveEntityDisplayName(log.entity_name, resolvedCode);
+                const displayEntityName = resolveEntityDisplayName(
+                  log.entity_name,
+                  resolvedCode
+                );
                 const formattedUser = formatUserWithRole(log.user);
                 const summaryText = getLogSummary(log);
 
                 return (
-                  <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
+                  <tr
+                    key={log.id}
+                    className="hover:bg-slate-50/70 transition-colors"
+                  >
                     {/* Cột 1: Thời gian */}
                     <td className="px-4 py-3.5 whitespace-nowrap">
                       <div className="flex items-center gap-1.5 font-mono text-slate-700">
@@ -240,7 +254,9 @@ export const AuditTable: React.FC<AuditTableProps> = ({
         {loading ? (
           <div className="py-12 text-center text-slate-400">
             <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-500" />
-            <span className="font-medium text-xs">Đang tải dữ liệu nhật ký hệ thống...</span>
+            <span className="font-medium text-xs">
+              Đang tải dữ liệu nhật ký hệ thống...
+            </span>
           </div>
         ) : logs.length === 0 ? (
           <div className="py-12 px-4 text-center text-slate-400">
@@ -257,12 +273,15 @@ export const AuditTable: React.FC<AuditTableProps> = ({
             {logs.map((log) => {
               const badgeInfo = ACTION_BADGES[log.action] || {
                 label: log.action,
-                badgeClass: 'bg-slate-100 text-slate-700',
-                dotClass: 'bg-slate-400',
+                badgeClass: "bg-slate-100 text-slate-700",
+                dotClass: "bg-slate-400",
               };
 
               const resolvedCode = resolveEntityCode(log);
-              const displayEntityName = resolveEntityDisplayName(log.entity_name, resolvedCode);
+              const displayEntityName = resolveEntityDisplayName(
+                log.entity_name,
+                resolvedCode
+              );
               const formattedUser = formatUserWithRole(log.user);
               const summaryText = getLogSummary(log);
 
@@ -276,7 +295,9 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                     <span
                       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${badgeInfo.badgeClass}`}
                     >
-                      <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${badgeInfo.dotClass}`} />
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full shrink-0 ${badgeInfo.dotClass}`}
+                      />
                       <span>{badgeInfo.label}</span>
                     </span>
 
@@ -292,7 +313,9 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                       <User className="h-3.5 w-3.5 text-slate-400 mt-0.5 shrink-0" />
                       <div className="min-w-0 flex-1">
                         <span className="text-slate-400 text-[11px]">Người thực hiện: </span>
-                        <span className="font-semibold text-slate-800">{formattedUser}</span>
+                        <span className="font-semibold text-slate-800">
+                          {formattedUser}
+                        </span>
                       </div>
                     </div>
 
@@ -340,10 +363,11 @@ export const AuditTable: React.FC<AuditTableProps> = ({
         <div className="hidden sm:flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 flex-wrap">
             <div>
-              Hiển thị{' '}
+              Hiển thị{" "}
               <strong>
-                {total === 0 ? 0 : (page - 1) * limit + 1} - {Math.min(page * limit, total)}
-              </strong>{' '}
+                {total === 0 ? 0 : (page - 1) * limit + 1} -{" "}
+                {Math.min(page * limit, total)}
+              </strong>{" "}
               trong tổng số <strong>{total}</strong> bản ghi
             </div>
 
@@ -388,8 +412,8 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                         onClick={() => onPageChange(p)}
                         className={`h-7 min-w-7 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                           page === p
-                            ? 'bg-blue-600 text-white shadow-2xs shadow-blue-600/30'
-                            : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                            ? "bg-blue-600 text-white shadow-2xs shadow-blue-600/30"
+                            : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                         }`}
                       >
                         {p}
@@ -415,11 +439,7 @@ export const AuditTable: React.FC<AuditTableProps> = ({
         <div className="flex sm:hidden flex-col gap-2.5">
           <div className="flex items-center justify-between text-[11px]">
             <span>
-              Bản ghi{' '}
-              <strong>
-                {total === 0 ? 0 : (page - 1) * limit + 1} - {Math.min(page * limit, total)}
-              </strong>{' '}
-              / {total}
+              Bản ghi <strong>{total === 0 ? 0 : (page - 1) * limit + 1} - {Math.min(page * limit, total)}</strong> / {total}
             </span>
             <div className="flex items-center gap-1">
               <span className="text-slate-400">Dòng:</span>
@@ -465,3 +485,4 @@ export const AuditTable: React.FC<AuditTableProps> = ({
     </div>
   );
 };
+

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import React, { useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Lock,
   Eye,
@@ -11,15 +11,18 @@ import {
   ArrowRight,
   ShieldCheck,
   RotateCcw,
-} from 'lucide-react';
-import { Button } from '../components/button';
-import { Input } from '../components/input';
-import { authService } from '../services/auth.service';
-import { resetPasswordSchema, type ResetPasswordFormData } from '../utils/validation';
+} from "lucide-react";
+import { Button } from "../components/button";
+import { Input } from "../components/input";
+import { authService } from "../services/auth.service";
+import {
+  resetPasswordSchema,
+  type ResetPasswordFormData,
+} from "../utils/validation";
 
 export const ResetPasswordPage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') || '';
+  const token = searchParams.get("token") || "";
   const navigate = useNavigate();
 
   const [showNewPassword, setShowNewPassword] = useState<boolean>(false);
@@ -35,13 +38,13 @@ export const ResetPasswordPage: React.FC = () => {
   } = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
-      newPassword: '',
-      confirmPassword: '',
+      newPassword: "",
+      confirmPassword: "",
     },
-    mode: 'onTouched',
+    mode: "onTouched",
   });
 
-  const newPasswordValue = watch('newPassword') || '';
+  const newPasswordValue = watch("newPassword") || "";
   const hasMinLength = newPasswordValue.length >= 8;
   const hasLetter = /[A-Za-z]/.test(newPasswordValue);
   const hasNumber = /\d/.test(newPasswordValue);
@@ -51,7 +54,7 @@ export const ResetPasswordPage: React.FC = () => {
 
     if (!token.trim()) {
       setErrorMessage(
-        'Mã token xác thực không hợp lệ hoặc bị thiếu. Vui lòng bấm vào đường dẫn đầy đủ trong email của bạn!'
+        "Mã token xác thực không hợp lệ hoặc bị thiếu. Vui lòng bấm vào đường dẫn đầy đủ trong email của bạn!",
       );
       return;
     }
@@ -67,7 +70,7 @@ export const ResetPasswordPage: React.FC = () => {
       const err = error as Error;
       setErrorMessage(
         err.message ||
-          'Mã xác thực không hợp lệ hoặc đã hết hạn (30 phút). Vui lòng yêu cầu cấp lại liên kết mới!'
+          "Mã xác thực không hợp lệ hoặc đã hết hạn (30 phút). Vui lòng yêu cầu cấp lại liên kết mới!",
       );
     }
   };
@@ -82,11 +85,12 @@ export const ResetPasswordPage: React.FC = () => {
               <AlertTriangle className="w-6 h-6" />
             </div>
 
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Thiếu mã xác thực</h1>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              Thiếu mã xác thực
+            </h1>
 
             <p className="text-slate-500 text-xs sm:text-sm mt-2 leading-relaxed">
-              Không tìm thấy mã token đặt lại mật khẩu trong đường dẫn liên kết. Vui lòng kiểm tra
-              lại liên kết được gửi trong email hoặc gửi lại yêu cầu mới.
+              Không tìm thấy mã token đặt lại mật khẩu trong đường dẫn liên kết. Vui lòng kiểm tra lại liên kết được gửi trong email hoặc gửi lại yêu cầu mới.
             </p>
 
             <div className="mt-6 space-y-2.5">
@@ -126,13 +130,13 @@ export const ResetPasswordPage: React.FC = () => {
             </div>
 
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              {isSuccess ? 'Đặt lại mật khẩu thành công!' : 'Thiết lập mật khẩu mới'}
+              {isSuccess ? "Đặt lại mật khẩu thành công!" : "Thiết lập mật khẩu mới"}
             </h1>
 
             <p className="text-slate-500 text-xs sm:text-sm mt-1.5 leading-relaxed">
               {isSuccess
-                ? 'Mật khẩu của bạn đã được cập nhật an toàn. Toàn bộ phiên đăng nhập cũ đã được thu hồi.'
-                : 'Vui lòng nhập mật khẩu mới bảo mật cho tài khoản LOHA SALES của bạn.'}
+                ? "Mật khẩu của bạn đã được cập nhật an toàn. Toàn bộ phiên đăng nhập cũ đã được thu hồi."
+                : "Vui lòng nhập mật khẩu mới bảo mật cho tài khoản LOHA SALES của bạn."}
             </p>
           </div>
 
@@ -159,7 +163,9 @@ export const ResetPasswordPage: React.FC = () => {
           {isSuccess ? (
             <div className="space-y-4 pt-1">
               <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200/70 text-slate-700 text-xs sm:text-sm space-y-1.5 leading-relaxed">
-                <p className="font-semibold text-emerald-800">Cập nhật hoàn tất!</p>
+                <p className="font-semibold text-emerald-800">
+                  Cập nhật hoàn tất!
+                </p>
                 <p className="text-slate-600">
                   Bạn có thể dùng mật khẩu mới này để đăng nhập vào toàn bộ hệ thống ngay bây giờ.
                 </p>
@@ -168,11 +174,11 @@ export const ResetPasswordPage: React.FC = () => {
               <div className="pt-2">
                 <Button
                   type="button"
-                  onClick={() => navigate('/auth/login', { replace: true })}
-                  rightIcon={<ArrowRight className="w-4 h-4" />}
-                  className="w-full"
+                  onClick={() => navigate("/auth/login", { replace: true })}
+                  className="w-full flex items-center justify-center gap-2"
                 >
-                  Đăng nhập ngay
+                  <span>Đăng nhập ngay</span>
+                  <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>
             </div>
@@ -182,7 +188,7 @@ export const ResetPasswordPage: React.FC = () => {
               {/* Input Mật khẩu mới */}
               <Input
                 label="Mật khẩu mới"
-                type={showNewPassword ? 'text' : 'password'}
+                type={showNewPassword ? "text" : "password"}
                 placeholder="Tối thiểu 8 ký tự, gồm chữ và số"
                 autoComplete="new-password"
                 required
@@ -193,14 +199,18 @@ export const ResetPasswordPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
-                    aria-label={showNewPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                    aria-label={showNewPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                     disabled={isSubmitting}
                     className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
                   >
-                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showNewPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 }
-                {...register('newPassword')}
+                {...register("newPassword")}
               />
 
               {/* Checklist độ mạnh mật khẩu */}
@@ -212,30 +222,30 @@ export const ResetPasswordPage: React.FC = () => {
                   <div className="flex items-center gap-1.5">
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
-                        hasMinLength ? 'bg-emerald-500' : 'bg-slate-300'
+                        hasMinLength ? "bg-emerald-500" : "bg-slate-300"
                       }`}
                     />
-                    <span className={hasMinLength ? 'text-emerald-700 font-medium' : ''}>
+                    <span className={hasMinLength ? "text-emerald-700 font-medium" : ""}>
                       Tối thiểu 8 ký tự
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
-                        hasLetter ? 'bg-emerald-500' : 'bg-slate-300'
+                        hasLetter ? "bg-emerald-500" : "bg-slate-300"
                       }`}
                     />
-                    <span className={hasLetter ? 'text-emerald-700 font-medium' : ''}>
+                    <span className={hasLetter ? "text-emerald-700 font-medium" : ""}>
                       Có chứa chữ cái (A-Z)
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
-                        hasNumber ? 'bg-emerald-500' : 'bg-slate-300'
+                        hasNumber ? "bg-emerald-500" : "bg-slate-300"
                       }`}
                     />
-                    <span className={hasNumber ? 'text-emerald-700 font-medium' : ''}>
+                    <span className={hasNumber ? "text-emerald-700 font-medium" : ""}>
                       Có chứa chữ số (0-9)
                     </span>
                   </div>
@@ -245,7 +255,7 @@ export const ResetPasswordPage: React.FC = () => {
               {/* Input Xác nhận mật khẩu mới */}
               <Input
                 label="Xác nhận mật khẩu mới"
-                type={showConfirmPassword ? 'text' : 'password'}
+                type={showConfirmPassword ? "text" : "password"}
                 placeholder="Nhập lại mật khẩu mới"
                 autoComplete="new-password"
                 required
@@ -256,7 +266,7 @@ export const ResetPasswordPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                    aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                     disabled={isSubmitting}
                     className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
                   >
@@ -267,7 +277,7 @@ export const ResetPasswordPage: React.FC = () => {
                     )}
                   </button>
                 }
-                {...register('confirmPassword')}
+                {...register("confirmPassword")}
               />
 
               <Button

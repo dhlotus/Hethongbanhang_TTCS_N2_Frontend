@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 
 export interface ModalLayoutProps {
   isOpen: boolean;
@@ -19,7 +19,7 @@ export interface ModalLayoutProps {
   bodyClassName?: string;
   containerClassName?: string;
   ariaLabelledBy?: string;
-  bodyAs?: 'div' | 'form';
+  bodyAs?: "div" | "form";
   onFormSubmit?: (e: React.FormEvent) => void;
   fullScreenOnMobile?: boolean; // Mặc định true: chuyển thành Page Sheet / Full-screen Drawer trên màn hình < 768px
 }
@@ -44,16 +44,16 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
   icon,
   badge,
   headerExtra,
-  maxWidth = 'max-w-2xl',
+  maxWidth = "max-w-2xl",
   children,
   footer,
   banner,
   closeOnEsc = true,
   closeOnOverlayClick = true,
   bodyClassName,
-  containerClassName = '',
-  ariaLabelledBy = 'modal-title',
-  bodyAs = 'div',
+  containerClassName = "",
+  ariaLabelledBy = "modal-title",
+  bodyAs = "div",
   onFormSubmit,
   fullScreenOnMobile = true,
 }) => {
@@ -89,7 +89,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
   useEffect(() => {
     if (isRendered) {
       const originalOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
       return () => {
         document.body.style.overflow = originalOverflow;
       };
@@ -100,18 +100,18 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
   useEffect(() => {
     if (!isRendered || isClosing || !closeOnEsc) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         e.preventDefault();
         handleClose();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isRendered, isClosing, closeOnEsc, handleClose]);
 
-  if (!isRendered || typeof document === 'undefined') return null;
+  if (!isRendered || typeof document === "undefined") return null;
 
-  const BodyComponent = bodyAs === 'form' ? 'form' : 'div';
+  const BodyComponent = bodyAs === "form" ? "form" : "div";
 
   return createPortal(
     <div
@@ -125,26 +125,26 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
       }}
       className={`fixed inset-0 z-50 flex ${
         fullScreenOnMobile
-          ? 'items-end md:items-center justify-center p-0 md:p-4'
-          : 'items-center justify-center p-3 sm:p-4'
+          ? "items-end md:items-center justify-center p-0 md:p-4"
+          : "items-center justify-center p-3 sm:p-4"
       } bg-slate-900/40 backdrop-blur-xs transition-all ${
-        isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
+        isClosing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"
       }`}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         className={`relative w-full ${maxWidth} bg-white ${
           fullScreenOnMobile
-            ? 'h-[100dvh] md:h-auto max-h-[100dvh] md:max-h-[calc(100dvh-3.5rem)] rounded-none md:rounded-xl border-0 md:border border-slate-200/90 shadow-lg flex flex-col'
-            : 'rounded-xl border border-slate-200/90 shadow-lg flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3.5rem)]'
+            ? "h-[100dvh] md:h-auto max-h-[100dvh] md:max-h-[calc(100dvh-3.5rem)] rounded-none md:rounded-xl border-0 md:border border-slate-200/90 shadow-lg flex flex-col"
+            : "rounded-xl border border-slate-200/90 shadow-lg flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3.5rem)]"
         } ${
           fullScreenOnMobile
             ? isClosing
-              ? 'animate-sheet-out md:animate-modal-out'
-              : 'animate-sheet-in md:animate-modal-in'
+              ? "animate-sheet-out md:animate-modal-out"
+              : "animate-sheet-in md:animate-modal-in"
             : isClosing
-              ? 'animate-modal-out'
-              : 'animate-modal-in'
+            ? "animate-modal-out"
+            : "animate-modal-in"
         } ${containerClassName}`}
       >
         {/* 1. Header cố định */}
@@ -169,7 +169,11 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
                   </h2>
                   {badge}
                 </div>
-                {subtitle && <p className="text-xs text-slate-500 truncate mt-0.5">{subtitle}</p>}
+                {subtitle && (
+                  <p className="text-xs text-slate-500 truncate mt-0.5">
+                    {subtitle}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -192,9 +196,9 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
 
         {/* 3. Body cuộn nội dung độc lập - Tự động co giãn theo viewport bàn phím ảo */}
         <BodyComponent
-          {...(bodyAs === 'form' && onFormSubmit ? { onSubmit: onFormSubmit } : {})}
+          {...(bodyAs === "form" && onFormSubmit ? { onSubmit: onFormSubmit } : {})}
           className={`flex-1 min-h-0 overflow-y-auto overscroll-contain ${
-            bodyClassName || 'p-4 sm:p-6 space-y-4 sm:space-y-5 text-slate-700 text-xs'
+            bodyClassName || "p-4 sm:p-6 space-y-4 sm:space-y-5 text-slate-700 text-xs"
           }`}
         >
           {children}

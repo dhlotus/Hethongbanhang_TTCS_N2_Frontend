@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
-import { AlertCircle, Loader2, Edit2, X } from 'lucide-react';
-import { Input } from './input';
-import type { UpdateMyProfilePayload } from '../services/users.service';
+import React, { useState } from "react";
+import { createPortal } from "react-dom";
+import { AlertCircle, Loader2, Edit2, X } from "lucide-react";
+import { Input } from "./input";
+import type { UpdateMyProfilePayload } from "../services/users.service";
 
 interface ProfileEditModalProps {
   fullName: string;
@@ -21,9 +21,9 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
 }) => {
   const [name, setName] = useState(fullName);
   const [phoneNumber, setPhoneNumber] = useState(phone);
-  const [nameError, setNameError] = useState('');
-  const [phoneError, setPhoneError] = useState('');
-  const [submitError, setSubmitError] = useState('');
+  const [nameError, setNameError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [submitError, setSubmitError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -33,16 +33,16 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
     const normalizedPhone = phoneNumber.trim();
     const nextNameError = normalizedName
       ? normalizedName.length > 100
-        ? 'Họ và tên không được vượt quá 100 ký tự.'
-        : ''
-      : 'Vui lòng nhập họ và tên.';
+        ? "Họ và tên không được vượt quá 100 ký tự."
+        : ""
+      : "Vui lòng nhập họ và tên.";
     const nextPhoneError = VIETNAM_PHONE_PATTERN.test(normalizedPhone)
-      ? ''
-      : 'Nhập số điện thoại Việt Nam hợp lệ, ví dụ 0912345678 hoặc +84912345678.';
+      ? ""
+      : "Nhập số điện thoại Việt Nam hợp lệ, ví dụ 0912345678 hoặc +84912345678.";
 
     setNameError(nextNameError);
     setPhoneError(nextPhoneError);
-    setSubmitError('');
+    setSubmitError("");
     if (nextNameError || nextPhoneError) return;
 
     setIsSaving(true);
@@ -50,14 +50,16 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
       await onSave({ fullName: normalizedName, phone: normalizedPhone });
     } catch (error: unknown) {
       setSubmitError(
-        error instanceof Error ? error.message : 'Không thể cập nhật hồ sơ. Vui lòng thử lại.'
+        error instanceof Error
+          ? error.message
+          : "Không thể cập nhật hồ sơ. Vui lòng thử lại.",
       );
     } finally {
       setIsSaving(false);
     }
   };
 
-  if (typeof document === 'undefined') return null;
+  if (typeof document === "undefined") return null;
 
   return createPortal(
     <div
@@ -104,8 +106,8 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
             value={name}
             onChange={(event) => {
               setName(event.target.value);
-              setNameError('');
-              setSubmitError('');
+              setNameError("");
+              setSubmitError("");
             }}
             error={nameError}
             required
@@ -122,8 +124,8 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
             value={phoneNumber}
             onChange={(event) => {
               setPhoneNumber(event.target.value);
-              setPhoneError('');
-              setSubmitError('');
+              setPhoneError("");
+              setSubmitError("");
             }}
             error={phoneError}
             required
@@ -154,12 +156,12 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({
               className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+              {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
             </button>
           </div>
         </form>
       </section>
     </div>,
-    document.body
+    document.body,
   );
 };

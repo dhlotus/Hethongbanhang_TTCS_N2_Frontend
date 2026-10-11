@@ -1,9 +1,9 @@
-import type { AuthUser } from '../types/auth';
+import type { AuthUser } from "../types/auth";
 
-const ACCESS_TOKEN_KEY = 'access_token';
-const AUTH_TOKEN_KEY = 'auth_token';
-const REFRESH_TOKEN_KEY = 'refresh_token';
-const AUTH_USER_KEY = 'auth_user';
+const ACCESS_TOKEN_KEY = "access_token";
+const AUTH_TOKEN_KEY = "auth_token";
+const REFRESH_TOKEN_KEY = "refresh_token";
+const AUTH_USER_KEY = "auth_user";
 
 /**
  * Tiện ích quản lý lưu trữ Token & Thông tin tài khoản người dùng tại localStorage
@@ -14,7 +14,10 @@ export const tokenStorage = {
    * Lấy Access Token (ưu tiên access_token, fallback về auth_token)
    */
   getAccessToken(): string | null {
-    return localStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(AUTH_TOKEN_KEY);
+    return (
+      localStorage.getItem(ACCESS_TOKEN_KEY) ||
+      localStorage.getItem(AUTH_TOKEN_KEY)
+    );
   },
 
   /**

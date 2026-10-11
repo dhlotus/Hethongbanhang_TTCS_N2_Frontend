@@ -1,23 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
-import logoImg from '../assets/logo.png';
-import { Input } from '../components/input';
-import { Button } from '../components/button';
-import { showToast } from '../components/toast';
-import { AccountLockedModal } from '../components/account-locked-modal';
-import { loginSchema, type LoginFormData } from '../utils/validation';
-import { authService, AccountLockedError } from '../services/auth.service';
-import { getRedirectPathByUser } from '../utils/navigation';
-import { tokenStorage } from '../utils/token-storage';
+import React, { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate, Link } from "react-router-dom";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+} from "lucide-react";
+import logoImg from "../assets/logo.png";
+import { Input } from "../components/input";
+import { Button } from "../components/button";
+import { showToast } from "../components/toast";
+import { AccountLockedModal } from "../components/account-locked-modal";
+import { loginSchema, type LoginFormData } from "../utils/validation";
+import { authService, AccountLockedError } from "../services/auth.service";
+import { getRedirectPathByUser } from "../utils/navigation";
+import { tokenStorage } from "../utils/token-storage";
 import {
   SESSION_TIMEOUT_EVENT,
   SESSION_TIMEOUT_STORAGE_KEY,
   DEFAULT_SESSION_TIMEOUT_MESSAGE,
-} from '../utils/session-timeout';
-import loginPoster from '../assets/login-poster.jpg';
+} from "../utils/session-timeout";
+import loginPoster from "../assets/login-poster.jpg";
 
 interface LockedModalState {
   isOpen: boolean;
@@ -29,14 +35,14 @@ interface LockedModalState {
  * Trích xuất trạng thái khóa tài khoản nếu session bị thu hồi do khóa tài khoản
  */
 const getInitialLockedModal = (): LockedModalState | null => {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
 
   try {
     const searchParams = new URLSearchParams(window.location.search);
     const hasExpiredParam =
-      searchParams.get('expired') === '1' ||
-      searchParams.get('session_expired') === '1' ||
-      searchParams.get('session_expired') === 'true';
+      searchParams.get("expired") === "1" ||
+      searchParams.get("session_expired") === "1" ||
+      searchParams.get("session_expired") === "true";
 
     const sessionExpiredMessage =
       sessionStorage.getItem(SESSION_TIMEOUT_STORAGE_KEY) ||
@@ -44,16 +50,16 @@ const getInitialLockedModal = (): LockedModalState | null => {
 
     if (sessionExpiredMessage) {
       const isLocked =
-        sessionExpiredMessage.toLowerCase().includes('khóa') ||
-        sessionExpiredMessage.toLowerCase().includes('khoá') ||
-        sessionExpiredMessage.toLowerCase().includes('locked');
+        sessionExpiredMessage.toLowerCase().includes("khóa") ||
+        sessionExpiredMessage.toLowerCase().includes("khoá") ||
+        sessionExpiredMessage.toLowerCase().includes("locked");
 
       if (isLocked) {
         sessionStorage.removeItem(SESSION_TIMEOUT_STORAGE_KEY);
         window.history.replaceState({}, document.title, window.location.pathname);
 
-        const reason = sessionExpiredMessage.includes('Lý do:')
-          ? sessionExpiredMessage.split('Lý do:')[1]?.split('.')[0]?.trim()
+        const reason = sessionExpiredMessage.includes("Lý do:")
+          ? sessionExpiredMessage.split("Lý do:")[1]?.split(".")[0]?.trim()
           : undefined;
 
         return {
@@ -83,15 +89,15 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    document.title = 'Đăng nhập | LOHA SALES';
+    document.title = "Đăng nhập | LOHA SALES";
 
     // Kiểm tra thông báo phiên làm việc hết hạn khi truy cập
     try {
       const searchParams = new URLSearchParams(window.location.search);
       const hasExpiredParam =
-        searchParams.get('expired') === '1' ||
-        searchParams.get('session_expired') === '1' ||
-        searchParams.get('session_expired') === 'true';
+        searchParams.get("expired") === "1" ||
+        searchParams.get("session_expired") === "1" ||
+        searchParams.get("session_expired") === "true";
 
       const sessionExpiredMessage =
         sessionStorage.getItem(SESSION_TIMEOUT_STORAGE_KEY) ||
@@ -99,14 +105,14 @@ export const LoginPage: React.FC = () => {
 
       if (sessionExpiredMessage) {
         const isLocked =
-          sessionExpiredMessage.toLowerCase().includes('khóa') ||
-          sessionExpiredMessage.toLowerCase().includes('khoá') ||
-          sessionExpiredMessage.toLowerCase().includes('locked');
+          sessionExpiredMessage.toLowerCase().includes("khóa") ||
+          sessionExpiredMessage.toLowerCase().includes("khoá") ||
+          sessionExpiredMessage.toLowerCase().includes("locked");
 
         if (!isLocked) {
           sessionStorage.removeItem(SESSION_TIMEOUT_STORAGE_KEY);
           window.history.replaceState({}, document.title, window.location.pathname);
-          showToast('error', 'Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại');
+          showToast("error", "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại");
         }
       }
     } catch {
@@ -129,11 +135,12 @@ export const LoginPage: React.FC = () => {
       const customEvent = event as CustomEvent<{ message?: string }>;
       const msg = customEvent.detail?.message || DEFAULT_SESSION_TIMEOUT_MESSAGE;
       const lower = msg.toLowerCase();
-      const isLocked = lower.includes('khóa') || lower.includes('khoá') || lower.includes('locked');
+      const isLocked =
+        lower.includes("khóa") || lower.includes("khoá") || lower.includes("locked");
 
       if (isLocked) {
-        const reason = msg.includes('Lý do:')
-          ? msg.split('Lý do:')[1]?.split('.')[0]?.trim()
+        const reason = msg.includes("Lý do:")
+          ? msg.split("Lý do:")[1]?.split(".")[0]?.trim()
           : undefined;
 
         setLockedModal({
@@ -142,7 +149,7 @@ export const LoginPage: React.FC = () => {
           message: msg,
         });
       } else {
-        showToast('error', 'Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại');
+        showToast("error", "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại");
       }
     };
 
@@ -159,10 +166,10 @@ export const LoginPage: React.FC = () => {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
     },
-    mode: 'onTouched',
+    mode: "onTouched",
   });
 
   const onSubmit = async (data: LoginFormData) => {
@@ -184,56 +191,56 @@ export const LoginPage: React.FC = () => {
         lockReason?: string;
       };
 
-      const message = err.message || 'Tài khoản hoặc mật khẩu không chính xác';
-      const normalizedMsg = (message + ' ' + (err.lockReason || '')).normalize('NFC').toLowerCase();
+      const message = err.message || "Tài khoản hoặc mật khẩu không chính xác";
+      const normalizedMsg = (message + " " + (err.lockReason || "")).normalize("NFC").toLowerCase();
 
       // Kiểm tra tài khoản bị khóa bởi Quản trị viên
       const isAccountLocked =
         err instanceof AccountLockedError ||
         Boolean(err.isLocked) ||
         Boolean(err.isAdminLocked) ||
-        normalizedMsg.includes('quản trị viên khóa') ||
-        normalizedMsg.includes('quản trị viên khoá') ||
-        normalizedMsg.includes('tài khoản đã bị') ||
-        normalizedMsg.includes('đã bị khóa') ||
-        normalizedMsg.includes('đã bị khoá');
+        normalizedMsg.includes("quản trị viên khóa") ||
+        normalizedMsg.includes("quản trị viên khoá") ||
+        normalizedMsg.includes("tài khoản đã bị") ||
+        normalizedMsg.includes("đã bị khóa") ||
+        normalizedMsg.includes("đã bị khoá");
 
       // Kiểm tra khóa tạm thời do sai mật khẩu 5 lần
       const isTemporaryLock =
         Boolean(err.isTemporaryLocked) ||
-        normalizedMsg.includes('khóa tạm thời') ||
-        normalizedMsg.includes('khoá tạm thời') ||
-        normalizedMsg.includes('tạm khóa') ||
-        normalizedMsg.includes('tạm khoá') ||
-        normalizedMsg.includes('15 phút');
+        normalizedMsg.includes("khóa tạm thời") ||
+        normalizedMsg.includes("khoá tạm thời") ||
+        normalizedMsg.includes("tạm khóa") ||
+        normalizedMsg.includes("tạm khoá") ||
+        normalizedMsg.includes("15 phút");
 
       if (isAccountLocked && !isTemporaryLock) {
         let reason = err.lockReason;
-        if (!reason && message.includes('Lý do:')) {
-          reason = message.split('Lý do:')[1]?.split('.')[0]?.trim();
+        if (!reason && message.includes("Lý do:")) {
+          reason = message.split("Lý do:")[1]?.split(".")[0]?.trim();
         }
 
         // Bật popup hiển thị tài khoản bị khóa chuẩn SN-15
         setLockedModal({
           isOpen: true,
-          reason:
-            reason || 'Tài khoản hiện đang bị tạm khóa theo quyết định của Quản trị viên hệ thống.',
+          reason: reason || "Tài khoản hiện đang bị tạm khóa theo quyết định của Quản trị viên hệ thống.",
           message,
         });
         return;
       }
 
       if (isTemporaryLock) {
-        showToast('error', 'Tài khoản bị khóa tạm thời 15 phút do nhập sai mật khẩu');
+        showToast("error", "Tài khoản bị khóa tạm thời 15 phút do nhập sai mật khẩu");
         return;
       }
 
-      showToast('error', message || 'Tài khoản hoặc mật khẩu không chính xác');
+      showToast("error", message || "Tài khoản hoặc mật khẩu không chính xác");
     }
   };
 
   return (
     <div className="w-full min-h-screen lg:h-screen flex items-center justify-center p-3 sm:p-4 lg:p-6 bg-slate-50 text-slate-800 antialiased overflow-hidden">
+
       {/* Modal popup cảnh báo tài khoản bị khóa */}
       {lockedModal?.isOpen && (
         <AccountLockedModal
@@ -251,7 +258,7 @@ export const LoginPage: React.FC = () => {
         {/* ===================================================================== */}
         {/* CỘT TRÁI: Poster (Chiếm chính xác 50% chiều rộng & 100% chiều cao)     */}
         {/* ===================================================================== */}
-        <div className="relative hidden lg:block w-full h-full bg-slate-100 select-none overflow-hidden">
+        <div className="relative hidden lg:block w-full h-full bg-slate-100 select-none">
           <img
             src={loginPoster}
             alt="LOHA SALES - Hệ thống Quản lý Bán hàng & Kho B2B"
@@ -314,13 +321,13 @@ export const LoginPage: React.FC = () => {
               disabled={isSubmitting}
               leftIcon={<Mail className="w-4 h-4" />}
               error={errors.email?.message}
-              {...register('email')}
+              {...register("email")}
             />
 
             {/* Input Mật khẩu */}
             <Input
               label="Mật khẩu"
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               placeholder="Nhập mật khẩu"
               autoComplete="current-password"
               required
@@ -331,14 +338,18 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                   disabled={isSubmitting}
                   className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               }
-              {...register('password')}
+              {...register("password")}
             />
 
             {/* Tùy chọn Ghi nhớ & Quên mật khẩu */}
@@ -366,12 +377,10 @@ export const LoginPage: React.FC = () => {
               type="submit"
               isLoading={isSubmitting}
               loadingText="Đang xác thực..."
-              rightIcon={
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-              }
               className="mt-1 group shadow-2xs hover:shadow-xs active:scale-[0.99] transition-all"
             >
-              Đăng nhập
+              <span>Đăng nhập</span>
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
             </Button>
           </form>
         </div>

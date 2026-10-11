@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
+import axios from "axios";
 import {
   Camera,
   CheckCircle,
@@ -17,15 +17,15 @@ import {
   Info,
   Clock,
   Phone,
-} from 'lucide-react';
-import { AvatarUploadModal } from '../components/avatar-upload-modal';
-import { usersService, type UpdateMyProfilePayload } from '../services/users.service';
-import { tokenStorage } from '../utils/token-storage';
-import { getStoredUser } from '../utils/navigation';
-import { getUserContext, ROLE_CONFIGS } from '../utils/navigation-config';
-import { resolveAvatarUrl } from '../utils/avatar';
-import { showToast } from '../components/toast';
-import type { AuthUser, UserRoleType } from '../types/auth';
+} from "lucide-react";
+import { AvatarUploadModal } from "../components/avatar-upload-modal";
+import { usersService, type UpdateMyProfilePayload } from "../services/users.service";
+import { tokenStorage } from "../utils/token-storage";
+import { getStoredUser } from "../utils/navigation";
+import { getUserContext, ROLE_CONFIGS } from "../utils/navigation-config";
+import { resolveAvatarUrl } from "../utils/avatar";
+import { showToast } from "../components/toast";
+import type { AuthUser, UserRoleType } from "../types/auth";
 
 const VIETNAM_PHONE_PATTERN = /^(?:0|\+84)(?:[35789]\d{8}|2\d{9})$/;
 
@@ -33,16 +33,16 @@ const VIETNAM_PHONE_PATTERN = /^(?:0|\+84)(?:[35789]\d{8}|2\d{9})$/;
  * Định dạng ngày YYYY-MM-DD sang DD/MM/YYYY
  */
 const formatDateDisplay = (dateStr?: string | null): string => {
-  if (!dateStr) return '—';
+  if (!dateStr) return "—";
   try {
-    const parts = dateStr.split('T')[0].split('-');
+    const parts = dateStr.split("T")[0].split("-");
     if (parts.length === 3) {
       return `${parts[2]}/${parts[1]}/${parts[0]}`;
     }
     const d = new Date(dateStr);
     if (!isNaN(d.getTime())) {
-      const day = String(d.getDate()).padStart(2, '0');
-      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
       const year = d.getFullYear();
       return `${day}/${month}/${year}`;
     }
@@ -56,15 +56,15 @@ const formatDateDisplay = (dateStr?: string | null): string => {
  * Định dạng nhãn giới tính
  */
 const formatGenderDisplay = (gender?: string | null): string => {
-  if (!gender) return '—';
+  if (!gender) return "—";
   switch (gender.toUpperCase()) {
-    case 'MALE':
-    case 'NAM':
-      return 'Nam';
-    case 'FEMALE':
-    case 'NỮ':
-    case 'NU':
-      return 'Nữ';
+    case "MALE":
+    case "NAM":
+      return "Nam";
+    case "FEMALE":
+    case "NỮ":
+    case "NU":
+      return "Nữ";
     default:
       return gender;
   }
@@ -86,35 +86,37 @@ export const ProfilePage: React.FC = () => {
 
   // Trạng thái chỉnh sửa trực tiếp (Inline Editing)
   const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [editFullName, setEditFullName] = useState<string>('');
-  const [editPhone, setEditPhone] = useState<string>('');
-  const [editDateOfBirth, setEditDateOfBirth] = useState<string>('');
-  const [editGender, setEditGender] = useState<string>('');
+  const [editFullName, setEditFullName] = useState<string>("");
+  const [editPhone, setEditPhone] = useState<string>("");
+  const [editDateOfBirth, setEditDateOfBirth] = useState<string>("");
+  const [editGender, setEditGender] = useState<string>("");
 
   // Lỗi xác thực form
-  const [nameError, setNameError] = useState<string>('');
-  const [phoneError, setPhoneError] = useState<string>('');
-  const [dobError, setDobError] = useState<string>('');
-  const [genderError, setGenderError] = useState<string>('');
+  const [nameError, setNameError] = useState<string>("");
+  const [phoneError, setPhoneError] = useState<string>("");
+  const [dobError, setDobError] = useState<string>("");
+  const [genderError, setGenderError] = useState<string>("");
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
   const context = getUserContext(user);
 
   // Lọc bỏ phần vai trò trong ngoặc khỏi tên hiển thị
   const cleanFullName =
-    (context.fullName || '').replace(/\s*\([^)]*\)/g, '').trim() ||
+    (context.fullName || "").replace(/\s*\([^)]*\)/g, "").trim() ||
     context.fullName ||
-    'Người dùng';
+    "Người dùng";
 
   // Danh sách các vai trò hiện có của tài khoản
   const effectiveRoles = (
-    user?.roles && user.roles.length > 0 ? user.roles : [user?.role || context.role]
+    user?.roles && user.roles.length > 0
+      ? user.roles
+      : [user?.role || context.role]
   ) as UserRoleType[];
 
   // Kiểm tra thông tin định danh (Ngày sinh & Giới tính) đã được khóa chưa (chỉ cập nhật 1 lần duy nhất)
   const isIdentityLocked = Boolean(
     user?.isIdentityLocked ||
-    (user?.id && localStorage.getItem(`identity_locked_${user.id}`) === 'true') ||
+    (user?.id && localStorage.getItem(`identity_locked_${user.id}`) === "true") ||
     (user?.dateOfBirth && user?.gender)
   );
 
@@ -122,20 +124,22 @@ export const ProfilePage: React.FC = () => {
   useEffect(() => {
     if (user) {
       setEditFullName(user.fullName || cleanFullName);
-      setEditPhone(user.phone || '');
+      setEditPhone(user.phone || "");
       setEditDateOfBirth(
         user.dateOfBirth
-          ? user.dateOfBirth.split('T')[0]
-          : localStorage.getItem(`user_dob_${user.id}`) || ''
+          ? user.dateOfBirth.split("T")[0]
+          : localStorage.getItem(`user_dob_${user.id}`) || ""
       );
-      setEditGender(user.gender || localStorage.getItem(`user_gender_${user.id}`) || '');
+      setEditGender(
+        user.gender || localStorage.getItem(`user_gender_${user.id}`) || ""
+      );
     }
   }, [user, cleanFullName]);
 
   // Đồng bộ thông tin profile mới nhất từ backend khi vào trang
   const fetchProfile = useCallback(async () => {
     const token = tokenStorage.getAccessToken();
-    if (!token) return;
+    if (!token || token.startsWith("demo-jwt-")) return;
 
     setIsFetchingProfile(true);
     try {
@@ -150,7 +154,7 @@ export const ProfilePage: React.FC = () => {
         ? localStorage.getItem(`user_gender_${currentUser.id}`)
         : undefined;
       const localLocked = currentUser?.id
-        ? localStorage.getItem(`identity_locked_${currentUser.id}`) === 'true'
+        ? localStorage.getItem(`identity_locked_${currentUser.id}`) === "true"
         : undefined;
 
       const mergedUser: AuthUser = {
@@ -162,7 +166,9 @@ export const ProfilePage: React.FC = () => {
           freshUser.isIdentityLocked ??
           currentUser?.isIdentityLocked ??
           localLocked ??
-          Boolean((freshUser.dateOfBirth || localDob) && (freshUser.gender || localGender)),
+          Boolean(
+            (freshUser.dateOfBirth || localDob) && (freshUser.gender || localGender)
+          ),
       };
 
       tokenStorage.setUser(mergedUser);
@@ -180,6 +186,20 @@ export const ProfilePage: React.FC = () => {
 
   // Đổi ảnh đại diện
   const handleAvatarConfirm = async (croppedFile: File): Promise<void> => {
+    const token = tokenStorage.getAccessToken();
+
+    if (token?.startsWith("demo-jwt-")) {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      const demoUrl = URL.createObjectURL(croppedFile);
+      const updatedUser: AuthUser = { ...(user as AuthUser), avatarUrl: demoUrl };
+      tokenStorage.setUser(updatedUser);
+      setUser(updatedUser);
+      setShowUploadModal(false);
+      showToast("success", "Cập nhật ảnh đại diện thành công");
+      window.dispatchEvent(new CustomEvent("avatar-updated", { detail: demoUrl }));
+      return;
+    }
+
     try {
       const response = await usersService.uploadAvatar(croppedFile);
       const newAvatarUrl = response.data?.avatarUrl;
@@ -192,38 +212,38 @@ export const ProfilePage: React.FC = () => {
         };
         tokenStorage.setUser(mergedUser);
         setUser(mergedUser);
-        window.dispatchEvent(new CustomEvent('avatar-updated', { detail: newAvatarUrl }));
+        window.dispatchEvent(new CustomEvent("avatar-updated", { detail: newAvatarUrl }));
       }
 
       setShowUploadModal(false);
-      showToast('success', 'Cập nhật ảnh đại diện thành công');
+      showToast("success", "Cập nhật ảnh đại diện thành công");
     } catch (err: unknown) {
       const responseMessage = axios.isAxiosError<{ message?: string }>(err)
         ? err.response?.data?.message
         : undefined;
-      showToast('error', responseMessage || 'Không thể cập nhật ảnh đại diện');
+      showToast("error", responseMessage || "Không thể cập nhật ảnh đại diện");
     }
   };
 
   const handleStartEdit = () => {
-    setNameError('');
-    setPhoneError('');
-    setDobError('');
-    setGenderError('');
+    setNameError("");
+    setPhoneError("");
+    setDobError("");
+    setGenderError("");
     setIsEditing(true);
   };
 
   const handleCancelEdit = () => {
     setIsEditing(false);
-    setNameError('');
-    setPhoneError('');
-    setDobError('');
-    setGenderError('');
+    setNameError("");
+    setPhoneError("");
+    setDobError("");
+    setGenderError("");
     if (user) {
       setEditFullName(user.fullName || cleanFullName);
-      setEditPhone(user.phone || '');
-      setEditDateOfBirth(user.dateOfBirth?.split('T')[0] || '');
-      setEditGender(user.gender || '');
+      setEditPhone(user.phone || "");
+      setEditDateOfBirth(user.dateOfBirth?.split("T")[0] || "");
+      setEditGender(user.gender || "");
     }
   };
 
@@ -235,43 +255,43 @@ export const ProfilePage: React.FC = () => {
     let hasError = false;
 
     if (!normalizedName) {
-      setNameError('Vui lòng nhập họ và tên.');
+      setNameError("Vui lòng nhập họ và tên.");
       hasError = true;
     } else if (normalizedName.length > 100) {
-      setNameError('Họ và tên không được vượt quá 100 ký tự.');
+      setNameError("Họ và tên không được vượt quá 100 ký tự.");
       hasError = true;
     } else {
-      setNameError('');
+      setNameError("");
     }
 
     if (normalizedPhone && !VIETNAM_PHONE_PATTERN.test(normalizedPhone)) {
-      setPhoneError('Nhập số điện thoại Việt Nam hợp lệ (ví dụ: 0912345678 hoặc +84912345678).');
+      setPhoneError("Nhập số điện thoại Việt Nam hợp lệ (ví dụ: 0912345678 hoặc +84912345678).");
       hasError = true;
     } else {
-      setPhoneError('');
+      setPhoneError("");
     }
 
     // Nếu thông tin định danh chưa khóa và người dùng nhập:
     if (!isIdentityLocked) {
       if (!editDateOfBirth) {
-        setDobError('Vui lòng chọn ngày sinh để hoàn tất thông tin định danh.');
+        setDobError("Vui lòng chọn ngày sinh để hoàn tất thông tin định danh.");
         hasError = true;
       } else {
         const birthDate = new Date(editDateOfBirth);
         const today = new Date();
         if (birthDate > today || birthDate.getFullYear() < 1920) {
-          setDobError('Ngày sinh không hợp lệ (phải từ năm 1920 đến hiện tại).');
+          setDobError("Ngày sinh không hợp lệ (phải từ năm 1920 đến hiện tại).");
           hasError = true;
         } else {
-          setDobError('');
+          setDobError("");
         }
       }
 
       if (!editGender) {
-        setGenderError('Vui lòng chọn giới tính của bạn.');
+        setGenderError("Vui lòng chọn giới tính của bạn.");
         hasError = true;
       } else {
-        setGenderError('');
+        setGenderError("");
       }
     }
 
@@ -307,28 +327,31 @@ export const ProfilePage: React.FC = () => {
 
       const currentUser = tokenStorage.getUser() || user;
       if (!currentUser) {
-        throw new Error('Không tìm thấy thông tin người dùng. Vui lòng tải lại trang.');
+        throw new Error("Không tìm thấy thông tin người dùng. Vui lòng tải lại trang.");
       }
 
+      const token = tokenStorage.getAccessToken();
       let updatedUser: Partial<AuthUser> = { ...payload };
 
-      try {
-        updatedUser = await usersService.updateMyProfile(payload);
-      } catch {
-        // Fallback nếu API backend chưa có endpoint này
-        if (currentUser.id) {
-          try {
-            const res = await usersService.updateUser(currentUser.id, payload as any);
-            updatedUser = { ...res, avatarUrl: res.avatarUrl || undefined };
-          } catch {
-            // Tiếp tục với dữ liệu local
+      if (!token?.startsWith("demo-jwt-")) {
+        try {
+          updatedUser = await usersService.updateMyProfile(payload);
+        } catch {
+          // Fallback nếu API backend chưa có endpoint này
+          if (currentUser.id) {
+            try {
+              const res = await usersService.updateUser(currentUser.id, payload as any);
+              updatedUser = { ...res, avatarUrl: res.avatarUrl || undefined };
+            } catch {
+              // Tiếp tục với dữ liệu local
+            }
           }
         }
       }
 
       // Lưu trữ trạng thái khóa định danh vĩnh viễn trên client
       if (willLockIdentity && currentUser.id) {
-        localStorage.setItem(`identity_locked_${currentUser.id}`, 'true');
+        localStorage.setItem(`identity_locked_${currentUser.id}`, "true");
         localStorage.setItem(`user_dob_${currentUser.id}`, editDateOfBirth);
         localStorage.setItem(`user_gender_${currentUser.id}`, editGender);
       }
@@ -342,23 +365,23 @@ export const ProfilePage: React.FC = () => {
 
       tokenStorage.setUser(mergedUser);
       setUser(mergedUser);
-      window.dispatchEvent(new CustomEvent('user-updated', { detail: mergedUser }));
+      window.dispatchEvent(new CustomEvent("user-updated", { detail: mergedUser }));
 
       setIsEditing(false);
       showToast(
-        'success',
+        "success",
         willLockIdentity
-          ? 'Xác thực định danh và lưu hồ sơ thành công'
-          : 'Cập nhật thông tin cá nhân thành công'
+          ? "Xác thực định danh và lưu hồ sơ thành công"
+          : "Cập nhật thông tin cá nhân thành công"
       );
     } catch (error: unknown) {
       const responseMessage = axios.isAxiosError<{ message?: string | string[] }>(error)
         ? error.response?.data?.message
         : undefined;
       const message = Array.isArray(responseMessage)
-        ? responseMessage.join(', ')
-        : responseMessage || (error instanceof Error ? error.message : '');
-      showToast('error', message || 'Không thể cập nhật hồ sơ');
+        ? responseMessage.join(", ")
+        : responseMessage || (error instanceof Error ? error.message : "");
+      showToast("error", message || "Không thể cập nhật hồ sơ");
     } finally {
       setIsSaving(false);
     }
@@ -502,7 +525,7 @@ export const ProfilePage: React.FC = () => {
                   </span>
                 </div>
                 <div className="h-12 flex items-center px-4 rounded-xl bg-slate-50/90 border border-slate-200/90 text-sm sm:text-[15px] font-bold text-slate-900 tracking-tight select-all">
-                  {user?.username || 'admin'}
+                  {user?.username || "admin"}
                 </div>
               </div>
 
@@ -518,7 +541,7 @@ export const ProfilePage: React.FC = () => {
                   </span>
                 </div>
                 <div className="h-12 flex items-center px-4 rounded-xl bg-slate-50/90 border border-slate-200/90 text-sm sm:text-[15px] font-semibold text-slate-900 truncate">
-                  {user?.email || 'admin@loha.vn'}
+                  {user?.email || "admin@loha.vn"}
                 </div>
               </div>
 
@@ -544,14 +567,14 @@ export const ProfilePage: React.FC = () => {
                         value={editFullName}
                         onChange={(e) => {
                           setEditFullName(e.target.value);
-                          if (nameError) setNameError('');
+                          if (nameError) setNameError("");
                         }}
                         maxLength={100}
                         placeholder="Nhập họ và tên của bạn..."
                         className={`w-full h-12 px-4 text-sm sm:text-[15px] font-semibold rounded-xl border bg-white text-slate-900 focus:outline-none transition-all ${
                           nameError
-                            ? 'border-rose-400 ring-2 ring-rose-100'
-                            : 'border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                            ? "border-rose-400 ring-2 ring-rose-100"
+                            : "border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                         }`}
                       />
                       {nameError && (
@@ -591,13 +614,13 @@ export const ProfilePage: React.FC = () => {
                         value={editPhone}
                         onChange={(e) => {
                           setEditPhone(e.target.value);
-                          if (phoneError) setPhoneError('');
+                          if (phoneError) setPhoneError("");
                         }}
                         placeholder="Ví dụ: 0912345678"
                         className={`w-full h-12 px-4 text-sm sm:text-[15px] font-semibold rounded-xl border bg-white text-slate-900 focus:outline-none transition-all ${
                           phoneError
-                            ? 'border-rose-400 ring-2 ring-rose-100'
-                            : 'border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                            ? "border-rose-400 ring-2 ring-rose-100"
+                            : "border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                         }`}
                       />
                       {phoneError ? (
@@ -647,14 +670,14 @@ export const ProfilePage: React.FC = () => {
                         value={editDateOfBirth}
                         onChange={(e) => {
                           setEditDateOfBirth(e.target.value);
-                          if (dobError) setDobError('');
+                          if (dobError) setDobError("");
                         }}
-                        max={new Date().toISOString().split('T')[0]}
+                        max={new Date().toISOString().split("T")[0]}
                         min="1920-01-01"
                         className={`w-full h-12 px-4 text-sm sm:text-[15px] font-semibold rounded-xl border bg-white text-slate-900 focus:outline-none transition-all ${
                           dobError
-                            ? 'border-rose-400 ring-2 ring-rose-100'
-                            : 'border-amber-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                            ? "border-rose-400 ring-2 ring-rose-100"
+                            : "border-amber-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                         }`}
                       />
                       {dobError ? (
@@ -671,9 +694,7 @@ export const ProfilePage: React.FC = () => {
                   ) : (
                     <div className="h-12 flex items-center justify-between px-4 rounded-xl bg-slate-50/90 border border-slate-200/90 text-sm sm:text-[15px] font-bold text-slate-900">
                       {user?.dateOfBirth ? (
-                        <span className="tracking-tight text-slate-900">
-                          {formatDateDisplay(user.dateOfBirth)}
-                        </span>
+                        <span className="tracking-tight text-slate-900">{formatDateDisplay(user.dateOfBirth)}</span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 text-amber-700 text-sm font-semibold">
                           <AlertCircle className="h-4 w-4 shrink-0" />
@@ -703,18 +724,18 @@ export const ProfilePage: React.FC = () => {
                   {isEditing && !isIdentityLocked ? (
                     <div className="space-y-1.5 animate-in fade-in duration-200">
                       <div className="grid grid-cols-2 gap-3 h-12">
-                        {['Nam', 'Nữ'].map((genderOpt) => (
+                        {["Nam", "Nữ"].map((genderOpt) => (
                           <button
                             key={genderOpt}
                             type="button"
                             onClick={() => {
                               setEditGender(genderOpt);
-                              if (genderError) setGenderError('');
+                              if (genderError) setGenderError("");
                             }}
                             className={`h-12 text-sm font-semibold rounded-xl border transition-all cursor-pointer ${
                               editGender === genderOpt
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                                : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
                             }`}
                           >
                             {genderOpt}
@@ -750,12 +771,10 @@ export const ProfilePage: React.FC = () => {
                     <Building2 className="h-4 w-4 text-slate-400" />
                     <span>Khu vực / Kho phụ trách</span>
                   </label>
-                  <span className="text-[11px] font-medium text-slate-400">
-                    Do quản trị viên phân công
-                  </span>
+                  <span className="text-[11px] font-medium text-slate-400">Do quản trị viên phân công</span>
                 </div>
                 <div className="h-12 flex items-center px-4 rounded-xl bg-slate-50/90 border border-slate-200/90 text-sm sm:text-[15px] font-semibold text-slate-800">
-                  {user?.assignedWarehouse || context.locationText || 'Toàn bộ hệ thống'}
+                  {user?.assignedWarehouse || context.locationText || "Toàn bộ hệ thống"}
                 </div>
               </div>
             </div>
@@ -764,8 +783,8 @@ export const ProfilePage: React.FC = () => {
             <div
               className={`grid transition-all duration-300 ease-in-out ${
                 isEditing
-                  ? 'grid-rows-[1fr] opacity-100 pt-6 mt-7 border-t border-slate-100'
-                  : 'grid-rows-[0fr] opacity-0 pointer-events-none'
+                  ? "grid-rows-[1fr] opacity-100 pt-6 mt-7 border-t border-slate-100"
+                  : "grid-rows-[0fr] opacity-0 pointer-events-none"
               }`}
             >
               <div className="overflow-hidden">
@@ -850,10 +869,8 @@ export const ProfilePage: React.FC = () => {
                   )}
                   <span>Số điện thoại</span>
                 </span>
-                <span
-                  className={`text-xs font-semibold ${user?.phone ? 'text-slate-400' : 'text-amber-600'}`}
-                >
-                  {user?.phone ? 'Đã có' : 'Chưa có'}
+                <span className={`text-xs font-semibold ${user?.phone ? "text-slate-400" : "text-amber-600"}`}>
+                  {user?.phone ? "Đã có" : "Chưa có"}
                 </span>
               </div>
 
@@ -868,10 +885,10 @@ export const ProfilePage: React.FC = () => {
                 </span>
                 <span
                   className={`text-xs font-semibold ${
-                    isIdentityLocked ? 'text-slate-400' : 'text-amber-600'
+                    isIdentityLocked ? "text-slate-400" : "text-amber-600"
                   }`}
                 >
-                  {isIdentityLocked ? 'Đã có' : 'Chưa cập nhật'}
+                  {isIdentityLocked ? "Đã có" : "Chưa cập nhật"}
                 </span>
               </div>
             </div>
@@ -890,7 +907,7 @@ export const ProfilePage: React.FC = () => {
                   Tên tài khoản
                 </span>
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 font-bold text-slate-900 text-sm tracking-tight">
-                  {user?.username || 'admin'}
+                  {user?.username || "admin"}
                 </div>
               </div>
 
@@ -900,7 +917,7 @@ export const ProfilePage: React.FC = () => {
                 </span>
                 <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
                   <Clock className="h-4 w-4 text-slate-400" />
-                  <span>{formatDateDisplay(user?.createdAt as string) || '01/01/2026'}</span>
+                  <span>{formatDateDisplay(user?.createdAt as string) || "01/01/2026"}</span>
                 </div>
               </div>
 
@@ -912,9 +929,8 @@ export const ProfilePage: React.FC = () => {
                   {effectiveRoles.map((r) => {
                     const cfg = ROLE_CONFIGS[r];
                     const label = cfg?.label || r;
-                    const badgeClass =
-                      cfg?.badgeClass || 'bg-blue-50 text-blue-700 border-blue-200';
-                    const dotClass = cfg?.dotClass || 'bg-blue-500';
+                    const badgeClass = cfg?.badgeClass || "bg-blue-50 text-blue-700 border-blue-200";
+                    const dotClass = cfg?.dotClass || "bg-blue-500";
                     return (
                       <span
                         key={r}
@@ -943,11 +959,12 @@ export const ProfilePage: React.FC = () => {
         </div>
       </div>
 
+
       {/* =============================================================== */}
       {/* 5. POPUP MODAL XÁC NHẬN CẬP NHẬT THÔNG TIN ĐỊNH DANH (1 LẦN)      */}
       {/* =============================================================== */}
       {showIdentityConfirmModal &&
-        typeof document !== 'undefined' &&
+        typeof document !== "undefined" &&
         createPortal(
           <div
             onClick={() => !isSaving && setShowIdentityConfirmModal(false)}
@@ -979,9 +996,9 @@ export const ProfilePage: React.FC = () => {
                   <span>Quy định xác thực tài khoản</span>
                 </p>
                 <p className="text-[11px] text-amber-700 leading-relaxed">
-                  Ngày sinh và Giới tính chỉ được cập nhật <strong>DUY NHẤT 1 LẦN</strong>. Sau khi
-                  xác nhận, thông tin này sẽ được <strong>KHÓA VĨNH VIỄN</strong> và không thể chỉnh
-                  sửa lại trên hệ thống.
+                  Ngày sinh và Giới tính chỉ được cập nhật <strong>DUY NHẤT 1 LẦN</strong>. Sau
+                  khi xác nhận, thông tin này sẽ được <strong>KHÓA VĨNH VIỄN</strong> và không
+                  thể chỉnh sửa lại trên hệ thống.
                 </p>
               </div>
 
@@ -1005,9 +1022,7 @@ export const ProfilePage: React.FC = () => {
                 </div>
                 <div className="flex justify-between items-center py-0.5">
                   <span className="text-slate-500">Số điện thoại:</span>
-                  <span className="font-bold text-slate-900 tracking-tight">
-                    {editPhone || '—'}
-                  </span>
+                  <span className="font-bold text-slate-900 tracking-tight">{editPhone || "—"}</span>
                 </div>
               </div>
 

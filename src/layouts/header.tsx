@@ -1,17 +1,26 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { createPortal } from 'react-dom';
-import { Menu, User, Lock, Power, ChevronDown, ChevronRight, LogOut, Loader2 } from 'lucide-react';
-import { getStoredUser } from '../utils/navigation';
+import React, { useState, useEffect, useRef } from "react";
+import { useLocation, useNavigate, Link } from "react-router-dom";
+import { createPortal } from "react-dom";
+import {
+  Menu,
+  User,
+  Lock,
+  Power,
+  ChevronDown,
+  ChevronRight,
+  LogOut,
+  Loader2,
+} from "lucide-react";
+import { getStoredUser } from "../utils/navigation";
 import {
   getNavigationItems,
   getUserContext,
   ROLE_NAVIGATION_MATRIX,
   type MenuItem,
-} from '../utils/navigation-config';
-import { tokenStorage } from '../utils/token-storage';
-import { resolveAvatarUrl } from '../utils/avatar';
-import { authService } from '../services/auth.service';
+} from "../utils/navigation-config";
+import { tokenStorage } from "../utils/token-storage";
+import { resolveAvatarUrl } from "../utils/avatar";
+import { authService } from "../services/auth.service";
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
@@ -28,45 +37,42 @@ const getPageHeaderInfo = (
   // 1. Ưu tiên khớp chính xác theo menu item của người dùng hiện tại trên Navbar
   const sortedUserItems = [...userMenuItems].sort((a, b) => b.path.length - a.path.length);
   const matchedUserItem = sortedUserItems.find(
-    (item) => pathname === item.path || pathname.startsWith(item.path + '/')
+    (item) => pathname === item.path || pathname.startsWith(item.path + "/")
   );
 
   if (matchedUserItem) {
-    return { title: matchedUserItem.name, category: matchedUserItem.category || 'Hệ thống' };
+    return { title: matchedUserItem.name, category: matchedUserItem.category || "Hệ thống" };
   }
 
   // 2. Tra cứu đối chiếu theo toàn bộ danh mục các vai trò trong hệ thống
   for (const items of Object.values(ROLE_NAVIGATION_MATRIX)) {
     const sorted = [...items].sort((a, b) => b.path.length - a.path.length);
     const found = sorted.find(
-      (item) => pathname === item.path || pathname.startsWith(item.path + '/')
+      (item) => pathname === item.path || pathname.startsWith(item.path + "/")
     );
     if (found) {
-      return { title: found.name, category: found.category || 'Hệ thống' };
+      return { title: found.name, category: found.category || "Hệ thống" };
     }
   }
 
   // 3. Các trang nghiệp vụ / chức năng bổ trợ ngoài menu chính
-  if (pathname.startsWith('/catalog/categories')) {
-    return { title: 'Danh mục sản phẩm', category: 'Sản phẩm & Chính sách' };
+  if (pathname.startsWith("/catalog/categories")) {
+    return { title: "Danh mục sản phẩm", category: "Sản phẩm & Chính sách" };
   }
-  if (
-    pathname.startsWith('/profile/change-password') ||
-    pathname.startsWith('/settings/security')
-  ) {
-    return { title: 'Đổi mật khẩu tài khoản', category: 'Bảo mật cá nhân' };
+  if (pathname.startsWith("/profile/change-password") || pathname.startsWith("/settings/security")) {
+    return { title: "Đổi mật khẩu tài khoản", category: "Bảo mật cá nhân" };
   }
-  if (pathname === '/profile') {
-    return { title: 'Hồ sơ cá nhân', category: 'Tài khoản cá nhân' };
+  if (pathname === "/profile") {
+    return { title: "Hồ sơ cá nhân", category: "Tài khoản cá nhân" };
   }
-  if (pathname === '/403') {
-    return { title: 'Không có quyền truy cập', category: 'Cảnh báo' };
+  if (pathname === "/403") {
+    return { title: "Không có quyền truy cập", category: "Cảnh báo" };
   }
-  if (pathname === '/404') {
-    return { title: 'Không tìm thấy trang', category: 'Cảnh báo' };
+  if (pathname === "/404") {
+    return { title: "Không tìm thấy trang", category: "Cảnh báo" };
   }
 
-  return { title: 'Hệ thống LOHA SALES', category: 'Vận hành' };
+  return { title: "Hệ thống LOHA SALES", category: "Vận hành" };
 };
 
 /**
@@ -79,7 +85,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(getStoredUser());
-  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(tokenStorage.getUser()?.avatarUrl);
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
+    tokenStorage.getUser()?.avatarUrl
+  );
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -135,15 +143,15 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       setAvatarUrl(u?.avatarUrl);
     };
 
-    window.addEventListener('storage', syncUser);
-    window.addEventListener('avatar-updated', syncUser);
-    window.addEventListener('user-updated', syncUser);
+    window.addEventListener("storage", syncUser);
+    window.addEventListener("avatar-updated", syncUser);
+    window.addEventListener("user-updated", syncUser);
     syncUser();
 
     return () => {
-      window.removeEventListener('storage', syncUser);
-      window.removeEventListener('avatar-updated', syncUser);
-      window.removeEventListener('user-updated', syncUser);
+      window.removeEventListener("storage", syncUser);
+      window.removeEventListener("avatar-updated", syncUser);
+      window.removeEventListener("user-updated", syncUser);
     };
   }, []);
 
@@ -161,19 +169,19 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         handleCloseDropdown();
       }
     };
 
     if (isDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isDropdownOpen]);
 
@@ -182,7 +190,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
     try {
-      await Promise.all([authService.logout(), new Promise((resolve) => setTimeout(resolve, 800))]);
+      await Promise.all([
+        authService.logout(),
+        new Promise((resolve) => setTimeout(resolve, 800)),
+      ]);
     } catch {
       tokenStorage.clearAuthData();
     } finally {
@@ -191,7 +202,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         setIsLoggingOut(false);
         setShowLogoutModal(false);
         setIsExiting(false);
-        navigate('/auth/login', { replace: true });
+        navigate("/auth/login", { replace: true });
       }, 300);
     }
   };
@@ -200,9 +211,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const { title } = getPageHeaderInfo(location.pathname, menuItems);
   const context = getUserContext(currentUser);
   const cleanFullName =
-    (context.fullName || '').replace(/\s*\([^)]*\)/g, '').trim() ||
+    (context.fullName || "").replace(/\s*\([^)]*\)/g, "").trim() ||
     context.fullName ||
-    'Người dùng';
+    "Người dùng";
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 backdrop-blur-xs px-4 sm:px-6">
@@ -246,8 +257,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           onClick={() => setIsDropdownOpen((prev) => !prev)}
           className={`flex items-center gap-2 sm:gap-3 p-1.5 sm:px-3 sm:py-2 rounded-lg border transition-all duration-200 cursor-pointer select-none group focus:outline-none ${
             isDropdownOpen
-              ? 'bg-slate-50 border-slate-300 shadow-2xs'
-              : 'bg-white border-slate-200/80 hover:bg-slate-50 hover:border-slate-300/90'
+              ? "bg-slate-50 border-slate-300 shadow-2xs"
+              : "bg-white border-slate-200/80 hover:bg-slate-50 hover:border-slate-300/90"
           }`}
           aria-expanded={isDropdownOpen}
           aria-haspopup="true"
@@ -286,7 +297,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           {/* Mũi tên xoay biểu thị đóng/mở */}
           <ChevronDown
             className={`h-4 w-4 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 shrink-0 ${
-              isDropdownOpen ? 'rotate-180 text-[var(--color-primary)]' : ''
+              isDropdownOpen ? "rotate-180 text-[var(--color-primary)]" : ""
             }`}
           />
         </button>
@@ -320,7 +331,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                   <span className="text-[15px] font-semibold text-slate-900 group-hover/user:text-[var(--color-primary)] transition-colors truncate">
                     {cleanFullName}
                   </span>
-                  <span className="text-xs text-slate-500 truncate">{context.roleLabel}</span>
+                  <span className="text-xs text-slate-500 truncate">
+                    {context.roleLabel}
+                  </span>
                 </div>
               </Link>
             </div>
@@ -377,7 +390,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200/80 group-hover:bg-slate-200 text-slate-900 transition-colors">
                     <LogOut className="h-5 w-5" />
                   </div>
-                  <span className="text-[15px] font-medium text-slate-900 truncate">Đăng xuất</span>
+                  <span className="text-[15px] font-medium text-slate-900 truncate">
+                    Đăng xuất
+                  </span>
                 </div>
               </button>
             </div>
@@ -396,18 +411,18 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       {/* 3. MODAL XÁC NHẬN ĐĂNG XUẤT (radius-lg: 12px)                       */}
       {/* =================================================================== */}
       {showLogoutModal &&
-        typeof document !== 'undefined' &&
+        typeof document !== "undefined" &&
         createPortal(
           <div
             onClick={() => !isLoggingOut && setShowLogoutModal(false)}
             className={`fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-300 ${
-              isExiting ? 'opacity-0' : 'animate-modal-backdrop-in'
+              isExiting ? "opacity-0" : "animate-modal-backdrop-in"
             }`}
           >
             <div
               onClick={(e) => e.stopPropagation()}
               className={`relative w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl border border-slate-100 transition-all duration-300 ${
-                isExiting ? 'scale-95 opacity-0' : 'animate-modal-in'
+                isExiting ? "scale-95 opacity-0" : "animate-modal-in"
               }`}
             >
               {isLoggingOut ? (
@@ -416,7 +431,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                     <Loader2 className="h-6 w-6 animate-spin text-rose-600" />
                   </div>
                   <div>
-                    <h4 className="text-base font-bold text-slate-900">Đang đăng xuất...</h4>
+                    <h4 className="text-base font-bold text-slate-900">
+                      Đang đăng xuất...
+                    </h4>
                     <p className="text-xs text-slate-400 mt-1">
                       Đang kết thúc phiên và chuyển hướng
                     </p>
@@ -429,7 +446,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                   </div>
 
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">Đăng xuất tài khoản?</h3>
+                    <h3 className="text-base font-bold text-slate-900">
+                      Đăng xuất tài khoản?
+                    </h3>
                     <p className="text-xs text-slate-500 mt-1">
                       Bạn có chắc muốn kết thúc phiên làm việc này không?
                     </p>

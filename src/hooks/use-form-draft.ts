@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { tokenStorage } from '../utils/token-storage';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { tokenStorage } from "../utils/token-storage";
 
 export interface DraftStorageEnvelope<T> {
   data: T;
@@ -31,9 +31,9 @@ export interface UseFormDraftReturn<T> {
  * Trợ giúp đọc trạng thái bản nháp ban đầu từ localStorage
  */
 const readInitialDraft = <T>(
-  storageKey: string
+  storageKey: string,
 ): { hasDraft: boolean; lastSavedAt: Date | null } => {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return { hasDraft: false, lastSavedAt: null };
   }
 
@@ -61,14 +61,14 @@ const readInitialDraft = <T>(
  */
 export const useFormDraft = <T extends Record<string, unknown>>(
   formKey: string,
-  options: UseFormDraftOptions = {}
+  options: UseFormDraftOptions = {},
 ): UseFormDraftReturn<T> => {
   const { debounceMs = 600, perUser = true } = options;
 
   // Tạo storage key có phân tách theo người dùng nếu cần
   const getStorageKey = useCallback((): string => {
     const user = tokenStorage.getUser();
-    const userPrefix = perUser && user?.id ? `_${user.id}` : '';
+    const userPrefix = perUser && user?.id ? `_${user.id}` : "";
     return `loha_draft_${formKey}${userPrefix}`;
   }, [formKey, perUser]);
 
@@ -112,13 +112,13 @@ export const useFormDraft = <T extends Record<string, unknown>>(
           setHasDraft(true);
           setLastSavedAt(now);
         } catch (error) {
-          console.warn('Không thể lưu bản nháp vào localStorage:', error);
+          console.warn("Không thể lưu bản nháp vào localStorage:", error);
         } finally {
           setIsSaving(false);
         }
       }, debounceMs);
     },
-    [debounceMs, getStorageKey]
+    [debounceMs, getStorageKey],
   );
 
   /**

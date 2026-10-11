@@ -1,13 +1,20 @@
-import React, { useEffect, useCallback, useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { X, Clock, User, Database, CheckCircle2, FileSpreadsheet } from 'lucide-react';
-import type { AuditLogItem } from '../../types/audit-log';
+import React, { useEffect, useCallback, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
+import {
+  X,
+  Clock,
+  User,
+  Database,
+  CheckCircle2,
+  FileSpreadsheet,
+} from "lucide-react";
+import type { AuditLogItem } from "../../types/audit-log";
 import {
   formatAuditDateTime,
   formatUserWithRole,
   resolveEntityCode,
   resolveEntityDisplayName,
-} from '../../services/audit-log.service';
+} from "../../services/audit-log.service";
 
 interface DiffViewerModalProps {
   isOpen: boolean;
@@ -20,119 +27,119 @@ interface DiffViewerModalProps {
  */
 const PROPERTY_LABELS: Record<string, string> = {
   // 1. Kho hàng & Quản lý Tồn kho (Inventory & Warehouse)
-  stockQuantity: 'Tồn kho thực tế',
-  quantityChange: 'Số lượng điều chỉnh',
-  beforeQuantity: 'Tồn kho trước điều chỉnh',
-  afterQuantity: 'Tồn kho sau điều chỉnh',
-  quantity: 'Số lượng',
-  on_hand: 'Tồn kho thực tế (On-hand)',
-  available: 'Tồn kho khả dụng (Available)',
-  allocated: 'Đang giữ chỗ / Chờ giao (Allocated)',
-  damaged: 'Hàng hỏng / Hết hạn',
-  warehouseLocation: 'Vị trí kệ / Ô kho',
-  storageLocation: 'Vị trí lưu trữ',
-  warehouseId: 'Mã kho hàng',
-  warehouseName: 'Tên kho hàng',
-  warehouse: 'Kho hàng',
-  lotNumber: 'Số lô sản xuất',
-  batchNumber: 'Mã lô hàng',
-  expiryDate: 'Hạn sử dụng (EXP)',
-  manufactureDate: 'Ngày sản xuất (MFG)',
-  reason: 'Lý do điều chỉnh kho',
-  note: 'Ghi chú điều chỉnh',
-  notes: 'Ghi chú bổ sung',
-  minStock: 'Định mức tồn tối thiểu',
-  maxStock: 'Định mức tồn tối đa',
+  stockQuantity: "Tồn kho thực tế",
+  quantityChange: "Số lượng điều chỉnh",
+  beforeQuantity: "Tồn kho trước điều chỉnh",
+  afterQuantity: "Tồn kho sau điều chỉnh",
+  quantity: "Số lượng",
+  on_hand: "Tồn kho thực tế (On-hand)",
+  available: "Tồn kho khả dụng (Available)",
+  allocated: "Đang giữ chỗ / Chờ giao (Allocated)",
+  damaged: "Hàng hỏng / Hết hạn",
+  warehouseLocation: "Vị trí kệ / Ô kho",
+  storageLocation: "Vị trí lưu trữ",
+  warehouseId: "Mã kho hàng",
+  warehouseName: "Tên kho hàng",
+  warehouse: "Kho hàng",
+  lotNumber: "Số lô sản xuất",
+  batchNumber: "Mã lô hàng",
+  expiryDate: "Hạn sử dụng (EXP)",
+  manufactureDate: "Ngày sản xuất (MFG)",
+  reason: "Lý do điều chỉnh kho",
+  note: "Ghi chú điều chỉnh",
+  notes: "Ghi chú bổ sung",
+  minStock: "Định mức tồn tối thiểu",
+  maxStock: "Định mức tồn tối đa",
 
   // 2. Sản phẩm & Chính sách Giá bán (Products & Pricing)
-  sku: 'Mã sản phẩm (SKU)',
-  barcode: 'Mã vạch (Barcode)',
-  name: 'Tên sản phẩm / Tên đối tượng',
-  productName: 'Tên sản phẩm',
-  product_name: 'Tên sản phẩm',
-  category: 'Ngành hàng / Nhóm hàng',
-  categoryName: 'Tên nhóm hàng',
-  category_name: 'Tên nhóm hàng',
-  parentCategory: 'Nhóm hàng cha',
-  subCategory: 'Phân nhóm phụ',
-  baseUnit: 'Đơn vị tính cơ sở',
-  unit: 'Đơn vị tính',
-  packagingSpec: 'Quy cách đóng gói',
-  price: 'Giá bán niêm yết',
-  unitPrice: 'Giá bán niêm yết (Đơn giá)',
-  costPrice: 'Giá vốn nhập kho',
-  margin: 'Biên lợi nhuận',
-  discountPercent: 'Tỷ lệ chiết khấu (%)',
-  discountAmount: 'Số tiền chiết khấu',
-  policyCode: 'Mã chính sách giá',
-  policyName: 'Tên chính sách giá',
-  minOrderQuantity: 'Số lượng đặt tối thiểu',
-  minOrderQty: 'Số lượng đặt tối thiểu',
-  vatRate: 'Thuế suất GTGT (%)',
-  vat: 'Thuế GTGT (VAT)',
-  taxAmount: 'Tiền thuế GTGT',
-  description: 'Mô tả sản phẩm',
-  imageUrl: 'Hình ảnh đại diện',
-  weight: 'Khối lượng',
-  volume: 'Thể tích',
+  sku: "Mã sản phẩm (SKU)",
+  barcode: "Mã vạch (Barcode)",
+  name: "Tên sản phẩm / Tên đối tượng",
+  productName: "Tên sản phẩm",
+  product_name: "Tên sản phẩm",
+  category: "Ngành hàng / Nhóm hàng",
+  categoryName: "Tên nhóm hàng",
+  category_name: "Tên nhóm hàng",
+  parentCategory: "Nhóm hàng cha",
+  subCategory: "Phân nhóm phụ",
+  baseUnit: "Đơn vị tính cơ sở",
+  unit: "Đơn vị tính",
+  packagingSpec: "Quy cách đóng gói",
+  price: "Giá bán niêm yết",
+  unitPrice: "Giá bán niêm yết (Đơn giá)",
+  costPrice: "Giá vốn nhập kho",
+  margin: "Biên lợi nhuận",
+  discountPercent: "Tỷ lệ chiết khấu (%)",
+  discountAmount: "Số tiền chiết khấu",
+  policyCode: "Mã chính sách giá",
+  policyName: "Tên chính sách giá",
+  minOrderQuantity: "Số lượng đặt tối thiểu",
+  minOrderQty: "Số lượng đặt tối thiểu",
+  vatRate: "Thuế suất GTGT (%)",
+  vat: "Thuế GTGT (VAT)",
+  taxAmount: "Tiền thuế GTGT",
+  description: "Mô tả sản phẩm",
+  imageUrl: "Hình ảnh đại diện",
+  weight: "Khối lượng",
+  volume: "Thể tích",
 
   // 3. Công nợ, Hạn mức & Khách hàng / Đại lý (Debt & Customer)
-  customerCode: 'Mã đại lý / Khách hàng',
-  customerId: 'Mã định danh khách hàng',
-  customerName: 'Tên đại lý / Khách hàng',
-  creditLimit: 'Hạn mức công nợ tối đa',
-  creditTermDays: 'Thời hạn công nợ (ngày)',
-  currentDebt: 'Dư nợ hiện tại',
-  remainingCredit: 'Hạn mức khả dụng còn lại',
-  debtLimitStatus: 'Trạng thái hạn mức',
-  overdueDebt: 'Nợ quá hạn',
-  paymentAmount: 'Số tiền thanh toán',
-  amountPaid: 'Số tiền đã thanh toán',
-  paymentMethod: 'Phương thức thanh toán',
-  receiptNumber: 'Số phiếu thu',
-  invoiceMatched: 'Hóa đơn đối soát',
-  remainingDebt: 'Công nợ còn lại',
-  bankAccount: 'Số tài khoản ngân hàng',
-  bankName: 'Tên ngân hàng',
-  transactionRef: 'Mã giao dịch đối soát',
+  customerCode: "Mã đại lý / Khách hàng",
+  customerId: "Mã định danh khách hàng",
+  customerName: "Tên đại lý / Khách hàng",
+  creditLimit: "Hạn mức công nợ tối đa",
+  creditTermDays: "Thời hạn công nợ (ngày)",
+  currentDebt: "Dư nợ hiện tại",
+  remainingCredit: "Hạn mức khả dụng còn lại",
+  debtLimitStatus: "Trạng thái hạn mức",
+  overdueDebt: "Nợ quá hạn",
+  paymentAmount: "Số tiền thanh toán",
+  amountPaid: "Số tiền đã thanh toán",
+  paymentMethod: "Phương thức thanh toán",
+  receiptNumber: "Số phiếu thu",
+  invoiceMatched: "Hóa đơn đối soát",
+  remainingDebt: "Công nợ còn lại",
+  bankAccount: "Số tài khoản ngân hàng",
+  bankName: "Tên ngân hàng",
+  transactionRef: "Mã giao dịch đối soát",
 
   // 4. Đơn hàng Bán buôn (Orders)
-  orderId: 'Mã đơn hàng',
-  orderCode: 'Mã đơn hàng',
-  orderStatus: 'Trạng thái đơn hàng',
-  totalAmount: 'Tổng giá trị đơn hàng',
-  subTotal: 'Tiền hàng trước thuế',
-  shippingFee: 'Phí vận chuyển',
-  deliveryAddress: 'Địa chỉ giao hàng',
-  deliveryDate: 'Ngày hẹn giao hàng',
-  salesPerson: 'Nhân viên kinh doanh',
-  salesRepId: 'Mã NVKD phụ trách',
-  orderDate: 'Ngày lập đơn hàng',
-  itemsCount: 'Tổng số mặt hàng',
+  orderId: "Mã đơn hàng",
+  orderCode: "Mã đơn hàng",
+  orderStatus: "Trạng thái đơn hàng",
+  totalAmount: "Tổng giá trị đơn hàng",
+  subTotal: "Tiền hàng trước thuế",
+  shippingFee: "Phí vận chuyển",
+  deliveryAddress: "Địa chỉ giao hàng",
+  deliveryDate: "Ngày hẹn giao hàng",
+  salesPerson: "Nhân viên kinh doanh",
+  salesRepId: "Mã NVKD phụ trách",
+  orderDate: "Ngày lập đơn hàng",
+  itemsCount: "Tổng số mặt hàng",
 
   // 5. Tài khoản & Phân quyền bảo mật (User & Security)
-  username: 'Tên đăng nhập',
-  full_name: 'Họ và tên',
-  fullName: 'Họ và tên',
-  email: 'Địa chỉ Email',
-  phone: 'Số điện thoại',
-  phoneNumber: 'Số điện thoại',
-  roles: 'Vai trò phân quyền',
-  status: 'Trạng thái tài khoản / kinh doanh',
-  assignedDistricts: 'Khu vực / Quận huyện phụ trách',
-  assignedWarehouses: 'Kho hàng được phân quyền',
-  lockReason: 'Lý do khóa tài khoản',
-  isLocked: 'Tình trạng khóa',
-  lastLoginAt: 'Thời điểm đăng nhập gần nhất',
+  username: "Tên đăng nhập",
+  full_name: "Họ và tên",
+  fullName: "Họ và tên",
+  email: "Địa chỉ Email",
+  phone: "Số điện thoại",
+  phoneNumber: "Số điện thoại",
+  roles: "Vai trò phân quyền",
+  status: "Trạng thái tài khoản / kinh doanh",
+  assignedDistricts: "Khu vực / Quận huyện phụ trách",
+  assignedWarehouses: "Kho hàng được phân quyền",
+  lockReason: "Lý do khóa tài khoản",
+  isLocked: "Tình trạng khóa",
+  lastLoginAt: "Thời điểm đăng nhập gần nhất",
 
   // 6. Trường hệ thống chung (Common metadata)
-  createdAt: 'Thời điểm tạo lập',
-  created_at: 'Thời điểm tạo lập',
-  updatedAt: 'Thời điểm cập nhật',
-  updated_at: 'Thời điểm cập nhật',
-  deletedAt: 'Thời điểm xóa bỏ',
-  deleted_at: 'Thời điểm xóa bỏ',
-  ip_address: 'Địa chỉ IP thao tác',
+  createdAt: "Thời điểm tạo lập",
+  created_at: "Thời điểm tạo lập",
+  updatedAt: "Thời điểm cập nhật",
+  updated_at: "Thời điểm cập nhật",
+  deletedAt: "Thời điểm xóa bỏ",
+  deleted_at: "Thời điểm xóa bỏ",
+  ip_address: "Địa chỉ IP thao tác",
 };
 
 /**
@@ -140,64 +147,64 @@ const PROPERTY_LABELS: Record<string, string> = {
  */
 const VALUE_TRANSLATIONS: Record<string, string> = {
   // Trạng thái tài khoản & sản phẩm
-  ACTIVE: 'Đang kinh doanh / Đang hoạt động',
-  INACTIVE: 'Ngừng kinh doanh / Tạm ngưng',
-  LOCKED: 'Đã khóa tài khoản',
-  UNLOCKED: 'Đang hoạt động (Đã mở khóa)',
-  PENDING: 'Chờ phê duyệt',
-  APPROVED: 'Đã phê duyệt',
-  REJECTED: 'Từ chối phê duyệt',
-  CANCELLED: 'Đã hủy bỏ',
-  CANCELED: 'Đã hủy bỏ',
-  DRAFT: 'Bản nháp',
-  COMPLETED: 'Hoàn tất thành công',
-  PROCESSING: 'Đang xử lý',
-  SHIPPED: 'Đang vận chuyển',
-  DELIVERED: 'Đã giao hàng thành công',
-  FAILED: 'Thất bại',
+  ACTIVE: "Đang kinh doanh / Đang hoạt động",
+  INACTIVE: "Ngừng kinh doanh / Tạm ngưng",
+  LOCKED: "Đã khóa tài khoản",
+  UNLOCKED: "Đang hoạt động (Đã mở khóa)",
+  PENDING: "Chờ phê duyệt",
+  APPROVED: "Đã phê duyệt",
+  REJECTED: "Từ chối phê duyệt",
+  CANCELLED: "Đã hủy bỏ",
+  CANCELED: "Đã hủy bỏ",
+  DRAFT: "Bản nháp",
+  COMPLETED: "Hoàn tất thành công",
+  PROCESSING: "Đang xử lý",
+  SHIPPED: "Đang vận chuyển",
+  DELIVERED: "Đã giao hàng thành công",
+  FAILED: "Thất bại",
 
   // Trạng thái hạn mức & công nợ
-  NORMAL: 'Bình thường (Trong hạn mức)',
-  WARNING: 'Cảnh báo (Tiệm cận hạn mức)',
-  EXCEEDED: 'Vượt hạn mức tối đa cho phép',
+  NORMAL: "Bình thường (Trong hạn mức)",
+  WARNING: "Cảnh báo (Tiệm cận hạn mức)",
+  EXCEEDED: "Vượt hạn mức tối đa cho phép",
 
   // Phương thức thanh toán
-  BANK_TRANSFER: 'Chuyển khoản ngân hàng',
-  CASH: 'Tiền mặt',
-  DEBT: 'Ghi nhận công nợ đại lý',
-  COD: 'Thanh toán khi nhận hàng (COD)',
+  BANK_TRANSFER: "Chuyển khoản ngân hàng",
+  CASH: "Tiền mặt",
+  DEBT: "Ghi nhận công nợ đại lý",
+  COD: "Thanh toán khi nhận hàng (COD)",
 
   // Vai trò người dùng
-  ADMIN: 'Quản trị viên (ADMIN)',
-  SALES_ADMIN: 'Quản lý kinh doanh (Sales Admin)',
-  SALES_REP: 'Nhân viên kinh doanh',
-  WAREHOUSE_STAFF: 'Thủ kho',
-  ACCOUNTANT: 'Kế toán',
+  ADMIN: "Quản trị viên (ADMIN)",
+  SALES_ADMIN: "Quản lý kinh doanh (Sales Admin)",
+  SALES_REP: "Nhân viên kinh doanh",
+  WAREHOUSE_STAFF: "Thủ kho",
+  ACCOUNTANT: "Kế toán",
 
   // Boolean
-  true: 'Có (Kích hoạt)',
-  false: 'Không (Vô hiệu)',
+  true: "Có (Kích hoạt)",
+  false: "Không (Vô hiệu)",
 };
 
 /**
  * Danh sách các key đại diện cho tiền tệ để tự động format VNĐ
  */
 const MONEY_KEYS = new Set([
-  'price',
-  'unitprice',
-  'costprice',
-  'creditlimit',
-  'currentdebt',
-  'remainingcredit',
-  'paymentamount',
-  'amountpaid',
-  'remainingdebt',
-  'totalamount',
-  'subtotal',
-  'shippingfee',
-  'taxamount',
-  'overduedebt',
-  'discountamount',
+  "price",
+  "unitprice",
+  "costprice",
+  "creditlimit",
+  "currentdebt",
+  "remainingcredit",
+  "paymentamount",
+  "amountpaid",
+  "remainingdebt",
+  "totalamount",
+  "subtotal",
+  "shippingfee",
+  "taxamount",
+  "overduedebt",
+  "discountamount",
 ]);
 
 /**
@@ -208,8 +215,8 @@ function getPropertyLabel(key: string): string {
     return PROPERTY_LABELS[key];
   }
   const formatted = key
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/_/g, ' ')
+    .replace(/([A-Z])/g, " $1")
+    .replace(/_/g, " ")
     .trim();
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
@@ -219,33 +226,33 @@ function getPropertyLabel(key: string): string {
  */
 function formatDisplayValue(key: string, value: unknown): string {
   if (value === null || value === undefined) {
-    return '—';
+    return "—";
   }
 
   // Boolean
-  if (typeof value === 'boolean') {
-    return value ? 'Có (Kích hoạt)' : 'Không (Tắt)';
+  if (typeof value === "boolean") {
+    return value ? "Có (Kích hoạt)" : "Không (Tắt)";
   }
 
   // Number
-  if (typeof value === 'number') {
+  if (typeof value === "number") {
     const lowerKey = key.toLowerCase();
     if (MONEY_KEYS.has(lowerKey)) {
-      return new Intl.NumberFormat('vi-VN').format(value) + ' đ';
+      return new Intl.NumberFormat("vi-VN").format(value) + " đ";
     }
-    if (lowerKey.includes('percent') || lowerKey.includes('rate') || lowerKey === 'margin') {
+    if (lowerKey.includes("percent") || lowerKey.includes("rate") || lowerKey === "margin") {
       return `${value}%`;
     }
-    if (value >= 1000 && !lowerKey.includes('id') && !lowerKey.includes('year')) {
-      return new Intl.NumberFormat('vi-VN').format(value);
+    if (value >= 1000 && !lowerKey.includes("id") && !lowerKey.includes("year")) {
+      return new Intl.NumberFormat("vi-VN").format(value);
     }
     return value.toString();
   }
 
   // String
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const trimmed = value.trim();
-    if (!trimmed) return '—';
+    if (!trimmed) return "—";
 
     if (VALUE_TRANSLATIONS[trimmed]) {
       return VALUE_TRANSLATIONS[trimmed];
@@ -256,7 +263,7 @@ function formatDisplayValue(key: string, value: unknown): string {
     }
 
     if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-      const parts = trimmed.split('-');
+      const parts = trimmed.split("-");
       if (parts.length === 3) {
         return `${parts[2]}/${parts[1]}/${parts[0]}`;
       }
@@ -267,23 +274,23 @@ function formatDisplayValue(key: string, value: unknown): string {
 
   // Array
   if (Array.isArray(value)) {
-    if (value.length === 0) return '— (Trống)';
+    if (value.length === 0) return "— (Trống)";
     return value
       .map((item) => {
         const itemStr = String(item);
         return VALUE_TRANSLATIONS[itemStr] || itemStr;
       })
-      .join(', ');
+      .join(", ");
   }
 
   // Object
-  if (typeof value === 'object') {
+  if (typeof value === "object") {
     try {
       const entries = Object.entries(value as Record<string, unknown>);
-      if (entries.length === 0) return '— (Trống)';
+      if (entries.length === 0) return "— (Trống)";
       return entries
         .map(([k, v]) => `${getPropertyLabel(k)}: ${formatDisplayValue(k, v)}`)
-        .join('; ');
+        .join("; ");
     } catch {
       return JSON.stringify(value);
     }
@@ -302,10 +309,14 @@ interface DiffRow {
   isChanged: boolean;
   isAdded: boolean;
   isRemoved: boolean;
-  statusType: 'MODIFIED' | 'ADDED' | 'REMOVED' | 'UNCHANGED';
+  statusType: "MODIFIED" | "ADDED" | "REMOVED" | "UNCHANGED";
 }
 
-export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({ isOpen, onClose, logItem }) => {
+export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
+  isOpen,
+  onClose,
+  logItem,
+}) => {
   const [isClosing, setIsClosing] = useState<boolean>(false);
 
   const handleClose = useCallback(() => {
@@ -320,10 +331,10 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({ isOpen, onClos
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
+      if (e.key === "Escape") handleClose();
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, handleClose]);
 
   // Trích xuất toàn bộ danh sách thuộc tính và xác định trạng thái biến động
@@ -333,7 +344,9 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({ isOpen, onClos
     const oldVals = logItem.old_values || {};
     const newVals = logItem.new_values || {};
 
-    const allKeys = Array.from(new Set([...Object.keys(oldVals), ...Object.keys(newVals)]));
+    const allKeys = Array.from(
+      new Set([...Object.keys(oldVals), ...Object.keys(newVals)])
+    );
 
     return allKeys.map((key) => {
       const hasOld = Object.prototype.hasOwnProperty.call(oldVals, key);
@@ -342,17 +355,18 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({ isOpen, onClos
       const oldValue = hasOld ? oldVals[key] : undefined;
       const newValue = hasNew ? newVals[key] : undefined;
 
-      const oldFormatted = hasOld ? formatDisplayValue(key, oldValue) : '—';
-      const newFormatted = hasNew ? formatDisplayValue(key, newValue) : '—';
+      const oldFormatted = hasOld ? formatDisplayValue(key, oldValue) : "—";
+      const newFormatted = hasNew ? formatDisplayValue(key, newValue) : "—";
 
       const isAdded = !hasOld && hasNew;
       const isRemoved = hasOld && !hasNew;
-      const isChanged = JSON.stringify(oldValue) !== JSON.stringify(newValue);
+      const isChanged =
+        JSON.stringify(oldValue) !== JSON.stringify(newValue);
 
-      let statusType: DiffRow['statusType'] = 'UNCHANGED';
-      if (isAdded) statusType = 'ADDED';
-      else if (isRemoved) statusType = 'REMOVED';
-      else if (isChanged) statusType = 'MODIFIED';
+      let statusType: DiffRow["statusType"] = "UNCHANGED";
+      if (isAdded) statusType = "ADDED";
+      else if (isRemoved) statusType = "REMOVED";
+      else if (isChanged) statusType = "MODIFIED";
 
       return {
         key,
@@ -377,22 +391,22 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({ isOpen, onClos
 
   // Phân giải đối tượng và người thực hiện chuẩn nghiệp vụ
   const resolvedCode = useMemo(() => {
-    if (!logItem) return '';
+    if (!logItem) return "";
     return resolveEntityCode(logItem);
   }, [logItem]);
 
   const displayEntityName = useMemo(() => {
-    if (!logItem) return '';
+    if (!logItem) return "";
     return resolveEntityDisplayName(logItem.entity_name, resolvedCode);
   }, [logItem, resolvedCode]);
 
   const formattedUser = useMemo(() => {
-    if (!logItem) return '';
+    if (!logItem) return "";
     return formatUserWithRole(logItem.user);
   }, [logItem]);
 
   if (!isOpen || !logItem) return null;
-  if (typeof document === 'undefined') return null;
+  if (typeof document === "undefined") return null;
 
   return createPortal(
     <div
@@ -400,7 +414,7 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({ isOpen, onClos
       aria-modal="true"
       aria-labelledby="diff-modal-title"
       className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/35 backdrop-blur-[2px] ${
-        isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
+        isClosing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"
       }`}
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
@@ -408,7 +422,7 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({ isOpen, onClos
     >
       <div
         className={`relative w-full max-w-4xl bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-lg overflow-hidden flex flex-col max-h-[92vh] ${
-          isClosing ? 'animate-modal-out' : 'animate-modal-in'
+          isClosing ? "animate-modal-out" : "animate-modal-in"
         }`}
       >
         {/* 1. Header Modal */}
@@ -426,18 +440,20 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({ isOpen, onClos
                   Đối chiếu Thay đổi Dữ liệu (Audit Diff Viewer)
                 </h2>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[11px] font-semibold ring-1 ring-inset ring-blue-700/10">
-                  {logItem.action === 'UPDATE' ? 'Cập nhật (UPDATE)' : logItem.action}
+                  {logItem.action === "UPDATE" ? "Cập nhật (UPDATE)" : logItem.action}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Mã bản ghi:{' '}
-                <span className="font-mono font-semibold text-slate-700">{logItem.id}</span>
-                {' • '}
+                Mã bản ghi:{" "}
+                <span className="font-mono font-semibold text-slate-700">
+                  {logItem.id}
+                </span>
+                {" • "}
                 <span>
                   Đối tượng: <strong>{displayEntityName}</strong>
-                  {' ['}
+                  {" ["}
                   <span className="font-mono text-blue-700 font-semibold">{resolvedCode}</span>
-                  {']'}
+                  {"]"}
                 </span>
               </p>
             </div>
@@ -462,7 +478,10 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({ isOpen, onClos
             </div>
             <div className="min-w-0">
               <div className="text-[11px] text-slate-400 font-medium">Người thực hiện:</div>
-              <div className="font-semibold text-slate-800 truncate text-xs" title={formattedUser}>
+              <div
+                className="font-semibold text-slate-800 truncate text-xs"
+                title={formattedUser}
+              >
                 {formattedUser}
               </div>
             </div>
@@ -487,9 +506,7 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({ isOpen, onClos
               <Database className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <div className="text-[11px] text-slate-400 font-medium">
-                Mã đối tượng (Target ID):
-              </div>
+              <div className="text-[11px] text-slate-400 font-medium">Mã đối tượng (Target ID):</div>
               <div
                 className="font-mono text-blue-700 font-semibold truncate text-xs"
                 title={resolvedCode}
@@ -547,8 +564,8 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({ isOpen, onClos
                         key={row.key}
                         className={`transition-colors ${
                           isRowChanged
-                            ? 'bg-amber-50/20 hover:bg-amber-50/40'
-                            : 'hover:bg-slate-50/60'
+                            ? "bg-amber-50/20 hover:bg-amber-50/40"
+                            : "hover:bg-slate-50/60"
                         }`}
                       >
                         {/* Cột 1: Tên tiếng Việt dễ hiểu + Mã key kỹ thuật */}
@@ -566,13 +583,17 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({ isOpen, onClos
                         {/* Cột 2: Giá trị cũ (Old Value) */}
                         <td className="py-3 px-4 align-top border-l border-slate-100">
                           {row.isAdded || !logItem.old_values ? (
-                            <span className="text-slate-400 italic text-xs">— (Khởi tạo mới)</span>
+                            <span className="text-slate-400 italic text-xs">
+                              — (Khởi tạo mới)
+                            </span>
                           ) : isRowChanged ? (
                             <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 font-medium line-through decoration-rose-400 decoration-1 text-xs">
                               <span>{row.oldFormatted}</span>
                             </div>
                           ) : (
-                            <span className="text-slate-600 text-xs">{row.oldFormatted}</span>
+                            <span className="text-slate-600 text-xs">
+                              {row.oldFormatted}
+                            </span>
                           )}
                         </td>
 
@@ -587,28 +608,30 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({ isOpen, onClos
                               <span>{row.newFormatted}</span>
                             </div>
                           ) : (
-                            <span className="text-slate-600 text-xs">{row.newFormatted}</span>
+                            <span className="text-slate-600 text-xs">
+                              {row.newFormatted}
+                            </span>
                           )}
                         </td>
 
                         {/* Cột 4: Badge trạng thái biến động */}
                         <td className="py-3 px-3 align-top text-center border-l border-slate-100 whitespace-nowrap">
-                          {row.statusType === 'ADDED' && (
+                          {row.statusType === "ADDED" && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                               Thêm mới
                             </span>
                           )}
-                          {row.statusType === 'REMOVED' && (
+                          {row.statusType === "REMOVED" && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
                               Đã xóa
                             </span>
                           )}
-                          {row.statusType === 'MODIFIED' && (
+                          {row.statusType === "MODIFIED" && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                               Thay đổi
                             </span>
                           )}
-                          {row.statusType === 'UNCHANGED' && (
+                          {row.statusType === "UNCHANGED" && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500">
                               Không đổi
                             </span>

@@ -3,9 +3,19 @@
  */
 
 export type AuditActionType =
-  'CREATE' | 'UPDATE' | 'DELETE' | 'APPROVE' | 'CANCEL' | 'STOCK_ADJUST';
+  | "CREATE"
+  | "UPDATE"
+  | "DELETE"
+  | "APPROVE"
+  | "CANCEL"
+  | "STOCK_ADJUST";
 
-export type AuditEntityType = 'INVENTORY' | 'DEBT' | 'PRICING' | 'ORDER' | 'USER';
+export type AuditEntityType =
+  | "INVENTORY"
+  | "DEBT"
+  | "PRICING"
+  | "ORDER"
+  | "USER";
 
 export interface AuditLogUser {
   id: string;
@@ -21,10 +31,10 @@ export interface AuditLogItem {
   user: AuditLogUser;
   action: AuditActionType;
   entity_name: string; // Phân hệ hoặc tên đối tượng (VD: Tồn kho SKU: LH-MILK-900G)
-  entity_id: string; // Mã định danh đối tượng
+  entity_id: string;   // Mã định danh đối tượng
   old_values: Record<string, unknown> | null;
   new_values: Record<string, unknown> | null;
-  summary?: string; // Tóm tắt nghiệp vụ hiển thị nhanh
+  summary?: string;    // Tóm tắt nghiệp vụ hiển thị nhanh
 }
 
 export interface AuditLogQueryParams {
@@ -32,8 +42,8 @@ export interface AuditLogQueryParams {
   endDate?: string;
   userId?: string;
   searchUser?: string;
-  entity?: AuditEntityType | 'ALL';
-  action?: AuditActionType | 'ALL';
+  entity?: AuditEntityType | "ALL";
+  action?: AuditActionType | "ALL";
   page?: number;
   limit?: number;
 }
