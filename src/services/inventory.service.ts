@@ -4,7 +4,10 @@ import type {
   InventoryTransaction,
   StockAdjustmentResponse,
 } from '../types/products';
-import type { LowStockAlert, StockBalance } from '../types/inventory.types';
+import type { LowStockAlert, StockBalance, StockItem, StockReservation } from '../types/inventory.types';
+import { MOCK_PRODUCTS } from './products.service';
+import { tokenStorage } from '../utils/token-storage';
+import type { Product, ProductUnit } from '../types/products';
 
 export const inventoryService = {
   /**
@@ -12,10 +15,209 @@ export const inventoryService = {
    * GET /inventory/stock
    */
   async getStockOverview(warehouseId?: string): Promise<StockBalance[]> {
-    const response = await apiClient.get<StockBalance[]>('/inventory/stock', {
-      params: warehouseId ? { warehouseId } : undefined,
-    });
-    return response.data;
+    const token = tokenStorage.getAccessToken();
+    if (token && token.startsWith('demo-jwt-')) {
+      const stocks = await this.getStocks();
+      return stocks.map((s) => ({
+        sku: s.sku,
+        name: s.name,
+        stockQuantity: s.availableQuantity,
+        physicalStockQuantity: s.physicalQuantity,
+        physicalQuantity: s.physicalQuantity,
+        reservedQuantity: s.reservedQuantity,
+        availableQuantity: s.availableQuantity,
+        baseUnit: s.baseUnit,
+        units: (s.units || []).map((u) => ({
+          unitName: u.unitName,
+          conversionRate: u.conversionRate,
+          isBaseUnit: u.isBaseUnit,
+        })),
+        warehouse: s.warehouse,
+        warehouseId: warehouseId || 'wh-main',
+        activeReservations: s.activeReservations,
+        minStockLevel: s.minStockLevel,
+        isBelowMinStock: s.isBelowMinStock,
+      }));
+    }
+
+    try {
+      const response = await apiClient.get<StockBalance[]>('/inventory/stock', {
+        params: warehouseId ? { warehouseId } : undefined,
+      });
+      return response.data;
+    } catch {
+      const stocks = await this.getStocks();
+      return stocks.map((s) => ({
+        sku: s.sku,
+        name: s.name,
+        stockQuantity: s.availableQuantity,
+        physicalStockQuantity: s.physicalQuantity,
+        physicalQuantity: s.physicalQuantity,
+        reservedQuantity: s.reservedQuantity,
+        availableQuantity: s.availableQuantity,
+        baseUnit: s.baseUnit,
+        units: (s.units || []).map((u) => ({
+          unitName: u.unitName,
+          conversionRate: u.conversionRate,
+          isBaseUnit: u.isBaseUnit,
+        })),
+        warehouse: s.warehouse,
+        warehouseId: warehouseId || 'wh-main',
+        activeReservations: s.activeReservations,
+      }));
+    }
+  },
+
+  /**
+   * Lấy sổ tồn kho chuẩn 3 cột: Tồn thực tế, Đang giữ chỗ, Tồn khả dụng (SN-180)
+   */
+  async getStocks(): Promise<StockItem[]> {
+    const token = tokenStorage.getAccessToken();
+    if (token && token.startsWith('demo-jwt-')) {
+      let demoOrders: Array<{
+        id?: string;
+        orderCode?: string;
+        status?: string;
+        reservedUntil?: string;
+        createdAt?: string;
+        lines?: Array<{ productSku?: string; productId?: string; quantity: number; baseQuantity?: number; conversionRate?: number }>;
+      }> = [];
+      try {
+        const rawOrders = localStorage.getItem('loha_demo_orders');
+        if (rawOrders) demoOrders = JSON.parse(rawOrders);
+      } catch {}
+
+      // Lọc các đơn đang giữ chỗ (APPROVED)
+      const approvedOrders = demoOrders.filter((o) => o.status === 'APPROVED');
+
+      return MOCK_PRODUCTS.map((p: Product) => {
+        const physical = p.stockQuantity || 100;
+        const skuUpper = p.sku.toUpperCase();
+
+        const activeReservations: StockReservation[] = [];
+        let reserved = 0;
+
+        const isSkuMatch = (a: string, b: string) => {
+          const sa = (a || '').trim().toUpperCase();
+          const sb = (b || '').trim().toUpperCase();
+          if (sa === sb) return true;
+          if (
+            (sa === 'LH-MILK-900G' || sa === 'LH-MILK-POWDER-900G') &&
+            (sb === 'LH-MILK-900G' || sb === 'LH-MILK-POWDER-900G')
+          ) {
+            return true;
+          }
+          return false;
+        };
+
+        for (const order of approvedOrders) {
+          for (const line of order.lines || []) {
+            const lineSku = (line.productSku || line.productId || '').toUpperCase();
+            if (isSkuMatch(lineSku, skuUpper) || (line.productId && line.productId === p.id)) {
+              const qty = line.baseQuantity ?? Math.round(line.quantity * (line.conversionRate || 1));
+              reserved += qty;
+              activeReservations.push({
+                id: `res-demo-${order.id}-${line.productSku || p.sku}`,
+                orderId: order.id || '',
+                orderCode: order.orderCode || order.id || '',
+                productId: p.id,
+                productSku: p.sku,
+                productName: p.name,
+                customerName: (order as { customerName?: string }).customerName,
+                warehouseId: 'wh-main',
+                quantity: qty,
+                status: 'ACTIVE',
+                expiredAt: order.reservedUntil || new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+                createdAt: order.createdAt || new Date().toISOString(),
+              });
+            }
+          }
+        }
+
+        const available = Math.max(0, physical - reserved);
+
+        return {
+          sku: p.sku,
+          name: p.name,
+          physicalQuantity: physical,
+          reservedQuantity: reserved,
+          availableQuantity: available,
+          baseUnit: p.baseUnit,
+          warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
+          units: (p.units || []).map((u: ProductUnit) => ({
+            unitName: u.unitName,
+            conversionRate: u.conversionRate,
+            isBaseUnit: Boolean(u.isBaseUnit),
+          })),
+          activeReservations,
+        };
+      });
+    }
+
+    try {
+      const response = await apiClient.get<StockItem[]>('/inventory/stocks');
+      return response.data;
+    } catch {
+      const response = await apiClient.get<Array<{
+        sku: string;
+        name: string;
+        physicalQuantity?: number;
+        physicalStockQuantity?: number;
+        stockQuantity?: number;
+        reservedQuantity?: number;
+        availableQuantity?: number;
+        baseUnit: string;
+        warehouse?: string;
+        units?: Array<{ unitName: string; conversionRate: number; isBaseUnit: boolean }>;
+        activeReservations?: StockReservation[];
+      }>>('/inventory/stock');
+
+      return (response.data || []).map((item) => {
+        const physical = item.physicalQuantity ?? item.physicalStockQuantity ?? item.stockQuantity ?? 0;
+        const reserved = item.reservedQuantity ?? 0;
+        const available = item.availableQuantity ?? Math.max(0, physical - reserved);
+        return {
+          sku: item.sku,
+          name: item.name,
+          physicalQuantity: physical,
+          reservedQuantity: reserved,
+          availableQuantity: available,
+          baseUnit: item.baseUnit,
+          warehouse: item.warehouse || 'Kho Tổng Miền Nam - LOHA WH01',
+          units: item.units,
+          activeReservations: item.activeReservations || [],
+        };
+      });
+    }
+  },
+
+  /**
+   * Lấy danh sách nhật ký giữ chỗ tồn kho (SN-180)
+   */
+  async getReservations(orderId?: string): Promise<StockReservation[]> {
+    const token = tokenStorage.getAccessToken();
+    if (token && token.startsWith('demo-jwt-')) {
+      const stocks = await this.getStocks();
+      const allRes: StockReservation[] = [];
+      for (const s of stocks) {
+        if (s.activeReservations) {
+          allRes.push(...s.activeReservations);
+        }
+      }
+      if (orderId) {
+        return allRes.filter((r) => r.orderId === orderId);
+      }
+      return allRes;
+    }
+
+    try {
+      const response = await apiClient.get<StockReservation[]>('/inventory/reservations', {
+        params: orderId ? { orderId } : undefined,
+      });
+      return response.data;
+    } catch {
+      return [];
+    }
   },
 
   /**

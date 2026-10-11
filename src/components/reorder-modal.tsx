@@ -78,7 +78,7 @@ export const ReorderModal: React.FC<ReorderModalProps> = ({
         setPreviewData(preview);
 
         // Mặc định chọn toàn bộ các mặt hàng khả dụng (còn kinh doanh)
-        const initialSelected = new Set(preview.availableItems.map((item) => item.lineId));
+        const initialSelected = new Set<string>(preview.availableItems.map((item: ReorderPreviewItem) => item.lineId));
         setSelectedLineIds(initialSelected);
 
         // Mặc định lấy số lượng từ đơn cũ
@@ -130,7 +130,7 @@ export const ReorderModal: React.FC<ReorderModalProps> = ({
     if (selectedLineIds.size === previewData.availableItems.length) {
       setSelectedLineIds(new Set());
     } else {
-      setSelectedLineIds(new Set(previewData.availableItems.map((item) => item.lineId)));
+      setSelectedLineIds(new Set<string>(previewData.availableItems.map((item: ReorderPreviewItem) => item.lineId)));
     }
   };
 
@@ -186,8 +186,8 @@ export const ReorderModal: React.FC<ReorderModalProps> = ({
     setIsSubmitting(true);
     try {
       const itemsPayload = previewData.availableItems
-        .filter((item) => selectedLineIds.has(item.lineId))
-        .map((item) => ({
+        .filter((item: ReorderPreviewItem) => selectedLineIds.has(item.lineId))
+        .map((item: ReorderPreviewItem) => ({
           productSku: item.productSku,
           productId: item.productId,
           quantity: quantities[item.productSku] ?? item.quantity,

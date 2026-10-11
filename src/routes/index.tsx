@@ -13,6 +13,7 @@ import { UsersPage } from '../pages/users-page';
 import { AuditLogsPage } from '../pages/audit-logs-page';
 import { ProfilePage } from '../pages/profile-page';
 import { OrdersPage } from '../pages/orders-page';
+import { StockListPage } from '../pages/inventory/stock-list-page';
 import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
 import { CustomersPage } from '../pages/customers-page';
 import { InventoryAuditsPage } from '../pages/inventory-audits-page';
@@ -201,21 +202,18 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={['SALES_REP', 'WAREHOUSE_KEEPER', 'WAREHOUSE_MANAGER']}
+                  allowedRoles={[
+                    'ADMIN',
+                    'SALES_MANAGER',
+                    'SALES_REP',
+                    'WAREHOUSE_KEEPER',
+                    'WAREHOUSE_MANAGER',
+                  ]}
                   moduleName="Tra cứu Tồn kho Khả dụng"
                 />
               }
             >
-              <Route
-                path="/inventory/stock"
-                element={
-                  <RoleModulePage
-                    title="Sổ Tồn kho Tổng hợp & Lô hàng"
-                    subtitle="Theo dõi số lượng tồn thực tế, tồn khả dụng, cảnh báo chạm mức tối thiểu và tra cứu kho"
-                    requiredRole="Kho vận & Quản trị"
-                  />
-                }
-              />
+              <Route path="/inventory/stock" element={<StockListPage />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}

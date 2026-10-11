@@ -28,6 +28,8 @@ import {
   XCircle,
   CornerUpLeft,
   History,
+  Lock,
+  ShieldCheck,
   RotateCcw,
   Filter,
   Calendar,
@@ -216,10 +218,10 @@ const ORDER_STATUS_CONFIG: Record<
     icon: <AlertCircle className="w-3 h-3" />,
   },
   APPROVED: {
-    label: 'Đã duyệt',
-    bgClass: 'bg-blue-50',
-    textClass: 'text-blue-700',
-    icon: <CheckCircle2 className="w-3 h-3" />,
+    label: 'Đã duyệt (Đang giữ chỗ)',
+    bgClass: 'bg-indigo-50 ring-1 ring-indigo-200',
+    textClass: 'text-indigo-700',
+    icon: <Lock className="w-3 h-3 text-indigo-600" />,
   },
   REJECTED: {
     label: 'Từ chối',
@@ -271,16 +273,31 @@ const ORDER_STATUS_CONFIG: Record<
   },
 };
 
-/** Badge trạng thái đơn hàng */
-const OrderStatusBadge: React.FC<{ status: OrderStatus }> = ({ status }) => {
+/** Badge trạng thái đơn hàng (SN-180: Hiển thị Đang giữ chỗ khi Đã duyệt) */
+interface OrderStatusBadgeProps {
+  status: OrderStatus;
+  reservedUntil?: string;
+}
+
+const OrderStatusBadge: React.FC<OrderStatusBadgeProps> = ({ status, reservedUntil }) => {
   const cfg = ORDER_STATUS_CONFIG[status];
   if (!cfg) return null;
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.bgClass} ${cfg.textClass}`}
+      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${cfg.bgClass} ${cfg.textClass}`}
+      title={
+        status === 'APPROVED' && reservedUntil
+          ? `Hạn giữ chỗ tồn kho: ${formatDate(reservedUntil)}`
+          : undefined
+      }
     >
       {cfg.icon}
-      {cfg.label}
+      <span>{cfg.label}</span>
+      {status === 'APPROVED' && reservedUntil && (
+        <span className="text-[10px] opacity-75 font-normal ml-0.5" title="Hạn giữ tồn 24h">
+          ({formatDate(reservedUntil)})
+        </span>
+      )}
     </span>
   );
 };
@@ -2280,6 +2297,12 @@ export const OrdersPage: React.FC = () => {
   const [selectedOrderForReorder, setSelectedOrderForReorder] = useState<Order | null>(null);
   const [isCloning, setIsCloning] = useState<string | null>(null);
 
+  // SN-180: Duyệt giữ chỗ tồn kho & Nhả tồn kho tự động
+  const [approvingOrderModal, setApprovingOrderModal] = useState<Order | null>(null);
+  const [cancellingOrderModal, setCancellingOrderModal] = useState<Order | null>(null);
+  const [cancelReasonInput, setCancelReasonInput] = useState<string>('');
+  const [isProcessingAction, setIsProcessingAction] = useState<boolean>(false);
+
   const handleReorderSuccess = (_newOrder: Order) => {
     setRefreshKey((key) => key + 1);
   };
@@ -2588,7 +2611,56 @@ export const OrdersPage: React.FC = () => {
   };
 
   const handleApproveOrder = (order: Order): void => {
-    void submitApprovalDecision(order, 'APPROVE');
+    setApprovingOrderModal(order);
+  };
+
+  /** Xác nhận duyệt đơn và kích hoạt giữ chỗ tồn kho 24h (SN-180) */
+  const handleConfirmApprove = async (order: Order): Promise<void> => {
+    if (!order.id || isProcessingAction) return;
+    setIsProcessingAction(true);
+    try {
+      const res = await ordersService.approveOrder(order.id);
+      showToast('success', res.message || 'Đã duyệt đơn và giữ chỗ tồn kho 24 giờ thành công!');
+      setApprovingOrderModal(null);
+      setRefreshKey((k) => k + 1);
+      if (viewOrder?.id === order.id) {
+        setViewOrder({
+          ...viewOrder,
+          status: 'APPROVED',
+          reservedUntil: res.reservedUntil,
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi duyệt đơn và giữ chỗ tồn kho';
+      showToast('error', msg);
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  /** Xác nhận hủy đơn và tự động nhả tồn giữ chỗ (SN-180) */
+  const handleConfirmCancel = async (order: Order): Promise<void> => {
+    if (!order.id || isProcessingAction) return;
+    if (!cancelReasonInput.trim()) {
+      showToast('error', 'Vui lòng nhập lý do hủy đơn hàng');
+      return;
+    }
+    setIsProcessingAction(true);
+    try {
+      const cancelled = await ordersService.cancelOrder(order.id, cancelReasonInput.trim());
+      showToast('success', `Đã hủy đơn ${order.orderCode || ''}. Toàn bộ tồn kho giữ chỗ đã được hoàn lại!`);
+      setCancellingOrderModal(null);
+      setCancelReasonInput('');
+      setRefreshKey((k) => k + 1);
+      if (viewOrder?.id === order.id) {
+        setViewOrder(cancelled);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi hủy đơn hàng';
+      showToast('error', msg);
+    } finally {
+      setIsProcessingAction(false);
+    }
   };
 
   return (
@@ -2957,7 +3029,7 @@ export const OrdersPage: React.FC = () => {
                           {formatCurrency(order.grandTotal)}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <OrderStatusBadge status={order.status} />
+                          <OrderStatusBadge status={order.status} reservedUntil={order.reservedUntil} />
                           {(order.isShortDelivery ||
                             order.lines?.some(
                               (l) => l.deliveredQuantity !== undefined && l.deliveredQuantity < l.quantity,
@@ -2982,6 +3054,35 @@ export const OrdersPage: React.FC = () => {
                                 <Edit3 className="w-4 h-4" />
                               </button>
                             )}
+                            {(isAdmin || isSalesManager) &&
+                              (order.status === 'PENDING' ||
+                                order.status === 'PENDING_APPROVAL' ||
+                                order.status === 'DRAFT' ||
+                                order.status === 'PENDING_INVENTORY_APPROVAL') && (
+                                <button
+                                  type="button"
+                                  onClick={() => setApprovingOrderModal(order)}
+                                  className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+                                  title="Duyệt đơn và giữ chỗ tồn kho 24h (SN-180)"
+                                >
+                                  <CheckCircle2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            {order.status !== 'CANCELLED' &&
+                              order.status !== 'DELIVERED' &&
+                              order.status !== 'SHIPPED' && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCancellingOrderModal(order);
+                                    setCancelReasonInput('');
+                                  }}
+                                  className="p-1.5 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                  title="Hủy đơn và nhả tồn giữ chỗ (SN-180)"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              )}
                             <button
                               type="button"
                               onClick={() => setViewOrder(order)}
@@ -3062,14 +3163,43 @@ export const OrdersPage: React.FC = () => {
                             {formatCurrency(order.grandTotal)}
                           </p>
                           <div className="mt-1">
-                            <OrderStatusBadge status={order.status} />
+                            <OrderStatusBadge status={order.status} reservedUntil={order.reservedUntil} />
                           </div>
                         </div>
                       </div>
                     </div>
 
                     {/* Nút hành động nhanh trên di động: Chạm chuẩn Mobile-first (Touch target >= 36-40px) */}
-                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                    <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                      {(isAdmin || isSalesManager) &&
+                        (order.status === 'PENDING' ||
+                          order.status === 'PENDING_APPROVAL' ||
+                          order.status === 'DRAFT' ||
+                          order.status === 'PENDING_INVENTORY_APPROVAL') && (
+                          <button
+                            type="button"
+                            onClick={() => setApprovingOrderModal(order)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors cursor-pointer min-h-[36px]"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Duyệt</span>
+                          </button>
+                        )}
+                      {order.status !== 'CANCELLED' &&
+                        order.status !== 'DELIVERED' &&
+                        order.status !== 'SHIPPED' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCancellingOrderModal(order);
+                              setCancelReasonInput('');
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer min-h-[36px]"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>Hủy</span>
+                          </button>
+                        )}
                       {(order.status === 'DRAFT' || order.status === 'RETURNED_FOR_UPDATE') && (
                         <button
                           type="button"
@@ -3213,8 +3343,35 @@ export const OrdersPage: React.FC = () => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500">Trạng thái:</span>
-                  <OrderStatusBadge status={viewOrder.status} />
+                  <OrderStatusBadge status={viewOrder.status} reservedUntil={viewOrder.reservedUntil} />
                 </div>
+                {viewOrder.status === 'APPROVED' && (
+                  <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-indigo-900 text-xs flex items-start gap-2 mt-2">
+                    <Lock className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-indigo-950">Đơn đã duyệt & Đang giữ chỗ tồn kho</p>
+                      <p className="mt-0.5 text-indigo-800">
+                        Toàn bộ số lượng hàng trong đơn đã được giữ chỗ an toàn. Tồn khả dụng của sản phẩm đã bị trừ để tránh bán mất cho khách khác.
+                        {viewOrder.reservedUntil && (
+                          <span className="block mt-1 font-semibold text-indigo-900">
+                            Hạn giữ chỗ: {formatDate(viewOrder.reservedUntil)} (Tự động nhả tồn sau 24h nếu chưa xuất kho).
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {viewOrder.status === 'CANCELLED' && viewOrder.cancelReason && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 text-xs flex items-start gap-2 mt-2">
+                    <XCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-rose-950">Đơn hàng đã bị hủy</p>
+                      <p className="mt-0.5 text-rose-800">
+                        Lý do hủy: <span className="font-semibold text-rose-900">{viewOrder.cancelReason}</span>. Tồn kho giữ chỗ (nếu có) đã được tự động hoàn lại vào kho khả dụng.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 {viewOrder.isCreditLimitExceeded && (
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-start gap-2 mt-2">
                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
@@ -3471,15 +3628,18 @@ export const OrdersPage: React.FC = () => {
                     </button>
                   </>
                 )}
-                
-                {/* Nút hủy đơn hàng chỉ hiển thị khi đơn chưa xuất kho hoặc đóng/hủy/từ chối */}
                 {!['SHIPPED', 'DELIVERED', 'CLOSED', 'CANCELLED', 'REJECTED'].includes(viewOrder.status) && (
                   <button
                     type="button"
-                    onClick={() => setCancelingOrder(viewOrder)}
-                    className="px-4 py-2 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-red-100"
+                    onClick={() => {
+                      setCancellingOrderModal(viewOrder);
+                      setCancelReasonInput('');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer"
+                    title="Hủy đơn hàng và tự động nhả tồn giữ chỗ (SN-180)"
                   >
-                    Hủy đơn
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Hủy đơn</span>
                   </button>
                 )}
                 <button
@@ -3509,6 +3669,179 @@ export const OrdersPage: React.FC = () => {
         isOpen={Boolean(printOrder)}
         onClose={() => setPrintOrder(null)}
       />
+
+      {/* Modal Xác nhận Duyệt Đơn & Giữ chỗ Tồn kho (SN-180) */}
+      {approvingOrderModal && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-slate-100">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-4 ring-indigo-100">
+                <Lock className="h-6 w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                  Xác nhận Duyệt đơn & Giữ chỗ Tồn kho
+                </h3>
+                <p className="mt-1 text-xs sm:text-sm text-slate-500">
+                  Đơn hàng: <span className="font-semibold text-slate-800">{approvingOrderModal.orderCode}</span> · Đại lý: <span className="font-semibold text-slate-800">{approvingOrderModal.customerName}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setApprovingOrderModal(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Cảnh báo ACID Transaction */}
+            <div className="my-4 rounded-xl border border-indigo-200 bg-indigo-50/70 p-3.5 text-xs text-indigo-900 space-y-1.5">
+              <div className="flex items-center gap-1.5 font-bold text-indigo-950">
+                <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                Cơ chế giữ chỗ tự động (ACID Transaction):
+              </div>
+              <p className="text-indigo-800">
+                Ngay khi bấm duyệt, hệ thống sẽ <strong>giữ chỗ toàn bộ hàng hóa</strong> trong đơn trong <strong>24 giờ</strong>. Tồn khả dụng sẽ bị trừ tương ứng để chắc chắn hàng đã chốt không bị bán mất cho khách khác.
+              </p>
+            </div>
+
+            {/* Danh sách dòng hàng giữ chỗ */}
+            <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100 text-xs">
+              <div className="bg-slate-50 px-3 py-2 font-semibold text-slate-600">
+                Mặt hàng sẽ được giữ chỗ:
+              </div>
+              {approvingOrderModal.lines.map((line, i) => (
+                <div key={i} className="flex items-center justify-between px-3 py-2">
+                  <div className="min-w-0 pr-2">
+                    <p className="font-medium text-slate-800 truncate">{line.productName}</p>
+                    <p className="text-[11px] text-slate-400">{line.productSku}</p>
+                  </div>
+                  <span className="shrink-0 font-bold text-indigo-700">
+                    {line.quantity} {line.unit}
+                    {line.conversionRate > 1 && ` (${line.baseQuantity} ${line.baseUnit})`}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2.5 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={() => setApprovingOrderModal(null)}
+                disabled={isProcessingAction}
+                className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirmApprove(approvingOrderModal)}
+                disabled={isProcessingAction}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {isProcessingAction ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    <span>Đang giữ chỗ...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>Xác nhận Duyệt & Giữ chỗ</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal Xác nhận Hủy Đơn Hàng & Nhả Tồn Kho (SN-180) */}
+      {cancellingOrderModal && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-slate-100">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 ring-4 ring-rose-100">
+                <XCircle className="h-6 w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                  Xác nhận Hủy Đơn Hàng
+                </h3>
+                <p className="mt-1 text-xs sm:text-sm text-slate-500">
+                  Đơn hàng: <span className="font-semibold text-slate-800">{cancellingOrderModal.orderCode}</span> ({cancellingOrderModal.customerName})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCancellingOrderModal(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Thông báo nhả tồn tự động */}
+            <div className="my-4 rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 text-xs text-amber-900 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-amber-950">
+                <Clock className="h-4 w-4 text-amber-700" />
+                Cơ chế nhả tồn kho tự động:
+              </div>
+              <p className="text-amber-800">
+                Toàn bộ số lượng hàng hóa đang được giữ chỗ cho đơn này (nếu đã duyệt) sẽ được <strong>TỰ ĐỘNG HOÀN LẠI VÀO KHO KHẢ DỤNG</strong> ngay khi đơn hủy.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="cancel-reason-input" className="block text-xs font-bold text-slate-700">
+                Lý do hủy đơn hàng <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                id="cancel-reason-input"
+                autoFocus
+                required
+                rows={3}
+                value={cancelReasonInput}
+                onChange={(e) => setCancelReasonInput(e.target.value)}
+                placeholder="Nhập lý do hủy (ví dụ: Khách đổi ý không lấy hàng, trùng đơn...)..."
+                className="w-full rounded-xl border border-slate-300 p-3 text-xs outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100"
+              />
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2.5 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={() => setCancellingOrderModal(null)}
+                disabled={isProcessingAction}
+                className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirmCancel(cancellingOrderModal)}
+                disabled={isProcessingAction || !cancelReasonInput.trim()}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-rose-700 disabled:opacity-50"
+              >
+                {isProcessingAction ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    <span>Đang hủy...</span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-3.5 w-3.5" />
+                    <span>Xác nhận Hủy Đơn</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Modal Đặt lại đơn hàng theo giá hiện hành (SN-174) */}
       {selectedOrderForReorder && (
