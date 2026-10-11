@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom';
 import { Plus, CheckCircle2, X, Edit2, Trash2, Search, RefreshCw, Filter } from 'lucide-react';
 import { showToast } from './toast';
+import { ConfirmDialog } from './confirm-dialog';
 import { Button } from './button';
 import { IconButton } from './icon-button';
 import { Badge } from './badge';
@@ -34,6 +35,8 @@ export const DiscountPoliciesTab: React.FC = () => {
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<DiscountPolicy | null>(null);
+  const [policyToDelete, setPolicyToDelete] = useState<DiscountPolicy | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Phân tích trạng thái & từ khóa từ URL Search Params
   const urlStatusParam = (searchParams.get('status') || 'ALL').toUpperCase();
@@ -178,15 +181,8 @@ export const DiscountPoliciesTab: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa chính sách này không?')) return;
-    try {
-      await discountPoliciesService.deletePolicy(id);
-      showToast('success', 'Xóa chính sách thành công');
-      await loadPolicies();
-    } catch (err: unknown) {
-      showToast('error', getErrorMessage(err, 'Lỗi khi xóa chính sách'));
-    }
+  const handleDelete = (policy: DiscountPolicy) => {
+    setPolicyToDelete(policy);
   };
 
   const handleFormSubmit = async (payload: CreateDiscountPolicyPayload, id?: string) => {
@@ -443,7 +439,7 @@ export const DiscountPoliciesTab: React.FC = () => {
                           size="sm"
                           variant="danger"
                           tooltip="Xóa chính sách"
-                          onClick={() => handleDelete(p.id)}
+                          onClick={() => handleDelete(p)}
                         />
                       </div>
                     </td>
@@ -460,6 +456,31 @@ export const DiscountPoliciesTab: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleFormSubmit}
         initialData={editingPolicy}
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(policyToDelete)}
+        onCancel={() => setPolicyToDelete(null)}
+        onConfirm={async () => {
+          if (!policyToDelete) return;
+          setIsDeleting(true);
+          try {
+            await discountPoliciesService.deletePolicy(policyToDelete.id);
+            showToast('success', 'Xóa chính sách thành công');
+            setPolicyToDelete(null);
+            await loadPolicies();
+          } catch (err: unknown) {
+            showToast('error', getErrorMessage(err, 'Lỗi khi xóa chính sách'));
+          } finally {
+            setIsDeleting(false);
+          }
+        }}
+        title="Xóa chính sách chiết khấu"
+        message={`Bạn có chắc chắn muốn xóa chính sách "${policyToDelete?.name}"? Các đơn hàng tính chiết khấu trong tương lai sẽ không còn áp dụng chính sách này.`}
+        confirmText="Xác nhận xóa"
+        cancelText="Hủy bỏ"
+        type="danger"
+        isLoading={isDeleting}
       />
     </div>
   );

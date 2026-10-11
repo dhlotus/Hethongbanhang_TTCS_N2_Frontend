@@ -11,6 +11,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import { showToast } from "../components/toast";
+import { ConfirmDialog } from "../components/confirm-dialog";
 import { suppliersService } from "../services/suppliers.service";
 import { productsService } from "../services/products.service";
 import { inventoryReceiptsService } from "../services/inventory-receipts.service";
@@ -36,6 +37,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -166,17 +168,14 @@ export const CreateInventoryReceiptPage: React.FC = () => {
     await submitReceipt('DRAFT');
   };
 
-  const handleConfirmReceipt = async () => {
+  const handleConfirmReceipt = () => {
     if (items.length === 0) return showToast("warning", "Phiếu nhập phải có ít nhất 1 mặt hàng");
     for (let i = 0; i < items.length; i++) {
       if (!items[i].productId) return showToast("warning", `Dòng ${i + 1}: Chưa chọn sản phẩm`);
       if (!items[i].unitId) return showToast("warning", `Dòng ${i + 1}: Chưa chọn đơn vị tính`);
       if (items[i].packageQuantity <= 0) return showToast("warning", `Dòng ${i + 1}: Số lượng phải > 0`);
     }
-    const ok = window.confirm("Phiếu đã xác nhận sẽ chính thức cộng tồn kho và không thể chỉnh sửa. Bạn có chắc chắn muốn xác nhận?");
-    if (ok) {
-      await submitReceipt('CONFIRMED');
-    }
+    setIsConfirmDialogOpen(true);
   };
 
   const totalAmount = items.reduce((sum, item) => sum + (item.packageQuantity * item.unitCost), 0);
@@ -450,6 +449,30 @@ export const CreateInventoryReceiptPage: React.FC = () => {
           </button>
         </div>
       </form>
+
+      <ConfirmDialog
+        isOpen={isConfirmDialogOpen}
+        onCancel={() => setIsConfirmDialogOpen(false)}
+        onConfirm={async () => {
+          setIsConfirmDialogOpen(false);
+          await submitReceipt('CONFIRMED');
+        }}
+        title="Xác nhận nhập kho chính thức"
+        message={
+          <div>
+            <p className="text-slate-600 mb-2">
+              Phiếu nhập kho sau khi xác nhận sẽ <strong>cộng trực tiếp tồn kho thực tế</strong> và <strong>không thể chỉnh sửa hoặc xóa</strong>.
+            </p>
+            <p className="text-xs text-amber-600 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+              Vui lòng kiểm tra kỹ số lượng, đơn giá và thông tin lô/hạn dùng trước khi đồng ý.
+            </p>
+          </div>
+        }
+        confirmText="Đồng ý xác nhận"
+        cancelText="Kiểm tra lại"
+        type="primary"
+        isLoading={submitting}
+      />
     </div>
   );
 };
