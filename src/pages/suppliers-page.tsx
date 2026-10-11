@@ -8,8 +8,6 @@ import {
   Power,
   Trash2,
   X,
-  ChevronLeft,
-  ChevronRight,
   Receipt,
   AlertCircle,
   ShieldAlert,
@@ -17,6 +15,7 @@ import {
 } from "lucide-react";
 import { showToast } from "../components/toast";
 import { SuppliersTableSkeleton } from "../components/skeletons";
+import { Pagination } from "../components/pagination";
 import { SupplierFormModal } from "../components/supplier-form-modal";
 import { SupplierDetailModal } from "../components/supplier-detail-modal";
 import { ModalLayout } from "../components/modal-layout";
@@ -493,44 +492,18 @@ export const SuppliersPage: React.FC = () => {
         </div>
 
         {/* Phân trang */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500 font-medium">
-          <div className="flex items-center gap-2">
-            <span>Hiển thị mỗi trang:</span>
-            <select
-              value={limit}
-              onChange={(e) => {
-                setLimit(Number(e.target.value));
-                setPage(1);
-              }}
-              className="px-2 py-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold focus:outline-none"
-            >
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
-            <span>Tổng cộng: {total} nhà cung cấp</span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1 || loading}
-              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="px-3 py-1 font-semibold text-slate-700">
-              Trang {page} / {totalPages || 1}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages || loading}
-              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={total}
+          pageSize={limit}
+          itemLabel="nhà cung cấp"
+          onPageChange={setPage}
+          onPageSizeChange={(newLimit) => {
+            setLimit(newLimit);
+            setPage(1);
+          }}
+        />
       </div>
 
       {/* 4. Modal Thêm / Sửa Nhà cung cấp */}

@@ -8,12 +8,11 @@ import {
   FileText,
   Trash2,
   Eye,
-  ChevronLeft,
-  ChevronRight,
   CheckCircle2
 } from "lucide-react";
 import { showToast } from "../components/toast";
 import { ModalLayout } from "../components/modal-layout";
+import { Pagination } from "../components/pagination";
 import { inventoryReceiptsService } from "../services/inventory-receipts.service";
 import type { GoodsReceipt, GoodsReceiptStatus } from "../types/inventory-receipt";
 import { ConfirmDeleteModal } from "../components/confirm-delete-modal";
@@ -24,7 +23,7 @@ export const InventoryReceiptsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
+  const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
   const [searchInput, setSearchInput] = useState("");
@@ -244,32 +243,18 @@ export const InventoryReceiptsPage: React.FC = () => {
         </div>
 
         {/* Phân trang */}
-        <div className="p-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-600">
-          <div>
-            Hiển thị <span className="font-medium text-slate-900">{(page - 1) * limit + (total > 0 ? 1 : 0)}</span> -{" "}
-            <span className="font-medium text-slate-900">{Math.min(page * limit, total)}</span> trong số{" "}
-            <span className="font-medium text-slate-900">{total}</span> phiếu nhập
-          </div>
-          <div className="flex gap-2">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage(p => p - 1)}
-              className="p-2 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <div className="flex items-center px-4 font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg">
-              {page} / {totalPages || 1}
-            </div>
-            <button
-              disabled={page >= totalPages}
-              onClick={() => setPage(p => p + 1)}
-              className="p-2 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={total}
+          pageSize={limit}
+          itemLabel="phiếu nhập"
+          onPageChange={setPage}
+          onPageSizeChange={(newLimit) => {
+            setLimit(newLimit);
+            setPage(1);
+          }}
+        />
       </div>
 
       <ConfirmDeleteModal
