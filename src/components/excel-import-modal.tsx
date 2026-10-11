@@ -651,7 +651,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ onClose, onI
     }
   };
 
-  const handleUpload = async () => {
+  const handleImportSubmit = async () => {
     if (!selectedFile || isUploading) return;
     setIsUploading(true);
     setClientError(null);
@@ -688,6 +688,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ onClose, onI
       setIsUploading(false);
     }
   };
+
+  const handleUpload = handleImportSubmit;
 
   const handleReset = () => {
     if (timerRef.current) {
@@ -1133,3 +1135,5 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ onClose, onI
     </ModalLayout>
   );
 };
+
+export const ImportUsersModal = ExcelImportModal;

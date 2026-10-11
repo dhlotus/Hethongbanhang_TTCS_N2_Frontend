@@ -1,102 +1,71 @@
 import { apiClient } from './api';
-import { tokenStorage } from '../utils/token-storage';
-import { MOCK_PRODUCTS } from './products.service';
 import type {
-  Product,
-  ProductUnit,
   AdjustStockPayload,
   InventoryTransaction,
   StockAdjustmentResponse,
 } from '../types/products';
-import type { StockItem, StockReservation } from '../types/inventory.types';
-
-const DEMO_TRANSACTIONS_KEY = 'loha_inventory_transactions';
-
-const getStoredDemoTransactions = (): InventoryTransaction[] => {
-  try {
-    const raw = localStorage.getItem(DEMO_TRANSACTIONS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-
-  // Dữ liệu mẫu ban đầu
-  const initial: InventoryTransaction[] = [
-    {
-      id: 'tx-seed-001',
-      productId: 'prod-001',
-      sku: 'LH-MILK-900G',
-      productName: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
-      transactionType: 'IMPORT',
-      inputQuantity: 10,
-      inputUnit: 'Thùng',
-      conversionRate: 24, // Snapshot 24 lon/thùng
-      baseQuantityChange: 240, // 240 lon
-      baseUnit: 'Lon',
-      previousStock: 100,
-      newStock: 340,
-      reason: 'Nhập hàng đợt 1 từ nhà máy',
-      referenceCode: 'PNK-2026-001',
-      warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
-      performedBy: 'Trần Văn Thủ Kho',
-      createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-    },
-    {
-      id: 'tx-seed-002',
-      productId: 'prod-002',
-      sku: 'LH-NUT-180ML',
-      productName: 'Sữa Hạt Óc Chó Hạnh Nhân Organic 180ml',
-      transactionType: 'IMPORT',
-      inputQuantity: 25,
-      inputUnit: 'Thùng',
-      conversionRate: 48, // Snapshot 48 hộp/thùng
-      baseQuantityChange: 1200,
-      baseUnit: 'Hộp',
-      previousStock: 0,
-      newStock: 1200,
-      reason: 'Nhập kho sản xuất đợt 1',
-      referenceCode: 'PNK-2026-002',
-      warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
-      performedBy: 'Trần Văn Thủ Kho',
-      createdAt: new Date(Date.now() - 86400000).toISOString(),
-    },
-  ];
-  return initial;
-};
-
-const saveStoredDemoTransactions = (list: InventoryTransaction[]): void => {
-  try {
-    localStorage.setItem(DEMO_TRANSACTIONS_KEY, JSON.stringify(list));
-  } catch {}
-};
+import type { LowStockAlert, StockBalance, StockItem, StockReservation } from '../types/inventory.types';
+import { MOCK_PRODUCTS } from './products.service';
+import { tokenStorage } from '../utils/token-storage';
+import type { Product, ProductUnit } from '../types/products';
 
 export const inventoryService = {
   /**
-   * Lấy tổng quan tồn kho
+   * Lấy tổng quan tồn kho khả dụng và đơn vị quy đổi
+   * GET /inventory/stock
    */
-  async getStockOverview(): Promise<
-    Array<{
-      sku: string;
-      name: string;
-      stockQuantity: number;
-      physicalStockQuantity: number;
-      reservedQuantity: number;
-      availableQuantity: number;
-      baseUnit: string;
-      units: Array<{ unitName: string; conversionRate: number; isBaseUnit: boolean }>;
-      warehouse: string;
-    }>
-  > {
-    const stocks = await this.getStocks();
-    return stocks.map((s) => ({
-      sku: s.sku,
-      name: s.name,
-      stockQuantity: s.availableQuantity,
-      physicalStockQuantity: s.physicalQuantity,
-      reservedQuantity: s.reservedQuantity,
-      availableQuantity: s.availableQuantity,
-      baseUnit: s.baseUnit,
-      units: s.units || [],
-      warehouse: s.warehouse,
-    }));
+  async getStockOverview(warehouseId?: string): Promise<StockBalance[]> {
+    const token = tokenStorage.getAccessToken();
+    if (token && token.startsWith('demo-jwt-')) {
+      const stocks = await this.getStocks();
+      return stocks.map((s) => ({
+        sku: s.sku,
+        name: s.name,
+        stockQuantity: s.availableQuantity,
+        physicalStockQuantity: s.physicalQuantity,
+        physicalQuantity: s.physicalQuantity,
+        reservedQuantity: s.reservedQuantity,
+        availableQuantity: s.availableQuantity,
+        baseUnit: s.baseUnit,
+        units: (s.units || []).map((u) => ({
+          unitName: u.unitName,
+          conversionRate: u.conversionRate,
+          isBaseUnit: u.isBaseUnit,
+        })),
+        warehouse: s.warehouse,
+        warehouseId: warehouseId || 'wh-main',
+        activeReservations: s.activeReservations,
+        minStockLevel: s.minStockLevel,
+        isBelowMinStock: s.isBelowMinStock,
+      }));
+    }
+
+    try {
+      const response = await apiClient.get<StockBalance[]>('/inventory/stock', {
+        params: warehouseId ? { warehouseId } : undefined,
+      });
+      return response.data;
+    } catch {
+      const stocks = await this.getStocks();
+      return stocks.map((s) => ({
+        sku: s.sku,
+        name: s.name,
+        stockQuantity: s.availableQuantity,
+        physicalStockQuantity: s.physicalQuantity,
+        physicalQuantity: s.physicalQuantity,
+        reservedQuantity: s.reservedQuantity,
+        availableQuantity: s.availableQuantity,
+        baseUnit: s.baseUnit,
+        units: (s.units || []).map((u) => ({
+          unitName: u.unitName,
+          conversionRate: u.conversionRate,
+          isBaseUnit: u.isBaseUnit,
+        })),
+        warehouse: s.warehouse,
+        warehouseId: warehouseId || 'wh-main',
+        activeReservations: s.activeReservations,
+      }));
+    }
   },
 
   /**
@@ -189,7 +158,6 @@ export const inventoryService = {
       const response = await apiClient.get<StockItem[]>('/inventory/stocks');
       return response.data;
     } catch {
-      // Fallback endpoint cũ nếu chưa có /stocks
       const response = await apiClient.get<Array<{
         sku: string;
         name: string;
@@ -253,125 +221,26 @@ export const inventoryService = {
   },
 
   /**
-   * Điều chỉnh tồn kho hàng hóa kèm quy đổi đơn vị (SN-23)
-   * Nhập xuất theo thùng/lốc tự động quy về đơn vị cơ sở để ghi sổ tồn
+   * Khai báo mức tồn tối thiểu theo SKU tại kho (SN-183)
+   * PATCH /inventory/stock-balances/warehouses/:warehouseId/sku/:sku/min-stock
    */
-  async adjustStock(payload: AdjustStockPayload): Promise<StockAdjustmentResponse> {
-    const token = tokenStorage.getAccessToken();
-    if (token && token.startsWith('demo-jwt-')) {
-      const user = tokenStorage.getUser();
-      const roles = user?.roles || [];
-      const canAdjust =
-        roles.includes('ADMIN') ||
-        roles.includes('WAREHOUSE_KEEPER') ||
-        roles.includes('WAREHOUSE_MANAGER');
-
-      if (!canAdjust) {
-        throw new Error('Từ chối truy cập: Bạn không có quyền thực hiện chức năng này.');
-      }
-
-      const product = MOCK_PRODUCTS.find(
-        (p: Product) => p.sku === payload.productSku || p.id === payload.productSku
-      );
-
-      if (!product) {
-        throw new Error(`Không tìm thấy sản phẩm có SKU ${payload.productSku}`);
-      }
-
-      // Xác định đơn vị và hệ số quy đổi
-      let unitName = product.baseUnit;
-      let conversionRate = 1;
-
-      if (payload.unit && payload.unit.trim().toLowerCase() !== product.baseUnit.toLowerCase()) {
-        const matchingUnit = product.units?.find(
-          (u: ProductUnit) => u.unitName.toLowerCase() === payload.unit!.trim().toLowerCase()
-        );
-        if (!matchingUnit) {
-          const validUnits = (product.units || []).map((u: ProductUnit) => u.unitName).join(', ');
-          throw new Error(
-            `Đơn vị "${payload.unit}" không hợp lệ. Các đơn vị được chấp nhận: ${validUnits || product.baseUnit}`
-          );
-        }
-        unitName = matchingUnit.unitName;
-        conversionRate = matchingUnit.conversionRate;
-      }
-
-      const baseQuantityChange = Math.round(payload.quantityChange * conversionRate);
-      const previousQuantity = product.stockQuantity;
-
-      if (product.stockQuantity + baseQuantityChange < 0) {
-        throw new Error(
-          `Số lượng xuất (${Math.abs(payload.quantityChange)} ${unitName} = ${Math.abs(baseQuantityChange)} ${product.baseUnit}) vượt quá tồn khả dụng (${product.stockQuantity} ${product.baseUnit}).`
-        );
-      }
-
-      product.stockQuantity += baseQuantityChange;
-      product.hasTransactions = true;
-
-      const refCode =
-        payload.referenceCode?.trim() ||
-        (payload.quantityChange >= 0
-          ? `PNK-${Date.now().toString().slice(-6)}`
-          : `PXK-${Date.now().toString().slice(-6)}`);
-
-      // Lưu giao dịch vào Sổ kho demo kèm snapshot conversionRate
-      const tx: InventoryTransaction = {
-        id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        productId: product.id,
-        sku: product.sku,
-        productName: product.name,
-        transactionType: payload.quantityChange >= 0 ? 'IMPORT' : 'EXPORT',
-        inputQuantity: payload.quantityChange,
-        inputUnit: unitName,
-        conversionRate, // SNAPSHOT BẤT BIẾN
-        baseQuantityChange,
-        baseUnit: product.baseUnit,
-        previousStock: previousQuantity,
-        newStock: product.stockQuantity,
-        reason: payload.reason,
-        referenceCode: refCode,
-        warehouse: payload.warehouseLocation || 'Kho Tổng Miền Nam - LOHA WH01',
-        performedBy: user?.fullName || user?.username || 'Thủ kho Demo',
-        createdAt: new Date().toISOString(),
-      };
-
-      const transactions = getStoredDemoTransactions();
-      transactions.unshift(tx);
-      saveStoredDemoTransactions(transactions);
-
-      const action = payload.quantityChange >= 0 ? 'Nhập kho' : 'Xuất kho';
-      const sign = payload.quantityChange >= 0 ? '+' : '';
-
-      return {
-        success: true,
-        message: `${action} thành công: ${sign}${payload.quantityChange} ${unitName} (Quy đổi: ${sign}${baseQuantityChange} ${product.baseUnit}). Tồn mới: ${product.stockQuantity} ${product.baseUnit}.`,
-        sku: product.sku,
-        productName: product.name,
-        inputQuantity: payload.quantityChange,
-        inputUnit: unitName,
-        conversionRate,
-        baseQuantityChange,
-        baseUnit: product.baseUnit,
-        previousQuantity,
-        newQuantity: product.stockQuantity,
-        quantityChange: baseQuantityChange,
-        reason: payload.reason,
-        referenceCode: refCode,
-        adjustedBy: user?.id || 'demo-user',
-        timestamp: tx.createdAt,
-      };
-    }
-
+  async updateMinStockLevel(
+    warehouseId: string,
+    sku: string,
+    minStock: number,
+  ): Promise<StockBalance> {
     try {
-      const response = await apiClient.put<StockAdjustmentResponse>('/inventory/adjust', payload);
+      const response = await apiClient.patch<StockBalance>(
+        `/inventory/stock-balances/warehouses/${encodeURIComponent(warehouseId)}/sku/${encodeURIComponent(sku)}/min-stock`,
+        { minStock },
+      );
       return response.data;
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
         const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
         const serverMsg = axiosErr.response?.data?.message;
         if (serverMsg) {
-          const msg = Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg;
-          throw new Error(msg);
+          throw new Error(Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg, { cause: err });
         }
       }
       throw err;
@@ -379,25 +248,60 @@ export const inventoryService = {
   },
 
   /**
-   * Truy vấn sổ kho và lịch sử quy đổi giao dịch (SN-23)
+   * Danh sách SKU dưới mức tồn tối thiểu, hụt nhiều nhất lên đầu (SN-183)
+   * GET /inventory/alerts/low-stock
+   */
+  async getLowStockAlerts(warehouseId?: string): Promise<LowStockAlert[]> {
+    const response = await apiClient.get<LowStockAlert[]>('/inventory/alerts/low-stock', {
+      params: warehouseId ? { warehouseId } : undefined,
+    });
+    return response.data;
+  },
+
+  /**
+   * Điều chỉnh tồn kho hàng hóa kèm quy đổi đơn vị (SN-23 & EP-04)
+   * PUT /inventory/adjust
+   * Quyền: ADMIN, WAREHOUSE_KEEPER, WAREHOUSE_MANAGER
+   */
+  async adjustStock(payload: AdjustStockPayload): Promise<StockAdjustmentResponse> {
+    try {
+      const response = await apiClient.put<StockAdjustmentResponse>('/inventory/adjust', payload);
+      window.dispatchEvent(new CustomEvent('loha_inventory_updated', { detail: response.data }));
+      window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: response.data }));
+      return response.data;
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+        const serverMsg = axiosErr.response?.data?.message;
+        if (serverMsg) {
+          const msg = Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg;
+          throw new Error(msg, { cause: err });
+        }
+      }
+      throw err;
+    }
+  },
+
+  /**
+   * Truy vấn sổ kho và lịch sử quy đổi giao dịch nhập/xuất (SN-23)
+   * GET /inventory/transactions?sku=...
    */
   async getTransactions(sku?: string): Promise<InventoryTransaction[]> {
-    const token = tokenStorage.getAccessToken();
-    if (token && token.startsWith('demo-jwt-')) {
-      const all = getStoredDemoTransactions();
-      if (!sku) return all;
-      return all.filter((t) => t.sku.toUpperCase() === sku.trim().toUpperCase());
-    }
-
     try {
       const response = await apiClient.get<InventoryTransaction[]>('/inventory/transactions', {
         params: sku ? { sku } : undefined,
       });
       return response.data;
-    } catch {
-      const all = getStoredDemoTransactions();
-      if (!sku) return all;
-      return all.filter((t) => t.sku.toUpperCase() === sku.trim().toUpperCase());
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+        const serverMsg = axiosErr.response?.data?.message;
+        if (serverMsg) {
+          const msg = Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg;
+          throw new Error(msg, { cause: err });
+        }
+      }
+      throw err;
     }
   },
 };

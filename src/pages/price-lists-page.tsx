@@ -460,6 +460,86 @@ export const PriceListsPage: React.FC = () => {
     }
   };
 
+  // Xuất chi tiết một bảng giá ra tệp CSV (Excel UTF-8 BOM)
+  const handleExportPriceList = (pl: PriceList) => {
+    try {
+      const headers = ['STT', 'Mã SKU', 'Tên sản phẩm', 'ĐVT', 'Giá sàn (VNĐ)', 'Giá bán áp dụng (VNĐ)'];
+      const rows = (pl.items || []).map((it, idx) => [
+        idx + 1,
+        `"${it.productCode}"`,
+        `"${(it.productName || '').replace(/"/g, '""')}"`,
+        `"${it.baseUnit || 'Cái'}"`,
+        it.minPrice ?? 0,
+        it.price ?? 0,
+      ]);
+
+      const csvContent =
+        '\uFEFF' +
+        `BẢNG GIÁ: ${pl.name}\r\n` +
+        `Mã bảng giá: ${pl.code} | Phiên bản: v${pl.version}.0 | Nhóm khách hàng: ${pl.customerGroup}\r\n` +
+        `Thời gian áp dụng: ${pl.startDate} đến ${pl.endDate} | Trạng thái: ${pl.status}\r\n\r\n` +
+        [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Bang_Gia_${pl.code}_v${pl.version}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showToast('success', `Đã xuất bảng giá "${pl.name}" thành công`);
+    } catch {
+      showToast('error', 'Không thể xuất dữ liệu bảng giá');
+    }
+  };
+
+  // Xuất toàn bộ danh sách bảng giá ra CSV
+  const handleExportAllPriceLists = () => {
+    try {
+      if (priceLists.length === 0) {
+        showToast('warning', 'Không có bảng giá nào để xuất');
+        return;
+      }
+
+      const headers = ['STT', 'Mã bảng giá', 'Tên bảng giá', 'Nhóm khách hàng', 'Phiên bản', 'Số mặt hàng', 'Từ ngày', 'Đến ngày', 'Trạng thái', 'Đã có đơn'];
+      const rows = priceLists.map((p, idx) => [
+        idx + 1,
+        `"${p.code}"`,
+        `"${(p.name || '').replace(/"/g, '""')}"`,
+        `"${p.customerGroup}"`,
+        `"v${p.version}.0"`,
+        p.items?.length || 0,
+        `"${p.startDate}"`,
+        `"${p.endDate}"`,
+        `"${p.status}"`,
+        p.hasOrders ? 'Có' : 'Chưa',
+      ]);
+
+      const csvContent =
+        '\uFEFF' +
+        'DANH SÁCH BẢNG GIÁ B2B\r\n' +
+        `Ngày xuất: ${new Date().toLocaleDateString('vi-VN')} | Tổng số: ${priceLists.length} bảng giá\r\n\r\n` +
+        [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Danh_Sach_Bang_Gia_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showToast('success', 'Đã xuất danh sách bảng giá thành công');
+    } catch {
+      showToast('error', 'Không thể xuất danh sách bảng giá');
+    }
+  };
+
   // Render Badge Nhóm khách hàng
   const renderCustomerGroupBadge = (group: CustomerGroupType) => {
     switch (group) {
@@ -724,6 +804,18 @@ export const PriceListsPage: React.FC = () => {
                 </button>
               )}
 
+              {/* Nút Xuất danh sách bảng giá ra CSV / Excel */}
+              <button
+                type="button"
+                onClick={handleExportAllPriceLists}
+                disabled={priceLists.length === 0}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                title="Xuất danh sách bảng giá ra tệp CSV/Excel"
+              >
+                <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                <span className="hidden sm:inline">Xuất danh sách</span>
+              </button>
+
               {/* Nút Thêm mới bảng giá */}
               {canManage && (
                 <button
@@ -976,7 +1068,21 @@ export const PriceListsPage: React.FC = () => {
                                         </button>
                                       )}
 
-                                      {/* 4. Xóa */}
+                                      {/* 4. Xuất bảng giá (Excel / CSV) */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOpenActionMenuId(null);
+                                          handleExportPriceList(pl);
+                                        }}
+                                        className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                        title="Xuất chi tiết các mặt hàng của bảng giá ra tệp CSV"
+                                      >
+                                        <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                                        <span>Xuất bảng giá</span>
+                                      </button>
+
+                                      {/* 5. Xóa */}
                                       {canManage && (
                                         <button
                                           type="button"

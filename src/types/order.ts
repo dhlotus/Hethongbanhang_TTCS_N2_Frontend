@@ -14,7 +14,8 @@ export type OrderStatus =
   | 'SHIPPED' // Đã xuất kho / giao vận
   | 'DELIVERED' // Giao thành công
   | 'CANCELLED' // Đã hủy
-  | 'RETURNED'; // Hoàn hàng
+  | 'RETURNED' // Hoàn hàng
+  | 'CLOSED'; // Đã đóng
 
 export type OrderApprovalAction = 'APPROVE' | 'REJECT' | 'RETURN_FOR_UPDATE';
 
@@ -55,6 +56,8 @@ export interface OrderLine {
   requiresApproval?: boolean;
   availableStock?: number; // Tồn khả dụng (SN-39)
   priceListId?: string;
+  assignedSalesRepId?: string;
+  createdSource?: string;
   notes?: string;
   baseListPrice?: number;
   unitOptions?: Array<{ unitName: string; conversionRate: number }>;
@@ -89,6 +92,8 @@ export interface Order {
   customerGroup?: string; // Nhóm đại lý (AGENT_LEVEL_1, AGENT_LEVEL_2, RETAIL)
   salesRepId?: string; // ID nhân viên kinh doanh phụ trách
   salesRepName?: string;
+  assignedSalesRepId?: string;
+  createdSource?: string;
   deliveryPoint?: DeliveryPoint;
   deliveryDate?: string; // Ngày giao hàng mong muốn (YYYY-MM-DD)
   lines: OrderLine[];
@@ -107,13 +112,22 @@ export interface Order {
   approvalReasons?: string[];
   isCreditLimitExceeded?: boolean; // Cờ vượt hạn mức công nợ (SN-41)
   creditLimitExceededAmount?: number; // Số tiền vượt hạn mức (VND)
-  cancelReason?: string; // Lý do hủy đơn (SN-180)
+  cancelReason?: string; // Lý do hủy đơn (SN-180, SN-45)
   approverId?: string; // ID người duyệt đơn (SN-180)
   approvedAt?: string; // Thời gian duyệt đơn (SN-180)
   reservedUntil?: string; // Hạn giữ chỗ tồn kho (24h sau duyệt) (SN-180)
   isShortDelivery?: boolean; // Cờ đơn hàng bị giao thiếu (SN-170)
+  region?: string; // Khu vực đại lý / đơn hàng (SN-46)
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface PortalOrderItemPayload {
+  productId: string;
+  quantity: number;
+  price: number;
+  discountPercent?: number;
+  unit?: string;
 }
 
 /** Payload tạo đơn hàng mới */
@@ -124,10 +138,13 @@ export interface CreateOrderPayload {
   customerGroup?: string;
   salesRepId?: string;
   salesRepName?: string;
+  assignedSalesRepId?: string;
+  createdSource?: string;
   deliveryPoint?: Partial<DeliveryPoint> | Record<string, unknown>;
+  deliveryAddress?: string;
   deliveryDate?: string;
-  lines: Omit<OrderLine, 'id' | 'lineTotal' | 'baseQuantity'>[];
-  items?: Omit<OrderLine, 'id' | 'lineTotal' | 'baseQuantity'>[];
+  lines?: Omit<OrderLine, 'id' | 'lineTotal' | 'baseQuantity'>[];
+  items?: PortalOrderItemPayload[] | Omit<OrderLine, 'id' | 'lineTotal' | 'baseQuantity'>[];
   note?: string;
   warningNote?: string;
   priceListId?: string;
@@ -145,6 +162,7 @@ export type UpdateOrderPayload = Partial<CreateOrderPayload> & {
 export interface PaginatedOrdersResponse {
   data: Order[];
   total: number;
+  totalAmount?: number;
   page: number;
   limit: number;
   totalPages: number;
@@ -158,6 +176,8 @@ export interface OrderQueryParams {
   status?: OrderStatus | 'ALL';
   customerId?: string;
   salesRepId?: string;
+  assignedUser?: string;
+  region?: string;
   fromDate?: string;
   toDate?: string;
 }

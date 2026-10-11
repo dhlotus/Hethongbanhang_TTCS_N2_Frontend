@@ -251,7 +251,7 @@ export const LoginPage: React.FC = () => {
         {/* ===================================================================== */}
         {/* CỘT TRÁI: Poster (Chiếm chính xác 50% chiều rộng & 100% chiều cao)     */}
         {/* ===================================================================== */}
-        <div className="relative hidden lg:block w-full h-full bg-slate-100 select-none">
+        <div className="relative hidden lg:block w-full h-full bg-slate-100 select-none overflow-hidden">
           <img
             src={loginPoster}
             alt="LOHA SALES - Hệ thống Quản lý Bán hàng & Kho B2B"

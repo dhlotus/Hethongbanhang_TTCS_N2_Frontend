@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Building2,
   Plus,
@@ -65,6 +65,18 @@ export const SuppliersPage: React.FC = () => {
     userRoles.includes("WH_MANAGER") ||
     userRoles.includes("SALES_MANAGER");
 
+  const [summary, setSummary] = useState<{
+    total: number;
+    active: number;
+    inactive: number;
+    withReceipts: number;
+  }>({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    withReceipts: 0,
+  });
+
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -87,6 +99,17 @@ export const SuppliersPage: React.FC = () => {
       setSuppliers(res.data);
       setTotal(res.total);
       setTotalPages(res.totalPages);
+
+      if (res.summary) {
+        setSummary(res.summary);
+      } else {
+        try {
+          const stats = await suppliersService.getSupplierStats();
+          setSummary(stats);
+        } catch {
+          // ignore
+        }
+      }
     } catch {
       showToast("error", "Không thể tải danh sách nhà cung cấp");
     } finally {
@@ -98,20 +121,8 @@ export const SuppliersPage: React.FC = () => {
     fetchSuppliers();
   }, [fetchSuppliers]);
 
-  // Metrics
-  const metrics = useMemo(() => {
-    const active = suppliers.filter((s) => s.status === "ACTIVE").length;
-    const inactive = suppliers.filter((s) => s.status === "INACTIVE").length;
-    const withReceipts = suppliers.filter(
-      (s) => s.hasReceipts || s.has_receipts
-    ).length;
-    return {
-      total,
-      active,
-      inactive,
-      withReceipts,
-    };
-  }, [suppliers, total]);
+  // Metrics phản ánh đúng tổng thể toàn hệ thống từ Backend
+  const metrics = summary;
 
   // Create / Update Supplier
   const handleFormSubmit = async (payload: CreateSupplierPayload) => {
@@ -219,7 +230,7 @@ export const SuppliersPage: React.FC = () => {
           </div>
           <div>
             <p className="text-xs text-slate-500 font-medium">Tổng đối tác</p>
-            <p className="text-lg font-bold text-slate-800">{total}</p>
+            <p className="text-lg font-bold text-slate-800">{metrics.total || total}</p>
           </div>
         </div>
 

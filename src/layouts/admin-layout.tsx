@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { apiClient } from '../services/api';
+import { tokenStorage } from '../utils/token-storage';
 
 /**
  * Khung giao diện quản trị tổng quan (AdminLayout) cho hệ thống LOHA SALES:
@@ -44,6 +45,10 @@ export const AdminLayout: React.FC = () => {
   // Giám sát trạng thái tài khoản: Nếu bị Khóa, lập tức bị out ra ngay
   useEffect(() => {
     const checkActiveStatus = async () => {
+      const token = tokenStorage.getAccessToken();
+      if (!token) {
+        return;
+      }
       try {
         await apiClient.get('/auth/me');
       } catch {

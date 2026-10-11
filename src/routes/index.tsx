@@ -16,6 +16,7 @@ import { OrdersPage } from '../pages/orders-page';
 import { StockListPage } from '../pages/inventory/stock-list-page';
 import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
 import { CustomersPage } from '../pages/customers-page';
+import { InventoryAuditsPage } from '../pages/inventory-audits-page';
 import { PortalOrdersPage } from '../pages/portal-orders-page';
 import { NotFoundPage } from '../pages/not-found-page';
 import { ForbiddenPage } from '../pages/forbidden-page';
@@ -26,6 +27,8 @@ import { AdminLayout } from '../layouts/admin-layout';
 import { getRedirectPathByUser, getStoredUser } from '../utils/navigation';
 import { tokenStorage } from '../utils/token-storage';
 import { DashboardPage } from '../pages/dashboard-page';
+import { AgencyPortalPage } from '../pages/agency-portal-page';
+import { WarehousesPage } from '../pages/warehouses-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -71,13 +74,31 @@ export const AppRoutes: React.FC = () => {
             {/* PHÂN HỆ 1: ĐẠI LÝ / KHÁCH HÀNG B2B (CUSTOMER)                 */}
             {/* ------------------------------------------------------------- */}
             <Route
+              element={<RoleGuard allowedRoles={['ADMIN', 'WAREHOUSE_MANAGER']} moduleName="Quản lý kho & vị trí lưu trữ" />}
+            >
+              <Route path="/inventory/warehouses" element={<WarehousesPage />} />
+            </Route>
+
+            <Route
               element={
                 <RoleGuard
-                  allowedRoles={['CUSTOMER']}
+                  allowedRoles={['CUSTOMER', 'ADMIN', 'SALES_REP', 'SALES_MANAGER']}
                   moduleName="Cổng Dịch vụ & Đặt hàng Đại lý B2B"
                 />
               }
             >
+              <Route path="/portal" element={<AgencyPortalPage />} />
+              <Route path="/portal/orders" element={<AgencyPortalPage />} />
+              <Route
+                path="/portal/tracking"
+                element={
+                  <RoleModulePage
+                    title="Theo dõi Đơn hàng & Giao hàng"
+                    subtitle="Tra cứu lộ trình vận chuyển, tình trạng đóng gói xuất kho và biên bản bàn giao"
+                    requiredRole="Đại lý B2B"
+                  />
+                }
+              />
               {/* SN-170 & SN-174: Cổng Đơn hàng Đại lý & Theo dõi vận chuyển */}
               <Route path="/portal/orders" element={<PortalOrdersPage />} />
               <Route path="/portal/tracking" element={<PortalOrdersPage />} />
@@ -218,7 +239,7 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={['WAREHOUSE_KEEPER', 'WAREHOUSE_MANAGER']}
+                  allowedRoles={['WAREHOUSE_KEEPER', 'WAREHOUSE_MANAGER', 'ADMIN']}
                   moduleName="Quản lý Nhập Xuất Kho & Kiểm kê"
                 />
               }
@@ -245,13 +266,7 @@ export const AppRoutes: React.FC = () => {
               />
               <Route
                 path="/inventory/audits"
-                element={
-                  <RoleModulePage
-                    title="Kiểm kê Kho hàng"
-                    subtitle="Lập biên bản kiểm kê định kỳ, đối chiếu số liệu thực tế so với sổ sách phần mềm"
-                    requiredRole="Thủ kho / Quản lý kho"
-                  />
-                }
+                element={<InventoryAuditsPage />}
               />
             </Route>
 
@@ -400,7 +415,7 @@ export const AppRoutes: React.FC = () => {
             {/* ------------------------------------------------------------- */}
             {/* Dashboard Điều hành Doanh nghiệp (truy cập dựa theo role bên trong Component) */}
             <Route path="/dashboard" element={<DashboardPage />} />
-            
+
             {/* Danh mục sản phẩm (giá vốn tự động ẩn trên server theo SN-10) */}
             <Route path="/catalog/products" element={<ProductsPage />} />
             <Route path="/products" element={<ProductsPage />} />
@@ -421,12 +436,12 @@ export const AppRoutes: React.FC = () => {
           </Route>
 
           {/* Alias routes tương thích ngược */}
-          <Route path="/admin/dashboard" element={<Navigate to="/system/users" replace />} />
-          <Route path="/sales/dashboard" element={<Navigate to="/sales/orders" replace />} />
-          <Route path="/warehouse/dashboard" element={<Navigate to="/inventory/stock" replace />} />
+          <Route path="/admin/dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/sales/dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/warehouse/dashboard" element={<Navigate to="/dashboard" replace />} />
           <Route
             path="/accountant/dashboard"
-            element={<Navigate to="/accounting/invoices" replace />}
+            element={<Navigate to="/dashboard" replace />}
           />
           <Route path="/customer/portal" element={<Navigate to="/portal/orders" replace />} />
         </Route>

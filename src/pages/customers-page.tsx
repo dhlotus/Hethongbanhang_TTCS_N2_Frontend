@@ -19,6 +19,8 @@ import {
   UserCheck,
   Lock,
   Unlock,
+  Trash2,
+  Tag,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
@@ -26,6 +28,15 @@ import { LockAgencyModal } from '../components/lock-agency-modal';
 import { Pagination } from '../components/pagination';
 import { customerService } from '../services/customer.service';
 import type { Customer, CreateCustomerPayload, DeliveryPoint } from '../types/customer.types';
+
+// Danh sách nhân viên kinh doanh phụ trách chuẩn (SN-30 & SN-35)
+const SALES_REPS = [
+  { id: '', name: '-- Chọn nhân viên phụ trách --' },
+  { id: 'usr-sales-002', name: 'Trần Văn Nam (Kinh doanh Miền Bắc)' },
+  { id: 'usr-sale-01', name: 'Trần Văn Long (Kinh doanh Miền Nam)' },
+  { id: 'usr-sale-02', name: 'Nguyễn Thị Hằng (Kinh doanh Miền Nam)' },
+  { id: 'usr-sale-03', name: 'Phạm Minh Tuấn (Kinh doanh Miền Bắc)' },
+];
 
 // ──────────────────────────────────────────────────────────────────────────
 // QUERY PARAM MAPPINGS CHO BỘ LỌC ĐẠI LÝ (URL STATE MANAGEMENT)
@@ -140,6 +151,11 @@ export const CustomersPage: React.FC = () => {
   const [isLockModalOpen, setIsLockModalOpen] = useState<boolean>(false);
   const [isLockSubmitting, setIsLockSubmitting] = useState<boolean>(false);
 
+  // Modal xác nhận Xóa / Ngừng giao dịch đại lý (SN-30 AC4)
+  const [deleteModalCustomer, setDeleteModalCustomer] = useState<Customer | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
   // Modal thêm đại lý mới
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -156,6 +172,7 @@ export const CustomersPage: React.FC = () => {
     maxDebtDays: 30,
     deliveryPointName: '',
     receiverName: '',
+    salesRepId: '',
   });
 
   // Khóa cuộn trang nền khi mở Modal Thêm mới đại lý (cố định popup giữa màn hình)
@@ -455,7 +472,43 @@ export const CustomersPage: React.FC = () => {
     return { total, active, totalCredit, totalDebt };
   }, [totalItems, customers]);
 
-  // Xử lý tạo mới đại lý & đồng bộ ngay lập tức
+  // Lấy thông tin bảng giá áp dụng tương ứng với nhóm khách hàng (SN-30 AC3)
+  const getPriceListInfo = (group: string) => {
+    switch (group) {
+      case 'AGENT_LEVEL_1':
+        return {
+          title: 'Bảng giá Đại lý Cấp 1',
+          desc: 'Áp dụng chính sách giá & chiết khấu đại lý Cấp 1 cao nhất',
+          color: 'text-indigo-700 bg-indigo-50 border-indigo-200',
+        };
+      case 'AGENT_LEVEL_2':
+        return {
+          title: 'Bảng giá Đại lý Cấp 2',
+          desc: 'Áp dụng bảng giá đại lý phân phối Cấp 2',
+          color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+        };
+      case 'WHOLESALE':
+        return {
+          title: 'Bảng giá Bán buôn',
+          desc: 'Áp dụng bảng giá sỉ & bán buôn số lượng lớn',
+          color: 'text-blue-700 bg-blue-50 border-blue-200',
+        };
+      case 'RETAIL':
+        return {
+          title: 'Bảng giá Bán lẻ',
+          desc: 'Áp dụng bảng giá bán lẻ tiêu chuẩn',
+          color: 'text-amber-700 bg-amber-50 border-amber-200',
+        };
+      default:
+        return {
+          title: 'Bảng giá Tiêu chuẩn',
+          desc: 'Áp dụng bảng giá mặc định theo hệ thống',
+          color: 'text-slate-700 bg-slate-50 border-slate-200',
+        };
+    }
+  };
+
+  // Xử lý tạo mới đại lý & đồng bộ ngay lập tức (SN-30)
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -476,13 +529,47 @@ export const CustomersPage: React.FC = () => {
       return;
     }
 
+    // Kiểm tra mã số thuế bắt buộc (SN-30 AC1)
+    if (!formData.taxCode?.trim()) {
+      showToast('error', 'Thiếu thông tin', 'Vui lòng nhập mã số thuế của đại lý.');
+      return;
+    }
+
+    const cleanTaxCode = formData.taxCode.trim();
+    if (!/^[0-9]{10}(-[0-9]{3})?$|^[0-9]{13}$/.test(cleanTaxCode)) {
+      showToast(
+        'error',
+        'Mã số thuế không hợp lệ',
+        'Mã số thuế phải gồm 10 hoặc 13 chữ số (ví dụ: 0312345678).'
+      );
+      return;
+    }
+
+    // Kiểm tra tính duy nhất của mã đại lý trước khi gửi (SN-30 AC2)
+    if (formData.code?.trim()) {
+      const codeToCheck = formData.code.trim().toUpperCase();
+      const codeExists = customers.some(
+        (c) => c.code && c.code.trim().toUpperCase() === codeToCheck
+      );
+      if (codeExists) {
+        showToast(
+          'error',
+          'Trùng mã đại lý',
+          `Mã đại lý "${formData.code.trim()}" đã tồn tại trong hệ thống. Vui lòng chọn mã khác.`
+        );
+        return;
+      }
+    }
+
     try {
       setSubmitting(true);
       const newCustomer = await customerService.createCustomer({
         ...formData,
         code: formData.code?.trim() || undefined,
+        taxCode: cleanTaxCode,
         creditLimit: Number(formData.creditLimit) || 50000000,
         maxDebtDays: Number(formData.maxDebtDays) || 30,
+        salesRepId: formData.salesRepId || undefined,
       });
 
       showToast(
@@ -506,14 +593,79 @@ export const CustomersPage: React.FC = () => {
         maxDebtDays: 30,
         deliveryPointName: '',
         receiverName: '',
+        salesRepId: '',
       });
 
       // Tải lại danh sách từ server ở trang 1 để cập nhật dữ liệu đại lý mới
       void loadCustomers({ page: 1 });
-    } catch {
-      showToast('error', 'Lỗi tạo đại lý', 'Không thể tạo đại lý mới. Vui lòng thử lại.');
+    } catch (err: unknown) {
+      const errMsg =
+        err && typeof err === 'object' && 'response' in err && (err as any).response?.data?.message
+          ? (err as any).response.data.message
+          : err instanceof Error
+          ? err.message
+          : 'Không thể tạo đại lý mới. Vui lòng thử lại.';
+      showToast('error', 'Lỗi tạo đại lý', errMsg);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Mở modal xác nhận xóa đại lý (SN-30 AC4)
+  const handleOpenDeleteModal = (customer: Customer) => {
+    setDeleteModalCustomer(customer);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Xác nhận xóa đại lý (chỉ xóa được nếu chưa phát sinh giao dịch) (SN-30 AC4)
+  const handleConfirmDelete = async () => {
+    if (!deleteModalCustomer) return;
+    try {
+      setIsDeleting(true);
+      await customerService.deleteCustomer(deleteModalCustomer.id);
+      showToast(
+        'success',
+        'Đã xóa hồ sơ đại lý',
+        `Hồ sơ đại lý "${deleteModalCustomer.name}" (${deleteModalCustomer.code}) đã được xóa thành công.`
+      );
+      setIsDeleteModalOpen(false);
+      setDeleteModalCustomer(null);
+      void loadCustomers();
+    } catch (err: unknown) {
+      const errMsg =
+        err && typeof err === 'object' && 'response' in err && (err as any).response?.data?.message
+          ? (err as any).response.data.message
+          : err instanceof Error
+          ? err.message
+          : 'Không thể xóa đại lý.';
+      showToast('error', 'Chặn xóa đại lý', errMsg);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Chuyển sang Ngừng giao dịch (INACTIVE) khi đại lý đã phát sinh giao dịch (SN-30 AC4)
+  const handleConfirmDeactivate = async () => {
+    if (!deleteModalCustomer) return;
+    try {
+      setIsDeleting(true);
+      const updated = await customerService.deactivateCustomer(deleteModalCustomer.id);
+      showToast(
+        'success',
+        'Đã ngừng giao dịch',
+        `Đại lý "${updated.name}" đã được chuyển sang trạng thái Ngừng giao dịch (INACTIVE).`
+      );
+      setIsDeleteModalOpen(false);
+      setDeleteModalCustomer(null);
+      void loadCustomers();
+    } catch (err: unknown) {
+      showToast(
+        'error',
+        'Lỗi cập nhật',
+        err instanceof Error ? err.message : 'Không thể ngừng giao dịch đại lý.'
+      );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -981,6 +1133,16 @@ export const CustomersPage: React.FC = () => {
                             <ShoppingCart className="w-3.5 h-3.5" />
                             <span className="hidden sm:inline">Lên đơn</span>
                           </button>
+
+                          {/* Nút Xóa đại lý (SN-30 AC4) */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDeleteModal(customer)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            title="Xóa hồ sơ đại lý (SN-30)"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1062,21 +1224,39 @@ export const CustomersPage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Mã đại lý */}
+                  {/* Mã đại lý (SN-30 AC1 & AC2) */}
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Mã đại lý (tùy chọn)
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-700">
+                        Mã đại lý
+                      </label>
+                      <span className="text-[11px] text-blue-600">Duy nhất</span>
+                    </div>
                     <input
                       type="text"
-                      placeholder="Tự sinh nếu để trống (DL-...)"
+                      placeholder="VD: DL-HN-005 (Tự sinh nếu để trống)"
                       value={formData.code}
                       onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                       className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 font-mono"
                     />
                   </div>
 
-                  {/* Phân nhóm */}
+                  {/* Mã số thuế (SN-30 AC1) */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">
+                      Mã số thuế <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="VD: 0109876543 (10 hoặc 13 số)"
+                      value={formData.taxCode}
+                      onChange={(e) => setFormData({ ...formData, taxCode: e.target.value })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 font-mono"
+                    />
+                  </div>
+
+                  {/* Phân nhóm đại lý & Quyết định bảng giá áp dụng (SN-30 AC3) */}
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-slate-700">Phân nhóm đại lý</label>
                     <select
@@ -1089,6 +1269,40 @@ export const CustomersPage: React.FC = () => {
                       <option value="WHOLESALE">Bán buôn</option>
                       <option value="RETAIL">Bán lẻ</option>
                     </select>
+                  </div>
+
+                  {/* Nhân viên kinh doanh phụ trách (SN-30 AC1) */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">
+                      Người phụ trách
+                    </label>
+                    <select
+                      value={formData.salesRepId || ''}
+                      onChange={(e) => setFormData({ ...formData, salesRepId: e.target.value })}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-white"
+                    >
+                      {SALES_REPS.map((rep) => (
+                        <option key={rep.id} value={rep.id}>
+                          {rep.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Thông báo bảng giá áp dụng tương ứng nhóm khách hàng (SN-30 AC3) */}
+                  <div className="sm:col-span-2 p-2.5 rounded-lg border bg-blue-50/60 border-blue-100 flex items-start gap-2 text-xs">
+                    <Tag className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-semibold text-blue-900">
+                        Bảng giá áp dụng:{' '}
+                      </span>
+                      <span className="font-bold text-blue-700">
+                        {getPriceListInfo(formData.customerGroup || 'AGENT_LEVEL_2').title}
+                      </span>
+                      <span className="text-slate-500 ml-1">
+                        — {getPriceListInfo(formData.customerGroup || 'AGENT_LEVEL_2').desc}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Số điện thoại */}
@@ -1254,6 +1468,130 @@ export const CustomersPage: React.FC = () => {
         onConfirmUnlock={handleConfirmUnlock}
         loading={isLockSubmitting}
       />
+
+      {/* ── MODAL XÁC NHẬN XÓA / NGỪNG GIAO DỊCH ĐẠI LÝ (SN-30 AC4) ── */}
+      {deleteModalCustomer && isDeleteModalOpen &&
+        createPortal(
+          <div
+            onClick={(e) => {
+              if (e.target === e.currentTarget && !isDeleting) {
+                setIsDeleteModalOpen(false);
+                setDeleteModalCustomer(null);
+              }
+            }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+          >
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200/80 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150">
+              <div className="p-5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      (deleteModalCustomer.currentDebt || 0) > 0
+                        ? 'bg-amber-100 text-amber-600'
+                        : 'bg-rose-100 text-rose-600'
+                    }`}
+                  >
+                    {(deleteModalCustomer.currentDebt || 0) > 0 ? (
+                      <AlertCircle className="w-5 h-5" />
+                    ) : (
+                      <Trash2 className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">
+                      {(deleteModalCustomer.currentDebt || 0) > 0
+                        ? 'Chặn xóa đại lý đã phát sinh giao dịch'
+                        : 'Xác nhận xóa hồ sơ đại lý'}
+                    </h3>
+                    <p className="text-xs text-slate-500 font-mono">
+                      {deleteModalCustomer.code} • {deleteModalCustomer.name}
+                    </p>
+                  </div>
+                </div>
+
+                {(deleteModalCustomer.currentDebt || 0) > 0 ? (
+                  <div className="space-y-3">
+                    <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800 space-y-1.5">
+                      <p className="font-semibold">⚠️ Quy định kế toán công nợ (SN-30):</p>
+                      <p>
+                        Đại lý này đang có dư nợ{' '}
+                        <span className="font-bold text-rose-600">
+                          {formatVnd(deleteModalCustomer.currentDebt || 0)}
+                        </span>{' '}
+                        hoặc đã phát sinh giao dịch trong hệ thống.
+                      </p>
+                      <p>
+                        Hệ thống <strong>không cho phép xóa</strong> đại lý đã phát sinh giao dịch để bảo toàn sổ sách kế toán. Bạn có thể chuyển đại lý sang trạng thái <strong>Ngừng giao dịch</strong> (INACTIVE).
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
+                    <p>
+                      Bạn có chắc chắn muốn xóa hồ sơ đại lý{' '}
+                      <strong className="text-slate-900">{deleteModalCustomer.name}</strong> không?
+                    </p>
+                    <p className="text-slate-400">
+                      Đại lý chưa phát sinh công nợ. Hành động này sẽ xóa hoàn toàn thông tin khỏi danh sách khách hàng.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDeleteModalOpen(false);
+                      setDeleteModalCustomer(null);
+                    }}
+                    disabled={isDeleting}
+                    className="px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Hủy bỏ
+                  </button>
+
+                  {(deleteModalCustomer.currentDebt || 0) > 0 ? (
+                    <button
+                      type="button"
+                      onClick={handleConfirmDeactivate}
+                      disabled={isDeleting}
+                      className="flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Đang cập nhật...</span>
+                        </>
+                      ) : (
+                        <span>Chuyển sang Ngừng giao dịch</span>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleConfirmDelete}
+                      disabled={isDeleting}
+                      className="flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Đang xóa...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-4 h-4" />
+                          <span>Xác nhận xóa</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

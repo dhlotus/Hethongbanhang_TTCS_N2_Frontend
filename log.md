@@ -182,3 +182,38 @@
 - **Trạng thái kiểm thử:**
   - Frontend Build: 
 pm run build (	sc -b && vite build) -> 0 lỗi, compile thành công 100%.
+
+---
+
+### [Sprint 4] - [SN-49 & SN-42]: Portal Đặt Hàng Đại Lý 2 Bước, Bảng Chiết Khấu & Đơn Vị Tính, Đồng Bộ Đơn Hàng & Duyệt Real-Time Toàn Hệ Thống
+- **Thời gian hoàn thành:** 2026-10-10
+- **Mã Jira / Subtask:** SN-49 & SN-42
+- **Tiêu chí hoàn thành (AC) đã đạt 100%:**
+  1. **Luồng 2 (Số lượng & Chiết khấu) kiểm soát chặt chẽ:** Tab 2 trên Stepper bị khóa, chỉ được mở và chạy khi người dùng bấm nút *"Tiếp tục: Bảng giỏ hàng & Chiết khấu"* ở Bước 1 và đã hoàn thành xác thực (có hàng trong giỏ, có địa chỉ nhận hàng chi tiết và ngày giao hàng).
+  2. **Bảng Chính Sách & Chiết Khấu Áp Dụng (Luồng 2):** Xây dựng bảng chiết khấu chi tiết lấy trực tiếp từ bảng giá hiệu lực (`effectivePriceList`) và chính sách phân cấp của đại lý (`AGENT_LEVEL_1`, `AGENT_LEVEL_2`, `RETAIL`). Hiển thị chi tiết từng mặt hàng: Giá niêm yết, % Chiết khấu, Giá sau CK, Số lượng, Đơn vị tính và Số tiền tiết kiệm được.
+  3. **Đơn vị tính sau sản phẩm:** Hiển thị rõ ràng đơn vị tính (Lon, Hộp, Chai, Thùng...) ngay sau tên sản phẩm (ví dụ: `(Chai)`) và cạnh ô nhập số lượng trong giỏ hàng và danh mục hàng.
+  4. **Đồng bộ Đơn hàng & Duyệt Real-Time toàn hệ thống:**
+     - Khi bấm *"Xác nhận gửi đơn hàng"*: Gọi API `POST /api/orders`, lưu vào DB và bộ nhớ, phát sự kiện `loha_orders_updated`, `loha_inventory_updated`, đồng bộ ngay lập tức vào tab "Đơn hàng của tôi", trừ tồn kho và cập nhật công nợ.
+     - Phía Quản trị (`OrdersPage`): Lắng nghe `loha_orders_updated` tự động cập nhật danh sách đơn hàng real-time không cần F5. Quản trị viên/Quản lý duyệt đơn (`decideOrder`), trạng thái đơn hàng (`APPROVED`) và công nợ được phát sóng đồng bộ tức thì sang Cổng Portal của Đại lý theo thời gian thực.
+  5. **Kết nối Bảng Chính Sách Chiết Khấu Dùng Chung vào Portal Đặt Hàng:**
+     - Tích hợp trực tiếp danh sách chính sách chiết khấu theo sản lượng (`DISC-VOL-01`, `DP-205133`...) từ module dùng chung hệ thống vào Luồng 2 của Portal.
+     - Tự động nhận diện nấc số lượng đặt mua (`quantity`), tính toán chính xác % chiết khấu sản lượng đạt được, đơn giá sau giảm và số tiền tiết kiệm.
+     - Hiển thị trực quan cấu hình các nấc chiết khấu (Q_min ~ Q_max, % giảm), highlight nấc hiện tại đang đạt và gợi ý số lượng cần mua thêm để nâng lên nấc chiết khấu cao hơn.
+  6. **Đồng Bộ Linh Hoạt Mức Chiết Khấu Theo Đúng Nấc Số Lượng Thực Tế (SN-28 & SN-49):**
+      - Loại bỏ mức chiết khấu cứng 15% khi sản phẩm thuộc chính sách chiết khấu sản lượng của hệ thống.
+      - Khi mua 1 món: % Chiết khấu = 0% (Chưa đạt nấc), giá bán bằng giá niêm yết (520.000 đ), tiết kiệm 0 đ, hiển thị thông báo gợi ý nấc tiếp theo: "Mua thêm +9 món để nhận 2%".
+      - Khi mua từ 10 - 49 món: % Chiết khấu tự động nhảy thành 2%, giá bán = 509.600 đ, tiết kiệm +104.000 đ.
+      - Khi mua từ 50 - 99 món: % Chiết khấu nhảy thành 5%, giá bán = 494.000 đ, tiết kiệm +1.300.000 đ.
+      - Khi mua từ 100 - 2000 món: % Chiết khấu nhảy thành 10%, giá bán = 468.000 đ.
+      - Khi mua từ 2001+ món: % Chiết khấu nhảy thành 25%, giá bán = 390.000 đ.
+      - Tất cả các vị trí hiển thị (Badge trên thẻ giỏ hàng, bảng kê chiết khấu, thanh thông báo quyền lợi và tổng tiền thanh toán) đồng bộ tức thì theo thời gian thực khi gõ số lượng vào ô input.
+- **Danh sách file thay đổi:**
+  - `src/services/discount-policies.service.ts`: Khởi tạo `DEFAULT_DISCOUNT_POLICIES`, hoàn thiện hàm `getApplicablePolicyInfo` trả về chính xác `nextTier` và `quantityNeededForNext` khi số lượng chưa đạt nấc tối thiểu.
+  - `src/pages/agency-portal-page.tsx`: Xây dựng hàm `getItemEffectiveDiscount`, đồng bộ hóa % chiết khấu và giá bán theo nấc sản lượng thực tế trong toàn bộ giỏ hàng, bảng chi tiết chiết khấu, tổng kết tiền và payload gửi lên server.
+  - `src/services/orders.service.ts`: Cập nhật `createOrder`, `decideOrder`, `cancelOrder` phát sóng sự kiện `loha_orders_updated` và `loha_inventory_updated` theo thời gian thực.
+  - `src/pages/orders-page.tsx`: Lắng nghe sự kiện `loha_orders_updated` và `storage` để tự động làm mới danh sách đơn hàng cho Quản trị viên/NVKD theo thời gian thực.
+- **Trạng thái kiểm thử:**
+  - ✅ Unit Test Logic Nấc Chiết Khấu: Kiểm thử 9 trường hợp số lượng (1, 9, 10, 49, 50, 99, 100, 2000, 2001) vượt qua 100% (`test_discount_tiers.ts`).
+  - ✅ TypeScript & Build Production: `npm run build` (`tsc -b && vite build`) hoàn thành thành công 100% (0 lỗi, 0 warnings), toàn bộ type-safe, không dùng `any`, Controlled Components cho toàn bộ ô input.
+  - ✅ Backend TypeScript: `npx tsc --noEmit` đạt 0 lỗi.
+  - ✅ Dev Server Vite: HMR hoạt động trơn tru không còn bất kỳ lỗi transform JSX nào.

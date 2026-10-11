@@ -164,7 +164,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
 /**
  * Danh sách sản phẩm mẫu phong phú phục vụ demo / fallback
  */
-export let MOCK_PRODUCTS: Product[] = [
+const INITIAL_MOCK_PRODUCTS: Product[] = [
   {
     id: 'prod-001',
     sku: 'LH-MILK-900G',
@@ -459,6 +459,27 @@ export let MOCK_PRODUCTS: Product[] = [
   },
 ];
 
+export const DEMO_PRODUCTS_KEY = 'loha_demo_products';
+
+export const getStoredDemoProducts = (): Product[] => {
+  try {
+    const raw = localStorage.getItem(DEMO_PRODUCTS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return [...INITIAL_MOCK_PRODUCTS];
+};
+
+export const saveStoredDemoProducts = (products: Product[]) => {
+  try {
+    localStorage.setItem(DEMO_PRODUCTS_KEY, JSON.stringify(products));
+  } catch {}
+};
+
+export let MOCK_PRODUCTS: Product[] = getStoredDemoProducts();
+
 /**
  * Kiểm tra xem người dùng hiện tại có quyền xem Giá vốn & Biên lợi nhuận hay không
  */
@@ -595,90 +616,27 @@ export const productsService = {
         };
       }
 
-      // Nếu Backend trả về mảng phẳng, thực hiện phân trang và lọc client-side
+      // Nếu Backend trả về mảng phẳng, thực hiện phân trang
       const list = Array.isArray(response.data) ? response.data : [];
-      let filtered = [...list];
-
-      if (search.trim()) {
-        const q = search.trim().toLowerCase();
-        filtered = filtered.filter(
-          (p) =>
-            p.sku.toLowerCase().includes(q) ||
-            p.name.toLowerCase().includes(q) ||
-            (p.barcode && p.barcode.includes(q))
-        );
-      }
-
-      if (parentCategory && parentCategory !== 'ALL') {
-        filtered = filtered.filter(
-          (p) => p.parentCategory === parentCategory || p.category?.includes(parentCategory)
-        );
-      }
-
-      if (subCategory && subCategory !== 'ALL') {
-        filtered = filtered.filter(
-          (p) => p.subCategory === subCategory || p.category?.includes(subCategory)
-        );
-      }
-
-      if (status && status !== 'ALL') {
-        filtered = filtered.filter((p) => p.status === status);
-      }
-
-      const total = filtered.length;
-      const totalPages = Math.ceil(total / limit) || 1;
-      const startIndex = (page - 1) * limit;
-      const pagedData = filtered
-        .slice(startIndex, startIndex + limit)
-        .map((p) => sanitizeProduct(p, canViewCost));
-
       return {
-        data: pagedData,
-        total,
+        data: list.map((p) => sanitizeProduct(p, canViewCost)),
+        total: list.length,
         page,
         limit,
-        totalPages,
+        totalPages: Math.ceil(list.length / limit) || 1,
       };
-    } catch {
-      // 2. Fallback xử lý Offline / Mock Data mượt mà khi Backend chưa có route hoặc đang nâng cấp
-      let filtered = [...MOCK_PRODUCTS];
-
-      if (search.trim()) {
-        const q = search.trim().toLowerCase();
-        filtered = filtered.filter(
-          (p) =>
-            p.sku.toLowerCase().includes(q) ||
-            p.name.toLowerCase().includes(q) ||
-            (p.barcode && p.barcode.includes(q))
-        );
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+        const serverMsg = axiosErr.response?.data?.message;
+        if (serverMsg) {
+          const msg = Array.isArray(serverMsg) ? serverMsg.join(', ') : serverMsg;
+          throw new Error(msg);
+        }
       }
-
-      if (parentCategory && parentCategory !== 'ALL') {
-        filtered = filtered.filter((p) => p.parentCategory === parentCategory);
-      }
-
-      if (subCategory && subCategory !== 'ALL') {
-        filtered = filtered.filter((p) => p.subCategory === subCategory);
-      }
-
-      if (status && status !== 'ALL') {
-        filtered = filtered.filter((p) => p.status === status);
-      }
-
-      const total = filtered.length;
-      const totalPages = Math.ceil(total / limit) || 1;
-      const startIndex = (page - 1) * limit;
-      const pagedData = filtered
-        .slice(startIndex, startIndex + limit)
-        .map((p) => sanitizeProduct(p, canViewCost));
-
-      return {
-        data: pagedData,
-        total,
-        page,
-        limit,
-        totalPages,
-      };
+      throw new Error(
+        err instanceof Error ? err.message : 'Không thể kết nối đến máy chủ để tải danh mục sản phẩm.'
+      );
     }
   },
 
@@ -687,17 +645,8 @@ export const productsService = {
    */
   async getProductById(id: string): Promise<Product> {
     const canViewCost = checkCanViewCost();
-
-    try {
-      const response = await apiClient.get<Product>(`/products/${id}`);
-      return sanitizeProduct(response.data, canViewCost);
-    } catch {
-      const found = MOCK_PRODUCTS.find(
-        (p) => p.id === id || p.sku.toLowerCase() === id.toLowerCase()
-      );
-      if (!found) throw new Error('Sản phẩm không tồn tại trên hệ thống!');
-      return sanitizeProduct(found, canViewCost);
-    }
+    const response = await apiClient.get<Product>(`/products/${id}`);
+    return sanitizeProduct(response.data, canViewCost);
   },
 
   /**
@@ -716,6 +665,9 @@ export const productsService = {
         ...payload,
         sku: cleanSku,
       });
+      try {
+        window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: response.data }));
+      } catch {}
       return sanitizeProduct(response.data, canViewCost);
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
@@ -726,49 +678,7 @@ export const productsService = {
           throw new Error(msg);
         }
       }
-
-      // Mock Fallback
-      const isDuplicate = MOCK_PRODUCTS.some((p) => p.sku.toUpperCase() === cleanSku);
-
-      if (isDuplicate) {
-        throw new Error(`Mã SKU [${cleanSku}] đã tồn tại trên hệ thống. Vui lòng đặt mã khác!`);
-      }
-
-      const margin =
-        payload.price > 0 && payload.costPrice !== undefined
-          ? Math.round(((payload.price - payload.costPrice) / payload.price) * 10000) / 100
-          : undefined;
-
-      const newProduct: Product = {
-        id: `prod-${Date.now().toString(36)}`,
-        sku: cleanSku,
-        name: payload.name.trim(),
-        parentCategory: payload.parentCategory,
-        subCategory: payload.subCategory,
-        category:
-          payload.category || `${payload.parentCategory || ''} / ${payload.subCategory || ''}`,
-        categoryId: payload.categoryId,
-        baseUnit: payload.baseUnit,
-        packagingSpec: payload.packagingSpec,
-        units:
-          payload.units && payload.units.length > 0
-            ? payload.units
-            : [{ unitName: payload.baseUnit, conversionRate: 1, isBaseUnit: true }],
-        price: Number(payload.price),
-        costPrice: payload.costPrice !== undefined ? Number(payload.costPrice) : undefined,
-        margin,
-        stockQuantity: 0,
-        status: payload.status || 'ACTIVE',
-        barcode: payload.barcode?.trim(),
-        imageUrl: payload.imageUrl?.trim(),
-        description: payload.description?.trim(),
-        hasTransactions: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      MOCK_PRODUCTS.unshift(newProduct);
-      return sanitizeProduct(newProduct, canViewCost);
+      throw new Error(err instanceof Error ? err.message : 'Lỗi khi tạo mới sản phẩm.');
     }
   },
 
@@ -781,26 +691,11 @@ export const productsService = {
     try {
       const response = await apiClient.patch<Product>(`/products/${id}`, payload);
       const resProduct = response.data;
-
-      // Đồng bộ vào bộ nhớ MOCK_PRODUCTS nếu có sẵn trong danh mục cục bộ
-      const index = MOCK_PRODUCTS.findIndex((p) => p.id === id || p.sku === id);
-      if (index !== -1) {
-        const currentStock = MOCK_PRODUCTS[index].stockQuantity;
-        MOCK_PRODUCTS[index] = {
-          ...MOCK_PRODUCTS[index],
-          ...resProduct,
-          stockQuantity:
-            resProduct.stockQuantity !== undefined && resProduct.stockQuantity !== null
-              ? resProduct.stockQuantity
-              : payload.stockQuantity !== undefined
-                ? payload.stockQuantity
-                : currentStock,
-        };
-      }
-
+      try {
+        window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: resProduct }));
+      } catch {}
       return sanitizeProduct(resProduct, canViewCost);
     } catch (err: unknown) {
-      // Nếu máy chủ backend trả về lỗi nghiệp vụ (400, 403, 404, 409...), hiển thị thông báo chính xác từ server
       if (err && typeof err === 'object' && 'response' in err) {
         const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
         const serverMsg = axiosErr.response?.data?.message;
@@ -809,67 +704,7 @@ export const productsService = {
           throw new Error(msg);
         }
       }
-
-      const index = MOCK_PRODUCTS.findIndex((p) => p.id === id || p.sku === id);
-      if (index === -1) {
-        throw new Error('Sản phẩm cần cập nhật không tồn tại!');
-      }
-
-      const existing = MOCK_PRODUCTS[index];
-
-      // Nếu có cập nhật SKU, kiểm tra trùng với sản phẩm khác
-      if (payload.sku) {
-        const cleanSku = payload.sku.trim().toUpperCase().replace(/\s+/g, '');
-        const duplicate = MOCK_PRODUCTS.find(
-          (p) => p.sku.toUpperCase() === cleanSku && p.id !== existing.id
-        );
-        if (duplicate) {
-          throw new Error(`Mã SKU [${cleanSku}] đã được dùng bởi sản phẩm khác!`);
-        }
-        existing.sku = cleanSku;
-      }
-
-      if (payload.name !== undefined) existing.name = payload.name.trim();
-      if (payload.parentCategory !== undefined) existing.parentCategory = payload.parentCategory;
-      if (payload.subCategory !== undefined) existing.subCategory = payload.subCategory;
-      if (payload.category !== undefined) existing.category = payload.category;
-      if (payload.baseUnit !== undefined) existing.baseUnit = payload.baseUnit;
-      if (payload.packagingSpec !== undefined) existing.packagingSpec = payload.packagingSpec;
-      if (payload.units !== undefined) existing.units = payload.units;
-      if (payload.price !== undefined) existing.price = Number(payload.price);
-      if (payload.costPrice !== undefined) existing.costPrice = Number(payload.costPrice);
-      if (payload.status !== undefined) existing.status = payload.status;
-      if (payload.imageUrl !== undefined) existing.imageUrl = payload.imageUrl.trim();
-      if (payload.description !== undefined) existing.description = payload.description.trim();
-      if (payload.stockQuantity !== undefined && payload.stockQuantity !== null) {
-        existing.stockQuantity = Number(payload.stockQuantity);
-      }
-
-      // Tính lại biên lợi nhuận
-      if (existing.price > 0 && existing.costPrice !== undefined) {
-        existing.margin =
-          Math.round(((existing.price - existing.costPrice) / existing.price) * 10000) / 100;
-      }
-
-      if (payload.price !== undefined && Number(payload.price) !== existing.price) {
-        const newHistItem: ProductPriceHistory = {
-          id: `hist-${Date.now()}`,
-          productId: existing.id,
-          oldPrice: existing.price,
-          newPrice: Number(payload.price),
-          changedBy: tokenStorage.getUser()?.fullName || 'Quản lý kinh doanh',
-          changedAt: new Date().toISOString(),
-        };
-        const localKey = `price_history_${existing.id}`;
-        try {
-          const prevHist = JSON.parse(localStorage.getItem(localKey) || '[]');
-          localStorage.setItem(localKey, JSON.stringify([newHistItem, ...prevHist]));
-        } catch {}
-      }
-
-      existing.updatedAt = new Date().toISOString();
-      MOCK_PRODUCTS[index] = existing;
-      return sanitizeProduct(existing, canViewCost);
+      throw new Error(err instanceof Error ? err.message : 'Lỗi khi cập nhật sản phẩm.');
     }
   },
 
@@ -881,6 +716,9 @@ export const productsService = {
       const response = await apiClient.delete<{ success: boolean; message: string }>(
         `/products/${id}`
       );
+      try {
+        window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: { id } }));
+      } catch {}
       return response.data;
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
@@ -891,23 +729,7 @@ export const productsService = {
           throw new Error(msg);
         }
       }
-
-      const found = MOCK_PRODUCTS.find((p) => p.id === id || p.sku === id);
-      if (!found) {
-        throw new Error('Không tìm thấy sản phẩm cần xóa!');
-      }
-
-      if (found.hasTransactions) {
-        throw new Error(
-          `Sản phẩm [${found.sku} - ${found.name}] đã phát sinh dữ liệu giao dịch kho hoặc đơn hàng. Để đảm bảo toàn vẹn dữ liệu kế toán, bạn không thể xóa sản phẩm này mà chỉ được phép chuyển trạng thái sang [Ngừng kinh doanh]!`
-        );
-      }
-
-      MOCK_PRODUCTS = MOCK_PRODUCTS.filter((p) => p.id !== found.id);
-      return {
-        success: true,
-        message: `Đã xóa thành công sản phẩm [${found.sku}] khỏi danh mục.`,
-      };
+      throw new Error(err instanceof Error ? err.message : 'Lỗi khi xóa sản phẩm.');
     }
   },
 

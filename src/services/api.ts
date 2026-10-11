@@ -158,23 +158,14 @@ apiClient.interceptors.response.use(
     }
 
     try {
-      let newAccessToken = '';
-      let newRefreshToken: string | undefined = undefined;
+      // Gọi API backend chính thức: POST /auth/refresh
+      const refreshResponse = await refreshClient.post<TokenResponse>('/auth/refresh', {
+        refreshToken: currentRefreshToken,
+      });
 
-      // Hỗ trợ tài khoản Demo khi chạy thử nghiệm độc lập chưa bật Backend
-      if (currentRefreshToken.startsWith('demo-jwt-')) {
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        newAccessToken = `demo-jwt-refreshed-${Date.now()}-access-token`;
-        newRefreshToken = currentRefreshToken;
-      } else {
-        // Gọi API backend: POST /auth/refresh
-        const refreshResponse = await refreshClient.post<TokenResponse>('/auth/refresh', {
-          refreshToken: currentRefreshToken,
-        });
-
-        newAccessToken = refreshResponse.data.accessToken;
-        newRefreshToken = refreshResponse.data.refreshToken;
-      }
+      const resBody = refreshResponse.data as Record<string, any>;
+      const newAccessToken = resBody.accessToken || resBody.access_token || '';
+      const newRefreshToken = resBody.refreshToken || resBody.refresh_token;
 
       // Lưu trữ cặp token mới vào localStorage
       tokenStorage.setTokens(newAccessToken, newRefreshToken);

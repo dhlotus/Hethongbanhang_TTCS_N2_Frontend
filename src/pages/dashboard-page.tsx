@@ -12,6 +12,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ChevronDown,
+  CheckCircle2,
 } from 'lucide-react';
 import { DropdownMenu } from '../components/dropdown-menu';
 import {
@@ -69,54 +70,13 @@ interface DashboardOverviewResponse {
   lastUpdated: string;
 }
 
-const DEFAULT_DASHBOARD_DATA: DashboardOverviewResponse = {
-  metrics: {
-    todaySales: 48500000,
-    monthlySales: 892000000,
-    pendingOrdersCount: 6,
-    readyToShipOrdersCount: 14,
-    totalOverdueDebt: 125000000,
-    lowStockAlertCount: 3,
-    salesGrowthPercent: 12.5,
-    debtGrowthPercent: -4.2,
-  },
-  charts: {
-    salesTrend: [
-      { date: '2026-10-03', value: 32000000 },
-      { date: '2026-10-04', value: 45000000 },
-      { date: '2026-10-05', value: 38000000 },
-      { date: '2026-10-06', value: 52000000 },
-      { date: '2026-10-07', value: 41000000 },
-      { date: '2026-10-08', value: 65000000 },
-      { date: '2026-10-09', value: 48500000 },
-    ],
-    highRiskAgencies: [
-      {
-        customerId: 'cust-001',
-        customerName: 'Đại lý Bia & Nước giải khát Hùng Vương',
-        customerCode: 'DL-HCM-001',
-        overdueAmount: 65000000,
-        salesRepName: 'Trần Văn Nam',
-      },
-      {
-        customerId: 'cust-002',
-        customerName: 'Công ty TNHH Thương mại Dịch vụ Minh Phát',
-        customerCode: 'DL-HCM-002',
-        overdueAmount: 42000000,
-        salesRepName: 'Lê Thị Mai',
-      },
-      {
-        customerId: 'cust-003',
-        customerName: 'Đại lý Tạp Hóa & Tiêu dùng Phương Đông',
-        customerCode: 'DL-BDG-003',
-        overdueAmount: 18000000,
-        salesRepName: 'Trần Văn Nam',
-      },
-    ],
-  },
-  executiveInsights:
-    'Doanh số bán buôn tháng này tăng trưởng ổn định +12.5%. Cần đôn đốc thu hồi công nợ quá hạn từ các đại lý có dư nợ cao.',
-  lastUpdated: new Date().toISOString(),
+const EMPTY_METRICS: DashboardMetrics = {
+  todaySales: 0,
+  monthlySales: 0,
+  pendingOrdersCount: 0,
+  readyToShipOrdersCount: 0,
+  totalOverdueDebt: 0,
+  lowStockAlertCount: 0,
 };
 
 export const DashboardPage: React.FC = () => {
@@ -128,7 +88,7 @@ export const DashboardPage: React.FC = () => {
     ? (paramRange as TimeRangeType)
     : 'today';
 
-  const [data, setData] = useState<DashboardOverviewResponse>(DEFAULT_DASHBOARD_DATA);
+  const [data, setData] = useState<DashboardOverviewResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [timeRange, setTimeRange] = useState<string>(initialRange);
   const [startDate, setStartDate] = useState<string>(searchParams.get('start') || '');
@@ -167,12 +127,12 @@ export const DashboardPage: React.FC = () => {
       if (res.data && res.data.metrics && res.data.charts) {
         setData(res.data);
       } else {
-        setData(DEFAULT_DASHBOARD_DATA);
+        setData(null);
       }
       setLastUpdatedTime(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
     } catch {
-      // Khi backend chưa có endpoint /dashboard/overview hoặc có lỗi mạng, dùng dữ liệu mẫu chuẩn để không bị trắng trang
-      setData(DEFAULT_DASHBOARD_DATA);
+      // Khi gặp lỗi hoặc chưa có dữ liệu, trả về null để hiển thị Empty State chuẩn
+      setData(null);
       setLastUpdatedTime(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
     } finally {
       setLoading(false);
@@ -193,7 +153,7 @@ export const DashboardPage: React.FC = () => {
     }, { replace: true });
   };
 
-  // Đồng bộ hóa khi người dùng lọc ngày tùy chọn
+  // Đồng bộ hóa khi người dùng bấm nút Lọc ngày tùy chọn
   const handleCustomFilterSubmit = () => {
     if (startDate && endDate) {
       setSearchParams((prev) => {
@@ -233,24 +193,32 @@ export const DashboardPage: React.FC = () => {
     if (currentEnd !== endDate) setEndDate(currentEnd);
   }, [searchParams]);
 
-  // Tự động gọi API lấy dữ liệu khi timeRange thay đổi hoặc tải trang
+  // Tự động gọi API lấy dữ liệu khi timeRange thay đổi (với các preset không phải custom)
   useEffect(() => {
     if (timeRange !== 'custom') {
       fetchData(timeRange);
-    } else {
-      const currentStart = searchParams.get('start') || startDate;
-      const currentEnd = searchParams.get('end') || endDate;
-      if (currentStart && currentEnd) {
-        fetchData('custom', currentStart, currentEnd);
-      }
     }
   }, [timeRange]);
 
-  const currentData = data || DEFAULT_DASHBOARD_DATA;
-  const metrics = currentData.metrics || DEFAULT_DASHBOARD_DATA.metrics;
-  const charts = currentData.charts || DEFAULT_DASHBOARD_DATA.charts;
-  const salesTrend = charts.salesTrend || DEFAULT_DASHBOARD_DATA.charts.salesTrend;
-  const highRiskAgencies = charts.highRiskAgencies || DEFAULT_DASHBOARD_DATA.charts.highRiskAgencies;
+  // Bổ sung useEffect tự động reload dữ liệu ngay khi cả startDate và endDate đều có giá trị trong bộ lọc tùy chọn
+  useEffect(() => {
+    if (timeRange === 'custom' && startDate && endDate) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('range', 'custom');
+        next.set('start', startDate);
+        next.set('end', endDate);
+        return next;
+      }, { replace: true });
+      fetchData('custom', startDate, endDate);
+    }
+  }, [timeRange, startDate, endDate]);
+
+  const metrics = data?.metrics || EMPTY_METRICS;
+  const charts = data?.charts || { salesTrend: [], highRiskAgencies: [] };
+  const salesTrend = charts.salesTrend || [];
+  const highRiskAgencies = charts.highRiskAgencies || [];
+  const hasSalesData = salesTrend.length > 0 && salesTrend.some((s) => s.value > 0);
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -471,26 +439,34 @@ export const DashboardPage: React.FC = () => {
               </div>
             </div>
             <div className="h-72 sm:h-80 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={salesTrend} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.25}/>
-                      <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="date" tickFormatter={(val: string) => val.slice(8,10) + '/' + val.slice(5,7)} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
-                  <YAxis tickFormatter={(val: number) => (val / 1000000).toFixed(0) + 'M'} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    formatter={(value: any) => [formatCurrency(value), 'Doanh số']} 
-                    labelFormatter={(label: any) => `Ngày: ${label}`}
-                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.08)' }}
-                  />
-                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '13px' }} />
-                  <Area type="monotone" dataKey="value" name="Doanh số" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" activeDot={{ r: 6, strokeWidth: 0, fill: '#4f46e5' }} />
-                </AreaChart>
-              </ResponsiveContainer>
+              {hasSalesData ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={salesTrend} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.25}/>
+                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="date" tickFormatter={(val: string) => val.slice(8,10) + '/' + val.slice(5,7)} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+                    <YAxis tickFormatter={(val: number) => (val / 1000000).toFixed(0) + 'M'} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <Tooltip 
+                      formatter={(value: any) => [formatCurrency(value), 'Doanh số']} 
+                      labelFormatter={(label: any) => `Ngày: ${label}`}
+                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.08)' }}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '13px' }} />
+                    <Area type="monotone" dataKey="value" name="Doanh số" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" activeDot={{ r: 6, strokeWidth: 0, fill: '#4f46e5' }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                  <TrendingUp className="h-10 w-10 text-slate-300 mb-3" />
+                  <p className="text-sm font-semibold text-slate-700">Chưa có dữ liệu kinh doanh trong khoảng thời gian này</p>
+                  <p className="text-xs text-slate-400 mt-1">Khi phát sinh đơn hàng, biểu đồ doanh số sẽ hiển thị tại đây</p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -505,34 +481,42 @@ export const DashboardPage: React.FC = () => {
               </div>
             </div>
             <div className="h-72 sm:h-80 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={highRiskAgencies} layout="vertical" margin={{ top: 5, right: 15, left: -5, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                  <XAxis type="number" tickFormatter={(val: number) => (val / 1000000).toFixed(0) + 'M'} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
-                  <YAxis 
-                    dataKey="customerName" 
-                    type="category" 
-                    width={130} 
-                    tickFormatter={(val: string) => (val && val.length > 16 ? val.slice(0, 15) + '…' : val)}
-                    tick={{ fill: '#475569', fontSize: 11 }} 
-                    tickLine={false} 
-                    axisLine={{ stroke: '#e2e8f0' }} 
-                  />
-                  <Tooltip 
-                    formatter={(value: any) => [formatCurrency(value), 'Công nợ quá hạn']} 
-                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.08)' }}
-                    cursor={{ fill: '#f8fafc' }}
-                  />
-                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '13px' }} />
-                  <Bar 
-                    dataKey="overdueAmount" 
-                    name="Công nợ quá hạn" 
-                    fill="#fb7185" 
-                    radius={[0, 4, 4, 0]} 
-                    maxBarSize={28}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              {highRiskAgencies.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={highRiskAgencies} layout="vertical" margin={{ top: 5, right: 15, left: -5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                    <XAxis type="number" tickFormatter={(val: number) => (val / 1000000).toFixed(0) + 'M'} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+                    <YAxis 
+                      dataKey="customerName" 
+                      type="category" 
+                      width={130} 
+                      tickFormatter={(val: string) => (val && val.length > 16 ? val.slice(0, 15) + '…' : val)}
+                      tick={{ fill: '#475569', fontSize: 11 }} 
+                      tickLine={false} 
+                      axisLine={{ stroke: '#e2e8f0' }} 
+                    />
+                    <Tooltip 
+                      formatter={(value: any) => [formatCurrency(value), 'Công nợ quá hạn']} 
+                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.08)' }}
+                      cursor={{ fill: '#f8fafc' }}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '13px' }} />
+                    <Bar 
+                      dataKey="overdueAmount" 
+                      name="Công nợ quá hạn" 
+                      fill="#fb7185" 
+                      radius={[0, 4, 4, 0]} 
+                      maxBarSize={28}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                  <CheckCircle2 className="h-10 w-10 text-emerald-400 mb-3" />
+                  <p className="text-sm font-semibold text-slate-700">Không có đại lý nợ quá hạn</p>
+                  <p className="text-xs text-slate-400 mt-1">Tất cả đại lý đều thanh toán đúng hạn hoặc chưa có dư nợ quá hạn</p>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -3,8 +3,6 @@ import {
   Search,
   Filter,
   RefreshCw,
-  ChevronLeft,
-  ChevronRight,
   ShieldAlert,
 } from 'lucide-react';
 import { creditLimitService } from '../../services/credit-limit.service';
@@ -21,6 +19,7 @@ import { CreditLimitTable } from '../../components/credit-limit/credit-limit-tab
 import { UpdateLimitModal } from '../../components/credit-limit/update-limit-modal';
 import { CreditLimitStatusModal } from '../../components/credit-limit/credit-limit-status-modal';
 import { CreditLimitHistoryModal } from '../../components/credit-limit/credit-limit-history-modal';
+import { Pagination } from '../../components/pagination';
 import { showToast } from '../../components/toast';
 import { getStoredUser } from '../../utils/navigation';
 
@@ -39,6 +38,7 @@ export const CreditLimitPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<CreditStatus | ''>('');
   const [customerGroupFilter, setCustomerGroupFilter] = useState<string>('');
   const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(10);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalItems, setTotalItems] = useState<number>(0);
 
@@ -91,7 +91,7 @@ export const CreditLimitPage: React.FC = () => {
         status: statusFilter || undefined,
         customerGroup: customerGroupFilter || undefined,
         page,
-        limit: 10,
+        limit,
       });
 
       setItems(res.data);
@@ -105,7 +105,7 @@ export const CreditLimitPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, customerGroupFilter, page]);
+  }, [search, statusFilter, customerGroupFilter, page, limit]);
 
   useEffect(() => {
     fetchStats();
@@ -269,34 +269,21 @@ export const CreditLimitPage: React.FC = () => {
       {/* 5. Phân Trang (Pagination)                                            */}
       {/* ===================================================================== */}
       {totalItems > 0 && (
-        <div className="flex items-center justify-between text-xs text-slate-500 px-1">
-          <div>
-            Hiển thị <strong>{items.length}</strong> trên tổng số <strong>{totalItems}</strong> đại
-            lý
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="font-semibold text-slate-700">
-              Trang {page} / {totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+        <Pagination
+          variant="default"
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={limit}
+          pageSizeOptions={[10, 20, 50]}
+          itemLabel="đại lý"
+          showFirstLast={true}
+          onPageChange={(newPage) => setPage(newPage)}
+          onPageSizeChange={(newSize) => {
+            setLimit(newSize);
+            setPage(1);
+          }}
+        />
       )}
 
       {/* ===================================================================== */}
