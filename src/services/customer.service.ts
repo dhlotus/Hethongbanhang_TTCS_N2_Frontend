@@ -403,6 +403,9 @@ export function filterDemoCustomers(params: CustomerFilterParams = {}): Paginate
   const page = Number(params.page) || 1;
   const limit = Number(params.limit) || 20;
   const total = list.length;
+  const activeCount = list.filter((c) => c.status === CustomerStatus.ACTIVE).length;
+  const totalCreditLimit = list.reduce((sum, c) => sum + (c.creditLimit || 0), 0);
+  const totalCurrentDebt = list.reduce((sum, c) => sum + (c.currentDebt || 0), 0);
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const start = (page - 1) * limit;
   const data = list.slice(start, start + limit);
@@ -413,6 +416,9 @@ export function filterDemoCustomers(params: CustomerFilterParams = {}): Paginate
     page,
     limit,
     totalPages,
+    activeCount,
+    totalCreditLimit,
+    totalCurrentDebt,
   };
 }
 
@@ -515,6 +521,9 @@ export const customerService = {
         page: res.data.page || Number(cleanParams.page) || 1,
         limit: res.data.limit || Number(cleanParams.limit) || 20,
         totalPages: res.data.totalPages || 1,
+        activeCount: res.data.activeCount,
+        totalCreditLimit: res.data.totalCreditLimit,
+        totalCurrentDebt: res.data.totalCurrentDebt,
       };
     } catch {
       return filterDemoCustomers(params);

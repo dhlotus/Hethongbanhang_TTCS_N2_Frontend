@@ -26,7 +26,7 @@ import { showToast } from '../components/toast';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
 import { LockAgencyModal } from '../components/lock-agency-modal';
 import { Pagination } from '../components/pagination';
-import { customerService } from '../services/customer.service';
+import { customerService, getStoredCustomers } from '../services/customer.service';
 import type { Customer, CreateCustomerPayload, DeliveryPoint } from '../types/customer.types';
 
 // Danh sách nhân viên kinh doanh phụ trách chuẩn (SN-30 & SN-35)
@@ -140,6 +140,11 @@ export const CustomersPage: React.FC = () => {
   const [pageSize, setPageSize] = useState<number>(10);
   const [totalItems, setTotalItems] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
+
+  // Thống kê KPI toàn hệ thống (không phụ thuộc phân trang từng trang)
+  const [activeCount, setActiveCount] = useState<number>(0);
+  const [totalCreditLimit, setTotalCreditLimit] = useState<number>(0);
+  const [totalCurrentDebt, setTotalCurrentDebt] = useState<number>(0);
 
   // Modal quản lý điểm giao hàng (SN-31 & SN-32)
   const [selectedCustomerForDelivery, setSelectedCustomerForDelivery] = useState<Customer | null>(
@@ -315,9 +320,32 @@ export const CustomersPage: React.FC = () => {
           salesRepId: targetSalesRep !== 'ALL' ? targetSalesRep : undefined,
         });
 
-        setCustomers(res.data || []);
-        setTotalItems(typeof res.total === 'number' ? res.total : (res.data ? res.data.length : 0));
+        const dataList = res.data || [];
+        setCustomers(dataList);
+        setTotalItems(typeof res.total === 'number' ? res.total : dataList.length);
         setTotalPages(res.totalPages || 1);
+
+        // Cập nhật thống kê KPI toàn diện (không bị phụ thuộc vào số dòng của 1 trang)
+        if (typeof res.activeCount === 'number') {
+          setActiveCount(res.activeCount);
+        } else {
+          const stored = getStoredCustomers();
+          setActiveCount(stored.filter((c) => c.status === 'ACTIVE').length);
+        }
+
+        if (typeof res.totalCreditLimit === 'number') {
+          setTotalCreditLimit(res.totalCreditLimit);
+        } else {
+          const stored = getStoredCustomers();
+          setTotalCreditLimit(stored.reduce((sum, c) => sum + (c.creditLimit || 0), 0));
+        }
+
+        if (typeof res.totalCurrentDebt === 'number') {
+          setTotalCurrentDebt(res.totalCurrentDebt);
+        } else {
+          const stored = getStoredCustomers();
+          setTotalCurrentDebt(stored.reduce((sum, c) => sum + (c.currentDebt || 0), 0));
+        }
       } catch {
         showToast('error', 'Lỗi tải dữ liệu', 'Không thể nạp danh sách đại lý từ hệ thống.');
       } finally {
@@ -497,14 +525,15 @@ export const CustomersPage: React.FC = () => {
     );
   };
 
-  // Thống kê nhanh KPI từ server-side pagination & mảng customers
+  // Thống kê nhanh KPI toàn bộ hệ thống đại lý (không bị phụ thuộc vào phân trang từng trang)
   const stats = useMemo(() => {
-    const total = totalItems;
-    const active = customers.filter((c) => c.status === 'ACTIVE').length;
-    const totalCredit = customers.reduce((sum, c) => sum + (c.creditLimit || 0), 0);
-    const totalDebt = customers.reduce((sum, c) => sum + (c.currentDebt || 0), 0);
-    return { total, active, totalCredit, totalDebt };
-  }, [totalItems, customers]);
+    return {
+      total: totalItems,
+      active: activeCount,
+      totalCredit: totalCreditLimit,
+      totalDebt: totalCurrentDebt,
+    };
+  }, [totalItems, activeCount, totalCreditLimit, totalCurrentDebt]);
 
   // Kiểm tra có bất kỳ tiêu chí lọc hoặc tìm kiếm nào đang kích hoạt
   const hasActiveFilters = useMemo(() => {
