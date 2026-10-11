@@ -1107,15 +1107,6 @@ export const CustomersPage: React.FC = () => {
 
                           <button
                             type="button"
-                            onClick={() => handleOpenDeliveryPoints(customer)}
-                            className="p-1.5 text-slate-500 hover:text-[var(--color-primary)] hover:bg-slate-100 rounded-lg transition-colors"
-                            title="Quản lý điểm giao hàng (SN-31)"
-                          >
-                            <MapPin className="w-4 h-4" />
-                          </button>
-
-                          <button
-                            type="button"
                             disabled={customer.status === 'LOCKED'}
                             onClick={() => {
                               navigate(`/sales/orders?customerId=${customer.id}`);
