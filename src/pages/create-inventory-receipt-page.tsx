@@ -13,7 +13,7 @@ import {
 import { showToast } from "../components/toast";
 import { ConfirmDialog } from "../components/confirm-dialog";
 import { CurrencyInput } from "../components/currency-input";
-import { Autocomplete, AutocompleteItem } from "../components/autocomplete";
+import { Autocomplete, type AutocompleteItem } from "../components/autocomplete";
 import { suppliersService } from "../services/suppliers.service";
 import { productsService } from "../services/products.service";
 import { inventoryReceiptsService } from "../services/inventory-receipts.service";

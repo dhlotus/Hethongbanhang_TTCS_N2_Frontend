@@ -351,7 +351,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   };
 
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
-  const isFormDirty = isDirty || units.length > 0;
+  const isFormDirty = isDirty || conversionUnits.length > 0;
 
   // Đóng modal kèm animation mượt mà
   const handleClose = useCallback(() => {
