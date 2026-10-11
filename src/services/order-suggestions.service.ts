@@ -1,5 +1,4 @@
 import { apiClient } from './api';
-import { tokenStorage } from '../utils/token-storage';
 import type {
   CustomerPurchaseHistoryResponse,
   LatestOrderSummary,
@@ -175,36 +174,29 @@ export const orderSuggestionsService = {
   async getPurchaseHistorySuggestions(
     customerId: string,
   ): Promise<CustomerPurchaseHistoryResponse> {
-    const token = tokenStorage.getAccessToken();
-    const isDemo = token?.startsWith('demo-jwt-');
-
-    if (!isDemo) {
-      try {
-        const res = await apiClient.get<CustomerPurchaseHistoryResponse>(
-          `/customers/${customerId}/purchase-history/suggestions`,
-        );
-        return res.data;
-      } catch (err: unknown) {
-        // Nếu API trả lỗi 403 Forbidden, ném trực tiếp để giao diện hiển thị cảnh báo phân quyền
-        const status = (err as { response?: { status?: number } })?.response?.status;
-        if (status === 403) {
-          throw err;
-        }
-        // Fallback sang demo offline nếu backend chưa khởi động
+    try {
+      const res = await apiClient.get<CustomerPurchaseHistoryResponse>(
+        `/customers/${customerId}/purchase-history/suggestions`,
+      );
+      return res.data;
+    } catch (err: unknown) {
+      // Nếu API trả lỗi 403 Forbidden, ném trực tiếp để giao diện hiển thị cảnh báo phân quyền
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 403) {
+        throw err;
       }
+      // Fallback nếu backend chưa có dữ liệu lịch sử
+      const normalizedId = customerId.replace('cust-', 'cust-dl-');
+      const matched =
+        MOCK_DEMO_SUGGESTIONS[customerId] ||
+        MOCK_DEMO_SUGGESTIONS[normalizedId] ||
+        MOCK_DEMO_SUGGESTIONS['cust-dl-0001'];
+
+      return {
+        ...matched,
+        customerId,
+      };
     }
-
-    // Mock fallback linh hoạt
-    const normalizedId = customerId.replace('cust-', 'cust-dl-');
-    const matched =
-      MOCK_DEMO_SUGGESTIONS[customerId] ||
-      MOCK_DEMO_SUGGESTIONS[normalizedId] ||
-      MOCK_DEMO_SUGGESTIONS['cust-dl-0001'];
-
-    return {
-      ...matched,
-      customerId,
-    };
   },
 
   /**
@@ -213,29 +205,23 @@ export const orderSuggestionsService = {
   async getLatestOrder(
     customerId: string,
   ): Promise<LatestOrderSummary | null> {
-    const token = tokenStorage.getAccessToken();
-    const isDemo = token?.startsWith('demo-jwt-');
-
-    if (!isDemo) {
-      try {
-        const res = await apiClient.get<LatestOrderSummary | null>(
-          `/customers/${customerId}/orders/latest`,
-        );
-        return res.data;
-      } catch (err: unknown) {
-        const status = (err as { response?: { status?: number } })?.response?.status;
-        if (status === 403) {
-          throw err;
-        }
+    try {
+      const res = await apiClient.get<LatestOrderSummary | null>(
+        `/customers/${customerId}/orders/latest`,
+      );
+      return res.data;
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 403) {
+        throw err;
       }
+      const normalizedId = customerId.replace('cust-', 'cust-dl-');
+      const matched =
+        MOCK_DEMO_SUGGESTIONS[customerId] ||
+        MOCK_DEMO_SUGGESTIONS[normalizedId] ||
+        MOCK_DEMO_SUGGESTIONS['cust-dl-0001'];
+
+      return matched?.latestOrder || null;
     }
-
-    const normalizedId = customerId.replace('cust-', 'cust-dl-');
-    const matched =
-      MOCK_DEMO_SUGGESTIONS[customerId] ||
-      MOCK_DEMO_SUGGESTIONS[normalizedId] ||
-      MOCK_DEMO_SUGGESTIONS['cust-dl-0001'];
-
-    return matched?.latestOrder || null;
   },
 };

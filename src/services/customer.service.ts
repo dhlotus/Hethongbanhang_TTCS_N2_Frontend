@@ -505,17 +505,11 @@ export const customerService = {
   },
 
   async getCustomerById(id: string): Promise<Customer> {
-    const list = getStoredCustomers();
-    const token = tokenStorage.getAccessToken();
-    if (token?.startsWith('demo-jwt-')) {
-      const found = list.find((c) => c.id === id);
-      if (found) return found;
-    }
-
     try {
       const res = await apiClient.get<Customer>(`/customers/${id}`);
       return res.data;
     } catch {
+      const list = getStoredCustomers();
       const found = list.find((c) => c.id === id);
       if (found) return found;
       throw new Error(`Không tìm thấy đại lý có ID: ${id}`);

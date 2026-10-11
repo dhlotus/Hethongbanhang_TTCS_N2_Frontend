@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ordersService } from '../services/orders.service';
+import { warehouseService } from '../services/warehouse.service';
 import { customersService } from '../services/customers.service';
 import { usersService } from '../services/users.service';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
@@ -43,6 +44,7 @@ import { OrderPrintModal } from '../components/order-print-modal';
 import { ReorderModal } from '../components/reorder-modal';
 import type { Customer, DeliveryPoint as CustomerDeliveryPoint } from '../types/customer.types';
 import { getStoredUser } from '../utils/navigation';
+import { tokenStorage } from '../utils/token-storage';
 import { orderPricingService } from '../services/order-pricing.service';
 import type { PriceList, CustomerGroupType } from '../types/price-list';
 import type {
@@ -56,6 +58,7 @@ import type {
   CustomerDebtStatus,
 } from '../types/order';
 import type { Product, ProductUnit } from '../types/products';
+import type { AgencyWarehouseDetail } from '../types/warehouse.types';
 import { OrderTimeline } from '../components/order-timeline';
 import { CancelOrderModal } from '../components/cancel-order-modal';
 
@@ -323,7 +326,11 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   // Bước 2: Tìm kiếm và thêm sản phẩm
   const [productQuery, setProductQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [searchResultAgencyId, setSearchResultAgencyId] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [servingWarehouse, setServingWarehouse] = useState<AgencyWarehouseDetail | null>(null);
+  const isDemoSession = tokenStorage.getAccessToken()?.startsWith('demo-jwt-') ?? false;
   const [lines, setLines] = useState<OrderLine[]>([]);
   const linesRef = useRef<OrderLine[]>([]);
   linesRef.current = lines;
@@ -557,6 +564,12 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
   // Xử lý khi chọn một Đại lý (SN-31: Đơn hàng chọn điểm giao trong danh sách của đúng đại lý đó)
   const handleSelectCustomer = useCallback(async (c: CustomerOption) => {
+    if (selectedCustomer?.id !== c.id) {
+      setLines([]);
+      setSearchResults([]);
+      setSearchError('');
+      ordersService.clearDraft(DRAFT_KEY);
+    }
     setSelectedCustomer(c);
 
     try {
@@ -567,14 +580,29 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       // Tự động chọn điểm giao hàng mặc định (SN-31)
       const defaultPoint = points.find((p: CustomerDeliveryPoint) => p.isDefault) || points[0] || null;
       setSelectedDeliveryPoint(defaultPoint);
+      setDeliveryPoint(defaultPoint || { address: c.address || '' });
     } catch {
       // Fallback từ c.deliveryPoints
       const fallbackPoints = (c.deliveryPoints || []) as unknown as CustomerDeliveryPoint[];
       setDeliveryPoints(fallbackPoints);
       const defaultPoint = fallbackPoints.find((p: CustomerDeliveryPoint) => p.isDefault) || fallbackPoints[0] || null;
       setSelectedDeliveryPoint(defaultPoint);
+      setDeliveryPoint(defaultPoint || { address: c.address || '' });
     }
-  }, []);
+  }, [selectedCustomer?.id]);
+
+  useEffect(() => {
+    if (!open || !selectedCustomer?.id || isDemoSession) return;
+    let active = true;
+    warehouseService.getAgencyDefault(selectedCustomer.id)
+      .then((detail) => {
+        if (active) setServingWarehouse(detail);
+      })
+      .catch(() => {
+        if (active) setServingWarehouse(null);
+      });
+    return () => { active = false; };
+  }, [open, selectedCustomer?.id, isDemoSession]);
 
   // Tự động chọn đại lý nếu được điều hướng từ Quản lý đại lý (SN-38 sync)
   useEffect(() => {
@@ -631,13 +659,18 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
   // Tìm kiếm sản phẩm (debounce 300ms)
   useEffect(() => {
-    if (step !== 2) return;
+    if (step !== 2 || !selectedCustomer) return;
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(async () => {
       setIsSearching(true);
+      setSearchError('');
       try {
-        const results = await ordersService.searchProducts(productQuery);
+        const results = await ordersService.searchProducts(productQuery, 100, selectedCustomer?.id);
         setSearchResults(results);
+        setSearchResultAgencyId(selectedCustomer.id);
+      } catch {
+        setSearchResults([]);
+        setSearchError('Không thể tải tồn kho của đại lý. Vui lòng thử lại.');
       } finally {
         setIsSearching(false);
       }
@@ -645,7 +678,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
-  }, [productQuery, step]);
+  }, [productQuery, step, selectedCustomer?.id]);
 
   // Tự động truy vấn thông tin công nợ thời gian thực khi chọn đại lý (Task SN-41)
   useEffect(() => {
@@ -1089,12 +1122,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                           key={c.id}
                           type="button"
                           onClick={() => {
-                            setSelectedCustomer(c);
-                            if (c.deliveryPoints?.[0]) {
-                              setDeliveryPoint(c.deliveryPoints[0]);
-                            } else {
-                              setDeliveryPoint({ address: c.address || '' });
-                            }
+                            void handleSelectCustomer(c);
                           }}
                           className={`w-full text-left p-3 rounded-xl border transition-all ${
                             selectedCustomer?.id === c.id
@@ -1450,6 +1478,18 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           {/* ── BƯỚC 2: Thêm sản phẩm ── */}
           {step === 2 && (
             <>
+              {selectedCustomer && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-slate-800">
+                  <div>Đại lý: <strong>{selectedCustomer.code}</strong> · {selectedCustomer.name}</div>
+                  <div>
+                    Kho phục vụ: <strong>{isDemoSession
+                      ? 'Dữ liệu mẫu'
+                      : servingWarehouse?.agencyId === selectedCustomer.id
+                        ? `${servingWarehouse.warehouseCode} · ${servingWarehouse.warehouseName}`
+                        : 'Đang xác định...'}</strong>
+                  </div>
+                </div>
+              )}
               {/* Tìm kiếm sản phẩm */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-slate-700">
@@ -1471,7 +1511,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 </div>
 
                 {/* Kết quả tìm kiếm */}
-                {searchResults.length > 0 && (
+                {searchError && <p className="text-sm text-rose-600">{searchError}</p>}
+                {searchResultAgencyId === selectedCustomer?.id && searchResults.length > 0 && (
                   <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm max-h-56 overflow-y-auto">
                     {searchResults.map((p) => {
                       const priceItem = effectivePriceList
