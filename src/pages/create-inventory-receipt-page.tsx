@@ -11,6 +11,9 @@ import {
   RefreshCw
 } from "lucide-react";
 import { showToast } from "../components/toast";
+import { ConfirmDialog } from "../components/confirm-dialog";
+import { CurrencyInput } from "../components/currency-input";
+import { Autocomplete, type AutocompleteItem } from "../components/autocomplete";
 import { suppliersService } from "../services/suppliers.service";
 import { productsService } from "../services/products.service";
 import { inventoryReceiptsService } from "../services/inventory-receipts.service";
@@ -36,6 +39,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -47,6 +51,18 @@ export const CreateInventoryReceiptPage: React.FC = () => {
   const warehouseId = "WH01"; // Default warehouse
   
   const [items, setItems] = useState<ReceiptItemForm[]>([]);
+
+  const productOptions: AutocompleteItem[] = React.useMemo(() => {
+    return products.map((p) => {
+      const baseUnit = p.units?.find((u) => u.isBaseUnit)?.unitName || p.baseUnit || "";
+      return {
+        id: p.id,
+        label: `${p.name} (${p.sku})`,
+        sublabel: `Mã: ${p.sku} · ĐVT: ${baseUnit} · Tồn: ${p.stockQuantity ?? 0}`,
+        data: p,
+      };
+    });
+  }, [products]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -166,17 +182,14 @@ export const CreateInventoryReceiptPage: React.FC = () => {
     await submitReceipt('DRAFT');
   };
 
-  const handleConfirmReceipt = async () => {
+  const handleConfirmReceipt = () => {
     if (items.length === 0) return showToast("warning", "Phiếu nhập phải có ít nhất 1 mặt hàng");
     for (let i = 0; i < items.length; i++) {
       if (!items[i].productId) return showToast("warning", `Dòng ${i + 1}: Chưa chọn sản phẩm`);
       if (!items[i].unitId) return showToast("warning", `Dòng ${i + 1}: Chưa chọn đơn vị tính`);
       if (items[i].packageQuantity <= 0) return showToast("warning", `Dòng ${i + 1}: Số lượng phải > 0`);
     }
-    const ok = window.confirm("Phiếu đã xác nhận sẽ chính thức cộng tồn kho và không thể chỉnh sửa. Bạn có chắc chắn muốn xác nhận?");
-    if (ok) {
-      await submitReceipt('CONFIRMED');
-    }
+    setIsConfirmDialogOpen(true);
   };
 
   const totalAmount = items.reduce((sum, item) => sum + (item.packageQuantity * item.unitCost), 0);
@@ -304,15 +317,15 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                 </button>
               </div>
 
-              <div className="p-0 overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[800px]">
+              <div className="p-0 overflow-x-auto min-h-[320px]">
+                <table className="w-full text-left border-collapse min-w-[850px]">
                   <thead className="bg-slate-100/80 border-b border-slate-200 text-sm">
                     <tr>
                       <th className="p-3 font-semibold text-slate-700 w-12 text-center">STT</th>
-                      <th className="p-3 font-semibold text-slate-700 text-left min-w-[200px]">Sản phẩm</th>
+                      <th className="p-3 font-semibold text-slate-700 text-left min-w-[240px]">Sản phẩm (SKU / Tên)</th>
                       <th className="p-3 font-semibold text-slate-700 w-32 text-center">ĐVT</th>
                       <th className="p-3 font-semibold text-slate-700 w-28 text-right">Số lượng</th>
-                      <th className="p-3 font-semibold text-slate-700 w-32 text-right">Đơn giá</th>
+                      <th className="p-3 font-semibold text-slate-700 w-36 text-right">Đơn giá</th>
                       <th className="p-3 font-semibold text-slate-700 w-32 text-right">Thành tiền</th>
                       <th className="p-3 font-semibold text-slate-700 min-w-[150px] text-left">Lô / HSD</th>
                       <th className="p-3 font-semibold text-slate-700 w-16 text-center">Thao tác</th>
@@ -332,16 +345,14 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                         <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50/30">
                           <td className="p-3 text-center text-slate-500 font-medium">{idx + 1}</td>
                           <td className="p-3 text-left">
-                            <select
-                              value={item.productId}
-                              onChange={(e) => handleItemChange(idx, "productId", e.target.value)}
-                              className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm"
-                            >
-                              <option value="">- Chọn sp -</option>
-                              {products.map(p => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                              ))}
-                            </select>
+                            <Autocomplete
+                              size="sm"
+                              placeholder="- Tìm mã SKU hoặc tên SP -"
+                              value={item.product ? `${item.product.name} (${item.product.sku})` : ""}
+                              items={productOptions}
+                              onSelect={(opt) => handleItemChange(idx, "productId", String(opt.id))}
+                              className="min-w-[230px]"
+                            />
                           </td>
                           <td className="p-3 text-center">
                             <select
@@ -371,13 +382,12 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                             )}
                           </td>
                           <td className="p-3 text-right">
-                            <input
-                              type="number"
-                              min="0"
-                              value={item.unitCost === 0 ? "" : item.unitCost}
-                              onChange={(e) => handleItemChange(idx, "unitCost", parseFloat(e.target.value) || 0)}
-                              className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm text-right font-mono"
+                            <CurrencyInput
+                              value={item.unitCost}
+                              onChange={(val) => handleItemChange(idx, "unitCost", val || 0)}
                               placeholder="0"
+                              showWordsBadge={false}
+                              className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm text-right font-mono"
                             />
                           </td>
                           <td className="p-3 text-right font-mono font-medium text-slate-700">
@@ -450,6 +460,30 @@ export const CreateInventoryReceiptPage: React.FC = () => {
           </button>
         </div>
       </form>
+
+      <ConfirmDialog
+        isOpen={isConfirmDialogOpen}
+        onCancel={() => setIsConfirmDialogOpen(false)}
+        onConfirm={async () => {
+          setIsConfirmDialogOpen(false);
+          await submitReceipt('CONFIRMED');
+        }}
+        title="Xác nhận nhập kho chính thức"
+        message={
+          <div>
+            <p className="text-slate-600 mb-2">
+              Phiếu nhập kho sau khi xác nhận sẽ <strong>cộng trực tiếp tồn kho thực tế</strong> và <strong>không thể chỉnh sửa hoặc xóa</strong>.
+            </p>
+            <p className="text-xs text-amber-600 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+              Vui lòng kiểm tra kỹ số lượng, đơn giá và thông tin lô/hạn dùng trước khi đồng ý.
+            </p>
+          </div>
+        }
+        confirmText="Đồng ý xác nhận"
+        cancelText="Kiểm tra lại"
+        type="primary"
+        isLoading={submitting}
+      />
     </div>
   );
 };

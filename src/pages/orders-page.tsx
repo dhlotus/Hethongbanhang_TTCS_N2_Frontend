@@ -44,6 +44,7 @@ import { usersService } from '../services/users.service';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
 import { OrderPrintModal } from '../components/order-print-modal';
 import { ReorderModal } from '../components/reorder-modal';
+import { LockAgencyModal } from '../components/lock-agency-modal';
 import type { Customer, DeliveryPoint as CustomerDeliveryPoint } from '../types/customer.types';
 import { getStoredUser } from '../utils/navigation';
 import { tokenStorage } from '../utils/token-storage';
@@ -339,6 +340,51 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState(getDefaultDeliveryDate());
   const [note, setNote] = useState('');
+  const [lockAgencyCustomer, setLockAgencyCustomer] = useState<CustomerOption | null>(null);
+  const [lockAgencyMode, setLockAgencyMode] = useState<'LOCK' | 'UNLOCK'>('LOCK');
+  const [isLockAgencySubmitting, setIsLockAgencySubmitting] = useState(false);
+
+  const handleConfirmLockCustomer = async (reason: string) => {
+    if (!lockAgencyCustomer) return;
+    setIsLockAgencySubmitting(true);
+    try {
+      await customersService.lockCustomer(lockAgencyCustomer.id, reason);
+      showToast('warning', `Đã khóa đại lý ${lockAgencyCustomer.name}`, `Lý do: ${reason}`);
+      const updated = customers.map((item) =>
+        item.id === lockAgencyCustomer.id ? { ...item, status: 'LOCKED' as const, lockReason: reason } : item
+      );
+      setCustomers(updated);
+      if (selectedCustomer?.id === lockAgencyCustomer.id) {
+        setSelectedCustomer((prev) => prev ? { ...prev, status: 'LOCKED', lockReason: reason } : null);
+      }
+      setLockAgencyCustomer(null);
+    } catch (err: unknown) {
+      showToast('error', err instanceof Error ? err.message : 'Không thể khóa đại lý');
+    } finally {
+      setIsLockAgencySubmitting(false);
+    }
+  };
+
+  const handleConfirmUnlockCustomer = async () => {
+    if (!lockAgencyCustomer) return;
+    setIsLockAgencySubmitting(true);
+    try {
+      await customersService.unlockCustomer(lockAgencyCustomer.id);
+      showToast('success', `Đã mở khóa đại lý ${lockAgencyCustomer.name}`);
+      const updated = customers.map((item) =>
+        item.id === lockAgencyCustomer.id ? { ...item, status: 'ACTIVE' as const, lockReason: undefined } : item
+      );
+      setCustomers(updated);
+      if (selectedCustomer?.id === lockAgencyCustomer.id) {
+        setSelectedCustomer((prev) => prev ? { ...prev, status: 'ACTIVE', lockReason: undefined } : null);
+      }
+      setLockAgencyCustomer(null);
+    } catch (err: unknown) {
+      showToast('error', err instanceof Error ? err.message : 'Không thể mở khóa');
+    } finally {
+      setIsLockAgencySubmitting(false);
+    }
+  };
 
   // Bước 2: Tìm kiếm và thêm sản phẩm
   const [productQuery, setProductQuery] = useState('');
@@ -1169,47 +1215,12 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                             <div className="flex items-center gap-1.5 shrink-0">
                               <button
                                 type="button"
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                   e.stopPropagation();
-                                  if (c.status === 'LOCKED') {
-                                    if (confirm(`Bạn có chắc chắn muốn MỞ KHÓA đại lý "${c.name}"?`)) {
-                                      try {
-                                        await customersService.unlockCustomer(c.id);
-                                        showToast('success', `Đã mở khóa đại lý ${c.name}`);
-                                        const updated = customers.map((item) =>
-                                          item.id === c.id ? { ...item, status: 'ACTIVE' as const, lockReason: undefined } : item
-                                        );
-                                        setCustomers(updated);
-                                        if (selectedCustomer?.id === c.id) {
-                                          setSelectedCustomer((prev) => prev ? { ...prev, status: 'ACTIVE', lockReason: undefined } : null);
-                                        }
-                                      } catch (err: unknown) {
-                                        showToast('error', err instanceof Error ? err.message : 'Không thể mở khóa');
-                                      }
-                                    }
-                                  } else {
-                                    const reason = window.prompt(`Nhập lý do khóa đại lý "${c.name}" (Bắt buộc - SN-36):`);
-                                    if (reason === null) return;
-                                    if (!reason.trim()) {
-                                      alert('Vui lòng nhập lý do khóa đại lý! Không được để trống.');
-                                      return;
-                                    }
-                                    try {
-                                      await customersService.lockCustomer(c.id, reason.trim());
-                                      showToast('warning', `Đã khóa đại lý ${c.name}`, `Lý do: ${reason.trim()}`);
-                                      const updated = customers.map((item) =>
-                                        item.id === c.id ? { ...item, status: 'LOCKED' as const, lockReason: reason.trim() } : item
-                                      );
-                                      setCustomers(updated);
-                                      if (selectedCustomer?.id === c.id) {
-                                        setSelectedCustomer((prev) => prev ? { ...prev, status: 'LOCKED', lockReason: reason.trim() } : null);
-                                      }
-                                    } catch (err: unknown) {
-                                      showToast('error', err instanceof Error ? err.message : 'Không thể khóa đại lý');
-                                    }
-                                  }
+                                  setLockAgencyMode(c.status === 'LOCKED' ? 'UNLOCK' : 'LOCK');
+                                  setLockAgencyCustomer(c);
                                 }}
-                                className={`text-[10px] font-bold px-2 py-1 rounded transition-colors cursor-pointer ${
+                                className={`text-[10px] font-bold px-2 py-1 rounded transition-colors cursor-pointer flex items-center gap-1 ${
                                   c.status === 'LOCKED'
                                     ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border border-emerald-300'
                                     : 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-300'
@@ -2130,6 +2141,23 @@ disabled={!selectedCustomer || isLoadingPriceList || !effectivePriceList || (deb
       />
     )}
 
+    {/* Modal Khóa / Mở khóa giao dịch Đại lý (SN-36) */}
+    {lockAgencyCustomer && (
+      <LockAgencyModal
+        open={Boolean(lockAgencyCustomer)}
+        mode={lockAgencyMode}
+        customer={lockAgencyCustomer as unknown as Customer}
+        onClose={() => {
+          if (!isLockAgencySubmitting) {
+            setLockAgencyCustomer(null);
+          }
+        }}
+        onConfirmLock={handleConfirmLockCustomer}
+        onConfirmUnlock={handleConfirmUnlockCustomer}
+        loading={isLockAgencySubmitting}
+      />
+    )}
+
     {/* Modal Tạo nhanh đại lý mới khi đang tạo đơn (Đồng bộ Quản lý đại lý) */}
     {isQuickCustomerModalOpen && (
       <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
@@ -3040,7 +3068,7 @@ export const OrdersPage: React.FC = () => {
                           )}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-1">
+                          <div className="flex items-center justify-center gap-2">
                             {(order.status === 'DRAFT' || order.status === 'RETURNED_FOR_UPDATE') && (
                               <button
                                 type="button"
@@ -3048,7 +3076,7 @@ export const OrdersPage: React.FC = () => {
                                   setEditingOrder(order);
                                   setIsCreateModalOpen(true);
                                 }}
-                                className="p-1.5 rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer"
+                                className="w-9 h-9 flex items-center justify-center rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer active:scale-95"
                                 title="Chỉnh sửa / Gõ tiếp đơn nháp"
                               >
                                 <Edit3 className="w-4 h-4" />
@@ -3062,7 +3090,7 @@ export const OrdersPage: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => setApprovingOrderModal(order)}
-                                  className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+                                  className="w-9 h-9 flex items-center justify-center rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer active:scale-95"
                                   title="Duyệt đơn và giữ chỗ tồn kho 24h (SN-180)"
                                 >
                                   <CheckCircle2 className="w-4 h-4" />
@@ -3077,7 +3105,7 @@ export const OrdersPage: React.FC = () => {
                                     setCancellingOrderModal(order);
                                     setCancelReasonInput('');
                                   }}
-                                  className="p-1.5 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                  className="w-9 h-9 flex items-center justify-center rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer active:scale-95"
                                   title="Hủy đơn và nhả tồn giữ chỗ (SN-180)"
                                 >
                                   <XCircle className="w-4 h-4" />
@@ -3086,7 +3114,7 @@ export const OrdersPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setViewOrder(order)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer active:scale-95"
                               title="Xem chi tiết đơn hàng"
                             >
                               <Eye className="w-4 h-4" />
@@ -3094,7 +3122,7 @@ export const OrdersPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setSelectedOrderForReorder(order)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer active:scale-95"
                               title="Đặt lại đơn này theo giá hiện hành (SN-174)"
                             >
                               <RotateCcw className="w-4 h-4" />
@@ -3103,7 +3131,7 @@ export const OrdersPage: React.FC = () => {
                               type="button"
                               onClick={() => void handleCloneOrder(order)}
                               disabled={isCloning === order.id}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 cursor-pointer"
+                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 cursor-pointer active:scale-95"
                               title="Sao chép đơn thành đơn mới (SN-48)"
                             >
                               {isCloning === order.id ? (
@@ -3115,7 +3143,7 @@ export const OrdersPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleOpenPrint(order)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
+                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer active:scale-95"
                               title="In / Xuất PDF đơn hàng (SN-47)"
                             >
                               <Printer className="w-4 h-4" />

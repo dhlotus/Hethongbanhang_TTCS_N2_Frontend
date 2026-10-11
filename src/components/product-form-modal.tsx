@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from './button';
 import { ModalLayout } from './modal-layout';
+import { ConfirmDialog } from './confirm-dialog';
 import { CurrencyInput } from './currency-input';
 import { PRODUCT_CATEGORIES } from '../services/products.service';
 import { categoriesService } from '../services/categories.service';
@@ -138,7 +139,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     setValue,
     watch,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema) as any,
     defaultValues: {
@@ -349,6 +350,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     }
   };
 
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const isFormDirty = isDirty || conversionUnits.length > 0;
+
   // Đóng modal kèm animation mượt mà
   const handleClose = useCallback(() => {
     if (isClosing) return;
@@ -359,15 +363,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     }, 220);
   }, [isClosing, onClose]);
 
-  // Đóng khi nhấn phím Escape
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, handleClose]);
+  const handleCancelClick = () => {
+    if (isFormDirty) {
+      setShowDiscardConfirm(true);
+      return;
+    }
+    handleClose();
+  };
 
   if (!isOpen) return null;
   if (typeof document === 'undefined') return null;
@@ -488,6 +490,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     <ModalLayout
       isOpen={isOpen}
       onClose={handleClose}
+      closeOnOverlayClick={false}
+      isDirty={isFormDirty}
+      dirtyPromptMessage="Thông tin sản phẩm đang nhập dở chưa được lưu. Bạn có chắc chắn muốn thoát và bỏ các thay đổi?"
       title={isEditMode ? 'Cập nhật Thông tin Sản phẩm (SKU)' : 'Thêm mới Sản phẩm (SKU)'}
       subtitle={
         isEditMode
@@ -502,7 +507,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           <Button
             type="button"
             variant="outline"
-            onClick={handleClose}
+            onClick={handleCancelClick}
             disabled={isSubmitting}
             className="flex-1 sm:flex-initial py-2.5 sm:py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer"
           >
@@ -1110,6 +1115,20 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           </div>
         </div>
       </form>
+
+      <ConfirmDialog
+        isOpen={showDiscardConfirm}
+        onCancel={() => setShowDiscardConfirm(false)}
+        onConfirm={() => {
+          setShowDiscardConfirm(false);
+          handleClose();
+        }}
+        title="Bỏ thay đổi sản phẩm?"
+        message="Thông tin sản phẩm đang nhập dở chưa được lưu. Bạn có chắc chắn muốn thoát và hủy bỏ các thay đổi?"
+        confirmText="Rời khỏi & Bỏ thay đổi"
+        cancelText="Tiếp tục chỉnh sửa"
+        type="warning"
+      />
     </ModalLayout>
   );
 };

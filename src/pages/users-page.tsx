@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Store,
   Eye,
+  EyeOff,
   FileSpreadsheet,
   RotateCcw,
   Tag,
@@ -340,6 +341,7 @@ export const UsersPage: React.FC = () => {
 
   // Modal Tạo / Chỉnh sửa & Quản lý Lỗi Validate
   const [modalOpen, setModalOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserManagementItem | null>(null);
   const [formData, setFormData] = useState<CreateUserPayload>({
@@ -517,6 +519,7 @@ export const UsersPage: React.FC = () => {
   const handleOpenCreateModal = () => {
     setEditingUser(null);
     setFormErrors({});
+    setShowPassword(false);
     setFormData({
       fullName: '',
       username: '',
@@ -534,6 +537,7 @@ export const UsersPage: React.FC = () => {
   const handleOpenEditModal = (user: UserManagementItem) => {
     setEditingUser(user);
     setFormErrors({});
+    setShowPassword(false);
     const initialRoles =
       user.roles && user.roles.length > 0 ? (user.roles as string[]) : [user.role as string];
 
@@ -1458,7 +1462,7 @@ export const UsersPage: React.FC = () => {
                       className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-all ${
                         formErrors.fullName
                           ? 'border-rose-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 bg-rose-50/15'
-                          : 'border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20'
+                          : 'border-slate-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20'
                       }`}
                     />
                     {formErrors.fullName && (
@@ -1484,7 +1488,7 @@ export const UsersPage: React.FC = () => {
                       className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-all ${
                         formErrors.phone
                           ? 'border-rose-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 bg-rose-50/15'
-                          : 'border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20'
+                          : 'border-slate-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20'
                       }`}
                     />
                     {formErrors.phone && (
@@ -1514,7 +1518,7 @@ export const UsersPage: React.FC = () => {
                       className={`w-full rounded-xl border px-3.5 py-2 text-xs disabled:bg-slate-100 disabled:text-slate-500 transition-all ${
                         formErrors.username
                           ? 'border-rose-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 bg-rose-50/15'
-                          : 'border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20'
+                          : 'border-slate-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20'
                       }`}
                     />
                     {formErrors.username && (
@@ -1540,7 +1544,7 @@ export const UsersPage: React.FC = () => {
                       className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-all ${
                         formErrors.email
                           ? 'border-rose-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 bg-rose-50/15'
-                          : 'border-slate-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20'
+                          : 'border-slate-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20'
                       }`}
                     />
                     {formErrors.email && (
@@ -1689,7 +1693,7 @@ export const UsersPage: React.FC = () => {
                           className={`w-full rounded-xl border bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-2 transition-all ${
                             formErrors.assignedWarehouse
                               ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/15'
-                              : 'border-slate-200 focus:border-purple-500 focus:ring-purple-500/20'
+                              : 'border-slate-200 focus:border-brand-500 focus:ring-brand-500/20'
                           }`}
                         >
                           <option value="">-- Chưa chọn kho / địa bàn --</option>
@@ -1724,13 +1728,23 @@ export const UsersPage: React.FC = () => {
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Đặt lại mật khẩu mới (Để trống nếu giữ nguyên mật khẩu cũ)
                     </label>
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="Nhập mật khẩu mới nếu muốn thay đổi (để trống nếu không đổi)..."
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="Nhập mật khẩu mới nếu muốn thay đổi (để trống nếu không đổi)..."
+                        className="w-full rounded-xl border border-slate-200 bg-white pl-3.5 pr-10 py-2 text-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   /* Khi Tạo mới nhân sự */
@@ -1739,13 +1753,23 @@ export const UsersPage: React.FC = () => {
                       Mật khẩu khởi tạo (Để trống hệ thống sẽ tự động sinh mật khẩu tạm thời an
                       toàn)
                     </label>
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="Mặc định: Loha@2026 (nếu bỏ trống)"
-                      className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="Mặc định: Loha@2026 (nếu bỏ trống)"
+                        className="w-full rounded-xl border border-slate-200 bg-white pl-3.5 pr-10 py-2 text-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -1761,7 +1785,7 @@ export const UsersPage: React.FC = () => {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="rounded-xl bg-purple-600 px-5 py-2 text-xs font-semibold text-white hover:bg-purple-700 disabled:opacity-50 transition-all"
+                    className="rounded-xl bg-[var(--color-primary)] px-5 py-2 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 transition-all shadow-sm"
                   >
                     {submitting ? 'Đang lưu...' : editingUser ? 'Lưu cập nhật' : 'Tạo tài khoản'}
                   </button>

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from './button';
 import { ModalLayout } from './modal-layout';
+import { ConfirmDialog } from './confirm-dialog';
 import type { Supplier, CreateSupplierPayload, SupplierStatus } from '../types/supplier';
 
 export interface SupplierFormModalProps {
@@ -51,11 +52,34 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+
+  const isDirty = isEditMode
+    ? Boolean(
+        name !== (initialData?.name || '') ||
+        taxCode !== (initialData?.taxCode || initialData?.tax_code || '') ||
+        contactName !== (initialData?.contactName || initialData?.contact_name || '') ||
+        phone !== (initialData?.phone || '') ||
+        email !== (initialData?.email || '') ||
+        address !== (initialData?.address || '') ||
+        paymentTerms !== (initialData?.paymentTerms || initialData?.payment_terms || 'NET_30') ||
+        status !== (initialData?.status || 'ACTIVE') ||
+        notes !== (initialData?.notes || '')
+      )
+    : Boolean(name || taxCode || contactName || phone || email || address || notes);
 
   const handleClose = useCallback(() => {
     if (isSubmitting) return;
     onClose();
   }, [isSubmitting, onClose]);
+
+  const handleCancelClick = () => {
+    if (isDirty) {
+      setShowDiscardConfirm(true);
+      return;
+    }
+    handleClose();
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -155,6 +179,9 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
     <ModalLayout
       isOpen={isOpen}
       onClose={handleClose}
+      closeOnOverlayClick={false}
+      isDirty={isDirty}
+      dirtyPromptMessage="Thông tin nhà cung cấp đang nhập dở chưa được lưu. Bạn có chắc chắn muốn thoát và bỏ thay đổi?"
       title={isEditMode ? 'Chỉnh sửa nhà cung cấp' : 'Thêm nhà cung cấp mới'}
       subtitle={
         isEditMode
@@ -171,7 +198,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
           <Button
             type="button"
             variant="outline"
-            onClick={handleClose}
+            onClick={handleCancelClick}
             disabled={isSubmitting}
             className="py-2 px-4 rounded-xl text-xs font-semibold cursor-pointer"
           >
@@ -482,6 +509,20 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
           />
         </div>
       </form>
+
+      <ConfirmDialog
+        isOpen={showDiscardConfirm}
+        onCancel={() => setShowDiscardConfirm(false)}
+        onConfirm={() => {
+          setShowDiscardConfirm(false);
+          handleClose();
+        }}
+        title="Bỏ thay đổi nhà cung cấp?"
+        message="Thông tin đối tác nhà cung cấp đang nhập dở chưa được lưu. Bạn có chắc chắn muốn thoát mà không lưu?"
+        confirmText="Rời khỏi & Bỏ thay đổi"
+        cancelText="Tiếp tục chỉnh sửa"
+        type="warning"
+      />
     </ModalLayout>
   );
 };

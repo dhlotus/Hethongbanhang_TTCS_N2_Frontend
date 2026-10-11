@@ -15,6 +15,7 @@ import {
   Save,
 } from 'lucide-react';
 import { showToast } from './toast';
+import { ConfirmDialog } from './confirm-dialog';
 import { customersService } from '../services/customers.service';
 import type { Customer, DeliveryPoint } from '../types/customer';
 
@@ -54,6 +55,8 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
   onUpdated,
 }) => {
   const [points, setPoints] = useState<DeliveryPoint[]>(customer.deliveryPoints || []);
+  const [pointToDelete, setPointToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState<FormState>(INITIAL_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -209,22 +212,8 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
     }
   };
 
-  const handleDeletePoint = async (pointId: string, pointName: string) => {
-    if (!confirm(`Bạn có chắc muốn xóa điểm giao hàng "${pointName}"?`)) return;
-
-    try {
-      await customersService.deleteDeliveryPoint(customer.id, pointId);
-      const newPoints = points.filter((p) => p.id !== pointId);
-      if (newPoints.length > 0 && !newPoints.some((p) => p.isDefault)) {
-        newPoints[0].isDefault = true;
-      }
-      setPoints(newPoints);
-      showToast('success', `Đã xóa điểm giao "${pointName}"`);
-      onUpdated(newPoints);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Không thể xóa điểm giao hàng';
-      showToast('error', msg);
-    }
+  const handleDeletePoint = (pointId: string, pointName: string) => {
+    setPointToDelete({ id: pointId, name: pointName });
   };
 
   return createPortal(
@@ -581,6 +570,37 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={Boolean(pointToDelete)}
+        onCancel={() => setPointToDelete(null)}
+        onConfirm={async () => {
+          if (!pointToDelete) return;
+          setIsDeleting(true);
+          try {
+            await customersService.deleteDeliveryPoint(customer.id, pointToDelete.id);
+            const newPoints = points.filter((p) => p.id !== pointToDelete.id);
+            if (newPoints.length > 0 && !newPoints.some((p) => p.isDefault)) {
+              newPoints[0].isDefault = true;
+            }
+            setPoints(newPoints);
+            showToast('success', `Đã xóa điểm giao "${pointToDelete.name}"`);
+            onUpdated(newPoints);
+            setPointToDelete(null);
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Không thể xóa điểm giao hàng';
+            showToast('error', msg);
+          } finally {
+            setIsDeleting(false);
+          }
+        }}
+        title="Xóa điểm giao hàng"
+        message={`Bạn có chắc chắn muốn xóa điểm giao hàng "${pointToDelete?.name}"? Hành động này không thể hoàn tác.`}
+        confirmText="Xác nhận xóa"
+        cancelText="Hủy bỏ"
+        type="danger"
+        isLoading={isDeleting}
+      />
     </div>,
     document.body
   );
