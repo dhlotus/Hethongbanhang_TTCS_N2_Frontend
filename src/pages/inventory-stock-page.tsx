@@ -240,7 +240,7 @@ export const InventoryStockPage: React.FC = () => {
         {/* Thẻ 1: Tồn thực tế */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
               Tồn Thực Tế
             </span>
             <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
@@ -259,7 +259,7 @@ export const InventoryStockPage: React.FC = () => {
         {/* Thẻ 2: Tồn tạm giữ */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider whitespace-nowrap">
               Tồn Tạm Giữ
             </span>
             <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
@@ -281,9 +281,14 @@ export const InventoryStockPage: React.FC = () => {
             <PackageCheck className="w-32 h-32" />
           </div>
           <div className="flex items-center justify-between relative z-10">
-            <span className="text-xs font-bold text-emerald-100 uppercase tracking-wider">
-              Tồn Khả Thi (Có Thể Bán)
-            </span>
+            <div>
+              <span className="text-xs font-bold text-emerald-100 uppercase tracking-wider block whitespace-nowrap">
+                Tồn Khả Thi
+              </span>
+              <span className="text-[11px] font-medium text-emerald-200 normal-case block">
+                (Có thể bán)
+              </span>
+            </div>
             <div className="p-2 bg-emerald-500/40 text-white rounded-lg backdrop-blur-sm">
               <CheckCircle2 className="w-5 h-5" />
             </div>
@@ -415,14 +420,17 @@ export const InventoryStockPage: React.FC = () => {
               <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
                 <th className="py-4 px-5">Sản Phẩm &amp; SKU</th>
                 <th className="py-4 px-4">Kho Bãi &amp; Nhóm Hàng</th>
-                <th className="py-4 px-4 text-right bg-blue-50/50 text-blue-900 border-l border-slate-200">
+                <th className="py-4 px-4 text-right bg-blue-50/50 text-blue-900 border-l border-slate-200 whitespace-nowrap">
                   1. Tồn Thực Tế
                 </th>
-                <th className="py-4 px-4 text-right bg-amber-50/50 text-amber-900">
+                <th className="py-4 px-4 text-right bg-amber-50/50 text-amber-900 whitespace-nowrap">
                   2. Tồn Tạm Giữ
                 </th>
-                <th className="py-4 px-5 text-right bg-emerald-100/60 text-emerald-950 font-bold border-r border-slate-200">
-                  3. Tồn Khả Thi (Có Thể Bán)
+                <th className="py-3 px-5 text-right bg-emerald-100/60 text-emerald-950 font-bold border-r border-slate-200">
+                  <div className="whitespace-nowrap">3. Tồn Khả Thi</div>
+                  <div className="text-[10px] font-semibold text-emerald-800 normal-case tracking-normal">
+                    (Có thể bán)
+                  </div>
                 </th>
                 <th className="py-4 px-4 text-center">Đơn Vị Quy Đổi</th>
                 <th className="py-4 px-4 text-center">Trạng Thái</th>
@@ -664,7 +672,8 @@ export const InventoryStockPage: React.FC = () => {
               </div>
 
               <div className="bg-emerald-100/70 p-3 rounded-xl border border-emerald-200 text-center shadow-xs">
-                <p className="text-xs text-emerald-800 font-bold uppercase">Tồn Khả Thi (Có Thể Bán)</p>
+                <p className="text-xs text-emerald-800 font-bold uppercase whitespace-nowrap">Tồn Khả Thi</p>
+                <p className="text-[10px] text-emerald-700 font-medium normal-case">(Có thể bán)</p>
                 <p className="text-xl font-extrabold text-emerald-950 mt-1">
                   {selectedItemForConversion.availableStock.toLocaleString('vi-VN')}
                 </p>
