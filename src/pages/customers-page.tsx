@@ -1076,9 +1076,9 @@ export const CustomersPage: React.FC = () => {
                     <th className="px-4 py-3.5">Liên Hệ</th>
                     <th className="px-4 py-3.5">Phân Nhóm & Phụ Trách</th>
                     <th className="px-4 py-3.5">Hạn Mức & Dư Nợ</th>
-                    <th className="px-4 py-3.5">Điểm Giao Hàng (SN-31)</th>
+                    <th className="px-4 py-3.5">Điểm Giao Hàng</th>
                     <th className="px-4 py-3.5">Trạng Thái</th>
-                    <th className="px-4 py-3.5 text-right">Thao Tác</th>
+                    <th className="px-4 py-3.5">Thao Tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1209,8 +1209,8 @@ export const CustomersPage: React.FC = () => {
                       </td>
 
                       {/* Cột 7: Thao tác (SN-36: Khóa/Mở khóa giao dịch) */}
-                      <td className="px-4 py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center justify-start gap-1.5">
                           {/* Nút Khóa / Mở khóa giao dịch (SN-36) */}
                           {customer.status === 'LOCKED' ? (
                             <button
