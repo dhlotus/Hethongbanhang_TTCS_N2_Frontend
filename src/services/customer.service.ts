@@ -10,6 +10,7 @@ import {
   type UpdateDeliveryPointPayload,
   type CreateCustomerPayload,
 } from '../types/customer.types';
+import { matchesSearchTerm, removeVietnameseTones } from '../utils/vietnamese';
 
 export const DEMO_CUSTOMERS_DATA: Customer[] = [
   {
@@ -353,30 +354,46 @@ export function filterDemoCustomers(params: CustomerFilterParams = {}): Paginate
     }
   }
 
-  if (params.search) {
-    const q = params.search.trim().toLowerCase();
+  if (params.search && params.search.trim()) {
+    const q = params.search.trim();
     list = list.filter(
       (c) =>
-        c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) || c.phone.includes(q)
+        matchesSearchTerm(c.code, q) ||
+        matchesSearchTerm(c.name, q) ||
+        matchesSearchTerm(c.phone, q) ||
+        matchesSearchTerm(c.address, q) ||
+        matchesSearchTerm(c.taxCode, q)
     );
   }
 
   if (params.region && params.region !== 'ALL') {
-    list = list.filter((c) => c.region?.toLowerCase() === params.region?.toLowerCase());
+    const reg = params.region.trim();
+    const normReg = removeVietnameseTones(reg);
+    list = list.filter((c) => {
+      if (!c.region) return false;
+      return (
+        c.region.toLowerCase() === reg.toLowerCase() ||
+        removeVietnameseTones(c.region) === normReg
+      );
+    });
   }
 
   if (params.customerGroup && params.customerGroup !== 'ALL') {
     list = list.filter((c) => c.customerGroup === params.customerGroup);
   }
 
-  if (params.salesRepId) {
-    list = list.filter(
-      (c) =>
-        c.salesRepId === params.salesRepId ||
-        c.salesRep?.id === params.salesRepId ||
-        ((params.salesRepId === 'usr-sales-002' || params.salesRepId === 'usr-sale-01') &&
-          (c.salesRepId === 'usr-sale-01' || c.salesRepId === 'usr-sales-002'))
-    );
+  if (params.salesRepId && params.salesRepId !== 'ALL') {
+    if (params.salesRepId === 'UNASSIGNED') {
+      list = list.filter((c) => !c.salesRepId || c.salesRepId === '' || c.salesRepId === 'unassigned');
+    } else {
+      list = list.filter(
+        (c) =>
+          c.salesRepId === params.salesRepId ||
+          c.salesRep?.id === params.salesRepId ||
+          ((params.salesRepId === 'usr-sales-002' || params.salesRepId === 'usr-sale-01') &&
+            (c.salesRepId === 'usr-sale-01' || c.salesRepId === 'usr-sales-002'))
+      );
+    }
   }
 
   if (params.status && params.status !== 'ALL') {
@@ -386,6 +403,9 @@ export function filterDemoCustomers(params: CustomerFilterParams = {}): Paginate
   const page = Number(params.page) || 1;
   const limit = Number(params.limit) || 20;
   const total = list.length;
+  const activeCount = list.filter((c) => c.status === CustomerStatus.ACTIVE).length;
+  const totalCreditLimit = list.reduce((sum, c) => sum + (c.creditLimit || 0), 0);
+  const totalCurrentDebt = list.reduce((sum, c) => sum + (c.currentDebt || 0), 0);
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const start = (page - 1) * limit;
   const data = list.slice(start, start + limit);
@@ -396,45 +416,64 @@ export function filterDemoCustomers(params: CustomerFilterParams = {}): Paginate
     page,
     limit,
     totalPages,
+    activeCount,
+    totalCreditLimit,
+    totalCurrentDebt,
   };
 }
 
 export const customerService = {
   async createCustomer(payload: CreateCustomerPayload): Promise<Customer> {
-    const existingList = getStoredCustomers();
+    const cleanPayload: CreateCustomerPayload = {
+      ...payload,
+      code: payload.code?.trim() || undefined,
+      email: payload.email?.trim() || undefined,
+      taxCode: payload.taxCode?.trim(),
+      salesRepId: payload.salesRepId || undefined,
+      deliveryPointName: payload.deliveryPointName?.trim() || undefined,
+      receiverName: payload.receiverName?.trim() || undefined,
+    };
 
     try {
-      const res = await apiClient.post<Customer>('/customers', payload);
+      const res = await apiClient.post<Customer>('/customers', cleanPayload);
       if (res.data) {
+        const existingList = getStoredCustomers();
         saveStoredCustomers([res.data, ...existingList.filter((c) => c.id !== res.data.id)]);
       }
       return res.data;
-    } catch {
+    } catch (err: unknown) {
+      const axiosErr = err as any;
+      if (axiosErr?.response?.data) {
+        throw err;
+      }
+
+      // Chỉ fallback khi hoàn toàn mất mạng / offline
+      const existingList = getStoredCustomers();
       const newCustId = `cust-${Date.now().toString().slice(-6)}`;
       const newCust: Customer = {
         id: newCustId,
-        code: payload.code?.trim() || `DL-${Date.now().toString().slice(-4)}`,
-        name: payload.name.trim(),
-        phone: payload.phone.trim(),
-        address: payload.address.trim(),
-        region: payload.region || 'Miền Nam',
-        customerGroup: payload.customerGroup || 'AGENT_LEVEL_2',
-        creditLimit: Number(payload.creditLimit) || 50000000,
+        code: cleanPayload.code || `DL-${Date.now().toString().slice(-4)}`,
+        name: cleanPayload.name.trim(),
+        phone: cleanPayload.phone.trim(),
+        address: cleanPayload.address.trim(),
+        region: cleanPayload.region || 'Miền Nam',
+        customerGroup: cleanPayload.customerGroup || 'AGENT_LEVEL_2',
+        creditLimit: Number(cleanPayload.creditLimit) || 50000000,
         currentDebt: 0,
-        maxDebtDays: Number(payload.maxDebtDays) || 30,
+        maxDebtDays: Number(cleanPayload.maxDebtDays) || 30,
         status: CustomerStatus.ACTIVE,
-        taxCode: payload.taxCode?.trim(),
-        email: payload.email?.trim(),
-        salesRepId: payload.salesRepId || 'usr-sales-002',
+        taxCode: cleanPayload.taxCode,
+        email: cleanPayload.email,
+        salesRepId: cleanPayload.salesRepId || 'usr-sales-002',
         salesRepName: 'Trần Văn Nam',
         deliveryPoints: [
           {
             id: `dp-${Date.now().toString().slice(-5)}`,
             customerId: newCustId,
-            name: payload.deliveryPointName?.trim() || 'Kho chính / Trụ sở đại lý',
-            address: payload.address.trim(),
-            receiverName: payload.receiverName?.trim() || payload.name.trim(),
-            phone: payload.phone.trim(),
+            name: cleanPayload.deliveryPointName || 'Kho chính / Trụ sở đại lý',
+            address: cleanPayload.address.trim(),
+            receiverName: cleanPayload.receiverName || cleanPayload.name.trim(),
+            phone: cleanPayload.phone.trim(),
             isDefault: true,
           },
         ],
@@ -476,9 +515,6 @@ export const customerService = {
         const total = res.data.length;
         const page = params.page || 1;
         const limit = params.limit || 20;
-        if (res.data.length > 0) {
-          saveStoredCustomers(res.data);
-        }
         return {
           data: res.data,
           total,
@@ -488,16 +524,15 @@ export const customerService = {
         };
       }
 
-      if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
-        saveStoredCustomers(res.data.data);
-      }
-
       return {
-        data: res.data.data || [],
-        total: typeof res.data.total === 'number' ? res.data.total : (res.data.data?.length || 0),
-        page: res.data.page || Number(cleanParams.page) || 1,
-        limit: res.data.limit || Number(cleanParams.limit) || 20,
-        totalPages: res.data.totalPages || 1,
+        data: res.data?.data || [],
+        total: typeof res.data?.total === 'number' ? res.data.total : (res.data?.data?.length || 0),
+        page: res.data?.page || Number(cleanParams.page) || 1,
+        limit: res.data?.limit || Number(cleanParams.limit) || 20,
+        totalPages: res.data?.totalPages || 1,
+        activeCount: res.data?.activeCount,
+        totalCreditLimit: res.data?.totalCreditLimit,
+        totalCurrentDebt: res.data?.totalCurrentDebt,
       };
     } catch {
       return filterDemoCustomers(params);

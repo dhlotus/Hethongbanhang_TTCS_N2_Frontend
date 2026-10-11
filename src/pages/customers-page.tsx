@@ -26,16 +26,16 @@ import { showToast } from '../components/toast';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
 import { LockAgencyModal } from '../components/lock-agency-modal';
 import { Pagination } from '../components/pagination';
-import { customerService } from '../services/customer.service';
+import { customerService, getStoredCustomers } from '../services/customer.service';
 import type { Customer, CreateCustomerPayload, DeliveryPoint } from '../types/customer.types';
 
 // Danh sách nhân viên kinh doanh phụ trách chuẩn (SN-30 & SN-35)
 const SALES_REPS = [
-  { id: '', name: '-- Chọn nhân viên phụ trách --' },
-  { id: 'usr-sales-002', name: 'Trần Văn Nam (Kinh doanh Miền Bắc)' },
-  { id: 'usr-sale-01', name: 'Trần Văn Long (Kinh doanh Miền Nam)' },
-  { id: 'usr-sale-02', name: 'Nguyễn Thị Hằng (Kinh doanh Miền Nam)' },
-  { id: 'usr-sale-03', name: 'Phạm Minh Tuấn (Kinh doanh Miền Bắc)' },
+  { id: '', name: '-- Chọn nhân viên phụ trách --', shortName: 'Tất cả người phụ trách' },
+  { id: 'usr-sales-002', name: 'Trần Văn Nam (Kinh doanh Miền Bắc)', shortName: 'Trần Văn Nam' },
+  { id: 'usr-sale-01', name: 'Trần Văn Long (Kinh doanh Miền Nam)', shortName: 'Trần Văn Long' },
+  { id: 'usr-sale-02', name: 'Nguyễn Thị Hằng (Kinh doanh Miền Nam)', shortName: 'Nguyễn Thị Hằng' },
+  { id: 'usr-sale-03', name: 'Phạm Minh Tuấn (Kinh doanh Miền Bắc)', shortName: 'Phạm Minh Tuấn' },
 ];
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -118,6 +118,7 @@ export const CustomersPage: React.FC = () => {
   const initialRegion = parseRegionParam(searchParams.get('region'));
   const initialGroup = parseGroupParam(searchParams.get('group'));
   const initialStatus = parseStatusParam(searchParams.get('status'));
+  const initialSalesRep = searchParams.get('salesRepId') || searchParams.get('rep') || 'ALL';
   const initialSearch = searchParams.get('search') || '';
   const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
 
@@ -132,12 +133,18 @@ export const CustomersPage: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState<string>(initialGroup);
   const [selectedStatus, setSelectedStatus] = useState<string>(initialStatus);
   const [selectedRegion, setSelectedRegion] = useState<string>(initialRegion);
+  const [selectedSalesRep, setSelectedSalesRep] = useState<string>(initialSalesRep);
 
   // Phân trang danh sách đại lý (10 - 20 - 50 dòng/trang) - Server-side
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
   const [pageSize, setPageSize] = useState<number>(10);
   const [totalItems, setTotalItems] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
+
+  // Thống kê KPI toàn hệ thống (không phụ thuộc phân trang từng trang)
+  const [activeCount, setActiveCount] = useState<number>(0);
+  const [totalCreditLimit, setTotalCreditLimit] = useState<number>(0);
+  const [totalCurrentDebt, setTotalCurrentDebt] = useState<number>(0);
 
   // Modal quản lý điểm giao hàng (SN-31 & SN-32)
   const [selectedCustomerForDelivery, setSelectedCustomerForDelivery] = useState<Customer | null>(
@@ -159,6 +166,8 @@ export const CustomersPage: React.FC = () => {
   // Modal thêm đại lý mới
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [formBannerError, setFormBannerError] = useState<string | null>(null);
   const [formData, setFormData] = useState<CreateCustomerPayload>({
     name: '',
     code: '',
@@ -175,6 +184,34 @@ export const CustomersPage: React.FC = () => {
     salesRepId: '',
   });
 
+  const handleOpenCreateModal = () => {
+    setFormData({
+      name: '',
+      code: '',
+      customerGroup: 'AGENT_LEVEL_2',
+      phone: '',
+      email: '',
+      taxCode: '',
+      address: '',
+      region: 'Miền Nam',
+      creditLimit: 50000000,
+      maxDebtDays: 30,
+      deliveryPointName: '',
+      receiverName: '',
+      salesRepId: '',
+    });
+    setFormErrors({});
+    setFormBannerError(null);
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCloseCreateModal = () => {
+    if (submitting) return;
+    setIsCreateModalOpen(false);
+    setFormErrors({});
+    setFormBannerError(null);
+  };
+
   // Khóa cuộn trang nền khi mở Modal Thêm mới đại lý (cố định popup giữa màn hình)
   useEffect(() => {
     if (isCreateModalOpen) {
@@ -187,7 +224,7 @@ export const CustomersPage: React.FC = () => {
 
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape' && !submitting) {
-          setIsCreateModalOpen(false);
+          handleCloseCreateModal();
         }
       };
       window.addEventListener('keydown', handleKeyDown);
@@ -206,6 +243,7 @@ export const CustomersPage: React.FC = () => {
       region?: string;
       group?: string;
       status?: string;
+      salesRepId?: string;
       search?: string;
       page?: number;
     }) => {
@@ -237,6 +275,16 @@ export const CustomersPage: React.FC = () => {
             next.delete('status');
           }
 
+          // Người phụ trách
+          const targetSalesRep =
+            updates.salesRepId !== undefined ? updates.salesRepId : selectedSalesRep;
+          if (targetSalesRep && targetSalesRep !== 'ALL') {
+            next.set('rep', targetSalesRep);
+          } else {
+            next.delete('rep');
+            next.delete('salesRepId');
+          }
+
           // Tìm kiếm
           const targetSearch = updates.search !== undefined ? updates.search : searchTerm;
           const trimmed = targetSearch.trim();
@@ -253,6 +301,7 @@ export const CustomersPage: React.FC = () => {
             next.has('region') ||
             next.has('group') ||
             next.has('status') ||
+            next.has('rep') ||
             next.has('search')
           ) {
             next.set('page', String(targetPage));
@@ -265,8 +314,12 @@ export const CustomersPage: React.FC = () => {
         { replace: true }
       );
     },
-    [setSearchParams, selectedRegion, selectedGroup, selectedStatus, searchTerm, currentPage]
+    [setSearchParams, selectedRegion, selectedGroup, selectedStatus, selectedSalesRep, searchTerm, currentPage]
   );
+
+  // Ref theo dõi request mới nhất để tránh Race Condition khi thao tác lọc hoặc reload nhanh
+  const activeRequestRef = useRef<number>(0);
+  const isInternalFilterChangeRef = useRef<boolean>(false);
 
   // Tải danh sách đại lý từ Server-side API theo đầy đủ bộ lọc (SN-37 & Server-Side Pagination)
   const loadCustomers = useCallback(
@@ -277,7 +330,9 @@ export const CustomersPage: React.FC = () => {
       region?: string;
       customerGroup?: string;
       status?: string;
+      salesRepId?: string;
     }) => {
+      const currentRequestId = ++activeRequestRef.current;
       try {
         setLoading(true);
         const targetPage = params?.page !== undefined ? params.page : currentPage;
@@ -287,6 +342,8 @@ export const CustomersPage: React.FC = () => {
         const targetGroup =
           params?.customerGroup !== undefined ? params.customerGroup : selectedGroup;
         const targetStatus = params?.status !== undefined ? params.status : selectedStatus;
+        const targetSalesRep =
+          params?.salesRepId !== undefined ? params.salesRepId : selectedSalesRep;
 
         const res = await customerService.getCustomers({
           page: targetPage,
@@ -295,22 +352,56 @@ export const CustomersPage: React.FC = () => {
           region: targetRegion !== 'ALL' ? targetRegion : undefined,
           customerGroup: targetGroup !== 'ALL' ? targetGroup : undefined,
           status: targetStatus !== 'ALL' ? targetStatus : undefined,
+          salesRepId: targetSalesRep !== 'ALL' ? targetSalesRep : undefined,
         });
 
-        setCustomers(res.data || []);
-        setTotalItems(typeof res.total === 'number' ? res.total : (res.data ? res.data.length : 0));
+        // Bỏ qua kết quả cũ nếu đã có request lọc mới hơn được kích hoạt
+        if (currentRequestId !== activeRequestRef.current) {
+          return;
+        }
+
+        const dataList = res.data || [];
+        setCustomers(dataList);
+        setTotalItems(typeof res.total === 'number' ? res.total : dataList.length);
         setTotalPages(res.totalPages || 1);
+
+        // Cập nhật thống kê KPI toàn diện (không bị phụ thuộc vào số dòng của 1 trang)
+        if (typeof res.activeCount === 'number') {
+          setActiveCount(res.activeCount);
+        } else {
+          const stored = getStoredCustomers();
+          setActiveCount(stored.filter((c) => c.status === 'ACTIVE').length);
+        }
+
+        if (typeof res.totalCreditLimit === 'number') {
+          setTotalCreditLimit(res.totalCreditLimit);
+        } else {
+          const stored = getStoredCustomers();
+          setTotalCreditLimit(stored.reduce((sum, c) => sum + (c.creditLimit || 0), 0));
+        }
+
+        if (typeof res.totalCurrentDebt === 'number') {
+          setTotalCurrentDebt(res.totalCurrentDebt);
+        } else {
+          const stored = getStoredCustomers();
+          setTotalCurrentDebt(stored.reduce((sum, c) => sum + (c.currentDebt || 0), 0));
+        }
       } catch {
-        showToast('error', 'Lỗi tải dữ liệu', 'Không thể nạp danh sách đại lý từ hệ thống.');
+        if (currentRequestId === activeRequestRef.current) {
+          showToast('error', 'Lỗi tải dữ liệu', 'Không thể nạp danh sách đại lý từ hệ thống.');
+        }
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (currentRequestId === activeRequestRef.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
-    [currentPage, pageSize, searchTerm, selectedRegion, selectedGroup, selectedStatus]
+    [currentPage, pageSize, searchTerm, selectedRegion, selectedGroup, selectedStatus, selectedSalesRep]
   );
 
   const handleRegionChange = (newRegion: string) => {
+    isInternalFilterChangeRef.current = true;
     setSelectedRegion(newRegion);
     setCurrentPage(1);
     updateUrlParams({ region: newRegion, page: 1 });
@@ -318,6 +409,7 @@ export const CustomersPage: React.FC = () => {
   };
 
   const handleGroupChange = (newGroup: string) => {
+    isInternalFilterChangeRef.current = true;
     setSelectedGroup(newGroup);
     setCurrentPage(1);
     updateUrlParams({ group: newGroup, page: 1 });
@@ -325,19 +417,30 @@ export const CustomersPage: React.FC = () => {
   };
 
   const handleStatusChange = (newStatus: string) => {
+    isInternalFilterChangeRef.current = true;
     setSelectedStatus(newStatus);
     setCurrentPage(1);
     updateUrlParams({ status: newStatus, page: 1 });
     void loadCustomers({ status: newStatus, page: 1 });
   };
 
+  const handleSalesRepChange = (newRep: string) => {
+    isInternalFilterChangeRef.current = true;
+    setSelectedSalesRep(newRep);
+    setCurrentPage(1);
+    updateUrlParams({ salesRepId: newRep, page: 1 });
+    void loadCustomers({ salesRepId: newRep, page: 1 });
+  };
+
   const handlePageChange = (newPage: number) => {
+    isInternalFilterChangeRef.current = true;
     setCurrentPage(newPage);
     updateUrlParams({ page: newPage });
     void loadCustomers({ page: newPage });
   };
 
   const handlePageSizeChange = (newSize: number) => {
+    isInternalFilterChangeRef.current = true;
     setPageSize(newSize);
     setCurrentPage(1);
     updateUrlParams({ page: 1 });
@@ -345,11 +448,13 @@ export const CustomersPage: React.FC = () => {
   };
 
   const handleResetFilters = () => {
+    isInternalFilterChangeRef.current = true;
     setSearchInput('');
     setSearchTerm('');
     setSelectedGroup('ALL');
     setSelectedStatus('ALL');
     setSelectedRegion('ALL');
+    setSelectedSalesRep('ALL');
     setCurrentPage(1);
     setSearchParams({}, { replace: true });
     void loadCustomers({
@@ -358,6 +463,7 @@ export const CustomersPage: React.FC = () => {
       region: 'ALL',
       customerGroup: 'ALL',
       status: 'ALL',
+      salesRepId: 'ALL',
     });
   };
 
@@ -388,6 +494,7 @@ export const CustomersPage: React.FC = () => {
     const urlRegion = parseRegionParam(searchParams.get('region'));
     const urlGroup = parseGroupParam(searchParams.get('group'));
     const urlStatus = parseStatusParam(searchParams.get('status'));
+    const urlSalesRep = searchParams.get('rep') || searchParams.get('salesRepId') || 'ALL';
     const urlSearch = searchParams.get('search') || '';
     const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
 
@@ -404,6 +511,10 @@ export const CustomersPage: React.FC = () => {
       setSelectedStatus(urlStatus);
       changed = true;
     }
+    if (urlSalesRep !== selectedSalesRep) {
+      setSelectedSalesRep(urlSalesRep);
+      changed = true;
+    }
     if (urlSearch !== searchTerm) {
       setSearchTerm(urlSearch);
       setSearchInput(urlSearch);
@@ -415,10 +526,15 @@ export const CustomersPage: React.FC = () => {
     }
 
     if (changed) {
+      if (isInternalFilterChangeRef.current) {
+        isInternalFilterChangeRef.current = false;
+        return;
+      }
       void loadCustomers({
         region: urlRegion,
         customerGroup: urlGroup,
         status: urlStatus,
+        salesRepId: urlSalesRep,
         search: urlSearch,
         page: urlPage,
       });
@@ -432,22 +548,21 @@ export const CustomersPage: React.FC = () => {
       region: initialRegion,
       customerGroup: initialGroup,
       status: initialStatus,
+      salesRepId: initialSalesRep !== 'ALL' ? initialSalesRep : undefined,
       page: initialPage,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Lắng nghe sự kiện đồng bộ từ Tạo đơn hàng (SN-38) hoặc Tab khác
+  // Lắng nghe sự kiện đồng bộ từ Tab khác (qua storage event của browser)
   useEffect(() => {
     const handleSync = () => {
       void loadCustomers();
     };
 
-    window.addEventListener('loha_customers_updated', handleSync);
     window.addEventListener('storage', handleSync);
 
     return () => {
-      window.removeEventListener('loha_customers_updated', handleSync);
       window.removeEventListener('storage', handleSync);
     };
   }, [loadCustomers]);
@@ -463,14 +578,26 @@ export const CustomersPage: React.FC = () => {
     );
   };
 
-  // Thống kê nhanh KPI từ server-side pagination & mảng customers
+  // Thống kê nhanh KPI toàn bộ hệ thống đại lý (không bị phụ thuộc vào phân trang từng trang)
   const stats = useMemo(() => {
-    const total = totalItems;
-    const active = customers.filter((c) => c.status === 'ACTIVE').length;
-    const totalCredit = customers.reduce((sum, c) => sum + (c.creditLimit || 0), 0);
-    const totalDebt = customers.reduce((sum, c) => sum + (c.currentDebt || 0), 0);
-    return { total, active, totalCredit, totalDebt };
-  }, [totalItems, customers]);
+    return {
+      total: totalItems,
+      active: activeCount,
+      totalCredit: totalCreditLimit,
+      totalDebt: totalCurrentDebt,
+    };
+  }, [totalItems, activeCount, totalCreditLimit, totalCurrentDebt]);
+
+  // Kiểm tra có bất kỳ tiêu chí lọc hoặc tìm kiếm nào đang kích hoạt
+  const hasActiveFilters = useMemo(() => {
+    return (
+      searchTerm.trim() !== '' ||
+      selectedRegion !== 'ALL' ||
+      selectedGroup !== 'ALL' ||
+      selectedStatus !== 'ALL' ||
+      selectedSalesRep !== 'ALL'
+    );
+  }, [searchTerm, selectedRegion, selectedGroup, selectedStatus, selectedSalesRep]);
 
   // Lấy thông tin bảng giá áp dụng tương ứng với nhóm khách hàng (SN-30 AC3)
   const getPriceListInfo = (group: string) => {
@@ -512,100 +639,117 @@ export const CustomersPage: React.FC = () => {
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name.trim()) {
-      showToast('error', 'Thiếu thông tin', 'Vui lòng nhập tên đại lý hoặc công ty.');
-      return;
-    }
-    if (!formData.phone.trim()) {
-      showToast('error', 'Thiếu thông tin', 'Vui lòng nhập số điện thoại liên hệ của đại lý.');
-      return;
-    }
-    if (!formData.address.trim()) {
-      showToast(
-        'error',
-        'Thiếu thông tin',
-        'Vui lòng nhập địa chỉ trụ sở / kinh doanh của đại lý.'
-      );
-      return;
+    const errors: Record<string, string> = {};
+
+    // 1. Tên đại lý / Doanh nghiệp
+    const cleanName = (formData.name || '').trim();
+    if (!cleanName) {
+      errors.name = 'Vui lòng nhập tên đại lý hoặc tên doanh nghiệp.';
     }
 
-    // Kiểm tra mã số thuế bắt buộc (SN-30 AC1)
-    if (!formData.taxCode?.trim()) {
-      showToast('error', 'Thiếu thông tin', 'Vui lòng nhập mã số thuế của đại lý.');
-      return;
-    }
-
-    const cleanTaxCode = formData.taxCode.trim();
-    if (!/^[0-9]{10}(-[0-9]{3})?$|^[0-9]{13}$/.test(cleanTaxCode)) {
-      showToast(
-        'error',
-        'Mã số thuế không hợp lệ',
-        'Mã số thuế phải gồm 10 hoặc 13 chữ số (ví dụ: 0312345678).'
-      );
-      return;
-    }
-
-    // Kiểm tra tính duy nhất của mã đại lý trước khi gửi (SN-30 AC2)
+    // 2. Mã đại lý (nếu có nhập thì kiểm tra tính duy nhất)
     if (formData.code?.trim()) {
       const codeToCheck = formData.code.trim().toUpperCase();
       const codeExists = customers.some(
         (c) => c.code && c.code.trim().toUpperCase() === codeToCheck
       );
       if (codeExists) {
-        showToast(
-          'error',
-          'Trùng mã đại lý',
-          `Mã đại lý "${formData.code.trim()}" đã tồn tại trong hệ thống. Vui lòng chọn mã khác.`
-        );
-        return;
+        errors.code = `Mã đại lý "${formData.code.trim()}" đã tồn tại trong hệ thống. Vui lòng chọn mã khác.`;
       }
     }
+
+    // 3. Mã số thuế (SN-30 AC1)
+    const cleanTaxCode = (formData.taxCode || '').trim();
+    if (!cleanTaxCode) {
+      errors.taxCode = 'Vui lòng nhập mã số thuế của đại lý.';
+    } else if (!/^[0-9]{10}(-[0-9]{3})?$|^[0-9]{13}$/.test(cleanTaxCode)) {
+      errors.taxCode = 'Mã số thuế phải gồm 10 hoặc 13 chữ số (ví dụ: 0312345678).';
+    }
+
+    // 4. Số điện thoại liên hệ
+    const cleanPhone = (formData.phone || '').trim();
+    if (!cleanPhone) {
+      errors.phone = 'Vui lòng nhập số điện thoại liên hệ của đại lý.';
+    } else if (!/^0[0-9]{9}$/.test(cleanPhone)) {
+      errors.phone = 'Số điện thoại phải bắt đầu bằng số 0 và bao gồm đúng 10 chữ số (ví dụ: 0988776655).';
+    }
+
+    // 5. Email liên hệ (tùy chọn nhưng nếu nhập phải đúng chuẩn)
+    const cleanEmail = (formData.email || '').trim();
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      errors.email = 'Email liên hệ không đúng định dạng (ví dụ: daily@gmail.com).';
+    }
+
+    // 6. Địa chỉ trụ sở
+    const cleanAddress = (formData.address || '').trim();
+    if (!cleanAddress) {
+      errors.address = 'Vui lòng nhập địa chỉ trụ sở / kinh doanh của đại lý.';
+    }
+
+    // Nếu có lỗi nhập liệu: hiển thị trực tiếp trên modal, KHÔNG bắn toast ra ngoài
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      setFormBannerError('Vui lòng kiểm tra và hoàn thiện các trường thông tin chưa hợp lệ bên dưới.');
+      return;
+    }
+
+    setFormErrors({});
+    setFormBannerError(null);
 
     try {
       setSubmitting(true);
       const newCustomer = await customerService.createCustomer({
-        ...formData,
+        name: formData.name.trim(),
         code: formData.code?.trim() || undefined,
         taxCode: cleanTaxCode,
+        phone: cleanPhone,
+        email: cleanEmail || undefined,
+        address: formData.address.trim(),
+        region: formData.region || 'Miền Nam',
+        customerGroup: formData.customerGroup || 'AGENT_LEVEL_2',
         creditLimit: Number(formData.creditLimit) || 50000000,
         maxDebtDays: Number(formData.maxDebtDays) || 30,
         salesRepId: formData.salesRepId || undefined,
+        deliveryPointName: formData.deliveryPointName?.trim() || undefined,
+        receiverName: formData.receiverName?.trim() || undefined,
       });
 
       showToast(
         'success',
         'Thêm đại lý thành công',
-        `Đại lý "${newCustomer.name}" đã được tạo và đồng bộ ngay vào hệ thống!`
+        `Đại lý "${newCustomer.name}" (${newCustomer.code}) đã được tạo và lưu thành công!`
       );
 
       // Đóng modal và reset form
-      setIsCreateModalOpen(false);
-      setFormData({
-        name: '',
-        code: '',
-        customerGroup: 'AGENT_LEVEL_2',
-        phone: '',
-        email: '',
-        taxCode: '',
-        address: '',
-        region: 'Miền Nam',
-        creditLimit: 50000000,
-        maxDebtDays: 30,
-        deliveryPointName: '',
-        receiverName: '',
-        salesRepId: '',
-      });
+      handleCloseCreateModal();
 
       // Tải lại danh sách từ server ở trang 1 để cập nhật dữ liệu đại lý mới
       void loadCustomers({ page: 1 });
     } catch (err: unknown) {
-      const errMsg =
-        err && typeof err === 'object' && 'response' in err && (err as any).response?.data?.message
-          ? (err as any).response.data.message
-          : err instanceof Error
-          ? err.message
-          : 'Không thể tạo đại lý mới. Vui lòng thử lại.';
-      showToast('error', 'Lỗi tạo đại lý', errMsg);
+      const respData = (err as any)?.response?.data;
+      let errMsg = 'Không thể tạo đại lý mới. Vui lòng kiểm tra lại thông tin.';
+      if (respData) {
+        if (Array.isArray(respData.message)) {
+          errMsg = respData.message.join('; ');
+        } else if (typeof respData.message === 'string') {
+          errMsg = respData.message;
+        } else if (typeof respData.error === 'string') {
+          errMsg = respData.error;
+        }
+      } else if (err instanceof Error) {
+        errMsg = err.message;
+      }
+
+      // Gắn lỗi chi tiết từ server vào trường tương ứng trên modal
+      const newErrMap: Record<string, string> = {};
+      const lower = errMsg.toLowerCase();
+      if (lower.includes('mã đại lý') || lower.includes('code')) newErrMap.code = errMsg;
+      if (lower.includes('mã số thuế') || lower.includes('tax')) newErrMap.taxCode = errMsg;
+      if (lower.includes('điện thoại') || lower.includes('phone')) newErrMap.phone = errMsg;
+      if (lower.includes('email')) newErrMap.email = errMsg;
+
+      setFormErrors(newErrMap);
+      setFormBannerError(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -804,7 +948,7 @@ export const CustomersPage: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={handleOpenCreateModal}
             className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-xs cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -861,60 +1005,115 @@ export const CustomersPage: React.FC = () => {
       </div>
 
       {/* ── THANH TÌM KIẾM & BỘ LỌC ĐA TIÊU CHÍ (SN-37) ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col lg:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full lg:max-w-md">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Tìm theo tên đại lý, mã hoặc số điện thoại..."
-            className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white placeholder-slate-400"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-            <Filter className="w-3.5 h-3.5 text-slate-400" />
-            <span className="hidden md:inline">Lọc:</span>
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs space-y-3">
+        {/* Hàng 1: Ô tìm kiếm thông minh + Nút xóa bộ lọc */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* Ô input tìm kiếm */}
+          <div className="relative flex-1 max-w-xl">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Tìm theo tên đại lý, mã hoặc số điện thoại..."
+              className="w-full pl-10 pr-9 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] bg-slate-50/60 hover:bg-white focus:bg-white transition-all placeholder-slate-400"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput('');
+                  setSearchTerm('');
+                  setCurrentPage(1);
+                  updateUrlParams({ search: '', page: 1 });
+                  void loadCustomers({ search: '', page: 1 });
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
+                title="Xóa từ khóa tìm kiếm"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          <select
-            value={selectedRegion}
-            onChange={(e) => handleRegionChange(e.target.value)}
-            aria-label="Lọc theo khu vực"
-            className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-          >
-            <option value="ALL">Tất cả khu vực</option>
-            <option value="Miền Nam">Miền Nam</option>
-            <option value="Miền Trung">Miền Trung</option>
-            <option value="Miền Bắc">Miền Bắc</option>
-          </select>
+          {/* Nút reset bộ lọc khi có điều kiện lọc đang kích hoạt */}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/80 border border-rose-200/80 rounded-xl transition-all cursor-pointer shrink-0 shadow-2xs"
+              title="Đặt lại toàn bộ bộ lọc về mặc định"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Xóa bộ lọc</span>
+            </button>
+          )}
+        </div>
 
-          <select
-            value={selectedGroup}
-            onChange={(e) => handleGroupChange(e.target.value)}
-            aria-label="Lọc theo nhóm đại lý"
-            className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-          >
-            <option value="ALL">Tất cả phân nhóm</option>
-            <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
-            <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
-            <option value="WHOLESALE">Bán buôn</option>
-            <option value="RETAIL">Bán lẻ</option>
-          </select>
+        {/* Hàng 2: Grid 4 dropdown bộ lọc chia đều cân xứng, thẳng hàng tuyệt đối */}
+        <div className="pt-2.5 border-t border-slate-100 flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold shrink-0">
+            <Filter className="w-3.5 h-3.5 text-slate-400" />
+            <span className="hidden sm:inline">Bộ lọc:</span>
+          </div>
 
-          <select
-            value={selectedStatus}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            aria-label="Lọc theo trạng thái hoạt động"
-            className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-          >
-            <option value="ALL">Tất cả trạng thái</option>
-            <option value="ACTIVE">Đang hoạt động</option>
-            <option value="LOCKED">Tạm khóa</option>
-            <option value="INACTIVE">Ngừng hoạt động</option>
-          </select>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 flex-1">
+            {/* 1. Khu vực */}
+            <select
+              value={selectedRegion}
+              onChange={(e) => handleRegionChange(e.target.value)}
+              aria-label="Lọc theo khu vực"
+              className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
+            >
+              <option value="ALL">Tất cả khu vực</option>
+              <option value="Miền Nam">Miền Nam</option>
+              <option value="Miền Trung">Miền Trung</option>
+              <option value="Miền Bắc">Miền Bắc</option>
+            </select>
+
+            {/* 2. Phân nhóm */}
+            <select
+              value={selectedGroup}
+              onChange={(e) => handleGroupChange(e.target.value)}
+              aria-label="Lọc theo nhóm đại lý"
+              className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
+            >
+              <option value="ALL">Tất cả phân nhóm</option>
+              <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
+              <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
+              <option value="WHOLESALE">Bán buôn</option>
+              <option value="RETAIL">Bán lẻ</option>
+            </select>
+
+            {/* 3. Người phụ trách */}
+            <select
+              value={selectedSalesRep}
+              onChange={(e) => handleSalesRepChange(e.target.value)}
+              aria-label="Lọc theo người phụ trách"
+              className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
+            >
+              <option value="ALL">Tất cả người phụ trách</option>
+              {SALES_REPS.filter((rep) => rep.id).map((rep) => (
+                <option key={rep.id} value={rep.id}>
+                  {rep.shortName || rep.name}
+                </option>
+              ))}
+              <option value="UNASSIGNED">Chưa phân công</option>
+            </select>
+
+            {/* 4. Trạng thái */}
+            <select
+              value={selectedStatus}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              aria-label="Lọc theo trạng thái hoạt động"
+              className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
+            >
+              <option value="ALL">Tất cả trạng thái</option>
+              <option value="ACTIVE">Đang hoạt động</option>
+              <option value="LOCKED">Tạm khóa giao dịch</option>
+              <option value="INACTIVE">Ngừng hoạt động</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -947,9 +1146,9 @@ export const CustomersPage: React.FC = () => {
                     <th className="px-4 py-3.5">Liên Hệ</th>
                     <th className="px-4 py-3.5">Phân Nhóm & Phụ Trách</th>
                     <th className="px-4 py-3.5">Hạn Mức & Dư Nợ</th>
-                    <th className="px-4 py-3.5">Điểm Giao Hàng (SN-31)</th>
+                    <th className="px-4 py-3.5">Điểm Giao Hàng</th>
                     <th className="px-4 py-3.5">Trạng Thái</th>
-                    <th className="px-4 py-3.5 text-right">Thao Tác</th>
+                    <th className="px-4 py-3.5">Thao Tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1080,8 +1279,8 @@ export const CustomersPage: React.FC = () => {
                       </td>
 
                       {/* Cột 7: Thao tác (SN-36: Khóa/Mở khóa giao dịch) */}
-                      <td className="px-4 py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center justify-start gap-1.5">
                           {/* Nút Khóa / Mở khóa giao dịch (SN-36) */}
                           {customer.status === 'LOCKED' ? (
                             <button
@@ -1104,15 +1303,6 @@ export const CustomersPage: React.FC = () => {
                               <span>Khóa</span>
                             </button>
                           )}
-
-                          <button
-                            type="button"
-                            onClick={() => handleOpenDeliveryPoints(customer)}
-                            className="p-1.5 text-slate-500 hover:text-[var(--color-primary)] hover:bg-slate-100 rounded-lg transition-colors"
-                            title="Quản lý điểm giao hàng (SN-31)"
-                          >
-                            <MapPin className="w-4 h-4" />
-                          </button>
 
                           <button
                             type="button"
@@ -1177,7 +1367,7 @@ export const CustomersPage: React.FC = () => {
           <div
             onClick={(e) => {
               if (e.target === e.currentTarget && !submitting) {
-                setIsCreateModalOpen(false);
+                handleCloseCreateModal();
               }
             }}
             className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
@@ -1198,7 +1388,7 @@ export const CustomersPage: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
+                  onClick={handleCloseCreateModal}
                   className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
                   title="Đóng modal (Esc)"
                 >
@@ -1207,7 +1397,23 @@ export const CustomersPage: React.FC = () => {
               </div>
 
               {/* Modal Body / Form Fields (Cuộn độc lập bên trong) */}
-              <form id="create-customer-form" onSubmit={handleCreateCustomer} className="flex-1 overflow-y-auto p-5 space-y-4">
+              <form
+                id="create-customer-form"
+                onSubmit={handleCreateCustomer}
+                noValidate
+                className="flex-1 overflow-y-auto p-5 space-y-4"
+              >
+                {/* Thông báo lỗi tổng quan trên Modal */}
+                {formBannerError && (
+                  <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200/80 text-rose-800 text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <span className="font-semibold block text-rose-900">Thông tin chưa hợp lệ</span>
+                      <span className="text-rose-700 leading-relaxed">{formBannerError}</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {/* Tên đại lý */}
                   <div className="sm:col-span-2 space-y-1">
@@ -1216,12 +1422,30 @@ export const CustomersPage: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      required
                       placeholder="VD: Công ty TNHH Phân Phối Toàn Cầu"
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
+                      onChange={(e) => {
+                        setFormData({ ...formData, name: e.target.value });
+                        if (formErrors.name) {
+                          setFormErrors((prev) => {
+                            const copy = { ...prev };
+                            delete copy.name;
+                            return copy;
+                          });
+                        }
+                      }}
+                      className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:outline-none transition-colors ${
+                        formErrors.name
+                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
+                          : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15'
+                      }`}
                     />
+                    {formErrors.name && (
+                      <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{formErrors.name}</span>
+                      </p>
+                    )}
                   </div>
 
                   {/* Mã đại lý (SN-30 AC1 & AC2) */}
@@ -1236,9 +1460,28 @@ export const CustomersPage: React.FC = () => {
                       type="text"
                       placeholder="VD: DL-HN-005 (Tự sinh nếu để trống)"
                       value={formData.code}
-                      onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 font-mono"
+                      onChange={(e) => {
+                        setFormData({ ...formData, code: e.target.value });
+                        if (formErrors.code) {
+                          setFormErrors((prev) => {
+                            const copy = { ...prev };
+                            delete copy.code;
+                            return copy;
+                          });
+                        }
+                      }}
+                      className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:outline-none font-mono transition-colors ${
+                        formErrors.code
+                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
+                          : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15'
+                      }`}
                     />
+                    {formErrors.code && (
+                      <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{formErrors.code}</span>
+                      </p>
+                    )}
                   </div>
 
                   {/* Mã số thuế (SN-30 AC1) */}
@@ -1248,12 +1491,30 @@ export const CustomersPage: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      required
                       placeholder="VD: 0109876543 (10 hoặc 13 số)"
                       value={formData.taxCode}
-                      onChange={(e) => setFormData({ ...formData, taxCode: e.target.value })}
-                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 font-mono"
+                      onChange={(e) => {
+                        setFormData({ ...formData, taxCode: e.target.value });
+                        if (formErrors.taxCode) {
+                          setFormErrors((prev) => {
+                            const copy = { ...prev };
+                            delete copy.taxCode;
+                            return copy;
+                          });
+                        }
+                      }}
+                      className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:outline-none font-mono transition-colors ${
+                        formErrors.taxCode
+                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
+                          : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15'
+                      }`}
                     />
+                    {formErrors.taxCode && (
+                      <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{formErrors.taxCode}</span>
+                      </p>
+                    )}
                   </div>
 
                   {/* Phân nhóm đại lý & Quyết định bảng giá áp dụng (SN-30 AC3) */}
@@ -1312,24 +1573,61 @@ export const CustomersPage: React.FC = () => {
                     </label>
                     <input
                       type="tel"
-                      required
                       placeholder="VD: 0988776655"
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
+                      onChange={(e) => {
+                        setFormData({ ...formData, phone: e.target.value });
+                        if (formErrors.phone) {
+                          setFormErrors((prev) => {
+                            const copy = { ...prev };
+                            delete copy.phone;
+                            return copy;
+                          });
+                        }
+                      }}
+                      className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:outline-none transition-colors ${
+                        formErrors.phone
+                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
+                          : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15'
+                      }`}
                     />
+                    {formErrors.phone && (
+                      <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{formErrors.phone}</span>
+                      </p>
+                    )}
                   </div>
 
                   {/* Email */}
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-slate-700">Email liên hệ</label>
                     <input
-                      type="email"
+                      type="text"
                       placeholder="VD: daily@gmail.com"
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
+                      onChange={(e) => {
+                        setFormData({ ...formData, email: e.target.value });
+                        if (formErrors.email) {
+                          setFormErrors((prev) => {
+                            const copy = { ...prev };
+                            delete copy.email;
+                            return copy;
+                          });
+                        }
+                      }}
+                      className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:outline-none transition-colors ${
+                        formErrors.email
+                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
+                          : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15'
+                      }`}
                     />
+                    {formErrors.email && (
+                      <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{formErrors.email}</span>
+                      </p>
+                    )}
                   </div>
 
                   {/* Địa chỉ trụ sở */}
@@ -1339,12 +1637,30 @@ export const CustomersPage: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      required
                       placeholder="VD: 123 Đường Nguyễn Trãi, Phường 2, Quận 5, TP.HCM"
                       value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15"
+                      onChange={(e) => {
+                        setFormData({ ...formData, address: e.target.value });
+                        if (formErrors.address) {
+                          setFormErrors((prev) => {
+                            const copy = { ...prev };
+                            delete copy.address;
+                            return copy;
+                          });
+                        }
+                      }}
+                      className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:outline-none transition-colors ${
+                        formErrors.address
+                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
+                          : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15'
+                      }`}
                     />
+                    {formErrors.address && (
+                      <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{formErrors.address}</span>
+                      </p>
+                    )}
                   </div>
 
                   {/* Hạn mức tín dụng */}
@@ -1410,7 +1726,7 @@ export const CustomersPage: React.FC = () => {
               <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-end gap-2.5 shrink-0 bg-slate-50/60">
                 <button
                   type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
+                  onClick={handleCloseCreateModal}
                   disabled={submitting}
                   className="px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
                 >

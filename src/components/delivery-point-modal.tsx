@@ -56,6 +56,8 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
   const [points, setPoints] = useState<DeliveryPoint[]>(customer.deliveryPoints || []);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState<FormState>(INITIAL_FORM);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formBannerError, setFormBannerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!open) return null;
@@ -67,6 +69,8 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
       phone: customer.phone || '',
       isDefault: points.length === 0,
     });
+    setErrors({});
+    setFormBannerError(null);
     setIsFormOpen(true);
   };
 
@@ -80,44 +84,58 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
       roadNote: point.roadNote || '',
       isDefault: Boolean(point.isDefault),
     });
+    setErrors({});
+    setFormBannerError(null);
     setIsFormOpen(true);
   };
 
   const handleCancelForm = () => {
     setFormData(INITIAL_FORM);
+    setErrors({});
+    setFormBannerError(null);
     setIsFormOpen(false);
   };
 
   const handleSavePoint = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const errs: Record<string, string> = {};
+
     if (!formData.name.trim()) {
-      showToast('error', 'Vui lòng nhập tên điểm giao hàng');
-      return;
+      errs.name = 'Vui lòng nhập tên gợi nhớ kho / điểm nhận hàng.';
     }
     if (!formData.address.trim()) {
-      showToast('error', 'Vui lòng nhập địa chỉ giao hàng');
-      return;
+      errs.address = 'Vui lòng nhập địa chỉ giao hàng chi tiết.';
     }
     if (!formData.receiverName.trim()) {
-      showToast('error', 'Vui lòng nhập tên người nhận hàng');
-      return;
+      errs.receiverName = 'Vui lòng nhập tên người nhận hàng.';
     }
-    if (!formData.phone.trim()) {
-      showToast('error', 'Vui lòng nhập số điện thoại người nhận');
+
+    const cleanPhone = formData.phone.trim();
+    if (!cleanPhone) {
+      errs.phone = 'Vui lòng nhập số điện thoại người nhận hàng.';
+    } else if (!/^0[0-9]{9}$/.test(cleanPhone)) {
+      errs.phone = 'Số điện thoại phải bắt đầu bằng số 0 và bao gồm đúng 10 chữ số (ví dụ: 0901234567).';
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      setFormBannerError('Vui lòng kiểm tra và hoàn thiện các trường thông tin chưa hợp lệ bên dưới.');
       return;
     }
 
+    setErrors({});
+    setFormBannerError(null);
     setIsSubmitting(true);
     try {
       if (formData.id) {
         // Cập nhật
         const updated = await customersService.updateDeliveryPoint(customer.id, formData.id, {
-          name: formData.name,
-          address: formData.address,
-          receiverName: formData.receiverName,
-          phone: formData.phone,
-          roadNote: formData.roadNote,
+          name: formData.name.trim(),
+          address: formData.address.trim(),
+          receiverName: formData.receiverName.trim(),
+          phone: cleanPhone,
+          roadNote: formData.roadNote.trim(),
           isDefault: formData.isDefault,
         });
 
@@ -134,11 +152,11 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
       } else {
         // Thêm mới
         const created = await customersService.createDeliveryPoint(customer.id, {
-          name: formData.name,
-          address: formData.address,
-          receiverName: formData.receiverName,
-          phone: formData.phone,
-          roadNote: formData.roadNote,
+          name: formData.name.trim(),
+          address: formData.address.trim(),
+          receiverName: formData.receiverName.trim(),
+          phone: cleanPhone,
+          roadNote: formData.roadNote.trim(),
           isDefault: formData.isDefault,
         });
 
@@ -156,8 +174,20 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
 
       handleCancelForm();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Lỗi khi lưu điểm giao hàng';
-      showToast('error', msg);
+      const respData = (err as any)?.response?.data;
+      let msg = 'Lỗi khi lưu điểm giao hàng';
+      if (respData) {
+        if (Array.isArray(respData.message)) {
+          msg = respData.message.join('; ');
+        } else if (typeof respData.message === 'string') {
+          msg = respData.message;
+        } else if (typeof respData.error === 'string') {
+          msg = respData.error;
+        }
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
+      setFormBannerError(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -230,7 +260,7 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
           {!isFormOpen ? (
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Danh sách điểm nhận hàng (SN-31)
+                Danh sách điểm nhận hàng
               </p>
               <button
                 type="button"
@@ -245,75 +275,158 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
             /* Form thêm / sửa */
             <form
               onSubmit={handleSavePoint}
+              noValidate
               className="p-3.5 sm:p-4 rounded-lg border border-[var(--color-primary-subtle)] bg-[var(--color-primary-light)]/40 space-y-3"
             >
               <div className="flex items-center justify-between">
                 <h3 className="text-xs sm:text-sm font-semibold text-[var(--color-primary)]">
                   {formData.id ? 'Chỉnh sửa điểm giao hàng' : 'Khai báo điểm giao hàng mới'}
                 </h3>
-                <span className="text-[11px] text-[var(--color-primary)] font-medium">
-                  * Bắt buộc nhập
-                </span>
               </div>
+
+              {/* Thông báo lỗi tổng quan trên Modal Form */}
+              {formBannerError && (
+                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2 animate-in fade-in duration-150">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <span className="font-semibold block text-rose-900">Thông tin chưa hợp lệ</span>
+                    <span className="text-rose-700 leading-relaxed">{formBannerError}</span>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1 sm:col-span-2">
                   <label className="text-xs font-medium text-slate-700">
-                    Tên gợi nhớ kho / điểm nhận hàng *
+                    Tên gợi nhớ kho / điểm nhận hàng <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, name: e.target.value });
+                      if (errors.name) {
+                        setErrors((prev) => {
+                          const copy = { ...prev };
+                          delete copy.name;
+                          return copy;
+                        });
+                      }
+                    }}
                     placeholder="VD: Kho Tổng Tân Bình, Điểm Bán Lẻ Q.1, Cửa Hàng 2..."
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
-                    required
+                    className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-lg bg-white focus:outline-none transition-colors ${
+                      errors.name
+                        ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
+                        : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20'
+                    }`}
                   />
+                  {errors.name && (
+                    <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{errors.name}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
                   <label className="text-xs font-medium text-slate-700">
-                    Địa chỉ giao hàng chi tiết *
+                    Địa chỉ giao hàng chi tiết <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, address: e.target.value });
+                      if (errors.address) {
+                        setErrors((prev) => {
+                          const copy = { ...prev };
+                          delete copy.address;
+                          return copy;
+                        });
+                      }
+                    }}
                     placeholder="VD: 123 Nguyễn Trọng Tuyển, P.8, Q.Phú Nhuận, TP.HCM"
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
-                    required
+                    className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-lg bg-white focus:outline-none transition-colors ${
+                      errors.address
+                        ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
+                        : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20'
+                    }`}
                   />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-700">Người nhận hàng *</label>
-                  <input
-                    type="text"
-                    value={formData.receiverName}
-                    onChange={(e) => setFormData({ ...formData, receiverName: e.target.value })}
-                    placeholder="Tên thủ kho hoặc người đại diện nhận"
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
-                    required
-                  />
+                  {errors.address && (
+                    <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{errors.address}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-slate-700">
-                    Số điện thoại nhận hàng *
+                    Người nhận hàng <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="VD: 0901234567"
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
-                    required
+                    value={formData.receiverName}
+                    onChange={(e) => {
+                      setFormData({ ...formData, receiverName: e.target.value });
+                      if (errors.receiverName) {
+                        setErrors((prev) => {
+                          const copy = { ...prev };
+                          delete copy.receiverName;
+                          return copy;
+                        });
+                      }
+                    }}
+                    placeholder="Tên thủ kho hoặc người đại diện nhận"
+                    className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-lg bg-white focus:outline-none transition-colors ${
+                      errors.receiverName
+                        ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
+                        : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20'
+                    }`}
                   />
+                  {errors.receiverName && (
+                    <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{errors.receiverName}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-700">
+                    Số điện thoại nhận hàng <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => {
+                      setFormData({ ...formData, phone: e.target.value });
+                      if (errors.phone) {
+                        setErrors((prev) => {
+                          const copy = { ...prev };
+                          delete copy.phone;
+                          return copy;
+                        });
+                      }
+                    }}
+                    placeholder="VD: 0901234567"
+                    className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-lg bg-white focus:outline-none transition-colors ${
+                      errors.phone
+                        ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
+                        : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20'
+                    }`}
+                  />
+                  {errors.phone && (
+                    <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{errors.phone}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
                   <label className="text-xs font-medium text-slate-700">
-                    Ghi chú đường đi / Giao vận (SN-31)
+                    Ghi chú đường đi / Giao vận
                   </label>
                   <textarea
                     rows={2}
@@ -345,7 +458,7 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
                 <button
                   type="button"
                   onClick={handleCancelForm}
-                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                 >
                   Hủy
                 </button>
@@ -369,12 +482,6 @@ export const DeliveryPointModal: React.FC<DeliveryPointModalProps> = ({
                 <p className="text-xs sm:text-sm text-slate-500">
                   Đại lý chưa có điểm giao hàng nào.
                 </p>
-                <button
-                  onClick={handleOpenAddForm}
-                  className="mt-2 text-xs text-[var(--color-primary)] hover:underline font-medium"
-                >
-                  + Khai báo điểm giao đầu tiên ngay
-                </button>
               </div>
             ) : (
               points.map((pt) => (

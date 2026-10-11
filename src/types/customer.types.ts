@@ -108,6 +108,9 @@ export interface PaginatedCustomersResponse {
   page: number;
   limit: number;
   totalPages: number;
+  activeCount?: number;
+  totalCreditLimit?: number;
+  totalCurrentDebt?: number;
 }
 
 /**
