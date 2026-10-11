@@ -613,8 +613,17 @@ export const CustomersPage: React.FC = () => {
       showToast('error', 'Thiếu thông tin', 'Vui lòng nhập tên đại lý hoặc công ty.');
       return;
     }
-    if (!formData.phone.trim()) {
+    const cleanPhone = formData.phone.trim();
+    if (!cleanPhone) {
       showToast('error', 'Thiếu thông tin', 'Vui lòng nhập số điện thoại liên hệ của đại lý.');
+      return;
+    }
+    if (!/^0[0-9]{9}$/.test(cleanPhone)) {
+      showToast(
+        'error',
+        'Số điện thoại không hợp lệ',
+        'Số điện thoại phải bắt đầu bằng số 0 và bao gồm đúng 10 chữ số (ví dụ: 0901234567).'
+      );
       return;
     }
     if (!formData.address.trim()) {
@@ -703,13 +712,20 @@ export const CustomersPage: React.FC = () => {
       // Tải lại danh sách từ server ở trang 1 để cập nhật dữ liệu đại lý mới
       void loadCustomers({ page: 1 });
     } catch (err: unknown) {
-      const errMsg =
-        err && typeof err === 'object' && 'response' in err && (err as any).response?.data?.message
-          ? (err as any).response.data.message
-          : err instanceof Error
-          ? err.message
-          : 'Không thể tạo đại lý mới. Vui lòng thử lại.';
-      showToast('error', 'Lỗi tạo đại lý', errMsg);
+      const respData = (err as any)?.response?.data;
+      let errMsg = 'Không thể tạo đại lý mới. Vui lòng kiểm tra lại thông tin.';
+      if (respData) {
+        if (Array.isArray(respData.message)) {
+          errMsg = respData.message.join('; ');
+        } else if (typeof respData.message === 'string') {
+          errMsg = respData.message;
+        } else if (typeof respData.error === 'string') {
+          errMsg = respData.error;
+        }
+      } else if (err instanceof Error) {
+        errMsg = err.message;
+      }
+      showToast('error', 'Lỗi tạo đại lý', errMsg, 6000);
     } finally {
       setSubmitting(false);
     }

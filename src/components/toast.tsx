@@ -8,6 +8,7 @@ export interface ToastOptions {
   id?: string;
   type: ToastType;
   title: string;
+  message?: string;
   duration?: number;
 }
 
@@ -46,24 +47,17 @@ const STYLES = {
 
 /**
  * Từng Toast đơn lẻ với bộ đếm thời gian và thanh Progress bar độc lập hoàn toàn
- * Thiết kế dạng Notification Banner phẳng, tối giản, thanh lịch chuẩn Enterprise SaaS:
- * - Kích thước thanh ngang 380-420px, bo góc nhẹ 3px
- * - Nền màu rất nhạt theo trạng thái (xanh lá nhạt / đỏ nhạt)
- * - Vạch màu mảnh 3.5px ở cạnh trái
- * - Icon trạng thái rõ ràng (w-5 h-5) đặt bên trái tiêu đề
- * - Tiêu đề font semi-bold / medium rõ nét, 1 dòng duy nhất, không có mô tả phụ
- * - Nút X đóng nhỏ gọn ở cạnh phải
- * - Thanh progress bar mảnh 2.5px ở đáy
  */
 interface ToastItemProps {
   id: string;
   type: ToastType;
   title: string;
+  message?: string;
   duration: number;
   onClose: (id: string) => void;
 }
 
-const ToastItem: React.FC<ToastItemProps> = ({ id, type, title, duration, onClose }) => {
+const ToastItem: React.FC<ToastItemProps> = ({ id, type, title, message, duration, onClose }) => {
   const [isClosing, setIsClosing] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -118,7 +112,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ id, type, title, duration, onClos
       aria-live="assertive"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className={`pointer-events-auto relative flex items-start gap-3 w-[420px] sm:w-[500px] max-w-[calc(100vw-2rem)] min-h-[52px] rounded-md px-4 py-3.5 shadow-[0_4px_14px_rgba(0,0,0,0.08)] border overflow-hidden transition-all duration-200 ease-out transform ${
+      className={`pointer-events-auto relative flex items-start gap-3 w-[420px] sm:w-[500px] max-w-[calc(100vw-2rem)] min-h-[52px] rounded-md px-4 py-3.5 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.15),0_8px_10px_-6px_rgba(0,0,0,0.1)] border overflow-hidden transition-all duration-200 ease-out transform ${
         style.containerBg
       } ${style.borderLeft} ${
         isClosing || !isVisible ? 'translate-x-[110%] opacity-0' : 'translate-x-0 opacity-100'
@@ -127,13 +121,20 @@ const ToastItem: React.FC<ToastItemProps> = ({ id, type, title, duration, onClos
       {/* Icon trạng thái đặt bên trái tiêu đề, kích thước rõ ràng, nổi bật */}
       <IconComponent className={`w-5 h-5 shrink-0 mt-0.5 ${style.iconColor}`} />
 
-      {/* Tiêu đề/Thông báo hiển thị đầy đủ, không bị cắt ngắn */}
-      <span
-        className="text-[13px] sm:text-[14px] font-semibold text-slate-800 break-words flex-1 leading-snug select-none pr-1"
-        title={displayTitle}
-      >
-        {displayTitle}
-      </span>
+      {/* Tiêu đề & Nội dung mô tả chi tiết */}
+      <div className="flex-1 pr-1 min-w-0">
+        <div
+          className="text-[13px] sm:text-[14px] font-semibold text-slate-800 break-words leading-snug select-none"
+          title={displayTitle}
+        >
+          {displayTitle}
+        </div>
+        {message && message.trim() && message.trim() !== displayTitle && (
+          <div className="text-[12px] text-slate-600 mt-1 leading-normal break-words font-normal">
+            {message}
+          </div>
+        )}
+      </div>
 
       {/* Nút X đóng nhỏ, đơn giản, dễ bấm ở góc phải */}
       <button
@@ -182,17 +183,21 @@ class ToastManager {
 
   show(options: ToastOptions) {
     const text = (options.title || '').trim();
-    if (!text) return;
+    if (!text && !options.message) return;
 
-    // Quy tắc 81: Không hiển thị thông báo trùng lặp đang hiển thị trên màn hình
+    // Không hiển thị thông báo trùng lặp hoàn toàn đang hiển thị trên màn hình
     const isDuplicate = this.toasts.some(
-      (t) => t.title.toLowerCase() === text.toLowerCase() && t.type === options.type
+      (t) =>
+        t.title.toLowerCase() === text.toLowerCase() &&
+        t.type === options.type &&
+        (t.message || '') === (options.message || '')
     );
     if (isDuplicate) return;
 
     const item: ToastOptions = {
       ...options,
-      title: text,
+      title: text || options.message || '',
+      message: options.message,
       id: options.id || `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     };
 
@@ -211,31 +216,29 @@ export const toastManager = new ToastManager();
 
 /**
  * Hàm gọi Toast toàn cục tiện lợi (Hỗ trợ gọi từ bất kỳ đâu trong phần mềm)
- * - Tự động trích xuất tiêu đề ngắn gọn
- * - Đảm bảo chỉ có 1 dòng tiêu đề duy nhất
  */
 export const showToast = (
   type: ToastType,
   title?: string,
   message?: string,
-  duration: number = 3500
+  duration: number = 4000
 ) => {
-  // Lấy dòng tiêu đề ngắn gọn nhất từ title hoặc message
-  const text = (title || message || '').trim();
-  toastManager.show({ type, title: text, duration });
+  const t = (title || (type === 'success' ? 'Thao tác thành công' : 'Thao tác thất bại')).trim();
+  const m = message?.trim();
+  toastManager.show({ type, title: t, message: m, duration });
 };
 
 export const toast = {
-  success: (title: string, duration?: number) => showToast('success', title, undefined, duration),
-  error: (title: string, duration?: number) => showToast('error', title, undefined, duration),
+  success: (title: string, message?: string, duration?: number) =>
+    showToast('success', title, message, duration),
+  error: (title: string, message?: string, duration?: number) =>
+    showToast('error', title, message, duration),
 };
 
 /**
  * Container hiển thị Toast toàn hệ thống:
- * - Vị trí cố định trượt từ bên phải vào, luôn nằm bên dưới Header (top-[72px])
- * - Z-index: z-[25] (thấp hơn Header z-30 và Dropdown Avatar z-50 -> không che Dropdown hay Header)
- * - Khi có nhiều Toast: hiển thị đồng thời, Toast mới ở trên cùng, Toast cũ trượt xuống
- * - Khoảng cách đồng đều gap-2.5, khi một Toast biến mất thì các Toast còn lại trượt lên
+ * - Vị trí cố định trượt từ bên phải vào (top-5)
+ * - Z-index: z-[99999] (Luôn hiển thị NỔI TRÊN TẤT CẢ các modal, popup, backdrop)
  */
 export const ToastContainer: React.FC = () => {
   const [toasts, setToasts] = useState<ToastOptions[]>(() => toastManager.getToasts());
@@ -251,7 +254,7 @@ export const ToastContainer: React.FC = () => {
   const content = (
     <div
       aria-live="polite"
-      className="fixed top-[72px] right-3 sm:right-6 z-[25] flex flex-col gap-2.5 pointer-events-none w-auto items-end"
+      className="fixed top-5 right-3 sm:right-6 z-[99999] flex flex-col gap-2.5 pointer-events-none w-auto items-end"
     >
       {toasts.map((item) => (
         <ToastItem
@@ -259,7 +262,8 @@ export const ToastContainer: React.FC = () => {
           id={item.id!}
           type={item.type}
           title={item.title}
-          duration={item.duration || 3500}
+          message={item.message}
+          duration={item.duration || 4000}
           onClose={(id) => toastManager.remove(id)}
         />
       ))}
