@@ -208,29 +208,29 @@ export const InventoryReceiptsPage: React.FC = () => {
                                 setReceiptToConfirm(r);
                                 setConfirmModalOpen(true);
                               }}
-                              className="p-2 text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+                              className="w-9 h-9 flex items-center justify-center text-brand-600 hover:bg-brand-50 rounded-lg transition-colors cursor-pointer"
                               title="Xác nhận & Nhập kho"
                             >
-                              <CheckCircle2 className="w-4 h-4" />
+                              <CheckCircle2 className="w-4.5 h-4.5" />
                             </button>
                             <button
                               onClick={() => {
                                 setReceiptToDelete(r);
                                 setDeleteModalOpen(true);
                               }}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              className="w-9 h-9 flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                               title="Xóa phiếu nháp"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-4.5 h-4.5" />
                             </button>
                           </>
                         )}
                         {r.status === 'CONFIRMED' && (
                           <button
-                            className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+                            className="w-9 h-9 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                             title="Xem chi tiết"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-4.5 h-4.5" />
                           </button>
                         )}
                       </div>

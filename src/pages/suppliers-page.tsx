@@ -447,13 +447,13 @@ export const SuppliersPage: React.FC = () => {
                                   ? "Chuyển sang Ngừng giao dịch"
                                   : "Kích hoạt lại giao dịch"
                               }
-                              className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors cursor-pointer ${
                                 isActive
                                   ? "text-slate-400 hover:text-amber-600 hover:bg-amber-50"
                                   : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
                               }`}
                             >
-                              <Power className="h-3.5 w-3.5" />
+                              <Power className="h-4 w-4" />
                             </button>
                           )}
                         </div>
@@ -461,24 +461,24 @@ export const SuppliersPage: React.FC = () => {
 
                       {/* Thao tác (Xem chi tiết, Xóa - Cây bút sửa nằm trong modal chi tiết) */}
                       <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1">
+                        <div className="flex items-center justify-center gap-2">
                           <button
                             type="button"
                             onClick={() => handleViewDetail(supplier)}
-                            className="btn-icon text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
                             title="Xem chi tiết nhà cung cấp"
                           >
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-4.5 w-4.5" />
                           </button>
 
                           {canManageSuppliers && (
                             <button
                               type="button"
                               onClick={() => handleDeleteClick(supplier)}
-                              className="btn-icon text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                               title="Xóa nhà cung cấp"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-4.5 w-4.5" />
                             </button>
                           )}
                         </div>

@@ -3068,7 +3068,7 @@ export const OrdersPage: React.FC = () => {
                           )}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-1">
+                          <div className="flex items-center justify-center gap-2">
                             {(order.status === 'DRAFT' || order.status === 'RETURNED_FOR_UPDATE') && (
                               <button
                                 type="button"
@@ -3076,7 +3076,7 @@ export const OrdersPage: React.FC = () => {
                                   setEditingOrder(order);
                                   setIsCreateModalOpen(true);
                                 }}
-                                className="p-1.5 rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer"
+                                className="w-9 h-9 flex items-center justify-center rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer active:scale-95"
                                 title="Chỉnh sửa / Gõ tiếp đơn nháp"
                               >
                                 <Edit3 className="w-4 h-4" />
@@ -3090,7 +3090,7 @@ export const OrdersPage: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => setApprovingOrderModal(order)}
-                                  className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+                                  className="w-9 h-9 flex items-center justify-center rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer active:scale-95"
                                   title="Duyệt đơn và giữ chỗ tồn kho 24h (SN-180)"
                                 >
                                   <CheckCircle2 className="w-4 h-4" />
@@ -3105,7 +3105,7 @@ export const OrdersPage: React.FC = () => {
                                     setCancellingOrderModal(order);
                                     setCancelReasonInput('');
                                   }}
-                                  className="p-1.5 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                  className="w-9 h-9 flex items-center justify-center rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer active:scale-95"
                                   title="Hủy đơn và nhả tồn giữ chỗ (SN-180)"
                                 >
                                   <XCircle className="w-4 h-4" />
@@ -3114,7 +3114,7 @@ export const OrdersPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setViewOrder(order)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer active:scale-95"
                               title="Xem chi tiết đơn hàng"
                             >
                               <Eye className="w-4 h-4" />
@@ -3122,7 +3122,7 @@ export const OrdersPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setSelectedOrderForReorder(order)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer active:scale-95"
                               title="Đặt lại đơn này theo giá hiện hành (SN-174)"
                             >
                               <RotateCcw className="w-4 h-4" />
@@ -3131,7 +3131,7 @@ export const OrdersPage: React.FC = () => {
                               type="button"
                               onClick={() => void handleCloneOrder(order)}
                               disabled={isCloning === order.id}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 cursor-pointer"
+                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 cursor-pointer active:scale-95"
                               title="Sao chép đơn thành đơn mới (SN-48)"
                             >
                               {isCloning === order.id ? (
@@ -3143,7 +3143,7 @@ export const OrdersPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleOpenPrint(order)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
+                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer active:scale-95"
                               title="In / Xuất PDF đơn hàng (SN-47)"
                             >
                               <Printer className="w-4 h-4" />
