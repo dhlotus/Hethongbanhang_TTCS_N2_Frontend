@@ -31,11 +31,11 @@ import type { Customer, CreateCustomerPayload, DeliveryPoint } from '../types/cu
 
 // Danh sách nhân viên kinh doanh phụ trách chuẩn (SN-30 & SN-35)
 const SALES_REPS = [
-  { id: '', name: '-- Chọn nhân viên phụ trách --' },
-  { id: 'usr-sales-002', name: 'Trần Văn Nam (Kinh doanh Miền Bắc)' },
-  { id: 'usr-sale-01', name: 'Trần Văn Long (Kinh doanh Miền Nam)' },
-  { id: 'usr-sale-02', name: 'Nguyễn Thị Hằng (Kinh doanh Miền Nam)' },
-  { id: 'usr-sale-03', name: 'Phạm Minh Tuấn (Kinh doanh Miền Bắc)' },
+  { id: '', name: '-- Chọn nhân viên phụ trách --', shortName: 'Tất cả người phụ trách' },
+  { id: 'usr-sales-002', name: 'Trần Văn Nam (Kinh doanh Miền Bắc)', shortName: 'Trần Văn Nam' },
+  { id: 'usr-sale-01', name: 'Trần Văn Long (Kinh doanh Miền Nam)', shortName: 'Trần Văn Long' },
+  { id: 'usr-sale-02', name: 'Nguyễn Thị Hằng (Kinh doanh Miền Nam)', shortName: 'Nguyễn Thị Hằng' },
+  { id: 'usr-sale-03', name: 'Phạm Minh Tuấn (Kinh doanh Miền Bắc)', shortName: 'Phạm Minh Tuấn' },
 ];
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -506,6 +506,17 @@ export const CustomersPage: React.FC = () => {
     return { total, active, totalCredit, totalDebt };
   }, [totalItems, customers]);
 
+  // Kiểm tra có bất kỳ tiêu chí lọc hoặc tìm kiếm nào đang kích hoạt
+  const hasActiveFilters = useMemo(() => {
+    return (
+      searchTerm.trim() !== '' ||
+      selectedRegion !== 'ALL' ||
+      selectedGroup !== 'ALL' ||
+      selectedStatus !== 'ALL' ||
+      selectedSalesRep !== 'ALL'
+    );
+  }, [searchTerm, selectedRegion, selectedGroup, selectedStatus, selectedSalesRep]);
+
   // Lấy thông tin bảng giá áp dụng tương ứng với nhóm khách hàng (SN-30 AC3)
   const getPriceListInfo = (group: string) => {
     switch (group) {
@@ -895,75 +906,115 @@ export const CustomersPage: React.FC = () => {
       </div>
 
       {/* ── THANH TÌM KIẾM & BỘ LỌC ĐA TIÊU CHÍ (SN-37) ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col lg:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full lg:max-w-md">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Tìm theo tên đại lý, mã hoặc số điện thoại..."
-            className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white placeholder-slate-400"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-            <Filter className="w-3.5 h-3.5 text-slate-400" />
-            <span className="hidden md:inline">Lọc:</span>
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs space-y-3">
+        {/* Hàng 1: Ô tìm kiếm thông minh + Nút xóa bộ lọc */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* Ô input tìm kiếm */}
+          <div className="relative flex-1 max-w-xl">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Tìm theo tên đại lý, mã hoặc số điện thoại..."
+              className="w-full pl-10 pr-9 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] bg-slate-50/60 hover:bg-white focus:bg-white transition-all placeholder-slate-400"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput('');
+                  setSearchTerm('');
+                  setCurrentPage(1);
+                  updateUrlParams({ search: '', page: 1 });
+                  void loadCustomers({ search: '', page: 1 });
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
+                title="Xóa từ khóa tìm kiếm"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          <select
-            value={selectedRegion}
-            onChange={(e) => handleRegionChange(e.target.value)}
-            aria-label="Lọc theo khu vực"
-            className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-          >
-            <option value="ALL">Tất cả khu vực</option>
-            <option value="Miền Nam">Miền Nam</option>
-            <option value="Miền Trung">Miền Trung</option>
-            <option value="Miền Bắc">Miền Bắc</option>
-          </select>
+          {/* Nút reset bộ lọc khi có điều kiện lọc đang kích hoạt */}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/80 border border-rose-200/80 rounded-xl transition-all cursor-pointer shrink-0 shadow-2xs"
+              title="Đặt lại toàn bộ bộ lọc về mặc định"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Xóa bộ lọc</span>
+            </button>
+          )}
+        </div>
 
-          <select
-            value={selectedGroup}
-            onChange={(e) => handleGroupChange(e.target.value)}
-            aria-label="Lọc theo nhóm đại lý"
-            className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-          >
-            <option value="ALL">Tất cả phân nhóm</option>
-            <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
-            <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
-            <option value="WHOLESALE">Bán buôn</option>
-            <option value="RETAIL">Bán lẻ</option>
-          </select>
+        {/* Hàng 2: Grid 4 dropdown bộ lọc chia đều cân xứng, thẳng hàng tuyệt đối */}
+        <div className="pt-2.5 border-t border-slate-100 flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold shrink-0">
+            <Filter className="w-3.5 h-3.5 text-slate-400" />
+            <span className="hidden sm:inline">Bộ lọc:</span>
+          </div>
 
-          <select
-            value={selectedSalesRep}
-            onChange={(e) => handleSalesRepChange(e.target.value)}
-            aria-label="Lọc theo người phụ trách"
-            className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-          >
-            <option value="ALL">Tất cả người phụ trách</option>
-            {SALES_REPS.filter((rep) => rep.id).map((rep) => (
-              <option key={rep.id} value={rep.id}>
-                {rep.name}
-              </option>
-            ))}
-            <option value="UNASSIGNED">Chưa phân công</option>
-          </select>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 flex-1">
+            {/* 1. Khu vực */}
+            <select
+              value={selectedRegion}
+              onChange={(e) => handleRegionChange(e.target.value)}
+              aria-label="Lọc theo khu vực"
+              className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
+            >
+              <option value="ALL">Tất cả khu vực</option>
+              <option value="Miền Nam">Miền Nam</option>
+              <option value="Miền Trung">Miền Trung</option>
+              <option value="Miền Bắc">Miền Bắc</option>
+            </select>
 
-          <select
-            value={selectedStatus}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            aria-label="Lọc theo trạng thái hoạt động"
-            className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-          >
-            <option value="ALL">Tất cả trạng thái</option>
-            <option value="ACTIVE">Đang hoạt động</option>
-            <option value="LOCKED">Tạm khóa</option>
-            <option value="INACTIVE">Ngừng hoạt động</option>
-          </select>
+            {/* 2. Phân nhóm */}
+            <select
+              value={selectedGroup}
+              onChange={(e) => handleGroupChange(e.target.value)}
+              aria-label="Lọc theo nhóm đại lý"
+              className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
+            >
+              <option value="ALL">Tất cả phân nhóm</option>
+              <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
+              <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
+              <option value="WHOLESALE">Bán buôn</option>
+              <option value="RETAIL">Bán lẻ</option>
+            </select>
+
+            {/* 3. Người phụ trách */}
+            <select
+              value={selectedSalesRep}
+              onChange={(e) => handleSalesRepChange(e.target.value)}
+              aria-label="Lọc theo người phụ trách"
+              className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
+            >
+              <option value="ALL">Tất cả người phụ trách</option>
+              {SALES_REPS.filter((rep) => rep.id).map((rep) => (
+                <option key={rep.id} value={rep.id}>
+                  {rep.shortName || rep.name}
+                </option>
+              ))}
+              <option value="UNASSIGNED">Chưa phân công</option>
+            </select>
+
+            {/* 4. Trạng thái */}
+            <select
+              value={selectedStatus}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              aria-label="Lọc theo trạng thái hoạt động"
+              className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
+            >
+              <option value="ALL">Tất cả trạng thái</option>
+              <option value="ACTIVE">Đang hoạt động</option>
+              <option value="LOCKED">Tạm khóa giao dịch</option>
+              <option value="INACTIVE">Ngừng hoạt động</option>
+            </select>
+          </div>
         </div>
       </div>
 
