@@ -287,6 +287,10 @@ export const CustomersPage: React.FC = () => {
     [setSearchParams, selectedRegion, selectedGroup, selectedStatus, selectedSalesRep, searchTerm, currentPage]
   );
 
+  // Ref theo dõi request mới nhất để tránh Race Condition khi thao tác lọc hoặc reload nhanh
+  const activeRequestRef = useRef<number>(0);
+  const isInternalFilterChangeRef = useRef<boolean>(false);
+
   // Tải danh sách đại lý từ Server-side API theo đầy đủ bộ lọc (SN-37 & Server-Side Pagination)
   const loadCustomers = useCallback(
     async (params?: {
@@ -298,6 +302,7 @@ export const CustomersPage: React.FC = () => {
       status?: string;
       salesRepId?: string;
     }) => {
+      const currentRequestId = ++activeRequestRef.current;
       try {
         setLoading(true);
         const targetPage = params?.page !== undefined ? params.page : currentPage;
@@ -319,6 +324,11 @@ export const CustomersPage: React.FC = () => {
           status: targetStatus !== 'ALL' ? targetStatus : undefined,
           salesRepId: targetSalesRep !== 'ALL' ? targetSalesRep : undefined,
         });
+
+        // Bỏ qua kết quả cũ nếu đã có request lọc mới hơn được kích hoạt
+        if (currentRequestId !== activeRequestRef.current) {
+          return;
+        }
 
         const dataList = res.data || [];
         setCustomers(dataList);
@@ -347,16 +357,21 @@ export const CustomersPage: React.FC = () => {
           setTotalCurrentDebt(stored.reduce((sum, c) => sum + (c.currentDebt || 0), 0));
         }
       } catch {
-        showToast('error', 'Lỗi tải dữ liệu', 'Không thể nạp danh sách đại lý từ hệ thống.');
+        if (currentRequestId === activeRequestRef.current) {
+          showToast('error', 'Lỗi tải dữ liệu', 'Không thể nạp danh sách đại lý từ hệ thống.');
+        }
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (currentRequestId === activeRequestRef.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [currentPage, pageSize, searchTerm, selectedRegion, selectedGroup, selectedStatus, selectedSalesRep]
   );
 
   const handleRegionChange = (newRegion: string) => {
+    isInternalFilterChangeRef.current = true;
     setSelectedRegion(newRegion);
     setCurrentPage(1);
     updateUrlParams({ region: newRegion, page: 1 });
@@ -364,6 +379,7 @@ export const CustomersPage: React.FC = () => {
   };
 
   const handleGroupChange = (newGroup: string) => {
+    isInternalFilterChangeRef.current = true;
     setSelectedGroup(newGroup);
     setCurrentPage(1);
     updateUrlParams({ group: newGroup, page: 1 });
@@ -371,6 +387,7 @@ export const CustomersPage: React.FC = () => {
   };
 
   const handleStatusChange = (newStatus: string) => {
+    isInternalFilterChangeRef.current = true;
     setSelectedStatus(newStatus);
     setCurrentPage(1);
     updateUrlParams({ status: newStatus, page: 1 });
@@ -378,6 +395,7 @@ export const CustomersPage: React.FC = () => {
   };
 
   const handleSalesRepChange = (newRep: string) => {
+    isInternalFilterChangeRef.current = true;
     setSelectedSalesRep(newRep);
     setCurrentPage(1);
     updateUrlParams({ salesRepId: newRep, page: 1 });
@@ -385,12 +403,14 @@ export const CustomersPage: React.FC = () => {
   };
 
   const handlePageChange = (newPage: number) => {
+    isInternalFilterChangeRef.current = true;
     setCurrentPage(newPage);
     updateUrlParams({ page: newPage });
     void loadCustomers({ page: newPage });
   };
 
   const handlePageSizeChange = (newSize: number) => {
+    isInternalFilterChangeRef.current = true;
     setPageSize(newSize);
     setCurrentPage(1);
     updateUrlParams({ page: 1 });
@@ -398,6 +418,7 @@ export const CustomersPage: React.FC = () => {
   };
 
   const handleResetFilters = () => {
+    isInternalFilterChangeRef.current = true;
     setSearchInput('');
     setSearchTerm('');
     setSelectedGroup('ALL');
@@ -475,6 +496,10 @@ export const CustomersPage: React.FC = () => {
     }
 
     if (changed) {
+      if (isInternalFilterChangeRef.current) {
+        isInternalFilterChangeRef.current = false;
+        return;
+      }
       void loadCustomers({
         region: urlRegion,
         customerGroup: urlGroup,
@@ -499,17 +524,15 @@ export const CustomersPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Lắng nghe sự kiện đồng bộ từ Tạo đơn hàng (SN-38) hoặc Tab khác
+  // Lắng nghe sự kiện đồng bộ từ Tab khác (qua storage event của browser)
   useEffect(() => {
     const handleSync = () => {
       void loadCustomers();
     };
 
-    window.addEventListener('loha_customers_updated', handleSync);
     window.addEventListener('storage', handleSync);
 
     return () => {
-      window.removeEventListener('loha_customers_updated', handleSync);
       window.removeEventListener('storage', handleSync);
     };
   }, [loadCustomers]);
@@ -638,18 +661,25 @@ export const CustomersPage: React.FC = () => {
     try {
       setSubmitting(true);
       const newCustomer = await customerService.createCustomer({
-        ...formData,
+        name: formData.name.trim(),
         code: formData.code?.trim() || undefined,
         taxCode: cleanTaxCode,
+        phone: formData.phone.trim(),
+        email: formData.email?.trim() || undefined,
+        address: formData.address.trim(),
+        region: formData.region || 'Miền Nam',
+        customerGroup: formData.customerGroup || 'AGENT_LEVEL_2',
         creditLimit: Number(formData.creditLimit) || 50000000,
         maxDebtDays: Number(formData.maxDebtDays) || 30,
         salesRepId: formData.salesRepId || undefined,
+        deliveryPointName: formData.deliveryPointName?.trim() || undefined,
+        receiverName: formData.receiverName?.trim() || undefined,
       });
 
       showToast(
         'success',
         'Thêm đại lý thành công',
-        `Đại lý "${newCustomer.name}" đã được tạo và đồng bộ ngay vào hệ thống!`
+        `Đại lý "${newCustomer.name}" (${newCustomer.code}) đã được tạo và lưu thành công!`
       );
 
       // Đóng modal và reset form

@@ -424,40 +424,56 @@ export function filterDemoCustomers(params: CustomerFilterParams = {}): Paginate
 
 export const customerService = {
   async createCustomer(payload: CreateCustomerPayload): Promise<Customer> {
-    const existingList = getStoredCustomers();
+    const cleanPayload: CreateCustomerPayload = {
+      ...payload,
+      code: payload.code?.trim() || undefined,
+      email: payload.email?.trim() || undefined,
+      taxCode: payload.taxCode?.trim(),
+      salesRepId: payload.salesRepId || undefined,
+      deliveryPointName: payload.deliveryPointName?.trim() || undefined,
+      receiverName: payload.receiverName?.trim() || undefined,
+    };
 
     try {
-      const res = await apiClient.post<Customer>('/customers', payload);
+      const res = await apiClient.post<Customer>('/customers', cleanPayload);
       if (res.data) {
+        const existingList = getStoredCustomers();
         saveStoredCustomers([res.data, ...existingList.filter((c) => c.id !== res.data.id)]);
       }
       return res.data;
-    } catch {
+    } catch (err: unknown) {
+      const axiosErr = err as any;
+      if (axiosErr?.response?.data) {
+        throw err;
+      }
+
+      // Chỉ fallback khi hoàn toàn mất mạng / offline
+      const existingList = getStoredCustomers();
       const newCustId = `cust-${Date.now().toString().slice(-6)}`;
       const newCust: Customer = {
         id: newCustId,
-        code: payload.code?.trim() || `DL-${Date.now().toString().slice(-4)}`,
-        name: payload.name.trim(),
-        phone: payload.phone.trim(),
-        address: payload.address.trim(),
-        region: payload.region || 'Miền Nam',
-        customerGroup: payload.customerGroup || 'AGENT_LEVEL_2',
-        creditLimit: Number(payload.creditLimit) || 50000000,
+        code: cleanPayload.code || `DL-${Date.now().toString().slice(-4)}`,
+        name: cleanPayload.name.trim(),
+        phone: cleanPayload.phone.trim(),
+        address: cleanPayload.address.trim(),
+        region: cleanPayload.region || 'Miền Nam',
+        customerGroup: cleanPayload.customerGroup || 'AGENT_LEVEL_2',
+        creditLimit: Number(cleanPayload.creditLimit) || 50000000,
         currentDebt: 0,
-        maxDebtDays: Number(payload.maxDebtDays) || 30,
+        maxDebtDays: Number(cleanPayload.maxDebtDays) || 30,
         status: CustomerStatus.ACTIVE,
-        taxCode: payload.taxCode?.trim(),
-        email: payload.email?.trim(),
-        salesRepId: payload.salesRepId || 'usr-sales-002',
+        taxCode: cleanPayload.taxCode,
+        email: cleanPayload.email,
+        salesRepId: cleanPayload.salesRepId || 'usr-sales-002',
         salesRepName: 'Trần Văn Nam',
         deliveryPoints: [
           {
             id: `dp-${Date.now().toString().slice(-5)}`,
             customerId: newCustId,
-            name: payload.deliveryPointName?.trim() || 'Kho chính / Trụ sở đại lý',
-            address: payload.address.trim(),
-            receiverName: payload.receiverName?.trim() || payload.name.trim(),
-            phone: payload.phone.trim(),
+            name: cleanPayload.deliveryPointName || 'Kho chính / Trụ sở đại lý',
+            address: cleanPayload.address.trim(),
+            receiverName: cleanPayload.receiverName || cleanPayload.name.trim(),
+            phone: cleanPayload.phone.trim(),
             isDefault: true,
           },
         ],
@@ -499,9 +515,6 @@ export const customerService = {
         const total = res.data.length;
         const page = params.page || 1;
         const limit = params.limit || 20;
-        if (res.data.length > 0) {
-          saveStoredCustomers(res.data);
-        }
         return {
           data: res.data,
           total,
@@ -511,19 +524,15 @@ export const customerService = {
         };
       }
 
-      if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
-        saveStoredCustomers(res.data.data);
-      }
-
       return {
-        data: res.data.data || [],
-        total: typeof res.data.total === 'number' ? res.data.total : (res.data.data?.length || 0),
-        page: res.data.page || Number(cleanParams.page) || 1,
-        limit: res.data.limit || Number(cleanParams.limit) || 20,
-        totalPages: res.data.totalPages || 1,
-        activeCount: res.data.activeCount,
-        totalCreditLimit: res.data.totalCreditLimit,
-        totalCurrentDebt: res.data.totalCurrentDebt,
+        data: res.data?.data || [],
+        total: typeof res.data?.total === 'number' ? res.data.total : (res.data?.data?.length || 0),
+        page: res.data?.page || Number(cleanParams.page) || 1,
+        limit: res.data?.limit || Number(cleanParams.limit) || 20,
+        totalPages: res.data?.totalPages || 1,
+        activeCount: res.data?.activeCount,
+        totalCreditLimit: res.data?.totalCreditLimit,
+        totalCurrentDebt: res.data?.totalCurrentDebt,
       };
     } catch {
       return filterDemoCustomers(params);
