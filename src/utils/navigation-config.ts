@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import {
   Users,
   ScrollText,
@@ -374,6 +374,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Lịch sử Nhập / Xuất',
     },
     {
+      id: 'inventory-transfers',
+      name: 'Chuyển kho nội bộ',
+      path: '/inventory/transfers',
+      icon: ArrowLeftRight,
+      category: 'Lịch sử Nhập / Xuất',
+    },
+    {
       id: 'inventory-suppliers',
       name: 'Quản lý nhà cung cấp',
       path: '/inventory/suppliers',
@@ -491,6 +498,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Quản lý kho & vị trí',
       path: '/inventory/warehouses',
       icon: Warehouse,
+      category: 'Nghiệp vụ Kinh doanh & Kho vận',
+    },
+    {
+      id: 'inventory-transfers',
+      name: 'Chuyển kho nội bộ',
+      path: '/inventory/transfers',
+      icon: ArrowLeftRight,
       category: 'Nghiệp vụ Kinh doanh & Kho vận',
     },
     {

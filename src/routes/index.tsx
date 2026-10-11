@@ -31,6 +31,7 @@ import { tokenStorage } from '../utils/token-storage';
 import { DashboardPage } from '../pages/dashboard-page';
 import { AgencyPortalPage } from '../pages/agency-portal-page';
 import { WarehousesPage } from '../pages/warehouses-page';
+import { InternalTransfersPage } from '../pages/inventory/internal-transfers-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -273,20 +274,14 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={['WAREHOUSE_KEEPER']}
+                  allowedRoles={['WAREHOUSE_KEEPER', 'WAREHOUSE_MANAGER', 'ADMIN']}
                   moduleName="Điều chuyển Kho Nội bộ"
                 />
               }
             >
               <Route
                 path="/inventory/transfers"
-                element={
-                  <RoleModulePage
-                    title="Chuyển kho Nội bộ"
-                    subtitle="Điều chuyển hàng hóa giữa các kho chi nhánh, kho trung chuyển và xác nhận nhận hàng"
-                    requiredRole="Thủ kho"
-                  />
-                }
+                element={<InternalTransfersPage />}
               />
             </Route>
 
