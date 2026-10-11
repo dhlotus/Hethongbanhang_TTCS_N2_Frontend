@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { X, Plus, Trash2, Save, AlertCircle, Check, Sparkles } from 'lucide-react';
+import { ConfirmDialog } from './confirm-dialog';
 import type {
   DiscountPolicy,
   CreateDiscountPolicyPayload,
@@ -618,6 +619,34 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+
+  const isDirty = Boolean(
+    formData.name ||
+    (formData.code && (!initialData || formData.code !== initialData.code)) ||
+    formData.tiers.length > 0 ||
+    scopeRows.some((r) => r.items.length > 0)
+  );
+
+  const handleRequestClose = useCallback(() => {
+    if (isDirty) {
+      setShowDiscardConfirm(true);
+      return;
+    }
+    onClose();
+  }, [isDirty, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleRequestClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, handleRequestClose]);
 
   // Tải Master Data cache
   useEffect(() => {
@@ -1056,7 +1085,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleRequestClose}
             className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -1378,7 +1407,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
           <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-200/60">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleRequestClose}
               className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
               disabled={isSubmitting}
             >
@@ -1406,6 +1435,20 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showDiscardConfirm}
+        onCancel={() => setShowDiscardConfirm(false)}
+        onConfirm={() => {
+          setShowDiscardConfirm(false);
+          onClose();
+        }}
+        title="Bỏ thay đổi chính sách?"
+        message="Dữ liệu chính sách chiết khấu và các nấc chiết khấu đang nhập dở chưa được lưu. Bạn có chắc chắn muốn thoát và hủy bỏ thay đổi?"
+        confirmText="Rời khỏi & Bỏ thay đổi"
+        cancelText="Tiếp tục chỉnh sửa"
+        type="warning"
+      />
     </div>
   );
 };

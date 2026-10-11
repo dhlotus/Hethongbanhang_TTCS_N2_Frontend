@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { ConfirmDialog } from './confirm-dialog';
 
 export interface ModalLayoutProps {
   isOpen: boolean;
@@ -22,6 +23,8 @@ export interface ModalLayoutProps {
   bodyAs?: 'div' | 'form';
   onFormSubmit?: (e: React.FormEvent) => void;
   fullScreenOnMobile?: boolean; // Mặc định true: chuyển thành Page Sheet / Full-screen Drawer trên màn hình < 768px
+  isDirty?: boolean; // Khi biểu mẫu có dữ liệu chưa lưu, cảnh báo trước khi thoát
+  dirtyPromptMessage?: string;
 }
 
 /**
@@ -49,16 +52,23 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
   footer,
   banner,
   closeOnEsc = true,
-  closeOnOverlayClick = true,
+  closeOnOverlayClick,
   bodyClassName,
   containerClassName = '',
   ariaLabelledBy = 'modal-title',
   bodyAs = 'div',
   onFormSubmit,
   fullScreenOnMobile = true,
+  isDirty = false,
+  dirtyPromptMessage = 'Biểu mẫu đang có dữ liệu thay đổi chưa lưu. Bạn có chắc chắn muốn thoát mà không lưu?',
 }) => {
   const [isRendered, setIsRendered] = useState(isOpen);
   const [isClosing, setIsClosing] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+
+  // Mặc định không đóng khi click ngoài backdrop đối với modal form để chống mất dữ liệu
+  const shouldCloseOnOverlay =
+    closeOnOverlayClick !== undefined ? closeOnOverlayClick : bodyAs !== 'form';
 
   // Đồng bộ trạng thái mở/đóng và xử lý animation mượt mà
   useEffect(() => {
@@ -85,6 +95,15 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
     }, 220);
   }, [isClosing, onClose]);
 
+  // Kiểm tra isDirty trước khi cho phép đóng
+  const requestClose = useCallback(() => {
+    if (isDirty) {
+      setShowDiscardConfirm(true);
+      return;
+    }
+    handleClose();
+  }, [isDirty, handleClose]);
+
   // Khóa cuộn body trình duyệt để tránh cuộn kép
   useEffect(() => {
     if (isRendered) {
@@ -102,12 +121,12 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        handleClose();
+        requestClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isRendered, isClosing, closeOnEsc, handleClose]);
+  }, [isRendered, isClosing, closeOnEsc, requestClose]);
 
   if (!isRendered || typeof document === 'undefined') return null;
 
@@ -119,8 +138,8 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
       aria-modal="true"
       aria-labelledby={ariaLabelledBy}
       onClick={(e) => {
-        if (closeOnOverlayClick && e.target === e.currentTarget) {
-          handleClose();
+        if (shouldCloseOnOverlay && e.target === e.currentTarget) {
+          requestClose();
         }
       }}
       className={`fixed inset-0 z-50 flex ${
@@ -177,7 +196,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
               {headerExtra}
               <button
                 type="button"
-                onClick={handleClose}
+                onClick={requestClose}
                 aria-label="Đóng popup"
                 className="w-9 h-9 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
               >
@@ -207,6 +226,20 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={showDiscardConfirm}
+        onCancel={() => setShowDiscardConfirm(false)}
+        onConfirm={() => {
+          setShowDiscardConfirm(false);
+          handleClose();
+        }}
+        title="Bỏ thay đổi chưa lưu?"
+        message={dirtyPromptMessage}
+        confirmText="Rời khỏi & Bỏ thay đổi"
+        cancelText="Tiếp tục chỉnh sửa"
+        type="warning"
+      />
     </div>,
     document.body
   );
