@@ -20,6 +20,7 @@ import type {
   ReorderPreviewItem,
   ReorderPreviewResponse,
 } from '../types/order';
+import type { ApproveOrderResponse } from '../types/inventory.types';
 import type { Product } from '../types/products';
 import type { CustomerGroupType } from '../types/price-list';
 
@@ -817,35 +818,57 @@ export const ordersService = {
   },
 
   /**
-   * Hủy đơn hàng đang ở trạng thái Chờ duyệt (SN-49)
+   * Hủy đơn hàng và tự động nhả tồn giữ chỗ vào kho khả dụng (SN-180 & SN-49)
    */
   async cancelOrder(orderId: string, reason?: string): Promise<Order> {
-    try {
-      const res = await apiClient.patch<Order>(`/orders/${orderId}/status`, {
-        status: 'CANCELLED',
-        reason: reason || 'Đại lý hủy đơn',
-      });
-      if (res.data) {
-        // Đồng bộ local
+    const finalReason = reason?.trim() || 'Đại lý hủy đơn';
+    const token = tokenStorage.getAccessToken();
+    const isDemo = token?.startsWith('demo-jwt-');
+
+    if (!isDemo) {
+      try {
+        const res = await apiClient.post<Order | { data: Order }>(`/orders/${orderId}/cancel`, {
+          reason: finalReason,
+        });
+        const updated = (res.data as { data?: Order })?.data ?? (res.data as Order);
         const all = getStoredDemoOrders();
         const idx = all.findIndex((o) => o.id === orderId || o.orderCode === orderId);
         if (idx !== -1) {
-          all[idx] = { ...all[idx], status: 'CANCELLED' };
+          all[idx] = { ...all[idx], ...updated, status: 'CANCELLED', cancelReason: finalReason };
           saveStoredDemoOrders(all);
         }
-        return res.data;
+        return updated;
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'response' in err) {
+          const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+          const errMsg = axiosErr.response?.data?.message;
+          if (errMsg) {
+            throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+          }
+        }
+        throw err;
       }
-    } catch {
-      // API fallback
     }
 
     const all = getStoredDemoOrders();
-    const ord = all.find((o) => o.id === orderId || o.orderCode === orderId);
-    if (!ord) throw new Error('Không tìm thấy đơn hàng cần hủy');
-    ord.status = 'CANCELLED';
-    if (reason) ord.note = ord.note ? `${ord.note} [Lý do hủy: ${reason}]` : `[Lý do hủy: ${reason}]`;
+    const idx = all.findIndex((o) => o.id === orderId || o.orderCode === orderId);
+    if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${orderId}`);
+
+    const existing = all[idx];
+    existing.status = 'CANCELLED';
+    existing.cancelReason = finalReason;
+    existing.reservedUntil = undefined;
+    existing.updatedAt = new Date().toISOString();
+
+    all[idx] = existing;
     saveStoredDemoOrders(all);
-    return ord;
+
+    try {
+      window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: existing }));
+      window.dispatchEvent(new CustomEvent('loha_inventory_updated', { detail: existing }));
+    } catch {}
+
+    return existing;
   },
 
   /**
@@ -864,26 +887,101 @@ export const ordersService = {
    * Luôn gửi trực tiếp lên API để Backend DB xác thực tồn kho, công nợ & lưu đơn
    */
   async createOrder(payload: CreateOrderPayload): Promise<Order> {
-    try {
-      const res = await apiClient.post<Order>('/orders', payload);
-      const all = getStoredDemoOrders();
-      all.unshift(res.data);
-      saveStoredDemoOrders(all);
+    const token = tokenStorage.getAccessToken();
+    const isDemo = token?.startsWith('demo-jwt-');
 
+    if (!isDemo) {
       try {
-        window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: res.data }));
-        window.dispatchEvent(new CustomEvent('loha_inventory_updated', { detail: { lines: res.data.lines } }));
-      } catch { }
+        const res = await apiClient.post<Order>('/orders', payload);
+        const all = getStoredDemoOrders();
+        all.unshift(res.data);
+        saveStoredDemoOrders(all);
 
-      return res.data;
-    } catch (apiError: unknown) {
-      const errObj = apiError as { response?: { data?: { message?: string | string[] } }; message?: string };
-      if (errObj?.response?.data?.message) {
-        const errMsg = errObj.response.data.message;
-        throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+        try {
+          window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: res.data }));
+          window.dispatchEvent(new CustomEvent('loha_inventory_updated', { detail: res.data }));
+        } catch {}
+
+        return res.data;
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'response' in err) {
+          const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+          const errMsg = axiosErr.response?.data?.message;
+          if (errMsg) {
+            throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+          }
+        }
+        throw err;
       }
-      throw new Error(errObj?.message || 'Không thể kết nối máy chủ để lưu đơn hàng');
     }
+
+    // Demo Mode Validation
+    const allStoredOrders = getStoredDemoOrders();
+    const demoReservedMap = new Map<string, number>();
+    const activeStatuses = ['APPROVED', 'PROCESSING'];
+    for (const ord of allStoredOrders) {
+      if (!activeStatuses.includes(ord.status || '')) continue;
+      for (const l of ord.lines || []) {
+        const qty = l.baseQuantity || Math.round((l.quantity || 0) * (l.conversionRate || 1));
+        if (l.productId) demoReservedMap.set(l.productId, (demoReservedMap.get(l.productId) || 0) + qty);
+        if (l.productSku) demoReservedMap.set(l.productSku.toUpperCase(), (demoReservedMap.get(l.productSku.toUpperCase()) || 0) + qty);
+      }
+    }
+
+    for (const line of payload.lines || []) {
+      const prod = MOCK_PRODUCTS.find((p) => p.id === line.productId || p.sku === line.productSku);
+      const reserved = (line.productId ? demoReservedMap.get(line.productId) : 0) ||
+        (line.productSku ? demoReservedMap.get(line.productSku.toUpperCase()) : 0) || 0;
+      const physical = prod?.stockQuantity ?? 0;
+      const available = Math.max(0, physical - reserved);
+
+      const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
+      const maxInUnit = convRate > 1 ? Math.floor(available / convRate) : available;
+      const unitName = line.unit || line.baseUnit || 'sản phẩm';
+      const productName = line.productName || line.productSku;
+
+      if (available <= 0) {
+        throw new Error(
+          `Sản phẩm ${productName}: Hàng trong kho đã hết / Vượt quá tồn khả dụng (Còn lại 0 ${unitName})`,
+        );
+      }
+
+      if (line.quantity > maxInUnit) {
+        throw new Error(
+          `Sản phẩm ${productName} vượt quá tồn khả dụng (Hàng trong kho đã hết / Vượt quá tồn khả dụng: Còn tối đa ${maxInUnit} ${unitName}, Đặt: ${line.quantity})`,
+        );
+      }
+    }
+
+    const lines = (payload.lines || []).map((l) => ({
+      ...l,
+      baseQuantity: Math.round(l.quantity * (l.conversionRate || 1)),
+      lineTotal: l.quantity * l.unitPrice,
+    }));
+    const totals = calcOrderTotals(lines);
+    const newOrder: Order = {
+      id: `ord-${Date.now()}`,
+      orderCode: `DH2610-${Math.floor(10000 + Math.random() * 90000)}`,
+      customerId: payload.customerId,
+      customerName: 'Đại lý Demo',
+      ...totals,
+      lines,
+      deliveryDate: payload.deliveryDate,
+      deliveryPoint: payload.deliveryPoint as Order['deliveryPoint'],
+      note: payload.note,
+      status: payload.status || 'PENDING',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    allStoredOrders.unshift(newOrder);
+    saveStoredDemoOrders(allStoredOrders);
+
+    try {
+      window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: newOrder }));
+      window.dispatchEvent(new CustomEvent('loha_inventory_updated', { detail: newOrder }));
+    } catch {}
+
+    return newOrder;
   },
 
   /**
@@ -1016,44 +1114,93 @@ export const ordersService = {
    * Tìm kiếm sản phẩm để thêm vào dòng hàng
    */
   async searchProducts(query: string = '', limit: number = 100, customerId?: string): Promise<Product[]> {
-    const res = await apiClient.get<{ data: Product[] }>('/products', {
-      params: { search: query || undefined, limit, status: 'ACTIVE' },
-    });
-    const products = res.data.data ?? [];
-    const warehouseId = customerId
-      ? (await warehouseService.getAgencyDefault(customerId)).warehouseId
-      : undefined;
-    const stockRows = await inventoryService.getStockOverview(warehouseId);
-    const availableBySku = new Map(
-      stockRows.map((stock) => [stock.sku.toUpperCase(), stock.stockQuantity]),
-    );
+    const token = tokenStorage.getAccessToken();
+    const isDemo = token?.startsWith('demo-jwt-');
 
-    return products.map((product) => {
-      const knownProduct = MOCK_PRODUCTS.find(
-        (candidate) => candidate.sku.toUpperCase() === product.sku.toUpperCase(),
-      );
-      const hasPackagingUnits = (product.units ?? []).some(
-        (unit) => unit.conversionRate > 1,
-      );
-      const units = hasPackagingUnits
-        ? product.units
-        : knownProduct?.units?.some((unit) => unit.conversionRate > 1)
-          ? knownProduct.units
-          : product.units;
+    if (isDemo) {
+      const allOrders = getStoredDemoOrders();
+      const activeReservedMap = new Map<string, number>();
+      const activeStatuses = ['APPROVED', 'PROCESSING'];
+      for (const ord of allOrders) {
+        if (!activeStatuses.includes(ord.status || '')) continue;
+        for (const line of ord.lines || []) {
+          const qty = line.baseQuantity || Math.round((line.quantity || 0) * (line.conversionRate || 1));
+          if (line.productId) {
+            activeReservedMap.set(line.productId, (activeReservedMap.get(line.productId) || 0) + qty);
+          }
+          if (line.productSku) {
+            const skuKey = line.productSku.toUpperCase();
+            activeReservedMap.set(skuKey, (activeReservedMap.get(skuKey) || 0) + qty);
+          }
+        }
+      }
 
-      // Tồn theo kho của đại lý là nguồn số lượng khả dụng khi tạo đơn.
-      const availableStock = availableBySku.get(product.sku.toUpperCase())
-        ?? product.availableStock
-        ?? product.availableQuantity
-        ?? product.stockQuantity
-        ?? 0;
-      return {
-        ...product,
-        units,
-        availableStock,
-        availableQuantity: availableStock,
-      };
-    });
+      const q = (query || '').toLowerCase().trim();
+      const filtered = MOCK_PRODUCTS.filter(
+        (p: Product) => !q || p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q),
+      ).slice(0, limit);
+
+      return filtered.map((product) => {
+        const physical = product.stockQuantity ?? 0;
+        const reserved = activeReservedMap.get(product.id) || activeReservedMap.get(product.sku.toUpperCase()) || 0;
+        const availableStock = Math.max(0, physical - reserved);
+        return {
+          ...product,
+          availableStock,
+          availableQuantity: availableStock,
+        };
+      });
+    }
+
+    try {
+      const res = await apiClient.get<{ data: Product[] }>('/products', {
+        params: { search: query || undefined, limit, status: 'ACTIVE' },
+      });
+      const products = res.data.data ?? [];
+      let warehouseId: string | undefined = undefined;
+      try {
+        if (customerId) {
+          const defaultWh = await warehouseService.getAgencyDefault(customerId);
+          warehouseId = defaultWh.warehouseId;
+        }
+      } catch {}
+
+      let availableBySku = new Map<string, number>();
+      try {
+        const stockRows = await inventoryService.getStockOverview(warehouseId);
+        availableBySku = new Map(
+          stockRows.map((stock) => [stock.sku.toUpperCase(), (stock as { availableQuantity?: number; stockQuantity?: number }).availableQuantity ?? stock.stockQuantity]),
+        );
+      } catch {}
+
+      return products.map((product) => {
+        const knownProduct = MOCK_PRODUCTS.find(
+          (candidate) => candidate.sku.toUpperCase() === product.sku.toUpperCase(),
+        );
+        const hasPackagingUnits = (product.units ?? []).some(
+          (unit) => unit.conversionRate > 1,
+        );
+        const units = hasPackagingUnits
+          ? product.units
+          : knownProduct?.units?.some((unit) => unit.conversionRate > 1)
+            ? knownProduct.units
+            : product.units;
+
+        const availableStock = availableBySku.get(product.sku.toUpperCase())
+          ?? product.availableStock
+          ?? product.availableQuantity
+          ?? product.stockQuantity
+          ?? 0;
+        return {
+          ...product,
+          units,
+          availableStock,
+          availableQuantity: availableStock,
+        };
+      });
+    } catch {
+      return [];
+    }
   },
 
   /**
@@ -1098,6 +1245,58 @@ export const ordersService = {
       throw new Error(apiError instanceof Error ? apiError.message : 'Không thể kết nối máy chủ để cập nhật đơn hàng');
     }
   },
+
+  /**
+   * Duyệt đơn hàng và kích hoạt giữ chỗ tồn kho 24h (SN-180 - Sprint 5)
+   * Phân quyền: SALES_MANAGER, ADMIN
+   */
+  async approveOrder(orderId: string): Promise<ApproveOrderResponse> {
+    const token = tokenStorage.getAccessToken();
+    const isDemo = token?.startsWith('demo-jwt-');
+
+    if (!isDemo) {
+      try {
+        const res = await apiClient.post<ApproveOrderResponse>(`/orders/${orderId}/approve`);
+        return res.data;
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'response' in err) {
+          const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+          const errMsg = axiosErr.response?.data?.message;
+          if (errMsg) {
+            throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+          }
+        }
+        throw err;
+      }
+    }
+
+    const all = getStoredDemoOrders();
+    const idx = all.findIndex((o) => o.id === orderId);
+    if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${orderId}`);
+
+    const existing = all[idx];
+    const user = tokenStorage.getUser();
+    const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+    existing.status = 'APPROVED';
+    existing.approvedAt = new Date().toISOString();
+    existing.approverId = user?.id || 'mgr-demo';
+    existing.reservedUntil = expiry;
+
+    all[idx] = existing;
+    saveStoredDemoOrders(all);
+
+    return {
+      success: true,
+      message: 'Đã duyệt đơn và kích hoạt giữ chỗ tồn kho 24 giờ thành công',
+      orderId,
+      status: 'APPROVED',
+      reservedUntil: expiry,
+      itemsReserved: existing.lines?.length || 0,
+    };
+  },
+
+
 
   /**
    * Lấy ID đại lý hiện tại của tài khoản đang đăng nhập (SN-170: Chỉ thấy đơn của chính mình)
@@ -1310,7 +1509,7 @@ export const ordersService = {
     // Lọc các mặt hàng được chọn
     let targetItems = preview.availableItems;
     if (payload.selectedLineIds && payload.selectedLineIds.length > 0) {
-      targetItems = targetItems.filter((item) =>
+      targetItems = targetItems.filter((item: ReorderPreviewItem) =>
         payload.selectedLineIds?.includes(item.lineId)
       );
     }
@@ -1327,7 +1526,7 @@ export const ordersService = {
       }
     }
 
-    const newLines = targetItems.map((item) => {
+    const newLines = targetItems.map((item: ReorderPreviewItem) => {
       const qty = qtyMap.get(item.productSku.toUpperCase()) || item.quantity;
       return {
         productId: item.productId,

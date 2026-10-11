@@ -13,10 +13,13 @@ import { UsersPage } from '../pages/users-page';
 import { AuditLogsPage } from '../pages/audit-logs-page';
 import { ProfilePage } from '../pages/profile-page';
 import { OrdersPage } from '../pages/orders-page';
+import { StockListPage } from '../pages/inventory/stock-list-page';
 import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
 import { CustomersPage } from '../pages/customers-page';
 import { InventoryStockPage } from '../pages/inventory-stock-page';
 import { InventoryAuditsPage } from '../pages/inventory-audits-page';
+import { InventoryReceiptsPage } from '../pages/inventory-receipts-page';
+import { CreateInventoryReceiptPage } from '../pages/create-inventory-receipt-page';
 import { PortalOrdersPage } from '../pages/portal-orders-page';
 import { DashboardPage } from '../pages/dashboard-page';
 import { AgencyPortalPage } from '../pages/agency-portal-page';
@@ -215,6 +218,8 @@ export const AppRoutes: React.FC = () => {
               }
             >
               <Route path="/inventory/stock" element={<InventoryStockPage />} />
+              <Route path="/inventory/stock-list" element={<StockListPage />} />
+              <Route path="/inventory/stocks" element={<StockListPage />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
@@ -247,13 +252,11 @@ export const AppRoutes: React.FC = () => {
             >
               <Route
                 path="/inventory/receipts"
-                element={
-                  <RoleModulePage
-                    title="Nhập kho Hàng hóa & Nhà cung cấp"
-                    subtitle="Tạo và quản lý phiếu nhập kho, kiểm tra quy cách đóng gói và nhập thông tin số lô HSD"
-                    requiredRole="Nhân viên kho / Quản lý kho"
-                  />
-                }
+                element={<InventoryReceiptsPage />}
+              />
+              <Route
+                path="/inventory/receipts/create"
+                element={<CreateInventoryReceiptPage />}
               />
               <Route
                 path="/inventory/issues"
