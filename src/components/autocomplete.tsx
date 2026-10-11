@@ -21,14 +21,17 @@ export interface AutocompleteProps {
   disabled?: boolean;
   noResultText?: string;
   className?: string;
+  size?: 'sm' | 'md' | 'lg';
+  openOnFocus?: boolean;
 }
 
 /**
  * Component Autocomplete chuẩn LOHA SALES (UI_GUIDELINES Section 20)
- * - Tự động gợi ý khi gõ
+ * - Tự động gợi ý khi gõ và lọc theo từ khóa
  * - Hỗ trợ điều hướng bàn phím (Arrow Up, Down, Enter, Escape)
  * - Trạng thái: Loading, Suggestions, No Result, Error
  * - Dropdown shadow-md, radius-lg
+ * - Kích thước linh hoạt (size sm cho table cell, md cho form thông thường)
  */
 export const Autocomplete: React.FC<AutocompleteProps> = ({
   label,
@@ -43,6 +46,8 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   disabled = false,
   noResultText = 'Không tìm thấy kết quả phù hợp',
   className = '',
+  size = 'md',
+  openOnFocus = true,
 }) => {
   const [internalValue, setInternalValue] = useState(controlledValue || '');
   const [isOpen, setIsOpen] = useState(false);
@@ -50,7 +55,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const query = controlledValue !== undefined ? controlledValue : internalValue;
+  const query = controlledValue !== undefined ? internalValue : internalValue;
 
   useEffect(() => {
     if (controlledValue !== undefined) {
@@ -58,35 +63,44 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     }
   }, [controlledValue]);
 
-  // Đóng dropdown khi click ra ngoài
+  // Đóng dropdown khi click ra ngoài và khôi phục giá trị hợp lệ nếu có
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
+        if (controlledValue !== undefined) {
+          setInternalValue(controlledValue);
+        }
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [controlledValue]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const nextVal = e.target.value;
-    if (controlledValue === undefined) {
-      setInternalValue(nextVal);
-    }
+    setInternalValue(nextVal);
     onChange?.(nextVal);
     setIsOpen(true);
     setHighlightedIndex(0);
   };
 
   const handleSelectItem = (item: AutocompleteItem) => {
-    if (controlledValue === undefined) {
-      setInternalValue(item.label);
-    }
+    setInternalValue(item.label);
     onChange?.(item.label);
     onSelect?.(item);
     setIsOpen(false);
   };
+
+  // Tự động lọc danh sách items theo query (tìm trong cả label và sublabel)
+  const filteredItems = items.filter((item) => {
+    if (!query.trim()) return true;
+    const q = query.toLowerCase().trim();
+    return (
+      item.label.toLowerCase().includes(q) ||
+      (item.sublabel && item.sublabel.toLowerCase().includes(q))
+    );
+  });
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen) {
@@ -98,17 +112,20 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setHighlightedIndex((prev) => (prev < items.length - 1 ? prev + 1 : 0));
+      setHighlightedIndex((prev) => (prev < filteredItems.length - 1 ? prev + 1 : 0));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : items.length - 1));
+      setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : filteredItems.length - 1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (highlightedIndex >= 0 && items[highlightedIndex]) {
-        handleSelectItem(items[highlightedIndex]);
+      if (highlightedIndex >= 0 && filteredItems[highlightedIndex]) {
+        handleSelectItem(filteredItems[highlightedIndex]);
       }
     } else if (e.key === 'Escape') {
       setIsOpen(false);
+      if (controlledValue !== undefined) {
+        setInternalValue(controlledValue);
+      }
     }
   };
 
@@ -131,6 +148,12 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     );
   };
 
+  const sizeClasses = {
+    sm: 'h-8.5 px-3 py-1.5 text-sm rounded',
+    md: 'h-10.5 sm:h-11 px-4 text-base rounded-md',
+    lg: 'h-12 px-4.5 text-lg rounded-lg',
+  }[size];
+
   return (
     <div ref={containerRef} className={`relative w-full text-left ${className}`}>
       {label && (
@@ -146,17 +169,20 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
           value={query}
           disabled={disabled}
           onChange={handleInputChange}
-          onFocus={() => query && setIsOpen(true)}
+          onFocus={() => {
+            if (openOnFocus) setIsOpen(true);
+            else if (query) setIsOpen(true);
+          }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className={`w-full h-10.5 sm:h-11 px-4 rounded-md text-base bg-white border text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none focus:ring-4 focus:ring-[var(--color-primary-ring)] focus:border-[var(--color-border-focus)] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${
+          className={`w-full ${sizeClasses} bg-white border text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] focus:border-[var(--color-border-focus)] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${
             error
               ? 'border-[var(--color-border-error)] focus:border-[var(--color-border-error)]'
               : 'border-[var(--color-border)] hover:border-[var(--color-border-hover)]'
           }`}
         />
         {isLoading && (
-          <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
             <Loader2 className="w-4 h-4 animate-spin" />
           </div>
         )}
@@ -171,16 +197,16 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
 
       {/* Popover danh sách gợi ý */}
       {isOpen && !disabled && (
-        <div className="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white rounded-lg border border-slate-200 shadow-md py-1">
+        <div className="absolute z-50 left-0 min-w-[280px] max-w-lg mt-1 max-h-60 overflow-y-auto bg-white rounded-lg border border-slate-200 shadow-xl py-1">
           {isLoading ? (
             <div className="p-3 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
               <span>Đang tải gợi ý...</span>
             </div>
-          ) : items.length === 0 ? (
+          ) : filteredItems.length === 0 ? (
             <div className="p-3 text-center text-xs text-slate-400">{noResultText}</div>
           ) : (
-            items.map((item, index) => {
+            filteredItems.map((item, index) => {
               const isSelected = index === highlightedIndex;
               return (
                 <div
