@@ -98,7 +98,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
       item.product = prod;
       if (prod && prod.units && prod.units.length > 0) {
         const baseUnit = prod.units.find(u => u.isBaseUnit) || prod.units[0];
-        item.unitId = baseUnit.id;
+        item.unitId = baseUnit.id || "";
         item.conversionFactor = baseUnit.conversionRate;
       } else {
         item.unitId = "";
