@@ -136,6 +136,21 @@ export const inventoryService = {
 
         const available = Math.max(0, physical - reserved);
 
+        let minStockLevel = 0;
+        try {
+          const rawMin = localStorage.getItem('loha_min_stock_levels');
+          if (rawMin) {
+            const minMap = JSON.parse(rawMin);
+            minStockLevel = Number(minMap[p.sku] ?? minMap[p.sku.toUpperCase()] ?? 0);
+          } else {
+            // Mặc định mẫu cho môi trường demo
+            if (p.sku.toUpperCase() === 'LH-MILK-900G') minStockLevel = 50;
+            if (p.sku.toUpperCase() === 'LH-OLD-COFFEE-CAN') minStockLevel = 20;
+          }
+        } catch {}
+
+        const isBelowMinStock = minStockLevel > 0 && available <= minStockLevel;
+
         return {
           sku: p.sku,
           name: p.name,
@@ -144,12 +159,15 @@ export const inventoryService = {
           availableQuantity: available,
           baseUnit: p.baseUnit,
           warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
+          warehouseId: '11111111-0000-0000-0000-000000000001',
           units: (p.units || []).map((u: ProductUnit) => ({
             unitName: u.unitName,
             conversionRate: u.conversionRate,
             isBaseUnit: Boolean(u.isBaseUnit),
           })),
           activeReservations,
+          minStockLevel,
+          isBelowMinStock,
         };
       });
     }
@@ -168,14 +186,19 @@ export const inventoryService = {
         availableQuantity?: number;
         baseUnit: string;
         warehouse?: string;
+        warehouseId?: string;
         units?: Array<{ unitName: string; conversionRate: number; isBaseUnit: boolean }>;
         activeReservations?: StockReservation[];
+        minStockLevel?: number;
+        isBelowMinStock?: boolean;
       }>>('/inventory/stock');
 
       return (response.data || []).map((item) => {
         const physical = item.physicalQuantity ?? item.physicalStockQuantity ?? item.stockQuantity ?? 0;
         const reserved = item.reservedQuantity ?? 0;
         const available = item.availableQuantity ?? Math.max(0, physical - reserved);
+        const minStockLevel = item.minStockLevel ?? 0;
+        const isBelowMinStock = item.isBelowMinStock ?? (minStockLevel > 0 && available <= minStockLevel);
         return {
           sku: item.sku,
           name: item.name,
@@ -184,8 +207,11 @@ export const inventoryService = {
           availableQuantity: available,
           baseUnit: item.baseUnit,
           warehouse: item.warehouse || 'Kho Tổng Miền Nam - LOHA WH01',
+          warehouseId: item.warehouseId || '11111111-0000-0000-0000-000000000001',
           units: item.units,
           activeReservations: item.activeReservations || [],
+          minStockLevel,
+          isBelowMinStock,
         };
       });
     }
@@ -229,6 +255,35 @@ export const inventoryService = {
     sku: string,
     minStock: number,
   ): Promise<StockBalance> {
+    const token = tokenStorage.getAccessToken();
+    const isDemo = token && token.startsWith('demo-jwt-');
+
+    if (isDemo) {
+      try {
+        const rawMin = localStorage.getItem('loha_min_stock_levels');
+        const minMap = rawMin ? JSON.parse(rawMin) : {};
+        minMap[sku] = minStock;
+        minMap[sku.toUpperCase()] = minStock;
+        localStorage.setItem('loha_min_stock_levels', JSON.stringify(minMap));
+      } catch {}
+
+      const stocks = await this.getStocks();
+      const matched = stocks.find((s) => s.sku.toUpperCase() === sku.toUpperCase());
+      return {
+        sku,
+        name: matched?.name || sku,
+        stockQuantity: matched?.availableQuantity || 0,
+        physicalStockQuantity: matched?.physicalQuantity || 0,
+        reservedQuantity: matched?.reservedQuantity || 0,
+        baseUnit: matched?.baseUnit || 'Cái',
+        units: matched?.units || [],
+        warehouse: matched?.warehouse || 'Kho Tổng Miền Nam',
+        warehouseId: warehouseId || '11111111-0000-0000-0000-000000000001',
+        minStockLevel: minStock,
+        isBelowMinStock: minStock > 0 && (matched?.availableQuantity || 0) <= minStock,
+      };
+    }
+
     try {
       const response = await apiClient.patch<StockBalance>(
         `/inventory/stock-balances/warehouses/${encodeURIComponent(warehouseId)}/sku/${encodeURIComponent(sku)}/min-stock`,
@@ -236,6 +291,15 @@ export const inventoryService = {
       );
       return response.data;
     } catch (err: unknown) {
+      // Fallback local storage nếu demo hoặc offline
+      try {
+        const rawMin = localStorage.getItem('loha_min_stock_levels');
+        const minMap = rawMin ? JSON.parse(rawMin) : {};
+        minMap[sku] = minStock;
+        minMap[sku.toUpperCase()] = minStock;
+        localStorage.setItem('loha_min_stock_levels', JSON.stringify(minMap));
+      } catch {}
+
       if (err && typeof err === 'object' && 'response' in err) {
         const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
         const serverMsg = axiosErr.response?.data?.message;
@@ -252,10 +316,34 @@ export const inventoryService = {
    * GET /inventory/alerts/low-stock
    */
   async getLowStockAlerts(warehouseId?: string): Promise<LowStockAlert[]> {
-    const response = await apiClient.get<LowStockAlert[]>('/inventory/alerts/low-stock', {
-      params: warehouseId ? { warehouseId } : undefined,
-    });
-    return response.data;
+    try {
+      const response = await apiClient.get<LowStockAlert[]>('/inventory/alerts/low-stock', {
+        params: warehouseId ? { warehouseId } : undefined,
+      });
+      return response.data;
+    } catch {
+      // Fallback tính toán từ danh sách sổ tồn
+      const stocks = await this.getStocks();
+      return stocks
+        .filter((s) => s.isBelowMinStock === true && (s.minStockLevel ?? 0) > 0)
+        .map((s) => ({
+          sku: s.sku,
+          name: s.name,
+          stockQuantity: s.availableQuantity,
+          physicalStockQuantity: s.physicalQuantity,
+          physicalQuantity: s.physicalQuantity,
+          reservedQuantity: s.reservedQuantity,
+          availableQuantity: s.availableQuantity,
+          baseUnit: s.baseUnit,
+          units: s.units || [],
+          warehouse: s.warehouse,
+          warehouseId: s.warehouseId || warehouseId || '11111111-0000-0000-0000-000000000001',
+          minStockLevel: s.minStockLevel || 0,
+          isBelowMinStock: true as const,
+          shortage: Math.max(0, (s.minStockLevel || 0) - s.availableQuantity),
+        }))
+        .sort((a, b) => b.shortage - a.shortage);
+    }
   },
 
   /**

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   TrendingUp,
   Package,
@@ -15,6 +15,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { DropdownMenu } from '../components/dropdown-menu';
+import { LowStockAlertsWidget } from '../components/inventory/low-stock-alerts-widget';
 import {
   AreaChart,
   Area,
@@ -411,19 +412,30 @@ export const DashboardPage: React.FC = () => {
         )}
 
         {(isManager || isWarehouse) && (
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
-            <div className="flex items-center">
-              <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-orange-50">
-                <AlertTriangle className="h-6.5 w-6.5 text-orange-500" />
+          <Link
+            to="/inventory/stock?filter=BELOW_MIN_STOCK"
+            className="group block rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs hover:border-orange-300 hover:shadow-md transition-all cursor-pointer"
+            title="Bấm để xem danh sách sản phẩm chạm/dưới mức tồn tối thiểu (SN-183)"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-orange-50 group-hover:bg-orange-100 transition-colors">
+                  <AlertTriangle className="h-6.5 w-6.5 text-orange-500" />
+                </div>
+                <div className="ml-5 w-0 flex-1 min-w-0">
+                  <dl>
+                    <dt className="truncate text-xs sm:text-sm font-medium text-slate-500 group-hover:text-orange-700 transition-colors">
+                      Sản phẩm cảnh báo tồn
+                    </dt>
+                    <dd className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-orange-600 truncate tabular-nums">
+                      {metrics.lowStockAlertCount}
+                    </dd>
+                  </dl>
+                </div>
               </div>
-              <div className="ml-5 w-0 flex-1 min-w-0">
-                <dl>
-                  <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Sản phẩm cảnh báo tồn</dt>
-                  <dd className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-orange-600 truncate tabular-nums">{metrics.lowStockAlertCount}</dd>
-                </dl>
-              </div>
+              <ArrowUpRight className="h-5 w-5 text-slate-400 group-hover:text-orange-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
             </div>
-          </div>
+          </Link>
         )}
       </div>
 
@@ -567,6 +579,33 @@ export const DashboardPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* ── KHỐI CẢNH BÁO TỒN KHO DƯỚI MỨC TỐI THIỂU (SN-183) ── */}
+      {(isManager || isWarehouse) && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                <span>Cảnh báo đứt hàng & Tồn kho tối thiểu</span>
+                <span className="rounded-md bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
+                  SN-183
+                </span>
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                Các mặt hàng có tồn khả dụng chạm ngưỡng cần đặt hàng nhà cung cấp ngay
+              </p>
+            </div>
+            <Link
+              to="/inventory/stock?filter=BELOW_MIN_STOCK"
+              className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
+            >
+              <span>Xem toàn bộ sổ tồn</span>
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <LowStockAlertsWidget />
         </div>
       )}
     </div>

@@ -59,6 +59,7 @@ export interface StockItem {
   availableQuantity: number;
   baseUnit: string;
   warehouse: string;
+  warehouseId?: string;
   units?: StockUnit[];
   activeReservations?: StockReservation[];
   minStockLevel?: number;
