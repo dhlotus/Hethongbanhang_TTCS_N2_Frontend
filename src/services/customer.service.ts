@@ -382,14 +382,18 @@ export function filterDemoCustomers(params: CustomerFilterParams = {}): Paginate
     list = list.filter((c) => c.customerGroup === params.customerGroup);
   }
 
-  if (params.salesRepId) {
-    list = list.filter(
-      (c) =>
-        c.salesRepId === params.salesRepId ||
-        c.salesRep?.id === params.salesRepId ||
-        ((params.salesRepId === 'usr-sales-002' || params.salesRepId === 'usr-sale-01') &&
-          (c.salesRepId === 'usr-sale-01' || c.salesRepId === 'usr-sales-002'))
-    );
+  if (params.salesRepId && params.salesRepId !== 'ALL') {
+    if (params.salesRepId === 'UNASSIGNED') {
+      list = list.filter((c) => !c.salesRepId || c.salesRepId === '' || c.salesRepId === 'unassigned');
+    } else {
+      list = list.filter(
+        (c) =>
+          c.salesRepId === params.salesRepId ||
+          c.salesRep?.id === params.salesRepId ||
+          ((params.salesRepId === 'usr-sales-002' || params.salesRepId === 'usr-sale-01') &&
+            (c.salesRepId === 'usr-sale-01' || c.salesRepId === 'usr-sales-002'))
+      );
+    }
   }
 
   if (params.status && params.status !== 'ALL') {

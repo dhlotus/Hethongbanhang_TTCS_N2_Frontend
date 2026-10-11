@@ -118,6 +118,7 @@ export const CustomersPage: React.FC = () => {
   const initialRegion = parseRegionParam(searchParams.get('region'));
   const initialGroup = parseGroupParam(searchParams.get('group'));
   const initialStatus = parseStatusParam(searchParams.get('status'));
+  const initialSalesRep = searchParams.get('salesRepId') || searchParams.get('rep') || 'ALL';
   const initialSearch = searchParams.get('search') || '';
   const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
 
@@ -132,6 +133,7 @@ export const CustomersPage: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState<string>(initialGroup);
   const [selectedStatus, setSelectedStatus] = useState<string>(initialStatus);
   const [selectedRegion, setSelectedRegion] = useState<string>(initialRegion);
+  const [selectedSalesRep, setSelectedSalesRep] = useState<string>(initialSalesRep);
 
   // Phân trang danh sách đại lý (10 - 20 - 50 dòng/trang) - Server-side
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
@@ -206,6 +208,7 @@ export const CustomersPage: React.FC = () => {
       region?: string;
       group?: string;
       status?: string;
+      salesRepId?: string;
       search?: string;
       page?: number;
     }) => {
@@ -237,6 +240,16 @@ export const CustomersPage: React.FC = () => {
             next.delete('status');
           }
 
+          // Người phụ trách
+          const targetSalesRep =
+            updates.salesRepId !== undefined ? updates.salesRepId : selectedSalesRep;
+          if (targetSalesRep && targetSalesRep !== 'ALL') {
+            next.set('rep', targetSalesRep);
+          } else {
+            next.delete('rep');
+            next.delete('salesRepId');
+          }
+
           // Tìm kiếm
           const targetSearch = updates.search !== undefined ? updates.search : searchTerm;
           const trimmed = targetSearch.trim();
@@ -253,6 +266,7 @@ export const CustomersPage: React.FC = () => {
             next.has('region') ||
             next.has('group') ||
             next.has('status') ||
+            next.has('rep') ||
             next.has('search')
           ) {
             next.set('page', String(targetPage));
@@ -265,7 +279,7 @@ export const CustomersPage: React.FC = () => {
         { replace: true }
       );
     },
-    [setSearchParams, selectedRegion, selectedGroup, selectedStatus, searchTerm, currentPage]
+    [setSearchParams, selectedRegion, selectedGroup, selectedStatus, selectedSalesRep, searchTerm, currentPage]
   );
 
   // Tải danh sách đại lý từ Server-side API theo đầy đủ bộ lọc (SN-37 & Server-Side Pagination)
@@ -277,6 +291,7 @@ export const CustomersPage: React.FC = () => {
       region?: string;
       customerGroup?: string;
       status?: string;
+      salesRepId?: string;
     }) => {
       try {
         setLoading(true);
@@ -287,6 +302,8 @@ export const CustomersPage: React.FC = () => {
         const targetGroup =
           params?.customerGroup !== undefined ? params.customerGroup : selectedGroup;
         const targetStatus = params?.status !== undefined ? params.status : selectedStatus;
+        const targetSalesRep =
+          params?.salesRepId !== undefined ? params.salesRepId : selectedSalesRep;
 
         const res = await customerService.getCustomers({
           page: targetPage,
@@ -295,6 +312,7 @@ export const CustomersPage: React.FC = () => {
           region: targetRegion !== 'ALL' ? targetRegion : undefined,
           customerGroup: targetGroup !== 'ALL' ? targetGroup : undefined,
           status: targetStatus !== 'ALL' ? targetStatus : undefined,
+          salesRepId: targetSalesRep !== 'ALL' ? targetSalesRep : undefined,
         });
 
         setCustomers(res.data || []);
@@ -307,7 +325,7 @@ export const CustomersPage: React.FC = () => {
         setRefreshing(false);
       }
     },
-    [currentPage, pageSize, searchTerm, selectedRegion, selectedGroup, selectedStatus]
+    [currentPage, pageSize, searchTerm, selectedRegion, selectedGroup, selectedStatus, selectedSalesRep]
   );
 
   const handleRegionChange = (newRegion: string) => {
@@ -331,6 +349,13 @@ export const CustomersPage: React.FC = () => {
     void loadCustomers({ status: newStatus, page: 1 });
   };
 
+  const handleSalesRepChange = (newRep: string) => {
+    setSelectedSalesRep(newRep);
+    setCurrentPage(1);
+    updateUrlParams({ salesRepId: newRep, page: 1 });
+    void loadCustomers({ salesRepId: newRep, page: 1 });
+  };
+
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
     updateUrlParams({ page: newPage });
@@ -350,6 +375,7 @@ export const CustomersPage: React.FC = () => {
     setSelectedGroup('ALL');
     setSelectedStatus('ALL');
     setSelectedRegion('ALL');
+    setSelectedSalesRep('ALL');
     setCurrentPage(1);
     setSearchParams({}, { replace: true });
     void loadCustomers({
@@ -358,6 +384,7 @@ export const CustomersPage: React.FC = () => {
       region: 'ALL',
       customerGroup: 'ALL',
       status: 'ALL',
+      salesRepId: 'ALL',
     });
   };
 
@@ -388,6 +415,7 @@ export const CustomersPage: React.FC = () => {
     const urlRegion = parseRegionParam(searchParams.get('region'));
     const urlGroup = parseGroupParam(searchParams.get('group'));
     const urlStatus = parseStatusParam(searchParams.get('status'));
+    const urlSalesRep = searchParams.get('rep') || searchParams.get('salesRepId') || 'ALL';
     const urlSearch = searchParams.get('search') || '';
     const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
 
@@ -402,6 +430,10 @@ export const CustomersPage: React.FC = () => {
     }
     if (urlStatus !== selectedStatus) {
       setSelectedStatus(urlStatus);
+      changed = true;
+    }
+    if (urlSalesRep !== selectedSalesRep) {
+      setSelectedSalesRep(urlSalesRep);
       changed = true;
     }
     if (urlSearch !== searchTerm) {
@@ -419,6 +451,7 @@ export const CustomersPage: React.FC = () => {
         region: urlRegion,
         customerGroup: urlGroup,
         status: urlStatus,
+        salesRepId: urlSalesRep,
         search: urlSearch,
         page: urlPage,
       });
@@ -432,6 +465,7 @@ export const CustomersPage: React.FC = () => {
       region: initialRegion,
       customerGroup: initialGroup,
       status: initialStatus,
+      salesRepId: initialSalesRep !== 'ALL' ? initialSalesRep : undefined,
       page: initialPage,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -902,6 +936,21 @@ export const CustomersPage: React.FC = () => {
             <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
             <option value="WHOLESALE">Bán buôn</option>
             <option value="RETAIL">Bán lẻ</option>
+          </select>
+
+          <select
+            value={selectedSalesRep}
+            onChange={(e) => handleSalesRepChange(e.target.value)}
+            aria-label="Lọc theo người phụ trách"
+            className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+          >
+            <option value="ALL">Tất cả người phụ trách</option>
+            {SALES_REPS.filter((rep) => rep.id).map((rep) => (
+              <option key={rep.id} value={rep.id}>
+                {rep.name}
+              </option>
+            ))}
+            <option value="UNASSIGNED">Chưa phân công</option>
           </select>
 
           <select
