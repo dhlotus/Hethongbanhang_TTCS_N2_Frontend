@@ -10,6 +10,7 @@ import {
   type UpdateDeliveryPointPayload,
   type CreateCustomerPayload,
 } from '../types/customer.types';
+import { matchesSearchTerm, removeVietnameseTones } from '../utils/vietnamese';
 
 export const DEMO_CUSTOMERS_DATA: Customer[] = [
   {
@@ -353,16 +354,28 @@ export function filterDemoCustomers(params: CustomerFilterParams = {}): Paginate
     }
   }
 
-  if (params.search) {
-    const q = params.search.trim().toLowerCase();
+  if (params.search && params.search.trim()) {
+    const q = params.search.trim();
     list = list.filter(
       (c) =>
-        c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) || c.phone.includes(q)
+        matchesSearchTerm(c.code, q) ||
+        matchesSearchTerm(c.name, q) ||
+        matchesSearchTerm(c.phone, q) ||
+        matchesSearchTerm(c.address, q) ||
+        matchesSearchTerm(c.taxCode, q)
     );
   }
 
   if (params.region && params.region !== 'ALL') {
-    list = list.filter((c) => c.region?.toLowerCase() === params.region?.toLowerCase());
+    const reg = params.region.trim();
+    const normReg = removeVietnameseTones(reg);
+    list = list.filter((c) => {
+      if (!c.region) return false;
+      return (
+        c.region.toLowerCase() === reg.toLowerCase() ||
+        removeVietnameseTones(c.region) === normReg
+      );
+    });
   }
 
   if (params.customerGroup && params.customerGroup !== 'ALL') {

@@ -5,6 +5,7 @@ import { tokenStorage } from '../utils/token-storage';
 import { MOCK_PRODUCTS } from './products.service';
 import { customerService, getStoredCustomers } from './customer.service';
 import { orderPricingService } from './order-pricing.service';
+import { matchesSearchTerm } from '../utils/vietnamese';
 import type {
   CreateOrderPayload,
   CustomerDebtStatus,
@@ -677,13 +678,13 @@ export const ordersService = {
         })),
       }));
     } catch {
-      if (!search) return DEMO_CUSTOMERS;
-      const q = search.toLowerCase().trim();
+      if (!search || !search.trim()) return DEMO_CUSTOMERS;
+      const q = search.trim();
       return DEMO_CUSTOMERS.filter(
         (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.code.toLowerCase().includes(q) ||
-          (c.phone && c.phone.includes(q))
+          matchesSearchTerm(c.name, q) ||
+          matchesSearchTerm(c.code, q) ||
+          matchesSearchTerm(c.phone, q)
       );
     }
   },
