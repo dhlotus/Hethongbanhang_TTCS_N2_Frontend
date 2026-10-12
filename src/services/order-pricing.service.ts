@@ -39,16 +39,18 @@ export const orderPricingService = {
   },
 
   async calculateDiscount(
-    product: Pick<Product, 'id' | 'sku'> & { categoryId?: string; category?: string },
+    product: Pick<Product, 'id' | 'sku'> & { name?: string; categoryId?: string; category?: string },
     baseQuantity: number,
   ): Promise<number> {
     const categoryId = product.categoryId || product.category || '';
+    const productName = (product as { name?: string }).name;
     try {
       const response = await apiClient.post<{ discount: number }>(
         '/discount-policies/calculate',
         {
           productId: product.id,
           productSku: product.sku,
+          productName,
           categoryId,
           quantity: baseQuantity,
         },
@@ -61,6 +63,7 @@ export const orderPricingService = {
           {
             productId: product.id,
             productSku: product.sku,
+            productName,
             categoryId,
             quantity: baseQuantity,
           },
@@ -73,7 +76,7 @@ export const orderPricingService = {
             './discount-policies.service'
           );
           const policies = await discountPoliciesService.getPolicies();
-          return localCalc(policies, product.sku || product.id, categoryId, baseQuantity, product.sku);
+          return localCalc(policies, product.sku || product.id, categoryId, baseQuantity, product.sku, productName);
         } catch {
           throw new Error(getApiErrorMessage(error) || 'Không thể tính chiết khấu từ hệ thống');
         }
