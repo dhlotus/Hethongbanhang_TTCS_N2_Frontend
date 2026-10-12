@@ -13,6 +13,10 @@ import {
   ArrowDownRight,
   ChevronDown,
   CheckCircle2,
+  Clock,
+  CalendarDays,
+  Check,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { DropdownMenu } from '../components/dropdown-menu';
 import { LowStockAlertsWidget } from '../components/inventory/low-stock-alerts-widget';
@@ -40,7 +44,7 @@ const formatCurrency = (val: number): string => {
 
 import { getStoredUser } from '../utils/navigation';
 
-const VALID_RANGES = ['today', 'this_month', 'this_quarter', 'custom'] as const;
+const VALID_RANGES = ['today', 'this_month', 'custom'] as const;
 type TimeRangeType = (typeof VALID_RANGES)[number];
 
 interface DashboardMetrics {
@@ -246,8 +250,6 @@ export const DashboardPage: React.FC = () => {
                 ? `Hôm nay (${new Date().toLocaleDateString('vi-VN')})`
                 : timeRange === 'this_month'
                 ? `Tháng ${new Date().getMonth() + 1}/${new Date().getFullYear()}`
-                : timeRange === 'this_quarter'
-                ? `Quý ${Math.floor(new Date().getMonth() / 3) + 1}/${new Date().getFullYear()}`
                 : startDate && endDate 
                 ? `${startDate} → ${endDate}`
                 : 'Tùy chỉnh khoảng ngày'}
@@ -288,23 +290,79 @@ export const DashboardPage: React.FC = () => {
           )}
 
           <DropdownMenu
+            menuClassName="w-72 p-2 shadow-2xl border-slate-200/90 rounded-2xl"
             trigger={
               <button
                 type="button"
-                className="inline-flex items-center gap-2 bg-white rounded-xl border border-slate-200/90 shadow-2xs px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer active:scale-95"
+                className="inline-flex items-center gap-2.5 bg-white rounded-xl border border-slate-200/90 shadow-2xs px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 transition-all cursor-pointer active:scale-95"
               >
                 <Calendar className="h-4 w-4 text-indigo-600" />
                 <span>
-                  {timeRange === 'today' ? 'Hôm nay' : timeRange === 'this_month' ? 'Tháng này' : timeRange === 'this_quarter' ? 'Quý này' : 'Tùy chỉnh ngày'}
+                  {timeRange === 'today' ? 'Hôm nay' : timeRange === 'this_month' ? 'Tháng này' : 'Tùy chỉnh ngày'}
                 </span>
                 <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
               </button>
             }
             items={[
-              { key: 'today', label: 'Hôm nay', onClick: () => handleTimeRangeChange('today') },
-              { key: 'this_month', label: 'Tháng này', onClick: () => handleTimeRangeChange('this_month') },
-              { key: 'this_quarter', label: 'Quý này', onClick: () => handleTimeRangeChange('this_quarter') },
-              { key: 'custom', label: 'Tùy chỉnh ngày', onClick: () => handleTimeRangeChange('custom') },
+              {
+                key: 'today',
+                label: (
+                  <div className="flex items-center justify-between w-full py-1">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${timeRange === 'today' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col text-left">
+                        <span className={`text-xs sm:text-sm font-semibold ${timeRange === 'today' ? 'text-indigo-600' : 'text-slate-800'}`}>Hôm nay</span>
+                        <span className="text-[11px] text-slate-400 font-normal">Dữ liệu phát sinh trong ngày</span>
+                      </div>
+                    </div>
+                    {timeRange === 'today' && <Check className="w-4 h-4 text-indigo-600 shrink-0 ml-2" />}
+                  </div>
+                ),
+                onClick: () => handleTimeRangeChange('today'),
+              },
+              {
+                key: 'this_month',
+                label: (
+                  <div className="flex items-center justify-between w-full py-1">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${timeRange === 'this_month' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                        <CalendarDays className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col text-left">
+                        <span className={`text-xs sm:text-sm font-semibold ${timeRange === 'this_month' ? 'text-indigo-600' : 'text-slate-800'}`}>Tháng này</span>
+                        <span className="text-[11px] text-slate-400 font-normal">Tháng {new Date().getMonth() + 1}/{new Date().getFullYear()}</span>
+                      </div>
+                    </div>
+                    {timeRange === 'this_month' && <Check className="w-4 h-4 text-indigo-600 shrink-0 ml-2" />}
+                  </div>
+                ),
+                onClick: () => handleTimeRangeChange('this_month'),
+              },
+              {
+                key: 'div-custom',
+                divider: true,
+                label: '',
+              },
+              {
+                key: 'custom',
+                label: (
+                  <div className="flex items-center justify-between w-full py-1">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${timeRange === 'custom' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                        <SlidersHorizontal className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col text-left">
+                        <span className={`text-xs sm:text-sm font-semibold ${timeRange === 'custom' ? 'text-indigo-600' : 'text-slate-800'}`}>Tùy chỉnh ngày</span>
+                        <span className="text-[11px] text-slate-400 font-normal">Chọn khoảng ngày tự do</span>
+                      </div>
+                    </div>
+                    {timeRange === 'custom' && <Check className="w-4 h-4 text-indigo-600 shrink-0 ml-2" />}
+                  </div>
+                ),
+                onClick: () => handleTimeRangeChange('custom'),
+              },
             ]}
           />
 
