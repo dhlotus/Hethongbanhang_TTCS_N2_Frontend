@@ -653,7 +653,18 @@ export const ordersService = {
       });
 
       const list = res?.data || [];
-      return list.map((c) => ({
+      // Lọc chỉ giữ các đại lý bán buôn (loại bỏ điểm bán lẻ nội bộ RETAIL và showroom/kiosk)
+      const validAgencies = list.filter((c) => {
+        const isRetailShowroom =
+          c.customerGroup === 'RETAIL' ||
+          (c.code && /^DL-001[1-5]$/i.test(c.code)) ||
+          c.name?.toLowerCase().includes('showroom') ||
+          c.name?.toLowerCase().includes('kiosk') ||
+          c.name?.toLowerCase().includes('trung tâm trải nghiệm');
+        return !isRetailShowroom;
+      });
+
+      return validAgencies.map((c) => ({
         id: c.id,
         code: c.code,
         name: c.name,
@@ -678,9 +689,19 @@ export const ordersService = {
         })),
       }));
     } catch {
-      if (!search || !search.trim()) return DEMO_CUSTOMERS;
+      const validDemos = DEMO_CUSTOMERS.filter((c) => {
+        const isRetailShowroom =
+          c.group === 'RETAIL' ||
+          (c.code && /^DL-001[1-5]$/i.test(c.code)) ||
+          c.name?.toLowerCase().includes('showroom') ||
+          c.name?.toLowerCase().includes('kiosk') ||
+          c.name?.toLowerCase().includes('trung tâm trải nghiệm');
+        return !isRetailShowroom;
+      });
+
+      if (!search || !search.trim()) return validDemos;
       const q = search.trim();
-      return DEMO_CUSTOMERS.filter(
+      return validDemos.filter(
         (c) =>
           matchesSearchTerm(c.name, q) ||
           matchesSearchTerm(c.code, q) ||

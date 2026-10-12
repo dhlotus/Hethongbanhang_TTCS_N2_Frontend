@@ -2414,29 +2414,51 @@ export const OrdersPage: React.FC = () => {
   // Kế toán, Quản lý kho, Thủ kho, Quản lý kinh doanh và Admin đều có quyền xem đơn toàn công ty
   const canViewAllRep = isAdmin || isSalesManager || isAccountant || isWarehouse;
 
-  // Tải danh sách đại lý cho dropdown bộ lọc
+  // Tải danh sách đại lý cho dropdown bộ lọc (loại trừ các điểm bán lẻ nội bộ RETAIL, showroom, kiosk)
   useEffect(() => {
     ordersService.getCustomers().then((list) => {
       if (Array.isArray(list)) {
-        setCustomerOptions(list.map((c) => ({ id: c.id, name: c.name, code: c.code })));
+        const validAgencies = list.filter((c) => {
+          const isRetailShowroom =
+            c.group === 'RETAIL' ||
+            (c.code && /^DL-001[1-5]$/i.test(c.code)) ||
+            c.name?.toLowerCase().includes('showroom') ||
+            c.name?.toLowerCase().includes('kiosk') ||
+            c.name?.toLowerCase().includes('trung tâm trải nghiệm');
+          return !isRetailShowroom;
+        });
+        setCustomerOptions(validAgencies.map((c) => ({ id: c.id, name: c.name, code: c.code })));
       }
     }).catch(() => {});
   }, []);
 
   // Tải danh sách nhân viên kinh doanh cho dropdown bộ lọc
   useEffect(() => {
-    const defaultReps = [
-      { id: 'usr-sales-001', name: 'Nguyễn Văn An (NVKD)' },
-      { id: 'usr-sales-002', name: 'Trần Văn Nam (NVKD)' },
-      { id: 'usr-sales-003', name: 'Lê Hoàng Trưởng Phòng (QLKD)' },
-      { id: 'usr-sales-004', name: 'Phạm Minh Đức (NVKD)' },
+    const standardSalesReps = [
+      { id: 'usr-sales-002', name: 'Trần Văn Nam (Kinh doanh Miền Bắc)' },
+      { id: 'usr-sale-01', name: 'Trần Văn Long (Kinh doanh Miền Nam)' },
+      { id: 'usr-sale-02', name: 'Nguyễn Thị Hằng (Kinh doanh Miền Nam)' },
+      { id: 'usr-sale-03', name: 'Phạm Minh Tuấn (Kinh doanh Miền Bắc)' },
+      { id: 'usr-salesmgr-003', name: 'Lê Hoàng (Quản lý Kinh doanh)' },
     ];
-    setSalesRepOptions(defaultReps);
+    setSalesRepOptions(standardSalesReps);
 
-    usersService.getUsers({ limit: 50 }).then((res) => {
+    usersService.getUsers({ limit: 100 }).then((res) => {
       if (res?.data && res.data.length > 0) {
         const reps = res.data
-          .filter((u) => u.roles?.includes('SALES_REP') || u.roles?.includes('SALES_MANAGER'))
+          .filter((u) => {
+            const isSales = u.roles?.includes('SALES_REP') || u.roles?.includes('SALES_MANAGER');
+            if (!isSales) return false;
+            // Bỏ các nhân viên mock/test không đúng (VD: "Nguyễn Văn Nhân Viên 1..50", "Vũ Văn Bảy", "Nguyễn Văn Một", "Nguyen Van A")
+            const isMockEmployee =
+              /Nhân Viên \d+/i.test(u.fullName) ||
+              /nguyen van a/i.test(u.fullName) ||
+              /vũ văn bảy/i.test(u.fullName) ||
+              /nguyễn văn một/i.test(u.fullName) ||
+              u.username?.startsWith('employee_') ||
+              u.username?.startsWith('test_');
+            return !isMockEmployee;
+          })
           .map((u) => ({
             id: u.id,
             name: `${u.fullName} (${u.roles?.includes('SALES_MANAGER') ? 'QLKD' : 'NVKD'})`,
@@ -2886,7 +2908,7 @@ export const OrdersPage: React.FC = () => {
               >
                 {STATUS_TABS.map((tab) => (
                   <option key={tab.key} value={tab.key}>
-                    {tab.key === 'ALL' ? '📋 Tất cả trạng thái' : `● ${tab.label}`}
+                    {tab.key === 'ALL' ? 'Tất cả trạng thái' : tab.label}
                   </option>
                 ))}
               </select>
@@ -2898,7 +2920,7 @@ export const OrdersPage: React.FC = () => {
                 aria-label="Lọc theo đại lý"
                 className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer shadow-2xs truncate"
               >
-                <option value="ALL">🏢 Tất cả đại lý</option>
+                <option value="ALL">Tất cả đại lý</option>
                 {customerOptions.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} {c.code ? `(${c.code})` : ''}
@@ -2921,14 +2943,14 @@ export const OrdersPage: React.FC = () => {
               >
                 {!canViewAllRep ? (
                   <option value={user?.id || user?.fullName || 'CURRENT_USER'}>
-                    👤 {user?.fullName || user?.username || 'Tôi (NVKD)'}
+                    {user?.fullName || user?.username || 'Tôi (NVKD)'}
                   </option>
                 ) : (
                   <>
-                    <option value="ALL">👥 Tất cả NVKD</option>
+                    <option value="ALL">Tất cả NVKD</option>
                     {salesRepOptions.map((rep) => (
                       <option key={rep.id} value={rep.id}>
-                        👤 {rep.name}
+                        {rep.name}
                       </option>
                     ))}
                   </>
@@ -2942,12 +2964,10 @@ export const OrdersPage: React.FC = () => {
                 aria-label="Lọc theo khu vực"
                 className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer shadow-2xs"
               >
-                <option value="ALL">📍 Tất cả khu vực</option>
+                <option value="ALL">Tất cả khu vực</option>
                 <option value="Miền Bắc">Miền Bắc</option>
                 <option value="Miền Trung">Miền Trung</option>
                 <option value="Miền Nam">Miền Nam</option>
-                <option value="Đông Nam Bộ">Đông Nam Bộ</option>
-                <option value="Tây Nam Bộ">Tây Nam Bộ</option>
               </select>
             </div>
 
