@@ -2,10 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { X, CreditCard, AlertCircle, Check, ShieldAlert } from 'lucide-react';
 import type { CreditLimit, UpdateCreditLimitPayload } from '../../types/credit-limit.type';
 import { PaymentTerm } from '../../types/credit-limit.type';
+import type { Customer } from '../../types/customer.types';
+
+export type EditableAgencyItem =
+  | CreditLimit
+  | Customer
+  | {
+      id: string;
+      agencyId?: string;
+      agencyCode?: string;
+      agencyName?: string;
+      customerId?: string;
+      customerCode?: string;
+      customerName?: string;
+      name?: string;
+      code?: string;
+      creditLimit: number;
+      maxDebtDays?: number;
+      currentDebt?: number;
+      paymentTerms?: string;
+      temporaryCreditLimit?: number;
+    };
 
 interface UpdateLimitModalProps {
   isOpen: boolean;
-  item: CreditLimit | null;
+  item: EditableAgencyItem | null;
   onClose: () => void;
   onSubmit: (agencyId: string, payload: UpdateCreditLimitPayload) => Promise<void>;
   loading?: boolean;
@@ -35,7 +56,7 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
 
   useEffect(() => {
     if (item) {
-      setCreditLimitStr(formatVND(item.creditLimit));
+      setCreditLimitStr(formatVND(item.creditLimit || 0));
       setMaxDebtDays(item.maxDebtDays || 30);
       setPaymentTerms(item.paymentTerms || PaymentTerm.NET_30);
       setTemporaryCreditLimitStr(formatVND(item.temporaryCreditLimit || 0));
@@ -46,6 +67,22 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
 
   if (!isOpen || !item) return null;
 
+  const displayName =
+    ('agencyName' in item && item.agencyName) ||
+    ('customerName' in item && item.customerName) ||
+    ('name' in item && item.name) ||
+    'Đại lý';
+  const displayCode =
+    ('agencyCode' in item && item.agencyCode) ||
+    ('customerCode' in item && item.customerCode) ||
+    ('code' in item && item.code) ||
+    '';
+  const agencyId =
+    ('agencyId' in item && item.agencyId) ||
+    ('customerId' in item && item.customerId) ||
+    item.id;
+  const currentDebt = item.currentDebt || 0;
+
   const handleMoneyChange = (raw: string, setter: (val: string) => void) => {
     const numericOnly = raw.replace(/\D/g, '');
     const num = Number(numericOnly || 0);
@@ -55,12 +92,12 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
   const parsedCreditLimit = Number(creditLimitStr.replace(/\D/g, '') || 0);
   const parsedTempLimit = Number(temporaryCreditLimitStr.replace(/\D/g, '') || 0);
   const totalNewEffectiveLimit = parsedCreditLimit + parsedTempLimit;
-  const difference = parsedCreditLimit - item.creditLimit;
+  const difference = parsedCreditLimit - (item.creditLimit || 0);
 
   // Tính tỷ lệ sử dụng mới dựa trên dư nợ hiện tại
   const newUsageRate =
     totalNewEffectiveLimit > 0
-      ? Math.round((item.currentDebt / totalNewEffectiveLimit) * 10000) / 100
+      ? Math.round((currentDebt / totalNewEffectiveLimit) * 10000) / 100
       : 100;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,7 +131,7 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
     };
 
     try {
-      await onSubmit(item.agencyId || item.id, payload);
+      await onSubmit(agencyId, payload);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Đã có lỗi xảy ra khi lưu dữ liệu.');
     }
@@ -112,8 +149,8 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
             <div>
               <h3 className="text-lg font-bold text-slate-900">Cập Nhật Hạn Mức Công Nợ (SN-34)</h3>
               <p className="text-xs text-slate-500">
-                Đại lý: <strong className="text-slate-700">{item.agencyName}</strong> (
-                {item.agencyCode})
+                Đại lý: <strong className="text-slate-700">{displayName}</strong>
+                {displayCode ? ` (${displayCode})` : ''}
               </p>
             </div>
           </div>
@@ -140,7 +177,7 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
             <div>
               <div className="text-xs text-slate-500 mb-1">Hạn mức tiền hiện hành</div>
               <div className="text-base font-semibold text-slate-700">
-                {formatVND(item.creditLimit)} đ
+                {formatVND(item.creditLimit || 0)} đ
               </div>
             </div>
             <div>
@@ -260,7 +297,7 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
             <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
             <div className="text-xs text-blue-900 leading-relaxed">
               <p>
-                Dư nợ hiện hành của đại lý: <strong>{formatVND(item.currentDebt)} đ</strong>. Với
+                Dư nợ hiện hành của đại lý: <strong>{formatVND(currentDebt)} đ</strong>. Với
                 hạn mức mới, tỷ lệ sử dụng công nợ ước tính là <strong>{newUsageRate}%</strong>.
               </p>
             </div>

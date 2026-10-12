@@ -21,13 +21,18 @@ import {
   Unlock,
   Trash2,
   Tag,
+  Pencil,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
 import { LockAgencyModal } from '../components/lock-agency-modal';
+import { UpdateLimitModal } from '../components/credit-limit/update-limit-modal';
 import { Pagination } from '../components/pagination';
 import { customerService, getStoredCustomers } from '../services/customer.service';
 import type { Customer, CreateCustomerPayload, DeliveryPoint } from '../types/customer.types';
+import type { UpdateCreditLimitPayload } from '../types/credit-limit.type';
+import { Role } from '../types/auth';
+import { tokenStorage } from '../utils/token-storage';
 
 // Danh sách nhân viên kinh doanh phụ trách chuẩn (SN-30 & SN-35)
 const SALES_REPS = [
@@ -157,6 +162,11 @@ export const CustomersPage: React.FC = () => {
   const [lockModalMode, setLockModalMode] = useState<'LOCK' | 'UNLOCK'>('LOCK');
   const [isLockModalOpen, setIsLockModalOpen] = useState<boolean>(false);
   const [isLockSubmitting, setIsLockSubmitting] = useState<boolean>(false);
+
+  // Modal Sửa hạn mức công nợ (SN-34)
+  const [isCreditLimitModalOpen, setIsCreditLimitModalOpen] = useState<boolean>(false);
+  const [selectedCustomerForCreditLimit, setSelectedCustomerForCreditLimit] = useState<Customer | null>(null);
+  const [isCreditLimitSubmitting, setIsCreditLimitSubmitting] = useState<boolean>(false);
 
   // Modal xác nhận Xóa / Ngừng giao dịch đại lý (SN-30 AC4)
   const [deleteModalCustomer, setDeleteModalCustomer] = useState<Customer | null>(null);
@@ -898,6 +908,72 @@ export const CustomersPage: React.FC = () => {
     );
   };
 
+  // Mở modal sửa hạn mức công nợ đại lý (SN-34)
+  const handleOpenCreditLimitModal = (customer: Customer) => {
+    const currentUser = tokenStorage.getUser();
+    const rawRoles: string[] = Array.isArray(currentUser?.roles)
+      ? currentUser.roles
+      : currentUser?.role
+      ? [currentUser.role]
+      : [];
+    const userRoles = rawRoles.map((r) => r.toUpperCase());
+
+    const canEditCreditLimit =
+      userRoles.length === 0 ||
+      userRoles.some((r) =>
+        [
+          Role.ACCOUNTANT,
+          Role.ACCOUNTANT_DEBT,
+          Role.SALES_MANAGER,
+          Role.BUSINESS_MANAGER,
+          Role.ADMIN,
+        ].includes(r as Role) ||
+        ['ACCOUNTANT', 'ACCOUNTANT_DEBT', 'SALES_MANAGER', 'BUSINESS_MANAGER', 'ADMIN'].includes(r)
+      );
+
+    if (!canEditCreditLimit) {
+      showToast(
+        'error',
+        'Từ chối truy cập',
+        'Chỉ Kế toán công nợ (ACCOUNTANT) và Quản lý kinh doanh (SALES_MANAGER) mới có quyền sửa hạn mức công nợ.'
+      );
+      return;
+    }
+
+    setSelectedCustomerForCreditLimit(customer);
+    setIsCreditLimitModalOpen(true);
+  };
+
+  // Xác nhận cập nhật hạn mức công nợ (SN-34)
+  const handleSubmitCreditLimit = async (
+    agencyId: string,
+    payload: UpdateCreditLimitPayload
+  ) => {
+    try {
+      setIsCreditLimitSubmitting(true);
+      await customerService.updateCreditLimit(agencyId, payload);
+      showToast(
+        'success',
+        'Cập nhật hạn mức thành công',
+        `Đã cập nhật hạn mức công nợ cho đại lý "${selectedCustomerForCreditLimit?.name || agencyId}" thành ${payload.creditLimit.toLocaleString('vi-VN')} đ (Thời hạn: ${payload.maxDebtDays} ngày).`
+      );
+      setIsCreditLimitModalOpen(false);
+      setSelectedCustomerForCreditLimit(null);
+      await loadCustomers();
+    } catch (err: unknown) {
+      const errMsg =
+        err && typeof err === 'object' && 'response' in err
+          ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Lỗi cập nhật hạn mức.')
+          : err instanceof Error
+          ? err.message
+          : 'Không thể cập nhật hạn mức công nợ.';
+      showToast('error', 'Lỗi cập nhật hạn mức', String(errMsg));
+      throw err;
+    } finally {
+      setIsCreditLimitSubmitting(false);
+    }
+  };
+
   // Format tiền tệ VNĐ
   const formatVnd = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -1303,6 +1379,17 @@ export const CustomersPage: React.FC = () => {
                               <span>Khóa</span>
                             </button>
                           )}
+
+                          {/* Nút Sửa hạn mức (SN-34) */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCreditLimitModal(customer)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors cursor-pointer"
+                            title="Sửa hạn mức công nợ (SN-34)"
+                          >
+                            <Pencil className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Sửa hạn mức</span>
+                          </button>
 
                           <button
                             type="button"
@@ -1908,6 +1995,18 @@ export const CustomersPage: React.FC = () => {
           </div>,
           document.body
         )}
+
+      {/* ── MODAL SỬA HẠN MỨC CÔNG NỢ (SN-34) ── */}
+      <UpdateLimitModal
+        isOpen={isCreditLimitModalOpen}
+        item={selectedCustomerForCreditLimit}
+        onClose={() => {
+          setIsCreditLimitModalOpen(false);
+          setSelectedCustomerForCreditLimit(null);
+        }}
+        onSubmit={handleSubmitCreditLimit}
+        loading={isCreditLimitSubmitting}
+      />
     </div>
   );
 };

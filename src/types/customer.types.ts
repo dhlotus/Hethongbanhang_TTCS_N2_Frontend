@@ -82,6 +82,8 @@ export interface Customer {
   taxCode?: string;
   email?: string;
   deliveryPoints?: DeliveryPoint[];
+  paymentTerms?: string;
+  temporaryCreditLimit?: number;
   createdAt?: string;
   updatedAt?: string;
 }
