@@ -2422,9 +2422,12 @@ export const OrdersPage: React.FC = () => {
           const isRetailShowroom =
             c.group === 'RETAIL' ||
             (c.code && /^DL-001[1-5]$/i.test(c.code)) ||
+            (c.code && /^DL-003[0-9]$/i.test(c.code)) ||
             c.name?.toLowerCase().includes('showroom') ||
             c.name?.toLowerCase().includes('kiosk') ||
-            c.name?.toLowerCase().includes('trung tâm trải nghiệm');
+            c.name?.toLowerCase().includes('trung tâm trải nghiệm') ||
+            c.name?.toLowerCase().includes('bán lẻ trực tiếp') ||
+            c.name?.toLowerCase().includes('trưng bày & bán lẻ');
           return !isRetailShowroom;
         });
         setCustomerOptions(validAgencies.map((c) => ({ id: c.id, name: c.name, code: c.code })));
@@ -2435,11 +2438,10 @@ export const OrdersPage: React.FC = () => {
   // Tải danh sách nhân viên kinh doanh cho dropdown bộ lọc
   useEffect(() => {
     const standardSalesReps = [
-      { id: 'usr-sales-002', name: 'Trần Văn Nam (Kinh doanh Miền Bắc)' },
-      { id: 'usr-sale-01', name: 'Trần Văn Long (Kinh doanh Miền Nam)' },
-      { id: 'usr-sale-02', name: 'Nguyễn Thị Hằng (Kinh doanh Miền Nam)' },
-      { id: 'usr-sale-03', name: 'Phạm Minh Tuấn (Kinh doanh Miền Bắc)' },
-      { id: 'usr-salesmgr-003', name: 'Lê Hoàng (Quản lý Kinh doanh)' },
+      { id: 'usr-sales-002', name: 'Trần Văn Nam (NVKD)' },
+      { id: 'usr-salesmgr-003', name: 'Lê Hoàng Trưởng Phòng (QLKD)' },
+      { id: 'usr-1791726904698-rsnu8', name: 'Hoàng Kim Chi (NVKD)' },
+      { id: 'usr-1791618915793-grhd0', name: 'Trần Đa Vai Trò (NVKD)' },
     ];
     setSalesRepOptions(standardSalesReps);
 
@@ -2459,10 +2461,14 @@ export const OrdersPage: React.FC = () => {
               u.username?.startsWith('test_');
             return !isMockEmployee;
           })
-          .map((u) => ({
-            id: u.id,
-            name: `${u.fullName} (${u.roles?.includes('SALES_MANAGER') ? 'QLKD' : 'NVKD'})`,
-          }));
+          .map((u) => {
+            const cleanName = u.fullName.replace(/\s*\([^)]*\)/g, '').trim();
+            const roleLabel = u.roles?.includes('SALES_MANAGER') ? 'QLKD' : 'NVKD';
+            return {
+              id: u.id,
+              name: `${cleanName} (${roleLabel})`,
+            };
+          });
         if (reps.length > 0) {
           setSalesRepOptions(reps);
         }
@@ -3068,12 +3074,6 @@ export const OrdersPage: React.FC = () => {
                               {order.orderCode ?? order.id?.slice(-8)}
                             </p>
                             <p className="text-xs text-slate-400">{formatDate(order.createdAt)}</p>
-                            {(order.status === 'PENDING_APPROVAL' || order.status === 'PENDING') && (
-                              <p className="mt-1 max-w-64 truncate text-xs font-medium text-amber-700" title={order.approvalReasons?.join(' · ') || order.warningNote || 'Cần quản lý xét duyệt'}>
-                                Cần duyệt: {order.approvalReasons?.[0] || order.warningNote || 'Chờ quản lý xét duyệt'}
-                                {(order.approvalReasons?.length || 0) > 1 ? ` (+${(order.approvalReasons?.length || 1) - 1})` : ''}
-                              </p>
-                            )}
                           </td>
                           <td className="px-4 py-3">
                             <p className="text-slate-700 font-medium">{order.customerName}</p>
@@ -3280,12 +3280,6 @@ export const OrdersPage: React.FC = () => {
                             {order.salesRepName ? `NVKD: ${order.salesRepName}` : ''}
                             {order.region ? ` · ${order.region}` : ''}
                           </p>
-                          {(order.status === 'PENDING_APPROVAL' || order.status === 'PENDING') && (
-                            <p className="mt-1 line-clamp-2 text-xs font-medium text-amber-700">
-                              Cần duyệt: {order.approvalReasons?.[0] || order.warningNote || 'Chờ quản lý xét duyệt'}
-                              {(order.approvalReasons?.length || 0) > 1 ? ` (+${(order.approvalReasons?.length || 1) - 1})` : ''}
-                            </p>
-                          )}
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-sm font-bold text-slate-900">
