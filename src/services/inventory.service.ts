@@ -83,6 +83,17 @@ const buildMockStockOverview = (): StockOverviewItem[] => {
       status = 'LOW_STOCK';
     }
 
+    let minStockLevel = 10;
+    try {
+      const rawMin = localStorage.getItem('loha_min_stock_levels');
+      if (rawMin) {
+        const minMap = JSON.parse(rawMin);
+        if (minMap[p.sku] !== undefined) minStockLevel = Number(minMap[p.sku]);
+        else if (minMap[p.sku.toUpperCase()] !== undefined) minStockLevel = Number(minMap[p.sku.toUpperCase()]);
+      }
+    } catch {}
+    const isBelowMinStock = minStockLevel > 0 && availableStock <= minStockLevel;
+
     return {
       id: p.id,
       sku: p.sku,
@@ -96,8 +107,8 @@ const buildMockStockOverview = (): StockOverviewItem[] => {
       stockQuantity: physicalStock,
       physicalStockQuantity: physicalStock,
       reservedQuantity: reservedStock,
-      minStockLevel: 10,
-      isBelowMinStock: availableStock <= 10,
+      minStockLevel,
+      isBelowMinStock,
       baseUnit: p.baseUnit,
       units: (p.units || []).map((u: ProductUnit) => ({
         unitName: u.unitName,
@@ -136,12 +147,24 @@ export const inventoryService = {
 
     let items: StockOverviewItem[];
 
+    const cleanParams: Record<string, string> = {};
+    if (params) {
+      if (params.search?.trim()) cleanParams.search = params.search.trim();
+      if (params.category && params.category !== 'ALL') cleanParams.category = params.category;
+      if (params.status && params.status !== 'ALL') cleanParams.status = params.status;
+      const wh = params.warehouseId || params.warehouse;
+      if (wh && wh !== 'ALL') {
+        cleanParams.warehouse = wh;
+        cleanParams.warehouseId = wh;
+      }
+    }
+
     if (token && token.startsWith('demo-jwt-')) {
       items = buildMockStockOverview();
     } else {
       try {
         const response = await apiClient.get<StockOverviewItem[]>('/inventory/stock', {
-          params,
+          params: cleanParams,
         });
         items = response.data;
       } catch {
@@ -166,7 +189,15 @@ export const inventoryService = {
     }
 
     if (params?.status && params.status !== 'ALL') {
-      items = items.filter((i) => i.status === params.status);
+      if (params.status === 'BELOW_MIN_STOCK') {
+        items = items.filter(
+          (i) =>
+            i.isBelowMinStock ||
+            ((i.minStockLevel || 0) > 0 && i.availableStock <= (i.minStockLevel || 0)),
+        );
+      } else {
+        items = items.filter((i) => i.status === params.status);
+      }
     }
 
     const warehouseFilter = params?.warehouseId || params?.warehouse;
