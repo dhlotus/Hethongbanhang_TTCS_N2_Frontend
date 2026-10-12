@@ -34,7 +34,6 @@ import {
   Filter,
   Calendar,
   TrendingUp,
-  UserCheck,
   ChevronDown,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
@@ -2752,36 +2751,10 @@ export const OrdersPage: React.FC = () => {
     <>
       <div className="space-y-6">
 
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <ShoppingCart className="w-6 h-6 text-blue-600" />
-              Quản lý Đơn hàng
-            </h1>
-            <p className="text-sm text-slate-500 mt-2">
-              Tạo và theo dõi đơn hàng bán buôn cho đại lý
-            </p>
-          </div>
-          {(isSalesRep || isSalesManager || isAdmin) && (
-            <div className="flex flex-wrap gap-2">
-              {(isSalesRep || isSalesManager || isAdmin) && (
-                <button
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  Tạo Đơn hàng
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* ── THỐNG KÊ DOANH SỐ & TỔNG TIỀN ĐANG LỌC (SN-46) ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           {/* Card 1: Tổng số đơn hàng */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5">
+          <div className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3.5">
             <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
               <ShoppingCart className="w-5 h-5" />
             </div>
@@ -2789,13 +2762,13 @@ export const OrdersPage: React.FC = () => {
               <p className="text-xs font-medium text-slate-500">Số đơn đang lọc</p>
               <div className="flex items-baseline gap-1.5 mt-0.5">
                 <span className="text-xl font-bold text-slate-900">{total}</span>
-                <span className="text-xs text-slate-400">đơn</span>
+                <span className="text-xs text-slate-400 font-medium">đơn</span>
               </div>
             </div>
           </div>
 
           {/* Card 2: Tổng tiền tập kết quả đang lọc (Tiêu chí then chốt SN-46) */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5 bg-gradient-to-br from-white via-white to-emerald-50/40">
+          <div className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3.5 bg-gradient-to-br from-white via-white to-emerald-50/40">
             <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
               <TrendingUp className="w-5 h-5" />
             </div>
@@ -2811,122 +2784,119 @@ export const OrdersPage: React.FC = () => {
               </p>
             </div>
           </div>
-
-          {/* Card 3: Phân quyền & Phạm vi xem */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5">
-            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-              canViewAllRep ? 'bg-indigo-50 text-indigo-600' : 'bg-amber-50 text-amber-600'
-            }`}>
-              {canViewAllRep ? <Building2 className="w-5 h-5" /> : <UserCheck className="w-5 h-5" />}
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-slate-500">Phạm vi dữ liệu (RBAC)</p>
-              <p className="text-sm font-bold text-slate-900 mt-0.5 truncate">
-                {canViewAllRep ? 'Toàn công ty' : (user?.fullName || user?.username || 'Cá nhân')}
-              </p>
-              <p className="text-[11px] text-slate-400 truncate">
-                {canViewAllRep
-                  ? (isAccountant
-                      ? 'Quyền: Kế toán công nợ'
-                      : isWarehouse
-                        ? 'Quyền: Quản lý kho vận'
-                        : isSalesManager
-                          ? 'Quyền: Quản lý kinh doanh'
-                          : 'Quyền: Quản trị hệ thống')
-                  : 'Chỉ xem đơn do bạn phụ trách'}
-              </p>
-            </div>
-          </div>
-
-          {/* Card 4: Tình trạng bộ lọc */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-11 h-11 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
-                <Filter className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-slate-500">Bộ lọc hiện tại</p>
-                <p className="text-sm font-semibold text-slate-800 mt-0.5 truncate">
-                  {hasActiveFilters ? 'Đang lọc đa tiêu chí' : 'Mặc định (Tất cả)'}
-                </p>
-              </div>
-            </div>
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="text-xs text-blue-600 hover:text-blue-700 font-medium hover:underline inline-flex items-center gap-1 shrink-0"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Đặt lại
-              </button>
-            )}
-          </div>
         </div>
 
-        {/* ── BỘ LỌC ĐA TIÊU CHÍ (SN-46) ── */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3.5 shadow-sm">
-          {/* Hàng 1: Ô tìm kiếm + Date Pickers */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+        {/* ── BỘ LỌC ĐA TIÊU CHÍ & HÀNH ĐỘNG (SN-46) ── */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 space-y-3.5 shadow-xs">
+          {/* Hàng 1: Ô tìm kiếm + Khoảng ngày + Nhóm nút hành động */}
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
             {/* Ô tìm kiếm từ khóa */}
-            <div className="relative md:col-span-6 lg:col-span-6">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <div className="relative flex-1 min-w-[260px]">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               <input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Tìm mã đơn, tên đại lý, mã đại lý, nhân viên..."
-                className="w-full pl-10 pr-9 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50/50 hover:bg-white transition-colors"
+                className="w-full pl-10 pr-9 py-2 text-xs font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-slate-50/60 hover:bg-white focus:bg-white transition-all placeholder-slate-400"
               />
               {searchInput && (
                 <button
                   type="button"
                   onClick={() => setSearchInput('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
+                  title="Xóa từ khóa tìm kiếm"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
-            {/* Từ ngày */}
-            <div className="md:col-span-3 lg:col-span-3 flex items-center gap-2 bg-slate-50/60 border border-slate-200 rounded-xl px-3 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20">
-              <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <label className="block text-[10px] text-slate-400 font-medium leading-none">Từ ngày</label>
+            {/* Từ ngày - Đến ngày */}
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <div className="flex items-center gap-1.5 bg-slate-50/80 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="text-[11px] text-slate-500 whitespace-nowrap">Từ:</span>
                 <input
                   type="date"
                   value={fromDate}
                   onChange={(e) => handleFromDateChange(e.target.value)}
-                  className="w-full text-xs text-slate-700 bg-transparent focus:outline-none cursor-pointer"
+                  className="text-xs text-slate-700 bg-transparent focus:outline-none cursor-pointer"
                 />
               </div>
-            </div>
 
-            {/* Đến ngày */}
-            <div className="md:col-span-3 lg:col-span-3 flex items-center gap-2 bg-slate-50/60 border border-slate-200 rounded-xl px-3 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20">
-              <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <label className="block text-[10px] text-slate-400 font-medium leading-none">Đến ngày</label>
+              <div className="flex items-center gap-1.5 bg-slate-50/80 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="text-[11px] text-slate-500 whitespace-nowrap">Đến:</span>
                 <input
                   type="date"
                   value={toDate}
                   onChange={(e) => handleToDateChange(e.target.value)}
-                  className="w-full text-xs text-slate-700 bg-transparent focus:outline-none cursor-pointer"
+                  className="text-xs text-slate-700 bg-transparent focus:outline-none cursor-pointer"
                 />
               </div>
             </div>
+
+            {/* Cụm nút hành động: Làm mới & Tạo đơn hàng */}
+            <div className="flex items-center gap-2 shrink-0 ml-auto lg:ml-0">
+              <button
+                type="button"
+                onClick={() => setRefreshKey((k) => k + 1)}
+                disabled={loading}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-2xs disabled:opacity-50 cursor-pointer"
+                title="Làm mới danh sách đơn hàng"
+              >
+                <RefreshCw
+                  className={`w-3.5 h-3.5 shrink-0 ${loading ? 'animate-spin text-blue-600' : 'text-slate-500'}`}
+                />
+                <span className="hidden sm:inline">Làm mới</span>
+              </button>
+
+              {(isSalesRep || isSalesManager || isAdmin) && (
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.99] rounded-xl transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                  title="Tạo đơn hàng bán buôn mới"
+                >
+                  <Plus className="w-3.5 h-3.5 shrink-0" />
+                  <span>Tạo Đơn hàng</span>
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Hàng 2: Dropdown Lọc Đại lý, Nhân viên, Khu vực & Nút Reset */}
-          <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-100">
-            {/* Dropdown Đại lý */}
-            <div className="min-w-[180px] flex-1 sm:flex-initial">
+          {/* Hàng 2: Grid 4 Dropdown Bộ lọc (Trạng thái, Đại lý, NVKD, Khu vực) & Nút Reset */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-2.5 border-t border-slate-100">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold shrink-0">
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <span className="hidden sm:inline">Bộ lọc:</span>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 flex-1">
+              {/* 1. Dropdown Trạng thái đơn hàng */}
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value as OrderStatus | 'ALL');
+                  setPage(1);
+                }}
+                aria-label="Lọc theo trạng thái đơn hàng"
+                className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer shadow-2xs"
+              >
+                {STATUS_TABS.map((tab) => (
+                  <option key={tab.key} value={tab.key}>
+                    {tab.key === 'ALL' ? '📋 Tất cả trạng thái' : `● ${tab.label}`}
+                  </option>
+                ))}
+              </select>
+
+              {/* 2. Dropdown Đại lý */}
               <select
                 value={selectedCustomerId}
                 onChange={(e) => handleCustomerChange(e.target.value)}
                 aria-label="Lọc theo đại lý"
-                className="w-full text-xs sm:text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer shadow-2xs truncate"
               >
                 <option value="ALL">🏢 Tất cả đại lý</option>
                 {customerOptions.map((c) => (
@@ -2935,29 +2905,27 @@ export const OrdersPage: React.FC = () => {
                   </option>
                 ))}
               </select>
-            </div>
 
-            {/* Dropdown Nhân viên kinh doanh (Khóa nếu SALES_REP, Mở nếu QLKD / Admin) */}
-            <div className="min-w-[200px] flex-1 sm:flex-initial">
+              {/* 3. Dropdown Nhân viên kinh doanh */}
               <select
                 value={canViewAllRep ? selectedSalesRepId : (user?.id || user?.fullName || 'CURRENT_USER')}
                 onChange={(e) => handleSalesRepChange(e.target.value)}
                 disabled={!canViewAllRep}
                 aria-label="Lọc theo nhân viên kinh doanh"
                 title={!canViewAllRep ? 'Bạn chỉ có quyền xem đơn do mình phụ trách' : 'Lọc theo nhân viên kinh doanh'}
-                className={`w-full text-xs sm:text-sm border rounded-xl px-3 py-2 transition-colors focus:outline-none ${
+                className={`w-full text-xs font-medium border rounded-xl px-3 py-2 transition-all focus:outline-none shadow-2xs truncate ${
                   !canViewAllRep
                     ? 'bg-slate-100 text-slate-500 border-slate-200 cursor-not-allowed opacity-90'
-                    : 'bg-white text-slate-700 border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
+                    : 'bg-slate-50/70 hover:bg-white text-slate-700 border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 cursor-pointer'
                 }`}
               >
                 {!canViewAllRep ? (
                   <option value={user?.id || user?.fullName || 'CURRENT_USER'}>
-                    👤 {user?.fullName || user?.username || 'Tôi (NVKD)'} (Chỉ xem đơn phụ trách)
+                    👤 {user?.fullName || user?.username || 'Tôi (NVKD)'}
                   </option>
                 ) : (
                   <>
-                    <option value="ALL">👥 Tất cả nhân viên kinh doanh</option>
+                    <option value="ALL">👥 Tất cả NVKD</option>
                     {salesRepOptions.map((rep) => (
                       <option key={rep.id} value={rep.id}>
                         👤 {rep.name}
@@ -2966,15 +2934,13 @@ export const OrdersPage: React.FC = () => {
                   </>
                 )}
               </select>
-            </div>
 
-            {/* Dropdown Khu vực */}
-            <div className="min-w-[150px] flex-1 sm:flex-initial">
+              {/* 4. Dropdown Khu vực */}
               <select
                 value={selectedRegion}
                 onChange={(e) => handleRegionChange(e.target.value)}
                 aria-label="Lọc theo khu vực"
-                className="w-full text-xs sm:text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer shadow-2xs"
               >
                 <option value="ALL">📍 Tất cả khu vực</option>
                 <option value="Miền Bắc">Miền Bắc</option>
@@ -2990,33 +2956,13 @@ export const OrdersPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors shrink-0"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-xl transition-all shrink-0 cursor-pointer shadow-2xs"
                 title="Đặt lại toàn bộ tiêu chí lọc"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Xóa bộ lọc</span>
+                <span>Xóa lọc</span>
               </button>
             )}
-          </div>
-
-          {/* Tabs trạng thái — cuộn ngang trên mobile */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin pt-1">
-            {STATUS_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => {
-                  setStatusFilter(tab.key as OrderStatus | 'ALL');
-                  setPage(1);
-                }}
-                className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                  statusFilter === tab.key
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
           </div>
         </div>
 
