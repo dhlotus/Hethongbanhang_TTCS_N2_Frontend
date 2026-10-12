@@ -1114,11 +1114,13 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       });
 
       ordersService.clearDraft(DRAFT_KEY);
+      window.dispatchEvent(new Event('loha_order_created'));
+      window.dispatchEvent(new Event('loha_price_lists_updated'));
 
       if (created.status === 'PENDING_APPROVAL' || created.isCreditLimitExceeded || created.requiresApproval) {
         const approvalReason = created.approvalReasons?.join('; ') ||
           (created.isCreditLimitExceeded ? 'vượt hạn mức công nợ' : 'giá bán dưới giá sàn');
-        showToast('warning', '\u0110ơn hàng ' + created.orderCode + ' đã tạo, cần duyệt: ' + approvalReason + '.');
+        showToast('warning', 'Đơn hàng ' + created.orderCode + ' đã tạo, cần duyệt: ' + approvalReason + '.');
         (editingOrder ? onSaved : onCreated)?.(created);
         handleClose();
       } else if (created.status === 'PENDING_INVENTORY_APPROVAL') {

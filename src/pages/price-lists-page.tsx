@@ -352,6 +352,21 @@ export const PriceListsPage: React.FC = () => {
     }
   }, [loadPriceLists, activeTab]);
 
+  // Lắng nghe sự kiện tạo đơn hoặc cập nhật bảng giá thời gian thực để cập nhật Ràng buộc đơn hàng
+  useEffect(() => {
+    const handleSync = () => {
+      if (activeTab === 'BASE') {
+        void loadPriceLists();
+      }
+    };
+    window.addEventListener('loha_order_created', handleSync);
+    window.addEventListener('loha_price_lists_updated', handleSync);
+    return () => {
+      window.removeEventListener('loha_order_created', handleSync);
+      window.removeEventListener('loha_price_lists_updated', handleSync);
+    };
+  }, [loadPriceLists, activeTab]);
+
   // Thống kê Metrics Header
   const metrics = useMemo(() => {
     const all = priceLists;
