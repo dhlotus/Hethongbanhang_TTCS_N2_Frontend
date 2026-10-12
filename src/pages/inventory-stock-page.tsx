@@ -553,7 +553,7 @@ export const InventoryStockPage: React.FC = () => {
                   Tồn Tối Thiểu
                 </th>
                 <th className="py-4 px-4 text-center">Đơn Vị Quy Đổi</th>
-                <th className="py-4 px-4 text-center">Trạng Thái</th>
+                <th className="py-4 px-4 min-w-[200px]">Mức An Toàn &amp; Trạng Thái</th>
                 <th className="py-4 px-4 text-center">Thao Tác</th>
               </tr>
             </thead>
@@ -605,10 +605,15 @@ export const InventoryStockPage: React.FC = () => {
               ) : (
                 stockItems.map((item) => {
                   const baseUnit = item.baseUnit;
+                  const minStock = item.minStockLevel || 0;
+                  const available = item.availableStock || 0;
+                  const isZero = available <= 0;
+                  const hasMin = minStock > 0;
                   const isBelowMin =
-                    Boolean(item.isBelowMinStock) ||
-                    ((item.minStockLevel || 0) > 0 && item.availableStock <= (item.minStockLevel || 0));
-                  const shortage = Math.max(0, (item.minStockLevel || 0) - item.availableStock);
+                    Boolean(item.isBelowMinStock) || (hasMin && available <= minStock);
+                  const shortage = hasMin ? Math.max(0, minStock - available) : 0;
+                  const ratioToMin = hasMin ? Math.round((available / minStock) * 100) : 0;
+                  const isWarning = hasMin && available > minStock && ratioToMin <= 130;
 
                   return (
                     <tr
@@ -727,29 +732,88 @@ export const InventoryStockPage: React.FC = () => {
                         </button>
                       </td>
 
-                      {/* Trạng thái tồn kho */}
-                      <td className="py-4 px-4 text-center">
-                        {isBelowMin ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-rose-800 bg-rose-100 rounded-full border border-rose-300 ring-1 ring-rose-400/30">
-                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                            Dưới tồn tối thiểu (Hụt {shortage.toLocaleString('vi-VN')} {baseUnit})
-                          </span>
-                        ) : item.status === 'IN_STOCK' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-full border border-emerald-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            Còn hàng
-                          </span>
-                        ) : item.status === 'LOW_STOCK' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 rounded-full border border-amber-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
-                            Sắp hết
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-rose-700 bg-rose-50 rounded-full border border-rose-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                            Hết hàng
-                          </span>
-                        )}
+                      {/* Cột: Mức An Toàn & Trạng Thái Tồn Kho (Stock Safety Health Indicator) */}
+                      <td className="py-4 px-4 min-w-[200px]">
+                        <div className="space-y-1.5">
+                          {/* Hàng 1: Badge tình trạng an toàn & Tỷ lệ % */}
+                          <div className="flex items-center justify-between gap-1.5">
+                            {isZero ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
+                                Hết hàng (Tồn = 0)
+                              </span>
+                            ) : isBelowMin ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 shrink-0">
+                                <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+                                Thiếu {shortage.toLocaleString('vi-VN')} {baseUnit}
+                              </span>
+                            ) : isWarning ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                Tiệm cận min ({ratioToMin}%)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                An toàn {hasMin ? `(${ratioToMin}%)` : ''}
+                              </span>
+                            )}
+
+                            {hasMin && (
+                              <span className="text-[10px] font-semibold text-slate-400">
+                                Min: {minStock.toLocaleString('vi-VN')}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Hàng 2: Thanh đo tiến trình mức độ an toàn (Health Bar) */}
+                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-2xs">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                isZero || isBelowMin
+                                  ? 'bg-rose-500'
+                                  : isWarning
+                                  ? 'bg-amber-500'
+                                  : 'bg-emerald-500'
+                              }`}
+                              style={{
+                                width: isZero
+                                  ? '0%'
+                                  : hasMin
+                                  ? `${Math.min(100, Math.max(8, ratioToMin))}%`
+                                  : '100%',
+                              }}
+                            />
+                          </div>
+
+                          {/* Hàng 3: Chú thích nhanh & Tỷ lệ chuẩn */}
+                          <div className="flex items-center justify-between text-[10px] text-slate-400">
+                            <span>
+                              {isZero
+                                ? 'Đã hết hàng hoàn toàn'
+                                : isBelowMin
+                                ? 'Dưới ngưỡng cần đặt hàng'
+                                : isWarning
+                                ? 'Sắp chạm mức tối thiểu'
+                                : hasMin
+                                ? 'Tồn kho vượt ngưỡng min'
+                                : 'Chưa đặt mức tối thiểu'}
+                            </span>
+                            {hasMin && !isZero && (
+                              <span
+                                className={`font-semibold ${
+                                  isBelowMin
+                                    ? 'text-rose-600'
+                                    : isWarning
+                                    ? 'text-amber-700'
+                                    : 'text-emerald-700'
+                                }`}
+                              >
+                                {ratioToMin}%
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </td>
 
                       {/* Thao tác */}
