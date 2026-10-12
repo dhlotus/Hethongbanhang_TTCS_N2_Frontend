@@ -35,6 +35,7 @@ import {
   Calendar,
   TrendingUp,
   UserCheck,
+  ChevronDown,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ordersService } from '../services/orders.service';
@@ -2362,6 +2363,27 @@ export const OrdersPage: React.FC = () => {
   const [cancellingOrderModal, setCancellingOrderModal] = useState<Order | null>(null);
   const [cancelReasonInput, setCancelReasonInput] = useState<string>('');
   const [isProcessingAction, setIsProcessingAction] = useState<boolean>(false);
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+
+  // Đóng dropdown menu thao tác khi click ra ngoài hoặc nhấn phím Escape
+  useEffect(() => {
+    const handleDocClick = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.order-action-dropdown-container')) {
+        setOpenActionMenuId(null);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpenActionMenuId(null);
+      }
+    };
+    document.addEventListener('click', handleDocClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('click', handleDocClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   const handleReorderSuccess = (_newOrder: Order) => {
     setRefreshKey((key) => key + 1);
@@ -3041,7 +3063,7 @@ export const OrdersPage: React.FC = () => {
           ) : (
             <>
               {/* Desktop Table */}
-              <div className="hidden sm:block overflow-x-auto">
+              <div className="hidden sm:block overflow-x-auto min-h-[360px]">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/70">
@@ -3069,132 +3091,202 @@ export const OrdersPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {orders.map((order) => (
-                      <tr key={order.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3">
-                          <p className="font-medium text-slate-800">
-                            {order.orderCode ?? order.id?.slice(-8)}
-                          </p>
-                          <p className="text-xs text-slate-400">{formatDate(order.createdAt)}</p>
-                          {(order.status === 'PENDING_APPROVAL' || order.status === 'PENDING') && (
-                            <p className="mt-1 max-w-64 truncate text-xs font-medium text-amber-700" title={order.approvalReasons?.join(' · ') || order.warningNote || 'Cần quản lý xét duyệt'}>
-                              Cần duyệt: {order.approvalReasons?.[0] || order.warningNote || 'Chờ quản lý xét duyệt'}
-                              {(order.approvalReasons?.length || 0) > 1 ? ` (+${(order.approvalReasons?.length || 1) - 1})` : ''}
+                    {orders.map((order, idx) => {
+                      const isDropUp =
+                        idx >= Math.max(1, orders.length - 2) ||
+                        (orders.length > 3 && idx >= Math.floor(orders.length / 2));
+                      return (
+                        <tr key={order.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3">
+                            <p className="font-medium text-slate-800">
+                              {order.orderCode ?? order.id?.slice(-8)}
                             </p>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className="text-slate-700 font-medium">{order.customerName}</p>
-                          <p className="text-xs text-slate-400">{order.customerCode}</p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className="text-slate-700 font-medium">{order.salesRepName || '—'}</p>
-                          <p className="text-xs text-slate-400">
-                            {order.region || (order.deliveryPoint?.address?.includes('Hà Nội') ? 'Miền Bắc' : order.deliveryPoint?.address?.includes('Đà Nẵng') ? 'Miền Trung' : 'Miền Nam')}
-                          </p>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">
-                          {formatDate(order.deliveryDate)}
-                        </td>
-                        <td className="px-4 py-3 text-right font-semibold text-slate-800">
-                          {formatCurrency(order.grandTotal)}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <OrderStatusBadge status={order.status} reservedUntil={order.reservedUntil} />
-                          {(order.isShortDelivery ||
-                            order.lines?.some(
-                              (l) => l.deliveredQuantity !== undefined && l.deliveredQuantity < l.quantity,
-                            )) && (
-                            <span className="mt-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                              <AlertTriangle className="w-2.5 h-2.5" /> Giao thiếu
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            {(order.status === 'DRAFT' || order.status === 'RETURNED_FOR_UPDATE') && (
+                            <p className="text-xs text-slate-400">{formatDate(order.createdAt)}</p>
+                            {(order.status === 'PENDING_APPROVAL' || order.status === 'PENDING') && (
+                              <p className="mt-1 max-w-64 truncate text-xs font-medium text-amber-700" title={order.approvalReasons?.join(' · ') || order.warningNote || 'Cần quản lý xét duyệt'}>
+                                Cần duyệt: {order.approvalReasons?.[0] || order.warningNote || 'Chờ quản lý xét duyệt'}
+                                {(order.approvalReasons?.length || 0) > 1 ? ` (+${(order.approvalReasons?.length || 1) - 1})` : ''}
+                              </p>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-slate-700 font-medium">{order.customerName}</p>
+                            <p className="text-xs text-slate-400">{order.customerCode}</p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-slate-700 font-medium">{order.salesRepName || '—'}</p>
+                            <p className="text-xs text-slate-400">
+                              {order.region || (order.deliveryPoint?.address?.includes('Hà Nội') ? 'Miền Bắc' : order.deliveryPoint?.address?.includes('Đà Nẵng') ? 'Miền Trung' : 'Miền Nam')}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3 text-slate-600">
+                            {formatDate(order.deliveryDate)}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-slate-800">
+                            {formatCurrency(order.grandTotal)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <OrderStatusBadge status={order.status} reservedUntil={order.reservedUntil} />
+                            {(order.isShortDelivery ||
+                              order.lines?.some(
+                                (l) => l.deliveredQuantity !== undefined && l.deliveredQuantity < l.quantity,
+                              )) && (
+                              <span className="mt-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                <AlertTriangle className="w-2.5 h-2.5" /> Giao thiếu
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="relative inline-block text-left order-action-dropdown-container">
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setEditingOrder(order);
-                                  setIsCreateModalOpen(true);
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenActionMenuId(openActionMenuId === order.id ? null : (order.id ?? null));
                                 }}
-                                className="w-9 h-9 flex items-center justify-center rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer active:scale-95"
-                                title="Chỉnh sửa / Gõ tiếp đơn nháp"
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none ${
+                                  openActionMenuId === order.id
+                                    ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-xs'
+                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-slate-300'
+                                }`}
+                                title="Thao tác"
                               >
-                                <Edit3 className="w-4 h-4" />
+                                <span>Thao tác</span>
+                                <ChevronDown
+                                  className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${
+                                    openActionMenuId === order.id ? 'rotate-180 text-blue-600' : ''
+                                  }`}
+                                />
                               </button>
-                            )}
-                            {(isAdmin || isSalesManager) &&
-                              (order.status === 'PENDING' ||
-                                order.status === 'PENDING_APPROVAL' ||
-                                order.status === 'DRAFT' ||
-                                order.status === 'PENDING_INVENTORY_APPROVAL') && (
-                                <button
-                                  type="button"
-                                  onClick={() => setApprovingOrderModal(order)}
-                                  className="w-9 h-9 flex items-center justify-center rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer active:scale-95"
-                                  title="Duyệt đơn và giữ chỗ tồn kho 24h (SN-180)"
+
+                              {openActionMenuId === order.id && (
+                                <div
+                                  className={`absolute right-0 ${
+                                    isDropUp ? 'bottom-full mb-1 origin-bottom-right' : 'top-full mt-1 origin-top-right'
+                                  } w-48 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100`}
                                 >
-                                  <CheckCircle2 className="w-4 h-4" />
-                                </button>
+                                  <div className="py-1">
+                                    {/* 1. Xem chi tiết */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenuId(null);
+                                        setViewOrder(order);
+                                      }}
+                                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                    >
+                                      <Eye className="w-4 h-4 text-slate-400" />
+                                      <span>Xem chi tiết</span>
+                                    </button>
+
+                                    {/* 2. Chỉnh sửa đơn nháp / trả lại */}
+                                    {(order.status === 'DRAFT' || order.status === 'RETURNED_FOR_UPDATE') && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOpenActionMenuId(null);
+                                          setEditingOrder(order);
+                                          setIsCreateModalOpen(true);
+                                        }}
+                                        className="w-full text-left px-3.5 py-2 text-xs text-blue-600 hover:bg-blue-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                                      >
+                                        <Edit3 className="w-4 h-4 text-blue-600" />
+                                        <span>Chỉnh sửa đơn</span>
+                                      </button>
+                                    )}
+
+                                    {/* 3. Duyệt đơn hàng */}
+                                    {(isAdmin || isSalesManager) &&
+                                      (order.status === 'PENDING' ||
+                                        order.status === 'PENDING_APPROVAL' ||
+                                        order.status === 'DRAFT' ||
+                                        order.status === 'PENDING_INVENTORY_APPROVAL') && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setOpenActionMenuId(null);
+                                            setApprovingOrderModal(order);
+                                          }}
+                                          className="w-full text-left px-3.5 py-2 text-xs text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors cursor-pointer font-semibold"
+                                        >
+                                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                          <span>Duyệt đơn hàng</span>
+                                        </button>
+                                      )}
+                                  </div>
+
+                                  <div className="py-1">
+                                    {/* 4. In / Xuất PDF */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenuId(null);
+                                        handleOpenPrint(order);
+                                      }}
+                                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-emerald-700 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                    >
+                                      <Printer className="w-4 h-4 text-slate-400" />
+                                      <span>In / Xuất PDF</span>
+                                    </button>
+
+                                    {/* 5. Sao chép đơn */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenuId(null);
+                                        void handleCloneOrder(order);
+                                      }}
+                                      disabled={isCloning === order.id}
+                                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50"
+                                    >
+                                      {isCloning === order.id ? (
+                                        <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
+                                      ) : (
+                                        <Copy className="w-4 h-4 text-slate-400" />
+                                      )}
+                                      <span>Sao chép đơn</span>
+                                    </button>
+
+                                    {/* 6. Đặt lại đơn này */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenuId(null);
+                                        setSelectedOrderForReorder(order);
+                                      }}
+                                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                    >
+                                      <RotateCcw className="w-4 h-4 text-slate-400" />
+                                      <span>Đặt lại đơn hàng</span>
+                                    </button>
+                                  </div>
+
+                                  {/* 7. Hủy đơn */}
+                                  {order.status !== 'CANCELLED' &&
+                                    order.status !== 'DELIVERED' &&
+                                    order.status !== 'SHIPPED' && (
+                                      <div className="py-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setOpenActionMenuId(null);
+                                            setCancellingOrderModal(order);
+                                            setCancelReasonInput('');
+                                          }}
+                                          className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                                        >
+                                          <XCircle className="w-4 h-4 text-rose-500" />
+                                          <span>Hủy đơn hàng</span>
+                                        </button>
+                                      </div>
+                                    )}
+                                </div>
                               )}
-                            {order.status !== 'CANCELLED' &&
-                              order.status !== 'DELIVERED' &&
-                              order.status !== 'SHIPPED' && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setCancellingOrderModal(order);
-                                    setCancelReasonInput('');
-                                  }}
-                                  className="w-9 h-9 flex items-center justify-center rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer active:scale-95"
-                                  title="Hủy đơn và nhả tồn giữ chỗ (SN-180)"
-                                >
-                                  <XCircle className="w-4 h-4" />
-                                </button>
-                              )}
-                            <button
-                              type="button"
-                              onClick={() => setViewOrder(order)}
-                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer active:scale-95"
-                              title="Xem chi tiết đơn hàng"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedOrderForReorder(order)}
-                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer active:scale-95"
-                              title="Đặt lại đơn này theo giá hiện hành (SN-174)"
-                            >
-                              <RotateCcw className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void handleCloneOrder(order)}
-                              disabled={isCloning === order.id}
-                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-40 cursor-pointer active:scale-95"
-                              title="Sao chép đơn thành đơn mới (SN-48)"
-                            >
-                              {isCloning === order.id ? (
-                                <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
-                              ) : (
-                                <Copy className="w-4 h-4" />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenPrint(order)}
-                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer active:scale-95"
-                              title="In / Xuất PDF đơn hàng (SN-47)"
-                            >
-                              <Printer className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

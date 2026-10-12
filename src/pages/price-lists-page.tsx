@@ -15,7 +15,7 @@ import {
   Unlock,
   ChevronLeft,
   ChevronRight,
-  MoreVertical,
+  ChevronDown,
   X,
   FileSpreadsheet,
   Calendar,
@@ -862,35 +862,32 @@ export const PriceListsPage: React.FC = () => {
 
           {/* 4. Table: Danh sách Bảng giá */}
           <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
-            <div
-              className="overflow-auto max-h-[calc(100vh-270px)] relative [scrollbar-width:thin] [scrollbar-color:#E5E7EB_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#E5E7EB] hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full"
-              style={{ scrollbarWidth: 'thin', scrollbarColor: '#E5E7EB transparent' }}
-            >
-              <table className="w-full text-left text-xs border-separate border-spacing-0">
+            <div className="overflow-x-auto min-h-[360px]">
+              <table className="w-full text-left text-xs sm:text-sm text-slate-600">
                 <thead>
-                  <tr className="text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
-                    <th className="sticky top-0 left-0 z-30 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-12 min-w-12 text-center">
+                  <tr className="border-b border-slate-100 bg-slate-50/70">
+                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide w-14">
                       STT
                     </th>
-                    <th className="sticky top-0 left-12 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 min-w-[180px]">
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-44">
                       Mã & Phiên bản
                     </th>
-                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 min-w-[220px]">
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                       Tên Bảng giá
                     </th>
-                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36">
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-36">
                       Nhóm áp dụng
                     </th>
-                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-44">
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-48">
                       Thời gian hiệu lực
                     </th>
-                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-32">
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-36">
                       Trạng thái
                     </th>
-                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-40 text-center">
+                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide w-44">
                       Ràng buộc Đơn hàng
                     </th>
-                    <th className="sticky top-0 right-0 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 w-20 min-w-20 text-center">
+                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide w-32">
                       Thao tác
                     </th>
                   </tr>
@@ -930,16 +927,19 @@ export const PriceListsPage: React.FC = () => {
                   ) : (
                     priceLists.map((pl, idx) => {
                       const isLocked = pl.hasOrders;
+                      const isDropUp =
+                        idx >= Math.max(1, priceLists.length - 2) ||
+                        (priceLists.length > 3 && idx >= Math.floor(priceLists.length / 2));
 
                       return (
                         <tr key={pl.id} className="hover:bg-slate-50/70 transition-colors group">
                           {/* STT */}
-                          <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors border-b border-slate-100 py-3.5 px-4 text-center text-slate-400 font-mono text-[11px] w-12 min-w-12">
+                          <td className="px-4 py-3.5 text-center text-slate-400 font-mono text-xs">
                             {(page - 1) * limit + idx + 1}
                           </td>
 
                           {/* 1. Mã bảng giá & Badge Version (Chỉ hiện badge từ v2 trở đi) */}
-                          <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 py-3.5 px-4">
+                          <td className="px-4 py-3.5 whitespace-nowrap">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-mono font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
                                 {pl.code}
@@ -955,53 +955,61 @@ export const PriceListsPage: React.FC = () => {
                             </div>
                           </td>
 
-                          {/* 2. Tên bảng giá (Chỉ hiển thị duy nhất tên bảng giá) */}
-                          <td className="border-b border-slate-100 py-3.5 px-4">
+                          {/* 2. Tên bảng giá */}
+                          <td className="px-4 py-3.5">
                             <div className="font-semibold text-slate-900 leading-snug">
                               {pl.name}
                             </div>
+                            {pl.description && (
+                              <div
+                                className="text-xs text-slate-400 truncate max-w-sm mt-0.5"
+                                title={pl.description}
+                              >
+                                {pl.description}
+                              </div>
+                            )}
                           </td>
 
                           {/* 3. Nhóm áp dụng */}
-                          <td className="border-b border-slate-100 py-3.5 px-4">
+                          <td className="px-4 py-3.5 whitespace-nowrap">
                             {renderCustomerGroupBadge(pl.customerGroup)}
                           </td>
 
                           {/* 4. Thời gian hiệu lực: DD/MM/YYYY - DD/MM/YYYY */}
-                          <td className="border-b border-slate-100 py-3.5 px-4 text-slate-600 font-medium">
-                            <div className="flex items-center gap-1">
+                          <td className="px-4 py-3.5 text-slate-600 font-medium whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
                               <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                               <span>
-                                {formatDate(pl.startDate)} - {formatDate(pl.endDate)}
+                                {formatDate(pl.startDate)} – {formatDate(pl.endDate)}
                               </span>
                             </div>
                           </td>
 
                           {/* Trạng thái */}
-                          <td className="border-b border-slate-100 py-3.5 px-4">
+                          <td className="px-4 py-3.5 whitespace-nowrap">
                             {renderStatusBadge(pl.status)}
                           </td>
 
                           {/* Ràng buộc đơn hàng */}
-                          <td className="border-b border-slate-100 py-3.5 px-4 text-center">
+                          <td className="px-4 py-3.5 text-center whitespace-nowrap">
                             {isLocked ? (
                               <div
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 text-[11px] font-semibold ring-1 ring-inset ring-amber-600/30"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 text-[11px] font-semibold ring-1 ring-inset ring-amber-600/30"
                                 title="Bảng giá này đã có đơn hàng. Khóa sửa trực tiếp, hỗ trợ Clone Version."
                               >
                                 <Lock className="w-3.5 h-3.5 text-amber-600" />
                                 <span>Đã có đơn hàng</span>
                               </div>
                             ) : (
-                              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-50 text-slate-600 text-[11px] font-medium ring-1 ring-inset ring-slate-300/40">
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 text-slate-600 text-[11px] font-medium ring-1 ring-inset ring-slate-300/40">
                                 <Unlock className="w-3.5 h-3.5 text-slate-400" />
                                 <span>Chưa có đơn</span>
                               </div>
                             )}
                           </td>
 
-                          {/* 5. Cột Thao tác: Nút 3 chấm ⋮ duy nhất với Smart Dropdown Menu (Dropup) */}
-                          <td className="sticky right-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 py-3.5 px-4 text-center w-20 min-w-20">
+                          {/* 5. Cột Thao tác: Nút Thao tác dropdown chuẩn giao diện */}
+                          <td className="px-4 py-3.5 text-center whitespace-nowrap">
                             <div className="relative inline-block text-left action-menu-dropdown-container">
                               <button
                                 type="button"
@@ -1009,121 +1017,134 @@ export const PriceListsPage: React.FC = () => {
                                   e.stopPropagation();
                                   setOpenActionMenuId(openActionMenuId === pl.id ? null : pl.id);
                                 }}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none ${
+                                  openActionMenuId === pl.id
+                                    ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-xs'
+                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-slate-300'
+                                }`}
                                 title="Thao tác"
                               >
-                                <MoreVertical className="w-4 h-4" />
+                                <span>Thao tác</span>
+                                <ChevronDown
+                                  className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${
+                                    openActionMenuId === pl.id ? 'rotate-180 text-blue-600' : ''
+                                  }`}
+                                />
                               </button>
 
-                              {openActionMenuId === pl.id &&
-                                (() => {
-                                  // Smart Placement: Mở ngược lên trên nếu dòng ở nửa dưới bảng hoặc 2 dòng cuối
-                                  const isDropUp =
-                                    idx >= Math.max(1, priceLists.length - 2) ||
-                                    (priceLists.length > 3 &&
-                                      idx >= Math.floor(priceLists.length / 2));
-                                  return (
-                                    <div
-                                      className={`absolute right-0 ${
-                                        isDropUp
-                                          ? 'bottom-full mb-1 origin-bottom-right'
-                                          : 'top-full mt-1 origin-top-right'
-                                      } w-44 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 text-left`}
+                              {openActionMenuId === pl.id && (
+                                <div
+                                  className={`absolute right-0 ${
+                                    isDropUp
+                                      ? 'bottom-full mb-1 origin-bottom-right'
+                                      : 'top-full mt-1 origin-top-right'
+                                  } w-48 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100`}
+                                >
+                                  <div className="py-1">
+                                    {/* 1. Xem chi tiết */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenuId(null);
+                                        handleOpenViewModal(pl);
+                                      }}
+                                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer"
                                     >
-                                      {/* 1. Xem chi tiết */}
+                                      <Eye className="w-4 h-4 text-slate-400" />
+                                      <span>Xem chi tiết</span>
+                                    </button>
+
+                                    {/* 2. Chỉnh sửa */}
+                                    {canManage && (
                                       <button
                                         type="button"
                                         onClick={() => {
                                           setOpenActionMenuId(null);
-                                          handleOpenViewModal(pl);
+                                          handleOpenEditModal(pl);
                                         }}
-                                        className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                        disabled={isLocked}
+                                        className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
+                                          isLocked
+                                            ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
+                                            : 'text-slate-700 hover:bg-slate-50 hover:text-amber-600 cursor-pointer'
+                                        }`}
+                                        title={
+                                          isLocked
+                                            ? 'Bảng giá đã có đơn hàng - Không thể sửa trực tiếp (Vui lòng nhân bản)'
+                                            : 'Chỉnh sửa bảng giá'
+                                        }
                                       >
-                                        <Eye className="w-4 h-4 text-slate-500" />
-                                        <span>Xem chi tiết</span>
-                                      </button>
-
-                                      {/* 2. Chỉnh sửa */}
-                                      {canManage && (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setOpenActionMenuId(null);
-                                            handleOpenEditModal(pl);
-                                          }}
-                                          disabled={isLocked}
-                                          className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
-                                            isLocked
-                                              ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
-                                              : 'text-slate-700 hover:bg-slate-50 cursor-pointer'
+                                        <Edit2
+                                          className={`w-4 h-4 ${
+                                            isLocked ? 'text-slate-300' : 'text-amber-500'
                                           }`}
-                                          title={
-                                            isLocked
-                                              ? 'Bảng giá đã có đơn hàng - Không thể sửa trực tiếp (Vui lòng nhân bản)'
-                                              : 'Chỉnh sửa bảng giá'
-                                          }
-                                        >
-                                          <Edit2 className="w-4 h-4 text-amber-500" />
-                                          <span>Chỉnh sửa</span>
-                                        </button>
-                                      )}
+                                        />
+                                        <span>Chỉnh sửa</span>
+                                      </button>
+                                    )}
 
-                                      {/* 3. Nhân bản */}
-                                      {canManage && (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setOpenActionMenuId(null);
-                                            handleOpenCloneModal(pl);
-                                          }}
-                                          className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                        >
-                                          <Copy className="w-4 h-4 text-blue-500" />
-                                          <span>Nhân bản (Copy)</span>
-                                        </button>
-                                      )}
-
-                                      {/* 4. Xuất bảng giá (Excel / CSV) */}
+                                    {/* 3. Nhân bản */}
+                                    {canManage && (
                                       <button
                                         type="button"
                                         onClick={() => {
                                           setOpenActionMenuId(null);
-                                          handleExportPriceList(pl);
+                                          handleOpenCloneModal(pl);
                                         }}
-                                        className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                        title="Xuất chi tiết các mặt hàng của bảng giá ra tệp CSV"
+                                        className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
                                       >
-                                        <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                                        <span>Xuất bảng giá</span>
+                                        <Copy className="w-4 h-4 text-indigo-500" />
+                                        <span>Nhân bản (Copy)</span>
                                       </button>
+                                    )}
 
-                                      {/* 5. Xóa */}
-                                      {canManage && (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setOpenActionMenuId(null);
-                                            handlePromptDelete(pl);
-                                          }}
-                                          disabled={isLocked}
-                                          className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
-                                            isLocked
-                                              ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
-                                              : 'text-rose-600 hover:bg-rose-50 cursor-pointer'
+                                    {/* 4. Xuất bảng giá (Excel / CSV) */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenuId(null);
+                                        handleExportPriceList(pl);
+                                      }}
+                                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-emerald-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                      title="Xuất chi tiết các mặt hàng của bảng giá ra tệp CSV"
+                                    >
+                                      <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                                      <span>Xuất bảng giá</span>
+                                    </button>
+                                  </div>
+
+                                  {/* 5. Xóa */}
+                                  {canManage && (
+                                    <div className="py-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOpenActionMenuId(null);
+                                          handlePromptDelete(pl);
+                                        }}
+                                        disabled={isLocked}
+                                        className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
+                                          isLocked
+                                            ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
+                                            : 'text-rose-600 hover:bg-rose-50 cursor-pointer font-medium'
+                                        }`}
+                                        title={
+                                          isLocked
+                                            ? 'Bảng giá đã có đơn hàng - Không thể xóa để bảo toàn dữ liệu'
+                                            : 'Xóa bảng giá'
+                                        }
+                                      >
+                                        <Trash2
+                                          className={`w-4 h-4 ${
+                                            isLocked ? 'text-slate-300' : 'text-rose-500'
                                           }`}
-                                          title={
-                                            isLocked
-                                              ? 'Bảng giá đã có đơn hàng - Không thể xóa để bảo toàn dữ liệu'
-                                              : 'Xóa bảng giá'
-                                          }
-                                        >
-                                          <Trash2 className="w-4 h-4 text-rose-500" />
-                                          <span>Xóa</span>
-                                        </button>
-                                      )}
+                                        />
+                                        <span>Xóa bảng giá</span>
+                                      </button>
                                     </div>
-                                  );
-                                })()}
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </td>
                         </tr>
