@@ -48,7 +48,8 @@ export const CreateInventoryReceiptPage: React.FC = () => {
   const [referenceDocument, setReferenceDocument] = useState("");
   const [receiptDate, setReceiptDate] = useState("");
   const [notes, setNotes] = useState("");
-  const warehouseId = "WH01"; // Default warehouse
+  const DEFAULT_WAREHOUSE_ID = "11111111-0000-0000-0000-000000000001";
+  const warehouseId = DEFAULT_WAREHOUSE_ID;
   
   const [items, setItems] = useState<ReceiptItemForm[]>([]);
 
@@ -115,7 +116,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
       if (prod && prod.units && prod.units.length > 0) {
         const baseUnit = prod.units.find(u => u.isBaseUnit) || prod.units[0];
         item.unitId = baseUnit.id || "";
-        item.conversionFactor = baseUnit.conversionRate;
+        item.conversionFactor = baseUnit.conversionRate || 1;
       } else {
         item.unitId = "";
         item.conversionFactor = 1;
@@ -146,7 +147,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
         notes: notes || undefined,
         items: items.map(i => ({
           productId: i.productId,
-          unitId: i.unitId,
+          unitId: i.unitId || undefined,
           packageQuantity: Number(i.packageQuantity),
           conversionFactor: Number(i.conversionFactor),
           unitCost: Number(i.unitCost),
@@ -164,19 +165,25 @@ export const CreateInventoryReceiptPage: React.FC = () => {
       showToast("success", status === 'CONFIRMED' ? "Nhập kho thành công" : "Tạo phiếu nhập nháp thành công");
       navigate("/inventory/receipts");
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      showToast("error", err.response?.data?.message || "Lỗi khi tạo phiếu nhập");
+      const err = error as { response?: { data?: { message?: string | string[] } }; message?: string };
+      const rawMsg = err.response?.data?.message || err.message || "Lỗi khi tạo phiếu nhập";
+      const msg = Array.isArray(rawMsg) ? rawMsg.join(", ") : rawMsg;
+      showToast("error", msg);
     } finally {
       setSubmitting(false);
+      setIsConfirmDialogOpen(false);
     }
   };
 
   const handleSaveDraft = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) return showToast("warning", "Phiếu nhập phải có ít nhất 1 mặt hàng");
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     for (let i = 0; i < items.length; i++) {
       if (!items[i].productId) return showToast("warning", `Dòng ${i + 1}: Chưa chọn sản phẩm`);
-      if (!items[i].unitId) return showToast("warning", `Dòng ${i + 1}: Chưa chọn đơn vị tính`);
+      if (!uuidRegex.test(items[i].productId)) {
+        return showToast("warning", `Dòng ${i + 1}: Sản phẩm đã chọn có mã ID không đúng chuẩn UUID. Vui lòng chọn lại.`);
+      }
       if (items[i].packageQuantity <= 0) return showToast("warning", `Dòng ${i + 1}: Số lượng phải > 0`);
     }
     await submitReceipt('DRAFT');
@@ -184,9 +191,12 @@ export const CreateInventoryReceiptPage: React.FC = () => {
 
   const handleConfirmReceipt = () => {
     if (items.length === 0) return showToast("warning", "Phiếu nhập phải có ít nhất 1 mặt hàng");
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     for (let i = 0; i < items.length; i++) {
       if (!items[i].productId) return showToast("warning", `Dòng ${i + 1}: Chưa chọn sản phẩm`);
-      if (!items[i].unitId) return showToast("warning", `Dòng ${i + 1}: Chưa chọn đơn vị tính`);
+      if (!uuidRegex.test(items[i].productId)) {
+        return showToast("warning", `Dòng ${i + 1}: Sản phẩm đã chọn có mã ID không đúng chuẩn UUID. Vui lòng chọn lại.`);
+      }
       if (items[i].packageQuantity <= 0) return showToast("warning", `Dòng ${i + 1}: Số lượng phải > 0`);
     }
     setIsConfirmDialogOpen(true);
@@ -361,9 +371,15 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                               className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm"
                               disabled={!item.product}
                             >
-                              {item.product?.units?.map(u => (
-                                <option key={u.id} value={u.id}>{u.unitName} (x{u.conversionRate})</option>
-                              ))}
+                              {item.product?.units && item.product.units.length > 0 ? (
+                                item.product.units.map((u, uIdx) => (
+                                  <option key={u.id || uIdx} value={u.id || item.product?.id}>
+                                    {u.unitName} (x{u.conversionRate || 1})
+                                  </option>
+                                ))
+                              ) : (
+                                <option value={item.product?.id || ""}>{item.product?.baseUnit || "ĐVT"} (x1)</option>
+                              )}
                             </select>
                           </td>
                           <td className="p-3 text-right">
@@ -461,29 +477,34 @@ export const CreateInventoryReceiptPage: React.FC = () => {
         </div>
       </form>
 
-      <ConfirmDialog
-        isOpen={isConfirmDialogOpen}
-        onCancel={() => setIsConfirmDialogOpen(false)}
-        onConfirm={async () => {
-          setIsConfirmDialogOpen(false);
-          await submitReceipt('CONFIRMED');
-        }}
-        title="Xác nhận nhập kho chính thức"
-        message={
-          <div>
-            <p className="text-slate-600 mb-2">
-              Phiếu nhập kho sau khi xác nhận sẽ <strong>cộng trực tiếp tồn kho thực tế</strong> và <strong>không thể chỉnh sửa hoặc xóa</strong>.
-            </p>
-            <p className="text-xs text-amber-600 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
-              Vui lòng kiểm tra kỹ số lượng, đơn giá và thông tin lô/hạn dùng trước khi đồng ý.
-            </p>
-          </div>
-        }
-        confirmText="Đồng ý xác nhận"
-        cancelText="Kiểm tra lại"
-        type="primary"
-        isLoading={submitting}
-      />
+      {isConfirmDialogOpen && (
+        <ConfirmDialog
+          isOpen={isConfirmDialogOpen}
+          onCancel={() => {
+            if (!submitting) {
+              setIsConfirmDialogOpen(false);
+            }
+          }}
+          onConfirm={async () => {
+            await submitReceipt('CONFIRMED');
+          }}
+          title="Xác nhận nhập kho chính thức"
+          message={
+            <div>
+              <p className="text-slate-600 mb-2">
+                Phiếu nhập kho sau khi xác nhận sẽ <strong>cộng trực tiếp tồn kho thực tế</strong> và <strong>không thể chỉnh sửa hoặc xóa</strong>.
+              </p>
+              <p className="text-xs text-amber-600 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+                Vui lòng kiểm tra kỹ số lượng, đơn giá và thông tin lô/hạn dùng trước khi đồng ý.
+              </p>
+            </div>
+          }
+          confirmText="Đồng ý xác nhận"
+          cancelText="Kiểm tra lại"
+          type="primary"
+          isLoading={submitting}
+        />
+      )}
     </div>
   );
 };
