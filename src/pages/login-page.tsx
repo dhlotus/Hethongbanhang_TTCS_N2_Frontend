@@ -8,6 +8,8 @@ import { Input } from '../components/input';
 import { Button } from '../components/button';
 import { showToast } from '../components/toast';
 import { AccountLockedModal } from '../components/account-locked-modal';
+import { LoginSplashTransition } from '../components/login-splash-transition';
+import type { AuthUser } from '../types/auth';
 import { loginSchema, type LoginFormData } from '../utils/validation';
 import { authService, AccountLockedError } from '../services/auth.service';
 import { getRedirectPathByUser } from '../utils/navigation';
@@ -79,6 +81,8 @@ const getInitialLockedModal = (): LockedModalState | null => {
 export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [lockedModal, setLockedModal] = useState<LockedModalState | null>(getInitialLockedModal);
+  const [transitionUser, setTransitionUser] = useState<AuthUser | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const navigate = useNavigate();
 
@@ -113,15 +117,15 @@ export const LoginPage: React.FC = () => {
       // Bỏ qua lỗi trình duyệt
     }
 
-    // Nếu không có thông báo phiên hết hạn và người dùng đã đăng nhập hợp lệ
-    if (!lockedModal?.isOpen) {
+    // Nếu không có thông báo phiên hết hạn và người dùng đã đăng nhập hợp lệ (bỏ qua nếu đang chạy animation chuyển cảnh)
+    if (!lockedModal?.isOpen && !isTransitioning) {
       const token = tokenStorage.getAccessToken();
       const storedUser = tokenStorage.getUser();
       if (token && storedUser) {
         navigate(getRedirectPathByUser(storedUser), { replace: true });
       }
     }
-  }, [navigate, lockedModal]);
+  }, [navigate, lockedModal, isTransitioning]);
 
   // Lắng nghe sự kiện session-timeout phát ra từ Axios Interceptor khi đang ở trang Login
   useEffect(() => {
@@ -173,9 +177,9 @@ export const LoginPage: React.FC = () => {
       tokenStorage.setTokens(response.accessToken, response.refreshToken);
       tokenStorage.setUser(response.user);
 
-      // Chuyển hướng mượt mà về đúng route ứng với vai trò của user
-      const targetPath = getRedirectPathByUser(response.user);
-      navigate(targetPath, { replace: true });
+      // Kích hoạt hiệu ứng chuyển cảnh đăng nhập mượt mà (Login Success Transition & Splash Screen)
+      setTransitionUser(response.user);
+      setIsTransitioning(true);
     } catch (error: unknown) {
       const err = error as Error & {
         isLocked?: boolean;
@@ -232,8 +236,24 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+  const handleTransitionFinish = () => {
+    if (transitionUser) {
+      const targetPath = getRedirectPathByUser(transitionUser);
+      navigate(targetPath, { replace: true });
+    }
+  };
+
   return (
     <div className="w-full min-h-screen lg:h-screen flex items-center justify-center p-3 sm:p-4 lg:p-6 bg-slate-50 text-slate-800 antialiased overflow-hidden">
+      {/* Hiệu ứng chuyển cảnh đăng nhập thành công & Splash Screen chuyển trang */}
+      {isTransitioning && transitionUser && (
+        <LoginSplashTransition
+          userName={transitionUser.fullName || transitionUser.username}
+          userRole={transitionUser.roles}
+          onFinish={handleTransitionFinish}
+        />
+      )}
+
       {/* Modal popup cảnh báo tài khoản bị khóa */}
       {lockedModal?.isOpen && (
         <AccountLockedModal
@@ -251,37 +271,51 @@ export const LoginPage: React.FC = () => {
         {/* ===================================================================== */}
         {/* CỘT TRÁI: Poster (Chiếm chính xác 50% chiều rộng & 100% chiều cao)     */}
         {/* ===================================================================== */}
-        <div className="relative hidden lg:block w-full h-full bg-slate-100 select-none overflow-hidden">
+        <div className="relative hidden lg:block w-full h-full bg-slate-900 select-none overflow-hidden">
+          {/* Ảnh poster nền kho hàng 3D rực rỡ, rõ nét và sống động toàn diện */}
           <img
             src={loginPoster}
-            alt="LOHA SALES - Hệ thống Quản lý Bán hàng & Kho B2B"
-            className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
+            alt="LOHA SALES"
+            className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-transform duration-1000 hover:scale-105"
           />
 
-          {/* Lớp phủ gradient mờ nhẹ để tôn logo và chữ */}
+          {/* Lớp overlay nhẹ nhàng, trong trẻo, làm dịu các chi tiết nền để tôn chữ nổi bật (chuẩn UI/UX) */}
           <div
             aria-hidden="true"
-            className="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-transparent to-slate-900/35 pointer-events-none"
+            className="absolute inset-0 bg-white/40 backdrop-blur-[1px] pointer-events-none"
           />
 
-          {/* Badge thương hiệu góc trên */}
-          <div className="relative z-10 p-5 xl:p-6 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md flex items-center justify-center shrink-0">
-              <img src={logoImg} alt="LOHA SALES" className="w-full h-full object-cover" />
-            </div>
-            <div>
-              <span className="text-base font-bold text-white block leading-tight tracking-tight drop-shadow-xs">
-                LOHA SALES
-              </span>
-              <span className="text-[10px] text-purple-100 font-medium block drop-shadow-xs">
-                Hệ thống Quản lý Bán hàng & Kho B2B
-              </span>
-            </div>
-          </div>
+          {/* Quầng sáng nhẹ nhàng tự nhiên phía sau Logo & Chữ giúp thương hiệu nổi bật 100% không cần vỏ card */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[220px] rounded-full bg-white/75 blur-2xl pointer-events-none" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-[#371cdb]/15 blur-[85px] pointer-events-none" />
 
-          {/* Tagline góc dưới */}
-          <div className="absolute bottom-0 inset-x-0 p-5 xl:p-6 text-[11px] text-white/90 font-medium drop-shadow-xs z-10">
-            Vận hành phân phối & kho vận thông minh
+          {/* Khối thương hiệu trung tâm: Tự nhiên, không có vỏ card, chữ nổi bật tuyệt đối */}
+          <div className="relative z-10 w-full h-full flex items-center justify-center p-6 text-center">
+            {/* Vòng quỹ đạo ánh sáng mảnh xoay tròn xung quanh khối thương hiệu */}
+            <div
+              className="absolute w-72 h-72 rounded-full border border-indigo-400/30 border-dashed pointer-events-none"
+              style={{ animation: 'spin 25s linear infinite' }}
+            />
+
+            {/* Logo & Tên thương hiệu đứng độc lập, nổi bật sắc nét */}
+            <div className="relative flex flex-col items-center justify-center">
+              {/* Logo LOHA SALES trong suốt, nổi bật với drop-shadow mượt mà */}
+              <div className="relative mb-3 flex items-center justify-center">
+                <img
+                  src={logoImg}
+                  alt="LOHA SALES"
+                  className="h-16 sm:h-20 w-auto object-contain drop-shadow-[0_12px_28px_rgba(55,28,219,0.35)] transition-transform duration-500 hover:scale-105"
+                />
+              </div>
+
+              {/* Tên thương hiệu LOHA SALES đậm nét, tương phản sắc sảo trên lớp nền êm dịu */}
+              <h2 className="text-2xl xl:text-3xl font-black tracking-[0.25em] uppercase text-transparent bg-clip-text bg-gradient-to-r from-[#1e1b4b] via-[#371cdb] to-[#1e1b4b] drop-shadow-[0_2px_12px_rgba(255,255,255,0.95)]">
+                LOHA SALES
+              </h2>
+
+              {/* Dải phân cách viền phát sáng thương hiệu */}
+              <div className="w-14 h-0.5 bg-gradient-to-r from-transparent via-[#371cdb] to-transparent mt-3 rounded-full shadow-[0_0_10px_rgba(55,28,219,0.5)]" />
+            </div>
           </div>
         </div>
 

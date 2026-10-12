@@ -131,3 +131,6 @@ export * from '../utils/status-badge';
 
 // 82, 90. Error Handling Utilities
 export * from '../utils/error-handler';
+
+// Login Success Transition & Splash Screen
+export * from './login-splash-transition';
