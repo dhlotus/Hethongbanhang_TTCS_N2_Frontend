@@ -23,7 +23,16 @@ export const getRedirectPathByRole = (role?: string): string => {
     return '/portal/orders';
   }
 
-  // Mặc định tất cả các vai trò nội bộ (Admin, Sales Manager, Sales Rep, Warehouse, Accountant)
+  // Thủ kho (không truy cập Dashboard kinh doanh) chuyển hướng trực tiếp tới Sổ tồn kho
+  if (
+    normalized === 'warehouse_keeper' ||
+    (normalized.includes('warehouse') && !normalized.includes('manager')) ||
+    normalized.includes('keeper')
+  ) {
+    return '/inventory/stock';
+  }
+
+  // Mặc định tất cả các vai trò nội bộ (Admin, Sales Manager, Sales Rep, Trưởng kho, Accountant)
   // khi đăng nhập đều truy cập trang Tổng quan Điều hành (Dashboard) đầu tiên
   return '/dashboard';
 };

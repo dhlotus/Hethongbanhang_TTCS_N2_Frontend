@@ -175,6 +175,8 @@ const parseStatusParam = (param: string | null): string => {
 
 export const UsersPage: React.FC = () => {
   const currentAdmin = getStoredUser();
+  const userRoles = (currentAdmin?.roles || (currentAdmin?.role ? [currentAdmin.role] : [])).map((r: string) => r.toUpperCase());
+  const canManageUsers = userRoles.includes('ADMIN');
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Khôi phục giá trị ban đầu từ URL Query Parameters khi tải lại trang hoặc chia sẻ link
@@ -882,24 +884,28 @@ export const UsersPage: React.FC = () => {
           </button>
 
           {/* Nút Import hàng loạt từ Excel (SN-147) */}
-          <button
-            type="button"
-            onClick={() => setImportModalOpen(true)}
-            title="Import nhân sự từ file Excel (.xlsx)"
-            className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-[0.98] transition-all shadow-2xs cursor-pointer"
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-            <span className="hidden sm:inline">Import Excel</span>
-          </button>
+          {canManageUsers && (
+            <button
+              type="button"
+              onClick={() => setImportModalOpen(true)}
+              title="Import nhân sự từ file Excel (.xlsx)"
+              className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-[0.98] transition-all shadow-2xs cursor-pointer"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              <span className="hidden sm:inline">Import Excel</span>
+            </button>
+          )}
 
-          <button
-            type="button"
-            onClick={handleOpenCreateModal}
-            className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-purple-700 active:scale-[0.98] transition-all cursor-pointer shadow-xs"
-          >
-            <UserPlus className="h-4 w-4" />
-            <span>Thêm nhân sự mới</span>
-          </button>
+          {canManageUsers && (
+            <button
+              type="button"
+              onClick={handleOpenCreateModal}
+              className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-purple-700 active:scale-[0.98] transition-all cursor-pointer shadow-xs"
+            >
+              <UserPlus className="h-4 w-4" />
+              <span>Thêm nhân sự mới</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1132,44 +1138,48 @@ export const UsersPage: React.FC = () => {
                           </button>
 
                           {/* Nút sửa thông tin */}
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModal(u)}
-                            className="btn-icon text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-                            title="Sửa thông tin & Cấp mã đổi mật khẩu"
-                            aria-label="Chỉnh sửa"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
+                          {canManageUsers && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(u)}
+                              className="btn-icon text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                              title="Sửa thông tin & Cấp mã đổi mật khẩu"
+                              aria-label="Chỉnh sửa"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                          )}
 
                           {/* Nút Khóa / Mở khóa */}
-                          {isCurrentSelf ? (
-                            <span
-                              className="btn-icon text-slate-300 cursor-not-allowed"
-                              title="Bạn không thể tự khóa tài khoản của chính mình"
-                            >
-                              <Lock className="h-4 w-4" />
-                            </span>
-                          ) : u.status === 'ACTIVE' ? (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenStatusModal(u, 'LOCKED')}
-                              className="btn-icon text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
-                              title="Khóa tài khoản"
-                              aria-label="Khóa tài khoản"
-                            >
-                              <Lock className="h-4 w-4" />
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenStatusModal(u, 'ACTIVE')}
-                              className="btn-icon text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
-                              title="Mở khóa tài khoản"
-                              aria-label="Mở khóa tài khoản"
-                            >
-                              <Unlock className="h-4 w-4" />
-                            </button>
+                          {canManageUsers && (
+                            isCurrentSelf ? (
+                              <span
+                                className="btn-icon text-slate-300 cursor-not-allowed"
+                                title="Bạn không thể tự khóa tài khoản của chính mình"
+                              >
+                                <Lock className="h-4 w-4" />
+                              </span>
+                            ) : u.status === 'ACTIVE' ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenStatusModal(u, 'LOCKED')}
+                                className="btn-icon text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                                title="Khóa tài khoản"
+                                aria-label="Khóa tài khoản"
+                              >
+                                <Lock className="h-4 w-4" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenStatusModal(u, 'ACTIVE')}
+                                className="btn-icon text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+                                title="Mở khóa tài khoản"
+                                aria-label="Mở khóa tài khoản"
+                              >
+                                <Unlock className="h-4 w-4" />
+                              </button>
+                            )
                           )}
                         </div>
                       </td>
@@ -1297,32 +1307,36 @@ export const UsersPage: React.FC = () => {
                       >
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditModal(u)}
-                        className="btn-icon text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                        title="Chỉnh sửa"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      {isCurrentSelf ? null : u.status === 'ACTIVE' ? (
+                      {canManageUsers && (
                         <button
                           type="button"
-                          onClick={() => handleOpenStatusModal(u, 'LOCKED')}
-                          className="btn-icon text-slate-500 hover:bg-rose-50 hover:text-rose-600"
-                          title="Khóa tài khoản"
+                          onClick={() => handleOpenEditModal(u)}
+                          className="btn-icon text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                          title="Chỉnh sửa"
                         >
-                          <Lock className="h-4 w-4" />
+                          <Edit2 className="h-4 w-4" />
                         </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenStatusModal(u, 'ACTIVE')}
-                          className="btn-icon text-slate-500 hover:bg-emerald-50 hover:text-emerald-600"
-                          title="Mở khóa tài khoản"
-                        >
-                          <Unlock className="h-4 w-4" />
-                        </button>
+                      )}
+                      {canManageUsers && (
+                        isCurrentSelf ? null : u.status === 'ACTIVE' ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenStatusModal(u, 'LOCKED')}
+                            className="btn-icon text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+                            title="Khóa tài khoản"
+                          >
+                            <Lock className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenStatusModal(u, 'ACTIVE')}
+                            className="btn-icon text-slate-500 hover:bg-emerald-50 hover:text-emerald-600"
+                            title="Mở khóa tài khoản"
+                          >
+                            <Unlock className="h-4 w-4" />
+                          </button>
+                        )
                       )}
                     </div>
                   </div>
@@ -2207,20 +2221,22 @@ export const UsersPage: React.FC = () => {
               {/* Footer */}
               <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDetailModalOpen(false);
-                      handleOpenEditModal(selectedUserForDetail);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition-colors cursor-pointer"
-                  >
-                    <Edit2 className="h-3.5 w-3.5 text-slate-600" />
-                    <span>Chỉnh sửa</span>
-                  </button>
+                  {canManageUsers && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDetailModalOpen(false);
+                        handleOpenEditModal(selectedUserForDetail);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <Edit2 className="h-3.5 w-3.5 text-slate-600" />
+                      <span>Chỉnh sửa</span>
+                    </button>
+                  )}
 
                   {/* Khóa / Mở khóa */}
-                  {currentAdmin?.id !== selectedUserForDetail.id && (
+                  {canManageUsers && currentAdmin?.id !== selectedUserForDetail.id && (
                     <button
                       type="button"
                       onClick={() => {
