@@ -24,8 +24,8 @@ export const PriceListCloneModal: React.FC<PriceListCloneModalProps> = ({
     if (priceList) {
       const nextVer = (priceList.version || 1) + 1;
       setNewName(`${priceList.name} (Bản sao v${nextVer}.0)`);
-      const baseCode = priceList.code.replace(/-v\d+$/i, '');
-      setNewCode(`${baseCode}-v${nextVer}`);
+      const baseCode = priceList.code.replace(/-V\d+$/i, '');
+      setNewCode(`${baseCode}-V${nextVer}`);
     }
   }, [priceList, isOpen]);
 
@@ -132,7 +132,7 @@ export const PriceListCloneModal: React.FC<PriceListCloneModalProps> = ({
                 type="text"
                 value={newCode}
                 onChange={(e) => setNewCode(e.target.value.toUpperCase())}
-                placeholder="DL-0001-v2"
+                placeholder="VD: BG-C1-0001-V2"
                 className="w-full px-3.5 py-2 text-xs font-mono font-medium rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               />
             </div>

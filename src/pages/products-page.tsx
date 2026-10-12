@@ -1071,7 +1071,16 @@ export const ProductsPage: React.FC = () => {
                   const isOutOfStock = p.stockQuantity === 0;
 
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
+                    <tr
+                      key={p.id}
+                      className={`transition-colors border-b border-slate-100 ${
+                        isOutOfStock
+                          ? 'bg-rose-50/70 hover:bg-rose-100/80 border-l-4 border-l-rose-500'
+                          : isLowStock
+                          ? 'bg-amber-50/40 hover:bg-amber-100/50 border-l-4 border-l-amber-400'
+                          : 'bg-emerald-50/40 hover:bg-emerald-100/60 border-l-4 border-l-emerald-500'
+                      }`}
+                    >
                       {/* Cột 1: Ảnh Thumbnail */}
                       <td className="px-3 py-2.5 text-center">
                         <div className="h-9 w-9 mx-auto rounded-xl border border-slate-200/90 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
@@ -1172,27 +1181,19 @@ export const ProductsPage: React.FC = () => {
                       {/* Cột 8: Tồn kho khả dụng */}
                       <td className="px-3 py-2.5 text-right whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center gap-1 font-bold ${
+                          className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-md text-xs border ${
                             isOutOfStock
-                              ? 'text-rose-600'
+                              ? 'bg-rose-200 text-rose-900 border-rose-300'
                               : isLowStock
-                                ? 'text-amber-600'
-                                : 'text-emerald-600'
+                                ? 'bg-amber-200 text-amber-900 border-amber-300'
+                                : 'bg-emerald-200 text-emerald-900 border-emerald-300'
                           }`}
                         >
                           <Warehouse className="h-3.5 w-3.5" />
                           <span>{p.stockQuantity.toLocaleString('vi-VN')}</span>
+                          {isOutOfStock && <span className="text-[10px] ml-0.5">(Hết)</span>}
+                          {isLowStock && <span className="text-[10px] ml-0.5">(Ít)</span>}
                         </span>
-                        {isOutOfStock && (
-                          <span className="ml-1 text-[10px] font-semibold text-rose-500">
-                            (Hết)
-                          </span>
-                        )}
-                        {isLowStock && (
-                          <span className="ml-1 text-[10px] font-semibold text-amber-500">
-                            (Ít)
-                          </span>
-                        )}
                       </td>
 
                       {/* CỘT GIÁ VỐN & BIÊN LỢI NHUẬN (Chỉ hiển thị cho ADMIN & SALES_MANAGER) */}

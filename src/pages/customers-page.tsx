@@ -645,6 +645,65 @@ export const CustomersPage: React.FC = () => {
     }
   };
 
+  // Hàm cảnh báo thông minh cho số điện thoại:
+  // - Khi đang nhập: CHỈ cảnh báo khi nhập sai (có chữ, không bắt đầu bằng 0, hoặc nhập thừa > 10 số). Chưa đủ số thì KHÔNG cảnh báo.
+  // - Khi bấm Lưu (isSubmitting = true): Nếu trống hoặc thiếu số mới hiển thị cảnh báo.
+  const validatePhoneInput = (val: string, isSubmitting = false): string | null => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) {
+      return isSubmitting ? 'Vui lòng nhập số điện thoại liên hệ của đại lý.' : null;
+    }
+
+    // Phát hiện người dùng nhập chữ cái hoặc ký tự đặc biệt
+    if (/[^\d]/.test(trimmed)) {
+      return 'Số điện thoại không được nhập chữ cái hoặc ký tự đặc biệt, chỉ bao gồm các chữ số.';
+    }
+
+    // Kiểm tra số bắt đầu bằng 0
+    if (!trimmed.startsWith('0')) {
+      return 'Số điện thoại phải bắt đầu bằng số 0 (ví dụ: 0988776655).';
+    }
+
+    // Kiểm tra nhập thừa (> 10 số) -> cảnh báo ngay cả khi đang gõ
+    if (trimmed.length > 10) {
+      return `Số điện thoại chỉ được gồm đúng 10 chữ số (bạn đang nhập thừa ${trimmed.length - 10} số).`;
+    }
+
+    // Kiểm tra nhập thiếu (< 10 số) -> CHỈ cảnh báo khi bấm Lưu
+    if (isSubmitting && trimmed.length < 10) {
+      return `Số điện thoại phải gồm đúng 10 chữ số (bạn mới nhập ${trimmed.length}/10 số - còn thiếu ${10 - trimmed.length} số).`;
+    }
+
+    return null;
+  };
+
+  // Hàm cảnh báo thông minh cho mã số thuế (bắt buộc đúng 12 số):
+  // - Khi đang nhập: CHỈ cảnh báo khi nhập sai (có chữ) hoặc nhập thừa (> 12 số). Chưa đủ số hoặc chưa nhập thì KHÔNG cảnh báo.
+  // - Khi bấm Lưu (isSubmitting = true): Nếu trống hoặc thiếu số mới hiển thị cảnh báo.
+  const validateTaxCodeInput = (val: string, isSubmitting = false): string | null => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) {
+      return isSubmitting ? 'Vui lòng nhập mã số thuế của đại lý (bắt buộc gồm đúng 12 chữ số).' : null;
+    }
+
+    // Phát hiện người dùng nhập chữ cái hoặc ký tự đặc biệt
+    if (/[^\d]/.test(trimmed)) {
+      return 'Mã số thuế không được nhập chữ cái hoặc ký tự đặc biệt, chỉ bao gồm các chữ số.';
+    }
+
+    // Kiểm tra nhập thừa (> 12 số) -> cảnh báo ngay cả khi đang gõ
+    if (trimmed.length > 12) {
+      return `Mã số thuế bắt buộc gồm đúng 12 chữ số (bạn đang nhập thừa ${trimmed.length - 12} số).`;
+    }
+
+    // Kiểm tra nhập thiếu (< 12 số) -> CHỈ cảnh báo khi bấm Lưu
+    if (isSubmitting && trimmed.length < 12) {
+      return `Mã số thuế bắt buộc gồm đúng 12 chữ số (bạn mới nhập ${trimmed.length}/12 số - còn thiếu ${12 - trimmed.length} số).`;
+    }
+
+    return null;
+  };
+
   // Xử lý tạo mới đại lý & đồng bộ ngay lập tức (SN-30)
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -657,31 +716,20 @@ export const CustomersPage: React.FC = () => {
       errors.name = 'Vui lòng nhập tên đại lý hoặc tên doanh nghiệp.';
     }
 
-    // 2. Mã đại lý (nếu có nhập thì kiểm tra tính duy nhất)
-    if (formData.code?.trim()) {
-      const codeToCheck = formData.code.trim().toUpperCase();
-      const codeExists = customers.some(
-        (c) => c.code && c.code.trim().toUpperCase() === codeToCheck
-      );
-      if (codeExists) {
-        errors.code = `Mã đại lý "${formData.code.trim()}" đã tồn tại trong hệ thống. Vui lòng chọn mã khác.`;
-      }
-    }
+    // 2. Mã đại lý: Mã tự động sinh bởi hệ thống, không yêu cầu người dùng nhập
 
-    // 3. Mã số thuế (SN-30 AC1)
+    // 3. Mã số thuế: Bắt buộc đúng 12 số (khi lưu kiểm tra đầy đủ)
     const cleanTaxCode = (formData.taxCode || '').trim();
-    if (!cleanTaxCode) {
-      errors.taxCode = 'Vui lòng nhập mã số thuế của đại lý.';
-    } else if (!/^[0-9]{10}(-[0-9]{3})?$|^[0-9]{13}$/.test(cleanTaxCode)) {
-      errors.taxCode = 'Mã số thuế phải gồm 10 hoặc 13 chữ số (ví dụ: 0312345678).';
+    const taxErr = validateTaxCodeInput(cleanTaxCode, true);
+    if (taxErr) {
+      errors.taxCode = taxErr;
     }
 
-    // 4. Số điện thoại liên hệ
+    // 4. Số điện thoại liên hệ: Bắt đầu bằng 0, đúng 10 số (khi lưu kiểm tra đầy đủ)
     const cleanPhone = (formData.phone || '').trim();
-    if (!cleanPhone) {
-      errors.phone = 'Vui lòng nhập số điện thoại liên hệ của đại lý.';
-    } else if (!/^0[0-9]{9}$/.test(cleanPhone)) {
-      errors.phone = 'Số điện thoại phải bắt đầu bằng số 0 và bao gồm đúng 10 chữ số (ví dụ: 0988776655).';
+    const phoneErr = validatePhoneInput(cleanPhone, true);
+    if (phoneErr) {
+      errors.phone = phoneErr;
     }
 
     // 5. Email liên hệ (tùy chọn nhưng nếu nhập phải đúng chuẩn)
@@ -1535,60 +1583,49 @@ export const CustomersPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Mã đại lý (SN-30 AC1 & AC2) */}
+                  {/* Mã đại lý: Tự sinh, khóa không cho nhập, trỏ chuột hình chuột bình thường */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-semibold text-slate-700">
                         Mã đại lý
                       </label>
-                      <span className="text-[11px] text-blue-600">Duy nhất</span>
+                      <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60">
+                        Tự động sinh
+                      </span>
                     </div>
                     <input
                       type="text"
-                      placeholder="VD: DL-HN-005 (Tự sinh nếu để trống)"
-                      value={formData.code}
-                      onChange={(e) => {
-                        setFormData({ ...formData, code: e.target.value });
-                        if (formErrors.code) {
-                          setFormErrors((prev) => {
-                            const copy = { ...prev };
-                            delete copy.code;
-                            return copy;
-                          });
-                        }
-                      }}
-                      className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:outline-none font-mono transition-colors ${
-                        formErrors.code
-                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
-                          : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15'
-                      }`}
+                      readOnly
+                      tabIndex={-1}
+                      value={formData.code ? formData.code : 'Hệ thống tự động cấp mã khi lưu'}
+                      placeholder="Hệ thống tự động cấp mã khi lưu"
+                      title="Mã đại lý do hệ thống tự động cấp khi tạo mới"
+                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-mono select-none cursor-default focus:outline-none"
                     />
-                    {formErrors.code && (
-                      <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
-                        <AlertCircle className="w-3 h-3 shrink-0" />
-                        <span>{formErrors.code}</span>
-                      </p>
-                    )}
                   </div>
 
-                  {/* Mã số thuế (SN-30 AC1) */}
+                  {/* Mã số thuế: Bắt buộc 12 số, cảnh báo thông minh khi sai, đúng hoặc chưa nhập không hiện gì */}
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-slate-700">
                       Mã số thuế <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
-                      placeholder="VD: 0109876543 (10 hoặc 13 số)"
+                      placeholder="Nhập mã số thuế 12 chữ số (VD: 010987654321)"
                       value={formData.taxCode}
                       onChange={(e) => {
-                        setFormData({ ...formData, taxCode: e.target.value });
-                        if (formErrors.taxCode) {
-                          setFormErrors((prev) => {
-                            const copy = { ...prev };
+                        const val = e.target.value;
+                        setFormData((prev) => ({ ...prev, taxCode: val }));
+                        const warn = validateTaxCodeInput(val);
+                        setFormErrors((prev) => {
+                          const copy = { ...prev };
+                          if (warn) {
+                            copy.taxCode = warn;
+                          } else {
                             delete copy.taxCode;
-                            return copy;
-                          });
-                        }
+                          }
+                          return copy;
+                        });
                       }}
                       className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:outline-none font-mono transition-colors ${
                         formErrors.taxCode
@@ -1663,14 +1700,18 @@ export const CustomersPage: React.FC = () => {
                       placeholder="VD: 0988776655"
                       value={formData.phone}
                       onChange={(e) => {
-                        setFormData({ ...formData, phone: e.target.value });
-                        if (formErrors.phone) {
-                          setFormErrors((prev) => {
-                            const copy = { ...prev };
+                        const val = e.target.value;
+                        setFormData((prev) => ({ ...prev, phone: val }));
+                        const warn = validatePhoneInput(val);
+                        setFormErrors((prev) => {
+                          const copy = { ...prev };
+                          if (warn) {
+                            copy.phone = warn;
+                          } else {
                             delete copy.phone;
-                            return copy;
-                          });
-                        }
+                          }
+                          return copy;
+                        });
                       }}
                       className={`w-full px-3 py-2 text-xs sm:text-sm border rounded-lg focus:outline-none transition-colors ${
                         formErrors.phone

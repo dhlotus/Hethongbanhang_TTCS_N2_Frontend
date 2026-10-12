@@ -318,6 +318,44 @@ interface CreateOrderModalProps {
 
 const DRAFT_KEY = 'new-order-modal';
 
+/** Phối màu rõ nét (mức độ 4-5/10), phân biệt rõ ràng bằng mắt thường giữa các cấp đại lý */
+const getCustomerGroupBadge = (group?: string) => {
+  const normalized = (group || '').toUpperCase();
+  if (normalized === 'AGENT_LEVEL_1') {
+    return {
+      label: 'Đại lý Cấp 1',
+      badgeClass: 'bg-emerald-200 text-emerald-900 border border-emerald-300 font-semibold shadow-xs',
+      cardClass: 'bg-emerald-100/75 border-emerald-300 border-l-4 border-l-emerald-600 hover:bg-emerald-100 hover:border-emerald-400',
+    };
+  }
+  if (normalized === 'AGENT_LEVEL_2') {
+    return {
+      label: 'Đại lý Cấp 2',
+      badgeClass: 'bg-sky-200 text-sky-900 border border-sky-300 font-semibold shadow-xs',
+      cardClass: 'bg-sky-100/75 border-sky-300 border-l-4 border-l-sky-600 hover:bg-sky-100 hover:border-sky-400',
+    };
+  }
+  if (normalized === 'WHOLESALE') {
+    return {
+      label: 'Bán buôn',
+      badgeClass: 'bg-teal-200 text-teal-900 border border-teal-300 font-semibold shadow-xs',
+      cardClass: 'bg-teal-100/75 border-teal-300 border-l-4 border-l-teal-600 hover:bg-teal-100 hover:border-teal-400',
+    };
+  }
+  if (normalized === 'RETAIL') {
+    return {
+      label: 'Bán lẻ',
+      badgeClass: 'bg-amber-200 text-amber-900 border border-amber-300 font-semibold shadow-xs',
+      cardClass: 'bg-amber-100/75 border-amber-300 border-l-4 border-l-amber-600 hover:bg-amber-100 hover:border-amber-400',
+    };
+  }
+  return {
+    label: group || 'Đại lý',
+    badgeClass: 'bg-slate-200 text-slate-800 border border-slate-300 font-semibold shadow-xs',
+    cardClass: 'bg-slate-100/80 border-slate-300 border-l-4 border-l-slate-500 hover:bg-slate-100 hover:border-slate-400',
+  };
+};
+
 const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   open,
   editingOrder,
@@ -342,6 +380,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const [note, setNote] = useState('');
   const [lockAgencyCustomer, setLockAgencyCustomer] = useState<CustomerOption | null>(null);
   const [lockAgencyMode, setLockAgencyMode] = useState<'LOCK' | 'UNLOCK'>('LOCK');
+  void setLockAgencyMode;
   const [isLockAgencySubmitting, setIsLockAgencySubmitting] = useState(false);
 
   const handleConfirmLockCustomer = async (reason: string) => {
@@ -1141,15 +1180,6 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-sm font-medium text-slate-700">Tìm kiếm đại lý</label>
-                  <button
-                    type="button"
-                    onClick={() => setIsQuickCustomerModalOpen(true)}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline"
-                    title="Thêm đại lý mới và đồng bộ"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Thêm đại lý mới</span>
-                  </button>
                 </div>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -1180,6 +1210,19 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                     customers.map((c) => {
                       const isOverdue =
                         (c.overdueDays || 0) > (c.maxDebtDays || 30) && (c.overdueAmount || 0) > 0;
+                      const isLocked = c.status === 'LOCKED';
+                      const groupInfo = getCustomerGroupBadge(c.group);
+                      const isSelected = selectedCustomer?.id === c.id;
+
+                      // Nếu đại lý bị khóa: đổ màu đỏ thang màu 4-5 điểm rõ ràng
+                      const cardStyle = isLocked
+                        ? isSelected
+                          ? 'border-rose-500 bg-rose-100 ring-2 ring-rose-400 shadow-sm border-l-4 border-l-rose-700'
+                          : 'bg-rose-100/80 border-rose-300 border-l-4 border-l-rose-600 hover:bg-rose-100 hover:border-rose-400'
+                        : isSelected
+                        ? 'border-blue-600 bg-blue-100/90 ring-2 ring-blue-500 shadow-sm border-l-4 border-l-blue-700'
+                        : groupInfo.cardClass;
+
                       return (
                         <button
                           key={c.id}
@@ -1187,75 +1230,39 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                           onClick={() => {
                             void handleSelectCustomer(c);
                           }}
-                          className={`w-full text-left p-3 rounded-xl border transition-all ${
-                            selectedCustomer?.id === c.id
-                              ? 'border-blue-500 bg-blue-50/70 ring-1 ring-blue-400'
-                              : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                          }`}
+                          className={`w-full text-left p-3 rounded-xl border transition-all ${cardStyle}`}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className="text-sm font-semibold text-slate-800 truncate">{c.name}</p>
+                                <p className={`text-sm font-semibold truncate ${isLocked ? 'text-rose-950' : 'text-slate-800'}`}>
+                                  {c.name}
+                                </p>
                                 {isOverdue && (
-                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-200 text-rose-800 border border-rose-300">
                                     <ShieldAlert className="w-3 h-3" /> Nợ quá hạn
                                   </span>
                                 )}
-                                {c.status === 'LOCKED' && (
-                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">
-                                    🔒 ĐÃ KHÓA (SN-36)
+                                {isLocked && (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-200 text-rose-900 border border-rose-300 shadow-xs">
+                                    🔒 ĐÃ KHÓA
                                   </span>
                                 )}
                               </div>
-                              <p className="text-xs text-slate-500 mt-0.5">
+                              <p className={`text-xs mt-0.5 ${isLocked ? 'text-rose-700' : 'text-slate-500'}`}>
                                 {c.code} · {c.phone || 'Chưa có SĐT'}
                               </p>
                             </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setLockAgencyMode(c.status === 'LOCKED' ? 'UNLOCK' : 'LOCK');
-                                  setLockAgencyCustomer(c);
-                                }}
-                                className={`text-[10px] font-bold px-2 py-1 rounded transition-colors cursor-pointer flex items-center gap-1 ${
-                                  c.status === 'LOCKED'
-                                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border border-emerald-300'
-                                    : 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-300'
-                                }`}
-                                title={c.status === 'LOCKED' ? 'Bấm để mở khóa giao dịch' : 'Bấm để khóa giao dịch (SN-36)'}
-                              >
-                                {c.status === 'LOCKED' ? '🔓 Mở khóa' : '🔒 Khóa (SN-36)'}
-                              </button>
-                              <span
-                                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                  c.group === 'AGENT_LEVEL_1'
-                                    ? 'bg-purple-50 text-purple-700'
-                                    : c.group === 'AGENT_LEVEL_2'
-                                    ? 'bg-blue-50 text-blue-700'
-                                    : c.group === 'RETAIL'
-                                    ? 'bg-emerald-50 text-emerald-700'
-                                    : 'bg-slate-100 text-slate-600'
-                                }`}
-                              >
-                                {c.group === 'AGENT_LEVEL_1'
-                                  ? 'Đại lý Cấp 1'
-                                  : c.group === 'AGENT_LEVEL_2'
-                                  ? 'Đại lý Cấp 2'
-                                  : c.group === 'RETAIL'
-                                  ? 'Bán lẻ'
-                                  : c.group || 'Đại lý'}
-                              </span>
-                            </div>
+                            <span
+                              className={`text-[11px] px-2.5 py-1 rounded-md font-medium shrink-0 ${
+                                isLocked
+                                  ? 'bg-rose-200/90 text-rose-900 border border-rose-300 font-semibold shadow-xs'
+                                  : groupInfo.badgeClass
+                              }`}
+                            >
+                              {groupInfo.label}
+                            </span>
                           </div>
-                          {c.creditLimit !== undefined && (
-                            <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
-                              <span>Hạn mức: {formatCurrency(c.creditLimit)}</span>
-                              <span>Công nợ: {formatCurrency(c.currentDebt ?? 0)}</span>
-                            </div>
-                          )}
                         </button>
                       );
                     })
@@ -1566,33 +1573,33 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                               ? `SKU ${p.sku} chưa có giá trong bảng giá hiệu lực`
                               : undefined
                           }
-                          className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between border-b border-slate-100 last:border-0 transition-colors ${
+                          className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between border-b last:border-0 transition-colors ${
                             isOutOfStock
-                              ? 'bg-rose-50/40 opacity-75 cursor-not-allowed'
+                              ? 'bg-rose-100/75 border-rose-200 border-l-4 border-l-rose-500 cursor-not-allowed opacity-90'
                               : isDisabled
-                              ? 'opacity-40 cursor-not-allowed bg-slate-50/50'
-                              : 'hover:bg-blue-50/80 cursor-pointer'
+                              ? 'opacity-50 cursor-not-allowed bg-slate-100/80 border-slate-200'
+                              : 'bg-emerald-50/70 border-emerald-200/80 border-l-4 border-l-emerald-500 hover:bg-emerald-100/80 cursor-pointer'
                           }`}
                         >
                           <div className="flex-1 min-w-0 pr-3">
-                            <p className="text-sm font-medium text-slate-800 leading-snug truncate">
+                            <p className={`text-sm font-semibold leading-snug truncate ${isOutOfStock ? 'text-rose-950' : 'text-slate-900'}`}>
                               {p.name}
                             </p>
                             <div className="flex items-center gap-2 text-xs mt-1">
                               <span className="text-slate-500 font-mono">{p.sku} · {p.baseUnit}</span>
                               {isOutOfStock ? (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-700">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-rose-200 text-rose-900 border border-rose-300 shadow-2xs">
                                   Hết hàng (Tồn: 0)
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700">
-                                  Tồn khả dụng: {available}
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-200 text-emerald-900 border border-emerald-300 shadow-2xs">
+                                  Còn hàng (Tồn: {available})
                                 </span>
                               )}
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <span className={`text-sm font-semibold ${isOutOfStock ? 'text-slate-400 line-through' : 'text-blue-600'}`}>
+                            <span className={`text-sm font-bold ${isOutOfStock ? 'text-rose-500 line-through' : 'text-emerald-700'}`}>
                               {priceItem ? formatCurrency(priceItem.price) : 'Không có giá hiệu lực'}
                             </span>
                           </div>
@@ -1624,9 +1631,11 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                     <div
                       key={line.id}
                       className={`border rounded-xl p-3 space-y-2 transition-all ${
-                        isExceeded
-                          ? 'border-rose-300 bg-rose-50/60 shadow-xs'
-                          : 'border-slate-200 bg-slate-50/50'
+                        available <= 0
+                          ? 'border-rose-300 bg-rose-100/75 border-l-4 border-l-rose-500 shadow-xs'
+                          : isExceeded
+                          ? 'border-amber-300 bg-amber-50/80 border-l-4 border-l-amber-500 shadow-xs'
+                          : 'border-emerald-300 bg-emerald-50/60 border-l-4 border-l-emerald-500 shadow-xs'
                       }`}
                     >
                       {/* Tên sản phẩm + Xóa */}
