@@ -2437,26 +2437,31 @@ export const OrdersPage: React.FC = () => {
 
   // Tải danh sách nhân viên kinh doanh cho dropdown bộ lọc
   useEffect(() => {
-    const standardSalesReps = [
+    const fallbackSalesReps = [
+      { id: 'usr-sale-01', name: 'Trần Văn Long (NVKD)' },
+      { id: 'usr-sale-02', name: 'Nguyễn Thị Hằng (NVKD)' },
       { id: 'usr-sales-002', name: 'Trần Văn Nam (NVKD)' },
-      { id: 'usr-salesmgr-003', name: 'Lê Hoàng Trưởng Phòng (QLKD)' },
-      { id: 'usr-1791726904698-rsnu8', name: 'Hoàng Kim Chi (NVKD)' },
-      { id: 'usr-1791618915793-grhd0', name: 'Trần Đa Vai Trò (NVKD)' },
+      { id: 'usr-sale-03', name: 'Phạm Minh Tuấn (NVKD)' },
+      { id: 'usr-salesmgr-003', name: 'Lê Hoàng (QLKD)' },
     ];
-    setSalesRepOptions(standardSalesReps);
+    setSalesRepOptions(fallbackSalesReps);
 
     usersService.getUsers({ limit: 100 }).then((res) => {
       if (res?.data && res.data.length > 0) {
         const reps = res.data
           .filter((u) => {
+            // Chỉ lấy nhân viên kinh doanh hoặc quản lý kinh doanh, không lấy Admin, Kế toán, Thủ kho
             const isSales = u.roles?.includes('SALES_REP') || u.roles?.includes('SALES_MANAGER');
-            if (!isSales) return false;
-            // Bỏ các nhân viên mock/test không đúng (VD: "Nguyễn Văn Nhân Viên 1..50", "Vũ Văn Bảy", "Nguyễn Văn Một", "Nguyen Van A")
+            const isAdmin = u.roles?.includes('ADMIN') || u.role === 'ADMIN';
+            if (!isSales || isAdmin) return false;
+            // Bỏ các nhân viên mock/test không đúng
             const isMockEmployee =
               /Nhân Viên \d+/i.test(u.fullName) ||
               /nguyen van a/i.test(u.fullName) ||
               /vũ văn bảy/i.test(u.fullName) ||
               /nguyễn văn một/i.test(u.fullName) ||
+              /đa vai trò/i.test(u.fullName) ||
+              /kim chi/i.test(u.fullName) ||
               u.username?.startsWith('employee_') ||
               u.username?.startsWith('test_');
             return !isMockEmployee;

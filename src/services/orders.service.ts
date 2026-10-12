@@ -6,6 +6,7 @@ import { MOCK_PRODUCTS } from './products.service';
 import { customerService, getStoredCustomers } from './customer.service';
 import { orderPricingService } from './order-pricing.service';
 import { matchesSearchTerm } from '../utils/vietnamese';
+import { INITIAL_DEMO_ORDERS } from './demo-orders.data';
 import type {
   CreateOrderPayload,
   CustomerDebtStatus,
@@ -270,217 +271,16 @@ export const MOCK_CUSTOMERS = DEMO_CUSTOMERS;
 // HELPERS — localStorage Demo
 // ──────────────────────────────────────────────────────────────────────────
 
-const INITIAL_DEMO_ORDERS: Order[] = [
-  {
-    id: 'ord-dl-001',
-    orderCode: 'DH2610-10023',
-    customerId: 'cust-dl-0001',
-    customerCode: 'DL-0001',
-    customerName: 'Công Ty TNHH Thương Mại & Phân Phối Minh Khang',
-    customerGroup: 'AGENT_LEVEL_1',
-    salesRepId: 'usr-sale-01',
-    salesRepName: 'Trần Văn Long',
-    deliveryPoint: {
-      id: 'dp-dl-0001-1',
-      name: 'Kho Tổng Phú Nhuận',
-      address: '123 Nguyễn Trọng Tuyển, P.8, Q.Phú Nhuận, TP.HCM',
-      receiverName: 'Anh Nguyễn Minh Khang',
-      phone: '0901234561',
-      roadNote: 'Đường 2 chiều, xe tải 2.5T vào thoải mái, giao giờ hành chính 8h00 - 17h00',
-    },
-    deliveryDate: '2026-10-12',
-    lines: [
-      {
-        id: 'line-dl-001-1',
-        productId: 'prod-001',
-        productSku: 'LH-MILK-900G',
-        productName: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
-        unit: 'Thùng (12 lon)',
-        baseUnit: 'Lon',
-        conversionRate: 12,
-        quantity: 5,
-        baseQuantity: 60,
-        listPrice: 5400000,
-        unitPrice: 5130000,
-        discountPercent: 5,
-        lineTotal: 25650000,
-        deliveredQuantity: undefined,
-        isShortDelivery: false,
-      },
-      {
-        id: 'line-dl-001-2',
-        productId: 'prod-002',
-        productSku: 'LH-NUT-180ML',
-        productName: 'Sữa Hạt Óc Chó Hạnh Nhân Organic 180ml',
-        unit: 'Thùng (48 hộp)',
-        baseUnit: 'Hộp',
-        conversionRate: 48,
-        quantity: 10,
-        baseQuantity: 480,
-        listPrice: 620000,
-        unitPrice: 589000,
-        discountPercent: 5,
-        lineTotal: 5890000,
-        deliveredQuantity: undefined,
-        isShortDelivery: false,
-      },
-    ],
-    subtotal: 33200000,
-    totalDiscount: 1660000,
-    grandTotal: 31540000,
-    note: 'Giao buổi sáng, gọi trước 30 phút để chuẩn bị thủ kho bốc dỡ',
-    status: 'SHIPPED',
-    paymentStatus: 'UNPAID',
-    isShortDelivery: false,
-    createdAt: '2026-10-06T08:30:00Z',
-    updatedAt: '2026-10-09T14:15:00Z',
-  },
-  {
-    id: 'ord-dl-002',
-    orderCode: 'DH2610-10015',
-    customerId: 'cust-dl-0001',
-    customerCode: 'DL-0001',
-    customerName: 'Công Ty TNHH Thương Mại & Phân Phối Minh Khang',
-    customerGroup: 'AGENT_LEVEL_1',
-    salesRepId: 'usr-sale-01',
-    salesRepName: 'Trần Văn Long',
-    deliveryPoint: {
-      id: 'dp-dl-0001-1',
-      name: 'Kho Tổng Phú Nhuận',
-      address: '123 Nguyễn Trọng Tuyển, P.8, Q.Phú Nhuận, TP.HCM',
-      receiverName: 'Anh Nguyễn Minh Khang',
-      phone: '0901234561',
-      roadNote: 'Đường 2 chiều, xe tải 2.5T vào thoải mái',
-    },
-    deliveryDate: '2026-10-08',
-    lines: [
-      {
-        id: 'line-dl-002-1',
-        productId: 'prod-003',
-        productSku: 'LH-NEST-70ML',
-        productName: 'Nước Yến Sào Chưng Đường Phèn Loha Nest 70ml',
-        unit: 'Hộp (6 hũ)',
-        baseUnit: 'Hũ',
-        conversionRate: 6,
-        quantity: 10,
-        baseQuantity: 60,
-        listPrice: 420000,
-        unitPrice: 399000,
-        discountPercent: 5,
-        lineTotal: 3990000,
-        deliveredQuantity: 8, // Giao thiếu 2 hộp (SN-170)
-        deliveredBaseQuantity: 48,
-        isShortDelivery: true,
-        shortDeliveryReason:
-          'Kho phân phối tạm thiếu 2 hộp lô sản xuất mới nhất, đã xác nhận với đại lý sẽ giao bù vào đợt kế tiếp',
-      },
-      {
-        id: 'line-dl-002-2',
-        productId: 'prod-001',
-        productSku: 'LH-MILK-900G',
-        productName: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
-        unit: 'Thùng (12 lon)',
-        baseUnit: 'Lon',
-        conversionRate: 12,
-        quantity: 5,
-        baseQuantity: 60,
-        listPrice: 5400000,
-        unitPrice: 5130000,
-        discountPercent: 5,
-        lineTotal: 25650000,
-        deliveredQuantity: 5, // Giao đủ 5 thùng (SN-170)
-        deliveredBaseQuantity: 60,
-        isShortDelivery: false,
-      },
-    ],
-    subtotal: 31200000,
-    totalDiscount: 1560000,
-    grandTotal: 29640000,
-    note: 'Biên bản bàn giao số BB-2610-08 ghi nhận thiếu 2 hộp Nước Yến, thủ kho đại lý đã ký xác nhận',
-    status: 'DELIVERED',
-    paymentStatus: 'PAID',
-    isShortDelivery: true,
-    createdAt: '2026-10-04T09:00:00Z',
-    updatedAt: '2026-10-08T16:30:00Z',
-  },
-  {
-    id: 'ord-dl-003',
-    orderCode: 'DH2609-09880',
-    customerId: 'cust-dl-0001',
-    customerCode: 'DL-0001',
-    customerName: 'Công Ty TNHH Thương Mại & Phân Phối Minh Khang',
-    customerGroup: 'AGENT_LEVEL_1',
-    salesRepId: 'usr-sale-01',
-    salesRepName: 'Trần Văn Long',
-    deliveryPoint: {
-      id: 'dp-dl-0001-1',
-      name: 'Kho Tổng Phú Nhuận',
-      address: '123 Nguyễn Trọng Tuyển, P.8, Q.Phú Nhuận, TP.HCM',
-      receiverName: 'Anh Nguyễn Minh Khang',
-      phone: '0901234561',
-    },
-    deliveryDate: '2026-09-25',
-    lines: [
-      {
-        id: 'line-dl-003-1',
-        productId: 'prod-001',
-        productSku: 'LH-MILK-900G',
-        productName: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
-        unit: 'Thùng (12 lon)',
-        baseUnit: 'Lon',
-        conversionRate: 12,
-        quantity: 4,
-        baseQuantity: 48,
-        listPrice: 5200000, // Giá cũ tháng trước (SN-174 test áp giá hiện hành)
-        unitPrice: 4940000,
-        discountPercent: 5,
-        lineTotal: 19760000,
-        deliveredQuantity: 4,
-        isShortDelivery: false,
-      },
-      {
-        id: 'line-dl-003-2',
-        productId: 'prod-011',
-        productSku: 'LH-OLD-COFFEE-CAN',
-        productName: 'Cà Phê Sữa Đóng Lon Loha Classic 240ml (Mẫu Cũ)',
-        unit: 'Thùng (24 lon)',
-        baseUnit: 'Lon',
-        conversionRate: 24,
-        quantity: 6,
-        baseQuantity: 144,
-        listPrice: 336000,
-        unitPrice: 336000,
-        discountPercent: 0,
-        lineTotal: 2016000,
-        deliveredQuantity: 6,
-        isShortDelivery: false,
-      },
-    ],
-    subtotal: 22816000,
-    totalDiscount: 1040000,
-    grandTotal: 21776000,
-    note: 'Đơn hàng định kỳ tháng 9/2026 - Đã giao đủ và thanh toán xong',
-    status: 'DELIVERED',
-    paymentStatus: 'PAID',
-    isShortDelivery: false,
-    createdAt: '2026-09-20T08:00:00Z',
-    updatedAt: '2026-09-25T11:00:00Z',
-  },
-];
+// INITIAL_DEMO_ORDERS được import từ ./demo-orders.data (20 đơn hàng đầy đủ)
 
 const getStoredDemoOrders = (): Order[] => {
   try {
     const raw = localStorage.getItem(DEMO_ORDERS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Order[];
-      // Đảm bảo các đơn mẫu cho Đại lý Minh Khang luôn tồn tại trong demo storage
-      const hasDealerOrders = parsed.some((o) => o.customerId === 'cust-dl-0001');
-      if (!hasDealerOrders) {
-        const merged = [...parsed, ...INITIAL_DEMO_ORDERS];
-        saveStoredDemoOrders(merged);
-        return merged;
+      if (parsed.length >= 20) {
+        return parsed;
       }
-      return parsed;
     }
     saveStoredDemoOrders(INITIAL_DEMO_ORDERS);
     return INITIAL_DEMO_ORDERS;
