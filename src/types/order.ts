@@ -182,6 +182,7 @@ export interface OrderQueryParams {
   region?: string;
   fromDate?: string;
   toDate?: string;
+  dateType?: 'CREATED' | 'DELIVERY';
 }
 
 /** Thông tin khách hàng đại lý (dùng trong form tạo đơn) */

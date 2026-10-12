@@ -488,6 +488,9 @@ export const ordersService = {
     if (params.toDate) {
       cleanParams.toDate = params.toDate;
     }
+    if (params.dateType) {
+      cleanParams.dateType = params.dateType;
+    }
 
     try {
       const res = await apiClient.get<PaginatedOrdersResponse | Order[]>('/orders', {
@@ -556,23 +559,16 @@ export const ordersService = {
       }
       const fromKey = params.fromDate?.trim();
       const toKey = params.toDate?.trim();
-      if (fromKey && toKey) {
+      const dateType = params.dateType || 'CREATED';
+      if (fromKey || toKey) {
         list = list.filter((o) => {
           const c = toDateKey(o.createdAt);
           const d = toDateKey(o.deliveryDate);
-          return (c && c >= fromKey && c <= toKey) || (d && d >= fromKey && d <= toKey);
-        });
-      } else if (fromKey) {
-        list = list.filter((o) => {
-          const c = toDateKey(o.createdAt);
-          const d = toDateKey(o.deliveryDate);
-          return (c && c >= fromKey) || (d && d >= fromKey);
-        });
-      } else if (toKey) {
-        list = list.filter((o) => {
-          const c = toDateKey(o.createdAt);
-          const d = toDateKey(o.deliveryDate);
-          return (c && c <= toKey) || (d && d <= toKey);
+          const target = dateType === 'DELIVERY' ? d : c;
+          if (fromKey && toKey) return Boolean(target && target >= fromKey && target <= toKey);
+          if (fromKey) return Boolean(target && target >= fromKey);
+          if (toKey) return Boolean(target && target <= toKey);
+          return true;
         });
       }
       if (params.search && params.search.trim()) {

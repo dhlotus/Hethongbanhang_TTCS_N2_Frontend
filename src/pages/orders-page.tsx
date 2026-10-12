@@ -63,6 +63,7 @@ import type { AgencyWarehouseDetail } from '../types/warehouse.types';
 import { OrderTimeline } from '../components/order-timeline';
 import { CancelOrderModal } from '../components/cancel-order-modal';
 import { Pagination } from '../components/pagination';
+import { DateInput } from '../components/date-input';
 
 const getAvailableProductUnits = (
   product: Product,
@@ -2338,6 +2339,7 @@ export const OrdersPage: React.FC = () => {
   const [selectedRegion, setSelectedRegion] = useState<string>('ALL');
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
+  const [dateType, setDateType] = useState<'CREATED' | 'DELIVERY'>('CREATED');
 
   // Danh sách đại lý & nhân viên kinh doanh cho dropdown lọc
   const [customerOptions, setCustomerOptions] = useState<{ id: string; name: string; code?: string }[]>([]);
@@ -2502,6 +2504,34 @@ export const OrdersPage: React.FC = () => {
     setPage(1);
   };
 
+  const handleSetQuickDate = (type: 'TODAY' | '7DAYS' | '30DAYS' | 'THIS_MONTH') => {
+    const today = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const toYMD = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    const toStr = toYMD(today);
+    let fromStr = toStr;
+
+    if (type === 'TODAY') {
+      fromStr = toStr;
+    } else if (type === '7DAYS') {
+      const past7 = new Date(today);
+      past7.setDate(past7.getDate() - 7);
+      fromStr = toYMD(past7);
+    } else if (type === '30DAYS') {
+      const past30 = new Date(today);
+      past30.setDate(past30.getDate() - 30);
+      fromStr = toYMD(past30);
+    } else if (type === 'THIS_MONTH') {
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      fromStr = toYMD(firstDay);
+    }
+
+    setFromDate(fromStr);
+    setToDate(toStr);
+    setPage(1);
+  };
+
   const handleResetFilters = () => {
     setSearchInput('');
     setSearchTerm('');
@@ -2511,6 +2541,7 @@ export const OrdersPage: React.FC = () => {
     setSelectedRegion('ALL');
     setFromDate('');
     setToDate('');
+    setDateType('CREATED');
     setPage(1);
   };
 
@@ -2521,7 +2552,8 @@ export const OrdersPage: React.FC = () => {
     (canViewAllRep && selectedSalesRepId !== 'ALL') ||
     selectedRegion !== 'ALL' ||
     fromDate !== '' ||
-    toDate !== '';
+    toDate !== '' ||
+    dateType !== 'CREATED';
 
   // Tự động mở modal khi có createOrder hoặc customerId trên URL
   useEffect(() => {
@@ -2586,6 +2618,7 @@ export const OrdersPage: React.FC = () => {
           region: selectedRegion !== 'ALL' ? selectedRegion : undefined,
           fromDate: fromDate || undefined,
           toDate: toDate || undefined,
+          dateType,
         });
         if (isMounted) {
           setOrders(res.data);
@@ -2619,6 +2652,7 @@ export const OrdersPage: React.FC = () => {
     selectedRegion,
     fromDate,
     toDate,
+    dateType,
     refreshKey,
     canViewAllRep,
     user?.id,
@@ -2846,59 +2880,111 @@ export const OrdersPage: React.FC = () => {
               )}
             </div>
 
-            {/* Từ ngày - Đến ngày */}
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <label className="relative flex items-center gap-1.5 bg-slate-50/80 hover:bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all cursor-pointer shadow-2xs">
-                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span className="text-[11px] text-slate-500 whitespace-nowrap font-medium">Từ:</span>
-                <input
-                  type="date"
+            {/* Bộ lọc theo loại ngày & khoảng thời gian */}
+            <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+              {/* Chọn lọc theo Ngày đặt đơn hay Ngày hẹn giao */}
+              <select
+                value={dateType}
+                onChange={(e) => {
+                  setDateType(e.target.value as 'CREATED' | 'DELIVERY');
+                  setPage(1);
+                }}
+                className="h-9 text-xs font-semibold border border-slate-200 rounded-xl px-2.5 bg-slate-50/80 hover:bg-white text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer shadow-2xs shrink-0"
+                title="Chọn tiêu chí ngày cần lọc"
+              >
+                <option value="CREATED">Ngày đặt</option>
+                <option value="DELIVERY">Ngày giao</option>
+              </select>
+
+              {/* Ô Từ ngày (chuẩn dd/mm/yyyy) */}
+              <div className="relative flex items-center gap-1.5 bg-slate-50/80 hover:bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all shadow-2xs h-9 min-w-[130px]">
+                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0 pointer-events-none" />
+                <span className="text-[11px] text-slate-500 whitespace-nowrap font-medium pointer-events-none">Từ:</span>
+                <DateInput
+                  compact={true}
                   value={fromDate}
-                  onChange={(e) => handleFromDateChange(e.target.value)}
-                  className="text-xs text-slate-700 bg-transparent focus:outline-none cursor-pointer"
-                  title="Chọn ngày bắt đầu"
+                  onChange={handleFromDateChange}
+                  placeholder="dd/mm/yyyy"
+                  className="w-full text-xs"
+                  title="Chọn ngày bắt đầu (dd/mm/yyyy)"
                 />
                 {fromDate && (
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      e.preventDefault();
                       handleFromDateChange('');
                     }}
-                    className="p-0.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60 transition-colors ml-0.5 cursor-pointer"
+                    className="p-0.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60 transition-colors ml-0.5 cursor-pointer z-10"
                     title="Xóa ngày bắt đầu"
                   >
                     <X className="w-3 h-3" />
                   </button>
                 )}
-              </label>
+              </div>
 
-              <label className="relative flex items-center gap-1.5 bg-slate-50/80 hover:bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all cursor-pointer shadow-2xs">
-                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span className="text-[11px] text-slate-500 whitespace-nowrap font-medium">Đến:</span>
-                <input
-                  type="date"
+              {/* Ô Đến ngày (chuẩn dd/mm/yyyy) */}
+              <div className="relative flex items-center gap-1.5 bg-slate-50/80 hover:bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all shadow-2xs h-9 min-w-[130px]">
+                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0 pointer-events-none" />
+                <span className="text-[11px] text-slate-500 whitespace-nowrap font-medium pointer-events-none">Đến:</span>
+                <DateInput
+                  compact={true}
                   value={toDate}
-                  onChange={(e) => handleToDateChange(e.target.value)}
-                  className="text-xs text-slate-700 bg-transparent focus:outline-none cursor-pointer"
-                  title="Chọn ngày kết thúc"
+                  onChange={handleToDateChange}
+                  placeholder="dd/mm/yyyy"
+                  className="w-full text-xs"
+                  title="Chọn ngày kết thúc (dd/mm/yyyy)"
                 />
                 {toDate && (
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      e.preventDefault();
                       handleToDateChange('');
                     }}
-                    className="p-0.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60 transition-colors ml-0.5 cursor-pointer"
+                    className="p-0.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60 transition-colors ml-0.5 cursor-pointer z-10"
                     title="Xóa ngày kết thúc"
                   >
                     <X className="w-3 h-3" />
                   </button>
                 )}
-              </label>
+              </div>
+
+              {/* Phím tắt chọn nhanh khoảng ngày */}
+              <div className="hidden lg:flex items-center gap-1 shrink-0 ml-1">
+                <button
+                  type="button"
+                  onClick={() => handleSetQuickDate('TODAY')}
+                  className="px-2 py-1 text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200/80 rounded-lg transition-colors cursor-pointer"
+                  title="Lọc đơn trong ngày hôm nay"
+                >
+                  Hôm nay
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetQuickDate('7DAYS')}
+                  className="px-2 py-1 text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200/80 rounded-lg transition-colors cursor-pointer"
+                  title="Lọc đơn trong 7 ngày gần nhất"
+                >
+                  7 ngày
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetQuickDate('30DAYS')}
+                  className="px-2 py-1 text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200/80 rounded-lg transition-colors cursor-pointer"
+                  title="Lọc đơn trong 30 ngày gần nhất"
+                >
+                  30 ngày
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetQuickDate('THIS_MONTH')}
+                  className="px-2 py-1 text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200/80 rounded-lg transition-colors cursor-pointer"
+                  title="Lọc đơn trong tháng này"
+                >
+                  Tháng này
+                </button>
+              </div>
             </div>
 
             {/* Cụm nút hành động: Làm mới & Tạo đơn hàng */}
@@ -3029,11 +3115,7 @@ export const OrdersPage: React.FC = () => {
         </div>
 
         {/* Danh sách đơn hàng */}
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm relative">
-          {/* Thanh progress bar mượt mà trên đỉnh bảng khi lọc hoặc chuyển trang (chống giật layout) */}
-          {loading && !isInitialLoading && (
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-600 to-blue-500 animate-pulse z-30" />
-          )}
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
 
           {isInitialLoading && loading && orders.length === 0 ? (
             <div className="p-12 text-center">
