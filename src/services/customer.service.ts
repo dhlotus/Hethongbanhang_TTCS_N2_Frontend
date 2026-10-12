@@ -789,6 +789,53 @@ export const customerService = {
   },
 
   /**
+   * Cập nhật hạn mức công nợ & số ngày nợ tối đa cho đại lý (SN-34)
+   * Kèm lý do phục vụ kiểm toán hệ thống (Audit Log)
+   */
+  async updateCreditLimit(
+    customerId: string,
+    payload: {
+      creditLimit: number;
+      maxDebtDays: number;
+      reason: string;
+      paymentTerms?: string;
+      temporaryCreditLimit?: number;
+      temporaryLimitExpiry?: string;
+      allowOverLimitOrder?: boolean;
+    },
+  ): Promise<Customer> {
+    try {
+      const res = await apiClient.put<Customer>(`/credit-limit/${customerId}`, payload);
+      const list = getStoredCustomers();
+      const custIndex = list.findIndex((c) => c.id === customerId || c.code === customerId);
+      if (custIndex >= 0) {
+        list[custIndex] = {
+          ...list[custIndex],
+          creditLimit: payload.creditLimit,
+          maxDebtDays: payload.maxDebtDays,
+          updatedAt: new Date().toISOString(),
+        };
+        saveStoredCustomers(list);
+      }
+      return res.data;
+    } catch {
+      const list = getStoredCustomers();
+      const custIndex = list.findIndex((c) => c.id === customerId || c.code === customerId);
+      if (custIndex >= 0) {
+        list[custIndex] = {
+          ...list[custIndex],
+          creditLimit: payload.creditLimit,
+          maxDebtDays: payload.maxDebtDays,
+          updatedAt: new Date().toISOString(),
+        };
+        saveStoredCustomers(list);
+        return list[custIndex];
+      }
+      throw new Error('Không tìm thấy đại lý để cập nhật hạn mức');
+    }
+  },
+
+  /**
    * Đọc danh sách đại lý đã lưu
    */
   getStoredCustomers,
