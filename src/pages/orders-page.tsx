@@ -2356,7 +2356,10 @@ export const OrdersPage: React.FC = () => {
   const isAdmin = user?.roles?.includes('ADMIN');
   const isSalesRep = user?.roles?.includes('SALES_REP');
   const isSalesManager = user?.roles?.includes('SALES_MANAGER');
-  const canViewAllRep = isAdmin || isSalesManager;
+  const isAccountant = user?.roles?.includes('ACCOUNTANT');
+  const isWarehouse = user?.roles?.includes('WAREHOUSE_MANAGER') || user?.roles?.includes('WAREHOUSE_KEEPER');
+  // Kế toán, Quản lý kho, Thủ kho, Quản lý kinh doanh và Admin đều có quyền xem đơn toàn công ty
+  const canViewAllRep = isAdmin || isSalesManager || isAccountant || isWarehouse;
 
   // Tải danh sách đại lý cho dropdown bộ lọc
   useEffect(() => {
@@ -2768,7 +2771,15 @@ export const OrdersPage: React.FC = () => {
                 {canViewAllRep ? 'Toàn công ty' : (user?.fullName || user?.username || 'Cá nhân')}
               </p>
               <p className="text-[11px] text-slate-400 truncate">
-                {canViewAllRep ? 'Quyền: Quản lý kinh doanh' : 'Chỉ xem đơn do bạn phụ trách'}
+                {canViewAllRep
+                  ? (isAccountant
+                      ? 'Quyền: Kế toán công nợ'
+                      : isWarehouse
+                        ? 'Quyền: Quản lý kho vận'
+                        : isSalesManager
+                          ? 'Quyền: Quản lý kinh doanh'
+                          : 'Quyền: Quản trị hệ thống')
+                  : 'Chỉ xem đơn do bạn phụ trách'}
               </p>
             </div>
           </div>

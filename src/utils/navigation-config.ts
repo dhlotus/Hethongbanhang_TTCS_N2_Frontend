@@ -219,6 +219,27 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Duyệt nghiệp vụ',
     },
     {
+      id: 'sales-orders',
+      name: 'Quản lý đơn hàng',
+      path: '/sales/orders',
+      icon: ShoppingCart,
+      category: 'Kinh doanh',
+    },
+    {
+      id: 'sales-customers',
+      name: 'Quản lý đại lý',
+      path: '/sales/customers',
+      icon: Users,
+      category: 'Đội ngũ & Khách hàng',
+    },
+    {
+      id: 'sales-credit-limit',
+      name: 'Hạn mức công nợ',
+      path: '/sales/credit-limit',
+      icon: CreditCard,
+      category: 'Đội ngũ & Khách hàng',
+    },
+    {
       id: 'catalog-products',
       name: 'Danh mục sản phẩm',
       path: '/catalog/products',
@@ -233,18 +254,18 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Sản phẩm & Chính sách',
     },
     {
-      id: 'sales-customers',
-      name: 'Quản lý đại lý',
-      path: '/sales/customers',
-      icon: Users,
-      category: 'Đội ngũ & Khách hàng',
+      id: 'inventory-stock',
+      name: 'Tra cứu tồn kho',
+      path: '/inventory/stock',
+      icon: Warehouse,
+      category: 'Kho vận',
     },
     {
-      id: 'sales-orders',
-      name: 'Quản lý đơn hàng',
-      path: '/sales/orders',
-      icon: ShoppingCart,
-      category: 'Kinh doanh',
+      id: 'accounting-debt',
+      name: 'Theo dõi công nợ',
+      path: '/accounting/debt',
+      icon: Receipt,
+      category: 'Tài chính',
     },
     {
       id: 'dashboard',
@@ -260,16 +281,30 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       icon: BarChart3,
       category: 'Báo cáo & Phân tích',
     },
+    {
+      id: 'system-users',
+      name: 'Quản lý nhân sự',
+      path: '/system/users',
+      icon: Users,
+      category: 'Quản trị hệ thống',
+    },
+    {
+      id: 'system-audit-logs',
+      name: 'Nhật ký hệ thống',
+      path: '/system/audit-logs',
+      icon: ScrollText,
+      category: 'Quản trị hệ thống',
+    },
   ],
 
   // 4. Nhân viên kho / Thủ kho (WAREHOUSE_KEEPER)
   [USER_ROLES.WAREHOUSE_KEEPER]: [
     {
-      id: 'dashboard',
-      name: 'Bảng điều khiển',
-      path: '/dashboard',
-      icon: LayoutDashboard,
-      category: 'Quản lý Tồn kho',
+      id: 'sales-orders',
+      name: 'Đơn hàng chuẩn bị xuất',
+      path: '/sales/orders',
+      icon: ShoppingCart,
+      category: 'Soạn hàng & Giao nhận',
     },
     {
       id: 'inventory-stock',
@@ -283,13 +318,6 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Nhập kho hàng hóa',
       path: '/inventory/receipts',
       icon: PackagePlus,
-      category: 'Nhập / Xuất kho',
-    },
-    {
-      id: 'inventory-suppliers',
-      name: 'Quản lý nhà cung cấp',
-      path: '/inventory/suppliers',
-      icon: Building2,
       category: 'Nhập / Xuất kho',
     },
     {
@@ -314,6 +342,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Điều chuyển & Kiểm tra',
     },
     {
+      id: 'inventory-suppliers',
+      name: 'Quản lý nhà cung cấp',
+      path: '/inventory/suppliers',
+      icon: Building2,
+      category: 'Nhập / Xuất kho',
+    },
+    {
       id: 'catalog-products',
       name: 'Danh mục sản phẩm',
       path: '/catalog/products',
@@ -330,6 +365,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       path: '/dashboard',
       icon: LayoutDashboard,
       category: 'Kiểm soát Kho',
+    },
+    {
+      id: 'sales-orders',
+      name: 'Đơn hàng bán buôn',
+      path: '/sales/orders',
+      icon: ShoppingCart,
+      category: 'Soạn hàng & Giao nhận',
     },
     {
       id: 'inventory-stock',
@@ -381,13 +423,6 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Lịch sử Nhập / Xuất',
     },
     {
-      id: 'inventory-suppliers',
-      name: 'Quản lý nhà cung cấp',
-      path: '/inventory/suppliers',
-      icon: Building2,
-      category: 'Kiểm soát Kho',
-    },
-    {
       id: 'inventory-issues',
       name: 'Xuất kho giao hàng',
       path: '/inventory/issues',
@@ -400,6 +435,20 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       path: '/reports/inventory',
       icon: BarChart3,
       category: 'Báo cáo Vận hành',
+    },
+    {
+      id: 'inventory-suppliers',
+      name: 'Quản lý nhà cung cấp',
+      path: '/inventory/suppliers',
+      icon: Building2,
+      category: 'Kiểm soát Kho',
+    },
+    {
+      id: 'catalog-products',
+      name: 'Danh mục sản phẩm',
+      path: '/catalog/products',
+      icon: Package,
+      category: 'Tra cứu',
     },
   ],
 
@@ -434,6 +483,27 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Theo dõi Công nợ',
     },
     {
+      id: 'sales-customers',
+      name: 'Quản lý đại lý',
+      path: '/sales/customers',
+      icon: Users,
+      category: 'Quản lý Đại lý',
+    },
+    {
+      id: 'sales-credit-limit',
+      name: 'Hạn mức công nợ',
+      path: '/sales/credit-limit',
+      icon: CreditCard,
+      category: 'Quản lý Đại lý',
+    },
+    {
+      id: 'sales-orders',
+      name: 'Đơn hàng bán buôn',
+      path: '/sales/orders',
+      icon: ShoppingCart,
+      category: 'Nghiệp vụ Bán hàng',
+    },
+    {
       id: 'accounting-returns',
       name: 'Xử lý phiếu trả hàng',
       path: '/accounting/returns',
@@ -441,11 +511,32 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Nghiệp vụ Bán hàng',
     },
     {
-      id: 'sales-customers',
-      name: 'Quản lý đại lý',
-      path: '/sales/customers',
-      icon: Users,
-      category: 'Quản lý Đại lý',
+      id: 'inventory-stock',
+      name: 'Tra cứu tồn kho',
+      path: '/inventory/stock',
+      icon: Warehouse,
+      category: 'Tra cứu',
+    },
+    {
+      id: 'inventory-receipts',
+      name: 'Phiếu nhập kho',
+      path: '/inventory/receipts',
+      icon: PackagePlus,
+      category: 'Tra cứu',
+    },
+    {
+      id: 'catalog-products',
+      name: 'Danh mục sản phẩm',
+      path: '/catalog/products',
+      icon: Package,
+      category: 'Tra cứu',
+    },
+    {
+      id: 'catalog-pricing',
+      name: 'Bảng giá & Chiết khấu',
+      path: '/catalog/pricing',
+      icon: BadgePercent,
+      category: 'Tra cứu',
     },
   ],
 
@@ -552,14 +643,28 @@ export const normalizeRole = (role?: string): UserRoleType => {
   if (upper === 'SALES_REP' || upper === 'SALES' || upper.includes('REP')) {
     return USER_ROLES.SALES_REP;
   }
-  if (upper === 'SALES_MANAGER' || upper === 'SALESMANAGER' || upper.includes('SALES_MAN')) {
+  if (
+    upper === 'SALES_MANAGER' ||
+    upper === 'SALESMANAGER' ||
+    upper.includes('SALES_MAN') ||
+    upper.includes('BUSINESS')
+  ) {
     return USER_ROLES.SALES_MANAGER;
   }
-  if (upper === 'WAREHOUSE_KEEPER' || upper === 'WAREHOUSE' || upper.includes('KEEPER')) {
-    return USER_ROLES.WAREHOUSE_KEEPER;
-  }
-  if (upper === 'WAREHOUSE_MANAGER' || upper === 'WAREHOUSEMANAGER' || upper.includes('WH_MAN')) {
+  if (
+    upper === 'WAREHOUSE_MANAGER' ||
+    upper === 'WAREHOUSEMANAGER' ||
+    upper.includes('WH_MAN') ||
+    upper === 'WH_MANAGER'
+  ) {
     return USER_ROLES.WAREHOUSE_MANAGER;
+  }
+  if (
+    upper === 'WAREHOUSE_KEEPER' ||
+    upper === 'WAREHOUSE' ||
+    upper.includes('KEEPER')
+  ) {
+    return USER_ROLES.WAREHOUSE_KEEPER;
   }
   if (upper === 'ACCOUNTANT' || upper.includes('ACCOUNT')) {
     return USER_ROLES.ACCOUNTANT;
