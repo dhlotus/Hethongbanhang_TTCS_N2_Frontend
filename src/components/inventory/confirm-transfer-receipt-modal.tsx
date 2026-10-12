@@ -1,18 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import {
   CheckCircle2,
-  AlertTriangle,
-  PackageCheck,
   Building2,
   ArrowRight,
   Info,
   Calendar,
   User,
-  AlertCircle,
 } from 'lucide-react';
 import { ModalLayout } from '../modal-layout';
 import { showToast } from '../toast';
 import { internalTransfersService } from '../../services/internal-transfers.service';
+import { DiscrepancyCheckTable } from './discrepancy-check-table';
+import type { ItemInspectionState } from './discrepancy-check-table';
 import type {
   ConfirmTransferReceiptPayload,
   InternalTransfer,
@@ -24,27 +23,6 @@ interface ConfirmTransferReceiptModalProps {
   onClose: () => void;
   onSuccess: (updated: InternalTransfer) => void;
 }
-
-interface ItemInspectionState {
-  itemId: string;
-  sku: string;
-  productName: string;
-  unit: string;
-  transferQuantity: number;
-  conversionRate: number;
-  baseUnit: string;
-  receivedQuantity: number;
-  discrepancyReason: string;
-}
-
-const COMMON_REASONS = [
-  'Vỡ hỏng khi vận chuyển',
-  'Giao thiếu so với phiếu',
-  'Giao thừa so với phiếu',
-  'Rách bao bì / Biến dạng hộp',
-  'Hàng cận date không đạt chuẩn',
-  'Hao hụt tự nhiên trong chuyên chở',
-];
 
 export const ConfirmTransferReceiptModal: React.FC<ConfirmTransferReceiptModalProps> = ({
   isOpen,
@@ -62,7 +40,8 @@ export const ConfirmTransferReceiptModal: React.FC<ConfirmTransferReceiptModalPr
       transferQuantity: item.transferQuantity,
       conversionRate: item.conversionRate,
       baseUnit: item.baseUnit,
-      receivedQuantity: item.receivedQuantity !== undefined ? item.receivedQuantity : item.transferQuantity,
+      receivedQuantity:
+        item.receivedQuantity !== undefined ? item.receivedQuantity : item.transferQuantity,
       discrepancyReason: item.discrepancyReason || '',
     }));
   });
@@ -94,11 +73,6 @@ export const ConfirmTransferReceiptModal: React.FC<ConfirmTransferReceiptModalPr
       };
       return clone;
     });
-  };
-
-  // Chọn lý do nhanh từ gợi ý
-  const handleSelectQuickReason = (index: number, reason: string) => {
-    handleReasonChange(index, reason);
   };
 
   // Tính toán tổng quan chênh lệch
@@ -186,30 +160,28 @@ export const ConfirmTransferReceiptModal: React.FC<ConfirmTransferReceiptModalPr
     <ModalLayout
       isOpen={isOpen}
       onClose={onClose}
-      title={`Xác Nhận Nhận Hàng — Phiếu ${transfer.code}`}
-      subtitle="Thủ kho kiểm đếm thực nhận và ghi nhận số liệu chính xác vào kho đến"
-      icon={<PackageCheck className="w-5 h-5 text-[var(--color-primary)]" />}
+      title={`Xác Nhận Nhận Hàng Chuyển Kho #${transfer.code}`}
+      subtitle={`Thủ kho nhận hàng kiểm đếm thực tế đối chiếu với số lượng xuất chuyển`}
+      icon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />}
       maxWidth="max-w-4xl"
       banner={
-        <div className="bg-emerald-50/90 border-b border-emerald-200/80 px-6 py-2.5 flex items-start gap-3 text-xs text-emerald-800">
+        <div className="bg-emerald-50/80 border-b border-emerald-200/70 px-6 py-2.5 flex items-start gap-3 text-xs text-emerald-900">
           <Info className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
           <div className="leading-relaxed">
-            <span className="font-semibold text-emerald-900">Quy tắc cộng tồn kho đến:</span> Khi xác nhận, hệ thống chỉ cộng tồn kho tại kho đến đúng bằng <strong>Số lượng thực nhận</strong>. Nếu có chênh lệch thừa/thiếu, <strong>bắt buộc phải nhập lý do</strong> để lưu vết kế toán &amp; sổ kho.
+            <span className="font-semibold text-emerald-950">Quy tắc nhập tồn:</span> Chỉ số lượng <strong>thực tế nhận được</strong> mới được cộng vào tồn kho của <strong>{transfer.toWarehouseName}</strong>. Mọi chênh lệch thiếu/thừa/hỏng hóc sẽ được lưu vết vào biên bản điều chuyển.
           </div>
         </div>
       }
       footer={
         <div className="flex items-center justify-between w-full">
-          <div className="text-xs">
+          <div className="text-xs text-slate-500">
             {summary.hasDiscrepancy ? (
-              <span className="inline-flex items-center gap-1.5 text-rose-600 font-bold">
-                <AlertTriangle className="w-3.5 h-3.5" />
-                Phát hiện chênh lệch ({summary.totalReceived} / {summary.totalTransferred})
+              <span className="text-rose-600 font-semibold">
+                Phát hiện chênh lệch: Gửi {summary.totalTransferred} — Thực nhận {summary.totalReceived}
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 text-emerald-700 font-bold">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Kiểm đếm nhận đủ 100% ({summary.totalTransferred} đơn vị)
+              <span className="text-emerald-700 font-semibold">
+                Khớp 100% số lượng gửi ({summary.totalTransferred} mặt hàng)
               </span>
             )}
           </div>
@@ -220,53 +192,53 @@ export const ConfirmTransferReceiptModal: React.FC<ConfirmTransferReceiptModalPr
               disabled={submitting}
               className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
             >
-              Đóng
+              Hủy bỏ
             </button>
             <button
               type="button"
               onClick={handleSubmit}
               disabled={submitting || summary.missingReasonCount > 0}
-              className="px-5 py-2 text-xs font-bold text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] rounded-lg shadow-sm transition-all inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`px-5 py-2 text-xs font-bold text-white rounded-lg shadow-sm transition-all inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                summary.hasDiscrepancy
+                  ? 'bg-amber-600 hover:bg-amber-700'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
+              }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              {submitting ? 'Đang cập nhật tồn...' : 'Xác Nhận & Nhập Kho Đến'}
+              {submitting
+                ? 'Đang xử lý...'
+                : summary.hasDiscrepancy
+                ? 'Xác Nhận Nhập Kho (Có chênh lệch)'
+                : 'Xác Nhận Nhận Đủ 100%'}
             </button>
           </div>
         </div>
       }
     >
       <div className="p-6 space-y-6">
-        {/* KHỐI 1: THÔNG TIN PHIẾU CHUYỂN */}
-        <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200/80">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            {/* Tuyến chuyển */}
-            <div className="md:col-span-2">
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                Tuyến đường điều chuyển
+        {/* KHỐI 1: THÔNG TIN PHIẾU CHUYỂN KHO */}
+        <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                Tuyến điều chuyển
               </div>
-              <div className="flex items-center gap-2 font-semibold text-slate-800">
-                <div className="flex items-center gap-1 text-slate-600">
-                  <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{transfer.fromWarehouseName}</span>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
-                <div className="flex items-center gap-1 text-[var(--color-primary)] font-bold">
-                  <Building2 className="w-3.5 h-3.5 text-[var(--color-primary)]" />
-                  <span>{transfer.toWarehouseName}</span>
-                </div>
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                <span>{transfer.fromWarehouseName}</span>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-[var(--color-primary)]">{transfer.toWarehouseName}</span>
               </div>
             </div>
 
-            {/* Thông tin xuất */}
-            <div>
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                Thông tin xuất kho
+            <div className="space-y-1">
+              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                Thời gian xuất & Người tạo
               </div>
-              <div className="text-slate-600 space-y-0.5 text-[11px]">
+              <div className="flex items-center gap-3 text-xs text-slate-600">
                 <div className="flex items-center gap-1">
                   <Calendar className="w-3 h-3 text-slate-400" />
                   <span>
-                    Xuất lúc:{' '}
                     {transfer.transferredAt
                       ? new Date(transfer.transferredAt).toLocaleString('vi-VN')
                       : new Date(transfer.createdAt).toLocaleString('vi-VN')}
@@ -288,153 +260,13 @@ export const ConfirmTransferReceiptModal: React.FC<ConfirmTransferReceiptModalPr
         </div>
 
         {/* KHỐI 2: BẢNG KIỂM ĐẾM THỰC NHẬN TỪNG MẶT HÀNG */}
-        <div>
-          <div className="flex items-center justify-between mb-2.5">
-            <div>
-              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Kiểm đếm hàng hóa thực nhận
-              </h4>
-              <p className="text-[11px] text-slate-500">
-                Nhập số lượng thực nhận tại kho đến — Nếu có chênh lệch, bắt buộc nhập lý do
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleSetAllFull}
-              className="px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Điền nhận đủ tất cả
-            </button>
-          </div>
-
-          <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                    <th className="py-2.5 px-3 w-10 text-center">STT</th>
-                    <th className="py-2.5 px-3 min-w-[200px]">Sản phẩm & SKU</th>
-                    <th className="py-2.5 px-3 w-28 text-center">Đơn vị</th>
-                    <th className="py-2.5 px-3 w-28 text-right">SL gửi</th>
-                    <th className="py-2.5 px-3 w-36 text-right">SL thực nhận</th>
-                    <th className="py-2.5 px-3 w-32 text-center">Chênh lệch</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs">
-                  {inspections.map((item, index) => {
-                    const diff = item.transferQuantity - item.receivedQuantity;
-                    const hasDiff = diff !== 0;
-                    const isMissingReason = hasDiff && !item.discrepancyReason.trim() && !generalDiscrepancyReason.trim();
-
-                    return (
-                      <React.Fragment key={item.itemId}>
-                        <tr className={`hover:bg-slate-50/60 ${hasDiff ? 'bg-amber-50/30' : ''}`}>
-                          <td className="py-3 px-3 text-center text-slate-400 font-mono text-[11px]">
-                            {index + 1}
-                          </td>
-                          <td className="py-3 px-3">
-                            <div className="font-semibold text-slate-800">{item.productName}</div>
-                            <div className="text-[11px] text-slate-400 font-mono">
-                              SKU: {item.sku}
-                            </div>
-                          </td>
-                          <td className="py-3 px-3 text-center text-slate-600 font-medium">
-                            {item.unit}
-                            <div className="text-[10px] text-slate-400">
-                              (x{item.conversionRate} {item.baseUnit})
-                            </div>
-                          </td>
-                          <td className="py-3 px-3 text-right font-bold text-slate-700">
-                            {item.transferQuantity}
-                          </td>
-                          <td className="py-3 px-3 text-right">
-                            <input
-                              type="number"
-                              min={0}
-                              value={item.receivedQuantity}
-                              onChange={(e) =>
-                                handleQuantityChange(index, Number(e.target.value) || 0)
-                              }
-                              className={`w-28 text-right text-xs font-bold px-2.5 py-1.5 border rounded-lg outline-none transition-all ${
-                                hasDiff
-                                  ? 'border-rose-400 bg-white text-rose-700 focus:ring-2 focus:ring-rose-400'
-                                  : 'border-slate-300 bg-white text-slate-800 focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]'
-                              }`}
-                            />
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            {diff === 0 ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                <CheckCircle2 className="w-3 h-3" /> Nhận đủ
-                              </span>
-                            ) : diff > 0 ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                                <AlertTriangle className="w-3 h-3" /> Thiếu {diff} {item.unit}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                <AlertTriangle className="w-3 h-3" /> Thừa {Math.abs(diff)} {item.unit}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-
-                        {/* HÀNG NHẬP LÝ DO CHÊNH LỆCH KHI CÓ SAI LỆCH */}
-                        {hasDiff && (
-                          <tr className="bg-rose-50/50 border-b border-rose-100">
-                            <td colSpan={6} className="py-2.5 px-4">
-                              <div className="space-y-1.5">
-                                <div className="flex items-center justify-between">
-                                  <label className="text-[11px] font-bold text-rose-800 flex items-center gap-1">
-                                    <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                                    Lý do chênh lệch cho sản phẩm "{item.productName}" <span className="text-rose-600">*</span>:
-                                  </label>
-                                  {isMissingReason && (
-                                    <span className="text-[11px] text-rose-600 font-semibold animate-pulse">
-                                      Bắt buộc phải nhập lý do!
-                                    </span>
-                                  )}
-                                </div>
-                                <input
-                                  type="text"
-                                  value={item.discrepancyReason}
-                                  onChange={(e) => handleReasonChange(index, e.target.value)}
-                                  placeholder="Ví dụ: Vỡ hỏng 2 chai khi xe chở rung lắc, Giao thiếu 1 thùng từ kho xuất..."
-                                  className={`w-full text-xs px-3 py-1.5 bg-white border rounded-lg outline-none transition-all placeholder:text-slate-400 ${
-                                    isMissingReason
-                                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-400'
-                                      : 'border-slate-300 focus:border-[var(--color-primary)]'
-                                  }`}
-                                />
-                                {/* Gợi ý lý do nhanh */}
-                                <div className="flex flex-wrap gap-1.5 pt-0.5">
-                                  <span className="text-[10px] text-slate-500 font-semibold self-center">
-                                    Gợi ý nhanh:
-                                  </span>
-                                  {COMMON_REASONS.map((reason) => (
-                                    <button
-                                      key={reason}
-                                      type="button"
-                                      onClick={() => handleSelectQuickReason(index, reason)}
-                                      className="text-[10px] font-medium px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-md transition-colors cursor-pointer"
-                                    >
-                                      {reason}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <DiscrepancyCheckTable
+          inspections={inspections}
+          generalDiscrepancyReason={generalDiscrepancyReason}
+          onSetAllFull={handleSetAllFull}
+          onQuantityChange={handleQuantityChange}
+          onReasonChange={handleReasonChange}
+        />
 
         {/* KHỐI 3: LÝ DO CHÊNH LỆCH CHUNG & GHI CHÚ */}
         {summary.hasDiscrepancy && (
