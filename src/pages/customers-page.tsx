@@ -22,6 +22,7 @@ import {
   Trash2,
   Tag,
   Pencil,
+  ChevronDown,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
@@ -172,6 +173,27 @@ export const CustomersPage: React.FC = () => {
   const [deleteModalCustomer, setDeleteModalCustomer] = useState<Customer | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+
+  // Đóng dropdown thao tác khi click ra ngoài hoặc nhấn phím Escape
+  useEffect(() => {
+    const handleDocClick = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.customer-action-dropdown-container')) {
+        setOpenActionMenuId(null);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpenActionMenuId(null);
+      }
+    };
+    document.addEventListener('click', handleDocClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('click', handleDocClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   // Modal thêm đại lý mới
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
@@ -1262,7 +1284,7 @@ export const CustomersPage: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto min-h-[360px]">
               <table className="w-full text-left text-xs sm:text-sm text-slate-600">
                 <thead className="bg-slate-50/70 text-slate-500 text-xs uppercase font-semibold border-b border-slate-100 tracking-wide">
                   <tr>
@@ -1272,11 +1294,14 @@ export const CustomersPage: React.FC = () => {
                     <th className="px-4 py-3.5">Hạn Mức & Dư Nợ</th>
                     <th className="px-4 py-3.5">Điểm Giao Hàng</th>
                     <th className="px-4 py-3.5">Trạng Thái</th>
-                    <th className="px-4 py-3.5">Thao Tác</th>
+                    <th className="px-4 py-3.5 text-center">Thao Tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                {customers.map((customer) => {
+                {customers.map((customer, idx) => {
+                  const isDropUp =
+                    idx >= Math.max(1, customers.length - 2) ||
+                    (customers.length > 3 && idx >= Math.floor(customers.length / 2));
                   const debtPercent =
                     customer.creditLimit > 0
                       ? Math.min(
@@ -1402,72 +1427,130 @@ export const CustomersPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Cột 7: Thao tác (SN-36: Khóa/Mở khóa giao dịch) */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center justify-start gap-1.5">
-                          {/* Nút Khóa / Mở khóa giao dịch (SN-36) */}
-                          {customer.status === 'LOCKED' ? (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenUnlockModal(customer)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
-                              title="Mở khóa giao dịch đại lý (SN-36)"
-                            >
-                              <Unlock className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Mở khóa</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenLockModal(customer)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors cursor-pointer"
-                              title="Khóa giao dịch đại lý (SN-36)"
-                            >
-                              <Lock className="w-3.5 h-3.5 text-rose-600" />
-                              <span>Khóa</span>
-                            </button>
-                          )}
-
-                          {/* Nút Sửa hạn mức (SN-34) */}
+                      {/* Cột 7: Thao tác (Gom thành 1 nút dropdown) */}
+                      <td className="px-4 py-3.5 text-center">
+                        <div className="relative inline-block text-left customer-action-dropdown-container">
                           <button
                             type="button"
-                            onClick={() => handleOpenCreditLimitModal(customer)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors cursor-pointer"
-                            title="Sửa hạn mức công nợ (SN-34)"
-                          >
-                            <Pencil className="w-3.5 h-3.5 text-amber-600" />
-                            <span>Sửa hạn mức</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            disabled={customer.status === 'LOCKED'}
-                            onClick={() => {
-                              navigate(`/sales/orders?customerId=${customer.id}`);
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenActionMenuId(openActionMenuId === customer.id ? null : customer.id);
                             }}
-                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-all ${customer.status === 'LOCKED'
-                                ? 'opacity-40 cursor-not-allowed bg-slate-100 text-slate-400'
-                                : 'text-[var(--color-primary)] bg-indigo-50 hover:bg-[var(--color-primary)] hover:text-white'
-                              }`}
-                            title={
-                              customer.status === 'LOCKED'
-                                ? 'Đại lý đang bị khóa giao dịch, không thể lên đơn!'
-                                : 'Tạo đơn hàng B2B cho đại lý này'
-                            }
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none ${
+                              openActionMenuId === customer.id
+                                ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-xs'
+                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-slate-300'
+                            }`}
+                            title="Thao tác"
                           >
-                            <ShoppingCart className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Lên đơn</span>
+                            <span>Thao tác</span>
+                            <ChevronDown
+                              className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${
+                                openActionMenuId === customer.id ? 'rotate-180 text-blue-600' : ''
+                              }`}
+                            />
                           </button>
 
-                          {/* Nút Xóa đại lý (SN-30 AC4) */}
-                          <button
-                            type="button"
-                            onClick={() => handleOpenDeleteModal(customer)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                            title="Xóa hồ sơ đại lý (SN-30)"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {openActionMenuId === customer.id && (
+                            <div
+                              className={`absolute right-0 ${
+                                isDropUp ? 'bottom-full mb-1 origin-bottom-right' : 'top-full mt-1 origin-top-right'
+                              } w-48 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100`}
+                            >
+                              <div className="py-1">
+                                {/* 1. Lên đơn hàng B2B */}
+                                <button
+                                  type="button"
+                                  disabled={customer.status === 'LOCKED'}
+                                  onClick={() => {
+                                    setOpenActionMenuId(null);
+                                    navigate(`/sales/orders?customerId=${customer.id}`);
+                                  }}
+                                  className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
+                                    customer.status === 'LOCKED'
+                                      ? 'opacity-40 cursor-not-allowed text-slate-400 bg-slate-50/50'
+                                      : 'text-blue-600 hover:bg-blue-50 cursor-pointer font-medium'
+                                  }`}
+                                  title={
+                                    customer.status === 'LOCKED'
+                                      ? 'Đại lý đang bị khóa giao dịch, không thể lên đơn!'
+                                      : 'Tạo đơn hàng B2B cho đại lý này'
+                                  }
+                                >
+                                  <ShoppingCart className="w-4 h-4 text-blue-600" />
+                                  <span>Lên đơn hàng mới</span>
+                                </button>
+
+                                {/* 2. Sửa hạn mức công nợ */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenActionMenuId(null);
+                                    handleOpenCreditLimitModal(customer);
+                                  }}
+                                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-amber-700 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                >
+                                  <Pencil className="w-4 h-4 text-amber-600" />
+                                  <span>Sửa hạn mức</span>
+                                </button>
+
+                                {/* 3. Điểm giao hàng */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenActionMenuId(null);
+                                    handleOpenDeliveryPoints(customer);
+                                  }}
+                                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                >
+                                  <MapPin className="w-4 h-4 text-indigo-500" />
+                                  <span>Điểm giao hàng ({customer.deliveryPoints?.length || 0})</span>
+                                </button>
+                              </div>
+
+                              <div className="py-1">
+                                {/* 4. Khóa / Mở khóa giao dịch */}
+                                {customer.status === 'LOCKED' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionMenuId(null);
+                                      handleOpenUnlockModal(customer);
+                                    }}
+                                    className="w-full text-left px-3.5 py-2 text-xs text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                                  >
+                                    <Unlock className="w-4 h-4 text-emerald-600" />
+                                    <span>Mở khóa giao dịch</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionMenuId(null);
+                                      handleOpenLockModal(customer);
+                                    }}
+                                    className="w-full text-left px-3.5 py-2 text-xs text-amber-700 hover:bg-amber-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                                  >
+                                    <Lock className="w-4 h-4 text-amber-600" />
+                                    <span>Khóa giao dịch</span>
+                                  </button>
+                                )}
+
+                                {/* 5. Xóa đại lý */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenActionMenuId(null);
+                                    handleOpenDeleteModal(customer);
+                                  }}
+                                  className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                                >
+                                  <Trash2 className="w-4 h-4 text-rose-500" />
+                                  <span>Xóa đại lý</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
