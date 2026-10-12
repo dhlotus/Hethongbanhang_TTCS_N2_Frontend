@@ -7,8 +7,6 @@ import {
   Trash2,
   Search,
   RefreshCw,
-  ChevronLeft,
-  ChevronRight,
   Eye,
   X,
   CheckCircle2,
@@ -64,6 +62,7 @@ import type { Product, ProductUnit } from '../types/products';
 import type { AgencyWarehouseDetail } from '../types/warehouse.types';
 import { OrderTimeline } from '../components/order-timeline';
 import { CancelOrderModal } from '../components/cancel-order-modal';
+import { Pagination } from '../components/pagination';
 
 const getAvailableProductUnits = (
   product: Product,
@@ -2317,11 +2316,12 @@ export const OrdersPage: React.FC = () => {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const limit = 10;
+  const [limit, setLimit] = useState(10);
 
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>(() => {
     const requestedStatus = searchParams.get('status');
@@ -2600,6 +2600,7 @@ export const OrdersPage: React.FC = () => {
       } finally {
         if (isMounted) {
           setLoading(false);
+          setIsInitialLoading(false);
         }
       }
     }, 0);
@@ -2847,27 +2848,57 @@ export const OrdersPage: React.FC = () => {
 
             {/* Từ ngày - Đến ngày */}
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <div className="flex items-center gap-1.5 bg-slate-50/80 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+              <label className="relative flex items-center gap-1.5 bg-slate-50/80 hover:bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all cursor-pointer shadow-2xs">
                 <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span className="text-[11px] text-slate-500 whitespace-nowrap">Từ:</span>
+                <span className="text-[11px] text-slate-500 whitespace-nowrap font-medium">Từ:</span>
                 <input
                   type="date"
                   value={fromDate}
                   onChange={(e) => handleFromDateChange(e.target.value)}
                   className="text-xs text-slate-700 bg-transparent focus:outline-none cursor-pointer"
+                  title="Chọn ngày bắt đầu"
                 />
-              </div>
+                {fromDate && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleFromDateChange('');
+                    }}
+                    className="p-0.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60 transition-colors ml-0.5 cursor-pointer"
+                    title="Xóa ngày bắt đầu"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </label>
 
-              <div className="flex items-center gap-1.5 bg-slate-50/80 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+              <label className="relative flex items-center gap-1.5 bg-slate-50/80 hover:bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all cursor-pointer shadow-2xs">
                 <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span className="text-[11px] text-slate-500 whitespace-nowrap">Đến:</span>
+                <span className="text-[11px] text-slate-500 whitespace-nowrap font-medium">Đến:</span>
                 <input
                   type="date"
                   value={toDate}
                   onChange={(e) => handleToDateChange(e.target.value)}
                   className="text-xs text-slate-700 bg-transparent focus:outline-none cursor-pointer"
+                  title="Chọn ngày kết thúc"
                 />
-              </div>
+                {toDate && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleToDateChange('');
+                    }}
+                    className="p-0.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60 transition-colors ml-0.5 cursor-pointer"
+                    title="Xóa ngày kết thúc"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </label>
             </div>
 
             {/* Cụm nút hành động: Làm mới & Tạo đơn hàng */}
@@ -2998,9 +3029,14 @@ export const OrdersPage: React.FC = () => {
         </div>
 
         {/* Danh sách đơn hàng */}
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-          {loading ? (
-            <div className="p-8 text-center">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm relative">
+          {/* Thanh progress bar mượt mà trên đỉnh bảng khi lọc hoặc chuyển trang (chống giật layout) */}
+          {loading && !isInitialLoading && (
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-600 to-blue-500 animate-pulse z-30" />
+          )}
+
+          {isInitialLoading && loading && orders.length === 0 ? (
+            <div className="p-12 text-center">
               <RefreshCw className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-3" />
               <p className="text-sm text-slate-500">Đang tải danh sách đơn hàng...</p>
             </div>
@@ -3067,7 +3103,7 @@ export const OrdersPage: React.FC = () => {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className={`divide-y divide-slate-100 transition-opacity duration-150 ${loading ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
                     {orders.map((order, idx) => {
                       const isDropUp =
                         idx >= Math.max(1, orders.length - 2) ||
@@ -3263,7 +3299,7 @@ export const OrdersPage: React.FC = () => {
               </div>
 
               {/* Mobile Card */}
-              <div className="sm:hidden divide-y divide-slate-100">
+              <div className={`sm:hidden divide-y divide-slate-100 transition-opacity duration-150 ${loading ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
                 {orders.map((order) => (
                   <div
                     key={order.id}
@@ -3386,38 +3422,28 @@ export const OrdersPage: React.FC = () => {
                   </div>
                 ))}
               </div>
+
+              {/* Thanh phân trang gắn liền chân bảng LOHA SALES */}
+              {total > 0 && (
+                <Pagination
+                  variant="default"
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={total}
+                  pageSize={limit}
+                  pageSizeOptions={[10, 20, 50]}
+                  itemLabel="đơn hàng"
+                  showFirstLast={true}
+                  onPageChange={(p) => setPage(p)}
+                  onPageSizeChange={(sz) => {
+                    setLimit(sz);
+                    setPage(1);
+                  }}
+                />
+              )}
             </>
           )}
         </div>
-
-        {/* Phân trang */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between text-sm text-slate-500">
-            <span>
-              Hiển thị {Math.min((page - 1) * limit + 1, total)}–
-              {Math.min(page * limit, total)} / {total} đơn hàng
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="px-3 text-slate-600 font-medium">
-                {page} / {totalPages}
-              </span>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Modal Tạo đơn hàng */}

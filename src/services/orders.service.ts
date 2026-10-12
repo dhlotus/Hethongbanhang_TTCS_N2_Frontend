@@ -523,7 +523,80 @@ export const ordersService = {
         totalPages: res.data?.totalPages || 1,
       };
     } catch {
-      return { data: [], total: 0, totalAmount: 0, page: 1, limit: 10, totalPages: 1 };
+      // Fallback lấy từ bộ nhớ cục bộ demo orders khi mất kết nối mạng
+      const toDateKey = (val: string | Date | undefined): string => {
+        if (!val) return '';
+        if (typeof val === 'string') {
+          const m = val.match(/^(\d{4}-\d{2}-\d{2})/);
+          if (m) return m[1];
+        }
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return '';
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+
+      let list = getStoredDemoOrders();
+      if (params.status && params.status !== 'ALL') {
+        const st = String(params.status).toUpperCase();
+        list = list.filter((o) => o.status?.toUpperCase() === st);
+      }
+      if (params.customerId && params.customerId !== 'ALL') {
+        list = list.filter((o) => o.customerId === params.customerId || o.customerCode === params.customerId);
+      }
+      if (params.salesRepId && params.salesRepId !== 'ALL') {
+        const rep = params.salesRepId.toLowerCase();
+        list = list.filter((o) => o.salesRepId === params.salesRepId || o.salesRepName?.toLowerCase().includes(rep));
+      }
+      if (params.region && params.region !== 'ALL') {
+        const reg = params.region.toLowerCase();
+        list = list.filter((o) => o.region?.toLowerCase().includes(reg) || o.deliveryPoint?.address?.toLowerCase().includes(reg));
+      }
+      const fromKey = params.fromDate?.trim();
+      const toKey = params.toDate?.trim();
+      if (fromKey && toKey) {
+        list = list.filter((o) => {
+          const c = toDateKey(o.createdAt);
+          const d = toDateKey(o.deliveryDate);
+          return (c && c >= fromKey && c <= toKey) || (d && d >= fromKey && d <= toKey);
+        });
+      } else if (fromKey) {
+        list = list.filter((o) => {
+          const c = toDateKey(o.createdAt);
+          const d = toDateKey(o.deliveryDate);
+          return (c && c >= fromKey) || (d && d >= fromKey);
+        });
+      } else if (toKey) {
+        list = list.filter((o) => {
+          const c = toDateKey(o.createdAt);
+          const d = toDateKey(o.deliveryDate);
+          return (c && c <= toKey) || (d && d <= toKey);
+        });
+      }
+      if (params.search && params.search.trim()) {
+        const q = params.search.toLowerCase().trim();
+        list = list.filter((o) =>
+          o.orderCode?.toLowerCase().includes(q) ||
+          o.customerName?.toLowerCase().includes(q) ||
+          o.salesRepName?.toLowerCase().includes(q)
+        );
+      }
+      const total = list.length;
+      const totalAmount = list.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+      const page = Math.max(1, Number(params.page) || 1);
+      const limit = Math.max(1, Number(params.limit) || 10);
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      const start = (page - 1) * limit;
+      return {
+        data: list.slice(start, start + limit),
+        total,
+        totalAmount,
+        page,
+        limit,
+        totalPages,
+      };
     }
   },
 
