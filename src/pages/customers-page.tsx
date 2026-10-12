@@ -21,13 +21,16 @@ import {
   Unlock,
   Trash2,
   Tag,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
 import { LockAgencyModal } from '../components/lock-agency-modal';
+import { AssignSalesRepModal } from '../components/assign-sales-rep-modal';
+import { BulkTransferTerritoryModal } from '../components/bulk-transfer-territory-modal';
 import { Pagination } from '../components/pagination';
 import { customerService, getStoredCustomers } from '../services/customer.service';
-import type { Customer, CreateCustomerPayload, DeliveryPoint } from '../types/customer.types';
+import type { Customer, CreateCustomerPayload, DeliveryPoint, SalesRepOption, BulkTransferResult } from '../types/customer.types';
 
 // Danh sách nhân viên kinh doanh phụ trách chuẩn (SN-30 & SN-35)
 const SALES_REPS = [
@@ -162,6 +165,14 @@ export const CustomersPage: React.FC = () => {
   const [deleteModalCustomer, setDeleteModalCustomer] = useState<Customer | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  // Modal Phân công nhân viên kinh doanh phụ trách chính (SN-35)
+  const [assignModalCustomer, setAssignModalCustomer] = useState<Customer | null>(null);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState<boolean>(false);
+
+  // Modal Chuyển giao địa bàn hàng loạt (SN-35)
+  const [isBulkTransferOpen, setIsBulkTransferOpen] = useState<boolean>(false);
+  const [availableSalesReps, setAvailableSalesReps] = useState<SalesRepOption[]>([]);
 
   // Modal thêm đại lý mới
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
@@ -567,6 +578,19 @@ export const CustomersPage: React.FC = () => {
     };
   }, [loadCustomers]);
 
+  // Lấy danh sách nhân viên kinh doanh phục vụ phân công / chuyển giao (SN-35)
+  useEffect(() => {
+    const fetchSalesReps = async () => {
+      try {
+        const reps = await customerService.getAvailableSalesReps();
+        setAvailableSalesReps(reps);
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách nhân viên kinh doanh:', err);
+      }
+    };
+    void fetchSalesReps();
+  }, []);
+
   // Làm mới dữ liệu từ server
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -898,6 +922,34 @@ export const CustomersPage: React.FC = () => {
     );
   };
 
+  // Mở modal phân công nhân viên kinh doanh phụ trách (SN-35)
+  const handleOpenAssignModal = (customer: Customer) => {
+    setAssignModalCustomer(customer);
+    setIsAssignModalOpen(true);
+  };
+
+  // Xử lý khi phân công nhân viên thành công (SN-35)
+  const handleAssignSuccess = (updatedCustomer: Customer) => {
+    setCustomers((prev) =>
+      prev.map((c) => (c.id === updatedCustomer.id ? { ...c, ...updatedCustomer } : c))
+    );
+    setIsAssignModalOpen(false);
+    setAssignModalCustomer(null);
+    void loadCustomers();
+  };
+
+  // Xử lý khi chuyển giao địa bàn thành công (SN-35)
+  const handleBulkTransferSuccess = (result: BulkTransferResult) => {
+    setIsBulkTransferOpen(false);
+    showToast(
+      'success',
+      'Chuyển giao địa bàn thành công',
+      `Đã chuyển giao ${result.transferredCount} đại lý sang cho ${result.toSalesRep.fullName}.`
+    );
+    void loadCustomers();
+    void customerService.getAvailableSalesReps().then(setAvailableSalesReps);
+  };
+
   // Format tiền tệ VNĐ
   const formatVnd = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -944,6 +996,16 @@ export const CustomersPage: React.FC = () => {
               className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-600' : 'text-slate-500'}`}
             />
             <span>Làm mới</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsBulkTransferOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors shadow-xs cursor-pointer"
+            title="Chuyển giao địa bàn hàng loạt khi nhân sự nghỉ việc (SN-35)"
+          >
+            <ArrowRightLeft className="w-4 h-4 text-purple-600" />
+            <span>Chuyển giao địa bàn</span>
           </button>
 
           <button
@@ -1303,6 +1365,17 @@ export const CustomersPage: React.FC = () => {
                               <span>Khóa</span>
                             </button>
                           )}
+
+                          {/* Nút Phân công NVKD phụ trách chính (SN-35) */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAssignModal(customer)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors cursor-pointer"
+                            title="Phân công nhân viên kinh doanh phụ trách (SN-35)"
+                          >
+                            <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+                            <span className="hidden md:inline">Phân công</span>
+                          </button>
 
                           <button
                             type="button"
@@ -1908,6 +1981,27 @@ export const CustomersPage: React.FC = () => {
           </div>,
           document.body
         )}
+
+      {/* ── MODAL PHÂN CÔNG NHÂN VIÊN PHỤ TRÁCH CHÍNH (SN-35) ── */}
+      <AssignSalesRepModal
+        isOpen={isAssignModalOpen}
+        onClose={() => {
+          setIsAssignModalOpen(false);
+          setAssignModalCustomer(null);
+        }}
+        customer={assignModalCustomer}
+        salesReps={availableSalesReps}
+        onSuccess={handleAssignSuccess}
+      />
+
+      {/* ── MODAL CHUYỂN GIAO ĐỊA BÀN HÀNG LOẠT KHI NHÂN VIÊN NGHỈ VIỆC (SN-35) ── */}
+      <BulkTransferTerritoryModal
+        isOpen={isBulkTransferOpen}
+        onClose={() => setIsBulkTransferOpen(false)}
+        allCustomers={customers}
+        salesReps={availableSalesReps}
+        onSuccess={handleBulkTransferSuccess}
+      />
     </div>
   );
 };
