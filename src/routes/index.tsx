@@ -16,10 +16,13 @@ import { OrdersPage } from '../pages/orders-page';
 import { StockListPage } from '../pages/inventory/stock-list-page';
 import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
 import { CustomersPage } from '../pages/customers-page';
+import { InventoryStockPage } from '../pages/inventory-stock-page';
 import { InventoryAuditsPage } from '../pages/inventory-audits-page';
 import { InventoryReceiptsPage } from '../pages/inventory-receipts-page';
 import { CreateInventoryReceiptPage } from '../pages/create-inventory-receipt-page';
 import { PortalOrdersPage } from '../pages/portal-orders-page';
+import { DashboardPage } from '../pages/dashboard-page';
+import { AgencyPortalPage } from '../pages/agency-portal-page';
 import { NotFoundPage } from '../pages/not-found-page';
 import { ForbiddenPage } from '../pages/forbidden-page';
 import { ProtectedRoute } from '../components/protected-route';
@@ -28,8 +31,6 @@ import { NetworkStatusIndicator } from '../components/network-status-indicator';
 import { AdminLayout } from '../layouts/admin-layout';
 import { getRedirectPathByUser, getStoredUser } from '../utils/navigation';
 import { tokenStorage } from '../utils/token-storage';
-import { DashboardPage } from '../pages/dashboard-page';
-import { AgencyPortalPage } from '../pages/agency-portal-page';
 import { WarehousesPage } from '../pages/warehouses-page';
 import { InternalTransfersPage } from '../pages/inventory/internal-transfers-page';
 
@@ -207,16 +208,19 @@ export const AppRoutes: React.FC = () => {
                 <RoleGuard
                   allowedRoles={[
                     'ADMIN',
-                    'SALES_MANAGER',
                     'SALES_REP',
+                    'SALES_MANAGER',
                     'WAREHOUSE_KEEPER',
                     'WAREHOUSE_MANAGER',
+                    'ACCOUNTANT',
                   ]}
                   moduleName="Tra cứu Tồn kho Khả dụng"
                 />
               }
             >
-              <Route path="/inventory/stock" element={<StockListPage />} />
+              <Route path="/inventory/stock" element={<InventoryStockPage />} />
+              <Route path="/inventory/stock-list" element={<StockListPage />} />
+              <Route path="/inventory/stocks" element={<StockListPage />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
