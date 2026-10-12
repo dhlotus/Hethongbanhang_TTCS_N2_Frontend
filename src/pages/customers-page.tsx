@@ -1293,13 +1293,6 @@ export const CustomersPage: React.FC = () => {
                   const isDropUp =
                     idx >= Math.max(1, customers.length - 2) ||
                     (customers.length > 3 && idx >= Math.floor(customers.length / 2));
-                  const debtPercent =
-                    customer.creditLimit > 0
-                      ? Math.min(
-                        100,
-                        Math.round((customer.currentDebt / customer.creditLimit) * 100)
-                      )
-                      : 0;
 
                   return (
                     <tr key={customer.id} className="hover:bg-slate-50/60 transition-colors group">
@@ -1355,32 +1348,96 @@ export const CustomersPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Cột 4: Hạn mức & Công nợ */}
-                      <td className="px-4 py-3.5 min-w-[170px]">
-                        <div className="flex justify-between items-center text-xs mb-1">
-                          <span className="text-slate-500">Dư nợ:</span>
-                          <span
-                            className={`font-semibold ${debtPercent > 80 ? 'text-rose-600 font-bold' : 'text-slate-800'
-                              }`}
-                          >
-                            {formatVnd(customer.currentDebt || 0)}
-                          </span>
-                        </div>
-                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${debtPercent > 80
-                                ? 'bg-rose-500'
-                                : debtPercent > 50
-                                  ? 'bg-amber-500'
-                                  : 'bg-[var(--color-primary)]'
-                              }`}
-                            style={{ width: `${debtPercent}%` }}
-                          />
-                        </div>
-                        <div className="flex justify-between text-[11px] text-slate-400 mt-0.5">
-                          <span>{debtPercent}% hạn mức</span>
-                          <span>HM: {formatVnd(customer.creditLimit || 0)}</span>
-                        </div>
+                      {/* Cột 4: Hạn mức & Công nợ thông minh */}
+                      <td className="px-4 py-3.5 min-w-[200px]">
+                        {customer.creditLimit > 0 ? (
+                          (() => {
+                            const debt = customer.currentDebt || 0;
+                            const limit = customer.creditLimit;
+                            const rawPct = Math.round((debt / limit) * 100);
+                            const isOverLimit = debt > limit;
+                            const isCritical = rawPct >= 90;
+                            const isWarning = rawPct >= 70 && rawPct < 90;
+                            const available = Math.max(0, limit - debt);
+
+                            // Phân cấp màu sắc theo 3 ngưỡng an toàn chuẩn UI/UX
+                            const barColor = isOverLimit || isCritical
+                              ? 'bg-rose-500'
+                              : isWarning
+                              ? 'bg-amber-500'
+                              : 'bg-emerald-500';
+
+                            const textColor = isOverLimit || isCritical
+                              ? 'text-rose-600 font-bold'
+                              : isWarning
+                              ? 'text-amber-700 font-semibold'
+                              : 'text-slate-800 font-semibold';
+
+                            const badgeStyle = isOverLimit
+                              ? 'bg-rose-100 text-rose-700 border-rose-200'
+                              : isCritical
+                              ? 'bg-rose-50 text-rose-600 border-rose-200'
+                              : isWarning
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+
+                            return (
+                              <div className="space-y-1.5">
+                                {/* Hàng 1: Dư nợ hiện tại & Huy hiệu % sử dụng */}
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <div className="flex items-baseline gap-1">
+                                    <span className="text-[11px] text-slate-400 font-medium">Nợ:</span>
+                                    <span className={`text-xs sm:text-sm ${textColor}`}>
+                                      {formatVnd(debt)}
+                                    </span>
+                                  </div>
+                                  <span
+                                    className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${badgeStyle} shrink-0`}
+                                  >
+                                    {isOverLimit ? `Vượt trần (${rawPct}%)` : `${rawPct}%`}
+                                  </span>
+                                </div>
+
+                                {/* Hàng 2: Thanh tiến trình hạn mức trực quan */}
+                                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-2xs">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+                                    style={{ width: `${Math.min(100, Math.max(0, rawPct))}%` }}
+                                  />
+                                </div>
+
+                                {/* Hàng 3: Hạn mức tối đa & Số dư nợ còn khả dụng */}
+                                <div className="flex items-center justify-between text-[11px] text-slate-400">
+                                  <span title={`Hạn mức: ${formatVnd(limit)}`}>
+                                    HM: <strong className="text-slate-600 font-medium">{formatVnd(limit)}</strong>
+                                  </span>
+                                  <span>
+                                    {isOverLimit ? (
+                                      <span className="text-rose-600 font-semibold">
+                                        Quá: {formatVnd(debt - limit)}
+                                      </span>
+                                    ) : (
+                                      <span>
+                                        Còn: <strong className="text-emerald-700 font-medium">{formatVnd(available)}</strong>
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          <div className="py-1">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-500 border border-slate-200/80">
+                              Chưa cấp hạn mức
+                            </span>
+                            {customer.currentDebt > 0 && (
+                              <div className="text-xs text-rose-600 font-bold mt-1">
+                                Nợ: {formatVnd(customer.currentDebt)}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       {/* Cột 5: Điểm giao hàng (SN-31 & SN-32) */}
