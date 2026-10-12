@@ -81,7 +81,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const [currentUser, setCurrentUser] = useState(getStoredUser());
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(tokenStorage.getUser()?.avatarUrl);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Trạng thái modal xác nhận đăng xuất
   const [showLogoutModal, setShowLogoutModal] = useState<boolean>(false);
@@ -90,42 +89,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Đóng dropdown an toàn và hủy timer đang chờ
+  // Đóng dropdown hồ sơ
   const handleCloseDropdown = () => {
-    if (dropdownTimeoutRef.current) {
-      clearTimeout(dropdownTimeoutRef.current);
-      dropdownTimeoutRef.current = null;
-    }
     setIsDropdownOpen(false);
   };
-
-  // Hover vào: Hủy timer đóng nếu có và mở dropdown ngay
-  const handleMouseEnter = () => {
-    if (dropdownTimeoutRef.current) {
-      clearTimeout(dropdownTimeoutRef.current);
-      dropdownTimeoutRef.current = null;
-    }
-    setIsDropdownOpen(true);
-  };
-
-  // Rời chuột ra: Đợi 150ms để người dùng di chuột mượt mà sang menu con trước khi đóng
-  const handleMouseLeave = () => {
-    if (dropdownTimeoutRef.current) {
-      clearTimeout(dropdownTimeoutRef.current);
-    }
-    dropdownTimeoutRef.current = setTimeout(() => {
-      setIsDropdownOpen(false);
-    }, 150);
-  };
-
-  // Dọn dẹp timer khi unmount
-  useEffect(() => {
-    return () => {
-      if (dropdownTimeoutRef.current) {
-        clearTimeout(dropdownTimeoutRef.current);
-      }
-    };
-  }, []);
 
   // Đồng bộ thông tin người dùng realtime
   useEffect(() => {
@@ -234,13 +201,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       {/* =================================================================== */}
       {/* 2. BÊN PHẢI: NÚT HỒ SƠ CÁ NHÂN KÈM DROPDOWN MENU XỔ XUỐNG           */}
       {/* =================================================================== */}
-      <div
-        className="relative shrink-0"
-        ref={dropdownRef}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
-        {/* Nút bấm mở Dropdown Profile (Hỗ trợ cả Hover & Click) */}
+      <div className="relative shrink-0" ref={dropdownRef}>
+        {/* Nút bấm mở Dropdown Profile (Chỉ mở khi click) */}
         <button
           type="button"
           onClick={() => setIsDropdownOpen((prev) => !prev)}
