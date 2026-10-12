@@ -50,8 +50,6 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
 
   const isAdminOrSalesManager =
     userRoles.includes('ADMIN') || userRoles.includes('SALES_MANAGER');
-  const isSalesRep =
-    (userRoles.includes('SALES_REP') || userRoles.includes('SALES')) && !isAdminOrSalesManager;
 
   const canManage = canManageProp !== undefined ? canManageProp : isAdminOrSalesManager;
 
