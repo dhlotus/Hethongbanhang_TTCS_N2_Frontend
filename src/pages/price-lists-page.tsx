@@ -161,13 +161,13 @@ export const PriceListsPage: React.FC = () => {
   const [priceListToDelete, setPriceListToDelete] = useState<PriceList | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Phân quyền người dùng
+  // Phân quyền người dùng: Chỉ ADMIN và SALES_MANAGER có quyền quản trị/tạo mới
+  // Nhân viên kinh doanh (SALES_REP) chỉ có quyền xem
   const user = getStoredUser();
-  const userRoles = user?.roles || [];
+  const userRoles = user?.roles || (user?.role ? [user.role] : []);
   const canManage =
     userRoles.includes('ADMIN') ||
-    userRoles.includes('SALES_MANAGER') ||
-    userRoles.includes('SALES_REP');
+    userRoles.includes('SALES_MANAGER');
 
   // Đóng dropdown thao tác khi click ra ngoài
   useEffect(() => {
@@ -1221,7 +1221,7 @@ export const PriceListsPage: React.FC = () => {
           />
         </>
       ) : (
-        <DiscountPoliciesTab />
+        <DiscountPoliciesTab canManage={canManage} />
       )}
     </div>
   );
