@@ -743,62 +743,8 @@ export const ProductsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* 1. Nhóm nút hành động */}
-      <div className="flex items-center justify-end gap-2.5 flex-wrap sm:flex-nowrap bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
-        <button
-          type="button"
-          onClick={loadProducts}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-          title="Làm mới dữ liệu từ server"
-        >
-          <RefreshCw className={`h-4 w-4 shrink-0 ${loading ? 'animate-spin' : ''}`} />
-          <span>Làm mới</span>
-        </button>
-
-        {canManageProducts && (
-          <>
-            <Link
-              to="/catalog/categories"
-              className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/80 px-3.5 py-2.5 text-xs font-semibold text-indigo-700 shadow-2xs hover:bg-indigo-100 hover:text-indigo-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-              title="Mở giao diện quản lý Cây nhóm hàng đa cấp"
-            >
-              <FolderTree className="h-4 w-4 shrink-0 text-indigo-600" />
-              <span>Cây nhóm hàng</span>
-            </Link>
-
-            <button
-              type="button"
-              onClick={() => handleOpenLedgerModal()}
-              className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/80 px-3.5 py-2.5 text-xs font-semibold text-blue-700 shadow-2xs hover:bg-blue-100 hover:text-blue-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-              title="Xem Sổ kho & Lịch sử quy đổi giao dịch (SN-23)"
-            >
-              <BookOpen className="h-4 w-4 shrink-0 text-blue-600" />
-              <span>Sổ kho quy đổi</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setImportModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3.5 py-2.5 text-xs font-semibold text-emerald-700 shadow-2xs hover:bg-emerald-100 hover:text-emerald-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-            >
-              <FileText className="h-4 w-4 shrink-0 text-emerald-600" />
-              <span>Nhập từ Excel</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleOpenCreateModal}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer whitespace-nowrap"
-            >
-              <Plus className="h-4 w-4 shrink-0" />
-              <span>Thêm sản phẩm mới</span>
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* 2. Thanh công cụ lọc & Tìm kiếm (Responsive: Gọn gàng trên Mobile/Tablet, Đầy đủ trên Desktop) */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 sm:p-4 shadow-xs space-y-3">
+      {/* Thanh công cụ lọc, tìm kiếm & Nhóm nút hành động */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 sm:p-4 shadow-xs space-y-3.5">
         {/* A. MOBILE & TABLET (< lg): Chỉ hiển thị Ô tìm kiếm nhanh + Nút "Bộ lọc" mở Drawer */}
         <div className="flex items-center gap-2.5 lg:hidden">
           {/* Ô Tìm kiếm SKU / Tên / Barcode */}
@@ -927,15 +873,23 @@ export const ProductsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Tổng kết kết quả & Đặt lại bộ lọc & Filter Badges */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
-          <div className="flex flex-wrap items-center gap-1.5">
+        {/* Hàng công cụ hành động & thông tin kết quả (ngay dưới chân các ô lọc / tìm kiếm) */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+          {/* Bên trái: Thông tin tìm thấy & Filter Badges */}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-1.5 font-medium bg-slate-50 border border-slate-200/60 px-2.5 py-1.5 rounded-lg text-slate-700">
+              <Boxes className="h-4 w-4 text-slate-400" />
+              <span>
+                Tìm thấy: <strong className="text-slate-900">{total}</strong> SKU
+              </span>
+            </div>
+
             {activeFilterCount > 0 || searchTerm ? (
               <>
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-medium transition-all cursor-pointer mr-1"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 font-medium transition-all cursor-pointer"
                   title="Đặt lại toàn bộ bộ lọc"
                 >
                   <RotateCcw className="h-3 w-3" />
@@ -998,16 +952,61 @@ export const ProductsPage: React.FC = () => {
                   </span>
                 )}
               </>
-            ) : (
-              <span className="text-slate-400 italic">Tất cả sản phẩm</span>
-            )}
+            ) : null}
           </div>
 
-          <div className="flex items-center gap-1.5 font-medium shrink-0 ml-auto">
-            <Boxes className="h-4 w-4 text-slate-400" />
-            <span>
-              Tìm thấy: <strong>{total}</strong> SKU sản phẩm
-            </span>
+          {/* Bên phải: 5 nút chức năng chính */}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap ml-auto">
+            <button
+              type="button"
+              onClick={loadProducts}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+              title="Làm mới dữ liệu từ server"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${loading ? 'animate-spin' : ''}`} />
+              <span>Làm mới</span>
+            </button>
+
+            {canManageProducts && (
+              <>
+                <Link
+                  to="/catalog/categories"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/80 px-3 py-2 text-xs font-semibold text-indigo-700 shadow-2xs hover:bg-indigo-100 hover:text-indigo-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+                  title="Mở giao diện quản lý Cây nhóm hàng đa cấp"
+                >
+                  <FolderTree className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
+                  <span>Cây nhóm hàng</span>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => handleOpenLedgerModal()}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/80 px-3 py-2 text-xs font-semibold text-blue-700 shadow-2xs hover:bg-blue-100 hover:text-blue-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+                  title="Xem Sổ kho & Lịch sử quy đổi giao dịch (SN-23)"
+                >
+                  <BookOpen className="h-3.5 w-3.5 shrink-0 text-blue-600" />
+                  <span>Sổ kho quy đổi</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setImportModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-2xs hover:bg-emerald-100 hover:text-emerald-800 transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+                >
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                  <span>Nhập từ Excel</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenCreateModal}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:scale-[0.99] transition-all focus:outline-none cursor-pointer whitespace-nowrap"
+                >
+                  <Plus className="h-3.5 w-3.5 shrink-0" />
+                  <span>Thêm sản phẩm mới</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

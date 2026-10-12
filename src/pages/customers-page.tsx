@@ -1067,42 +1067,6 @@ export const CustomersPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* ── HEADER GIỐNG TRANG ĐƠN HÀNG BÁN BUÔN ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-blue-600" />
-            Đại lý & Hạn mức nợ
-          </h1>
-          <p className="text-sm text-slate-500 mt-2">
-            Quản lý danh sách khách hàng đại lý, theo dõi hạn mức tín dụng và công nợ
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
-            title="Đồng bộ danh sách"
-          >
-            <RefreshCw
-              className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-600' : 'text-slate-500'}`}
-            />
-            <span>Làm mới</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleOpenCreateModal}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-xs cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Thêm đại lý mới</span>
-          </button>
-        </div>
-      </div>
-
       {/* ── THỐNG KÊ NHANH KPI (CARD-BASED UI) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
@@ -1152,48 +1116,75 @@ export const CustomersPage: React.FC = () => {
 
       {/* ── THANH TÌM KIẾM & BỘ LỌC ĐA TIÊU CHÍ (SN-37) ── */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs space-y-3">
-        {/* Hàng 1: Ô tìm kiếm thông minh + Nút xóa bộ lọc */}
+        {/* Hàng 1: Ô tìm kiếm thông minh + Các nút hành động */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Ô input tìm kiếm */}
-          <div className="relative flex-1 max-w-xl">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Tìm theo tên đại lý, mã hoặc số điện thoại..."
-              className="w-full pl-10 pr-9 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] bg-slate-50/60 hover:bg-white focus:bg-white transition-all placeholder-slate-400"
-            />
-            {searchInput && (
+          {/* Ô input tìm kiếm & nút reset bộ lọc */}
+          <div className="flex items-center gap-2 flex-1 max-w-xl">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Tìm theo tên đại lý, mã hoặc số điện thoại..."
+                className="w-full pl-10 pr-9 py-2 text-xs font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-slate-50/60 hover:bg-white focus:bg-white transition-all placeholder-slate-400"
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput('');
+                    setSearchTerm('');
+                    setCurrentPage(1);
+                    updateUrlParams({ search: '', page: 1 });
+                    void loadCustomers({ search: '', page: 1 });
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
+                  title="Xóa từ khóa tìm kiếm"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Nút reset bộ lọc khi có điều kiện lọc đang kích hoạt */}
+            {hasActiveFilters && (
               <button
                 type="button"
-                onClick={() => {
-                  setSearchInput('');
-                  setSearchTerm('');
-                  setCurrentPage(1);
-                  updateUrlParams({ search: '', page: 1 });
-                  void loadCustomers({ search: '', page: 1 });
-                }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
-                title="Xóa từ khóa tìm kiếm"
+                onClick={handleResetFilters}
+                className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-xl transition-all cursor-pointer shrink-0 shadow-2xs"
+                title="Đặt lại toàn bộ bộ lọc về mặc định"
               >
                 <X className="w-3.5 h-3.5" />
+                <span>Xóa lọc</span>
               </button>
             )}
           </div>
 
-          {/* Nút reset bộ lọc khi có điều kiện lọc đang kích hoạt */}
-          {hasActiveFilters && (
+          {/* 2 nút hành động: Làm mới & Thêm đại lý mới */}
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
             <button
               type="button"
-              onClick={handleResetFilters}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/80 border border-rose-200/80 rounded-xl transition-all cursor-pointer shrink-0 shadow-2xs"
-              title="Đặt lại toàn bộ bộ lọc về mặc định"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-2xs disabled:opacity-50 cursor-pointer"
+              title="Đồng bộ danh sách từ máy chủ"
             >
-              <X className="w-3.5 h-3.5" />
-              <span>Xóa bộ lọc</span>
+              <RefreshCw
+                className={`w-3.5 h-3.5 shrink-0 ${refreshing ? 'animate-spin text-blue-600' : 'text-slate-500'}`}
+              />
+              <span>Làm mới</span>
             </button>
-          )}
+
+            <button
+              type="button"
+              onClick={handleOpenCreateModal}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.99] rounded-xl transition-all shadow-xs cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5 shrink-0" />
+              <span>Thêm đại lý mới</span>
+            </button>
+          </div>
         </div>
 
         {/* Hàng 2: Grid 4 dropdown bộ lọc chia đều cân xứng, thẳng hàng tuyệt đối */}
