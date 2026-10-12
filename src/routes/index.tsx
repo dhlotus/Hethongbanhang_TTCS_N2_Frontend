@@ -5,6 +5,7 @@ import { ForgotPasswordPage } from '../pages/forgot-password-page';
 import { ResetPasswordPage } from '../pages/reset-password-page';
 import { ChangePasswordPage } from '../pages/change-password-page';
 import { RoleModulePage } from '../pages/role-module-page';
+import { InvoicesPage } from '../pages/invoices-page';
 import { ProductsPage } from '../pages/products-page';
 import { PriceListsPage } from '../pages/price-lists-page';
 import { SuppliersPage } from '../pages/suppliers-page';
@@ -338,23 +339,11 @@ export const AppRoutes: React.FC = () => {
             >
               <Route
                 path="/accounting/invoices"
-                element={
-                  <RoleModulePage
-                    title="Quản lý Hóa đơn Bán hàng"
-                    subtitle="Phát hành hóa đơn tài chính, đối chiếu đơn giao thành công và quản lý chứng từ"
-                    requiredRole="Kế toán công nợ"
-                  />
-                }
+                element={<InvoicesPage />}
               />
               <Route
                 path="/accounting/payments"
-                element={
-                  <RoleModulePage
-                    title="Phiếu thu & Đối trừ Công nợ"
-                    subtitle="Ghi nhận tiền về tài khoản ngân hàng, tiền mặt và cấn trừ cho từng hóa đơn bán hàng"
-                    requiredRole="Kế toán công nợ"
-                  />
-                }
+                element={<InvoicesPage />}
               />
             </Route>
 
