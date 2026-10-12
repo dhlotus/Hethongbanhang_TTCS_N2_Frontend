@@ -1040,11 +1040,49 @@ html {
   animation: glassPulseSlow 6s ease-in-out infinite;
 }
 
+@keyframes glassCardEnter {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes glassCardExit {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95) translateY(-8px);
+    filter: blur(4px);
+  }
+}
+
+.animate-glass-card-enter {
+  animation: glassCardEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-glass-card-exit {
+  animation: glassCardExit 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* Chrome / Safari / Edge Autofill Fix for Glassmorphic & Dark Inputs */
 .login-glass-container input:-webkit-autofill,
 .login-glass-container input:-webkit-autofill:hover,
 .login-glass-container input:-webkit-autofill:focus,
 .login-glass-container input:-webkit-autofill:active,
+.auth-glass-container input:-webkit-autofill,
+.auth-glass-container input:-webkit-autofill:hover,
+.auth-glass-container input:-webkit-autofill:focus,
+.auth-glass-container input:-webkit-autofill:active,
 input.glass-input:-webkit-autofill,
 input.glass-input:-webkit-autofill:hover,
 input.glass-input:-webkit-autofill:focus,

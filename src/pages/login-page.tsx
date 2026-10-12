@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Lock, Eye, EyeOff, User, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import loginBg from '../assets/login-bg.jpg';
@@ -169,7 +169,16 @@ export const LoginPage: React.FC = () => {
   });
 
   const [hasPassword, setHasPassword] = useState(false);
+  const [isNavigatingAway, setIsNavigatingAway] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleNavigateToForgot = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsNavigatingAway(true);
+    setTimeout(() => {
+      navigate('/auth/forgot-password');
+    }, 280);
+  };
 
   const passwordValue = watch('password');
 
@@ -342,7 +351,7 @@ export const LoginPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* 2. THẺ KÍNH CHÍNH (Siêu Trong Suốt Pha Lê - Chiều Cao Thoáng Đãng Cân Đối)  */}
       {/* ========================================================================= */}
-      <div className="relative z-10 w-full max-w-[92vw] sm:max-w-[450px] md:max-w-[470px] lg:max-w-[480px] bg-white/[0.06] backdrop-blur-xl rounded-[36px] sm:rounded-[42px] border border-white/15 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.18)] py-11 sm:py-14 md:py-16 px-6 sm:px-10 md:px-12 text-center my-auto transition-all">
+      <div className={`relative z-10 w-full max-w-[92vw] sm:max-w-[450px] md:max-w-[470px] lg:max-w-[480px] bg-white/[0.06] backdrop-blur-xl rounded-[36px] sm:rounded-[42px] border border-white/15 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.18)] py-11 sm:py-14 md:py-16 px-6 sm:px-10 md:px-12 text-center my-auto transition-all duration-300 ${isNavigatingAway ? 'animate-glass-card-exit' : 'animate-glass-card-enter'}`}>
         {/* Header: Logo & Title - Khoảng cách thoáng đãng */}
         <div className="flex flex-col items-center justify-center mb-8 sm:mb-10 md:mb-12">
           <div className="p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl bg-white/[0.08] backdrop-blur-xl border border-white/20 shadow-[0_8px_25px_rgba(0,0,0,0.25)] mb-4 sm:mb-5">
@@ -463,12 +472,13 @@ export const LoginPage: React.FC = () => {
               <span>Ghi nhớ đăng nhập</span>
             </label>
 
-            <Link
-              to="/auth/forgot-password"
+            <button
+              type="button"
+              onClick={handleNavigateToForgot}
               className="text-white/80 hover:text-white hover:underline focus:outline-none transition-colors cursor-pointer"
             >
               Quên mật khẩu?
-            </Link>
+            </button>
           </div>
 
           {/* Nút Submit Trắng Nguyên Khối Bo Tròn (Solid White Pill Button) - Khoảng cách thoáng đãng */}
