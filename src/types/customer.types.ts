@@ -70,6 +70,8 @@ export interface Customer {
   salesRep?: CustomerSalesRep;
   salesRepId?: string;
   salesRepName?: string;
+  salesRepPhone?: string;
+  salesRepEmail?: string;
   creditLimit: number;
   currentDebt: number;
   maxDebtDays?: number;
@@ -143,4 +145,99 @@ export interface CreateCustomerPayload {
   receiverName?: string;
   salesRepId?: string;
   salesRepName?: string;
+}
+
+/**
+ * Payload Gán nhân viên phụ trách chính cho đại lý (SN-35)
+ */
+export interface AssignSalesRepPayload {
+  salesRepId: string;
+  reason?: string;
+  notes?: string;
+}
+
+/**
+ * Payload Chuyển giao địa bàn hàng loạt khi nhân viên nghỉ (SN-35)
+ */
+export interface BulkTransferPayload {
+  fromSalesRepId: string;
+  toSalesRepId: string;
+  customerIds?: string[];
+  reason: string;
+  notes?: string;
+}
+
+/**
+ * Kết quả sau khi chuyển giao địa bàn hàng loạt (SN-35)
+ */
+export interface BulkTransferResult {
+  transferBatchId: string;
+  transferredCount: number;
+  fromSalesRep: { id: string; fullName: string; email: string };
+  toSalesRep: { id: string; fullName: string; email: string };
+  reason: string;
+  notes?: string;
+  transferredCustomers: Array<{
+    id: string;
+    code: string;
+    name: string;
+    region: string;
+  }>;
+  transferredAt: string;
+}
+
+/**
+ * Thực thể Bản ghi Lịch sử Phân công & Chuyển giao Địa bàn (SN-35)
+ */
+export interface CustomerAssignmentHistory {
+  id: string;
+  transferBatchId: string;
+  customerId: string;
+  customerCode: string;
+  customerName: string;
+  region: string;
+  fromSalesRepId?: string | null;
+  fromSalesRepName?: string | null;
+  toSalesRepId: string;
+  toSalesRepName: string;
+  performedById: string;
+  performedByName: string;
+  reason: string;
+  notes?: string;
+  createdAt: string;
+}
+
+/**
+ * Thông tin Nhân sự Kinh doanh phục vụ gán / chuyển giao địa bàn (SN-35)
+ */
+export interface SalesRepOption {
+  id: string;
+  fullName: string;
+  username: string;
+  email: string;
+  phone?: string;
+  role: string;
+  status: string;
+  assignedCustomerCount: number;
+}
+
+/**
+ * Thống kê đại lý theo từng khu vực
+ */
+export interface RegionSummary {
+  region: string;
+  customerCount: number;
+}
+
+/**
+ * Tham số tìm kiếm & lọc danh sách đại lý mở rộng
+ */
+export interface CustomerQueryParams {
+  search?: string;
+  region?: string;
+  salesRepId?: string;
+  unassignedOnly?: boolean;
+  status?: string;
+  page?: number;
+  limit?: number;
 }
