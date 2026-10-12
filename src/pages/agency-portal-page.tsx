@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   ShoppingCart,
-  Lock,
   Package,
   AlertCircle,
   AlertTriangle,
@@ -797,11 +796,19 @@ export const AgencyPortalPage: React.FC = () => {
   // - Nếu sản phẩm đạt nấc chiết khấu sản lượng của hệ thống, giảm tiếp trên đơn giá đại lý
   // ──────────────────────────────────────────────────────────────────────────
   const getItemEffectiveDiscount = useCallback((item: CartItem) => {
+    const baseQuantity = Math.round(item.quantity * (item.conversionRate || 1));
+    const prodSku = item.product.sku || (item.product as unknown as { sku?: string }).sku || '';
+    const prodId = item.product.id || '';
+    const catId = item.product.categoryId || item.product.category || '';
+    const prodName = item.product.name || '';
+
     const policyInfo = getApplicablePolicyInfo(
       discountPolicies,
-      item.product.id || (item.product as { sku?: string }).sku || '',
-      item.product.categoryId || '',
-      item.quantity
+      prodId,
+      catId,
+      baseQuantity,
+      prodSku || prodId,
+      prodName
     );
 
     // Giá niêm yết của đại lý: lấy từ đúng giá bảng giá của cấp đại lý đó (agencyPrice)
@@ -966,19 +973,11 @@ export const AgencyPortalPage: React.FC = () => {
   };
 
   // ──────────────────────────────────────────────────────────────────────────
-  // ĐIỀU HƯỚNG BƯỚC 1 -> BƯỚC 2 (KIỂM TRA ĐIỀU KIỆN CHẶT CHẼ)
+  // ĐIỀU HƯỚNG BƯỚC 1 -> BƯỚC 2 (LINH HOẠT, BẤM QUA LẠI DỄ DÀNG)
   // ──────────────────────────────────────────────────────────────────────────
   const handleProceedToStep2 = () => {
     if (Object.keys(cart).length === 0) {
       showToast('warning', 'Giỏ hàng đang trống! Vui lòng chọn ít nhất 1 sản phẩm trước khi tiếp tục.');
-      return;
-    }
-    if (!customDeliveryAddress.trim()) {
-      showToast('warning', 'Vui lòng nhập địa chỉ nhận hàng chi tiết!');
-      return;
-    }
-    if (!deliveryDate.trim()) {
-      showToast('warning', 'Vui lòng chọn ngày giao hàng mong muốn!');
       return;
     }
     setCartStep(2);
@@ -995,6 +994,18 @@ export const AgencyPortalPage: React.FC = () => {
 
     if (Object.keys(cart).length === 0) {
       showToast('warning', 'Giỏ hàng đang trống. Vui lòng chọn sản phẩm.');
+      return;
+    }
+
+    if (!customDeliveryAddress.trim() && !selectedDeliveryPoint?.address && !currentCustomer.address) {
+      showToast('warning', 'Vui lòng quay lại Bước 1 để nhập địa chỉ giao hàng!');
+      setCartStep(1);
+      return;
+    }
+
+    if (!deliveryDate.trim()) {
+      showToast('warning', 'Vui lòng quay lại Bước 1 để chọn ngày giao hàng mong muốn!');
+      setCartStep(1);
       return;
     }
 
@@ -2147,26 +2158,17 @@ export const AgencyPortalPage: React.FC = () => {
               </button>
               <button
                 type="button"
-                disabled={cartStep === 1}
-                onClick={() => {
-                  if (cartStep === 1) {
-                    handleProceedToStep2();
-                  } else {
-                    setCartStep(2);
-                  }
-                }}
-                className={`py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition-all ${
+                onClick={() => setCartStep(2)}
+                className={`py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   cartStep === 2
-                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30 font-bold cursor-pointer'
-                    : 'bg-slate-100 text-slate-400 border border-slate-200/60 cursor-not-allowed opacity-75'
+                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30 font-bold'
+                    : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                 }`}
-                title={cartStep === 1 ? 'Vui lòng bấm "Tiếp tục: Bảng giỏ hàng & Chiết khấu" ở Bước 1 để mở luồng này' : undefined}
               >
-                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold ${cartStep === 2 ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold ${cartStep === 2 ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
                   2
                 </span>
                 <span>Số lượng & Chiết khấu ({cartTotals.totalItems})</span>
-                {cartStep === 1 && <Lock className="w-3.5 h-3.5 text-slate-400 ml-0.5" />}
               </button>
             </div>
 

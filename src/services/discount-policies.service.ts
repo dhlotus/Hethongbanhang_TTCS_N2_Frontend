@@ -178,7 +178,8 @@ export function isProductMatchingPolicy(
   policy: DiscountPolicy,
   productId: string,
   categoryId?: string,
-  productSku?: string
+  productSku?: string,
+  productName?: string
 ): boolean {
   const targets = new Set<string>();
   (policy.targetIds || []).forEach((t) => targets.add(t.trim().toUpperCase()));
@@ -196,16 +197,27 @@ export function isProductMatchingPolicy(
   if (productId) productKeys.add(productId.trim().toUpperCase());
   if (productSku) productKeys.add(productSku.trim().toUpperCase());
   if (categoryId) productKeys.add(categoryId.trim().toUpperCase());
+  if (productName) productKeys.add(productName.trim().toUpperCase());
 
-  const sku = (productSku || productId || '').toUpperCase();
-  if (sku.includes('MILK') || sku.includes('SỮA')) {
+  // Chuỗi nhận diện đa chiều: SKU + ID + Category + Name
+  const searchStr = `${productSku || ''} ${productId || ''} ${categoryId || ''} ${productName || ''}`.toUpperCase();
+
+  if (searchStr.includes('MILK') || searchStr.includes('SỮA')) {
     productKeys.add('MILK');
     productKeys.add('MILK_POWDER');
     productKeys.add('CAT-MILK-POWDER');
     productKeys.add('MILK_READY');
     productKeys.add('MILK_NUT');
+    productKeys.add('CAT-MILK-NUT');
   }
-  if (sku.includes('NUT') || sku.includes('HẠT')) {
+  if (
+    searchStr.includes('NUT') ||
+    searchStr.includes('HẠT') ||
+    searchStr.includes('ÓC CHÓ') ||
+    searchStr.includes('HẠNH NHÂN') ||
+    searchStr.includes('MACCA') ||
+    searchStr.includes('ĐẬU')
+  ) {
     productKeys.add('MILK_NUT');
     productKeys.add('MILK');
     productKeys.add('CEREAL_NUTS');
@@ -213,35 +225,42 @@ export function isProductMatchingPolicy(
     productKeys.add('CAT-MILK-NUT');
     productKeys.add('CAT-CEREAL-NUTS');
   }
-  if (sku.includes('NEST') || sku.includes('YẾN')) {
+  if (searchStr.includes('NEST') || searchStr.includes('YẾN')) {
     productKeys.add('NEST');
     productKeys.add('NEST_READY');
     productKeys.add('NEST_PURE');
     productKeys.add('CAT-NEST-READY');
     productKeys.add('CAT-NEST-PURE');
   }
-  if (sku.includes('CEREAL') || sku.includes('NGŨ CỐC')) {
+  if (searchStr.includes('CEREAL') || searchStr.includes('NGŨ CỐC')) {
     productKeys.add('CEREAL');
     productKeys.add('CEREAL_SPROUT');
     productKeys.add('CEREAL_NUTS');
     productKeys.add('CAT-CEREAL-SPROUT');
     productKeys.add('CAT-CEREAL-NUTS');
   }
-  if (sku.includes('COLLAGEN') || sku.includes('SUPP') || sku.includes('ĐÔNG TRÙNG')) {
+  if (
+    searchStr.includes('COLLAGEN') ||
+    searchStr.includes('SUPP') ||
+    searchStr.includes('ĐÔNG TRÙNG') ||
+    searchStr.includes('THỰC PHẨM CHỨC NĂNG')
+  ) {
     productKeys.add('SUPP');
     productKeys.add('SUPP_COLLAGEN');
     productKeys.add('SUPP_HERB');
     productKeys.add('CAT-SUPP-COLLAGEN');
   }
   if (
-    sku.includes('TEA') ||
-    sku.includes('WATER') ||
-    sku.includes('COLA') ||
-    sku.includes('ORANGE') ||
-    sku.includes('BEVERAGE') ||
-    sku.includes('COFFEE') ||
-    sku.includes('TRÀ') ||
-    sku.includes('KHOÁNG')
+    searchStr.includes('TEA') ||
+    searchStr.includes('WATER') ||
+    searchStr.includes('COLA') ||
+    searchStr.includes('ORANGE') ||
+    searchStr.includes('BEVERAGE') ||
+    searchStr.includes('COFFEE') ||
+    searchStr.includes('TRÀ') ||
+    searchStr.includes('KHOÁNG') ||
+    searchStr.includes('NƯỚC') ||
+    searchStr.includes('NƯỚC GIẢI KHÁT')
   ) {
     productKeys.add('BEVERAGE');
     productKeys.add('CARBONATED');
@@ -255,6 +274,13 @@ export function isProductMatchingPolicy(
 
   for (const key of productKeys) {
     if (targets.has(key)) return true;
+  }
+
+  // Khớp từng từ khóa trong targets nếu xuất hiện trong searchStr (đặc biệt hữu ích với mã ngành)
+  for (const target of targets) {
+    if (target && target.length >= 3 && searchStr.includes(target)) {
+      return true;
+    }
   }
 
   return false;
@@ -271,7 +297,8 @@ export function calculateDiscount(
   productId: string,
   categoryId: string = '',
   quantity: number,
-  productSku?: string
+  productSku?: string,
+  productName?: string
 ): number {
   if (quantity <= 0) return 0;
 
@@ -283,7 +310,7 @@ export function calculateDiscount(
     if (p.startDate && p.startDate.split('T')[0] > todayStr) return false;
     if (p.endDate && p.endDate.split('T')[0] < todayStr) return false;
 
-    return isProductMatchingPolicy(p, productId, categoryId, productSku);
+    return isProductMatchingPolicy(p, productId, categoryId, productSku, productName);
   });
 
   let maxDiscountPercent = 0;
@@ -341,7 +368,8 @@ export function getApplicablePolicyInfo(
   productId: string,
   categoryId: string = '',
   quantity: number,
-  productSku?: string
+  productSku?: string,
+  productName?: string
 ): ApplicablePolicyInfo {
   if (quantity <= 0) {
     return {
@@ -361,7 +389,7 @@ export function getApplicablePolicyInfo(
     if (p.startDate && p.startDate.split('T')[0] > todayStr) return false;
     if (p.endDate && p.endDate.split('T')[0] < todayStr) return false;
 
-    return isProductMatchingPolicy(p, productId, categoryId, productSku);
+    return isProductMatchingPolicy(p, productId, categoryId, productSku, productName);
   });
 
   let bestResult: ApplicablePolicyInfo = {
