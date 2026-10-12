@@ -38,6 +38,8 @@ export interface OrderLine {
   productId: string;
   productSku: string;
   productName: string;
+  categoryId?: string;
+  category?: string;
   unit: string; // Đơn vị gọi hàng (Thùng, Lốc, Lon...)
   baseUnit: string; // Đơn vị cơ sở
   conversionRate: number; // Hệ số quy đổi sang đơn vị cơ sở

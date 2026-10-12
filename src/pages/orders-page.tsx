@@ -452,7 +452,11 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     const minPrice = Math.round(item.minPrice * conversionRate);
     try {
       const discountPercent = await orderPricingService.calculateDiscount(
-        { id: line.productId, sku: line.productSku },
+        {
+          id: line.productId,
+          sku: line.productSku,
+          categoryId: line.categoryId || line.category,
+        },
         Math.round(line.quantity * conversionRate),
       );
       const automaticPrice = Math.round(listPrice * (1 - discountPercent / 100));
@@ -585,6 +589,21 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   useEffect(() => {
     if (!effectivePriceList) return;
     linesRef.current.forEach((line) => refreshLinePricing(line, effectivePriceList));
+  }, [effectivePriceList, refreshLinePricing]);
+
+  // Lắng nghe cập nhật chính sách chiết khấu thời gian thực để tự động tính lại chiết khấu tốt nhất
+  useEffect(() => {
+    const handlePoliciesUpdated = () => {
+      if (effectivePriceList && linesRef.current.length > 0) {
+        linesRef.current.forEach((line) => refreshLinePricing(line, effectivePriceList));
+      }
+    };
+    window.addEventListener('loha_discount_policies_updated', handlePoliciesUpdated);
+    window.addEventListener('storage', handlePoliciesUpdated);
+    return () => {
+      window.removeEventListener('loha_discount_policies_updated', handlePoliciesUpdated);
+      window.removeEventListener('storage', handlePoliciesUpdated);
+    };
   }, [effectivePriceList, refreshLinePricing]);
 
   // Trạng thái kiểm soát hạn mức công nợ thời gian thực (Task SN-41)
@@ -851,6 +870,8 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       productId: product.id,
       productSku: product.sku,
       productName: product.name,
+      categoryId: product.categoryId || product.category,
+      category: product.category,
       unit: product.baseUnit,
       baseUnit: product.baseUnit,
       conversionRate: 1,

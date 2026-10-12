@@ -38,20 +38,46 @@ export const orderPricingService = {
     }
   },
 
-  async calculateDiscount(product: Pick<Product, 'id' | 'sku'>, baseQuantity: number): Promise<number> {
+  async calculateDiscount(
+    product: Pick<Product, 'id' | 'sku'> & { categoryId?: string; category?: string },
+    baseQuantity: number,
+  ): Promise<number> {
+    const categoryId = product.categoryId || product.category || '';
     try {
       const response = await apiClient.post<{ discount: number }>(
-        '/api/v1/discount-policies/calculate',
+        '/discount-policies/calculate',
         {
           productId: product.id,
           productSku: product.sku,
-          categoryId: '',
+          categoryId,
           quantity: baseQuantity,
         },
       );
       return response.data.discount;
-    } catch (error: unknown) {
-      throw new Error(getApiErrorMessage(error) || 'Không thể tính chiết khấu từ hệ thống');
+    } catch {
+      try {
+        const response2 = await apiClient.post<{ discount: number }>(
+          '/api/v1/discount-policies/calculate',
+          {
+            productId: product.id,
+            productSku: product.sku,
+            categoryId,
+            quantity: baseQuantity,
+          },
+        );
+        return response2.data.discount;
+      } catch (error: unknown) {
+        // Fallback: Quét danh sách chính sách từ API (hoặc cache), lọc chỉ các mã ACTIVE, so sánh tìm mức ưu đãi tốt nhất
+        try {
+          const { discountPoliciesService, calculateDiscount: localCalc } = await import(
+            './discount-policies.service'
+          );
+          const policies = await discountPoliciesService.getPolicies();
+          return localCalc(policies, product.sku || product.id, categoryId, baseQuantity, product.sku);
+        } catch {
+          throw new Error(getApiErrorMessage(error) || 'Không thể tính chiết khấu từ hệ thống');
+        }
+      }
     }
   },
 };

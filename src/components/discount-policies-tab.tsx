@@ -294,6 +294,7 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
       }
       setIsModalOpen(false);
       await loadPolicies();
+      window.dispatchEvent(new Event('loha_discount_policies_updated'));
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Lỗi khi lưu chính sách');
       showToast('error', msg);
@@ -591,6 +592,7 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
             showToast('success', 'Xóa chính sách thành công');
             setPolicyToDelete(null);
             await loadPolicies();
+            window.dispatchEvent(new Event('loha_discount_policies_updated'));
           } catch (err: unknown) {
             showToast('error', getErrorMessage(err, 'Lỗi khi xóa chính sách'));
           } finally {
