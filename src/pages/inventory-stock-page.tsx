@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Boxes,
   Search,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ModalLayout } from '../components/modal-layout';
+import { MinStockModal } from '../components/inventory/min-stock-modal';
 import { inventoryService } from '../services/inventory.service';
 import { getStoredUser } from '../utils/navigation';
 import type {
@@ -25,33 +27,48 @@ import type {
   AdjustStockPayload,
   ProductUnit,
 } from '../types/products';
+import type { StockBalance } from '../types/inventory.types';
 
 /**
- * Trang Sổ Tồn Kho Theo SKU & Kho (SN-10, EP-04, SN-23)
- * Đáp ứng Yêu cầu Người dùng Kho (User Story):
- * "Là Nhân viên kho, tôi muốn xem sổ tồn tại theo SKU và từng kho,
- * để trả lời ngay câu hỏi mặt hàng này còn bao nhiêu bán được."
+ * Trang Sổ Tồn Kho Theo SKU & Kho (SN-10, EP-04, SN-23, SN-183)
+ * Đáp ứng Yêu cầu Người dùng Kho (User Story SN-183):
+ * "Là Quản lý kho, tôi muốn được cảnh báo khi tồn xuống dưới mức tối thiểu,
+ * để đặt hàng nhà cung cấp trước khi đứt hàng chứ không phải sau."
  *
  * Tính năng chính:
  * 1. Ba cột minh bạch: Tồn thực tế, Tồn tạm giữ (giữ chỗ đơn), Tồn khả thi (Có thể bán = Thực tế - Tạm giữ)
- * 2. Lọc linh hoạt theo Kho hàng, Nhóm hàng sản phẩm, Trạng thái tồn kho
- * 3. Tìm nhanh theo mã SKU hoặc Tên sản phẩm
- * 4. Bảng tính quy đổi đơn vị (Thùng / Lốc / Lon) phục vụ chốt đơn B2B cấp tốc
+ * 2. Cảnh báo đứt hàng & Tồn kho tối thiểu (SN-183): Khai báo mức tồn tối thiểu theo SKU & Kho
+ * 3. Hàng dưới ngưỡng hiển thị nổi bật và liên kết đồng bộ với Dashboard kho
+ * 4. Lọc linh hoạt theo Kho hàng, Nhóm hàng sản phẩm, Trạng thái tồn kho (kèm lọc dưới tồn SN-183)
+ * 5. Bảng tính quy đổi đơn vị (Thùng / Lốc / Lon) phục vụ chốt đơn B2B cấp tốc
  */
 export const InventoryStockPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [stockItems, setStockItems] = useState<StockOverviewItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Bộ lọc & Tìm kiếm
+  // Bộ lọc & Tìm kiếm (Đồng bộ query filter từ Dashboard kho: /inventory/stock?filter=BELOW_MIN_STOCK)
+  const initialFilter = (searchParams.get('filter') as StockStatusType) || 'ALL';
   const [searchInput, setSearchInput] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>('ALL');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [selectedStatus, setSelectedStatus] = useState<StockStatusType | 'ALL'>('ALL');
+  const [selectedStatus, setSelectedStatus] = useState<StockStatusType | 'ALL'>(initialFilter);
+
+  // Lắng nghe thay đổi searchParams từ URL (khi click từ Dashboard chuyển sang)
+  useEffect(() => {
+    const f = searchParams.get('filter');
+    if (f === 'BELOW_MIN_STOCK') {
+      setSelectedStatus('BELOW_MIN_STOCK');
+    }
+  }, [searchParams]);
 
   // Popup & Modal trạng thái
   const [conversionModalOpen, setConversionModalOpen] = useState<boolean>(false);
   const [selectedItemForConversion, setSelectedItemForConversion] = useState<StockOverviewItem | null>(null);
+
+  // Modal Sửa Mức Tồn Tối Thiểu (SN-183)
+  const [editingMinStockItem, setEditingMinStockItem] = useState<StockBalance | null>(null);
 
   const [adjustModalOpen, setAdjustModalOpen] = useState<boolean>(false);
   const [selectedItemForAdjust, setSelectedItemForAdjust] = useState<StockOverviewItem | null>(null);
@@ -62,7 +79,9 @@ export const InventoryStockPage: React.FC = () => {
   const [adjustRefCode, setAdjustRefCode] = useState<string>('');
   const [isSubmittingAdjust, setIsSubmittingAdjust] = useState<boolean>(false);
 
-  // Phân quyền người dùng
+  // Phân quyền người dùng:
+  // - Tất cả vai trò đều có quyền XEM tồn tối thiểu & cảnh báo đứt hàng SN-183
+  // - Quản lý kho, Thủ kho, Admin, Sales Manager có quyền CHỈNH SỬA / KHAI BÁO mức tồn tối thiểu
   const user = getStoredUser();
   const userRoles = user?.roles || [];
   const canAdjustStock =
@@ -71,6 +90,14 @@ export const InventoryStockPage: React.FC = () => {
     userRoles.includes('WAREHOUSE_KEEPER') ||
     userRoles.includes('WAREHOUSE') ||
     userRoles.includes('WH_MANAGER');
+
+  const canEditMinStock =
+    userRoles.includes('ADMIN') ||
+    userRoles.includes('WAREHOUSE_MANAGER') ||
+    userRoles.includes('WAREHOUSE_KEEPER') ||
+    userRoles.includes('WAREHOUSE') ||
+    userRoles.includes('WH_MANAGER') ||
+    userRoles.includes('SALES_MANAGER');
 
   // Debounce tìm kiếm
   useEffect(() => {
@@ -120,13 +147,14 @@ export const InventoryStockPage: React.FC = () => {
     return Array.from(set);
   }, [stockItems]);
 
-  // Thống kê tổng hợp 3 cột tồn kho
+  // Thống kê tổng hợp 3 cột tồn kho + Cảnh báo tồn tối thiểu SN-183
   const summaryStats = useMemo(() => {
     let totalPhysical = 0;
     let totalReserved = 0;
     let totalAvailable = 0;
     let lowStockCount = 0;
     let outOfStockCount = 0;
+    let belowMinStockCount = 0;
 
     stockItems.forEach((item) => {
       totalPhysical += item.physicalStock;
@@ -134,6 +162,10 @@ export const InventoryStockPage: React.FC = () => {
       totalAvailable += item.availableStock;
       if (item.status === 'LOW_STOCK') lowStockCount++;
       if (item.status === 'OUT_OF_STOCK') outOfStockCount++;
+      const isBelowMin =
+        Boolean(item.isBelowMinStock) ||
+        ((item.minStockLevel || 0) > 0 && item.availableStock <= (item.minStockLevel || 0));
+      if (isBelowMin) belowMinStockCount++;
     });
 
     return {
@@ -142,9 +174,66 @@ export const InventoryStockPage: React.FC = () => {
       totalAvailable,
       lowStockCount,
       outOfStockCount,
+      belowMinStockCount,
       totalSku: stockItems.length,
     };
   }, [stockItems]);
+
+  // Mở modal cấu hình tồn tối thiểu (SN-183)
+  const handleOpenMinStockModal = (item: StockOverviewItem) => {
+    setEditingMinStockItem({
+      sku: item.sku,
+      name: item.name,
+      stockQuantity: item.availableStock,
+      physicalStockQuantity: item.physicalStock,
+      physicalQuantity: item.physicalStock,
+      reservedQuantity: item.reservedStock,
+      availableQuantity: item.availableStock,
+      baseUnit: item.baseUnit,
+      units: item.units || [],
+      warehouse: item.warehouse || 'Kho Tổng Miền Nam',
+      warehouseId: item.warehouseId || 'WH01',
+      minStockLevel: item.minStockLevel || 0,
+      isBelowMinStock: item.isBelowMinStock,
+    });
+  };
+
+  // Lưu thiết lập tồn tối thiểu theo SKU tại kho (SN-183)
+  const handleSaveMinStock = async (balanceItem: StockBalance, newMinStock: number) => {
+    try {
+      await inventoryService.updateMinStockLevel(
+        balanceItem.warehouseId || 'WH01',
+        balanceItem.sku,
+        newMinStock,
+      );
+      setStockItems((prev) =>
+        prev.map((it) => {
+          if (it.sku.toUpperCase() === balanceItem.sku.toUpperCase()) {
+            const isBelow = newMinStock > 0 && it.availableStock <= newMinStock;
+            return {
+              ...it,
+              minStockLevel: newMinStock,
+              isBelowMinStock: isBelow,
+              status: isBelow ? 'LOW_STOCK' : it.availableStock <= 0 ? 'OUT_OF_STOCK' : 'IN_STOCK',
+            };
+          }
+          return it;
+        }),
+      );
+      window.dispatchEvent(
+        new CustomEvent('loha_inventory_updated', {
+          detail: { sku: balanceItem.sku, minStockLevel: newMinStock },
+        }),
+      );
+      showToast(
+        'success',
+        `Đã lưu mức tồn tối thiểu cho ${balanceItem.sku}: ${newMinStock.toLocaleString('vi-VN')} ${balanceItem.baseUnit}`,
+      );
+      setEditingMinStockItem(null);
+    } catch (err: unknown) {
+      showToast('error', (err instanceof Error ? err.message : String(err)) || 'Không thể lưu tồn tối thiểu');
+    }
+  };
 
   // Mở modal tra cứu quy đổi đơn vị
   const handleOpenConversionModal = (item: StockOverviewItem) => {
@@ -275,27 +364,71 @@ export const InventoryStockPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Thẻ 4: Cảnh báo tồn kho */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+        {/* Thẻ 4: Cảnh báo tồn kho & Tồn tối thiểu SN-183 */}
+        <div
+          onClick={() => setSelectedStatus(selectedStatus === 'BELOW_MIN_STOCK' ? 'ALL' : 'BELOW_MIN_STOCK')}
+          className={`p-5 rounded-2xl border transition-all cursor-pointer ${
+            selectedStatus === 'BELOW_MIN_STOCK'
+              ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-500 shadow-md'
+              : 'bg-white border-slate-200 shadow-sm hover:shadow-md'
+          }`}
+          title="Bấm để lọc nhanh danh sách SKU chạm/dưới mức tồn tối thiểu"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-rose-600 uppercase tracking-wider">
-              Cảnh Báo Tồn Kho
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-rose-600 uppercase tracking-wider">
+                Cảnh Báo Tồn Kho
+              </span>
+            </div>
             <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
               <AlertTriangle className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl font-bold text-rose-600">
-              {summaryStats.lowStockCount + summaryStats.outOfStockCount}
+              {summaryStats.belowMinStockCount > 0 ? summaryStats.belowMinStockCount : (summaryStats.lowStockCount + summaryStats.outOfStockCount)}
             </span>
             <span className="text-xs text-slate-500 font-medium">
-              SKU ({summaryStats.outOfStockCount} hết hàng, {summaryStats.lowStockCount} sắp hết)
+              SKU ({summaryStats.belowMinStockCount} dưới tồn tối thiểu, {summaryStats.outOfStockCount} hết hàng)
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-2">Cần lên kế hoạch nhập bổ sung kho</p>
+          <p className="text-xs text-rose-600/90 mt-2 font-medium">
+            {selectedStatus === 'BELOW_MIN_STOCK' ? '✓ Đang lọc cảnh báo (Bấm để xem tất cả)' : 'Bấm để lọc các SKU dưới ngưỡng cần đặt hàng'}
+          </p>
         </div>
       </div>
+
+      {/* Banner Cảnh Báo Nhanh Hàng Dưới Tồn Tối Thiểu (SN-183) */}
+      {summaryStats.belowMinStockCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-rose-50/90 border border-rose-200 rounded-2xl text-xs text-rose-900 shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold shrink-0 shadow-inner">
+              <AlertTriangle className="w-5 h-5 text-rose-600" />
+            </div>
+            <div>
+              <div className="font-bold text-rose-950 text-sm">
+                Cảnh báo đứt hàng &amp; Tồn kho tối thiểu
+              </div>
+              <p className="text-rose-700 mt-0.5">
+                Phát hiện <strong>{summaryStats.belowMinStockCount} SKU</strong> có tồn khả dụng chạm hoặc dưới ngưỡng tối thiểu, cần đặt hàng nhà cung cấp ngay trước khi đứt hàng!
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedStatus(selectedStatus === 'BELOW_MIN_STOCK' ? 'ALL' : 'BELOW_MIN_STOCK')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer ${
+                selectedStatus === 'BELOW_MIN_STOCK'
+                  ? 'bg-slate-800 text-white hover:bg-slate-900'
+                  : 'bg-rose-600 text-white hover:bg-rose-700'
+              }`}
+            >
+              {selectedStatus === 'BELOW_MIN_STOCK' ? 'Đang lọc cảnh báo (Xem tất cả)' : 'Xem các SKU chạm ngưỡng'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Thanh Bộ Lọc & Tìm Kiếm */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
@@ -363,8 +496,8 @@ export const InventoryStockPage: React.FC = () => {
               className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
             >
               <option value="ALL">Tất cả trạng thái tồn</option>
+              <option value="BELOW_MIN_STOCK">⚠️ Dưới tồn tối thiểu</option>
               <option value="IN_STOCK">Còn hàng (Dồi dào)</option>
-              <option value="LOW_STOCK">Sắp hết hàng (Cảnh báo &lt;= 15)</option>
               <option value="OUT_OF_STOCK">Hết hàng (Tồn khả thi = 0)</option>
             </select>
           </div>
@@ -375,8 +508,7 @@ export const InventoryStockPage: React.FC = () => {
           <div className="flex items-center gap-2 text-indigo-700 font-medium">
             <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
             <span>
-              Mẹo cho Nhân viên kho &amp; Sales: Trả lời khách ngay dựa trên cột{' '}
-              <strong className="text-emerald-700 underline">Tồn khả thi (Có thể bán)</strong>.
+              Mẹo cho Quản lý &amp; Nhân viên kho: Hệ thống tự động cảnh báo khi tồn khả thi chạm hoặc dưới ngưỡng tồn tối thiểu cần đặt hàng.
             </span>
           </div>
 
@@ -397,7 +529,7 @@ export const InventoryStockPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Bảng Danh Sách Sổ Tồn Kho Minh Bạch 3 Cột */}
+      {/* Bảng Danh Sách Sổ Tồn Kho Minh Bạch 3 Cột + Ngưỡng Tồn Tối Thiểu (SN-180 & SN-183) */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -416,6 +548,9 @@ export const InventoryStockPage: React.FC = () => {
                   <div className="text-[10px] font-semibold text-emerald-800 normal-case tracking-normal">
                     (Có thể bán)
                   </div>
+                </th>
+                <th className="py-4 px-4 text-right bg-rose-50/50 text-rose-900 border-r border-slate-200 whitespace-nowrap">
+                  Tồn Tối Thiểu
                 </th>
                 <th className="py-4 px-4 text-center">Đơn Vị Quy Đổi</th>
                 <th className="py-4 px-4 text-center">Trạng Thái</th>
@@ -443,6 +578,9 @@ export const InventoryStockPage: React.FC = () => {
                     <td className="py-4 px-5 text-right">
                       <div className="h-6 bg-slate-200 rounded w-20 ml-auto"></div>
                     </td>
+                    <td className="py-4 px-4 text-right">
+                      <div className="h-5 bg-slate-200 rounded w-14 ml-auto"></div>
+                    </td>
                     <td className="py-4 px-4 text-center">
                       <div className="h-4 bg-slate-200 rounded w-24 mx-auto"></div>
                     </td>
@@ -456,7 +594,7 @@ export const InventoryStockPage: React.FC = () => {
                 ))
               ) : stockItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={9} className="py-12 text-center text-slate-400">
                     <Boxes className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                     <p className="font-medium text-slate-600">Không tìm thấy sản phẩm tồn kho nào</p>
                     <p className="text-xs text-slate-400 mt-1">
@@ -467,11 +605,19 @@ export const InventoryStockPage: React.FC = () => {
               ) : (
                 stockItems.map((item) => {
                   const baseUnit = item.baseUnit;
+                  const isBelowMin =
+                    Boolean(item.isBelowMinStock) ||
+                    ((item.minStockLevel || 0) > 0 && item.availableStock <= (item.minStockLevel || 0));
+                  const shortage = Math.max(0, (item.minStockLevel || 0) - item.availableStock);
 
                   return (
                     <tr
                       key={`${item.sku}-${item.warehouseId || item.warehouse}`}
-                      className="hover:bg-slate-50/80 transition-colors group"
+                      className={`transition-colors group ${
+                        isBelowMin
+                          ? 'bg-rose-50/50 hover:bg-rose-50/80 border-l-4 border-l-rose-500'
+                          : 'hover:bg-slate-50/80'
+                      }`}
                     >
                       {/* Mã SKU & Tên sản phẩm */}
                       <td className="py-4 px-5">
@@ -492,6 +638,12 @@ export const InventoryStockPage: React.FC = () => {
                               <span className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
                                 {item.sku}
                               </span>
+                              {isBelowMin && (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200">
+                                  <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                  Hụt tồn ({shortage.toLocaleString('vi-VN')} {baseUnit})
+                                </span>
+                              )}
                             </div>
                             <h2 className="font-semibold text-slate-900 mt-1 line-clamp-1 group-hover:text-indigo-600 transition-colors">
                               {item.name}
@@ -536,13 +688,31 @@ export const InventoryStockPage: React.FC = () => {
 
                       {/* Cột 3: TỒN KHẢ THI (CÓ THỂ BÁN NGAY) - NỔI BẬT NGHỆ THUẬT */}
                       <td className="py-4 px-5 text-right bg-emerald-50/50 font-bold border-r border-slate-100">
-                        <div className="inline-flex items-center justify-end gap-1.5 px-3 py-1 bg-emerald-100/80 text-emerald-900 rounded-xl border border-emerald-200/80 shadow-xs">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div className={`inline-flex items-center justify-end gap-1.5 px-3 py-1 rounded-xl border shadow-xs ${
+                          isBelowMin
+                            ? 'bg-rose-100/90 text-rose-950 border-rose-300 ring-1 ring-rose-400/30'
+                            : 'bg-emerald-100/80 text-emerald-900 border-emerald-200/80'
+                        }`}>
+                          <CheckCircle2 className={`w-4 h-4 shrink-0 ${isBelowMin ? 'text-rose-600' : 'text-emerald-600'}`} />
                           <span className="text-lg font-extrabold tracking-tight">
                             {item.availableStock.toLocaleString('vi-VN')}
                           </span>
-                          <span className="text-xs font-semibold text-emerald-700">{baseUnit}</span>
+                          <span className={`text-xs font-semibold ${isBelowMin ? 'text-rose-700' : 'text-emerald-700'}`}>{baseUnit}</span>
                         </div>
+                      </td>
+
+                      {/* Cột Tồn tối thiểu - chỉ hiển thị, không chỉnh sửa */}
+                      <td className="py-4 px-4 text-right bg-rose-50/20 border-r border-slate-100 whitespace-nowrap">
+                        {(item.minStockLevel || 0) > 0 ? (
+                          <>
+                            <span className={`text-base font-bold ${isBelowMin ? 'text-rose-700' : 'text-slate-800'}`}>
+                              {(item.minStockLevel || 0).toLocaleString('vi-VN')}
+                            </span>
+                            <span className="text-xs font-normal text-slate-500 ml-1">{baseUnit}</span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-slate-400">Chưa đặt</span>
+                        )}
                       </td>
 
                       {/* Quy đổi đơn vị (Thùng/Lốc/Lon) */}
@@ -559,19 +729,22 @@ export const InventoryStockPage: React.FC = () => {
 
                       {/* Trạng thái tồn kho */}
                       <td className="py-4 px-4 text-center">
-                        {item.status === 'IN_STOCK' && (
+                        {isBelowMin ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-rose-800 bg-rose-100 rounded-full border border-rose-300 ring-1 ring-rose-400/30">
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                            Dưới tồn tối thiểu (Hụt {shortage.toLocaleString('vi-VN')} {baseUnit})
+                          </span>
+                        ) : item.status === 'IN_STOCK' ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-full border border-emerald-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                             Còn hàng
                           </span>
-                        )}
-                        {item.status === 'LOW_STOCK' && (
+                        ) : item.status === 'LOW_STOCK' ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 rounded-full border border-amber-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
                             Sắp hết
                           </span>
-                        )}
-                        {item.status === 'OUT_OF_STOCK' && (
+                        ) : (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-rose-700 bg-rose-50 rounded-full border border-rose-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                             Hết hàng
@@ -589,6 +762,16 @@ export const InventoryStockPage: React.FC = () => {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
+
+                          {canEditMinStock && (
+                            <button
+                              onClick={() => handleOpenMinStockModal(item)}
+                              className="px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-lg transition-colors cursor-pointer"
+                              title="Khai báo mức tồn tối thiểu cho SKU này"
+                            >
+                              Tồn tối thiểu
+                            </button>
+                          )}
 
                           {canAdjustStock && (
                             <button
@@ -857,6 +1040,15 @@ export const InventoryStockPage: React.FC = () => {
           </form>
         )}
       </ModalLayout>
+
+      {/* Modal Khai Báo & Chỉnh Sửa Tồn Tối Thiểu (SN-183) */}
+      {editingMinStockItem && (
+        <MinStockModal
+          item={editingMinStockItem}
+          onClose={() => setEditingMinStockItem(null)}
+          onSave={handleSaveMinStock}
+        />
+      )}
     </div>
   );
 };

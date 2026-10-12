@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { DropdownMenu } from '../components/dropdown-menu';
 import { LowStockAlertsWidget } from '../components/inventory/low-stock-alerts-widget';
+import { inventoryService } from '../services/inventory.service';
 import {
   AreaChart,
   Area,
@@ -111,6 +112,8 @@ export const DashboardPage: React.FC = () => {
   );
   const isSalesRep = roles.includes('SALES_REP');
 
+  const [lowStockCount, setLowStockCount] = useState<number>(0);
+
   const fetchData = async (overrideRange?: string, overrideStart?: string, overrideEnd?: string) => {
     try {
       setLoading(true);
@@ -130,6 +133,11 @@ export const DashboardPage: React.FC = () => {
       } else {
         setData(null);
       }
+
+      inventoryService.getLowStockAlerts()
+        .then((alerts) => setLowStockCount(alerts.length))
+        .catch(() => {});
+
       setLastUpdatedTime(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
     } catch {
       // Khi gặp lỗi hoặc chưa có dữ liệu, trả về null để hiển thị Empty State chuẩn
@@ -414,26 +422,26 @@ export const DashboardPage: React.FC = () => {
         {(isManager || isWarehouse) && (
           <Link
             to="/inventory/stock?filter=BELOW_MIN_STOCK"
-            className="group block rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs hover:border-orange-300 hover:shadow-md transition-all cursor-pointer"
-            title="Bấm để xem danh sách sản phẩm chạm/dưới mức tồn tối thiểu (SN-183)"
+            className="group block rounded-2xl border border-rose-200/90 bg-white p-5 sm:p-6 shadow-xs hover:border-rose-300 hover:shadow-md transition-all cursor-pointer"
+            title="Bấm để xem danh sách sản phẩm chạm/dưới mức tồn tối thiểu"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-orange-50 group-hover:bg-orange-100 transition-colors">
-                  <AlertTriangle className="h-6.5 w-6.5 text-orange-500" />
+                <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-rose-50 group-hover:bg-rose-100 transition-colors">
+                  <AlertTriangle className="h-6.5 w-6.5 text-rose-600" />
                 </div>
-                <div className="ml-5 w-0 flex-1 min-w-0">
+                <div className="ml-5 flex-1 min-w-0">
                   <dl>
-                    <dt className="truncate text-xs sm:text-sm font-medium text-slate-500 group-hover:text-orange-700 transition-colors">
-                      Sản phẩm cảnh báo tồn
+                    <dt className="truncate text-xs sm:text-sm font-semibold text-rose-700 group-hover:text-rose-800 transition-colors">
+                      Cảnh báo tồn tối thiểu
                     </dt>
-                    <dd className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-orange-600 truncate tabular-nums">
-                      {metrics.lowStockAlertCount}
+                    <dd className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-rose-600 truncate tabular-nums">
+                      {lowStockCount > 0 ? lowStockCount : metrics.lowStockAlertCount}
                     </dd>
                   </dl>
                 </div>
               </div>
-              <ArrowUpRight className="h-5 w-5 text-slate-400 group-hover:text-orange-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              <ArrowUpRight className="h-5 w-5 text-slate-400 group-hover:text-rose-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
             </div>
           </Link>
         )}
@@ -587,11 +595,8 @@ export const DashboardPage: React.FC = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                <span>Cảnh báo đứt hàng & Tồn kho tối thiểu</span>
-                <span className="rounded-md bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
-                  SN-183
-                </span>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                Cảnh báo đứt hàng & Tồn kho tối thiểu
               </h3>
               <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
                 Các mặt hàng có tồn khả dụng chạm ngưỡng cần đặt hàng nhà cung cấp ngay
