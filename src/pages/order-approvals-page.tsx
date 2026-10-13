@@ -13,6 +13,7 @@ import {
   X,
   Check,
   DollarSign,
+  AlertCircle,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { Pagination } from '../components/pagination';
@@ -20,6 +21,7 @@ import { DateInput } from '../components/date-input';
 import { ordersService } from '../services/orders.service';
 import type {
   Order,
+  OrderStatus,
   OrderApprovalAction,
   OrderApprovalHistory,
 } from '../types/order';
@@ -46,6 +48,43 @@ const formatCustomerGroup = (group?: string): string => {
   if (g.includes('LEVEL_2') || g === 'AGENT_LEVEL_2') return 'Đại lý Cấp 2';
   if (g.includes('RETAIL')) return 'Khách lẻ';
   return group;
+};
+
+/** Render huy hiệu trạng thái đơn hàng chuẩn xác */
+const renderStatusBadge = (status: OrderStatus, isPending: boolean) => {
+  if (isPending) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+        <Clock className="w-3.5 h-3.5" /> Chờ duyệt
+      </span>
+    );
+  }
+  switch (status) {
+    case 'APPROVED':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+          <CheckCircle2 className="w-3.5 h-3.5" /> Đã duyệt
+        </span>
+      );
+    case 'REJECTED':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800">
+          <XCircle className="w-3.5 h-3.5" /> Từ chối
+        </span>
+      );
+    case 'RETURNED_FOR_UPDATE':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+          <CornerUpLeft className="w-3.5 h-3.5" /> Trả lại sửa
+        </span>
+      );
+    default:
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+          {status}
+        </span>
+      );
+  }
 };
 
 /** Chuyển hành động duyệt sang tiếng Việt */
@@ -84,8 +123,8 @@ export const OrderApprovalsPage: React.FC = () => {
   // Modal thẩm định chi tiết & ra quyết định
   const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
   const [activeDetailTab, setActiveDetailTab] = useState<'ITEMS' | 'CREDIT' | 'HISTORY'>('ITEMS');
-  const [decisionAction, setDecisionAction] = useState<OrderApprovalAction | null>(null);
   const [decisionComment, setDecisionComment] = useState('');
+  const [modalValidationError, setModalValidationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Lịch sử phê duyệt của đơn
@@ -244,31 +283,34 @@ export const OrderApprovalsPage: React.FC = () => {
   }, [filteredOrders, currentPage, pageSize]);
 
   // Xử lý gửi quyết định phê duyệt (Duyệt / Từ chối / Trả lại)
-  const handleSubmitDecision = async () => {
-    if (!reviewOrder?.id || !decisionAction) return;
+  const handleDecisionSubmit = async (action: OrderApprovalAction) => {
+    if (!reviewOrder?.id) return;
 
-    if (decisionAction !== 'APPROVE' && !decisionComment.trim()) {
-      showToast('error', 'Vui lòng nhập lý do cụ thể khi Từ chối hoặc Trả lại yêu cầu sửa');
+    // Bắt buộc nhập lý do khi Từ chối hoặc Trả lại yêu cầu sửa
+    if (action !== 'APPROVE' && !decisionComment.trim()) {
+      setModalValidationError('Vui lòng nhập lý do cụ thể khi Từ chối hoặc Trả lại yêu cầu sửa.');
       return;
     }
 
+    setModalValidationError(null);
     setIsSubmitting(true);
     try {
-      if (decisionAction === 'APPROVE') {
+      if (action === 'APPROVE') {
         await ordersService.approveOrder(reviewOrder.id);
-        showToast('success', `Đã duyệt đơn hàng ${reviewOrder.orderCode}. Đã kích hoạt giữ chỗ tồn kho 24 giờ!`);
+        showToast('success', `Đã duyệt đơn hàng ${reviewOrder.orderCode || ''}.`);
       } else {
-        await ordersService.decideOrder(reviewOrder.id, decisionAction, decisionComment.trim());
-        const actionLabel = decisionAction === 'REJECT' ? 'Từ chối' : 'Trả lại cho nhân viên kinh doanh chỉnh sửa';
-        showToast('success', `Đã ${actionLabel} đơn hàng ${reviewOrder.orderCode}`);
+        await ordersService.decideOrder(reviewOrder.id, action, decisionComment.trim());
+        const actionLabel = action === 'REJECT' ? 'Từ chối' : 'Trả lại cho nhân viên kinh doanh chỉnh sửa';
+        showToast('success', `Đã ${actionLabel} đơn hàng ${reviewOrder.orderCode || ''}.`);
       }
 
       setReviewOrder(null);
-      setDecisionAction(null);
       setDecisionComment('');
+      setModalValidationError(null);
       setRefreshKey((k) => k + 1);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Có lỗi xảy ra khi xử lý phê duyệt';
+      setModalValidationError(msg);
       showToast('error', msg);
     } finally {
       setIsSubmitting(false);
@@ -616,14 +658,14 @@ export const OrderApprovalsPage: React.FC = () => {
                             type="button"
                             onClick={() => {
                               setReviewOrder(order);
-                              setDecisionAction(null);
                               setDecisionComment('');
+                              setModalValidationError(null);
                             }}
                             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer"
-                            title="Mở hồ sơ thẩm định chi tiết"
+                            title={isPending ? 'Mở hồ sơ thẩm định chi tiết' : 'Xem chi tiết đơn hàng'}
                           >
                             <Eye className="w-3.5 h-3.5" />
-                            <span>Thẩm định</span>
+                            <span>{isPending ? 'Thẩm định' : 'Xem chi tiết'}</span>
                           </button>
 
                           {isPending && (
@@ -631,7 +673,7 @@ export const OrderApprovalsPage: React.FC = () => {
                               type="button"
                               onClick={() => void handleQuickApprove(order)}
                               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors cursor-pointer shadow-2xs"
-                              title="Duyệt đơn và giữ chỗ tồn kho 24 giờ"
+                              title="Duyệt đơn hàng"
                             >
                               <Check className="w-3.5 h-3.5" />
                               <span>Duyệt</span>
@@ -677,11 +719,9 @@ export const OrderApprovalsPage: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
-                      Hồ sơ thẩm định đơn hàng {reviewOrder.orderCode}
+                      {isOrderPendingApproval(reviewOrder) ? 'Hồ sơ thẩm định đơn hàng' : 'Chi tiết đơn hàng'} {reviewOrder.orderCode}
                     </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                      Chờ duyệt
-                    </span>
+                    {renderStatusBadge(reviewOrder.status, isOrderPendingApproval(reviewOrder))}
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">
                     Đại lý: <strong>{reviewOrder.customerName}</strong> ({reviewOrder.customerCode || '---'}) · NVKD: <strong>{reviewOrder.salesRepName || 'Trần Văn Long'}</strong>
@@ -862,32 +902,41 @@ export const OrderApprovalsPage: React.FC = () => {
               )}
 
               {/* Khu vực quyết định phê duyệt */}
-              <div className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
-                <label className="text-xs font-bold text-slate-800 block">
-                  Ý kiến chỉ đạo / Lý do phê duyệt (Bắt buộc khi Từ chối hoặc Trả lại):
-                </label>
-                <textarea
-                  value={decisionComment}
-                  onChange={(e) => setDecisionComment(e.target.value)}
-                  placeholder="Nhập ghi chú phê duyệt hoặc lý do yêu cầu sửa đổi..."
-                  rows={2}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200 resize-none"
-                />
+              {isOrderPendingApproval(reviewOrder) ? (
+                <div className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
+                  <label className="text-xs font-bold text-slate-800 block">
+                    Ý kiến chỉ đạo / Lý do phê duyệt (Bắt buộc khi Từ chối hoặc Trả lại):
+                  </label>
 
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                  <span className="text-[11px] text-slate-500">
-                    * Bấm <strong>Duyệt đơn</strong> sẽ tự động kích hoạt giữ chỗ tồn kho 24 giờ.
-                  </span>
+                  {/* Thông báo lỗi validation hiển thị ngay trên modal */}
+                  {modalValidationError && (
+                    <div className="flex items-center gap-2 p-3 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl animate-in fade-in">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                      <span>{modalValidationError}</span>
+                    </div>
+                  )}
 
-                  <div className="flex items-center gap-2">
+                  <textarea
+                    value={decisionComment}
+                    onChange={(e) => {
+                      setDecisionComment(e.target.value);
+                      if (modalValidationError) setModalValidationError(null);
+                    }}
+                    placeholder="Nhập ghi chú phê duyệt hoặc lý do yêu cầu sửa đổi..."
+                    rows={2}
+                    className={`w-full px-3 py-2 text-xs border rounded-xl bg-white focus:outline-none focus:ring-2 resize-none transition-all ${
+                      modalValidationError
+                        ? 'border-rose-400 focus:ring-rose-200'
+                        : 'border-slate-300 focus:ring-indigo-200'
+                    }`}
+                  />
+
+                  <div className="flex items-center justify-end gap-2 pt-1">
                     {/* Nút Từ chối */}
                     <button
                       type="button"
                       disabled={isSubmitting}
-                      onClick={() => {
-                        setDecisionAction('REJECT');
-                        void handleSubmitDecision();
-                      }}
+                      onClick={() => void handleDecisionSubmit('REJECT')}
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer disabled:opacity-50"
                     >
                       <XCircle className="w-3.5 h-3.5" />
@@ -898,24 +947,18 @@ export const OrderApprovalsPage: React.FC = () => {
                     <button
                       type="button"
                       disabled={isSubmitting}
-                      onClick={() => {
-                        setDecisionAction('RETURN_FOR_UPDATE');
-                        void handleSubmitDecision();
-                      }}
+                      onClick={() => void handleDecisionSubmit('RETURN_FOR_UPDATE')}
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 transition-colors cursor-pointer disabled:opacity-50"
                     >
                       <CornerUpLeft className="w-3.5 h-3.5" />
                       <span>Trả lại sửa</span>
                     </button>
 
-                    {/* Nút Duyệt đơn & Giữ tồn kho */}
+                    {/* Nút Duyệt đơn */}
                     <button
                       type="button"
                       disabled={isSubmitting}
-                      onClick={() => {
-                        setDecisionAction('APPROVE');
-                        void handleSubmitDecision();
-                      }}
+                      onClick={() => void handleDecisionSubmit('APPROVE')}
                       className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
                     >
                       {isSubmitting ? (
@@ -926,13 +969,28 @@ export const OrderApprovalsPage: React.FC = () => {
                       ) : (
                         <>
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Duyệt đơn & Giữ tồn kho</span>
+                          <span>Duyệt đơn</span>
                         </>
                       )}
                     </button>
                   </div>
                 </div>
-              </div>
+              ) : (
+                /* Với đơn trong Lịch sử đã xét duyệt: chỉ hiển thị kết quả và nút Đóng */
+                <div className="flex items-center justify-between gap-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <div className="flex items-center gap-2 text-xs text-slate-700">
+                    <span className="font-semibold text-slate-500">Trạng thái xét duyệt:</span>
+                    {renderStatusBadge(reviewOrder.status, false)}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReviewOrder(null)}
+                    className="px-5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer shadow-xs"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>,
