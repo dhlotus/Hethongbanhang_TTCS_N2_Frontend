@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Building2,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Edit3,
@@ -63,6 +64,266 @@ function getWarehouseEditForm(warehouse: Warehouse) {
     managerId: warehouse.managerId || '',
     status: warehouse.status,
   };
+}
+
+function normalizeVietnamese(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd');
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'QL';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  const first = parts[0][0];
+  const last = parts[parts.length - 1][0];
+  return (first + last).toUpperCase();
+}
+
+interface SearchableManagerSelectProps {
+  managers: WarehouseManager[];
+  value: string;
+  onChange: (managerId: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+function SearchableManagerSelect({
+  managers,
+  value,
+  onChange,
+  placeholder = 'Chọn người phụ trách...',
+  disabled = false,
+}: SearchableManagerSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [keyword, setKeyword] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const selectedManager = useMemo(
+    () => managers.find((m) => m.id === value),
+    [managers, value]
+  );
+
+  const filteredManagers = useMemo(() => {
+    if (!keyword.trim()) return managers;
+    const q = normalizeVietnamese(keyword.trim());
+    return managers.filter((m) => normalizeVietnamese(m.name).includes(q));
+  }, [managers, keyword]);
+
+  // Đóng khi click ngoài hoặc bấm phím Escape
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 50);
+    } else {
+      setKeyword('');
+    }
+  }, [isOpen]);
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      {/* Trigger Button */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full h-10 px-3 rounded-lg border text-sm flex items-center justify-between gap-2 transition-all bg-white text-left ${
+          isOpen
+            ? 'border-[#371cdb] ring-4 ring-[#371cdb]/10'
+            : 'border-slate-200 hover:border-slate-300'
+        } ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-50' : 'cursor-pointer'}`}
+      >
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {selectedManager ? (
+            <>
+              <div className="w-6 h-6 rounded-full bg-[#eff2fe] text-[#371cdb] flex items-center justify-center text-[10px] font-bold shrink-0">
+                {getInitials(selectedManager.name)}
+              </div>
+              <span className="truncate text-slate-800 font-medium">
+                {selectedManager.name}
+              </span>
+            </>
+          ) : (
+            <>
+              <User size={16} className="text-slate-400 shrink-0" />
+              <span className="text-slate-400 truncate">{placeholder}</span>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0 text-slate-400">
+          {selectedManager && !disabled && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange('');
+              }}
+              className="p-0.5 hover:text-slate-600 rounded hover:bg-slate-100 cursor-pointer"
+              title="Bỏ chọn"
+            >
+              <X size={14} />
+            </span>
+          )}
+          <ChevronDown
+            size={16}
+            className={`transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#371cdb]' : ''}`}
+          />
+        </div>
+      </button>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div className="absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-100">
+          {/* Ô tìm kiếm sticky ở đầu */}
+          <div className="p-2 border-b border-slate-100 bg-slate-50/80">
+            <div className="relative">
+              <Search
+                size={14}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Tìm kiếm người phụ trách..."
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (filteredManagers.length > 0) {
+                      onChange(filteredManagers[0].id);
+                      setIsOpen(false);
+                    }
+                  }
+                }}
+                className="w-full h-8 pl-8 pr-7 bg-white rounded-md border border-slate-200 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-[#371cdb] focus:ring-2 focus:ring-[#371cdb]/10"
+              />
+              {keyword && (
+                <button
+                  type="button"
+                  onClick={() => setKeyword('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Danh sách người phụ trách */}
+          <div className="max-h-52 overflow-y-auto p-1.5 space-y-0.5 overscroll-contain">
+            {/* Tùy chọn để trống */}
+            <button
+              type="button"
+              onClick={() => {
+                onChange('');
+                setIsOpen(false);
+              }}
+              className={`w-full px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors text-left cursor-pointer ${
+                value === ''
+                  ? 'bg-[#eff2fe] text-[#371cdb] font-medium'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-[10px]">
+                  —
+                </div>
+                <span>Chưa phân công (để trống)</span>
+              </div>
+              {value === '' && <Check size={14} className="text-[#371cdb]" />}
+            </button>
+
+            {filteredManagers.length > 0 ? (
+              filteredManagers.map((manager) => {
+                const isSelected = manager.id === value;
+                return (
+                  <button
+                    key={manager.id}
+                    type="button"
+                    onClick={() => {
+                      onChange(manager.id);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors text-left cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#eff2fe] text-[#371cdb] font-semibold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                          isSelected
+                            ? 'bg-[#371cdb] text-white'
+                            : 'bg-[#eff2fe] text-[#371cdb]'
+                        }`}
+                      >
+                        {getInitials(manager.name)}
+                      </div>
+                      <span className="truncate">{manager.name}</span>
+                    </div>
+                    {isSelected && (
+                      <Check size={14} className="text-[#371cdb] shrink-0 ml-2" />
+                    )}
+                  </button>
+                );
+              })
+            ) : (
+              <div className="py-5 px-3 text-center text-xs text-slate-400">
+                <p>Không tìm thấy người phụ trách</p>
+                {keyword && (
+                  <p className="mt-0.5 text-[11px] text-slate-400">
+                    với từ khóa "{keyword}"
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer nhỏ thông tin số lượng */}
+          <div className="px-3 py-1.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+            <span>Tổng số: {managers.length} người</span>
+            {keyword && <span>Tìm thấy: {filteredManagers.length}</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function WarehousesPage(): React.ReactElement {
@@ -1041,7 +1302,7 @@ export function WarehousesPage(): React.ReactElement {
         title="Khai báo kho mới"
         subtitle="Thêm kho hàng mới vào hệ thống quản lý chuỗi cung ứng"
         icon={<WarehouseIcon size={20} className="text-[#371cdb]" />}
-        maxWidth="max-w-xl"
+        maxWidth="max-w-3xl"
         bodyAs="form"
         onFormSubmit={(e) => void handleCreateWarehouse(e)}
         footer={
@@ -1064,7 +1325,7 @@ export function WarehousesPage(): React.ReactElement {
           </div>
         }
       >
-        <div className="space-y-4">
+        <div className="space-y-4 pb-28">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -1138,18 +1399,14 @@ export function WarehousesPage(): React.ReactElement {
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Người phụ trách kho
               </label>
-              <select
+              <SearchableManagerSelect
+                managers={managers}
                 value={warehouseForm.managerId}
-                onChange={(e) => setWarehouseForm({ ...warehouseForm, managerId: e.target.value })}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#371cdb] focus:ring-4 focus:ring-[#371cdb]/10 bg-white"
-              >
-                <option value="">Chọn người phụ trách</option>
-                {managers.map((manager) => (
-                  <option key={manager.id} value={manager.id}>
-                    {manager.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(managerId) =>
+                  setWarehouseForm({ ...warehouseForm, managerId })
+                }
+                placeholder="Chọn hoặc tìm người phụ trách..."
+              />
             </div>
           </div>
         </div>
@@ -1164,7 +1421,7 @@ export function WarehousesPage(): React.ReactElement {
         title="Chỉnh sửa thông tin kho"
         subtitle={selectedWarehouse ? `${selectedWarehouse.code} · ${selectedWarehouse.name}` : ''}
         icon={<Edit3 size={20} className="text-[#371cdb]" />}
-        maxWidth="max-w-xl"
+        maxWidth="max-w-3xl"
         bodyAs="form"
         onFormSubmit={(e) => void handleUpdateWarehouse(e)}
         footer={
@@ -1187,7 +1444,7 @@ export function WarehousesPage(): React.ReactElement {
           </div>
         }
       >
-        <div className="space-y-4">
+        <div className="space-y-4 pb-28">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -1257,18 +1514,14 @@ export function WarehousesPage(): React.ReactElement {
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Người phụ trách
               </label>
-              <select
+              <SearchableManagerSelect
+                managers={managers}
                 value={editForm.managerId}
-                onChange={(e) => setEditForm({ ...editForm, managerId: e.target.value })}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#371cdb] focus:ring-4 focus:ring-[#371cdb]/10 bg-white"
-              >
-                <option value="">Chọn người phụ trách</option>
-                {managers.map((manager) => (
-                  <option key={manager.id} value={manager.id}>
-                    {manager.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(managerId) =>
+                  setEditForm({ ...editForm, managerId })
+                }
+                placeholder="Chọn hoặc tìm người phụ trách..."
+              />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
