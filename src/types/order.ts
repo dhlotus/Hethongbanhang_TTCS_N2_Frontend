@@ -182,6 +182,7 @@ export interface OrderQueryParams {
   region?: string;
   fromDate?: string;
   toDate?: string;
+  dateType?: 'CREATED' | 'DELIVERY';
 }
 
 /** Thông tin khách hàng đại lý (dùng trong form tạo đơn) */
@@ -202,6 +203,9 @@ export interface CustomerOption {
   overdueAmount?: number;
   overdueDays?: number;
   deliveryPoints?: DeliveryPoint[];
+  salesRepId?: string;
+  salesRepName?: string;
+  salesRep?: { id: string; name: string };
 }
 
 /** Trạng thái công nợ thời gian thực của đại lý (Task SN-41) */
