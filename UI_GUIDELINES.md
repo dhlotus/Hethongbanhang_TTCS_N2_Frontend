@@ -2134,3 +2134,35 @@ Nguyên tắc chung: Mọi hiệu ứng phải phục vụ khả năng sử dụ
 * Không tự động lặp lại thao tác có thể gây trùng giao dịch hoặc thay đổi dữ liệu ngoài ý muốn.
 
 Nguyên tắc cốt lõi: UI phải phản ánh đúng nghiệp vụ, trạng thái dữ liệu và quyền người dùng. Mọi hành động hiển thị phải tương ứng với hành vi thực tế của hệ thống.
+
+---
+
+### 91. Quy tắc chuẩn hóa Bo góc (Border Radius) & Bảng dữ liệu (Data Tables)
+
+#### A. Chuẩn hóa độ bo góc (Border Radius Standardization):
+Nhằm đảm bảo giao diện phần mềm B2B SaaS chuyên nghiệp, hiện đại, sắc sảo và đồng bộ tuyệt đối trên toàn bộ hệ thống LOHA SALES:
+
+1. **Containers & Thẻ Card lớn (`rounded-xl` — 12px cap):**
+   - Áp dụng cho: Khối thẻ KPI, Card nội dung, Modal Dialog, Popover, Khung bao bọc Bảng (Table wrapper), Khung chứa Bộ lọc (Filter box).
+   - **CẤM:** Không sử dụng bo góc quá lớn (`rounded-2xl` 16px, `rounded-3xl` 24px) cho các container/card trong hệ thống quản trị vì gây cảm giác trẻ con hóa, méo mó cấu trúc B2B và làm lãng phí diện tích hiển thị.
+
+2. **Các điều khiển tương tác - Interactive Controls (`rounded-lg` — 8px):**
+   - Áp dụng cho: Nút bấm (Buttons), Ô nhập liệu (Inputs), Dropdown Selects, Date Pickers, Action Menus, Toggle switches, Tooltip popups.
+   - Thống nhất toàn bộ control có cùng bán kính cong 8px để đạt tính hài hòa thị giác.
+
+3. **Tags, Mini Badges & Trạng thái (`rounded-md` — 6px hoặc `rounded-full`):**
+   - Áp dụng `rounded-md` cho các badge phụ trợ hoặc `rounded-full` cho các viên thuốc trạng thái (Status pills) và chấm chỉ báo (Status dots).
+
+#### B. Quy tắc Bảng dữ liệu (Data Tables UX):
+1. **Tránh thanh cuộn ngang (No Horizontal Scroll):**
+   - Tuyệt đối không hardcode `min-w-[1000px]` hay `min-w-[1200px]` gây thanh cuộn ngang thô kệch trên màn hình laptop tiêu chuẩn.
+   - Thiết lập bảng dạng fluid responsive (`w-full`), tận dụng tỷ lệ % cho các cột chính.
+2. **Tối ưu hóa số lượng cột (Tối đa 5–6 cột trên danh sách chính):**
+   - Chỉ hiển thị các thông tin cốt lõi nhất cần để nhận diện và ra quyết định.
+   - Các thông tin chi tiết (NVKD, Khu vực, lịch sử, ghi chú...) để trong Drawer/Modal "Xem chi tiết".
+3. **Chống gãy chữ (Text Wrapping Prevention):**
+   - Các nút thao tác và chỉ số tiền tệ luôn có `whitespace-nowrap shrink-0` để không bao giờ bị rớt dòng cụt chữ (ví dụ: chữ "Thao tác" không được rớt thành 2 hàng).
+4. **Loại bỏ nhãn rườm rà dưới chân:**
+   - Trong cột Mã: hiển thị duy nhất Mã định danh, không chèn ngày tháng dưới chân.
+   - Trong cột Đối tượng (Đại lý/Khách hàng): hiển thị duy nhất tên đối tượng, không nhồi nhét mã phụ nếu không thật sự cần thiết.
+
