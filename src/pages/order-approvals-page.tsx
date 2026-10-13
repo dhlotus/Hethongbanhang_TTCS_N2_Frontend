@@ -23,7 +23,6 @@ import type {
   Order,
   OrderStatus,
   OrderApprovalAction,
-  OrderApprovalHistory,
 } from '../types/order';
 
 const formatCurrency = (val: number): string =>
@@ -87,21 +86,6 @@ const renderStatusBadge = (status: OrderStatus, isPending: boolean) => {
   }
 };
 
-/** Chuyển hành động duyệt sang tiếng Việt */
-const formatApprovalAction = (action?: string): string => {
-  if (!action) return '---';
-  switch (action) {
-    case 'APPROVE':
-      return 'Đã duyệt';
-    case 'REJECT':
-      return 'Đã từ chối';
-    case 'RETURN_FOR_UPDATE':
-      return 'Đã trả lại yêu cầu sửa';
-    default:
-      return action;
-  }
-};
-
 export const OrderApprovalsPage: React.FC = () => {
   // Danh sách đơn hàng
   const [orders, setOrders] = useState<Order[]>([]);
@@ -116,20 +100,16 @@ export const OrderApprovalsPage: React.FC = () => {
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
 
-  // Phân trang
+  // Phân trang chuẩn quản lý đại lý
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(10);
 
   // Modal thẩm định chi tiết & ra quyết định
   const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
-  const [activeDetailTab, setActiveDetailTab] = useState<'ITEMS' | 'CREDIT' | 'HISTORY'>('ITEMS');
+  const [activeDetailTab, setActiveDetailTab] = useState<'ITEMS' | 'CREDIT'>('ITEMS');
   const [decisionComment, setDecisionComment] = useState('');
   const [modalValidationError, setModalValidationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Lịch sử phê duyệt của đơn
-  const [approvalHistory, setApprovalHistory] = useState<OrderApprovalHistory[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Debounce tìm kiếm
   useEffect(() => {
@@ -179,31 +159,6 @@ export const OrderApprovalsPage: React.FC = () => {
       active = false;
     };
   }, [refreshKey, fromDate, toDate]);
-
-  // Tải lịch sử duyệt khi mở modal thẩm định
-  useEffect(() => {
-    let active = true;
-    if (!reviewOrder?.id) {
-      setApprovalHistory([]);
-      return;
-    }
-    setIsLoadingHistory(true);
-    ordersService
-      .getApprovalHistory(reviewOrder.id)
-      .then((history) => {
-        if (active) setApprovalHistory(history || []);
-      })
-      .catch(() => {
-        if (active) setApprovalHistory([]);
-      })
-      .finally(() => {
-        if (active) setIsLoadingHistory(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [reviewOrder?.id]);
 
   // Kiểm tra đơn có phải đang ở trạng thái Chờ duyệt hay không (bao gồm PENDING, PENDING_APPROVAL, PENDING_INVENTORY_APPROVAL)
   const isOrderPendingApproval = (order: Order): boolean => {
@@ -689,18 +644,23 @@ export const OrderApprovalsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Phân trang */}
-        {filteredOrders.length > pageSize && (
-          <div className="p-4 border-t border-slate-100 flex items-center justify-between">
-            <span className="text-xs text-slate-500 font-medium">
-              Hiển thị {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredOrders.length)} trong tổng số {filteredOrders.length} đơn
-            </span>
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          </div>
+        {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN BẢNG CHUẨN QUẢN LÝ ĐẠI LÝ ── */}
+        {filteredOrders.length > 0 && (
+          <Pagination
+            variant="default"
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredOrders.length}
+            pageSize={pageSize}
+            pageSizeOptions={[10, 20, 50]}
+            itemLabel="đơn"
+            showFirstLast={true}
+            onPageChange={(page) => setCurrentPage(page)}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+          />
         )}
       </div>
 
@@ -763,17 +723,6 @@ export const OrderApprovalsPage: React.FC = () => {
                   }`}
                 >
                   Kiểm tra công nợ
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveDetailTab('HISTORY')}
-                  className={`px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
-                    activeDetailTab === 'HISTORY'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Lịch sử xét duyệt ({approvalHistory.length})
                 </button>
               </div>
 
@@ -867,40 +816,6 @@ export const OrderApprovalsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Tab 3: Lịch sử xét duyệt */}
-              {activeDetailTab === 'HISTORY' && (
-                <div className="space-y-3">
-                  {isLoadingHistory ? (
-                    <div className="p-8 text-center text-slate-400 text-xs">Đang tải lịch sử...</div>
-                  ) : approvalHistory.length === 0 ? (
-                    <div className="p-8 text-center text-slate-400 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                      Chưa có lịch sử xét duyệt trước đó cho đơn hàng này.
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {approvalHistory.map((h) => (
-                        <div key={h.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 text-xs space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-800">
-                              {h.approverName} ({h.approverRoles?.join(', ') || 'Quản lý'})
-                            </span>
-                            <span className="text-[11px] text-slate-400">{formatDate(h.createdAt)}</span>
-                          </div>
-                          <p className="text-slate-600">
-                            Hành động: <strong>{formatApprovalAction(h.action)}</strong>
-                          </p>
-                          {h.comment && (
-                            <p className="text-slate-700 bg-white p-2 rounded-lg border border-slate-100 italic">
-                              "{h.comment}"
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* Khu vực quyết định phê duyệt */}
               {isOrderPendingApproval(reviewOrder) ? (
                 <div className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
@@ -976,19 +891,10 @@ export const OrderApprovalsPage: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                /* Với đơn trong Lịch sử đã xét duyệt: chỉ hiển thị kết quả và nút Đóng */
-                <div className="flex items-center justify-between gap-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
-                  <div className="flex items-center gap-2 text-xs text-slate-700">
-                    <span className="font-semibold text-slate-500">Trạng thái xét duyệt:</span>
-                    {renderStatusBadge(reviewOrder.status, false)}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setReviewOrder(null)}
-                    className="px-5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer shadow-xs"
-                  >
-                    Đóng
-                  </button>
+                /* Với đơn trong Lịch sử đã xét duyệt: chỉ hiển thị thông tin trạng thái, đóng modal bằng nút X góc trên */
+                <div className="flex items-center gap-2 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-700">
+                  <span className="font-semibold text-slate-500">Trạng thái xét duyệt:</span>
+                  {renderStatusBadge(reviewOrder.status, false)}
                 </div>
               )}
             </div>
