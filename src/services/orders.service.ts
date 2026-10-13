@@ -43,6 +43,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   // 5 Đại lý Cấp 1 (DL-0001 -> DL-0005)
   {
     id: 'cust-dl-0001',
+    salesRepId: 'usr-sale-01',
+    salesRepName: 'Trần Văn Long',
     code: 'DL-0001',
     name: 'Công Ty TNHH Thương Mại & Phân Phối Minh Khang',
     group: 'AGENT_LEVEL_1',
@@ -65,6 +67,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   },
   {
     id: 'cust-dl-0002',
+    salesRepId: 'usr-sales-002',
+    salesRepName: 'Trần Văn Nam',
     code: 'DL-0002',
     name: 'Tổng Đại Lý Phân Phối Thực Phẩm Toàn Cầu',
     group: 'AGENT_LEVEL_1',
@@ -87,6 +91,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   },
   {
     id: 'cust-dl-0003',
+    salesRepId: 'usr-sale-01',
+    salesRepName: 'Trần Văn Long',
     code: 'DL-0003',
     name: 'Nhà Phân Phối Hàng Tiêu Dùng Hoàng Long',
     group: 'AGENT_LEVEL_1',
@@ -109,6 +115,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   },
   {
     id: 'cust-dl-0004',
+    salesRepId: 'usr-sale-02',
+    salesRepName: 'Nguyễn Thị Hằng',
     code: 'DL-0004',
     name: 'Công Ty Cổ Phần Thương Mại Miền Đông',
     group: 'AGENT_LEVEL_1',
@@ -131,6 +139,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   },
   {
     id: 'cust-dl-0005',
+    salesRepId: 'usr-salesmgr-003',
+    salesRepName: 'Lê Quản Lý',
     code: 'DL-0005',
     name: 'Nhà Phân Phối Dinh Dưỡng Phương Đông',
     group: 'AGENT_LEVEL_1',
@@ -155,6 +165,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   // 5 Đại lý Cấp 2 (DL-0006 -> DL-0010)
   {
     id: 'cust-dl-0006',
+    salesRepId: 'usr-sale-01',
+    salesRepName: 'Trần Văn Long',
     code: 'DL-0006',
     name: 'Đại Lý Bách Hóa Thực Phẩm Bảo Châu',
     group: 'AGENT_LEVEL_2',
@@ -177,6 +189,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   },
   {
     id: 'cust-dl-0007',
+    salesRepId: 'usr-sales-002',
+    salesRepName: 'Trần Văn Nam',
     code: 'DL-0007',
     name: 'Cửa Hàng Bách Hóa Tổng Hợp Khánh An',
     group: 'AGENT_LEVEL_2',
@@ -199,6 +213,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   },
   {
     id: 'cust-dl-0008',
+    salesRepId: 'usr-sale-01',
+    salesRepName: 'Trần Văn Long',
     code: 'DL-0008',
     name: 'Đại Lý Tiêu Dùng Nhanh Thịnh Vượng',
     group: 'AGENT_LEVEL_2',
@@ -367,7 +383,9 @@ export const ordersService = {
         status: c.status,
         lockReason: c.lockReason,
         lockedAt: c.lockedAt,
-        lockedBy: c.lockedBy,
+        salesRepId: c.salesRepId || c.salesRep?.id,
+        salesRepName: c.salesRepName || c.salesRep?.name,
+        salesRep: c.salesRep,
         deliveryPoints: (c.deliveryPoints || []).map((dp) => ({
           id: dp.id,
           name: dp.name,
