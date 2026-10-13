@@ -716,7 +716,7 @@ export const OrderApprovalsPage: React.FC = () => {
                   <th className="px-3 py-3.5">Ngày giao</th>
                   <th className="px-4 py-3.5 text-right">Tổng phải thu</th>
                   <th className="px-3 py-3.5 text-center">Trạng thái</th>
-                  <th className="px-4 py-3.5 text-right">Thao tác</th>
+                  <th className="px-4 py-3.5 text-center min-w-[210px]">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -812,8 +812,8 @@ export const OrderApprovalsPage: React.FC = () => {
                       </td>
 
                       {/* Thao tác */}
-                      <td className="px-4 py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="px-4 py-3.5 text-center">
+                        <div className="flex items-center justify-center gap-2">
                           <button
                             type="button"
                             onClick={() => {
@@ -821,10 +821,12 @@ export const OrderApprovalsPage: React.FC = () => {
                               setDecisionComment('');
                               setModalValidationError(null);
                             }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer"
+                            className={`${
+                              isPending ? 'w-[96px]' : 'px-3.5'
+                            } inline-flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer shrink-0`}
                             title={isPending ? 'Mở hồ sơ thẩm định chi tiết' : 'Xem chi tiết đơn hàng'}
                           >
-                            <Eye className="w-3.5 h-3.5" />
+                            <Eye className="w-3.5 h-3.5 shrink-0" />
                             <span>{isPending ? 'Thẩm định' : 'Xem chi tiết'}</span>
                           </button>
 
@@ -833,20 +835,20 @@ export const OrderApprovalsPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => void handleQuickApprove(order)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors cursor-pointer shadow-2xs"
+                                className="w-[90px] inline-flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors cursor-pointer shadow-2xs shrink-0"
                                 title="Duyệt đơn hàng ngay (kho đủ hàng)"
                               >
-                                <Check className="w-3.5 h-3.5" />
+                                <Check className="w-3.5 h-3.5 shrink-0" />
                                 <span>Duyệt</span>
                               </button>
                             ) : (
                               <button
                                 type="button"
                                 disabled={true}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed opacity-80"
+                                className="w-[90px] inline-flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed opacity-80 shrink-0"
                                 title={`Không thể duyệt: Đơn có ${stockCheck.outOfStockLines.length} mặt hàng thiếu tồn (${stockCheck.outOfStockLines.map((l) => l.productName).join(', ')}). Bấm Thẩm định để xem chi tiết hoặc Trả lại sửa.`}
                               >
-                                <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
+                                <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                                 <span>Thiếu tồn</span>
                               </button>
                             )
