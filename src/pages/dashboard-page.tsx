@@ -506,7 +506,7 @@ export const DashboardPage: React.FC = () => {
                       <span className="truncate text-xl sm:text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
                         {formatCurrency(metrics.todaySales)}
                       </span>
-                      {metrics.salesGrowthPercent !== undefined && (
+                      {metrics.todaySales > 0 && metrics.salesGrowthPercent !== undefined && (
                         <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-semibold tabular-nums ${
                           metrics.salesGrowthPercent > 0
                             ? 'text-emerald-700 bg-emerald-50 border border-emerald-200/50'
@@ -575,7 +575,6 @@ export const DashboardPage: React.FC = () => {
                     <span className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate tabular-nums">
                       {metrics.readyToShipOrdersCount}
                     </span>
-                    <span className="text-xs text-slate-400 font-normal">đơn hàng</span>
                   </dd>
                 </div>
               </div>
@@ -590,26 +589,11 @@ export const DashboardPage: React.FC = () => {
                   <Users className="h-6 w-6" />
                 </div>
                 <div className="ml-4 w-0 flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Tổng công nợ quá hạn</dt>
-                    {metrics.totalOverdueDebt > 0 && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                    )}
-                  </div>
+                  <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Tổng công nợ quá hạn</dt>
                   <dd className="mt-1 flex items-baseline flex-wrap gap-2">
                     <span className="truncate text-xl sm:text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
                       {formatCurrency(metrics.totalOverdueDebt)}
                     </span>
-                    {metrics.debtGrowthPercent !== undefined && (
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-semibold tabular-nums ${
-                        metrics.debtGrowthPercent < 0
-                          ? 'text-emerald-700 bg-emerald-50 border border-emerald-200/50'
-                          : 'text-rose-700 bg-rose-50 border border-rose-200/50'
-                      }`} title="So với kỳ trước">
-                        {metrics.debtGrowthPercent < 0 ? <ArrowDownRight className="h-3.5 w-3.5 mr-0.5" /> : <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" />}
-                        {Math.abs(metrics.debtGrowthPercent)}%
-                      </span>
-                    )}
                   </dd>
                 </div>
               </div>
@@ -636,7 +620,6 @@ export const DashboardPage: React.FC = () => {
                       <span className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate tabular-nums">
                         {lowStockCount > 0 ? lowStockCount : metrics.lowStockAlertCount}
                       </span>
-                      <span className="text-xs text-slate-400 font-normal">mặt hàng</span>
                       {(lowStockCount > 0 || metrics.lowStockAlertCount > 0) && (
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/50">
                           Cần nhập
