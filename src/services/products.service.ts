@@ -508,15 +508,29 @@ const sanitizeProduct = (p: Product, canViewCost: boolean): Product => {
 export const productsService = {
   /**
    * Lấy lịch sử thay đổi giá của sản phẩm (SN-29)
+   * Gọi API GET /api/products/:id/price-history
    */
   async getPriceHistory(id: string): Promise<ProductPriceHistory[]> {
+    const mapItem = (raw: Record<string, unknown>): ProductPriceHistory => ({
+      id: String(raw.id || ''),
+      productId: String(raw.productId || raw.product_id || id),
+      oldPrice: Number(raw.oldPrice ?? raw.old_price ?? 0),
+      newPrice: Number(raw.newPrice ?? raw.new_price ?? 0),
+      changedBy: String(raw.changedBy || raw.changed_by || 'Quản trị viên'),
+      changedAt: String(raw.changedAt || raw.changed_at || new Date().toISOString()),
+    });
+
     try {
-      const response = await apiClient.get<ProductPriceHistory[]>(`/products/${id}/price-history`);
-      if (Array.isArray(response.data) && response.data.length > 0) {
-        return response.data;
+      const response = await apiClient.get<Record<string, unknown>[]>(`/products/${id}/price-history`);
+      if (Array.isArray(response.data)) {
+        const mapped = response.data.map(mapItem);
+        try {
+          localStorage.setItem(`price_history_${id}`, JSON.stringify(mapped));
+        } catch {}
+        return mapped;
       }
     } catch {
-      // Fallback khi chạy chế độ offline / mock data
+      // Fallback khi offline
     }
 
     const localKey = `price_history_${id}`;
@@ -524,31 +538,14 @@ export const productsService = {
     if (local) {
       try {
         const parsed = JSON.parse(local);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.map((item: Record<string, unknown>) => mapItem(item));
+        }
       } catch {}
     }
 
-    const product = MOCK_PRODUCTS.find((p) => p.id === id || p.sku === id);
-    const currentPrice = product?.price || 150000;
-    const initialHistory: ProductPriceHistory[] = [
-      {
-        id: `hist-${id}-1`,
-        productId: id,
-        oldPrice: Math.round(currentPrice * 0.9),
-        newPrice: currentPrice,
-        changedBy: 'Nguyễn Văn Khải (Quản lý kinh doanh)',
-        changedAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-      },
-      {
-        id: `hist-${id}-2`,
-        productId: id,
-        oldPrice: Math.round(currentPrice * 0.8),
-        newPrice: Math.round(currentPrice * 0.9),
-        changedBy: 'Bùi Đức Hà (Admin)',
-        changedAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-      },
-    ];
-    return initialHistory;
+    // Tuyệt đối không mock dữ liệu tĩnh hardcode - trả về mảng rỗng nếu chưa từng đổi giá
+    return [];
   },
 
   /**
@@ -698,6 +695,11 @@ export const productsService = {
     try {
       const response = await apiClient.patch<Product>(`/products/${id}`, payload);
       const resProduct = response.data;
+      if (payload.price !== undefined) {
+        try {
+          localStorage.removeItem(`price_history_${id}`);
+        } catch {}
+      }
       try {
         window.dispatchEvent(new CustomEvent('loha_products_updated', { detail: resProduct }));
       } catch {}

@@ -238,10 +238,17 @@ export const ProductsPage: React.FC = () => {
   const [selectedProductForHistory, setSelectedProductForHistory] = useState<{
     id: string;
     name: string;
+    sku?: string;
+    price?: number;
   } | null>(null);
 
   const handleOpenPriceHistory = (product: Product) => {
-    setSelectedProductForHistory({ id: product.id, name: product.name });
+    setSelectedProductForHistory({
+      id: product.id,
+      name: product.name,
+      sku: product.sku,
+      price: product.price,
+    });
     setPriceHistoryModalOpen(true);
   };
 
@@ -2389,6 +2396,8 @@ export const ProductsPage: React.FC = () => {
         onClose={() => setPriceHistoryModalOpen(false)}
         productId={selectedProductForHistory?.id || ''}
         productName={selectedProductForHistory?.name || ''}
+        productSku={selectedProductForHistory?.sku}
+        currentPrice={selectedProductForHistory?.price}
       />
     </div>
   );
