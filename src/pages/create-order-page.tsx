@@ -39,6 +39,8 @@ import type { Product, ProductUnit } from '../types/products';
 import type { CategoryTreeNode } from '../types/categories';
 import type { AgencyWarehouseDetail } from '../types/warehouse.types';
 import { DateInput, formatVietnameseDate } from '../components/date-input';
+import { OrderSuggestionsPanel } from '../components/order-suggestions-panel';
+import type { SuggestedProductItem, LatestOrderItem } from '../types/order-suggestion.types';
 
 const DRAFT_KEY = 'new-order-page-draft';
 
@@ -759,6 +761,250 @@ export const CreateOrderPage: React.FC = () => {
     showToast('success', `Đã thêm ${product.name} vào đơn`);
   }, [effectivePriceList, lines, priceListError, refreshLinePricing, selectedCustomer]);
 
+  // ── Thêm mặt hàng từ Bảng Gợi ý (Task SN-43) ──
+  const handleAddSuggestedItem = useCallback((item: SuggestedProductItem, quantity: number) => {
+    if (!selectedCustomer) {
+      showToast('error', 'Vui lòng chọn đại lý trước');
+      return;
+    }
+    if (!effectivePriceList) {
+      showToast('error', priceListError || 'Chưa có bảng giá hiệu lực cho đại lý này');
+      return;
+    }
+
+    const qtyToAdd = Math.max(1, quantity || 1);
+    const existingIndex = lines.findIndex(
+      (l) => l.productId === item.productId || (item.sku && l.productSku.toUpperCase() === item.sku.toUpperCase())
+    );
+
+    if (existingIndex >= 0) {
+      // Nếu sản phẩm đã có trong giỏ hàng -> tăng số lượng
+      const targetLine = lines[existingIndex];
+      const newQty = targetLine.quantity + qtyToAdd;
+      const updatedLine: OrderLine = {
+        ...targetLine,
+        quantity: newQty,
+        baseQuantity: newQty * (targetLine.conversionRate || 1),
+        lineTotal: newQty * targetLine.unitPrice,
+      };
+      setLines((current) => current.map((l, idx) => idx === existingIndex ? updatedLine : l));
+      refreshLinePricing(updatedLine, effectivePriceList);
+      showToast('success', `Đã tăng số lượng ${item.productName} (+${qtyToAdd} ${targetLine.unit || item.unit})`);
+    } else {
+      // Tìm trong danh mục sản phẩm nếu có để lấy unitOptions và category chuẩn
+      const foundProduct = searchResults.find(
+        (p) => p.id === item.productId || (item.sku && p.sku?.toUpperCase() === item.sku.toUpperCase())
+      );
+
+      const fallbackP = item.price || 25000;
+      const priceItem = getPriceListItem(
+        effectivePriceList,
+        { productId: item.productId, productSku: item.sku },
+        fallbackP,
+      ) || {
+        price: fallbackP,
+        minPrice: Math.round(fallbackP * 0.8),
+      };
+
+      const baseUnit = foundProduct?.baseUnit || item.unit || 'Cái';
+      const unitOptions = foundProduct
+        ? getAvailableProductUnits(foundProduct)
+        : [{ unitName: baseUnit, conversionRate: 1 }];
+
+      const newLine: OrderLine = {
+        id: 'line-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+        productId: item.productId || (foundProduct ? foundProduct.id : 'p-' + item.sku),
+        productSku: item.sku,
+        productName: item.productName,
+        categoryId: foundProduct?.categoryId || foundProduct?.category || 'ALL',
+        category: foundProduct?.category,
+        unit: baseUnit,
+        baseUnit: baseUnit,
+        conversionRate: 1,
+        quantity: qtyToAdd,
+        baseQuantity: qtyToAdd,
+        unitPrice: Math.round(priceItem.price),
+        listPrice: Math.round(priceItem.price),
+        baseListPrice: priceItem.price,
+        minPrice: priceItem.minPrice,
+        unitOptions,
+        discountPercent: 0,
+        lineTotal: Math.round(priceItem.price) * qtyToAdd,
+        stockAvailable: foundProduct?.availableStock ?? foundProduct?.stockQuantity ?? 999,
+        availableStock: foundProduct?.availableStock ?? foundProduct?.stockQuantity ?? 999,
+        pricingLoading: true,
+      };
+
+      setLines((current) => [...current, newLine]);
+      refreshLinePricing(newLine, effectivePriceList);
+      showToast('success', `Đã thêm ${item.productName} (${qtyToAdd} ${baseUnit}) vào giỏ hàng`);
+    }
+  }, [effectivePriceList, lines, priceListError, refreshLinePricing, searchResults, selectedCustomer]);
+
+  // ── Thêm tất cả mặt hàng gợi ý (Task SN-43) ──
+  const handleAddAllSuggestedItems = useCallback((itemsWithQty: Array<{ item: SuggestedProductItem; quantity: number }>) => {
+    if (!selectedCustomer) {
+      showToast('error', 'Vui lòng chọn đại lý trước');
+      return;
+    }
+    if (!effectivePriceList) {
+      showToast('error', priceListError || 'Chưa có bảng giá hiệu lực cho đại lý này');
+      return;
+    }
+    if (!itemsWithQty || itemsWithQty.length === 0) return;
+
+    let updatedLines = [...lines];
+    let count = 0;
+
+    itemsWithQty.forEach(({ item, quantity }, idx) => {
+      const qtyToAdd = Math.max(1, quantity || 1);
+      const existingIndex = updatedLines.findIndex(
+        (l) => l.productId === item.productId || (item.sku && l.productSku.toUpperCase() === item.sku.toUpperCase())
+      );
+
+      if (existingIndex >= 0) {
+        const targetLine = updatedLines[existingIndex];
+        const newQty = targetLine.quantity + qtyToAdd;
+        const updatedLine: OrderLine = {
+          ...targetLine,
+          quantity: newQty,
+          baseQuantity: newQty * (targetLine.conversionRate || 1),
+          lineTotal: newQty * targetLine.unitPrice,
+        };
+        updatedLines[existingIndex] = updatedLine;
+        count++;
+      } else {
+        const foundProduct = searchResults.find(
+          (p) => p.id === item.productId || (item.sku && p.sku?.toUpperCase() === item.sku.toUpperCase())
+        );
+
+        const fallbackP = item.price || 25000;
+        const priceItem = getPriceListItem(
+          effectivePriceList,
+          { productId: item.productId, productSku: item.sku },
+          fallbackP,
+        ) || {
+          price: fallbackP,
+          minPrice: Math.round(fallbackP * 0.8),
+        };
+
+        const baseUnit = foundProduct?.baseUnit || item.unit || 'Cái';
+        const unitOptions = foundProduct
+          ? getAvailableProductUnits(foundProduct)
+          : [{ unitName: baseUnit, conversionRate: 1 }];
+
+        const newLine: OrderLine = {
+          id: 'line-' + Date.now() + '-' + idx + '-' + Math.random().toString(36).slice(2, 6),
+          productId: item.productId || (foundProduct ? foundProduct.id : 'p-' + item.sku),
+          productSku: item.sku,
+          productName: item.productName,
+          categoryId: foundProduct?.categoryId || foundProduct?.category || 'ALL',
+          category: foundProduct?.category,
+          unit: baseUnit,
+          baseUnit: baseUnit,
+          conversionRate: 1,
+          quantity: qtyToAdd,
+          baseQuantity: qtyToAdd,
+          unitPrice: Math.round(priceItem.price),
+          listPrice: Math.round(priceItem.price),
+          baseListPrice: priceItem.price,
+          minPrice: priceItem.minPrice,
+          unitOptions,
+          discountPercent: 0,
+          lineTotal: Math.round(priceItem.price) * qtyToAdd,
+          stockAvailable: foundProduct?.availableStock ?? foundProduct?.stockQuantity ?? 999,
+          availableStock: foundProduct?.availableStock ?? foundProduct?.stockQuantity ?? 999,
+          pricingLoading: true,
+        };
+        updatedLines.push(newLine);
+        count++;
+      }
+    });
+
+    setLines(updatedLines);
+    updatedLines.forEach((l) => refreshLinePricing(l, effectivePriceList));
+    showToast('success', `Đã thêm tất cả ${count} mặt hàng gợi ý vào giỏ hàng!`);
+  }, [effectivePriceList, lines, priceListError, refreshLinePricing, searchResults, selectedCustomer]);
+
+  // ── 1-Click Reorder đơn hàng gần nhất (Task SN-43 / SN-174) ──
+  const handleReorderPreviousOrder = useCallback((items: LatestOrderItem[]) => {
+    if (!selectedCustomer) {
+      showToast('error', 'Vui lòng chọn đại lý trước');
+      return;
+    }
+    if (!effectivePriceList) {
+      showToast('error', priceListError || 'Chưa có bảng giá hiệu lực cho đại lý này');
+      return;
+    }
+    if (!items || items.length === 0) return;
+
+    let addedCount = 0;
+    const newLinesToAdd: OrderLine[] = [];
+
+    items.forEach((item, idx) => {
+      const isAlreadyAdded = lines.some(
+        (l) => l.productId === item.productId || (item.sku && l.productSku.toUpperCase() === item.sku.toUpperCase())
+      );
+      if (!isAlreadyAdded) {
+        const foundProduct = searchResults.find(
+          (p) => p.id === item.productId || (item.sku && p.sku?.toUpperCase() === item.sku.toUpperCase())
+        );
+
+        const fallbackP = item.unitPrice || 25000;
+        const priceItem = getPriceListItem(
+          effectivePriceList,
+          { productId: item.productId || '', productSku: item.sku },
+          fallbackP,
+        ) || {
+          price: fallbackP,
+          minPrice: Math.round(fallbackP * 0.8),
+        };
+
+        const qty = Math.max(1, item.quantity || 1);
+        const baseUnit = item.unit || foundProduct?.baseUnit || 'Cái';
+        const unitOptions = foundProduct
+          ? getAvailableProductUnits(foundProduct)
+          : [{ unitName: baseUnit, conversionRate: 1 }];
+
+        newLinesToAdd.push({
+          id: 'line-' + Date.now() + '-' + idx,
+          productId: item.productId || (foundProduct ? foundProduct.id : 'p-' + item.sku),
+          productSku: item.sku,
+          productName: item.productName,
+          categoryId: foundProduct?.categoryId || foundProduct?.category || 'ALL',
+          category: foundProduct?.category,
+          unit: baseUnit,
+          baseUnit: baseUnit,
+          conversionRate: 1,
+          quantity: qty,
+          baseQuantity: qty,
+          unitPrice: Math.round(priceItem.price),
+          listPrice: Math.round(priceItem.price),
+          baseListPrice: priceItem.price,
+          minPrice: priceItem.minPrice,
+          unitOptions,
+          discountPercent: 0,
+          lineTotal: Math.round(priceItem.price) * qty,
+          stockAvailable: foundProduct?.availableStock ?? foundProduct?.stockQuantity ?? 999,
+          availableStock: foundProduct?.availableStock ?? foundProduct?.stockQuantity ?? 999,
+          pricingLoading: true,
+        });
+        addedCount++;
+      }
+    });
+
+    if (newLinesToAdd.length > 0) {
+      setLines((curr) => {
+        const next = [...curr, ...newLinesToAdd];
+        newLinesToAdd.forEach((l) => refreshLinePricing(l, effectivePriceList));
+        return next;
+      });
+      showToast('success', `Đã thêm nhanh ${addedCount} mặt hàng từ đơn hàng gần nhất!`);
+    } else {
+      showToast('info', 'Tất cả mặt hàng của đơn cũ đã có trong giỏ hàng.');
+    }
+  }, [effectivePriceList, lines, priceListError, refreshLinePricing, searchResults, selectedCustomer]);
+
   // ── Cập nhật số lượng / ĐVT ──
   const handleUpdateLine = useCallback((lineId: string, field: 'quantity' | 'unit', value: string | number) => {
     const line = lines.find((item) => item.id === lineId);
@@ -960,7 +1206,7 @@ export const CreateOrderPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 pb-28 max-w-full overflow-x-hidden p-2 sm:p-4">
+    <div className="space-y-4 pb-6 max-w-full overflow-x-hidden p-2 sm:p-4">
       {/* ── HEADER THANH ĐIỀU HƯỚNG TRANG ── */}
       <div className="flex items-center justify-between gap-2.5 flex-wrap bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/90 shadow-xs">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -984,18 +1230,20 @@ export const CreateOrderPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Nút hành động trên Header (ẩn trên mobile vì đã có Sticky Bottom Bar) */}
-        <div className="hidden sm:flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => handleSubmit(false, true)}
-            disabled={isSubmitting || lines.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-2xs disabled:opacity-40 cursor-pointer"
-            title="Lưu tạm đơn nháp để gõ tiếp sau"
-          >
-            <Save className="w-3.5 h-3.5 text-slate-500" />
-            <span>Lưu đơn nháp</span>
-          </button>
+        {/* Nút hành động trên Header */}
+        <div className="flex items-center gap-2 shrink-0">
+          {(!editingOrder || editingOrder.status === 'DRAFT') && (
+            <button
+              type="button"
+              onClick={() => handleSubmit(false, true)}
+              disabled={isSubmitting || lines.length === 0}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-2xs disabled:opacity-40 cursor-pointer"
+              title="Lưu tạm đơn nháp để gõ tiếp sau"
+            >
+              <Save className="w-3.5 h-3.5 text-slate-500" />
+              <span>Lưu đơn nháp</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -1322,6 +1570,21 @@ export const CreateOrderPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* ================================================================= */}
+        {/* PANEL GỢI Ý MẶT HÀNG ĐẠI LÝ THƯỜNG MUA (SN-43)                   */}
+        {/* ================================================================= */}
+        {selectedCustomer && (
+          <OrderSuggestionsPanel
+            customerId={selectedCustomer.id}
+            customerName={selectedCustomer.name}
+            existingProductIds={lines.map((l) => l.productId)}
+            existingProductSkus={lines.map((l) => (l.productSku || '').toUpperCase())}
+            onAddSuggestedItem={handleAddSuggestedItem}
+            onAddAllSuggestedItems={handleAddAllSuggestedItems}
+            onReorderPreviousOrder={handleReorderPreviousOrder}
+          />
+        )}
 
         {/* ================================================================= */}
         {/* KHỐI 2: DANH SÁCH SẢN PHẨM (CHỈ THÊM ĐƯỢC KHI ĐÃ CHỌN ĐẠI LÝ)   */}
@@ -1661,21 +1924,55 @@ export const CreateOrderPage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleSubmit(false, true)}
-                      disabled={isSubmitting || lines.length === 0}
-                      className="px-4 py-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-all disabled:opacity-40 cursor-pointer"
-                    >
-                      Lưu nháp
-                    </button>
+                    {/* Chỉ hiển thị nút Lưu nháp khi tạo đơn mới hoặc đơn đang ở trạng thái Nháp */}
+                    {(!editingOrder || editingOrder.status === 'DRAFT') && (
+                      <button
+                        type="button"
+                        onClick={() => handleSubmit(false, true)}
+                        disabled={isSubmitting || lines.length === 0}
+                        className="px-4 py-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-all disabled:opacity-40 cursor-pointer shadow-2xs"
+                        title="Lưu bản nháp để tiếp tục chỉnh sửa sau"
+                      >
+                        Lưu nháp
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleSubmit(false, false)}
-                      disabled={isSubmitting || lines.length === 0}
-                      className="px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs disabled:opacity-40 cursor-pointer"
+                      disabled={
+                        isSubmitting ||
+                        lines.length === 0 ||
+                        hasStockError ||
+                        isLoadingPriceList ||
+                        !effectivePriceList ||
+                        (debtStatus !== null && !debtStatus.canCreateOrder)
+                      }
+                      className={`px-5 py-2.5 text-xs font-bold text-white rounded-xl transition-all shadow-xs cursor-pointer ${
+                        hasStockError
+                          ? 'bg-rose-400 opacity-60 cursor-not-allowed'
+                          : debtStatus &&
+                            debtStatus.creditLimit > 0 &&
+                            debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit
+                          ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
+                          : 'bg-blue-600 hover:bg-blue-700'
+                      } disabled:opacity-40 disabled:cursor-not-allowed`}
                     >
-                      {isSubmitting ? 'Đang gửi...' : 'Tạo đơn hàng'}
+                      {isSubmitting ? (
+                        <span className="flex items-center gap-1.5">
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Đang gửi...</span>
+                        </span>
+                      ) : hasStockError ? (
+                        'Vượt tồn kho'
+                      ) : debtStatus &&
+                        debtStatus.creditLimit > 0 &&
+                        debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit ? (
+                        'Gửi Duyệt'
+                      ) : editingOrder ? (
+                        'Cập nhật đơn hàng'
+                      ) : (
+                        'Tạo đơn hàng'
+                      )}
                     </button>
                   </div>
                 </div>
@@ -1684,72 +1981,6 @@ export const CreateOrderPage: React.FC = () => {
           )}
         </div>
 
-      </div>
-
-      {/* ── STICKY BOTTOM BAR CỐ ĐỊNH Ở ĐÁY MÀN HÌNH (THUẬN TIỆN TRÊN MOBILE 360PX & DESKTOP) ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-3 sm:px-6 py-2.5 shadow-lg flex items-center justify-between gap-2.5">
-        <div className="min-w-0">
-          <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Tổng phải thu</div>
-          <div className="text-sm sm:text-base font-extrabold text-blue-700 truncate">
-            {formatCurrency(totals.grandTotal)}
-          </div>
-          {totals.totalDiscount > 0 && (
-            <div className="text-[10px] text-emerald-600 font-semibold truncate">
-              Đã giảm -{formatCurrency(totals.totalDiscount)}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => handleSubmit(false, true)}
-            disabled={isSubmitting || lines.length === 0}
-            className="px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all disabled:opacity-40"
-            title="Lưu bản nháp để gõ tiếp sau"
-          >
-            Lưu nháp
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSubmit(false, false)}
-            disabled={
-              isSubmitting ||
-              lines.length === 0 ||
-              hasStockError ||
-              isLoadingPriceList ||
-              !effectivePriceList ||
-              (debtStatus !== null && !debtStatus.canCreateOrder)
-            }
-            className={`px-3.5 sm:px-5 py-2 text-xs font-bold text-white rounded-xl shadow-xs transition-all ${
-              hasStockError
-                ? 'bg-rose-400 opacity-60 cursor-not-allowed'
-                : debtStatus &&
-                  debtStatus.creditLimit > 0 &&
-                  debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit
-                ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
-                : 'bg-blue-600 hover:bg-blue-700'
-            } disabled:opacity-40 disabled:cursor-not-allowed`}
-          >
-            {isSubmitting ? (
-              <span className="flex items-center gap-1">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>Đang gửi...</span>
-              </span>
-            ) : hasStockError ? (
-              'Vượt tồn'
-            ) : debtStatus &&
-              debtStatus.creditLimit > 0 &&
-              debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit ? (
-              'Gửi Duyệt'
-            ) : editingOrder ? (
-              'Cập nhật'
-            ) : (
-              'Tạo Đơn Hàng'
-            )}
-          </button>
-        </div>
       </div>
 
       {/* ── MODALS HỖ TRỢ ── */}

@@ -15,6 +15,7 @@ import { AuditLogsPage } from '../pages/audit-logs-page';
 import { ProfilePage } from '../pages/profile-page';
 import { OrdersPage } from '../pages/orders-page';
 import { CreateOrderPage } from '../pages/create-order-page';
+import { OrderApprovalsPage } from '../pages/order-approvals-page';
 import { StockListPage } from '../pages/inventory/stock-list-page';
 import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
 import { CustomersPage } from '../pages/customers-page';
@@ -170,14 +171,14 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={['SALES_MANAGER']}
+                  allowedRoles={['SALES_MANAGER', 'ADMIN']}
                   moduleName="Quản lý & Điều hành Kinh doanh"
                 />
               }
             >
               <Route
                 path="/sales/approvals"
-                element={<Navigate to="/sales/orders?status=PENDING_APPROVAL" replace />}
+                element={<OrderApprovalsPage />}
               />
               <Route
                 path="/reports/sales"

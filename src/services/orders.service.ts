@@ -288,18 +288,29 @@ export const MOCK_CUSTOMERS = DEMO_CUSTOMERS;
 // ──────────────────────────────────────────────────────────────────────────
 
 // INITIAL_DEMO_ORDERS được import từ ./demo-orders.data (20 đơn hàng đầy đủ)
+const DEMO_ORDERS_VERSION_KEY = 'loha_demo_orders_version';
+const CURRENT_DEMO_ORDERS_VERSION = 'v2_stock_approval_tests';
+
+export const resetDemoOrdersToDefault = (): Order[] => {
+  try {
+    saveStoredDemoOrders(INITIAL_DEMO_ORDERS);
+    localStorage.setItem(DEMO_ORDERS_VERSION_KEY, CURRENT_DEMO_ORDERS_VERSION);
+    window.dispatchEvent(new CustomEvent('loha_orders_updated'));
+  } catch {}
+  return INITIAL_DEMO_ORDERS;
+};
 
 const getStoredDemoOrders = (): Order[] => {
   try {
+    const version = localStorage.getItem(DEMO_ORDERS_VERSION_KEY);
     const raw = localStorage.getItem(DEMO_ORDERS_KEY);
-    if (raw) {
+    if (raw && version === CURRENT_DEMO_ORDERS_VERSION) {
       const parsed = JSON.parse(raw) as Order[];
       if (parsed.length >= 20) {
         return parsed;
       }
     }
-    saveStoredDemoOrders(INITIAL_DEMO_ORDERS);
-    return INITIAL_DEMO_ORDERS;
+    return resetDemoOrdersToDefault();
   } catch (e) {
     void e;
   }

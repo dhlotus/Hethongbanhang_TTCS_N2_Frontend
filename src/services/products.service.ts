@@ -183,7 +183,7 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     price: 520000,
     costPrice: 380000,
     margin: 26.92,
-    stockQuantity: 340,
+    stockQuantity: 1500,
     status: 'ACTIVE',
     barcode: '8936012345011',
     hasTransactions: true,
