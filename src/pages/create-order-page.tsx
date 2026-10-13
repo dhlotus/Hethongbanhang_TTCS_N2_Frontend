@@ -39,6 +39,8 @@ import type { Product, ProductUnit } from '../types/products';
 import type { CategoryTreeNode } from '../types/categories';
 import type { AgencyWarehouseDetail } from '../types/warehouse.types';
 import { DateInput, formatVietnameseDate } from '../components/date-input';
+import { OrderSuggestionsPanel } from '../components/order-suggestions-panel';
+import type { SuggestedProductItem, LatestOrderItem } from '../types/order-suggestion.types';
 
 const DRAFT_KEY = 'new-order-page-draft';
 
@@ -759,6 +761,165 @@ export const CreateOrderPage: React.FC = () => {
     showToast('success', `Đã thêm ${product.name} vào đơn`);
   }, [effectivePriceList, lines, priceListError, refreshLinePricing, selectedCustomer]);
 
+  // ── Thêm mặt hàng từ Bảng Gợi ý (Task SN-43) ──
+  const handleAddSuggestedItem = useCallback((item: SuggestedProductItem, quantity: number) => {
+    if (!selectedCustomer) {
+      showToast('error', 'Vui lòng chọn đại lý trước');
+      return;
+    }
+    if (!effectivePriceList) {
+      showToast('error', priceListError || 'Chưa có bảng giá hiệu lực cho đại lý này');
+      return;
+    }
+
+    const qtyToAdd = Math.max(1, quantity || 1);
+    const existingIndex = lines.findIndex(
+      (l) => l.productId === item.productId || (item.sku && l.productSku.toUpperCase() === item.sku.toUpperCase())
+    );
+
+    if (existingIndex >= 0) {
+      // Nếu sản phẩm đã có trong giỏ hàng -> tăng số lượng
+      const targetLine = lines[existingIndex];
+      const newQty = targetLine.quantity + qtyToAdd;
+      const updatedLine: OrderLine = {
+        ...targetLine,
+        quantity: newQty,
+        baseQuantity: newQty * (targetLine.conversionRate || 1),
+        lineTotal: newQty * targetLine.unitPrice,
+      };
+      setLines((current) => current.map((l, idx) => idx === existingIndex ? updatedLine : l));
+      refreshLinePricing(updatedLine, effectivePriceList);
+      showToast('success', `Đã tăng số lượng ${item.productName} (+${qtyToAdd} ${targetLine.unit || item.unit})`);
+    } else {
+      // Tìm trong danh mục sản phẩm nếu có để lấy unitOptions và category chuẩn
+      const foundProduct = searchResults.find(
+        (p) => p.id === item.productId || (item.sku && p.sku?.toUpperCase() === item.sku.toUpperCase())
+      );
+
+      const fallbackP = item.price || 25000;
+      const priceItem = getPriceListItem(
+        effectivePriceList,
+        { productId: item.productId, productSku: item.sku },
+        fallbackP,
+      ) || {
+        price: fallbackP,
+        minPrice: Math.round(fallbackP * 0.8),
+      };
+
+      const baseUnit = foundProduct?.baseUnit || item.unit || 'Cái';
+      const unitOptions = foundProduct
+        ? getAvailableProductUnits(foundProduct)
+        : [{ unitName: baseUnit, conversionRate: 1 }];
+
+      const newLine: OrderLine = {
+        id: 'line-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+        productId: item.productId || (foundProduct ? foundProduct.id : 'p-' + item.sku),
+        productSku: item.sku,
+        productName: item.productName,
+        categoryId: foundProduct?.categoryId || foundProduct?.category || 'ALL',
+        category: foundProduct?.category,
+        unit: baseUnit,
+        baseUnit: baseUnit,
+        conversionRate: 1,
+        quantity: qtyToAdd,
+        baseQuantity: qtyToAdd,
+        unitPrice: Math.round(priceItem.price),
+        listPrice: Math.round(priceItem.price),
+        baseListPrice: priceItem.price,
+        minPrice: priceItem.minPrice,
+        unitOptions,
+        discountPercent: 0,
+        lineTotal: Math.round(priceItem.price) * qtyToAdd,
+        stockAvailable: foundProduct?.availableStock ?? foundProduct?.stockQuantity ?? 999,
+        availableStock: foundProduct?.availableStock ?? foundProduct?.stockQuantity ?? 999,
+        pricingLoading: true,
+      };
+
+      setLines((current) => [...current, newLine]);
+      refreshLinePricing(newLine, effectivePriceList);
+      showToast('success', `Đã thêm ${item.productName} (${qtyToAdd} ${baseUnit}) vào giỏ hàng`);
+    }
+  }, [effectivePriceList, lines, priceListError, refreshLinePricing, searchResults, selectedCustomer]);
+
+  // ── 1-Click Reorder đơn hàng gần nhất (Task SN-43 / SN-174) ──
+  const handleReorderPreviousOrder = useCallback((items: LatestOrderItem[]) => {
+    if (!selectedCustomer) {
+      showToast('error', 'Vui lòng chọn đại lý trước');
+      return;
+    }
+    if (!effectivePriceList) {
+      showToast('error', priceListError || 'Chưa có bảng giá hiệu lực cho đại lý này');
+      return;
+    }
+    if (!items || items.length === 0) return;
+
+    let addedCount = 0;
+    const newLinesToAdd: OrderLine[] = [];
+
+    items.forEach((item, idx) => {
+      const isAlreadyAdded = lines.some(
+        (l) => l.productId === item.productId || (item.sku && l.productSku.toUpperCase() === item.sku.toUpperCase())
+      );
+      if (!isAlreadyAdded) {
+        const foundProduct = searchResults.find(
+          (p) => p.id === item.productId || (item.sku && p.sku?.toUpperCase() === item.sku.toUpperCase())
+        );
+
+        const fallbackP = item.unitPrice || 25000;
+        const priceItem = getPriceListItem(
+          effectivePriceList,
+          { productId: item.productId || '', productSku: item.sku },
+          fallbackP,
+        ) || {
+          price: fallbackP,
+          minPrice: Math.round(fallbackP * 0.8),
+        };
+
+        const qty = Math.max(1, item.quantity || 1);
+        const baseUnit = item.unit || foundProduct?.baseUnit || 'Cái';
+        const unitOptions = foundProduct
+          ? getAvailableProductUnits(foundProduct)
+          : [{ unitName: baseUnit, conversionRate: 1 }];
+
+        newLinesToAdd.push({
+          id: 'line-' + Date.now() + '-' + idx,
+          productId: item.productId || (foundProduct ? foundProduct.id : 'p-' + item.sku),
+          productSku: item.sku,
+          productName: item.productName,
+          categoryId: foundProduct?.categoryId || foundProduct?.category || 'ALL',
+          category: foundProduct?.category,
+          unit: baseUnit,
+          baseUnit: baseUnit,
+          conversionRate: 1,
+          quantity: qty,
+          baseQuantity: qty,
+          unitPrice: Math.round(priceItem.price),
+          listPrice: Math.round(priceItem.price),
+          baseListPrice: priceItem.price,
+          minPrice: priceItem.minPrice,
+          unitOptions,
+          discountPercent: 0,
+          lineTotal: Math.round(priceItem.price) * qty,
+          stockAvailable: foundProduct?.availableStock ?? foundProduct?.stockQuantity ?? 999,
+          availableStock: foundProduct?.availableStock ?? foundProduct?.stockQuantity ?? 999,
+          pricingLoading: true,
+        });
+        addedCount++;
+      }
+    });
+
+    if (newLinesToAdd.length > 0) {
+      setLines((curr) => {
+        const next = [...curr, ...newLinesToAdd];
+        newLinesToAdd.forEach((l) => refreshLinePricing(l, effectivePriceList));
+        return next;
+      });
+      showToast('success', `Đã thêm nhanh ${addedCount} mặt hàng từ đơn hàng gần nhất!`);
+    } else {
+      showToast('info', 'Tất cả mặt hàng của đơn cũ đã có trong giỏ hàng.');
+    }
+  }, [effectivePriceList, lines, priceListError, refreshLinePricing, searchResults, selectedCustomer]);
+
   // ── Cập nhật số lượng / ĐVT ──
   const handleUpdateLine = useCallback((lineId: string, field: 'quantity' | 'unit', value: string | number) => {
     const line = lines.find((item) => item.id === lineId);
@@ -1322,6 +1483,20 @@ export const CreateOrderPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* ================================================================= */}
+        {/* PANEL GỢI Ý MẶT HÀNG ĐẠI LÝ THƯỜNG MUA (SN-43)                   */}
+        {/* ================================================================= */}
+        {selectedCustomer && (
+          <OrderSuggestionsPanel
+            customerId={selectedCustomer.id}
+            customerName={selectedCustomer.name}
+            existingProductIds={lines.map((l) => l.productId)}
+            existingProductSkus={lines.map((l) => (l.productSku || '').toUpperCase())}
+            onAddSuggestedItem={handleAddSuggestedItem}
+            onReorderPreviousOrder={handleReorderPreviousOrder}
+          />
+        )}
 
         {/* ================================================================= */}
         {/* KHỐI 2: DANH SÁCH SẢN PHẨM (CHỈ THÊM ĐƯỢC KHI ĐÃ CHỌN ĐẠI LÝ)   */}
