@@ -113,9 +113,6 @@ export const DashboardPage: React.FC = () => {
   const [timeRange, setTimeRange] = useState<string>(initialRange);
   const [startDate, setStartDate] = useState<string>(searchParams.get('start') || '');
   const [endDate, setEndDate] = useState<string>(searchParams.get('end') || '');
-  const [lastUpdatedTime, setLastUpdatedTime] = useState<string>(
-    new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-  );
   const user = getStoredUser();
 
   const roles = user?.roles || [];
@@ -155,12 +152,9 @@ export const DashboardPage: React.FC = () => {
       inventoryService.getLowStockAlerts()
         .then((alerts) => setLowStockCount(alerts.length))
         .catch(() => {});
-
-      setLastUpdatedTime(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
     } catch {
       // Khi gặp lỗi hoặc chưa có dữ liệu, trả về null để hiển thị Empty State chuẩn
       setData(null);
-      setLastUpdatedTime(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
     } finally {
       setLoading(false);
     }
@@ -293,7 +287,6 @@ export const DashboardPage: React.FC = () => {
   const maxOverdueDebt = highRiskAgencies.length > 0
     ? Math.max(...highRiskAgencies.map((a) => a.overdueAmount || 0), 1)
     : 1;
-  const totalHighRiskDebt = highRiskAgencies.reduce((acc, a) => acc + (a.overdueAmount || 0), 0);
   const hasSalesData = salesTrend.length > 0 && salesTrend.some((s) => s.value > 0);
 
   return (
@@ -318,11 +311,6 @@ export const DashboardPage: React.FC = () => {
                 : 'Tùy chỉnh khoảng ngày'}
             </span>
           </div>
-          {lastUpdatedTime && (
-            <span className="hidden lg:inline text-xs sm:text-sm text-slate-400 pl-4 border-l border-slate-200 tabular-nums">
-              Đồng bộ lúc: {lastUpdatedTime}
-            </span>
-          )}
         </div>
 
         {/* Bên phải: Cụm bộ lọc thời gian & Tải lại dữ liệu */}
@@ -640,10 +628,9 @@ export const DashboardPage: React.FC = () => {
         {/* Sales Trend Chart */}
         {(isManager || isSalesRep) && (
           <div className="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-7 shadow-xs hover:shadow-md transition-all">
-            <div className="mb-5 flex items-center justify-between">
+            <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Biểu đồ doanh số</h2>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-normal">Biến động doanh thu theo chu kỳ thời gian</p>
               </div>
             </div>
             <div className="h-72 sm:h-80 w-full">
@@ -670,9 +657,8 @@ export const DashboardPage: React.FC = () => {
                 </ResponsiveContainer>
               ) : (
                 <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
-                  <TrendingUp className="h-10 w-10 text-slate-300 mb-3" />
-                  <p className="text-sm font-semibold text-slate-700">Chưa có dữ liệu kinh doanh trong khoảng thời gian này</p>
-                  <p className="text-xs text-slate-400 mt-1">Khi phát sinh đơn hàng, biểu đồ doanh số sẽ hiển thị tại đây</p>
+                  <TrendingUp className="h-8 w-8 text-slate-300 mb-2" />
+                  <p className="text-sm font-medium text-slate-500">Không có dữ liệu trong thời gian này</p>
                 </div>
               )}
             </div>
@@ -683,32 +669,15 @@ export const DashboardPage: React.FC = () => {
         {(isManager || isAccountant) && (
           <div className="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-7 shadow-xs hover:shadow-md transition-all flex flex-col justify-between" id="high-risk">
             {/* Header */}
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center">
-                    <AlertTriangle className="h-4 w-4" />
-                  </div>
-                  <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-                    Top Đại lý rủi ro công nợ cao
-                  </h2>
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center">
+                  <AlertTriangle className="h-4 w-4" />
                 </div>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-normal">
-                  Xếp hạng các đại lý có số dư nợ quá hạn lớn nhất
-                </p>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                  Top Đại lý rủi ro công nợ cao
+                </h2>
               </div>
-
-              {highRiskAgencies.length > 0 && (
-                <div className="text-right">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200/70 shadow-2xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                    {highRiskAgencies.length} đại lý
-                  </span>
-                  <p className="text-[0.6875rem] text-slate-400 mt-0.5 font-medium">
-                    Tổng: <span className="font-semibold text-slate-900 tabular-nums">{formatCurrency(totalHighRiskDebt)}</span>
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* Content Body: Matches left chart height */}
@@ -747,18 +716,13 @@ export const DashboardPage: React.FC = () => {
                                 #{index + 1}
                               </span>
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <Link
-                                    to={`/sales/customers?search=${encodeURIComponent(agency.customerCode || agency.customerName)}`}
-                                    className="text-xs sm:text-sm font-semibold text-slate-900 hover:text-indigo-600 transition-colors line-clamp-1"
-                                    title={agency.customerName}
-                                  >
-                                    {agency.customerName}
-                                  </Link>
-                                  <span className="text-[0.6875rem] font-mono font-medium text-slate-500 bg-white px-1.5 py-0.5 rounded-md border border-slate-200/80 flex-shrink-0">
-                                    {agency.customerCode}
-                                  </span>
-                                </div>
+                                <Link
+                                  to={`/sales/customers?search=${encodeURIComponent(agency.customerCode || agency.customerName)}`}
+                                  className="text-xs sm:text-sm font-semibold text-slate-900 hover:text-indigo-600 transition-colors line-clamp-1"
+                                  title={agency.customerName}
+                                >
+                                  {agency.customerName}
+                                </Link>
                                 {agency.salesRepName && (
                                   <p className="text-[0.6875rem] text-slate-400 mt-0.5 truncate">
                                     NV: <span className="text-slate-600 font-medium">{agency.salesRepName}</span>
@@ -795,21 +759,6 @@ export const DashboardPage: React.FC = () => {
                       );
                     })}
                   </div>
-
-                  {/* Thanh chú thích & Điều hướng nhanh */}
-                  <div className="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                    <span className="flex items-center gap-1.5 text-slate-500 text-[0.75rem]">
-                      <span className="w-2 h-2 rounded-full bg-rose-500" />
-                      Công nợ quá thời hạn thanh toán
-                    </span>
-                    <Link
-                      to="/sales/customers"
-                      className="inline-flex items-center gap-1 font-semibold text-indigo-600 hover:text-indigo-700 hover:underline text-[0.75rem]"
-                    >
-                      <span>Xem sổ nợ đại lý</span>
-                      <ArrowUpRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </div>
                 </>
               ) : (
                 <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
@@ -823,66 +772,13 @@ export const DashboardPage: React.FC = () => {
         )}
       </div>
 
-      {/* ── ADDITIONAL DETAILS TABLE FOR HIGH RISK (Khoảng trắng & Dòng thoáng) ── */}
-      {(isManager || isAccountant) && highRiskAgencies.length > 0 && (
-        <div className={`rounded-xl border border-slate-200/80 bg-white shadow-xs overflow-hidden ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
-          <div className="border-b border-slate-200 px-5 sm:px-7 py-4.5 sm:py-5 flex flex-wrap justify-between items-center gap-3 bg-slate-50/50">
-            <div>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Danh sách cần thu hồi công nợ gấp</h3>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-normal">Danh sách các đại lý có số dư nợ quá thời hạn thanh toán quy định</p>
-            </div>
-            <span className="inline-flex items-center rounded-full bg-red-50 border border-red-200/60 px-3 py-1 text-xs sm:text-sm font-semibold text-red-700 shadow-2xs tabular-nums">
-              {highRiskAgencies.length} đại lý
-            </span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-100">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="px-5 sm:px-7 py-3.5 sm:py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Mã ĐL</th>
-                  <th className="px-5 sm:px-7 py-3.5 sm:py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Tên Đại lý</th>
-                  <th className="hidden sm:table-cell px-5 sm:px-7 py-3.5 sm:py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">NV Phụ trách</th>
-                  <th className="px-5 sm:px-7 py-3.5 sm:py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Dư nợ quá hạn</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {highRiskAgencies.map((agency) => (
-                  <tr 
-                    key={agency.customerId} 
-                    className="hover:bg-slate-50/70 transition-colors"
-                  >
-                    <td className="whitespace-nowrap px-5 sm:px-7 py-4 sm:py-4.5 text-xs sm:text-sm font-semibold text-indigo-600">
-                      {agency.customerCode}
-                    </td>
-                    <td className="whitespace-nowrap px-5 sm:px-7 py-4 sm:py-4.5 text-xs sm:text-sm font-medium text-slate-900 max-w-[160px] sm:max-w-none truncate">
-                      {agency.customerName}
-                    </td>
-                    <td className="hidden sm:table-cell whitespace-nowrap px-5 sm:px-7 py-4 sm:py-4.5 text-xs sm:text-sm text-slate-500">
-                      {agency.salesRepName || '-'}
-                    </td>
-                    <td className="whitespace-nowrap px-5 sm:px-7 py-4 sm:py-4.5 text-right text-sm sm:text-base font-bold text-red-600 tabular-nums">
-                      {formatCurrency(agency.overdueAmount)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
       {/* ── KHỐI CẢNH BÁO TỒN KHO DƯỚI MỨC TỐI THIỂU (SN-183) ── */}
       {(isManager || isWarehouse) && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-                Cảnh báo đứt hàng & Tồn kho tối thiểu
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                Các mặt hàng có tồn khả dụng chạm ngưỡng cần đặt hàng nhà cung cấp ngay
-              </p>
-            </div>
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+              Cảnh báo đứt hàng & Tồn kho tối thiểu
+            </h3>
             <Link
               to="/inventory/stock?filter=BELOW_MIN_STOCK"
               className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
