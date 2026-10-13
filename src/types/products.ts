@@ -62,6 +62,8 @@ export interface Product {
   availableQuantity?: number;
   physicalStock?: number;
   reservedStock?: number;
+  isBatchManaged?: boolean; // Quản lý lô và hạn sử dụng (FEFO) (EP-05, SN-178)
+  is_batch_managed?: boolean;
   status: ProductStatus;
   imageUrl?: string;
   barcode?: string;

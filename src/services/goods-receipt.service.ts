@@ -1,5 +1,5 @@
 import { apiClient } from './api';
-import type { GoodsReceipt, CreateGoodsReceiptDto, GoodsReceiptStatus, GoodsReceiptItem } from '../types/inventory-receipt';
+import type { GoodsReceipt, CreateGoodsReceiptDto, GoodsReceiptStatus } from '../types/inventory-receipt';
 
 export interface QueryGoodsReceiptsDto {
   search?: string;
