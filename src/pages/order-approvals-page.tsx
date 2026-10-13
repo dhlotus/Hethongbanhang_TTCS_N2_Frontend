@@ -113,14 +113,16 @@ export const OrderApprovalsPage: React.FC = () => {
   const [modalValidationError, setModalValidationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Bộ lọc nhanh theo tình trạng tồn kho khi ở tab Chờ duyệt
+  const [stockFilter, setStockFilter] = useState<'ALL' | 'SUFFICIENT' | 'INSUFFICIENT'>('ALL');
+
   // Dữ liệu sản phẩm & tồn kho khả dụng để kiểm tra đối soát trực tiếp
   const [productsMap, setProductsMap] = useState<Map<string, Product>>(new Map());
   const [isLoadingStock, setIsLoadingStock] = useState(false);
 
-  // Tải thông tin tồn kho khi mở modal thẩm định
+  // Tải danh mục tồn kho toàn hệ thống để kiểm tra trước cho toàn bộ đơn hàng
   useEffect(() => {
     let active = true;
-    if (!reviewOrder?.id) return;
     setIsLoadingStock(true);
     productsService
       .getProducts({ limit: 100 })
@@ -142,7 +144,50 @@ export const OrderApprovalsPage: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [reviewOrder?.id, refreshKey]);
+  }, [refreshKey]);
+
+  // Hàm kiểm tra nhanh tình trạng tồn kho của một đơn hàng
+  const checkOrderStock = (order: Order) => {
+    if (!order.lines || order.lines.length === 0) {
+      return { isSufficient: true, outOfStockLines: [] };
+    }
+
+    const outOfStockLines: Array<{
+      productName: string;
+      sku: string;
+      required: number;
+      available: number;
+      unit: string;
+    }> = [];
+
+    for (const line of order.lines) {
+      const sku = (line.productSku || '').trim().toUpperCase();
+      const product = productsMap.get(sku) || productsMap.get(line.productId || '');
+      const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
+      const required = line.baseQuantity || Math.round((line.quantity || 0) * convRate);
+
+      const physical = product?.physicalStock ?? product?.stockQuantity ?? 1000;
+      const reserved = product?.reservedStock ?? 0;
+      const available = product?.availableStock !== undefined
+        ? product.availableStock
+        : (physical - reserved);
+
+      if (available < required) {
+        outOfStockLines.push({
+          productName: line.productName,
+          sku,
+          required,
+          available,
+          unit: product?.baseUnit || line.unit || 'Lon',
+        });
+      }
+    }
+
+    return {
+      isSufficient: outOfStockLines.length === 0,
+      outOfStockLines,
+    };
+  };
 
   // Debounce tìm kiếm
   useEffect(() => {
@@ -230,9 +275,16 @@ export const OrderApprovalsPage: React.FC = () => {
         if (!matchCode && !matchCust && !matchRep) return false;
       }
 
+      // 4. Lọc theo tình trạng tồn kho khi ở tab Chờ duyệt
+      if (activeTab === 'PENDING' && stockFilter !== 'ALL') {
+        const stockStatus = checkOrderStock(order);
+        if (stockFilter === 'SUFFICIENT' && !stockStatus.isSufficient) return false;
+        if (stockFilter === 'INSUFFICIENT' && stockStatus.isSufficient) return false;
+      }
+
       return true;
     });
-  }, [orders, activeTab, selectedSalesRep, searchTerm]);
+  }, [orders, activeTab, selectedSalesRep, searchTerm, stockFilter, productsMap]);
 
   // Thống kê số lượng
   const stats = useMemo(() => {
@@ -245,14 +297,21 @@ export const OrderApprovalsPage: React.FC = () => {
       ['APPROVED', 'REJECTED', 'RETURNED_FOR_UPDATE'].includes(o.status)
     ).length;
 
+    // Đếm số đơn chờ duyệt đủ tồn và thiếu tồn
+    const pendingStockStatuses = pendingList.map((o) => checkOrderStock(o));
+    const pendingSufficientCount = pendingStockStatuses.filter((s) => s.isSufficient).length;
+    const pendingInsufficientCount = pendingStockStatuses.filter((s) => !s.isSufficient).length;
+
     return {
       pendingCount,
       pendingAmount,
       approvedCount,
       rejectedCount,
       totalProcessed,
+      pendingSufficientCount,
+      pendingInsufficientCount,
     };
-  }, [orders]);
+  }, [orders, productsMap]);
 
   // Danh sách nhân viên kinh doanh
   const salesRepOptions = useMemo(() => {
@@ -473,30 +532,74 @@ export const OrderApprovalsPage: React.FC = () => {
 
       {/* ── BỘ LỌC ĐA TIÊU CHÍ & TABS PHÂN LOẠI ── */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-3.5 shadow-xs">
-        {/* Hàng 1: 2 Tabs rõ ràng */}
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 text-xs">
-          <button
-            type="button"
-            onClick={() => { setActiveTab('PENDING'); setCurrentPage(1); }}
-            className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-              activeTab === 'PENDING'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            Chờ duyệt ({stats.pendingCount})
-          </button>
-          <button
-            type="button"
-            onClick={() => { setActiveTab('HISTORY'); setCurrentPage(1); }}
-            className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-              activeTab === 'HISTORY'
-                ? 'bg-slate-800 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            Lịch sử đã xét duyệt ({stats.totalProcessed})
-          </button>
+        {/* Hàng 1: 2 Tabs rõ ràng + Lọc nhanh tình trạng tồn kho */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-2.5 text-xs">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setActiveTab('PENDING'); setCurrentPage(1); }}
+              className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
+                activeTab === 'PENDING'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Chờ duyệt ({stats.pendingCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => { setActiveTab('HISTORY'); setCurrentPage(1); }}
+              className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
+                activeTab === 'HISTORY'
+                  ? 'bg-slate-800 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Lịch sử đã xét duyệt ({stats.totalProcessed})
+            </button>
+          </div>
+
+          {/* Lọc nhanh theo tình trạng tồn kho khi ở tab Chờ duyệt */}
+          {activeTab === 'PENDING' && (
+            <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl border border-slate-200/80">
+              <span className="text-[11px] font-semibold text-slate-500 pl-1.5 pr-0.5">Tồn kho:</span>
+              <button
+                type="button"
+                onClick={() => { setStockFilter('ALL'); setCurrentPage(1); }}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  stockFilter === 'ALL'
+                    ? 'bg-white text-indigo-700 shadow-2xs font-extrabold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Tất cả ({stats.pendingCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => { setStockFilter('SUFFICIENT'); setCurrentPage(1); }}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  stockFilter === 'SUFFICIENT'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'text-emerald-700 hover:bg-emerald-100/60'
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Đủ tồn ({stats.pendingSufficientCount})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setStockFilter('INSUFFICIENT'); setCurrentPage(1); }}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  stockFilter === 'INSUFFICIENT'
+                    ? 'bg-rose-600 text-white shadow-2xs'
+                    : 'text-rose-700 hover:bg-rose-100/60'
+                }`}
+              >
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>Thiếu tồn ({stats.pendingInsufficientCount})</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Hàng 2: Tìm kiếm + Lọc NVKD + Khoảng ngày */}
@@ -604,6 +707,7 @@ export const OrderApprovalsPage: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {pagedOrders.map((order) => {
                   const isPending = isOrderPendingApproval(order);
+                  const stockCheck = checkOrderStock(order);
 
                   return (
                     <tr key={order.id} className="hover:bg-indigo-50/30 transition-colors">
@@ -654,12 +758,29 @@ export const OrderApprovalsPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Trạng thái */}
+                      {/* Trạng thái & Cảnh báo tồn kho trước khi duyệt */}
                       <td className="px-3 py-3.5 text-center">
                         {isPending ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 animate-pulse">
-                            <Clock className="w-3 h-3" /> Chờ duyệt
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                              <Clock className="w-3 h-3" /> Chờ duyệt
+                            </span>
+                            {stockCheck.isSufficient ? (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                title="Kho đủ hàng khả dụng để đáp ứng toàn bộ đơn này"
+                              >
+                                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" /> Đủ tồn kho
+                              </span>
+                            ) : (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
+                                title={`Không đủ tồn khả dụng: ${stockCheck.outOfStockLines.map((l) => `${l.productName} (còn ${l.available}, cần ${l.required})`).join(', ')}`}
+                              >
+                                <AlertCircle className="w-2.5 h-2.5 text-rose-600" /> Thiếu tồn ({stockCheck.outOfStockLines.length})
+                              </span>
+                            )}
+                          </div>
                         ) : order.status === 'APPROVED' ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                             <CheckCircle2 className="w-3 h-3" /> Đã duyệt
@@ -693,15 +814,27 @@ export const OrderApprovalsPage: React.FC = () => {
                           </button>
 
                           {isPending && (
-                            <button
-                              type="button"
-                              onClick={() => void handleQuickApprove(order)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors cursor-pointer shadow-2xs"
-                              title="Duyệt đơn hàng"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Duyệt</span>
-                            </button>
+                            stockCheck.isSufficient ? (
+                              <button
+                                type="button"
+                                onClick={() => void handleQuickApprove(order)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors cursor-pointer shadow-2xs"
+                                title="Duyệt đơn hàng ngay (kho đủ hàng)"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Duyệt</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={true}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed opacity-80"
+                                title={`Không thể duyệt: Đơn có ${stockCheck.outOfStockLines.length} mặt hàng thiếu tồn (${stockCheck.outOfStockLines.map((l) => l.productName).join(', ')}). Bấm Thẩm định để xem chi tiết hoặc Trả lại sửa.`}
+                              >
+                                <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
+                                <span>Thiếu tồn</span>
+                              </button>
+                            )
                           )}
                         </div>
                       </td>
@@ -998,25 +1131,37 @@ export const OrderApprovalsPage: React.FC = () => {
                       <span>Trả lại sửa</span>
                     </button>
 
-                    {/* Nút Duyệt đơn */}
-                    <button
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => void handleDecisionSubmit('APPROVE')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          <span>Đang lưu...</span>
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Duyệt đơn</span>
-                        </>
-                      )}
-                    </button>
+                    {/* Nút Duyệt đơn (Khóa trước nếu thiếu hàng) */}
+                    {stockCheckResults.outOfStockItems.length > 0 ? (
+                      <button
+                        type="button"
+                        disabled={true}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none"
+                        title="Đơn này có mặt hàng thiếu tồn kho. Vui lòng bấm 'Trả lại sửa' hoặc 'Từ chối' thay vì duyệt."
+                      >
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
+                        <span>Không đủ tồn để duyệt</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={() => void handleDecisionSubmit('APPROVE')}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Đang lưu...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Duyệt đơn</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
