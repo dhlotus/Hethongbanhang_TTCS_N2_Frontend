@@ -1162,4 +1162,18 @@ input.glass-input:-webkit-autofill:active {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.65);
+}
+
+/* ========================================================================== */
+/* NO-SCROLLBAR UTILITY (ẨN THANH CUỘN CHO SIDEBAR & KHUNG NỔI)              */
+/* ========================================================================== */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important; /* Firefox */
 }

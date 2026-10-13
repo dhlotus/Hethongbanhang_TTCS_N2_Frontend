@@ -87,7 +87,7 @@ export const AdminLayout: React.FC = () => {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 lg:p-6 lg:pt-1">
-          <div className="mx-auto w-full max-w-[1600px] page-transition">
+          <div className="mx-auto w-full max-w-[100rem] page-transition">
             <Outlet />
           </div>
         </main>

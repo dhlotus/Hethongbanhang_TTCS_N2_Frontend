@@ -61,7 +61,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
         {/* Header Logo + Toggle: Chuyển đổi trạng thái đóng/mở siêu mượt mà không bị nhảy layout */}
         <div
           className={`border-b border-slate-100 transition-[height,padding] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden flex flex-col justify-between ${
-            isCollapsed ? 'h-[96px] pb-3' : 'h-[56px] pb-3'
+            isCollapsed ? 'h-[6.5rem] pb-2.5' : 'h-14 pb-3'
           }`}
         >
           {/* Hàng 1: Logo Icon + Tên LOHA SALES + Nút thu gọn (<) khi mở rộng */}
@@ -69,17 +69,17 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
             <Link
               to="/"
               onClick={onItemClick}
-              className="flex items-center gap-2 group focus:outline-none min-w-0"
+              className="flex items-center gap-2.5 group focus:outline-none min-w-0"
               title="LOHA SALES"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md overflow-hidden group-hover:scale-105 transition-transform duration-200">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden transition-opacity duration-150 group-hover:opacity-90">
                 <img src={logoImg} alt="LOHA SALES" className="h-full w-full object-cover" />
               </div>
               <div
                 className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
                   isCollapsed
                     ? 'max-w-0 opacity-0 -translate-x-2 pointer-events-none'
-                    : 'max-w-[150px] opacity-100 translate-x-0'
+                    : 'max-w-[9.5rem] opacity-100 translate-x-0'
                 }`}
               >
                 <span className="text-base font-bold tracking-tight text-slate-900 group-hover:text-[var(--color-primary)] transition-colors">
@@ -88,41 +88,41 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               </div>
             </Link>
 
-            {/* Nút mũi tên thu gọn (<) khi đang mở rộng */}
+            {/* Nút mũi tên thu gọn (<) khi đang mở rộng: Đậm nét, bo góc rounded-xl sắc sảo, bấm cực êm */}
             {onToggleCollapse && (
               <button
                 type="button"
                 onClick={onToggleCollapse}
-                className={`group/collapse hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer active:scale-95 ${
+                className={`group/collapse hidden lg:flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-100/80 text-slate-700 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] hover:shadow-2xs transition-colors duration-150 cursor-pointer ${
                   isCollapsed
-                    ? 'opacity-0 scale-75 max-w-0 pointer-events-none'
-                    : 'opacity-100 scale-100 max-w-8'
+                    ? 'opacity-0 pointer-events-none'
+                    : 'opacity-100'
                 }`}
                 title="Thu gọn menu"
                 aria-label="Thu gọn menu"
               >
-                <ChevronLeft className="h-4.5 w-4.5 transition-transform duration-200 group-hover/collapse:-translate-x-0.5" />
+                <ChevronLeft className="h-5 w-5 transition-colors" strokeWidth={2.5} />
               </button>
             )}
           </div>
 
-          {/* Hàng 2: Nút mũi tên mở rộng (>) nằm dưới Logo khi đang thu gọn */}
+          {/* Hàng 2: Nút mũi tên mở rộng (>) nằm dưới Logo khi đang thu gọn: Kích thước 40px vuông bo tròn đồng bộ với logo, icon to đậm */}
           {onToggleCollapse && (
             <div
               className={`flex items-center justify-center w-full transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
                 isCollapsed
-                  ? 'opacity-100 scale-100 translate-y-0 h-8 mt-1'
-                  : 'opacity-0 scale-75 -translate-y-2 h-0 pointer-events-none overflow-hidden'
+                  ? 'opacity-100 h-10 mt-2'
+                  : 'opacity-0 h-0 pointer-events-none overflow-hidden'
               }`}
             >
               <button
                 type="button"
                 onClick={onToggleCollapse}
-                className="group/expand h-8 w-8 flex items-center justify-center rounded-md border border-slate-200/80 bg-slate-50/80 text-slate-500 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] transition-all duration-200 cursor-pointer active:scale-95"
+                className="group/expand h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 bg-slate-100/90 text-slate-700 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] hover:shadow-xs transition-colors duration-150 cursor-pointer shadow-2xs"
                 title="Mở rộng menu"
                 aria-label="Mở rộng menu"
               >
-                <ChevronRight className="h-4.5 w-4.5 transition-transform duration-200 group-hover/expand:translate-x-0.5" />
+                <ChevronRight className="h-5 w-5 transition-colors" strokeWidth={2.5} />
               </button>
             </div>
           )}
@@ -131,9 +131,9 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
         {/* ===================================================================== */}
         {/* PHẦN 2: DANH MỤC MENU ĐIỀU HƯỚNG THEO VAI TRÒ (DYNAMIC NAVIGATION)    */}
         {/* ===================================================================== */}
-        <div className="mt-4 flex-1 flex flex-col min-h-0 overflow-y-auto pr-0.5">
+        <div className="mt-3 flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar pr-0">
           <div onClick={(e) => isCollapsed && e.stopPropagation()}>
-            <nav className="space-y-4">
+            <nav className="space-y-3 sm:space-y-3.5">
               {Object.entries(
                 menuItems.reduce((acc, item) => {
                   const category = item.category || 'Khác';
@@ -144,13 +144,13 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               ).map(([category, items], groupIndex) => (
                 <div key={category} className="space-y-1">
                   {!isCollapsed ? (
-                    <div className="px-3 py-1.5 mt-1">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    <div className="px-2.5 py-1 mt-0.5">
+                      <span className="text-[0.7rem] font-bold uppercase tracking-wider text-slate-400">
                         {category}
                       </span>
                     </div>
                   ) : (
-                    groupIndex > 0 && <div className="mx-3 my-2 border-t border-slate-100" />
+                    groupIndex > 0 && <div className="mx-auto w-8 my-2 border-t border-slate-100" />
                   )}
                   <div className="space-y-1">
                     {items.map((item) => {
@@ -168,25 +168,37 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                           to={item.path}
                           onClick={onItemClick}
                           title={isCollapsed ? item.name : undefined}
-                          className={`group relative flex items-center px-3 py-2 min-h-[44px] rounded-md text-sm font-semibold transition-colors duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1 ${
+                          className={`group relative flex items-center min-h-[2.5rem] rounded-xl text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1 ${
+                            isCollapsed
+                              ? 'justify-center w-full px-2 py-1'
+                              : 'px-3.5 py-2 w-full'
+                          } ${
                             isItemActive
-                              ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-bold'
-                              : 'text-slate-700 hover:bg-slate-50/90 hover:text-slate-900'
+                              ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-bold shadow-2xs'
+                              : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950'
                           }`}
                         >
-                          <div className="flex items-center w-full min-w-0">
+                          <div
+                            className={`flex items-center min-w-0 ${
+                              isCollapsed ? 'justify-center w-full' : 'w-full'
+                            }`}
+                          >
                             {/* Thanh định vị Active nhỏ ở bên trái */}
                             {isItemActive && (
                               <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[var(--color-primary)]" />
                             )}
 
-                            {/* Icon vị trí cố định tuyệt đối mượt mà */}
-                            <div className="flex h-6 w-6 shrink-0 items-center justify-center">
+                            {/* Icon: Khi collapsed, icon container có padding ngang cân đối h-9 w-9 */}
+                            <div
+                              className={`flex shrink-0 items-center justify-center ${
+                                isCollapsed ? 'h-9 w-9 rounded-lg' : 'h-6 w-6'
+                              }`}
+                            >
                               <Icon
-                                className={`h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                                className={`h-5 w-5 shrink-0 transition-colors duration-150 ${
                                   isItemActive
                                     ? 'text-[var(--color-primary)]'
-                                    : 'text-slate-500 group-hover:text-slate-800'
+                                    : 'text-slate-500 group-hover:text-[var(--color-primary)]'
                                 }`}
                               />
                             </div>
@@ -196,7 +208,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                               className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] tracking-tight ${
                                 isCollapsed
                                   ? 'max-w-0 opacity-0 -translate-x-2.5 pointer-events-none'
-                                  : 'max-w-[190px] opacity-100 translate-x-0 ml-3'
+                                  : 'max-w-[13.5rem] opacity-100 translate-x-0 ml-3'
                               }`}
                             >
                               {item.name}
@@ -226,7 +238,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
           {isCollapsed && onToggleCollapse && (
             <div
               onClick={onToggleCollapse}
-              className="flex-1 min-h-[80px] w-full cursor-ew-resize select-none"
+              className="flex-1 min-h-[2.5rem] w-full cursor-ew-resize select-none"
               title="Bấm để mở rộng thanh điều hướng"
               aria-label="Mở rộng thanh điều hướng"
               role="button"
@@ -247,8 +259,8 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
 
 /**
  * Component Sidebar chính cho AppLayout:
- * - Desktop: Tùy biến thu gọn (w-[76px]) hoặc mở rộng (w-[280px]) mượt mà
- * - Mobile (< 1024px, bao gồm 360px): Drawer trượt off-canvas mượt mà với lớp phủ mờ
+ * - Desktop: Tùy biến thu gọn (w-20 / 5rem) hoặc mở rộng (w-[18.25rem]) mượt mà
+ * - Mobile (< 1024px): Drawer trượt off-canvas mượt mà với lớp phủ mờ dạng Floating Card
  */
 export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
@@ -261,7 +273,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* 1. Desktop Sidebar: Floating Card chuẩn Clean SaaS */}
       <aside
         className={`hidden shrink-0 lg:flex lg:flex-col h-full rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-20 ${
-          isCollapsed ? 'w-[76px]' : 'w-[280px]'
+          isCollapsed ? 'w-20' : 'w-[18.25rem]'
         }`}
       >
         <SidebarNavContent isCollapsed={isCollapsed} onToggleCollapse={onToggleCollapse} />
@@ -278,13 +290,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           />
 
           {/* Khung Drawer trượt từ bên trái dạng Floating Card nổi */}
-          <div className="fixed inset-y-3 left-3 z-50 flex w-[280px] max-w-[calc(100vw-24px)] flex-col rounded-2xl border border-slate-200/80 bg-white shadow-2xl overflow-hidden transition-transform duration-200">
+          <div className="fixed inset-y-3 left-3 z-50 flex w-[18.25rem] max-w-[calc(100vw-1.5rem)] flex-col rounded-2xl border border-slate-200/80 bg-white shadow-2xl overflow-hidden transition-transform duration-200">
             {/* Nút đóng Drawer */}
             <div className="absolute top-3.5 right-3 z-10">
               <button
                 type="button"
                 onClick={onClose}
-                className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none transition-colors cursor-pointer"
+                className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none transition-colors cursor-pointer"
                 aria-label="Đóng thanh điều hướng"
               >
                 <X className="h-5 w-5" />
