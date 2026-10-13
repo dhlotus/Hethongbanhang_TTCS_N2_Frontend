@@ -24,8 +24,6 @@ import { inventoryService } from '../services/inventory.service';
 import {
   AreaChart,
   Area,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -292,12 +290,16 @@ export const DashboardPage: React.FC = () => {
   const charts = data?.charts || { salesTrend: [], highRiskAgencies: [] };
   const salesTrend = charts.salesTrend || [];
   const highRiskAgencies = charts.highRiskAgencies || [];
+  const maxOverdueDebt = highRiskAgencies.length > 0
+    ? Math.max(...highRiskAgencies.map((a) => a.overdueAmount || 0), 1)
+    : 1;
+  const totalHighRiskDebt = highRiskAgencies.reduce((acc, a) => acc + (a.overdueAmount || 0), 0);
   const hasSalesData = salesTrend.length > 0 && salesTrend.some((s) => s.value > 0);
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="space-y-5 sm:space-y-6">
       {/* ── DASHBOARD ACTION & FILTER TOOLBAR ── */}
-      <div className="bg-white p-4 sm:px-6 sm:py-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 pb-1">
         {/* Bên trái: Trạng thái thời gian thực & Kỳ báo cáo hiện tại */}
         <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs sm:text-sm font-semibold border border-emerald-200/70 shadow-2xs">
@@ -323,13 +325,13 @@ export const DashboardPage: React.FC = () => {
           )}
         </div>
 
-        {/* Bên phải: Cụm bộ lọc thời gian & Tải lại dữ liệu (Luôn ổn định 1 hàng duy nhất) */}
+        {/* Bên phải: Cụm bộ lọc thời gian & Tải lại dữ liệu */}
         <div className="flex items-center gap-2.5 sm:gap-3 w-full md:w-auto justify-start sm:justify-end">
           <div ref={timeMenuRef} className="relative inline-block text-left">
             <button
               type="button"
               onClick={() => setIsTimeMenuOpen((prev) => !prev)}
-              className={`inline-flex items-center gap-2.5 bg-white rounded-xl border shadow-2xs px-4 py-2.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer active:scale-95 ${
+              className={`inline-flex items-center gap-2.5 bg-white rounded-xl border shadow-2xs px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer active:scale-95 ${
                 isTimeMenuOpen
                   ? 'border-indigo-400 ring-2 ring-indigo-500/10 text-indigo-700'
                   : 'border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
@@ -478,7 +480,7 @@ export const DashboardPage: React.FC = () => {
             type="button"
             onClick={() => fetchData()} 
             disabled={loading}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
             title="Tải lại dữ liệu tức thì"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
@@ -487,134 +489,140 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── METRICS CARDS (Tối đa hóa khoảng trắng & Cỡ chữ số lớn) ── */}
-      <div className={`grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
-        {(isManager || isSalesRep) && (
-          <>
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
-              <div className="flex items-center">
-                <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-indigo-50">
-                  <TrendingUp className="h-6.5 w-6.5 text-indigo-600" />
-                </div>
-                <div className="ml-5 w-0 flex-1 min-w-0">
-                  <dl>
+      {/* ── UNIFIED EXECUTIVE KPI METRICS DECK (Khối thống nhất liền mạch) ── */}
+      <div className={`rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-y sm:divide-y-0 divide-slate-100">
+          {(isManager || isSalesRep) && (
+            <>
+              {/* Metric 1: Doanh số hôm nay */}
+              <div className="p-5 sm:p-6 sm:border-r border-slate-100 hover:bg-slate-50/60 transition-colors">
+                <div className="flex items-center">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                    <TrendingUp className="h-6 w-6" />
+                  </div>
+                  <div className="ml-4 w-0 flex-1 min-w-0">
                     <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Doanh số hôm nay</dt>
-                    <dd className="mt-1.5 flex items-baseline">
-                      <span className="truncate text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 tabular-nums">{formatCurrency(metrics.todaySales)}</span>
+                    <dd className="mt-1 flex items-baseline flex-wrap gap-1.5">
+                      <span className="truncate text-xl sm:text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
+                        {formatCurrency(metrics.todaySales)}
+                      </span>
                       {metrics.salesGrowthPercent !== undefined && (
-                        <span className={`ml-2.5 flex items-baseline text-xs sm:text-sm font-semibold tabular-nums ${metrics.salesGrowthPercent > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <span className={`inline-flex items-center text-xs font-semibold tabular-nums ${metrics.salesGrowthPercent > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                           {metrics.salesGrowthPercent > 0 ? <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" /> : <ArrowDownRight className="h-3.5 w-3.5 mr-0.5" />}
                           {Math.abs(metrics.salesGrowthPercent)}%
                         </span>
                       )}
                     </dd>
-                  </dl>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
-              <div className="flex items-center">
-                <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-green-50">
-                  <DollarSign className="h-6.5 w-6.5 text-green-600" />
-                </div>
-                <div className="ml-5 w-0 flex-1 min-w-0">
-                  <dl>
+              {/* Metric 2: Doanh số tháng này */}
+              <div className="p-5 sm:p-6 lg:border-r border-slate-100 border-t sm:border-t-0 hover:bg-slate-50/60 transition-colors">
+                <div className="flex items-center">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                    <DollarSign className="h-6 w-6" />
+                  </div>
+                  <div className="ml-4 w-0 flex-1 min-w-0">
                     <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Doanh số tháng này</dt>
-                    <dd className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 truncate tabular-nums">{formatCurrency(metrics.monthlySales)}</dd>
-                  </dl>
+                    <dd className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate tabular-nums">
+                      {formatCurrency(metrics.monthlySales)}
+                    </dd>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {(isManager || isAccountant || isSalesRep) && (
+            /* Metric 3: Đơn hàng chờ duyệt */
+            <div className="p-5 sm:p-6 sm:border-r lg:border-r-0 border-slate-100 border-t sm:border-t-0 hover:bg-slate-50/60 transition-colors">
+              <div className="flex items-center">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                  <ShoppingCart className="h-6 w-6" />
+                </div>
+                <div className="ml-4 w-0 flex-1 min-w-0">
+                  <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Đơn hàng chờ duyệt</dt>
+                  <dd className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate tabular-nums">
+                    {metrics.pendingOrdersCount}
+                  </dd>
                 </div>
               </div>
             </div>
-          </>
-        )}
+          )}
 
-        {(isManager || isAccountant || isSalesRep) && (
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
-            <div className="flex items-center">
-              <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-yellow-50">
-                <ShoppingCart className="h-6.5 w-6.5 text-yellow-500" />
-              </div>
-              <div className="ml-5 w-0 flex-1 min-w-0">
-                <dl>
-                  <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Đơn hàng chờ duyệt</dt>
-                  <dd className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 truncate tabular-nums">{metrics.pendingOrdersCount}</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {(isManager || isWarehouse) && (
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
-            <div className="flex items-center">
-              <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-blue-50">
-                <Package className="h-6.5 w-6.5 text-blue-500" />
-              </div>
-              <div className="ml-5 w-0 flex-1 min-w-0">
-                <dl>
+          {(isManager || isWarehouse) && (
+            /* Metric 4: Đơn chờ xuất kho */
+            <div className="p-5 sm:p-6 border-t border-slate-100 sm:border-r border-slate-100 hover:bg-slate-50/60 transition-colors">
+              <div className="flex items-center">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <Package className="h-6 w-6" />
+                </div>
+                <div className="ml-4 w-0 flex-1 min-w-0">
                   <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Đơn chờ xuất kho</dt>
-                  <dd className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 truncate tabular-nums">{metrics.readyToShipOrdersCount}</dd>
-                </dl>
+                  <dd className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate tabular-nums">
+                    {metrics.readyToShipOrdersCount}
+                  </dd>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {(isManager || isAccountant) && (
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs hover:shadow-md transition-all">
-            <div className="flex items-center">
-              <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-red-50">
-                <Users className="h-6.5 w-6.5 text-red-500" />
-              </div>
-              <div className="ml-5 w-0 flex-1 min-w-0">
-                <dl>
+          {(isManager || isAccountant) && (
+            /* Metric 5: Tổng công nợ quá hạn */
+            <div className="p-5 sm:p-6 border-t border-slate-100 lg:border-r border-slate-100 hover:bg-slate-50/60 transition-colors">
+              <div className="flex items-center">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+                  <Users className="h-6 w-6" />
+                </div>
+                <div className="ml-4 w-0 flex-1 min-w-0">
                   <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Tổng công nợ quá hạn</dt>
-                  <dd className="mt-1.5 flex items-baseline">
-                    <span className="truncate text-2xl sm:text-3xl font-bold tracking-tight text-red-600 tabular-nums">{formatCurrency(metrics.totalOverdueDebt)}</span>
+                  <dd className="mt-1 flex items-baseline flex-wrap gap-1.5">
+                    <span className="truncate text-xl sm:text-2xl font-bold tracking-tight text-rose-600 tabular-nums">
+                      {formatCurrency(metrics.totalOverdueDebt)}
+                    </span>
                     {metrics.debtGrowthPercent !== undefined && (
-                      <span className={`ml-2.5 flex items-baseline text-xs sm:text-sm font-semibold tabular-nums ${metrics.debtGrowthPercent < 0 ? 'text-green-600' : 'text-red-600'}`} title="So với kỳ trước">
+                      <span className={`inline-flex items-center text-xs font-semibold tabular-nums ${metrics.debtGrowthPercent < 0 ? 'text-emerald-600' : 'text-rose-600'}`} title="So với kỳ trước">
                         {metrics.debtGrowthPercent < 0 ? <ArrowDownRight className="h-3.5 w-3.5 mr-0.5" /> : <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" />}
                         {Math.abs(metrics.debtGrowthPercent)}%
                       </span>
                     )}
                   </dd>
-                </dl>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {(isManager || isWarehouse) && (
-          <Link
-            to="/inventory/stock?filter=BELOW_MIN_STOCK"
-            className="group block rounded-2xl border border-rose-200/90 bg-white p-5 sm:p-6 shadow-xs hover:border-rose-300 hover:shadow-md transition-all cursor-pointer"
-            title="Bấm để xem danh sách sản phẩm chạm/dưới mức tồn tối thiểu"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="flex h-13 w-13 flex-shrink-0 items-center justify-center rounded-full bg-rose-50 group-hover:bg-rose-100 transition-colors">
-                  <AlertTriangle className="h-6.5 w-6.5 text-rose-600" />
-                </div>
-                <div className="ml-5 flex-1 min-w-0">
-                  <dl>
+          {(isManager || isWarehouse) && (
+            /* Metric 6: Cảnh báo tồn tối thiểu */
+            <Link
+              to="/inventory/stock?filter=BELOW_MIN_STOCK"
+              className="group block p-5 sm:p-6 border-t border-slate-100 hover:bg-rose-50/40 transition-colors cursor-pointer"
+              title="Bấm để xem danh sách sản phẩm chạm/dưới mức tồn tối thiểu"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 group-hover:bg-rose-100 transition-colors">
+                    <AlertTriangle className="h-6 w-6" />
+                  </div>
+                  <div className="ml-4 flex-1 min-w-0">
                     <dt className="truncate text-xs sm:text-sm font-semibold text-rose-700 group-hover:text-rose-800 transition-colors">
                       Cảnh báo tồn tối thiểu
                     </dt>
-                    <dd className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-rose-600 truncate tabular-nums">
+                    <dd className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-rose-600 truncate tabular-nums">
                       {lowStockCount > 0 ? lowStockCount : metrics.lowStockAlertCount}
                     </dd>
-                  </dl>
+                  </div>
                 </div>
+                <ArrowUpRight className="h-5 w-5 text-slate-300 group-hover:text-rose-600 transition-colors" />
               </div>
-              <ArrowUpRight className="h-5 w-5 text-slate-400 group-hover:text-rose-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-            </div>
-          </Link>
-        )}
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* ── CHARTS SECTION (Khoảng cách & Bố cục thoáng mắt) ── */}
-      <div className={`grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2 ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
+      <div className={`grid grid-cols-1 gap-5 sm:gap-6 lg:grid-cols-2 ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
         {/* Sales Trend Chart */}
         {(isManager || isSalesRep) && (
           <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-7 shadow-xs hover:shadow-md transition-all">
@@ -657,45 +665,138 @@ export const DashboardPage: React.FC = () => {
           </div>
         )}
 
-        {/* High Risk Agencies Chart */}
+        {/* Top High Risk Agencies Leaderboard */}
         {(isManager || isAccountant) && (
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-7 shadow-xs hover:shadow-md transition-all" id="high-risk">
-            <div className="mb-5 flex items-center justify-between">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-7 shadow-xs hover:shadow-md transition-all flex flex-col justify-between" id="high-risk">
+            {/* Header */}
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Top Đại lý rủi ro công nợ cao</h2>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-normal">Xếp hạng các đại lý có số dư nợ quá hạn lớn nhất</p>
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center">
+                    <AlertTriangle className="h-4 w-4" />
+                  </div>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                    Top Đại lý rủi ro công nợ cao
+                  </h2>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-normal">
+                  Xếp hạng các đại lý có số dư nợ quá hạn lớn nhất
+                </p>
               </div>
+
+              {highRiskAgencies.length > 0 && (
+                <div className="text-right">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200/70 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                    {highRiskAgencies.length} đại lý
+                  </span>
+                  <p className="text-[0.6875rem] text-slate-400 mt-0.5 font-medium">
+                    Tổng: <span className="font-bold text-rose-600 tabular-nums">{formatCurrency(totalHighRiskDebt)}</span>
+                  </p>
+                </div>
+              )}
             </div>
-            <div className="h-72 sm:h-80 w-full">
+
+            {/* Content Body: Matches left chart height */}
+            <div className="h-72 sm:h-80 w-full flex flex-col justify-between">
               {highRiskAgencies.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={highRiskAgencies} layout="vertical" margin={{ top: 5, right: 15, left: -5, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                    <XAxis type="number" tickFormatter={(val: number) => (val / 1000000).toFixed(0) + 'M'} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
-                    <YAxis 
-                      dataKey="customerName" 
-                      type="category" 
-                      width={130} 
-                      tickFormatter={(val: string) => (val && val.length > 16 ? val.slice(0, 15) + '…' : val)}
-                      tick={{ fill: '#475569', fontSize: 11 }} 
-                      tickLine={false} 
-                      axisLine={{ stroke: '#e2e8f0' }} 
-                    />
-                    <Tooltip 
-                      formatter={(value: any) => [formatCurrency(value), 'Công nợ quá hạn']} 
-                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.08)' }}
-                      cursor={{ fill: '#f8fafc' }}
-                    />
-                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '13px' }} />
-                    <Bar 
-                      dataKey="overdueAmount" 
-                      name="Công nợ quá hạn" 
-                      fill="#fb7185" 
-                      radius={[0, 4, 4, 0]} 
-                      maxBarSize={28}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+                <>
+                  <div className="flex-1 overflow-y-auto no-scrollbar space-y-2.5 pr-0.5 py-0.5">
+                    {highRiskAgencies.map((agency, index) => {
+                      const percent = Math.min(
+                        Math.max(Math.round(((agency.overdueAmount || 0) / maxOverdueDebt) * 100), 4),
+                        100
+                      );
+                      const isTop1 = index === 0;
+                      const isTop2 = index === 1;
+                      const isTop3 = index === 2;
+
+                      return (
+                        <div
+                          key={agency.customerId || agency.customerCode || index}
+                          className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 sm:p-3.5 hover:bg-white hover:border-rose-200 hover:shadow-xs transition-all duration-200"
+                        >
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            {/* Thông tin đại lý & Thứ hạng */}
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              <span
+                                className={`flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-lg text-xs font-bold ${
+                                  isTop1
+                                    ? 'bg-rose-500 text-white shadow-2xs shadow-rose-200'
+                                    : isTop2
+                                    ? 'bg-amber-500 text-white'
+                                    : isTop3
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-slate-200 text-slate-600'
+                                }`}
+                              >
+                                #{index + 1}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <Link
+                                    to={`/sales/customers?search=${encodeURIComponent(agency.customerCode || agency.customerName)}`}
+                                    className="text-xs sm:text-sm font-semibold text-slate-900 hover:text-rose-600 transition-colors line-clamp-1"
+                                    title={agency.customerName}
+                                  >
+                                    {agency.customerName}
+                                  </Link>
+                                  <span className="text-[0.6875rem] font-mono font-medium text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200/80 flex-shrink-0">
+                                    {agency.customerCode}
+                                  </span>
+                                </div>
+                                {agency.salesRepName && (
+                                  <p className="text-[0.6875rem] text-slate-400 mt-0.5 truncate">
+                                    NV: <span className="text-slate-600 font-medium">{agency.salesRepName}</span>
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Số tiền công nợ quá hạn */}
+                            <div className="text-right flex-shrink-0">
+                              <div className="text-xs sm:text-sm font-bold text-rose-600 tabular-nums">
+                                {formatCurrency(agency.overdueAmount)}
+                              </div>
+                              <div className="text-[0.6875rem] font-medium text-slate-400 mt-0.5">
+                                {percent}% mức đỉnh
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Thanh tiến trình tỉ lệ dư nợ */}
+                          <div className="w-full bg-slate-200/60 h-2 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ease-out ${
+                                isTop1
+                                  ? 'bg-gradient-to-r from-rose-500 to-red-600'
+                                  : isTop2
+                                  ? 'bg-gradient-to-r from-amber-500 to-rose-500'
+                                  : 'bg-gradient-to-r from-amber-400 to-amber-600'
+                              }`}
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Thanh chú thích & Điều hướng nhanh */}
+                  <div className="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span className="flex items-center gap-1.5 text-slate-500 text-[0.75rem]">
+                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      Công nợ quá thời hạn thanh toán
+                    </span>
+                    <Link
+                      to="/sales/customers"
+                      className="inline-flex items-center gap-1 font-semibold text-rose-600 hover:text-rose-700 hover:underline text-[0.75rem]"
+                    >
+                      <span>Xem sổ nợ đại lý</span>
+                      <ArrowUpRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                </>
               ) : (
                 <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
                   <CheckCircle2 className="h-10 w-10 text-emerald-400 mb-3" />

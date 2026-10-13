@@ -270,16 +270,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   return (
     <>
-      {/* 1. Desktop Sidebar: Floating Card chuẩn Clean SaaS */}
+      {/* 1. Desktop Sidebar: Liền mạch chuẩn Enterprise B2B */}
       <aside
-        className={`hidden shrink-0 lg:flex lg:flex-col h-full rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-20 ${
+        className={`hidden shrink-0 lg:flex lg:flex-col h-full border-r border-slate-200/80 bg-white shadow-2xs overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-20 ${
           isCollapsed ? 'w-20' : 'w-[18.25rem]'
         }`}
       >
         <SidebarNavContent isCollapsed={isCollapsed} onToggleCollapse={onToggleCollapse} />
       </aside>
 
-      {/* 2. Mobile Drawer (Tối ưu tuyệt đối cho mobile: dạng Floating Drawer nổi) */}
+      {/* 2. Mobile Drawer */}
       {isOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           {/* Lớp nền mờ */}
@@ -289,8 +289,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             aria-hidden="true"
           />
 
-          {/* Khung Drawer trượt từ bên trái dạng Floating Card nổi */}
-          <div className="fixed inset-y-3 left-3 z-50 flex w-[18.25rem] max-w-[calc(100vw-1.5rem)] flex-col rounded-2xl border border-slate-200/80 bg-white shadow-2xl overflow-hidden transition-transform duration-200">
+          {/* Khung Drawer trượt từ bên trái */}
+          <div className="fixed inset-y-0 left-0 z-50 flex w-[18.25rem] max-w-[calc(100vw-2rem)] flex-col border-r border-slate-200/80 bg-white shadow-2xl overflow-hidden transition-transform duration-200">
             {/* Nút đóng Drawer */}
             <div className="absolute top-3.5 right-3 z-10">
               <button
