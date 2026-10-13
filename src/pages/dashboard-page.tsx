@@ -590,35 +590,28 @@ export const DashboardPage: React.FC = () => {
 
           {(isManager || isWarehouse) && (
             /* Metric 6: Cảnh báo tồn tối thiểu (Urgent/Stock Tone: Rose) */
-            <Link
-              to="/inventory/stock?filter=BELOW_MIN_STOCK"
-              className="group block p-5 sm:p-6 border-t border-slate-100 hover:bg-slate-50/60 transition-colors cursor-pointer"
-              title="Bấm để xem danh sách sản phẩm chạm/dưới mức tồn tối thiểu"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-rose-50/80 text-rose-600 border border-rose-100/60 group-hover:bg-rose-100 transition-colors">
-                    <AlertTriangle className="h-6 w-6" />
-                  </div>
-                  <div className="ml-4 flex-1 min-w-0">
-                    <dt className="truncate text-xs sm:text-sm font-medium text-slate-500 group-hover:text-slate-700 transition-colors">
-                      Cảnh báo tồn tối thiểu
-                    </dt>
-                    <dd className="mt-1 flex items-baseline gap-2">
-                      <span className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate tabular-nums">
-                        {lowStockCount > 0 ? lowStockCount : metrics.lowStockAlertCount}
-                      </span>
-                      {(lowStockCount > 0 || metrics.lowStockAlertCount > 0) && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/50">
-                          Cần nhập
-                        </span>
-                      )}
-                    </dd>
-                  </div>
+            <div className="p-5 sm:p-6 border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
+              <div className="flex items-center">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-rose-50/80 text-rose-600 border border-rose-100/60">
+                  <AlertTriangle className="h-6 w-6" />
                 </div>
-                <ArrowUpRight className="h-5 w-5 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                <div className="ml-4 w-0 flex-1 min-w-0">
+                  <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">
+                    Cảnh báo tồn tối thiểu
+                  </dt>
+                  <dd className="mt-1 flex items-baseline gap-2">
+                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate tabular-nums">
+                      {lowStockCount > 0 ? lowStockCount : metrics.lowStockAlertCount}
+                    </span>
+                    {(lowStockCount > 0 || metrics.lowStockAlertCount > 0) && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/50">
+                        Cần nhập
+                      </span>
+                    )}
+                  </dd>
+                </div>
               </div>
-            </Link>
+            </div>
           )}
         </div>
       </div>
