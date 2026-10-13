@@ -166,7 +166,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
  */
 const INITIAL_MOCK_PRODUCTS: Product[] = [
   {
-    id: 'prod-001',
+    id: '33333333-0000-4000-8000-000000000001',
     sku: 'LH-MILK-900G',
     name: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
     parentCategory: 'Sữa & Chế phẩm sữa',
@@ -176,9 +176,9 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     baseUnit: 'Lon',
     packagingSpec: '24 lon/thùng',
     units: [
-      { unitName: 'Lon', conversionRate: 1, isBaseUnit: true },
-      { unitName: 'Lốc', conversionRate: 6, isBaseUnit: false },
-      { unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
+      { id: '33333333-1000-4000-8000-000000000001', unitName: 'Lon', conversionRate: 1, isBaseUnit: true },
+      { id: '33333333-1000-4000-8000-000000000002', unitName: 'Lốc', conversionRate: 6, isBaseUnit: false },
+      { id: '33333333-1000-4000-8000-000000000003', unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
     ],
     price: 520000,
     costPrice: 380000,
@@ -193,7 +193,7 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     createdAt: '2026-01-15T08:00:00Z',
   },
   {
-    id: 'prod-002',
+    id: '33333333-0000-4000-8000-000000000002',
     sku: 'LH-NUT-180ML',
     name: 'Sữa Hạt Óc Chó Hạnh Nhân Organic 180ml',
     parentCategory: 'Sữa & Chế phẩm sữa',
@@ -203,9 +203,9 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     baseUnit: 'Hộp',
     packagingSpec: '48 hộp/thùng (12 lốc x 4 hộp)',
     units: [
-      { unitName: 'Hộp', conversionRate: 1, isBaseUnit: true },
-      { unitName: 'Lốc', conversionRate: 4, isBaseUnit: false },
-      { unitName: 'Thùng', conversionRate: 48, isBaseUnit: false },
+      { id: '33333333-2000-4000-8000-000000000001', unitName: 'Hộp', conversionRate: 1, isBaseUnit: true },
+      { id: '33333333-2000-4000-8000-000000000002', unitName: 'Lốc', conversionRate: 4, isBaseUnit: false },
+      { id: '33333333-2000-4000-8000-000000000003', unitName: 'Thùng', conversionRate: 48, isBaseUnit: false },
     ],
     price: 18000,
     costPrice: 11500,
@@ -220,7 +220,7 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     createdAt: '2026-01-18T09:30:00Z',
   },
   {
-    id: 'prod-003',
+    id: '33333333-0000-4000-8000-000000000003',
     sku: 'LH-NEST-70ML',
     name: 'Nước Yến Sào Chưng Đường Phèn Loha Nest 70ml',
     parentCategory: 'Nước yến & Bổ dưỡng',
@@ -230,9 +230,9 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     baseUnit: 'Hũ',
     packagingSpec: '30 hũ/thùng (5 hộp x 6 hũ)',
     units: [
-      { unitName: 'Hũ', conversionRate: 1, isBaseUnit: true },
-      { unitName: 'Hộp', conversionRate: 6, isBaseUnit: false },
-      { unitName: 'Thùng', conversionRate: 30, isBaseUnit: false },
+      { id: '33333333-3000-4000-8000-000000000001', unitName: 'Hũ', conversionRate: 1, isBaseUnit: true },
+      { id: '33333333-3000-4000-8000-000000000002', unitName: 'Hộp', conversionRate: 6, isBaseUnit: false },
+      { id: '33333333-3000-4000-8000-000000000003', unitName: 'Thùng', conversionRate: 30, isBaseUnit: false },
     ],
     price: 65000,
     costPrice: 42000,
@@ -247,7 +247,7 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     createdAt: '2026-02-01T10:15:00Z',
   },
   {
-    id: 'prod-004',
+    id: '33333333-0000-4000-8000-000000000004',
     sku: 'LH-CEREAL-500G',
     name: 'Ngũ Cốc Dinh Dưỡng Hạt Mầm Loha Meal 500g',
     parentCategory: 'Ngũ cốc & Hạt dinh dưỡng',
@@ -257,8 +257,8 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     baseUnit: 'Túi',
     packagingSpec: '20 túi/thùng',
     units: [
-      { unitName: 'Túi', conversionRate: 1, isBaseUnit: true },
-      { unitName: 'Thùng', conversionRate: 20, isBaseUnit: false },
+      { id: '33333333-4000-4000-8000-000000000001', unitName: 'Túi', conversionRate: 1, isBaseUnit: true },
+      { id: '33333333-4000-4000-8000-000000000002', unitName: 'Thùng', conversionRate: 20, isBaseUnit: false },
     ],
     price: 145000,
     costPrice: 95000,
@@ -273,7 +273,7 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     createdAt: '2026-02-10T14:20:00Z',
   },
   {
-    id: 'prod-005',
+    id: '33333333-0000-4000-8000-000000000005',
     sku: 'LH-COLLAGEN-50ML',
     name: 'Nước Uống Collagen Đông Trùng Hạ Thảo 50ml',
     parentCategory: 'Thực phẩm chức năng',
@@ -283,9 +283,9 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     baseUnit: 'Chai',
     packagingSpec: '24 chai/thùng (4 lốc x 6 chai)',
     units: [
-      { unitName: 'Chai', conversionRate: 1, isBaseUnit: true },
-      { unitName: 'Hộp', conversionRate: 6, isBaseUnit: false },
-      { unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
+      { id: '33333333-5000-4000-8000-000000000001', unitName: 'Chai', conversionRate: 1, isBaseUnit: true },
+      { id: '33333333-5000-4000-8000-000000000002', unitName: 'Hộp', conversionRate: 6, isBaseUnit: false },
+      { id: '33333333-5000-4000-8000-000000000003', unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
     ],
     price: 85000,
     costPrice: 55000,
@@ -300,7 +300,7 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     createdAt: '2026-02-15T11:00:00Z',
   },
   {
-    id: 'prod-006',
+    id: '33333333-0000-4000-8000-000000000006',
     sku: 'LH-TEA-350ML',
     name: 'Trà Thảo Mộc Hoa Cúc La Hán Quả 350ml',
     parentCategory: 'Nước giải khát & Trà',
@@ -310,9 +310,9 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     baseUnit: 'Lon',
     packagingSpec: '24 lon/thùng',
     units: [
-      { unitName: 'Lon', conversionRate: 1, isBaseUnit: true },
-      { unitName: 'Lốc', conversionRate: 6, isBaseUnit: false },
-      { unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
+      { id: '33333333-6000-4000-8000-000000000001', unitName: 'Lon', conversionRate: 1, isBaseUnit: true },
+      { id: '33333333-6000-4000-8000-000000000002', unitName: 'Lốc', conversionRate: 6, isBaseUnit: false },
+      { id: '33333333-6000-4000-8000-000000000003', unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
     ],
     price: 15000,
     costPrice: 9200,
@@ -327,7 +327,7 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     createdAt: '2026-02-20T16:00:00Z',
   },
   {
-    id: 'prod-007',
+    id: '33333333-0000-4000-8000-000000000007',
     sku: 'LH-WATER-500ML',
     name: 'Nước Khoáng Kiềm Thiên Nhiên Loha Ion 500ml',
     parentCategory: 'Nước giải khát & Trà',
@@ -337,9 +337,9 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     baseUnit: 'Chai',
     packagingSpec: '24 chai/thùng',
     units: [
-      { unitName: 'Chai', conversionRate: 1, isBaseUnit: true },
-      { unitName: 'Lốc', conversionRate: 6, isBaseUnit: false },
-      { unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
+      { id: '33333333-7000-4000-8000-000000000001', unitName: 'Chai', conversionRate: 1, isBaseUnit: true },
+      { id: '33333333-7000-4000-8000-000000000002', unitName: 'Lốc', conversionRate: 6, isBaseUnit: false },
+      { id: '33333333-7000-4000-8000-000000000003', unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
     ],
     price: 12000,
     costPrice: 6800,
@@ -354,7 +354,7 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     createdAt: '2026-03-01T08:30:00Z',
   },
   {
-    id: 'prod-008',
+    id: '33333333-0000-4000-8000-000000000008',
     sku: 'LH-MILK-PAST-1L',
     name: 'Sữa Tươi Thanh Trùng Nguyên Chất 1 Lít',
     parentCategory: 'Sữa & Chế phẩm sữa',
@@ -364,8 +364,8 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     baseUnit: 'Chai',
     packagingSpec: '12 chai/thùng',
     units: [
-      { unitName: 'Chai', conversionRate: 1, isBaseUnit: true },
-      { unitName: 'Thùng', conversionRate: 12, isBaseUnit: false },
+      { id: '33333333-8000-4000-8000-000000000001', unitName: 'Chai', conversionRate: 1, isBaseUnit: true },
+      { id: '33333333-8000-4000-8000-000000000002', unitName: 'Thùng', conversionRate: 12, isBaseUnit: false },
     ],
     price: 38000,
     costPrice: 26000,
@@ -380,7 +380,7 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     createdAt: '2026-03-05T09:10:00Z',
   },
   {
-    id: 'prod-009',
+    id: '33333333-0000-4000-8000-000000000009',
     sku: 'LH-NEST-PREM-100G',
     name: 'Hộp Quà Yến Sào Tinh Chế Thượng Hạng 100g',
     parentCategory: 'Nước yến & Bổ dưỡng',
@@ -390,8 +390,8 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     baseUnit: 'Hộp',
     packagingSpec: '10 hộp/thùng',
     units: [
-      { unitName: 'Hộp', conversionRate: 1, isBaseUnit: true },
-      { unitName: 'Thùng', conversionRate: 10, isBaseUnit: false },
+      { id: '33333333-9000-4000-8000-000000000001', unitName: 'Hộp', conversionRate: 1, isBaseUnit: true },
+      { id: '33333333-9000-4000-8000-000000000002', unitName: 'Thùng', conversionRate: 10, isBaseUnit: false },
     ],
     price: 4200000,
     costPrice: 3100000,
@@ -406,7 +406,7 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     createdAt: '2026-03-10T14:40:00Z',
   },
   {
-    id: 'prod-010',
+    id: '33333333-0000-4000-8000-000000000010',
     sku: 'LH-NUTS-MIX-250G',
     name: 'Hạt Hỗn Hợp Macca Óc Chó Hạnh Nhân Sấy Giòn 250g',
     parentCategory: 'Ngũ cốc & Hạt dinh dưỡng',
@@ -416,9 +416,9 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     baseUnit: 'Hũ',
     packagingSpec: '24 hũ/thùng',
     units: [
-      { unitName: 'Hũ', conversionRate: 1, isBaseUnit: true },
-      { unitName: 'Lốc', conversionRate: 6, isBaseUnit: false },
-      { unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
+      { id: '33333333-9100-4000-8000-000000000001', unitName: 'Hũ', conversionRate: 1, isBaseUnit: true },
+      { id: '33333333-9100-4000-8000-000000000002', unitName: 'Lốc', conversionRate: 6, isBaseUnit: false },
+      { id: '33333333-9100-4000-8000-000000000003', unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
     ],
     price: 135000,
     costPrice: 88000,
@@ -433,7 +433,7 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     createdAt: '2026-03-12T15:20:00Z',
   },
   {
-    id: 'prod-011',
+    id: '33333333-0000-4000-8000-000000000011',
     sku: 'LH-OLD-COFFEE-CAN',
     name: 'Cà Phê Sữa Đóng Lon Loha Classic 240ml (Mẫu Cũ)',
     parentCategory: 'Nước giải khát & Trà',
@@ -443,9 +443,9 @@ const INITIAL_MOCK_PRODUCTS: Product[] = [
     baseUnit: 'Lon',
     packagingSpec: '24 lon/thùng',
     units: [
-      { unitName: 'Lon', conversionRate: 1, isBaseUnit: true },
-      { unitName: 'Lốc', conversionRate: 6, isBaseUnit: false },
-      { unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
+      { id: '33333333-9200-4000-8000-000000000001', unitName: 'Lon', conversionRate: 1, isBaseUnit: true },
+      { id: '33333333-9200-4000-8000-000000000002', unitName: 'Lốc', conversionRate: 6, isBaseUnit: false },
+      { id: '33333333-9200-4000-8000-000000000003', unitName: 'Thùng', conversionRate: 24, isBaseUnit: false },
     ],
     price: 14000,
     costPrice: 9000,
@@ -466,11 +466,18 @@ export const getStoredDemoProducts = (): Product[] => {
     const raw = localStorage.getItem(DEMO_PRODUCTS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Tự động vô hiệu hóa cache nếu còn lưu ID cũ dạng 'prod-001'
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const hasLegacyIds = parsed.some((p: Product) => !p.id || !uuidRegex.test(p.id));
+        if (!hasLegacyIds) return parsed;
+        localStorage.removeItem(DEMO_PRODUCTS_KEY);
+      }
     }
   } catch {}
   return [...INITIAL_MOCK_PRODUCTS];
 };
+
 
 export const saveStoredDemoProducts = (products: Product[]) => {
   try {
