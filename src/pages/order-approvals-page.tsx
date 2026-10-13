@@ -14,12 +14,11 @@ import {
   Check,
   DollarSign,
   AlertCircle,
-  RotateCcw,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { Pagination } from '../components/pagination';
 import { DateInput } from '../components/date-input';
-import { ordersService, resetDemoOrdersToDefault } from '../services/orders.service';
+import { ordersService } from '../services/orders.service';
 import { productsService } from '../services/products.service';
 import type { Product } from '../types/products';
 import type {
@@ -435,20 +434,6 @@ export const OrderApprovalsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              resetDemoOrdersToDefault();
-              setRefreshKey((k) => k + 1);
-              showToast('success', 'Đã nạp lại dữ liệu mẫu (gồm cả đơn Đủ tồn và đơn Thiếu tồn) để bạn kiểm thử!');
-            }}
-            disabled={loading}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-xl shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-            title="Khôi phục dữ liệu mẫu chuẩn gồm các đơn đủ tồn và đơn thiếu tồn để kiểm thử chức năng"
-          >
-            <RotateCcw className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Nạp lại dữ liệu mẫu</span>
-          </button>
           <button
             type="button"
             onClick={() => setRefreshKey((k) => k + 1)}
