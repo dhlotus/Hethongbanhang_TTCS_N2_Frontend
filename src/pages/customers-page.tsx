@@ -754,9 +754,11 @@ export const CustomersPage: React.FC = () => {
       errors.phone = phoneErr;
     }
 
-    // 5. Email liên hệ (tùy chọn nhưng nếu nhập phải đúng chuẩn)
+    // 5. Email liên hệ: Bắt buộc để tự động cấp tài khoản Đại lý B2B
     const cleanEmail = (formData.email || '').trim();
-    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    if (!cleanEmail) {
+      errors.email = 'Vui lòng nhập email liên hệ để hệ thống kích hoạt tài khoản đăng nhập Đại lý B2B.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       errors.email = 'Email liên hệ không đúng định dạng (ví dụ: daily@gmail.com).';
     }
 
@@ -796,8 +798,8 @@ export const CustomersPage: React.FC = () => {
 
       showToast(
         'success',
-        'Thêm đại lý thành công',
-        `Đại lý "${newCustomer.name}" (${newCustomer.code}) đã được tạo và lưu thành công!`
+        'Thêm đại lý & Kích hoạt tài khoản B2B thành công',
+        `Đại lý "${newCustomer.name}" (${newCustomer.code}) đã được tạo. Tài khoản đăng nhập: ${newCustomer.email} (Mật khẩu mặc định: 123456).`
       );
 
       // Đóng modal và reset form
@@ -849,8 +851,8 @@ export const CustomersPage: React.FC = () => {
       await customerService.deleteCustomer(deleteModalCustomer.id);
       showToast(
         'success',
-        'Đã xóa hồ sơ đại lý',
-        `Hồ sơ đại lý "${deleteModalCustomer.name}" (${deleteModalCustomer.code}) đã được xóa thành công.`
+        'Xóa đại lý & Tài khoản B2B thành công',
+        `Đã xóa vĩnh viễn hồ sơ đại lý "${deleteModalCustomer.name}" (${deleteModalCustomer.code}) và tài khoản đăng nhập B2B liên kết khỏi hệ thống.`
       );
       setIsDeleteModalOpen(false);
       setDeleteModalCustomer(null);
@@ -1858,9 +1860,16 @@ export const CustomersPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Email */}
+                  {/* Email: Bắt buộc để tự động cấp tài khoản B2B */}
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">Email liên hệ</label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-700">
+                        Email liên hệ <span className="text-rose-500">*</span>
+                      </label>
+                      <span className="text-[11px] font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200/60">
+                        Tự động cấp tài khoản B2B
+                      </span>
+                    </div>
                     <input
                       type="text"
                       placeholder="VD: daily@gmail.com"
@@ -2106,8 +2115,8 @@ export const CustomersPage: React.FC = () => {
                       Bạn có chắc chắn muốn xóa hồ sơ đại lý{' '}
                       <strong className="text-slate-900">{deleteModalCustomer.name}</strong> không?
                     </p>
-                    <p className="text-slate-400">
-                      Đại lý chưa phát sinh công nợ. Hành động này sẽ xóa hoàn toàn thông tin khỏi danh sách khách hàng.
+                    <p className="text-slate-500">
+                      Đại lý chưa phát sinh công nợ. Hành động này đồng nghĩa với việc <strong>xóa vĩnh viễn hồ sơ đại lý cùng tài khoản đăng nhập Đại lý B2B liên kết</strong> khỏi hệ thống.
                     </p>
                   </div>
                 )}

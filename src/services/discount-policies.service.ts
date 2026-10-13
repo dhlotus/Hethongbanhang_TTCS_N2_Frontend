@@ -298,70 +298,38 @@ export function calculateDiscount(
   categoryId: string = '',
   quantity: number,
   productSku?: string,
-  productName?: string
+  productName?: string,
+  listPrice?: number
 ): number {
-  if (quantity <= 0) return 0;
-
-  const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
-
-  const activePolicies = (policies || []).filter((p) => {
-    if (p.status !== 'ACTIVE') return false;
-    if (p.startDate && p.startDate.split('T')[0] > todayStr) return false;
-    if (p.endDate && p.endDate.split('T')[0] < todayStr) return false;
-
-    return isProductMatchingPolicy(p, productId, categoryId, productSku, productName);
-  });
-
-  let maxDiscountPercent = 0;
-
-  for (const policy of activePolicies) {
-    if (!policy.tiers || policy.tiers.length === 0) continue;
-
-    const sortedTiers = [...policy.tiers].sort(
-      (a, b) => (Number(a.minQuantity) || 0) - (Number(b.minQuantity) || 0)
-    );
-
-    const matchedTiers = sortedTiers.filter((t) => {
-      const min = Number(t.minQuantity) || 0;
-      const rawMax = t.maxQuantity;
-      const max =
-        rawMax !== null && rawMax !== undefined && String(rawMax).trim() !== ''
-          ? Number(rawMax)
-          : null;
-
-      if (quantity < min) return false;
-      if (max === null || isNaN(max) || max <= 0 || max === Infinity) return true;
-      return quantity <= max;
-    });
-
-    const applicableTier = matchedTiers.length > 0 ? matchedTiers[matchedTiers.length - 1] : null;
-
-    if (applicableTier) {
-      const val = Number(applicableTier.discountValue) || 0;
-      if (policy.discountType === 'PERCENTAGE' || !policy.discountType) {
-        if (val > maxDiscountPercent) {
-          maxDiscountPercent = val;
-        }
-      }
-    }
-  }
-
-  return maxDiscountPercent;
+  const info = getApplicablePolicyInfo(
+    policies,
+    productId,
+    categoryId,
+    quantity,
+    productSku,
+    productName,
+    listPrice
+  );
+  return info.discountPercent;
 }
 
 export interface ApplicablePolicyInfo {
   policy: DiscountPolicy | null;
   currentTier: DiscountTier | null;
-  discountPercent: number;
+  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'NONE';
+  discountRawValue: number;
+  discountPercent: number; // Chuẩn hóa từ 0 đến 100%
+  discountAmountPerUnit: number; // Tiền giảm trên 1 đơn vị, tối đa bằng listPrice
   nextTier: DiscountTier | null;
   quantityNeededForNext: number;
+  displayText: string;
 }
 
 /**
  * Tìm chính sách chiết khấu và nấc chiết khấu tương ứng với số lượng mua, kèm thông tin nấc tiếp theo để gợi ý
  * - Lọc chỉ các chính sách ACTIVE
- * - So sánh và chọn chính sách có mức chiết khấu cao nhất cho sản phẩm
+ * - Xử lý dứt điểm 2 loại chiết khấu: FIXED_AMOUNT (Tiền mặt) và PERCENTAGE (Phần trăm)
+ * - Chống âm giá và chuẩn hóa % không vượt quá 100%
  */
 export function getApplicablePolicyInfo(
   policies: DiscountPolicy[],
@@ -369,15 +337,22 @@ export function getApplicablePolicyInfo(
   categoryId: string = '',
   quantity: number,
   productSku?: string,
-  productName?: string
+  productName?: string,
+  listPrice?: number
 ): ApplicablePolicyInfo {
+  const safeListPrice = Math.max(0, Number(listPrice) || 0);
+
   if (quantity <= 0) {
     return {
       policy: null,
       currentTier: null,
+      discountType: 'NONE',
+      discountRawValue: 0,
       discountPercent: 0,
+      discountAmountPerUnit: 0,
       nextTier: null,
       quantityNeededForNext: 0,
+      displayText: '0%',
     };
   }
 
@@ -395,9 +370,13 @@ export function getApplicablePolicyInfo(
   let bestResult: ApplicablePolicyInfo = {
     policy: null,
     currentTier: null,
+    discountType: 'NONE',
+    discountRawValue: 0,
     discountPercent: 0,
+    discountAmountPerUnit: 0,
     nextTier: null,
     quantityNeededForNext: 0,
+    displayText: '0%',
   };
 
   for (const policy of activePolicies) {
@@ -431,25 +410,63 @@ export function getApplicablePolicyInfo(
     }
 
     if (matchedTier) {
-      const val = Number(matchedTier.discountValue) || 0;
+      const rawVal = Math.max(0, Number(matchedTier.discountValue) || 0);
+      const isFixed = policy.discountType === 'FIXED_AMOUNT';
       const needed = nextTier ? Math.max(0, Number(nextTier.minQuantity) - quantity) : 0;
-      if (val > bestResult.discountPercent || !bestResult.policy) {
+
+      let discountAmount = 0;
+      let percent = 0;
+      let display = '';
+
+      if (isFixed) {
+        // FIXED_AMOUNT: Số tiền giảm tối đa là Giá gốc của sản phẩm
+        discountAmount = safeListPrice > 0 ? Math.min(safeListPrice, rawVal) : rawVal;
+        percent = safeListPrice > 0 ? Math.min(100, Math.round((discountAmount / safeListPrice) * 100)) : 0;
+        display = `Giảm ${rawVal.toLocaleString('vi-VN')} đ`;
+      } else {
+        // PERCENTAGE: Tối đa 100%
+        percent = Math.min(100, rawVal);
+        discountAmount = safeListPrice > 0 ? Math.round((safeListPrice * percent) / 100) : 0;
+        display = `Giảm ${percent}%`;
+      }
+
+      // So sánh chọn chính sách có mức giảm tiền mặt lớn nhất
+      const currentComparison = safeListPrice > 0 ? discountAmount : (isFixed ? rawVal : (percent / 100) * 100000);
+      const bestComparison =
+        safeListPrice > 0
+          ? bestResult.discountAmountPerUnit
+          : bestResult.discountType === 'FIXED_AMOUNT'
+          ? bestResult.discountRawValue
+          : (bestResult.discountPercent / 100) * 100000;
+
+      if (currentComparison > bestComparison || !bestResult.policy) {
         bestResult = {
           policy,
           currentTier: matchedTier,
-          discountPercent: val,
+          discountType: isFixed ? 'FIXED_AMOUNT' : 'PERCENTAGE',
+          discountRawValue: rawVal,
+          discountPercent: percent,
+          discountAmountPerUnit: discountAmount,
           nextTier,
           quantityNeededForNext: needed,
+          displayText: display,
         };
       }
     } else if (sortedTiers.length > 0 && quantity < Number(sortedTiers[0].minQuantity)) {
       if (!bestResult.policy && !bestResult.nextTier) {
+        const firstTier = sortedTiers[0];
+        const isFixed = policy.discountType === 'FIXED_AMOUNT';
+        const rawVal = Number(firstTier.discountValue) || 0;
         bestResult = {
           policy,
           currentTier: null,
+          discountType: isFixed ? 'FIXED_AMOUNT' : 'PERCENTAGE',
+          discountRawValue: 0,
           discountPercent: 0,
-          nextTier: sortedTiers[0],
-          quantityNeededForNext: Math.max(0, Number(sortedTiers[0].minQuantity) - quantity),
+          discountAmountPerUnit: 0,
+          nextTier: firstTier,
+          quantityNeededForNext: Math.max(0, Number(firstTier.minQuantity) - quantity),
+          displayText: isFixed ? `Giảm ${rawVal.toLocaleString('vi-VN')} đ` : `Giảm ${rawVal}%`,
         };
       }
     }

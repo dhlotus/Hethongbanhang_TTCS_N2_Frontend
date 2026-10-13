@@ -107,8 +107,7 @@ export const AppRoutes: React.FC = () => {
                   />
                 }
               />
-              {/* SN-170 & SN-174: Cổng Đơn hàng Đại lý & Theo dõi vận chuyển */}
-              <Route path="/portal/orders" element={<PortalOrdersPage />} />
+              {/* SN-170 & SN-174: Cổng Theo dõi vận chuyển & Danh sách đơn */}
               <Route path="/portal/tracking" element={<PortalOrdersPage />} />
               <Route
                 path="/portal/debt"

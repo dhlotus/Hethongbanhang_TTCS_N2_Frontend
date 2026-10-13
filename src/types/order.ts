@@ -48,6 +48,9 @@ export interface OrderLine {
   unitPrice: number; // Đơn giá theo unit (sau chiết khấu)
   listPrice: number; // Giá niêm yết gốc
   discountPercent: number; // Chiết khấu % theo bảng giá
+  discountType?: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'NONE';
+  discountAmountPerUnit?: number;
+  discountDisplayText?: string;
   lineTotal: number; // Thành tiền = quantity × unitPrice
   stockAvailable?: number; // Tồn khả dụng tham khảo (hiển thị UI)
   minPrice?: number;
