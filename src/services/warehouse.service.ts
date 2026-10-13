@@ -19,9 +19,9 @@ export const warehouseService = {
     } catch {}
     return [
       {
-        id: '11111111-0000-0000-0000-000000000001',
-        code: 'KHO-MN-01',
-        name: 'Kho Tổng Miền Nam',
+        id: '11111111-0000-4000-8000-000000000001',
+        code: 'WH01',
+        name: 'Kho Tổng Miền Nam - LOHA WH01',
         address: 'Số 18 Đại lộ Độc Lập, KCN Sóng Thần 1, Dĩ An, Bình Dương',
         phone: '02743790001',
         status: 'ACTIVE',

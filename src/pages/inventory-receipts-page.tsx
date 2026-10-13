@@ -8,57 +8,54 @@ import {
   FileText,
   Trash2,
   Eye,
-  CheckCircle2
+  CheckCircle2,
 } from "lucide-react";
 import { showToast } from "../components/toast";
-import { ModalLayout } from "../components/modal-layout";
 import { Pagination } from "../components/pagination";
-import { inventoryReceiptsService } from "../services/inventory-receipts.service";
+import { goodsReceiptService } from "../services/goods-receipt.service";
 import type { GoodsReceipt, GoodsReceiptStatus } from "../types/inventory-receipt";
-import { ConfirmDeleteModal } from "../components/confirm-delete-modal";
+
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (typeof error === "object" && error !== null) {
+    const err = error as {
+      response?: { data?: { message?: string | string[] } };
+      message?: string;
+    };
+    if (err.response?.data?.message) {
+      if (Array.isArray(err.response.data.message)) {
+        return err.response.data.message.join(", ");
+      }
+      return String(err.response.data.message);
+    }
+    if (err.message) return err.message;
+  }
+  return fallback;
+};
 
 export const InventoryReceiptsPage: React.FC = () => {
   const navigate = useNavigate();
   const [receipts, setReceipts] = useState<GoodsReceipt[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [actionLoading, setActionLoading] = useState<boolean>(false);
+  const [total, setTotal] = useState<number>(0);
+  const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(10);
+  const [totalPages, setTotalPages] = useState<number>(1);
 
-  const [searchInput, setSearchInput] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchInput, setSearchInput] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<GoodsReceiptStatus | "ALL">("ALL");
 
-  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [confirmModalOpen, setConfirmModalOpen] = useState<boolean>(false);
   const [receiptToConfirm, setReceiptToConfirm] = useState<GoodsReceipt | null>(null);
 
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState<boolean>(false);
   const [receiptToDelete, setReceiptToDelete] = useState<GoodsReceipt | null>(null);
-
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [selectedReceipt, setSelectedReceipt] = useState<GoodsReceipt | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-
-  const handleViewDetail = async (receipt: GoodsReceipt) => {
-    setSelectedReceipt(receipt);
-    setDetailModalOpen(true);
-    setDetailLoading(true);
-    try {
-      const fullData = await inventoryReceiptsService.findOne(receipt.id);
-      setSelectedReceipt(fullData);
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      showToast("error", err.response?.data?.message || "Lỗi khi tải chi tiết phiếu nhập");
-    } finally {
-      setDetailLoading(false);
-    }
-  };
 
   const fetchReceipts = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await inventoryReceiptsService.findAll({
+      const res = await goodsReceiptService.getReceipts({
         page,
         limit,
         search: searchTerm || undefined,
@@ -68,8 +65,7 @@ export const InventoryReceiptsPage: React.FC = () => {
       setTotal(res.total || 0);
       setTotalPages(res.totalPages || 1);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      showToast("error", err.response?.data?.message || "Lỗi khi tải danh sách phiếu nhập");
+      showToast("error", getErrorMessage(error, "Lỗi khi tải danh sách phiếu nhập"));
     } finally {
       setLoading(false);
     }
@@ -88,56 +84,58 @@ export const InventoryReceiptsPage: React.FC = () => {
   const handleConfirmReceipt = async () => {
     if (!receiptToConfirm) return;
     try {
-      await inventoryReceiptsService.confirm(receiptToConfirm.id);
-      showToast("success", "Xác nhận phiếu nhập kho thành công");
-      fetchReceipts();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string | string[] } }; message?: string };
-      const rawMsg = err.response?.data?.message || err.message || "Lỗi khi xác nhận";
-      const msg = Array.isArray(rawMsg) ? rawMsg.join(", ") : rawMsg;
-      showToast("error", msg);
-    } finally {
+      setActionLoading(true);
+      await goodsReceiptService.confirmReceipt(receiptToConfirm.id);
+      showToast("success", "Xác nhận nhập kho thành công! Đã cộng tồn kho.");
       setConfirmModalOpen(false);
-      setReceiptToConfirm(null);
+      await fetchReceipts();
+    } catch (error: unknown) {
+      showToast("error", getErrorMessage(error, "Lỗi khi xác nhận phiếu nhập"));
+    } finally {
+      setActionLoading(false);
+      setConfirmModalOpen(false);
     }
   };
 
   const handleDeleteReceipt = async () => {
     if (!receiptToDelete) return;
     try {
-      await inventoryReceiptsService.remove(receiptToDelete.id);
-      showToast("success", "Xóa phiếu nhập thành công");
-      fetchReceipts();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string | string[] } }; message?: string };
-      const rawMsg = err.response?.data?.message || err.message || "Lỗi khi xóa";
-      const msg = Array.isArray(rawMsg) ? rawMsg.join(", ") : rawMsg;
-      showToast("error", msg);
-    } finally {
+      setActionLoading(true);
+      await goodsReceiptService.deleteReceipt(receiptToDelete.id);
+      showToast("success", "Xóa phiếu nhập kho thành công");
       setDeleteModalOpen(false);
-      setReceiptToDelete(null);
+      await fetchReceipts();
+    } catch (error: unknown) {
+      showToast("error", getErrorMessage(error, "Lỗi khi xóa phiếu nhập"));
+    } finally {
+      setActionLoading(false);
+      setDeleteModalOpen(false);
     }
   };
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <Package className="w-6 h-6 text-brand-500" />
             Nhập kho từ Nhà cung cấp
           </h1>
-          <p className="text-slate-500 mt-1">Quản lý các phiếu nhập kho hàng hóa</p>
+          <p className="text-slate-500 mt-1">
+            Quản lý các phiếu nhập hàng hóa từ nhà cung cấp (Draft / Confirmed)
+          </p>
         </div>
         <button
           onClick={() => navigate("/inventory/receipts/create")}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm px-4 py-2.5 inline-flex items-center gap-2 transition-colors"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm px-4 py-2.5 inline-flex items-center gap-2 transition-colors cursor-pointer"
         >
           <Plus className="w-5 h-5" />
           Tạo phiếu nhập mới
         </button>
       </div>
 
+      {/* Bộ lọc & Tìm kiếm */}
       <div className="bg-white rounded-xl shadow-soft border border-slate-200">
         <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-4 justify-between items-center bg-slate-50/50">
           <form onSubmit={handleSearch} className="relative w-full sm:w-96">
@@ -146,9 +144,9 @@ export const InventoryReceiptsPage: React.FC = () => {
               placeholder="Tìm theo mã phiếu, số chứng từ..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all"
+              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all text-sm"
             />
-            <Search className="absolute left-3 top-3 text-slate-400 w-5 h-5" />
+            <Search className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
           </form>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -158,75 +156,77 @@ export const InventoryReceiptsPage: React.FC = () => {
                 setSelectedStatus(e.target.value as GoodsReceiptStatus | "ALL");
                 setPage(1);
               }}
-              className="px-4 py-2.5 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-brand-500 min-w-[160px]"
+              className="px-3.5 py-2 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-brand-500 min-w-[160px] text-sm"
             >
               <option value="ALL">Tất cả trạng thái</option>
-              <option value="DRAFT">Nháp</option>
+              <option value="DRAFT">Bản nháp</option>
               <option value="CONFIRMED">Đã xác nhận</option>
             </select>
             <button
               onClick={fetchReceipts}
-              className="p-2.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors border border-transparent hover:border-brand-200"
+              className="p-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-colors border border-transparent hover:border-brand-200 cursor-pointer"
               title="Làm mới"
             >
-              <RefreshCw className="w-5 h-5" />
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             </button>
           </div>
         </div>
 
+        {/* Bảng danh sách phiếu nhập kho */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="p-4 font-semibold text-slate-600">Mã phiếu</th>
-                <th className="p-4 font-semibold text-slate-600">Ngày nhập</th>
-                <th className="p-4 font-semibold text-slate-600">Kho / NCC</th>
-                <th className="p-4 font-semibold text-slate-600">Chứng từ gốc</th>
-                <th className="p-4 font-semibold text-slate-600">Tổng tiền</th>
-                <th className="p-4 font-semibold text-slate-600">Trạng thái</th>
-                <th className="p-4 font-semibold text-slate-600 text-right">Thao tác</th>
+              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-600">
+                <th className="p-4 text-left">Mã phiếu</th>
+                <th className="p-4 text-left">Ngày nhập</th>
+                <th className="p-4 text-left">Kho / NCC</th>
+                <th className="p-4 text-left">Chứng từ gốc</th>
+                <th className="p-4 text-right font-mono">Tổng tiền</th>
+                <th className="p-4 text-center">Trạng thái</th>
+                <th className="p-4 text-center">Thao tác</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-500">Đang tải dữ liệu...</td>
+                  <td colSpan={7} className="p-8 text-center text-slate-500">
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-brand-500" />
+                    Đang tải danh sách phiếu nhập...
+                  </td>
                 </tr>
               ) : receipts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-500">Không tìm thấy phiếu nhập nào</td>
+                  <td colSpan={7} className="p-8 text-center text-slate-500">
+                    Không tìm thấy phiếu nhập nào phù hợp
+                  </td>
                 </tr>
               ) : (
                 receipts.map((r) => (
-                  <tr key={r.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
-                    <td className="p-4">
-                      <button
-                        type="button"
-                        onClick={() => handleViewDetail(r)}
-                        className="font-semibold text-brand-700 hover:text-brand-800 hover:underline text-left cursor-pointer"
-                        title="Xem chi tiết"
-                      >
-                        {r.code}
-                      </button>
+                  <tr
+                    key={r.id}
+                    className="hover:bg-slate-50/80 transition-colors"
+                  >
+                    <td className="p-4 text-left">
+                      <div className="font-semibold text-brand-700">{r.code}</div>
                     </td>
-                    <td className="p-4 text-slate-600">
+                    <td className="p-4 text-left text-slate-600">
                       {new Date(r.createdAt).toLocaleDateString("vi-VN")}
                     </td>
-                    <td className="p-4">
+                    <td className="p-4 text-left">
                       <div className="font-medium text-slate-800">{r.warehouseName}</div>
-                      <div className="text-sm text-slate-500">{r.supplierName || '---'}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{r.supplierName || "---"}</div>
                     </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2 text-slate-700">
-                        <FileText className="w-4 h-4 text-slate-400" />
-                        {r.referenceDocument || '---'}
+                    <td className="p-4 text-left">
+                      <div className="flex items-center gap-1.5 text-slate-700">
+                        <FileText className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{r.referenceDocument || "---"}</span>
                       </div>
                     </td>
-                    <td className="p-4 font-medium text-slate-800">
+                    <td className="p-4 text-right font-mono font-medium text-slate-800 whitespace-nowrap">
                       {Number(r.totalCost).toLocaleString("vi-VN")} đ
                     </td>
-                    <td className="p-4">
-                      {r.status === 'CONFIRMED' ? (
+                    <td className="p-4 text-center">
+                      {r.status === "CONFIRMED" ? (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                           Đã xác nhận
                         </span>
@@ -236,41 +236,39 @@ export const InventoryReceiptsPage: React.FC = () => {
                         </span>
                       )}
                     </td>
-                    <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleViewDetail(r)}
-                          className="w-9 h-9 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                          title="Xem chi tiết"
-                        >
-                          <Eye className="w-4.5 h-4.5" />
-                        </button>
-                        {r.status === 'DRAFT' && (
+                    <td className="p-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        {r.status === "DRAFT" && (
                           <>
                             <button
-                              type="button"
                               onClick={() => {
                                 setReceiptToConfirm(r);
                                 setConfirmModalOpen(true);
                               }}
-                              className="w-9 h-9 flex items-center justify-center text-brand-600 hover:bg-brand-50 rounded-lg transition-colors cursor-pointer"
+                              className="w-8 h-8 flex items-center justify-center text-brand-600 hover:bg-brand-50 rounded-lg transition-colors cursor-pointer"
                               title="Xác nhận & Nhập kho"
                             >
                               <CheckCircle2 className="w-4.5 h-4.5" />
                             </button>
                             <button
-                              type="button"
                               onClick={() => {
                                 setReceiptToDelete(r);
                                 setDeleteModalOpen(true);
                               }}
-                              className="w-9 h-9 flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                              className="w-8 h-8 flex items-center justify-center text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                               title="Xóa phiếu nháp"
                             >
                               <Trash2 className="w-4.5 h-4.5" />
                             </button>
                           </>
+                        )}
+                        {r.status === "CONFIRMED" && (
+                          <span
+                            className="text-xs text-slate-400 italic px-2 py-1 bg-slate-50 rounded-lg border border-slate-200"
+                            title="Phiếu đã xác nhận được khóa không thể sửa/xóa"
+                          >
+                            Đã khóa
+                          </span>
                         )}
                       </div>
                     </td>
@@ -296,191 +294,129 @@ export const InventoryReceiptsPage: React.FC = () => {
         />
       </div>
 
+      {/* Modal Xóa phiếu nháp - Render có điều kiện, loại bỏ triệt để lỗi kẹt backdrop */}
       {deleteModalOpen && (
-        <ConfirmDeleteModal
-          isOpen={deleteModalOpen}
-          onCancel={() => {
-            setDeleteModalOpen(false);
-            setReceiptToDelete(null);
-          }}
-          onConfirm={handleDeleteReceipt}
-          title="Xóa phiếu nhập"
-          message={`Bạn có chắc chắn muốn xóa phiếu nhập "${receiptToDelete?.code}"? Không thể khôi phục sau khi xóa.`}
-        />
-      )}
-
-      {confirmModalOpen && (
-        <ModalLayout
-          isOpen={confirmModalOpen}
-          onClose={() => {
-            setConfirmModalOpen(false);
-            setReceiptToConfirm(null);
-          }}
-          title="Xác nhận phiếu nhập kho"
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
         >
-          <div className="p-6 text-center space-y-4">
-            <div className="w-16 h-16 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-8 h-8" />
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-150"
+            onClick={() => !actionLoading && setDeleteModalOpen(false)}
+          />
+
+          {/* Dialog Box */}
+          <div className="relative w-full max-w-md rounded-xl bg-white border border-slate-200/80 shadow-xl overflow-hidden z-10 p-6 space-y-4 transition-all duration-150">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-rose-100 text-rose-600">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0 pr-4">
+                <h3 className="text-base font-bold text-slate-900 leading-snug">
+                  Xóa phiếu nhập kho
+                </h3>
+                <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                  Bạn có chắc chắn muốn xóa phiếu nhập <strong>{receiptToDelete?.code}</strong>? Không thể khôi phục sau khi xóa.
+                </p>
+              </div>
             </div>
-            <h3 className="text-lg font-bold text-slate-800">
-              Xác nhận phiếu nhập {receiptToConfirm?.code}?
-            </h3>
-            <p className="text-slate-600 text-sm">
-              Hàng hóa sẽ được <strong>cộng trực tiếp vào tồn kho</strong>. Bạn sẽ <strong>không thể sửa hoặc xóa</strong> phiếu này sau khi đã xác nhận.
-            </p>
-            <div className="flex justify-center gap-3 pt-4">
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
               <button
-                onClick={() => {
-                  setConfirmModalOpen(false);
-                  setReceiptToConfirm(null);
-                }}
-                className="btn-secondary"
+                type="button"
+                disabled={actionLoading}
+                onClick={() => setDeleteModalOpen(false)}
+                className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-medium transition-colors cursor-pointer disabled:opacity-50"
               >
                 Hủy bỏ
               </button>
               <button
-                onClick={handleConfirmReceipt}
-                className="btn-primary"
+                type="button"
+                disabled={actionLoading}
+                onClick={handleDeleteReceipt}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-medium transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
               >
-                Đồng ý xác nhận
+                {actionLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Đang xóa...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Xác nhận xóa
+                  </>
+                )}
               </button>
             </div>
           </div>
-        </ModalLayout>
+        </div>
       )}
 
-      {/* Modal Xem chi tiết phiếu nhập */}
-      {detailModalOpen && (
-        <ModalLayout
-          isOpen={detailModalOpen}
-          onClose={() => {
-            setDetailModalOpen(false);
-            setSelectedReceipt(null);
-          }}
-        title={`Chi tiết phiếu nhập: ${selectedReceipt?.code || ''}`}
-        subtitle={selectedReceipt?.createdAt ? `Ngày lập: ${new Date(selectedReceipt.createdAt).toLocaleDateString('vi-VN')}` : undefined}
-        maxWidth="max-w-4xl"
-        badge={
-          selectedReceipt?.status === 'CONFIRMED' ? (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-              Đã xác nhận
-            </span>
-          ) : (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-              Bản nháp
-            </span>
-          )
-        }
-        footer={
-          <button
-            type="button"
-            onClick={() => setDetailModalOpen(false)}
-            className="btn-secondary"
-          >
-            Đóng
-          </button>
-        }
-      >
-        {detailLoading ? (
-          <div className="py-12 text-center text-slate-500">Đang tải chi tiết...</div>
-        ) : selectedReceipt ? (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm">
-              <div>
-                <span className="text-slate-500 block text-xs">Kho nhập hàng:</span>
-                <span className="font-medium text-slate-800">{selectedReceipt.warehouseName || 'Kho Tổng Miền Nam - LOHA WH01'}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block text-xs">Nhà cung cấp:</span>
-                <span className="font-medium text-slate-800">{selectedReceipt.supplierName || '---'}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block text-xs">Số chứng từ gốc:</span>
-                <span className="font-medium text-slate-800">{selectedReceipt.referenceDocument || '---'}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block text-xs">Ngày nhập:</span>
-                <span className="font-medium text-slate-800">
-                  {selectedReceipt.receivedAt ? new Date(selectedReceipt.receivedAt).toLocaleDateString('vi-VN') : '---'}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-500 block text-xs">Người lập:</span>
-                <span className="font-medium text-slate-800">{selectedReceipt.createdByName || '---'}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block text-xs">Tổng tiền:</span>
-                <span className="font-bold text-brand-600 text-base">{Number(selectedReceipt.totalCost).toLocaleString('vi-VN')} đ</span>
-              </div>
-              {selectedReceipt.notes && (
-                <div className="sm:col-span-2 md:col-span-3">
-                  <span className="text-slate-500 block text-xs">Ghi chú:</span>
-                  <span className="text-slate-700">{selectedReceipt.notes}</span>
-                </div>
-              )}
-            </div>
+      {/* Modal Xác nhận nhập kho - Render có điều kiện, loại bỏ triệt để lỗi kẹt backdrop */}
+      {confirmModalOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-150"
+            onClick={() => !actionLoading && setConfirmModalOpen(false)}
+          />
 
-            <div>
-              <h4 className="font-semibold text-slate-800 mb-2">Danh sách mặt hàng</h4>
-              <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-                    <tr>
-                      <th className="p-3 text-center w-10">STT</th>
-                      <th className="p-3">Sản phẩm</th>
-                      <th className="p-3 text-center">ĐVT</th>
-                      <th className="p-3 text-right">Số lượng</th>
-                      <th className="p-3 text-right">Đơn giá</th>
-                      <th className="p-3 text-right">Thành tiền</th>
-                      <th className="p-3">Số lô / HSD</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {(!selectedReceipt.items || selectedReceipt.items.length === 0) ? (
-                      <tr>
-                        <td colSpan={7} className="p-4 text-center text-slate-400">Không có thông tin chi tiết mặt hàng</td>
-                      </tr>
-                    ) : (
-                      selectedReceipt.items.map((item, idx) => (
-                        <tr key={item.id || idx} className="hover:bg-slate-50/50">
-                          <td className="p-3 text-center text-slate-500">{idx + 1}</td>
-                          <td className="p-3">
-                            <div className="font-medium text-slate-800">{item.productName || item.productId}</div>
-                            {item.productCode && <div className="text-slate-400 text-[11px] font-mono">{item.productCode}</div>}
-                          </td>
-                          <td className="p-3 text-center">{item.unitName || '---'}</td>
-                          <td className="p-3 text-right font-mono font-medium">
-                            {item.packageQuantity}
-                            {item.conversionFactor > 1 && (
-                              <div className="text-[11px] text-slate-400 font-normal">
-                                (= {item.baseQuantity} đvt cơ sở)
-                              </div>
-                            )}
-                          </td>
-                          <td className="p-3 text-right font-mono">{Number(item.unitCost).toLocaleString('vi-VN')} đ</td>
-                          <td className="p-3 text-right font-mono font-bold text-slate-800">{Number(item.totalCost).toLocaleString('vi-VN')} đ</td>
-                          <td className="p-3">
-                            {item.batchNumber ? (
-                              <div>
-                                <span className="font-medium text-slate-700 font-mono">{item.batchNumber}</span>
-                                {item.expiryDate && (
-                                  <div className="text-slate-400 text-[11px]">HSD: {new Date(item.expiryDate).toLocaleDateString('vi-VN')}</div>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-slate-400">---</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+          {/* Dialog Box */}
+          <div className="relative w-full max-w-md rounded-xl bg-white border border-slate-200/80 shadow-xl overflow-hidden z-10 p-6 space-y-4 transition-all duration-150">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-blue-100 text-blue-600">
+                <CheckCircle2 className="w-5 h-5" />
               </div>
+              <div className="flex-1 min-w-0 pr-4">
+                <h3 className="text-base font-bold text-slate-900 leading-snug">
+                  Xác nhận phiếu nhập {receiptToConfirm?.code}?
+                </h3>
+                <div className="mt-2 text-sm text-slate-600 leading-relaxed space-y-2">
+                  <p className="font-medium text-slate-800">
+                    Phiếu sau khi xác nhận sẽ chính thức <strong>cộng tồn kho thực tế</strong> và <strong>không thể chỉnh sửa hoặc xóa</strong>.
+                  </p>
+                  <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                    Bạn có chắc chắn muốn xác nhận phiếu nhập này không?
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={() => setConfirmModalOpen(false)}
+                className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-medium transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={handleConfirmReceipt}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+              >
+                {actionLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    Đồng ý xác nhận
+                  </>
+                )}
+              </button>
             </div>
           </div>
-        ) : null}
-      </ModalLayout>
+        </div>
       )}
     </div>
   );
