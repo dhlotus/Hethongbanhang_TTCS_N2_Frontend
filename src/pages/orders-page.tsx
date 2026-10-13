@@ -451,26 +451,37 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     const listPrice = Math.round(item.price * conversionRate);
     const minPrice = Math.round(item.minPrice * conversionRate);
     try {
-      const discountPercent = await orderPricingService.calculateDiscount(
+      const pricingRes = await orderPricingService.calculatePricing(
         {
           id: line.productId,
           sku: line.productSku,
+          name: line.productName,
           categoryId: line.categoryId || line.category,
         },
         Math.round(line.quantity * conversionRate),
+        listPrice,
+        selectedCustomer?.id,
       );
-      const automaticPrice = Math.round(listPrice * (1 - discountPercent / 100));
+      const automaticPrice = pricingRes.unitPrice;
       const unitPrice = line.isPriceManuallyEdited
-        ? Number(line.manualPrice || line.unitPrice)
+        ? Math.max(0, Number(line.manualPrice || line.unitPrice))
         : automaticPrice;
+      const discountPercent = line.isPriceManuallyEdited
+        ? (listPrice > 0
+            ? Number(Math.min(100, Math.max(0, (((listPrice - unitPrice) / listPrice) * 100))).toFixed(2))
+            : 0)
+        : pricingRes.discountPercent;
       return {
         ...line,
         baseListPrice: item.price,
         listPrice,
         minPrice,
-        discountPercent: listPrice > 0
-          ? Number((((listPrice - unitPrice) / listPrice) * 100).toFixed(2))
-          : 0,
+        discountPercent,
+        discountType: line.isPriceManuallyEdited ? 'PERCENTAGE' : pricingRes.discountType,
+        discountAmountPerUnit: line.isPriceManuallyEdited
+          ? Math.max(0, listPrice - unitPrice)
+          : pricingRes.discountAmountPerUnit,
+        discountDisplayText: line.isPriceManuallyEdited ? undefined : pricingRes.displayText,
         unitPrice,
         lineTotal: line.quantity * unitPrice,
         requiresApproval: unitPrice < minPrice,
@@ -486,7 +497,7 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         pricingError: error instanceof Error ? error.message : 'Không thể tính chiết khấu',
       };
     }
-  }, []);
+  }, [selectedCustomer?.id]);
 
   const refreshLinePricing = useCallback((line: OrderLine, priceList: PriceList) => {
     setLines((current) => current.map((item) =>
@@ -923,10 +934,14 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   }, [effectivePriceList, lines, refreshLinePricing]);
 
   const handleToggleManualPrice = useCallback((line: OrderLine, enabled: boolean) => {
-    const updated = {
+    const manualPrice = enabled ? String(line.unitPrice) : '';
+    const unitPrice = enabled ? (Number(manualPrice) || line.unitPrice) : line.unitPrice;
+    const discountAmount = Math.max(0, line.listPrice - unitPrice);
+    const updated: OrderLine = {
       ...line,
       isPriceManuallyEdited: enabled,
-      manualPrice: enabled ? String(line.unitPrice) : '',
+      manualPrice,
+      discountAmountPerUnit: discountAmount,
     };
     setLines((current) => current.map((item) => item.id === line.id ? updated : item));
     if (!enabled && effectivePriceList) refreshLinePricing(updated, effectivePriceList);
@@ -934,13 +949,17 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
   const handleManualPriceChange = (line: OrderLine, value: string) => {
     const unitPrice = Number(value) || 0;
-    const updated = {
+    const discountAmount = Math.max(0, line.listPrice - unitPrice);
+    const discountPercent = line.listPrice > 0
+      ? Number(Math.min(100, Math.max(0, (((line.listPrice - unitPrice) / line.listPrice) * 100))).toFixed(2))
+      : 0;
+
+    const updated: OrderLine = {
       ...line,
       manualPrice: value,
       unitPrice,
-      discountPercent: line.listPrice > 0
-        ? Number((((line.listPrice - unitPrice) / line.listPrice) * 100).toFixed(2))
-        : 0,
+      discountAmountPerUnit: discountAmount,
+      discountPercent,
       lineTotal: line.quantity * unitPrice,
       requiresApproval: unitPrice < (line.minPrice ?? 0),
     };
@@ -1712,14 +1731,24 @@ const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                           </select>
                         </div>
                         <div>
-                          <label className="text-xs text-slate-500 mb-1 block">Chiết khấu %</label>
+                          <label className="text-xs text-slate-500 mb-1 block">
+                            {line.discountType === 'FIXED_AMOUNT' ? 'Chiết khấu' : 'Chiết khấu %'}
+                          </label>
                           <input
                             type="text"
                             readOnly
                             disabled
-                            value={`${line.discountPercent}%`}
-                            title="Mức chiết khấu tự động từ chính sách hệ thống (Read-only, không thể chỉnh sửa)"
-                            className="w-full px-2 py-1.5 text-sm text-center font-bold text-emerald-600 bg-slate-100 border border-slate-200 rounded-lg cursor-not-allowed select-none focus:outline-none"
+                            value={
+                              line.discountType === 'FIXED_AMOUNT'
+                                ? `-${(Math.max(0, line.listPrice - line.unitPrice)).toLocaleString('vi-VN')} đ / ${line.unit || 'đơn vị'}`
+                                : `${line.discountPercent}%`
+                            }
+                            title={
+                              line.discountType === 'FIXED_AMOUNT'
+                                ? `Chiết khấu giảm tiền mặt: -${(Math.max(0, line.listPrice - line.unitPrice)).toLocaleString('vi-VN')} đ / ${line.unit || 'đơn vị'}`
+                                : 'Mức chiết khấu tự động từ chính sách hệ thống (Read-only, không thể chỉnh sửa)'
+                            }
+                            className="w-full px-2 py-1.5 text-xs text-center font-bold text-emerald-600 bg-slate-100 border border-slate-200 rounded-lg cursor-not-allowed select-none focus:outline-none"
                           />
                         </div>
                       </div>
