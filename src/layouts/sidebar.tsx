@@ -258,16 +258,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   return (
     <>
-      {/* 1. Desktop Sidebar */}
+      {/* 1. Desktop Sidebar: Floating Card chuẩn Clean SaaS */}
       <aside
-        className={`hidden h-full shrink-0 border-r border-slate-100 bg-white lg:flex lg:flex-col transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+        className={`hidden shrink-0 lg:flex lg:flex-col h-full rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-20 ${
           isCollapsed ? 'w-[76px]' : 'w-[280px]'
         }`}
       >
         <SidebarNavContent isCollapsed={isCollapsed} onToggleCollapse={onToggleCollapse} />
       </aside>
 
-      {/* 2. Mobile Drawer (Tối ưu tuyệt đối cho màn hình 360px) */}
+      {/* 2. Mobile Drawer (Tối ưu tuyệt đối cho mobile: dạng Floating Drawer nổi) */}
       {isOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           {/* Lớp nền mờ */}
@@ -277,14 +277,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             aria-hidden="true"
           />
 
-          {/* Khung Drawer trượt từ bên trái */}
-          <div className="fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[85vw] flex-col bg-white shadow-xl transition-transform duration-200">
+          {/* Khung Drawer trượt từ bên trái dạng Floating Card nổi */}
+          <div className="fixed inset-y-3 left-3 z-50 flex w-[280px] max-w-[calc(100vw-24px)] flex-col rounded-2xl border border-slate-200/80 bg-white shadow-2xl overflow-hidden transition-transform duration-200">
             {/* Nút đóng Drawer */}
             <div className="absolute top-3.5 right-3 z-10">
               <button
                 type="button"
                 onClick={onClose}
-                className="w-9 h-9 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none transition-colors cursor-pointer"
+                className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none transition-colors cursor-pointer"
                 aria-label="Đóng thanh điều hướng"
               >
                 <X className="h-5 w-5" />
