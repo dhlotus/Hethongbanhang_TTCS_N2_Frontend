@@ -48,12 +48,19 @@ export const CreateTransferModal: React.FC<CreateTransferModalProps> = ({
   const [items, setItems] = useState<TransferItemDraft[]>([]);
   const [productModalOpen, setProductModalOpen] = useState<boolean>(false);
 
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (!isOpen && prevIsOpen) {
+    setPrevIsOpen(false);
+    setItems([]);
+    setNotes('');
+    setProductModalOpen(false);
+  } else if (isOpen && !prevIsOpen) {
+    setPrevIsOpen(true);
+  }
+
   // Tải danh sách kho và sản phẩm ban đầu
   useEffect(() => {
     if (!isOpen) {
-      setItems([]);
-      setNotes('');
-      setProductModalOpen(false);
       return;
     }
 
@@ -210,16 +217,7 @@ export const CreateTransferModal: React.FC<CreateTransferModalProps> = ({
     }
   };
 
-  // Đảm bảo kho nhận luôn khác kho xuất và luôn trỏ đến kho hợp lệ
-  useEffect(() => {
-    if (!fromWarehouseId || warehouses.length === 0) return;
-    if (toWarehouseId === fromWarehouseId || !toWarehouseId) {
-      const nextWh = warehouses.find((w) => w.id !== fromWarehouseId);
-      if (nextWh) {
-        setToWarehouseId(nextWh.id);
-      }
-    }
-  }, [fromWarehouseId, toWarehouseId, warehouses]);
+
 
   // Kiểm tra lỗi kho xuất và kho nhận trùng nhau
   const isDuplicateWarehouse = Boolean(

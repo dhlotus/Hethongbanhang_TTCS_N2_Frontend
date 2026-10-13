@@ -51,6 +51,14 @@ export const SearchableProductSelect: React.FC<SearchableProductSelectProps> = (
     );
   }, [products, searchKeyword]);
 
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (!isOpen && prevIsOpen) {
+    setPrevIsOpen(false);
+    setSearchKeyword('');
+  } else if (isOpen && !prevIsOpen) {
+    setPrevIsOpen(true);
+  }
+
   // Tự động focus vào input tìm kiếm khi mở popover
   useEffect(() => {
     if (isOpen) {
@@ -58,8 +66,6 @@ export const SearchableProductSelect: React.FC<SearchableProductSelectProps> = (
         searchInputRef.current?.focus();
       }, 50);
       return () => clearTimeout(timer);
-    } else {
-      setSearchKeyword('');
     }
   }, [isOpen]);
 

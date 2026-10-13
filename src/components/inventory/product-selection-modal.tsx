@@ -101,15 +101,16 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
     });
   }, [products, selectedCategory, onlyInStock, searchTerm, stockMap]);
 
-  // Reset trạng thái khi mở modal
-  React.useEffect(() => {
+  const [prevIsOpen, setPrevIsOpen] = React.useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
     if (isOpen) {
       setCheckedProductIds(new Set());
       setSearchTerm('');
       setSelectedCategory('ALL');
       setOnlyInStock(false);
     }
-  }, [isOpen]);
+  }
 
   // Toggle chọn một sản phẩm
   const handleToggleProduct = (productId: string) => {
