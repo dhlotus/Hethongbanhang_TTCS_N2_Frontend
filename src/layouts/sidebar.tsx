@@ -72,7 +72,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               className="flex items-center gap-2.5 group focus:outline-none min-w-0"
               title="LOHA SALES"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden transition-opacity duration-150 group-hover:opacity-90">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg overflow-hidden transition-opacity duration-150 group-hover:opacity-90">
                 <img src={logoImg} alt="LOHA SALES" className="h-full w-full object-cover" />
               </div>
               <div
@@ -88,12 +88,12 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               </div>
             </Link>
 
-            {/* Nút mũi tên thu gọn (<) khi đang mở rộng: Đậm nét, bo góc rounded-xl sắc sảo, bấm cực êm */}
+            {/* Nút mũi tên thu gọn (<) khi đang mở rộng: Đậm nét, bo góc rounded-lg sắc sảo, bấm cực êm */}
             {onToggleCollapse && (
               <button
                 type="button"
                 onClick={onToggleCollapse}
-                className={`group/collapse hidden lg:flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-100/80 text-slate-700 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] hover:shadow-2xs transition-colors duration-150 cursor-pointer ${
+                className={`group/collapse hidden lg:flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-100/80 text-slate-700 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] hover:shadow-2xs transition-colors duration-150 cursor-pointer ${
                   isCollapsed
                     ? 'opacity-0 pointer-events-none'
                     : 'opacity-100'
@@ -106,7 +106,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
             )}
           </div>
 
-          {/* Hàng 2: Nút mũi tên mở rộng (>) nằm dưới Logo khi đang thu gọn: Kích thước 40px vuông bo tròn đồng bộ với logo, icon to đậm */}
+          {/* Hàng 2: Nút mũi tên mở rộng (>) nằm dưới Logo khi đang thu gọn */}
           {onToggleCollapse && (
             <div
               className={`flex items-center justify-center w-full transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
@@ -118,7 +118,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               <button
                 type="button"
                 onClick={onToggleCollapse}
-                className="group/expand h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 bg-slate-100/90 text-slate-700 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] hover:shadow-xs transition-colors duration-150 cursor-pointer shadow-2xs"
+                className="group/expand h-10 w-10 flex items-center justify-center rounded-lg border border-slate-200 bg-slate-100/90 text-slate-700 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] hover:shadow-xs transition-colors duration-150 cursor-pointer shadow-2xs"
                 title="Mở rộng menu"
                 aria-label="Mở rộng menu"
               >
@@ -168,7 +168,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                           to={item.path}
                           onClick={onItemClick}
                           title={isCollapsed ? item.name : undefined}
-                          className={`group relative flex items-center min-h-[2.5rem] rounded-xl text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1 ${
+                          className={`group relative flex items-center min-h-[2.5rem] rounded-lg text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1 ${
                             isCollapsed
                               ? 'justify-center w-full px-2 py-1'
                               : 'px-3.5 py-2 w-full'
@@ -296,7 +296,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none transition-colors cursor-pointer"
+                className="w-10 h-10 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none transition-colors cursor-pointer"
                 aria-label="Đóng thanh điều hướng"
               >
                 <X className="h-5 w-5" />

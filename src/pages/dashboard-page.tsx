@@ -331,7 +331,7 @@ export const DashboardPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsTimeMenuOpen((prev) => !prev)}
-              className={`inline-flex items-center gap-2.5 bg-white rounded-xl border shadow-2xs px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer active:scale-95 ${
+              className={`inline-flex items-center gap-2.5 bg-white rounded-lg border shadow-2xs px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all cursor-pointer active:scale-95 ${
                 isTimeMenuOpen
                   ? 'border-indigo-400 ring-2 ring-indigo-500/10 text-indigo-700'
                   : 'border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
@@ -359,7 +359,7 @@ export const DashboardPage: React.FC = () => {
               <div
                 role="dialog"
                 aria-label="Khoảng thời gian báo cáo"
-                className="absolute right-0 top-full mt-2 z-50 w-72 rounded-2xl border border-slate-200/90 bg-white p-2.5 shadow-2xl animate-in fade-in zoom-in-95 select-none"
+                className="absolute right-0 top-full mt-2 z-50 w-72 rounded-xl border border-slate-200/90 bg-white p-2.5 shadow-2xl animate-in fade-in zoom-in-95 select-none"
               >
                 {/* 2 lựa chọn nhanh: Hôm nay / Tháng này (Hiển thị gọn gàng 1 dòng) */}
                 <div className="space-y-1">
@@ -369,7 +369,7 @@ export const DashboardPage: React.FC = () => {
                       handleTimeRangeChange('today');
                       setIsTimeMenuOpen(false);
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all text-left cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all text-left cursor-pointer ${
                       timeRange === 'today'
                         ? 'bg-indigo-50/80 text-indigo-900 font-semibold'
                         : 'hover:bg-slate-50 text-slate-700'
@@ -377,7 +377,7 @@ export const DashboardPage: React.FC = () => {
                   >
                     <div className="flex items-center gap-2.5">
                       <div
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                        className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${
                           timeRange === 'today'
                             ? 'bg-indigo-600 text-white shadow-xs'
                             : 'bg-slate-100 text-slate-500'
@@ -398,7 +398,7 @@ export const DashboardPage: React.FC = () => {
                       handleTimeRangeChange('this_month');
                       setIsTimeMenuOpen(false);
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all text-left cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all text-left cursor-pointer ${
                       timeRange === 'this_month'
                         ? 'bg-indigo-50/80 text-indigo-900 font-semibold'
                         : 'hover:bg-slate-50 text-slate-700'
@@ -406,7 +406,7 @@ export const DashboardPage: React.FC = () => {
                   >
                     <div className="flex items-center gap-2.5">
                       <div
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                        className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${
                           timeRange === 'this_month'
                             ? 'bg-indigo-600 text-white shadow-xs'
                             : 'bg-slate-100 text-slate-500'
@@ -433,7 +433,7 @@ export const DashboardPage: React.FC = () => {
                       <span>Khoảng ngày tùy chọn</span>
                     </div>
                     {timeRange === 'custom' && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700">
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 text-indigo-700">
                         Đang áp dụng
                       </span>
                     )}
@@ -447,7 +447,7 @@ export const DashboardPage: React.FC = () => {
                         type="date"
                         value={tempStart}
                         onChange={(e) => setTempStart(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-2 py-1.5 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all shadow-2xs"
+                        className="w-full rounded-lg border border-slate-200 bg-slate-50/80 px-2 py-1.5 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all shadow-2xs"
                       />
                     </div>
                     <div>
@@ -457,7 +457,7 @@ export const DashboardPage: React.FC = () => {
                         value={tempEnd}
                         min={tempStart}
                         onChange={(e) => setTempEnd(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-2 py-1.5 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all shadow-2xs"
+                        className="w-full rounded-lg border border-slate-200 bg-slate-50/80 px-2 py-1.5 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all shadow-2xs"
                       />
                     </div>
                   </div>
@@ -466,7 +466,7 @@ export const DashboardPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleApplyCustomRange}
-                    className="w-full py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    className="w-full py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-lg shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <Check className="w-3.5 h-3.5" />
                     Áp dụng khoảng ngày
@@ -480,7 +480,7 @@ export const DashboardPage: React.FC = () => {
             type="button"
             onClick={() => fetchData()} 
             disabled={loading}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-white border border-slate-200/90 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
             title="Tải lại dữ liệu tức thì"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
@@ -490,14 +490,14 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* ── UNIFIED EXECUTIVE KPI METRICS DECK (Khối thống nhất liền mạch & Chuẩn phối màu UI/UX) ── */}
-      <div className={`rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
+      <div className={`rounded-xl border border-slate-200/80 bg-white shadow-xs overflow-hidden ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-y sm:divide-y-0 divide-slate-100">
           {(isManager || isSalesRep) && (
             <>
               {/* Metric 1: Doanh số hôm nay (Brand Tone: Indigo) */}
               <div className="p-5 sm:p-6 sm:border-r border-slate-100 hover:bg-slate-50/60 transition-colors">
                 <div className="flex items-center">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-50/80 text-indigo-600 border border-indigo-100/60">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-50/80 text-indigo-600 border border-indigo-100/60">
                     <TrendingUp className="h-6 w-6" />
                   </div>
                   <div className="ml-4 w-0 flex-1 min-w-0">
@@ -524,7 +524,7 @@ export const DashboardPage: React.FC = () => {
               {/* Metric 2: Doanh số tháng này (Brand Tone: Indigo) */}
               <div className="p-5 sm:p-6 lg:border-r border-slate-100 border-t sm:border-t-0 hover:bg-slate-50/60 transition-colors">
                 <div className="flex items-center">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-50/80 text-indigo-600 border border-indigo-100/60">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-50/80 text-indigo-600 border border-indigo-100/60">
                     <DollarSign className="h-6 w-6" />
                   </div>
                   <div className="ml-4 w-0 flex-1 min-w-0">
@@ -542,7 +542,7 @@ export const DashboardPage: React.FC = () => {
             /* Metric 3: Đơn hàng chờ duyệt (Action/Review Tone: Amber) */
             <div className="p-5 sm:p-6 sm:border-r lg:border-r-0 border-slate-100 border-t sm:border-t-0 hover:bg-slate-50/60 transition-colors">
               <div className="flex items-center">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-amber-50/80 text-amber-600 border border-amber-100/60">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-amber-50/80 text-amber-600 border border-amber-100/60">
                   <ShoppingCart className="h-6 w-6" />
                 </div>
                 <div className="ml-4 w-0 flex-1 min-w-0">
@@ -566,7 +566,7 @@ export const DashboardPage: React.FC = () => {
             /* Metric 4: Đơn chờ xuất kho (Logistics/Operations Tone: Blue) */
             <div className="p-5 sm:p-6 border-t border-slate-100 sm:border-r border-slate-100 hover:bg-slate-50/60 transition-colors">
               <div className="flex items-center">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-blue-50/80 text-blue-600 border border-blue-100/60">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50/80 text-blue-600 border border-blue-100/60">
                   <Package className="h-6 w-6" />
                 </div>
                 <div className="ml-4 w-0 flex-1 min-w-0">
@@ -586,7 +586,7 @@ export const DashboardPage: React.FC = () => {
             /* Metric 5: Tổng công nợ quá hạn (Warning/Risk Tone: Rose tinh tế) */
             <div className="p-5 sm:p-6 border-t border-slate-100 lg:border-r border-slate-100 hover:bg-slate-50/60 transition-colors">
               <div className="flex items-center">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-rose-50/80 text-rose-600 border border-rose-100/60">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-rose-50/80 text-rose-600 border border-rose-100/60">
                   <Users className="h-6 w-6" />
                 </div>
                 <div className="ml-4 w-0 flex-1 min-w-0">
@@ -625,7 +625,7 @@ export const DashboardPage: React.FC = () => {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-rose-50/80 text-rose-600 border border-rose-100/60 group-hover:bg-rose-100 transition-colors">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-rose-50/80 text-rose-600 border border-rose-100/60 group-hover:bg-rose-100 transition-colors">
                     <AlertTriangle className="h-6 w-6" />
                   </div>
                   <div className="ml-4 flex-1 min-w-0">
@@ -656,7 +656,7 @@ export const DashboardPage: React.FC = () => {
       <div className={`grid grid-cols-1 gap-5 sm:gap-6 lg:grid-cols-2 ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
         {/* Sales Trend Chart */}
         {(isManager || isSalesRep) && (
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-7 shadow-xs hover:shadow-md transition-all">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-7 shadow-xs hover:shadow-md transition-all">
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Biểu đồ doanh số</h2>
@@ -679,14 +679,14 @@ export const DashboardPage: React.FC = () => {
                     <Tooltip 
                       formatter={(value: any) => [formatCurrency(value), 'Doanh số']} 
                       labelFormatter={(label: any) => `Ngày: ${label}`}
-                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.08)' }}
+                      contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.08)' }}
                     />
                     <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '13px' }} />
                     <Area type="monotone" dataKey="value" name="Doanh số" stroke="#371cdb" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" activeDot={{ r: 6, strokeWidth: 0, fill: '#371cdb' }} />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
                   <TrendingUp className="h-10 w-10 text-slate-300 mb-3" />
                   <p className="text-sm font-semibold text-slate-700">Chưa có dữ liệu kinh doanh trong khoảng thời gian này</p>
                   <p className="text-xs text-slate-400 mt-1">Khi phát sinh đơn hàng, biểu đồ doanh số sẽ hiển thị tại đây</p>
@@ -698,7 +698,7 @@ export const DashboardPage: React.FC = () => {
 
         {/* Top High Risk Agencies Leaderboard */}
         {(isManager || isAccountant) && (
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-7 shadow-xs hover:shadow-md transition-all flex flex-col justify-between" id="high-risk">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-7 shadow-xs hover:shadow-md transition-all flex flex-col justify-between" id="high-risk">
             {/* Header */}
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -745,13 +745,13 @@ export const DashboardPage: React.FC = () => {
                       return (
                         <div
                           key={agency.customerId || agency.customerCode || index}
-                          className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 sm:p-3.5 hover:bg-white hover:border-slate-200 hover:shadow-xs transition-all duration-200"
+                          className="rounded-lg border border-slate-100 bg-slate-50/70 p-3 sm:p-3.5 hover:bg-white hover:border-slate-200 hover:shadow-xs transition-all duration-200"
                         >
                           <div className="flex items-start justify-between gap-3 mb-2">
                             {/* Thông tin đại lý & Thứ hạng */}
                             <div className="flex items-center gap-2.5 min-w-0 flex-1">
                               <span
-                                className={`flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-lg text-xs font-bold ${
+                                className={`flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md text-xs font-bold ${
                                   isTop1
                                     ? 'bg-rose-500 text-white shadow-2xs'
                                     : isTop2
@@ -772,7 +772,7 @@ export const DashboardPage: React.FC = () => {
                                   >
                                     {agency.customerName}
                                   </Link>
-                                  <span className="text-[0.6875rem] font-mono font-medium text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200/80 flex-shrink-0">
+                                  <span className="text-[0.6875rem] font-mono font-medium text-slate-500 bg-white px-1.5 py-0.5 rounded-md border border-slate-200/80 flex-shrink-0">
                                     {agency.customerCode}
                                   </span>
                                 </div>
@@ -829,7 +829,7 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 </>
               ) : (
-                <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
                   <CheckCircle2 className="h-10 w-10 text-emerald-400 mb-3" />
                   <p className="text-sm font-semibold text-slate-700">Không có đại lý nợ quá hạn</p>
                   <p className="text-xs text-slate-400 mt-1">Tất cả đại lý đều thanh toán đúng hạn hoặc chưa có dư nợ quá hạn</p>
@@ -842,7 +842,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* ── ADDITIONAL DETAILS TABLE FOR HIGH RISK (Khoảng trắng & Dòng thoáng) ── */}
       {(isManager || isAccountant) && highRiskAgencies.length > 0 && (
-        <div className={`rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
+        <div className={`rounded-xl border border-slate-200/80 bg-white shadow-xs overflow-hidden ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
           <div className="border-b border-slate-200 px-5 sm:px-7 py-4.5 sm:py-5 flex flex-wrap justify-between items-center gap-3 bg-slate-50/50">
             <div>
               <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Danh sách cần thu hồi công nợ gấp</h3>
