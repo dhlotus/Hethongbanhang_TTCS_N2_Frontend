@@ -489,25 +489,29 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── UNIFIED EXECUTIVE KPI METRICS DECK (Khối thống nhất liền mạch) ── */}
+      {/* ── UNIFIED EXECUTIVE KPI METRICS DECK (Khối thống nhất liền mạch & Chuẩn phối màu UI/UX) ── */}
       <div className={`rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden ${loading ? 'opacity-50 pointer-events-none' : 'transition-opacity duration-300'}`}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-y sm:divide-y-0 divide-slate-100">
           {(isManager || isSalesRep) && (
             <>
-              {/* Metric 1: Doanh số hôm nay */}
+              {/* Metric 1: Doanh số hôm nay (Brand Tone: Indigo) */}
               <div className="p-5 sm:p-6 sm:border-r border-slate-100 hover:bg-slate-50/60 transition-colors">
                 <div className="flex items-center">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-50/80 text-indigo-600 border border-indigo-100/60">
                     <TrendingUp className="h-6 w-6" />
                   </div>
                   <div className="ml-4 w-0 flex-1 min-w-0">
                     <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Doanh số hôm nay</dt>
-                    <dd className="mt-1 flex items-baseline flex-wrap gap-1.5">
+                    <dd className="mt-1 flex items-baseline flex-wrap gap-2">
                       <span className="truncate text-xl sm:text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
                         {formatCurrency(metrics.todaySales)}
                       </span>
                       {metrics.salesGrowthPercent !== undefined && (
-                        <span className={`inline-flex items-center text-xs font-semibold tabular-nums ${metrics.salesGrowthPercent > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-semibold tabular-nums ${
+                          metrics.salesGrowthPercent > 0
+                            ? 'text-emerald-700 bg-emerald-50 border border-emerald-200/50'
+                            : 'text-rose-700 bg-rose-50 border border-rose-200/50'
+                        }`}>
                           {metrics.salesGrowthPercent > 0 ? <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" /> : <ArrowDownRight className="h-3.5 w-3.5 mr-0.5" />}
                           {Math.abs(metrics.salesGrowthPercent)}%
                         </span>
@@ -517,10 +521,10 @@ export const DashboardPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Metric 2: Doanh số tháng này */}
+              {/* Metric 2: Doanh số tháng này (Brand Tone: Indigo) */}
               <div className="p-5 sm:p-6 lg:border-r border-slate-100 border-t sm:border-t-0 hover:bg-slate-50/60 transition-colors">
                 <div className="flex items-center">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-50/80 text-indigo-600 border border-indigo-100/60">
                     <DollarSign className="h-6 w-6" />
                   </div>
                   <div className="ml-4 w-0 flex-1 min-w-0">
@@ -535,16 +539,23 @@ export const DashboardPage: React.FC = () => {
           )}
 
           {(isManager || isAccountant || isSalesRep) && (
-            /* Metric 3: Đơn hàng chờ duyệt */
+            /* Metric 3: Đơn hàng chờ duyệt (Action/Review Tone: Amber) */
             <div className="p-5 sm:p-6 sm:border-r lg:border-r-0 border-slate-100 border-t sm:border-t-0 hover:bg-slate-50/60 transition-colors">
               <div className="flex items-center">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-amber-50/80 text-amber-600 border border-amber-100/60">
                   <ShoppingCart className="h-6 w-6" />
                 </div>
                 <div className="ml-4 w-0 flex-1 min-w-0">
                   <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Đơn hàng chờ duyệt</dt>
-                  <dd className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate tabular-nums">
-                    {metrics.pendingOrdersCount}
+                  <dd className="mt-1 flex items-baseline gap-2">
+                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate tabular-nums">
+                      {metrics.pendingOrdersCount}
+                    </span>
+                    {metrics.pendingOrdersCount > 0 && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/50">
+                        Cần duyệt
+                      </span>
+                    )}
                   </dd>
                 </div>
               </div>
@@ -552,16 +563,19 @@ export const DashboardPage: React.FC = () => {
           )}
 
           {(isManager || isWarehouse) && (
-            /* Metric 4: Đơn chờ xuất kho */
+            /* Metric 4: Đơn chờ xuất kho (Logistics/Operations Tone: Blue) */
             <div className="p-5 sm:p-6 border-t border-slate-100 sm:border-r border-slate-100 hover:bg-slate-50/60 transition-colors">
               <div className="flex items-center">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-blue-50/80 text-blue-600 border border-blue-100/60">
                   <Package className="h-6 w-6" />
                 </div>
                 <div className="ml-4 w-0 flex-1 min-w-0">
                   <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Đơn chờ xuất kho</dt>
-                  <dd className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate tabular-nums">
-                    {metrics.readyToShipOrdersCount}
+                  <dd className="mt-1 flex items-baseline gap-2">
+                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate tabular-nums">
+                      {metrics.readyToShipOrdersCount}
+                    </span>
+                    <span className="text-xs text-slate-400 font-normal">đơn hàng</span>
                   </dd>
                 </div>
               </div>
@@ -569,20 +583,29 @@ export const DashboardPage: React.FC = () => {
           )}
 
           {(isManager || isAccountant) && (
-            /* Metric 5: Tổng công nợ quá hạn */
+            /* Metric 5: Tổng công nợ quá hạn (Warning/Risk Tone: Rose tinh tế) */
             <div className="p-5 sm:p-6 border-t border-slate-100 lg:border-r border-slate-100 hover:bg-slate-50/60 transition-colors">
               <div className="flex items-center">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-rose-50/80 text-rose-600 border border-rose-100/60">
                   <Users className="h-6 w-6" />
                 </div>
                 <div className="ml-4 w-0 flex-1 min-w-0">
-                  <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Tổng công nợ quá hạn</dt>
-                  <dd className="mt-1 flex items-baseline flex-wrap gap-1.5">
-                    <span className="truncate text-xl sm:text-2xl font-bold tracking-tight text-rose-600 tabular-nums">
+                  <div className="flex items-center gap-1.5">
+                    <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Tổng công nợ quá hạn</dt>
+                    {metrics.totalOverdueDebt > 0 && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                    )}
+                  </div>
+                  <dd className="mt-1 flex items-baseline flex-wrap gap-2">
+                    <span className="truncate text-xl sm:text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
                       {formatCurrency(metrics.totalOverdueDebt)}
                     </span>
                     {metrics.debtGrowthPercent !== undefined && (
-                      <span className={`inline-flex items-center text-xs font-semibold tabular-nums ${metrics.debtGrowthPercent < 0 ? 'text-emerald-600' : 'text-rose-600'}`} title="So với kỳ trước">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-semibold tabular-nums ${
+                        metrics.debtGrowthPercent < 0
+                          ? 'text-emerald-700 bg-emerald-50 border border-emerald-200/50'
+                          : 'text-rose-700 bg-rose-50 border border-rose-200/50'
+                      }`} title="So với kỳ trước">
                         {metrics.debtGrowthPercent < 0 ? <ArrowDownRight className="h-3.5 w-3.5 mr-0.5" /> : <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" />}
                         {Math.abs(metrics.debtGrowthPercent)}%
                       </span>
@@ -594,27 +617,35 @@ export const DashboardPage: React.FC = () => {
           )}
 
           {(isManager || isWarehouse) && (
-            /* Metric 6: Cảnh báo tồn tối thiểu */
+            /* Metric 6: Cảnh báo tồn tối thiểu (Urgent/Stock Tone: Rose) */
             <Link
               to="/inventory/stock?filter=BELOW_MIN_STOCK"
-              className="group block p-5 sm:p-6 border-t border-slate-100 hover:bg-rose-50/40 transition-colors cursor-pointer"
+              className="group block p-5 sm:p-6 border-t border-slate-100 hover:bg-slate-50/60 transition-colors cursor-pointer"
               title="Bấm để xem danh sách sản phẩm chạm/dưới mức tồn tối thiểu"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 group-hover:bg-rose-100 transition-colors">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-rose-50/80 text-rose-600 border border-rose-100/60 group-hover:bg-rose-100 transition-colors">
                     <AlertTriangle className="h-6 w-6" />
                   </div>
                   <div className="ml-4 flex-1 min-w-0">
-                    <dt className="truncate text-xs sm:text-sm font-semibold text-rose-700 group-hover:text-rose-800 transition-colors">
+                    <dt className="truncate text-xs sm:text-sm font-medium text-slate-500 group-hover:text-slate-700 transition-colors">
                       Cảnh báo tồn tối thiểu
                     </dt>
-                    <dd className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-rose-600 truncate tabular-nums">
-                      {lowStockCount > 0 ? lowStockCount : metrics.lowStockAlertCount}
+                    <dd className="mt-1 flex items-baseline gap-2">
+                      <span className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate tabular-nums">
+                        {lowStockCount > 0 ? lowStockCount : metrics.lowStockAlertCount}
+                      </span>
+                      <span className="text-xs text-slate-400 font-normal">mặt hàng</span>
+                      {(lowStockCount > 0 || metrics.lowStockAlertCount > 0) && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/50">
+                          Cần nhập
+                        </span>
+                      )}
                     </dd>
                   </div>
                 </div>
-                <ArrowUpRight className="h-5 w-5 text-slate-300 group-hover:text-rose-600 transition-colors" />
+                <ArrowUpRight className="h-5 w-5 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
               </div>
             </Link>
           )}
@@ -638,8 +669,8 @@ export const DashboardPage: React.FC = () => {
                   <AreaChart data={salesTrend} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.25}/>
-                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#371cdb" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="#371cdb" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -651,7 +682,7 @@ export const DashboardPage: React.FC = () => {
                       contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.08)' }}
                     />
                     <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '13px' }} />
-                    <Area type="monotone" dataKey="value" name="Doanh số" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" activeDot={{ r: 6, strokeWidth: 0, fill: '#4f46e5' }} />
+                    <Area type="monotone" dataKey="value" name="Doanh số" stroke="#371cdb" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" activeDot={{ r: 6, strokeWidth: 0, fill: '#371cdb' }} />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
@@ -691,7 +722,7 @@ export const DashboardPage: React.FC = () => {
                     {highRiskAgencies.length} đại lý
                   </span>
                   <p className="text-[0.6875rem] text-slate-400 mt-0.5 font-medium">
-                    Tổng: <span className="font-bold text-rose-600 tabular-nums">{formatCurrency(totalHighRiskDebt)}</span>
+                    Tổng: <span className="font-semibold text-slate-900 tabular-nums">{formatCurrency(totalHighRiskDebt)}</span>
                   </p>
                 </div>
               )}
@@ -714,7 +745,7 @@ export const DashboardPage: React.FC = () => {
                       return (
                         <div
                           key={agency.customerId || agency.customerCode || index}
-                          className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 sm:p-3.5 hover:bg-white hover:border-rose-200 hover:shadow-xs transition-all duration-200"
+                          className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 sm:p-3.5 hover:bg-white hover:border-slate-200 hover:shadow-xs transition-all duration-200"
                         >
                           <div className="flex items-start justify-between gap-3 mb-2">
                             {/* Thông tin đại lý & Thứ hạng */}
@@ -722,11 +753,11 @@ export const DashboardPage: React.FC = () => {
                               <span
                                 className={`flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-lg text-xs font-bold ${
                                   isTop1
-                                    ? 'bg-rose-500 text-white shadow-2xs shadow-rose-200'
+                                    ? 'bg-rose-500 text-white shadow-2xs'
                                     : isTop2
                                     ? 'bg-amber-500 text-white'
                                     : isTop3
-                                    ? 'bg-amber-100 text-amber-800'
+                                    ? 'bg-slate-200 text-slate-700'
                                     : 'bg-slate-200 text-slate-600'
                                 }`}
                               >
@@ -736,12 +767,12 @@ export const DashboardPage: React.FC = () => {
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <Link
                                     to={`/sales/customers?search=${encodeURIComponent(agency.customerCode || agency.customerName)}`}
-                                    className="text-xs sm:text-sm font-semibold text-slate-900 hover:text-rose-600 transition-colors line-clamp-1"
+                                    className="text-xs sm:text-sm font-semibold text-slate-900 hover:text-indigo-600 transition-colors line-clamp-1"
                                     title={agency.customerName}
                                   >
                                     {agency.customerName}
                                   </Link>
-                                  <span className="text-[0.6875rem] font-mono font-medium text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200/80 flex-shrink-0">
+                                  <span className="text-[0.6875rem] font-mono font-medium text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200/80 flex-shrink-0">
                                     {agency.customerCode}
                                   </span>
                                 </div>
@@ -755,7 +786,7 @@ export const DashboardPage: React.FC = () => {
 
                             {/* Số tiền công nợ quá hạn */}
                             <div className="text-right flex-shrink-0">
-                              <div className="text-xs sm:text-sm font-bold text-rose-600 tabular-nums">
+                              <div className="text-xs sm:text-sm font-bold text-slate-900 tabular-nums">
                                 {formatCurrency(agency.overdueAmount)}
                               </div>
                               <div className="text-[0.6875rem] font-medium text-slate-400 mt-0.5">
@@ -765,14 +796,14 @@ export const DashboardPage: React.FC = () => {
                           </div>
 
                           {/* Thanh tiến trình tỉ lệ dư nợ */}
-                          <div className="w-full bg-slate-200/60 h-2 rounded-full overflow-hidden">
+                          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-500 ease-out ${
                                 isTop1
-                                  ? 'bg-gradient-to-r from-rose-500 to-red-600'
+                                  ? 'bg-rose-500'
                                   : isTop2
-                                  ? 'bg-gradient-to-r from-amber-500 to-rose-500'
-                                  : 'bg-gradient-to-r from-amber-400 to-amber-600'
+                                  ? 'bg-amber-500'
+                                  : 'bg-slate-400'
                               }`}
                               style={{ width: `${percent}%` }}
                             />
@@ -790,7 +821,7 @@ export const DashboardPage: React.FC = () => {
                     </span>
                     <Link
                       to="/sales/customers"
-                      className="inline-flex items-center gap-1 font-semibold text-rose-600 hover:text-rose-700 hover:underline text-[0.75rem]"
+                      className="inline-flex items-center gap-1 font-semibold text-indigo-600 hover:text-indigo-700 hover:underline text-[0.75rem]"
                     >
                       <span>Xem sổ nợ đại lý</span>
                       <ArrowUpRight className="h-3.5 w-3.5" />
