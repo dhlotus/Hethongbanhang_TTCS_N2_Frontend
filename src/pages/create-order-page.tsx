@@ -841,6 +841,91 @@ export const CreateOrderPage: React.FC = () => {
     }
   }, [effectivePriceList, lines, priceListError, refreshLinePricing, searchResults, selectedCustomer]);
 
+  // ── Thêm tất cả mặt hàng gợi ý (Task SN-43) ──
+  const handleAddAllSuggestedItems = useCallback((itemsWithQty: Array<{ item: SuggestedProductItem; quantity: number }>) => {
+    if (!selectedCustomer) {
+      showToast('error', 'Vui lòng chọn đại lý trước');
+      return;
+    }
+    if (!effectivePriceList) {
+      showToast('error', priceListError || 'Chưa có bảng giá hiệu lực cho đại lý này');
+      return;
+    }
+    if (!itemsWithQty || itemsWithQty.length === 0) return;
+
+    let updatedLines = [...lines];
+    let count = 0;
+
+    itemsWithQty.forEach(({ item, quantity }, idx) => {
+      const qtyToAdd = Math.max(1, quantity || 1);
+      const existingIndex = updatedLines.findIndex(
+        (l) => l.productId === item.productId || (item.sku && l.productSku.toUpperCase() === item.sku.toUpperCase())
+      );
+
+      if (existingIndex >= 0) {
+        const targetLine = updatedLines[existingIndex];
+        const newQty = targetLine.quantity + qtyToAdd;
+        const updatedLine: OrderLine = {
+          ...targetLine,
+          quantity: newQty,
+          baseQuantity: newQty * (targetLine.conversionRate || 1),
+          lineTotal: newQty * targetLine.unitPrice,
+        };
+        updatedLines[existingIndex] = updatedLine;
+        count++;
+      } else {
+        const foundProduct = searchResults.find(
+          (p) => p.id === item.productId || (item.sku && p.sku?.toUpperCase() === item.sku.toUpperCase())
+        );
+
+        const fallbackP = item.price || 25000;
+        const priceItem = getPriceListItem(
+          effectivePriceList,
+          { productId: item.productId, productSku: item.sku },
+          fallbackP,
+        ) || {
+          price: fallbackP,
+          minPrice: Math.round(fallbackP * 0.8),
+        };
+
+        const baseUnit = foundProduct?.baseUnit || item.unit || 'Cái';
+        const unitOptions = foundProduct
+          ? getAvailableProductUnits(foundProduct)
+          : [{ unitName: baseUnit, conversionRate: 1 }];
+
+        const newLine: OrderLine = {
+          id: 'line-' + Date.now() + '-' + idx + '-' + Math.random().toString(36).slice(2, 6),
+          productId: item.productId || (foundProduct ? foundProduct.id : 'p-' + item.sku),
+          productSku: item.sku,
+          productName: item.productName,
+          categoryId: foundProduct?.categoryId || foundProduct?.category || 'ALL',
+          category: foundProduct?.category,
+          unit: baseUnit,
+          baseUnit: baseUnit,
+          conversionRate: 1,
+          quantity: qtyToAdd,
+          baseQuantity: qtyToAdd,
+          unitPrice: Math.round(priceItem.price),
+          listPrice: Math.round(priceItem.price),
+          baseListPrice: priceItem.price,
+          minPrice: priceItem.minPrice,
+          unitOptions,
+          discountPercent: 0,
+          lineTotal: Math.round(priceItem.price) * qtyToAdd,
+          stockAvailable: foundProduct?.availableStock ?? foundProduct?.stockQuantity ?? 999,
+          availableStock: foundProduct?.availableStock ?? foundProduct?.stockQuantity ?? 999,
+          pricingLoading: true,
+        };
+        updatedLines.push(newLine);
+        count++;
+      }
+    });
+
+    setLines(updatedLines);
+    updatedLines.forEach((l) => refreshLinePricing(l, effectivePriceList));
+    showToast('success', `Đã thêm tất cả ${count} mặt hàng gợi ý vào giỏ hàng!`);
+  }, [effectivePriceList, lines, priceListError, refreshLinePricing, searchResults, selectedCustomer]);
+
   // ── 1-Click Reorder đơn hàng gần nhất (Task SN-43 / SN-174) ──
   const handleReorderPreviousOrder = useCallback((items: LatestOrderItem[]) => {
     if (!selectedCustomer) {
@@ -1494,6 +1579,7 @@ export const CreateOrderPage: React.FC = () => {
             existingProductIds={lines.map((l) => l.productId)}
             existingProductSkus={lines.map((l) => (l.productSku || '').toUpperCase())}
             onAddSuggestedItem={handleAddSuggestedItem}
+            onAddAllSuggestedItems={handleAddAllSuggestedItems}
             onReorderPreviousOrder={handleReorderPreviousOrder}
           />
         )}
