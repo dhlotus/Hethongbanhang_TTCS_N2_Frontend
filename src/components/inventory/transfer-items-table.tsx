@@ -1,6 +1,8 @@
 import React from 'react';
-import { Package, Trash2 } from 'lucide-react';
+import { Package, Trash2, Boxes } from 'lucide-react';
+import { SearchableProductSelect } from './searchable-product-select';
 import type { Product } from '../../types/products';
+import type { StockBalance } from '../../types/inventory.types';
 
 export interface TransferItemDraft {
   productId: string;
@@ -17,7 +19,8 @@ export interface TransferItemDraft {
 interface TransferItemsTableProps {
   items: TransferItemDraft[];
   products: Product[];
-  onAddItem: () => void;
+  sourceStocks?: StockBalance[];
+  onOpenProductSelector?: () => void;
   onRemoveItem: (index: number) => void;
   onItemChange: (index: number, updates: Partial<TransferItemDraft>) => void;
 }
@@ -28,7 +31,8 @@ interface TransferItemsTableProps {
 export const TransferItemsTable: React.FC<TransferItemsTableProps> = ({
   items,
   products,
-  onAddItem,
+  sourceStocks = [],
+  onOpenProductSelector,
   onRemoveItem,
   onItemChange,
 }) => {
@@ -40,27 +44,30 @@ export const TransferItemsTable: React.FC<TransferItemsTableProps> = ({
           Chưa có mặt hàng nào được chọn
         </div>
         <p className="text-[11px] text-slate-400 mb-3">
-          Nhấn vào nút "Thêm mặt hàng" phía trên để bắt đầu thêm sản phẩm cần chuyển
+          Nhấn vào nút bên dưới để tìm kiếm và chọn nhiều sản phẩm cần điều chuyển cùng lúc
         </p>
-        <button
-          type="button"
-          onClick={onAddItem}
-          className="px-3.5 py-1.5 text-xs font-bold text-white bg-[var(--color-primary)] rounded-lg shadow-sm cursor-pointer"
-        >
-          + Thêm mặt hàng đầu tiên
-        </button>
+        {onOpenProductSelector && (
+          <button
+            type="button"
+            onClick={onOpenProductSelector}
+            className="px-4 py-2 text-xs font-bold text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] rounded-xl shadow-sm cursor-pointer inline-flex items-center gap-1.5 transition-all"
+          >
+            <Boxes className="w-4 h-4" />
+            Chọn sản phẩm điều chuyển
+          </button>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+    <div className="border border-slate-200 rounded-xl overflow-visible shadow-2xs">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50/90 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
               <th className="py-2.5 px-3 w-12 text-center">STT</th>
-              <th className="py-2.5 px-3 min-w-[220px]">Sản phẩm & SKU</th>
+              <th className="py-2.5 px-3 min-w-[280px]">Sản phẩm & SKU</th>
               <th className="py-2.5 px-3 min-w-[120px]">Đơn vị chuyển</th>
               <th className="py-2.5 px-3 w-32 text-right">SL chuyển</th>
               <th className="py-2.5 px-3 w-32 text-right">Quy đổi cơ sở</th>
@@ -85,19 +92,31 @@ export const TransferItemsTable: React.FC<TransferItemsTableProps> = ({
                     {index + 1}
                   </td>
                   <td className="py-2.5 px-3">
-                    <select
-                      value={item.productId}
-                      onChange={(e) => onItemChange(index, { productId: e.target.value })}
-                      className="w-full text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-md px-2 py-1.5 focus:border-[var(--color-primary)] outline-none"
-                    >
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.sku} - {p.name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="text-[11px] text-slate-400 mt-0.5">
-                      Mã SKU: <span className="font-mono text-slate-600">{item.sku}</span>
+                    <SearchableProductSelect
+                      products={products}
+                      selectedProductId={item.productId}
+                      sourceStocks={sourceStocks}
+                      onSelectProduct={(newProd) => {
+                        const defaultUnit =
+                          newProd.units?.[0]?.unitName || newProd.baseUnit || 'Đơn vị';
+                        const convRate = newProd.units?.[0]?.conversionRate || 1;
+                        onItemChange(index, {
+                          productId: newProd.id,
+                          sku: newProd.sku,
+                          name: newProd.name,
+                          unit: defaultUnit,
+                          conversionRate: convRate,
+                          baseUnit: newProd.baseUnit || 'Đơn vị',
+                        });
+                      }}
+                    />
+                    <div className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
+                      <span>
+                        Mã SKU: <span className="font-mono text-slate-600 font-semibold">{item.sku}</span>
+                      </span>
+                      <span>
+                        ĐVT chuẩn: <span className="text-slate-600 font-semibold">{item.baseUnit}</span>
+                      </span>
                     </div>
                   </td>
                   <td className="py-2.5 px-3">

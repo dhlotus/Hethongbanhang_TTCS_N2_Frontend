@@ -121,7 +121,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative w-full ${maxWidth} bg-white ${
+        className={`relative w-full ${maxWidth} bg-white overflow-hidden ${
           fullScreenOnMobile
             ? 'h-[100dvh] md:h-auto max-h-[100dvh] md:max-h-[calc(100dvh-3.5rem)] rounded-none md:rounded-xl border-0 md:border border-slate-200/90 shadow-lg flex flex-col'
             : 'rounded-xl border border-slate-200/90 shadow-lg flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3.5rem)]'
