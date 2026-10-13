@@ -188,16 +188,26 @@ export const CreateOrderPage: React.FC = () => {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [isLoadingExistingOrder, setIsLoadingExistingOrder] = useState(false);
 
-  // ── Phân quyền Người dùng ──
-  const currentUser = getStoredUser();
-  const isManagerOrAdmin = currentUser?.roles?.some((r) => {
-    const u = r.toUpperCase();
-    return u.includes('ADMIN') || u.includes('MANAGER') || u.includes('ACCOUNTANT') || u.includes('WAREHOUSE');
-  }) ?? false;
-  const isSalesRep = currentUser?.roles?.some((r) => {
-    const u = r.toUpperCase();
-    return u.includes('SALES_REP') || u.includes('SALE');
-  }) ?? false;
+  // ── Phân quyền Người dùng (Memoized để không tạo object mới ở mỗi render) ──
+  const currentUser = useMemo(() => getStoredUser(), []);
+  const currentUserId = currentUser?.id ?? '';
+  const currentUsername = currentUser?.username ?? '';
+  const currentFullName = currentUser?.fullName ?? '';
+
+  const isManagerOrAdmin = useMemo(() => {
+    return currentUser?.roles?.some((r) => {
+      const u = r.toUpperCase();
+      return u.includes('ADMIN') || u.includes('MANAGER') || u.includes('ACCOUNTANT') || u.includes('WAREHOUSE');
+    }) ?? false;
+  }, [currentUser]);
+
+  const isSalesRep = useMemo(() => {
+    return currentUser?.roles?.some((r) => {
+      const u = r.toUpperCase();
+      return u.includes('SALES_REP') || u.includes('SALE');
+    }) ?? false;
+  }, [currentUser]);
+
   // Nhân viên kinh doanh thông thường chỉ được xem đại lý được phân công phụ trách
   const isSalesRepOnly = isSalesRep && !isManagerOrAdmin;
 
@@ -316,57 +326,60 @@ export const CreateOrderPage: React.FC = () => {
   }, []);
 
   // ── Tải danh sách đại lý (Chỉ hiển thị đại lý được phân công nếu là NVKD) ──
+  const hasAutoSelectedRef = useRef(false);
+
   useEffect(() => {
     let isMounted = true;
     const timer = setTimeout(async () => {
       if (isMounted) setIsLoadingCustomers(true);
       try {
         const list = await ordersService.getCustomers(customerSearch);
-        if (isMounted) {
-          let visibleList = list;
+        if (!isMounted) return;
 
-          // Nếu là Nhân viên kinh doanh: Chỉ lọc các đại lý được phân công cho mình
-          if (isSalesRepOnly && currentUser) {
-            visibleList = list.filter((c) => {
-              const repId = c.salesRepId || (c as unknown as { salesRep?: { id: string } }).salesRep?.id;
-              const repName = c.salesRepName || (c as unknown as { salesRep?: { name: string } }).salesRep?.name;
+        let visibleList = list;
 
-              // Khớp theo ID tài khoản
-              if (repId && (repId === currentUser.id || repId === (currentUser as unknown as { userId?: string }).userId)) {
-                return true;
-              }
-              // Khớp theo Tên hiển thị hoặc username
-              if (
-                repName &&
-                (repName.toLowerCase() === currentUser.fullName?.toLowerCase() ||
-                  repName.toLowerCase() === currentUser.username?.toLowerCase())
-              ) {
-                return true;
-              }
-              // Tài khoản demo NVKD
-              if (
-                currentUser.username?.toLowerCase().includes('sale') &&
-                (repId === 'usr-sale-01' || repId === 'usr-sales-002')
-              ) {
-                return true;
-              }
-              return false;
-            });
+        // Nếu là Nhân viên kinh doanh: Chỉ lọc các đại lý được phân công cho mình
+        if (isSalesRepOnly) {
+          visibleList = list.filter((c) => {
+            const repId = c.salesRepId || (c as unknown as { salesRep?: { id: string } }).salesRep?.id;
+            const repName = c.salesRepName || (c as unknown as { salesRep?: { name: string } }).salesRep?.name;
 
-            // Nếu demo chưa gán đại lý nào, fallback an toàn giữ các đại lý mẫu để không rỗng
-            if (visibleList.length === 0 && list.length > 0) {
-              visibleList = list.slice(0, 5);
+            // Khớp theo ID tài khoản
+            if (repId && (repId === currentUserId || repId === (currentUser as unknown as { userId?: string })?.userId)) {
+              return true;
             }
+            // Khớp theo Tên hiển thị hoặc username
+            if (
+              repName &&
+              (repName.toLowerCase() === currentFullName.toLowerCase() ||
+                repName.toLowerCase() === currentUsername.toLowerCase())
+            ) {
+              return true;
+            }
+            // Tài khoản demo NVKD
+            if (
+              currentUsername.toLowerCase().includes('sale') &&
+              (repId === 'usr-sale-01' || repId === 'usr-sales-002')
+            ) {
+              return true;
+            }
+            return false;
+          });
+
+          // Nếu demo chưa gán đại lý nào, fallback an toàn giữ các đại lý mẫu để không rỗng
+          if (visibleList.length === 0 && list.length > 0) {
+            visibleList = list.slice(0, 5);
           }
+        }
 
-          setCustomers(visibleList);
+        setCustomers(visibleList);
 
-          // Tự chọn đại lý nếu truyền customerId qua URL
-          if (initialCustomerId && !selectedCustomer && !editOrderId) {
-            const found = visibleList.find((c) => c.id === initialCustomerId) || list.find((c) => c.id === initialCustomerId);
-            if (found) {
-              void handleSelectCustomer(found);
-            }
+        // Tự chọn đại lý nếu truyền customerId qua URL (chỉ chạy 1 lần khi load)
+        if (initialCustomerId && !editOrderId && !hasAutoSelectedRef.current) {
+          const found = visibleList.find((c) => c.id === initialCustomerId) || list.find((c) => c.id === initialCustomerId);
+          if (found) {
+            hasAutoSelectedRef.current = true;
+            void handleSelectCustomer(found);
           }
         }
       } catch (err) {
@@ -380,7 +393,7 @@ export const CreateOrderPage: React.FC = () => {
       isMounted = false;
       clearTimeout(timer);
     };
-  }, [customerSearch, initialCustomerId, editOrderId, isSalesRepOnly, currentUser]);
+  }, [customerSearch, initialCustomerId, editOrderId, isSalesRepOnly, currentUserId, currentUsername, currentFullName]);
 
   // ── Xử lý chọn đại lý ──
   const handleSelectCustomer = useCallback(async (c: CustomerOption) => {
@@ -619,9 +632,11 @@ export const CreateOrderPage: React.FC = () => {
     };
   }, [productQuery, selectedCategoryId, selectedCustomer?.id]);
 
-  // ── Khôi phục nháp từ localStorage nếu tạo mới ──
+  // ── Khôi phục nháp từ localStorage nếu tạo mới (chỉ chạy 1 lần khi mount) ──
+  const hasRestoredDraftRef = useRef(false);
   useEffect(() => {
-    if (editingOrder || editOrderId) return;
+    if (editingOrder || editOrderId || hasRestoredDraftRef.current) return;
+    hasRestoredDraftRef.current = true;
     const draft = ordersService.getDraft(DRAFT_KEY);
     if (draft?.lines && draft.lines.length > 0) {
       setLines(draft.lines);
@@ -638,7 +653,7 @@ export const CreateOrderPage: React.FC = () => {
       if (draft.note) setNote(draft.note);
       showToast('info', 'Đã khôi phục nháp đơn hàng từ phiên làm việc trước');
     }
-  }, [editingOrder, editOrderId, initialCustomerId, handleSelectCustomer]);
+  }, [editingOrder, editOrderId, initialCustomerId]);
 
   // ── Tự động lưu nháp ──
   useEffect(() => {
