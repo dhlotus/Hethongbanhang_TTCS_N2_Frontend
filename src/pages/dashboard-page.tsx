@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import {
   TrendingUp,
@@ -18,7 +18,7 @@ import {
   Check,
   SlidersHorizontal,
 } from 'lucide-react';
-import { DropdownMenu } from '../components/dropdown-menu';
+import { showToast } from '../components/toast';
 import { LowStockAlertsWidget } from '../components/inventory/low-stock-alerts-widget';
 import { inventoryService } from '../services/inventory.service';
 import {
@@ -40,6 +40,22 @@ const formatCurrency = (val: number): string => {
     style: 'currency',
     currency: 'VND',
   }).format(val);
+};
+
+const formatIsoDate = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const formatShortDate = (isoStr: string): string => {
+  if (!isoStr) return '';
+  const parts = isoStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}`;
+  }
+  return isoStr;
 };
 
 import { getStoredUser } from '../utils/navigation';
@@ -166,18 +182,63 @@ export const DashboardPage: React.FC = () => {
     }, { replace: true });
   };
 
-  // Đồng bộ hóa khi người dùng bấm nút Lọc ngày tùy chọn
-  const handleCustomFilterSubmit = () => {
-    if (startDate && endDate) {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set('range', 'custom');
-        next.set('start', startDate);
-        next.set('end', endDate);
-        return next;
-      }, { replace: true });
-      fetchData('custom', startDate, endDate);
+  // Quản lý trạng thái mở/đóng Popover Bộ lọc Thời gian và Ngày tạm thời
+  const [isTimeMenuOpen, setIsTimeMenuOpen] = useState(false);
+  const [tempStart, setTempStart] = useState<string>(startDate || formatIsoDate(new Date()));
+  const [tempEnd, setTempEnd] = useState<string>(endDate || formatIsoDate(new Date()));
+  const timeMenuRef = useRef<HTMLDivElement>(null);
+
+  // Đồng bộ ngày tạm thời mỗi khi mở Popover
+  useEffect(() => {
+    if (isTimeMenuOpen) {
+      setTempStart(startDate || formatIsoDate(new Date()));
+      setTempEnd(endDate || formatIsoDate(new Date()));
     }
+  }, [isTimeMenuOpen, startDate, endDate]);
+
+  // Tự động đóng Popover khi click ra ngoài hoặc bấm phím Escape
+  useEffect(() => {
+    if (!isTimeMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (timeMenuRef.current && !timeMenuRef.current.contains(e.target as Node)) {
+        setIsTimeMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsTimeMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isTimeMenuOpen]);
+
+  // Xác nhận áp dụng khoảng ngày tùy chọn
+  const handleApplyCustomRange = () => {
+    if (!tempStart || !tempEnd) {
+      showToast('error', 'Vui lòng chọn đầy đủ ngày bắt đầu và kết thúc');
+      return;
+    }
+    if (tempStart > tempEnd) {
+      showToast('error', 'Ngày bắt đầu không được lớn hơn ngày kết thúc');
+      return;
+    }
+    setStartDate(tempStart);
+    setEndDate(tempEnd);
+    setTimeRange('custom');
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('range', 'custom');
+      next.set('start', tempStart);
+      next.set('end', tempEnd);
+      return next;
+    }, { replace: true });
+    fetchData('custom', tempStart, tempEnd);
+    setIsTimeMenuOpen(false);
   };
 
   // Lắng nghe URL Search Params để khôi phục State khi F5, dán link hoặc thao tác Back/Forward của trình duyệt
@@ -262,109 +323,156 @@ export const DashboardPage: React.FC = () => {
           )}
         </div>
 
-        {/* Bên phải: Cụm bộ lọc thời gian & Tải lại dữ liệu */}
-        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full md:w-auto justify-start sm:justify-end">
-          {timeRange === 'custom' && (
-            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto bg-slate-50/90 p-1.5 rounded-xl border border-slate-200/70">
-              <input 
-                type="date" 
-                className="rounded-lg border border-slate-200 bg-white py-1.5 px-2.5 text-xs sm:text-sm text-slate-700 shadow-2xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none flex-1 sm:flex-initial"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+        {/* Bên phải: Cụm bộ lọc thời gian & Tải lại dữ liệu (Luôn ổn định 1 hàng duy nhất) */}
+        <div className="flex items-center gap-2.5 sm:gap-3 w-full md:w-auto justify-start sm:justify-end">
+          <div ref={timeMenuRef} className="relative inline-block text-left">
+            <button
+              type="button"
+              onClick={() => setIsTimeMenuOpen((prev) => !prev)}
+              className={`inline-flex items-center gap-2.5 bg-white rounded-xl border shadow-2xs px-4 py-2.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer active:scale-95 ${
+                isTimeMenuOpen
+                  ? 'border-indigo-400 ring-2 ring-indigo-500/10 text-indigo-700'
+                  : 'border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+              }`}
+              title="Chọn khoảng thời gian báo cáo"
+            >
+              <Calendar className="h-4 w-4 text-indigo-600 shrink-0" />
+              <span className="whitespace-nowrap">
+                {timeRange === 'today'
+                  ? 'Hôm nay'
+                  : timeRange === 'this_month'
+                  ? 'Tháng này'
+                  : startDate && endDate
+                  ? `${formatShortDate(startDate)} - ${formatShortDate(endDate)}`
+                  : 'Tùy chỉnh ngày'}
+              </span>
+              <ChevronDown
+                className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
+                  isTimeMenuOpen ? 'rotate-180 text-indigo-600' : ''
+                }`}
               />
-              <span className="text-slate-400 text-xs">-</span>
-              <input 
-                type="date" 
-                className="rounded-lg border border-slate-200 bg-white py-1.5 px-2.5 text-xs sm:text-sm text-slate-700 shadow-2xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none flex-1 sm:flex-initial"
-                value={endDate}
-                min={startDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-              <button 
-                onClick={handleCustomFilterSubmit}
-                className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-white shadow-xs hover:bg-indigo-700 active:scale-95 transition-all"
-              >
-                Lọc
-              </button>
-            </div>
-          )}
+            </button>
 
-          <DropdownMenu
-            menuClassName="w-72 p-2 shadow-2xl border-slate-200/90 rounded-2xl"
-            trigger={
-              <button
-                type="button"
-                className="inline-flex items-center gap-2.5 bg-white rounded-xl border border-slate-200/90 shadow-2xs px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 transition-all cursor-pointer active:scale-95"
+            {isTimeMenuOpen && (
+              <div
+                role="dialog"
+                aria-label="Khoảng thời gian báo cáo"
+                className="absolute right-0 top-full mt-2 z-50 w-72 rounded-2xl border border-slate-200/90 bg-white p-2.5 shadow-2xl animate-in fade-in zoom-in-95 select-none"
               >
-                <Calendar className="h-4 w-4 text-indigo-600" />
-                <span>
-                  {timeRange === 'today' ? 'Hôm nay' : timeRange === 'this_month' ? 'Tháng này' : 'Tùy chỉnh ngày'}
-                </span>
-                <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-              </button>
-            }
-            items={[
-              {
-                key: 'today',
-                label: (
-                  <div className="flex items-center justify-between w-full py-1">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${timeRange === 'today' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                        <Clock className="w-4 h-4" />
+                {/* 2 lựa chọn nhanh: Hôm nay / Tháng này (Hiển thị gọn gàng 1 dòng) */}
+                <div className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleTimeRangeChange('today');
+                      setIsTimeMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all text-left cursor-pointer ${
+                      timeRange === 'today'
+                        ? 'bg-indigo-50/80 text-indigo-900 font-semibold'
+                        : 'hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                          timeRange === 'today'
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}
+                      >
+                        <Clock className="w-3.5 h-3.5" />
                       </div>
-                      <div className="flex flex-col text-left">
-                        <span className={`text-xs sm:text-sm font-semibold ${timeRange === 'today' ? 'text-indigo-600' : 'text-slate-800'}`}>Hôm nay</span>
-                        <span className="text-[11px] text-slate-400 font-normal">Dữ liệu phát sinh trong ngày</span>
-                      </div>
+                      <span className={`text-xs sm:text-sm ${timeRange === 'today' ? 'text-indigo-950 font-bold' : 'text-slate-800 font-semibold'}`}>
+                        Hôm nay
+                      </span>
                     </div>
-                    {timeRange === 'today' && <Check className="w-4 h-4 text-indigo-600 shrink-0 ml-2" />}
-                  </div>
-                ),
-                onClick: () => handleTimeRangeChange('today'),
-              },
-              {
-                key: 'this_month',
-                label: (
-                  <div className="flex items-center justify-between w-full py-1">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${timeRange === 'this_month' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                        <CalendarDays className="w-4 h-4" />
+                    {timeRange === 'today' && <Check className="w-4 h-4 text-indigo-600 shrink-0" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleTimeRangeChange('this_month');
+                      setIsTimeMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all text-left cursor-pointer ${
+                      timeRange === 'this_month'
+                        ? 'bg-indigo-50/80 text-indigo-900 font-semibold'
+                        : 'hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                          timeRange === 'this_month'
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}
+                      >
+                        <CalendarDays className="w-3.5 h-3.5" />
                       </div>
-                      <div className="flex flex-col text-left">
-                        <span className={`text-xs sm:text-sm font-semibold ${timeRange === 'this_month' ? 'text-indigo-600' : 'text-slate-800'}`}>Tháng này</span>
-                        <span className="text-[11px] text-slate-400 font-normal">Tháng {new Date().getMonth() + 1}/{new Date().getFullYear()}</span>
-                      </div>
+                      <span className={`text-xs sm:text-sm ${timeRange === 'this_month' ? 'text-indigo-950 font-bold' : 'text-slate-800 font-semibold'}`}>
+                        Tháng này
+                      </span>
                     </div>
-                    {timeRange === 'this_month' && <Check className="w-4 h-4 text-indigo-600 shrink-0 ml-2" />}
-                  </div>
-                ),
-                onClick: () => handleTimeRangeChange('this_month'),
-              },
-              {
-                key: 'div-custom',
-                divider: true,
-                label: '',
-              },
-              {
-                key: 'custom',
-                label: (
-                  <div className="flex items-center justify-between w-full py-1">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${timeRange === 'custom' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                        <SlidersHorizontal className="w-4 h-4" />
-                      </div>
-                      <div className="flex flex-col text-left">
-                        <span className={`text-xs sm:text-sm font-semibold ${timeRange === 'custom' ? 'text-indigo-600' : 'text-slate-800'}`}>Tùy chỉnh ngày</span>
-                        <span className="text-[11px] text-slate-400 font-normal">Chọn khoảng ngày tự do</span>
-                      </div>
+                    {timeRange === 'this_month' && <Check className="w-4 h-4 text-indigo-600 shrink-0" />}
+                  </button>
+                </div>
+
+                {/* Phân cách */}
+                <div className="my-2 border-t border-slate-100" />
+
+                {/* Khối Tùy chỉnh ngày */}
+                <div className="p-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Khoảng ngày tùy chọn</span>
                     </div>
-                    {timeRange === 'custom' && <Check className="w-4 h-4 text-indigo-600 shrink-0 ml-2" />}
+                    {timeRange === 'custom' && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700">
+                        Đang áp dụng
+                      </span>
+                    )}
                   </div>
-                ),
-                onClick: () => handleTimeRangeChange('custom'),
-              },
-            ]}
-          />
+
+                  {/* Form nhập Từ ngày - Đến ngày */}
+                  <div className="grid grid-cols-2 gap-2 mb-2.5">
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-500 mb-1">Từ ngày</label>
+                      <input
+                        type="date"
+                        value={tempStart}
+                        onChange={(e) => setTempStart(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-2 py-1.5 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all shadow-2xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-500 mb-1">Đến ngày</label>
+                      <input
+                        type="date"
+                        value={tempEnd}
+                        min={tempStart}
+                        onChange={(e) => setTempEnd(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-2 py-1.5 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all shadow-2xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Nút hành động áp dụng duy nhất */}
+                  <button
+                    type="button"
+                    onClick={handleApplyCustomRange}
+                    className="w-full py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    Áp dụng khoảng ngày
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           <button 
             type="button"
