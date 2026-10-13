@@ -6,6 +6,7 @@ import { MOCK_PRODUCTS } from './products.service';
 import { customerService, getStoredCustomers } from './customer.service';
 import { orderPricingService } from './order-pricing.service';
 import { matchesSearchTerm } from '../utils/vietnamese';
+import { INITIAL_DEMO_ORDERS } from './demo-orders.data';
 import type {
   CreateOrderPayload,
   CustomerDebtStatus,
@@ -42,6 +43,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   // 5 Đại lý Cấp 1 (DL-0001 -> DL-0005)
   {
     id: 'cust-dl-0001',
+    salesRepId: 'usr-sale-01',
+    salesRepName: 'Trần Văn Long',
     code: 'DL-0001',
     name: 'Công Ty TNHH Thương Mại & Phân Phối Minh Khang',
     group: 'AGENT_LEVEL_1',
@@ -64,6 +67,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   },
   {
     id: 'cust-dl-0002',
+    salesRepId: 'usr-sales-002',
+    salesRepName: 'Trần Văn Nam',
     code: 'DL-0002',
     name: 'Tổng Đại Lý Phân Phối Thực Phẩm Toàn Cầu',
     group: 'AGENT_LEVEL_1',
@@ -86,6 +91,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   },
   {
     id: 'cust-dl-0003',
+    salesRepId: 'usr-sale-01',
+    salesRepName: 'Trần Văn Long',
     code: 'DL-0003',
     name: 'Nhà Phân Phối Hàng Tiêu Dùng Hoàng Long',
     group: 'AGENT_LEVEL_1',
@@ -108,6 +115,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   },
   {
     id: 'cust-dl-0004',
+    salesRepId: 'usr-sale-02',
+    salesRepName: 'Nguyễn Thị Hằng',
     code: 'DL-0004',
     name: 'Công Ty Cổ Phần Thương Mại Miền Đông',
     group: 'AGENT_LEVEL_1',
@@ -130,6 +139,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   },
   {
     id: 'cust-dl-0005',
+    salesRepId: 'usr-salesmgr-003',
+    salesRepName: 'Lê Quản Lý',
     code: 'DL-0005',
     name: 'Nhà Phân Phối Dinh Dưỡng Phương Đông',
     group: 'AGENT_LEVEL_1',
@@ -154,6 +165,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   // 5 Đại lý Cấp 2 (DL-0006 -> DL-0010)
   {
     id: 'cust-dl-0006',
+    salesRepId: 'usr-sale-01',
+    salesRepName: 'Trần Văn Long',
     code: 'DL-0006',
     name: 'Đại Lý Bách Hóa Thực Phẩm Bảo Châu',
     group: 'AGENT_LEVEL_2',
@@ -176,6 +189,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   },
   {
     id: 'cust-dl-0007',
+    salesRepId: 'usr-sales-002',
+    salesRepName: 'Trần Văn Nam',
     code: 'DL-0007',
     name: 'Cửa Hàng Bách Hóa Tổng Hợp Khánh An',
     group: 'AGENT_LEVEL_2',
@@ -198,6 +213,8 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
   },
   {
     id: 'cust-dl-0008',
+    salesRepId: 'usr-sale-01',
+    salesRepName: 'Trần Văn Long',
     code: 'DL-0008',
     name: 'Đại Lý Tiêu Dùng Nhanh Thịnh Vượng',
     group: 'AGENT_LEVEL_2',
@@ -262,118 +279,6 @@ export const DEMO_CUSTOMERS: CustomerOption[] = [
       },
     ],
   },
-
-  // 5 Bán lẻ Niêm yết (DL-0011 -> DL-0015)
-  {
-    id: 'cust-dl-0011',
-    code: 'DL-0011',
-    name: 'Siêu Thị Mini Phương Nam Mart',
-    group: 'RETAIL',
-    phone: '0923456781',
-    address: '789 Hoàng Văn Thụ, P.4, Q.Tân Bình, TP.HCM',
-    creditLimit: 50000000,
-    currentDebt: 0,
-    maxDebtDays: 15,
-    overdueAmount: 0,
-    overdueDays: 0,
-    deliveryPoints: [
-      {
-        id: 'dp-dl-0011-1',
-        name: 'Điểm Bán Tân Bình (Mặt Tiền)',
-        address: '789 Hoàng Văn Thụ, Q.Tân Bình, TP.HCM',
-        phone: '0923456781',
-        contactPerson: 'Chị Đỗ Thu Phương',
-      },
-    ],
-  },
-  {
-    id: 'cust-dl-0012',
-    code: 'DL-0012',
-    name: 'Cửa Hàng Tiện Lợi Xanh Organic',
-    group: 'RETAIL',
-    phone: '0923456782',
-    address: '56 Nguyễn Thị Thập, P.Tân Hưng, Q.7, TP.HCM',
-    creditLimit: 40000000,
-    currentDebt: 3200000,
-    maxDebtDays: 15,
-    overdueAmount: 0,
-    overdueDays: 0,
-    deliveryPoints: [
-      {
-        id: 'dp-dl-0012-1',
-        name: 'Cửa Hàng Quận 7',
-        address: '56 Nguyễn Thị Thập, Q.7, TP.HCM',
-        phone: '0923456782',
-        contactPerson: 'Chị Mai Lan',
-      },
-    ],
-  },
-  {
-    id: 'cust-dl-0013',
-    code: 'DL-0013',
-    name: 'Siêu Thị Tiêu Dùng Gia Đình Mart',
-    group: 'RETAIL',
-    phone: '0923456783',
-    address: '102 Hậu Giang, P.6, Q.6, TP.HCM',
-    creditLimit: 45000000,
-    currentDebt: 0,
-    maxDebtDays: 15,
-    overdueAmount: 0,
-    overdueDays: 0,
-    deliveryPoints: [
-      {
-        id: 'dp-dl-0013-1',
-        name: 'Điểm Bán Quận 6',
-        address: '102 Hậu Giang, Q.6, TP.HCM',
-        phone: '0923456783',
-        contactPerson: 'Anh Trần Trọng Gia',
-      },
-    ],
-  },
-  {
-    id: 'cust-dl-0014',
-    code: 'DL-0014',
-    name: 'Điểm Bán Lẻ Thực Phẩm Sạch Bình An',
-    group: 'RETAIL',
-    phone: '0923456784',
-    address: '34 Ung Văn Khiêm, P.25, Q.Bình Thạnh, TP.HCM',
-    creditLimit: 30000000,
-    currentDebt: 1200000,
-    maxDebtDays: 15,
-    overdueAmount: 0,
-    overdueDays: 0,
-    deliveryPoints: [
-      {
-        id: 'dp-dl-0014-1',
-        name: 'Cửa Hàng Bình An Bình Thạnh',
-        address: '34 Ung Văn Khiêm, Q.Bình Thạnh, TP.HCM',
-        phone: '0923456784',
-        contactPerson: 'Anh Lý Bình An',
-      },
-    ],
-  },
-  {
-    id: 'cust-dl-0015',
-    code: 'DL-0015',
-    name: 'Cửa Hàng Bán Lẻ Dinh Dưỡng Vina Mart',
-    group: 'RETAIL',
-    phone: '0923456785',
-    address: '85 Tô Hiến Thành, P.13, Q.10, TP.HCM',
-    creditLimit: 35000000,
-    currentDebt: 0,
-    maxDebtDays: 15,
-    overdueAmount: 0,
-    overdueDays: 0,
-    deliveryPoints: [
-      {
-        id: 'dp-dl-0015-1',
-        name: 'Cửa Hàng Quận 10',
-        address: '85 Tô Hiến Thành, Q.10, TP.HCM',
-        phone: '0923456785',
-        contactPerson: 'Chị Hoàng Thùy Trang',
-      },
-    ],
-  },
 ];
 
 export const MOCK_CUSTOMERS = DEMO_CUSTOMERS;
@@ -382,217 +287,16 @@ export const MOCK_CUSTOMERS = DEMO_CUSTOMERS;
 // HELPERS — localStorage Demo
 // ──────────────────────────────────────────────────────────────────────────
 
-const INITIAL_DEMO_ORDERS: Order[] = [
-  {
-    id: 'ord-dl-001',
-    orderCode: 'DH2610-10023',
-    customerId: 'cust-dl-0001',
-    customerCode: 'DL-0001',
-    customerName: 'Công Ty TNHH Thương Mại & Phân Phối Minh Khang',
-    customerGroup: 'AGENT_LEVEL_1',
-    salesRepId: 'usr-sale-01',
-    salesRepName: 'Trần Văn Long',
-    deliveryPoint: {
-      id: 'dp-dl-0001-1',
-      name: 'Kho Tổng Phú Nhuận',
-      address: '123 Nguyễn Trọng Tuyển, P.8, Q.Phú Nhuận, TP.HCM',
-      receiverName: 'Anh Nguyễn Minh Khang',
-      phone: '0901234561',
-      roadNote: 'Đường 2 chiều, xe tải 2.5T vào thoải mái, giao giờ hành chính 8h00 - 17h00',
-    },
-    deliveryDate: '2026-10-12',
-    lines: [
-      {
-        id: 'line-dl-001-1',
-        productId: 'prod-001',
-        productSku: 'LH-MILK-900G',
-        productName: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
-        unit: 'Thùng (12 lon)',
-        baseUnit: 'Lon',
-        conversionRate: 12,
-        quantity: 5,
-        baseQuantity: 60,
-        listPrice: 5400000,
-        unitPrice: 5130000,
-        discountPercent: 5,
-        lineTotal: 25650000,
-        deliveredQuantity: undefined,
-        isShortDelivery: false,
-      },
-      {
-        id: 'line-dl-001-2',
-        productId: 'prod-002',
-        productSku: 'LH-NUT-180ML',
-        productName: 'Sữa Hạt Óc Chó Hạnh Nhân Organic 180ml',
-        unit: 'Thùng (48 hộp)',
-        baseUnit: 'Hộp',
-        conversionRate: 48,
-        quantity: 10,
-        baseQuantity: 480,
-        listPrice: 620000,
-        unitPrice: 589000,
-        discountPercent: 5,
-        lineTotal: 5890000,
-        deliveredQuantity: undefined,
-        isShortDelivery: false,
-      },
-    ],
-    subtotal: 33200000,
-    totalDiscount: 1660000,
-    grandTotal: 31540000,
-    note: 'Giao buổi sáng, gọi trước 30 phút để chuẩn bị thủ kho bốc dỡ',
-    status: 'SHIPPED',
-    paymentStatus: 'UNPAID',
-    isShortDelivery: false,
-    createdAt: '2026-10-06T08:30:00Z',
-    updatedAt: '2026-10-09T14:15:00Z',
-  },
-  {
-    id: 'ord-dl-002',
-    orderCode: 'DH2610-10015',
-    customerId: 'cust-dl-0001',
-    customerCode: 'DL-0001',
-    customerName: 'Công Ty TNHH Thương Mại & Phân Phối Minh Khang',
-    customerGroup: 'AGENT_LEVEL_1',
-    salesRepId: 'usr-sale-01',
-    salesRepName: 'Trần Văn Long',
-    deliveryPoint: {
-      id: 'dp-dl-0001-1',
-      name: 'Kho Tổng Phú Nhuận',
-      address: '123 Nguyễn Trọng Tuyển, P.8, Q.Phú Nhuận, TP.HCM',
-      receiverName: 'Anh Nguyễn Minh Khang',
-      phone: '0901234561',
-      roadNote: 'Đường 2 chiều, xe tải 2.5T vào thoải mái',
-    },
-    deliveryDate: '2026-10-08',
-    lines: [
-      {
-        id: 'line-dl-002-1',
-        productId: 'prod-003',
-        productSku: 'LH-NEST-70ML',
-        productName: 'Nước Yến Sào Chưng Đường Phèn Loha Nest 70ml',
-        unit: 'Hộp (6 hũ)',
-        baseUnit: 'Hũ',
-        conversionRate: 6,
-        quantity: 10,
-        baseQuantity: 60,
-        listPrice: 420000,
-        unitPrice: 399000,
-        discountPercent: 5,
-        lineTotal: 3990000,
-        deliveredQuantity: 8, // Giao thiếu 2 hộp (SN-170)
-        deliveredBaseQuantity: 48,
-        isShortDelivery: true,
-        shortDeliveryReason:
-          'Kho phân phối tạm thiếu 2 hộp lô sản xuất mới nhất, đã xác nhận với đại lý sẽ giao bù vào đợt kế tiếp',
-      },
-      {
-        id: 'line-dl-002-2',
-        productId: 'prod-001',
-        productSku: 'LH-MILK-900G',
-        productName: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
-        unit: 'Thùng (12 lon)',
-        baseUnit: 'Lon',
-        conversionRate: 12,
-        quantity: 5,
-        baseQuantity: 60,
-        listPrice: 5400000,
-        unitPrice: 5130000,
-        discountPercent: 5,
-        lineTotal: 25650000,
-        deliveredQuantity: 5, // Giao đủ 5 thùng (SN-170)
-        deliveredBaseQuantity: 60,
-        isShortDelivery: false,
-      },
-    ],
-    subtotal: 31200000,
-    totalDiscount: 1560000,
-    grandTotal: 29640000,
-    note: 'Biên bản bàn giao số BB-2610-08 ghi nhận thiếu 2 hộp Nước Yến, thủ kho đại lý đã ký xác nhận',
-    status: 'DELIVERED',
-    paymentStatus: 'PAID',
-    isShortDelivery: true,
-    createdAt: '2026-10-04T09:00:00Z',
-    updatedAt: '2026-10-08T16:30:00Z',
-  },
-  {
-    id: 'ord-dl-003',
-    orderCode: 'DH2609-09880',
-    customerId: 'cust-dl-0001',
-    customerCode: 'DL-0001',
-    customerName: 'Công Ty TNHH Thương Mại & Phân Phối Minh Khang',
-    customerGroup: 'AGENT_LEVEL_1',
-    salesRepId: 'usr-sale-01',
-    salesRepName: 'Trần Văn Long',
-    deliveryPoint: {
-      id: 'dp-dl-0001-1',
-      name: 'Kho Tổng Phú Nhuận',
-      address: '123 Nguyễn Trọng Tuyển, P.8, Q.Phú Nhuận, TP.HCM',
-      receiverName: 'Anh Nguyễn Minh Khang',
-      phone: '0901234561',
-    },
-    deliveryDate: '2026-09-25',
-    lines: [
-      {
-        id: 'line-dl-003-1',
-        productId: 'prod-001',
-        productSku: 'LH-MILK-900G',
-        productName: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
-        unit: 'Thùng (12 lon)',
-        baseUnit: 'Lon',
-        conversionRate: 12,
-        quantity: 4,
-        baseQuantity: 48,
-        listPrice: 5200000, // Giá cũ tháng trước (SN-174 test áp giá hiện hành)
-        unitPrice: 4940000,
-        discountPercent: 5,
-        lineTotal: 19760000,
-        deliveredQuantity: 4,
-        isShortDelivery: false,
-      },
-      {
-        id: 'line-dl-003-2',
-        productId: 'prod-011',
-        productSku: 'LH-OLD-COFFEE-CAN',
-        productName: 'Cà Phê Sữa Đóng Lon Loha Classic 240ml (Mẫu Cũ)',
-        unit: 'Thùng (24 lon)',
-        baseUnit: 'Lon',
-        conversionRate: 24,
-        quantity: 6,
-        baseQuantity: 144,
-        listPrice: 336000,
-        unitPrice: 336000,
-        discountPercent: 0,
-        lineTotal: 2016000,
-        deliveredQuantity: 6,
-        isShortDelivery: false,
-      },
-    ],
-    subtotal: 22816000,
-    totalDiscount: 1040000,
-    grandTotal: 21776000,
-    note: 'Đơn hàng định kỳ tháng 9/2026 - Đã giao đủ và thanh toán xong',
-    status: 'DELIVERED',
-    paymentStatus: 'PAID',
-    isShortDelivery: false,
-    createdAt: '2026-09-20T08:00:00Z',
-    updatedAt: '2026-09-25T11:00:00Z',
-  },
-];
+// INITIAL_DEMO_ORDERS được import từ ./demo-orders.data (20 đơn hàng đầy đủ)
 
 const getStoredDemoOrders = (): Order[] => {
   try {
     const raw = localStorage.getItem(DEMO_ORDERS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Order[];
-      // Đảm bảo các đơn mẫu cho Đại lý Minh Khang luôn tồn tại trong demo storage
-      const hasDealerOrders = parsed.some((o) => o.customerId === 'cust-dl-0001');
-      if (!hasDealerOrders) {
-        const merged = [...parsed, ...INITIAL_DEMO_ORDERS];
-        saveStoredDemoOrders(merged);
-        return merged;
+      if (parsed.length >= 20) {
+        return parsed;
       }
-      return parsed;
     }
     saveStoredDemoOrders(INITIAL_DEMO_ORDERS);
     return INITIAL_DEMO_ORDERS;
@@ -653,7 +357,18 @@ export const ordersService = {
       });
 
       const list = res?.data || [];
-      return list.map((c) => ({
+      // Lọc chỉ giữ các đại lý bán buôn (loại bỏ điểm bán lẻ nội bộ RETAIL và showroom/kiosk)
+      const validAgencies = list.filter((c) => {
+        const isRetailShowroom =
+          c.customerGroup === 'RETAIL' ||
+          (c.code && /^DL-001[1-5]$/i.test(c.code)) ||
+          c.name?.toLowerCase().includes('showroom') ||
+          c.name?.toLowerCase().includes('kiosk') ||
+          c.name?.toLowerCase().includes('trung tâm trải nghiệm');
+        return !isRetailShowroom;
+      });
+
+      return validAgencies.map((c) => ({
         id: c.id,
         code: c.code,
         name: c.name,
@@ -668,7 +383,9 @@ export const ordersService = {
         status: c.status,
         lockReason: c.lockReason,
         lockedAt: c.lockedAt,
-        lockedBy: c.lockedBy,
+        salesRepId: c.salesRepId || c.salesRep?.id,
+        salesRepName: c.salesRepName || c.salesRep?.name,
+        salesRep: c.salesRep,
         deliveryPoints: (c.deliveryPoints || []).map((dp) => ({
           id: dp.id,
           name: dp.name,
@@ -678,9 +395,19 @@ export const ordersService = {
         })),
       }));
     } catch {
-      if (!search || !search.trim()) return DEMO_CUSTOMERS;
+      const validDemos = DEMO_CUSTOMERS.filter((c) => {
+        const isRetailShowroom =
+          c.group === 'RETAIL' ||
+          (c.code && /^DL-001[1-5]$/i.test(c.code)) ||
+          c.name?.toLowerCase().includes('showroom') ||
+          c.name?.toLowerCase().includes('kiosk') ||
+          c.name?.toLowerCase().includes('trung tâm trải nghiệm');
+        return !isRetailShowroom;
+      });
+
+      if (!search || !search.trim()) return validDemos;
       const q = search.trim();
-      return DEMO_CUSTOMERS.filter(
+      return validDemos.filter(
         (c) =>
           matchesSearchTerm(c.name, q) ||
           matchesSearchTerm(c.code, q) ||
@@ -779,6 +506,9 @@ export const ordersService = {
     if (params.toDate) {
       cleanParams.toDate = params.toDate;
     }
+    if (params.dateType) {
+      cleanParams.dateType = params.dateType;
+    }
 
     try {
       const res = await apiClient.get<PaginatedOrdersResponse | Order[]>('/orders', {
@@ -814,7 +544,73 @@ export const ordersService = {
         totalPages: res.data?.totalPages || 1,
       };
     } catch {
-      return { data: [], total: 0, totalAmount: 0, page: 1, limit: 10, totalPages: 1 };
+      // Fallback lấy từ bộ nhớ cục bộ demo orders khi mất kết nối mạng
+      const toDateKey = (val: string | Date | undefined): string => {
+        if (!val) return '';
+        if (typeof val === 'string') {
+          const m = val.match(/^(\d{4}-\d{2}-\d{2})/);
+          if (m) return m[1];
+        }
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return '';
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+
+      let list = getStoredDemoOrders();
+      if (params.status && params.status !== 'ALL') {
+        const st = String(params.status).toUpperCase();
+        list = list.filter((o) => o.status?.toUpperCase() === st);
+      }
+      if (params.customerId && params.customerId !== 'ALL') {
+        list = list.filter((o) => o.customerId === params.customerId || o.customerCode === params.customerId);
+      }
+      if (params.salesRepId && params.salesRepId !== 'ALL') {
+        const rep = params.salesRepId.toLowerCase();
+        list = list.filter((o) => o.salesRepId === params.salesRepId || o.salesRepName?.toLowerCase().includes(rep));
+      }
+      if (params.region && params.region !== 'ALL') {
+        const reg = params.region.toLowerCase();
+        list = list.filter((o) => o.region?.toLowerCase().includes(reg) || o.deliveryPoint?.address?.toLowerCase().includes(reg));
+      }
+      const fromKey = params.fromDate?.trim();
+      const toKey = params.toDate?.trim();
+      const dateType = params.dateType || 'CREATED';
+      if (fromKey || toKey) {
+        list = list.filter((o) => {
+          const c = toDateKey(o.createdAt);
+          const d = toDateKey(o.deliveryDate);
+          const target = dateType === 'DELIVERY' ? d : c;
+          if (fromKey && toKey) return Boolean(target && target >= fromKey && target <= toKey);
+          if (fromKey) return Boolean(target && target >= fromKey);
+          if (toKey) return Boolean(target && target <= toKey);
+          return true;
+        });
+      }
+      if (params.search && params.search.trim()) {
+        const q = params.search.toLowerCase().trim();
+        list = list.filter((o) =>
+          o.orderCode?.toLowerCase().includes(q) ||
+          o.customerName?.toLowerCase().includes(q) ||
+          o.salesRepName?.toLowerCase().includes(q)
+        );
+      }
+      const total = list.length;
+      const totalAmount = list.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+      const page = Math.max(1, Number(params.page) || 1);
+      const limit = Math.max(1, Number(params.limit) || 10);
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      const start = (page - 1) * limit;
+      return {
+        data: list.slice(start, start + limit),
+        total,
+        totalAmount,
+        page,
+        limit,
+        totalPages,
+      };
     }
   },
 
@@ -1211,8 +1007,51 @@ export const ordersService = {
    * - Đơn mới luôn bắt đầu ở trạng thái Nháp (DRAFT)
    */
   async cloneOrder(orderId: string): Promise<Order> {
-    const res = await apiClient.post<Order | { data: Order }>(`/orders/${orderId}/clone`);
-    return (res.data as { data?: Order })?.data ?? (res.data as Order);
+    try {
+      const res = await apiClient.post<Order | { data: Order }>(`/orders/${orderId}/clone`);
+      const cloned = (res.data as { data?: Order })?.data ?? (res.data as Order);
+      try {
+        const all = getStoredDemoOrders();
+        saveStoredDemoOrders([cloned, ...all]);
+      } catch {}
+      return cloned;
+    } catch (err: unknown) {
+      try {
+        return this.cloneMockOrder(orderId);
+      } catch {
+        if (err && typeof err === 'object' && 'response' in err) {
+          const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+          const errMsg = axiosErr.response?.data?.message;
+          if (errMsg) {
+            throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+          }
+        }
+        throw err;
+      }
+    }
+  },
+
+  cloneMockOrder(orderId: string): Order {
+    const all = getStoredDemoOrders();
+    const source = all.find((o) => o.id === orderId || o.orderCode === orderId);
+    if (!source) {
+      throw new Error(`Không tìm thấy đơn hàng cần sao chép (ID: ${orderId})`);
+    }
+    const newCode = `DH${new Date().toISOString().slice(2, 4)}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(10000 + Math.random() * 90000))}`;
+    const newOrder: Order = {
+      ...source,
+      id: `ord-clone-${Date.now()}`,
+      orderCode: newCode,
+      status: 'DRAFT',
+      note: source.note ? `[Bản sao từ ${source.orderCode || source.id}] ${source.note}` : `Bản sao từ ${source.orderCode || source.id}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      approvedAt: undefined,
+      approverId: undefined,
+      approverName: undefined,
+    };
+    saveStoredDemoOrders([newOrder, ...all]);
+    return newOrder;
   },
 
   /**

@@ -368,7 +368,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     },
     {
       id: 'sales-orders',
-      name: 'Đơn hàng bán buôn',
+      name: 'Quản lý đơn hàng',
       path: '/sales/orders',
       icon: ShoppingCart,
       category: 'Soạn hàng & Giao nhận',
@@ -498,7 +498,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     },
     {
       id: 'sales-orders',
-      name: 'Đơn hàng bán buôn',
+      name: 'Quản lý đơn hàng',
       path: '/sales/orders',
       icon: ShoppingCart,
       category: 'Nghiệp vụ Bán hàng',
@@ -551,7 +551,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     },
     {
       id: 'sales-orders',
-      name: 'Đơn hàng bán buôn',
+      name: 'Quản lý đơn hàng',
       path: '/sales/orders',
       icon: ShoppingCart,
       category: 'Nghiệp vụ Kinh doanh & Kho vận',

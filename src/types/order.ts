@@ -119,6 +119,7 @@ export interface Order {
   creditLimitExceededAmount?: number; // Số tiền vượt hạn mức (VND)
   cancelReason?: string; // Lý do hủy đơn (SN-180, SN-45)
   approverId?: string; // ID người duyệt đơn (SN-180)
+  approverName?: string; // Tên người duyệt đơn
   approvedAt?: string; // Thời gian duyệt đơn (SN-180)
   reservedUntil?: string; // Hạn giữ chỗ tồn kho (24h sau duyệt) (SN-180)
   isShortDelivery?: boolean; // Cờ đơn hàng bị giao thiếu (SN-170)
@@ -185,6 +186,7 @@ export interface OrderQueryParams {
   region?: string;
   fromDate?: string;
   toDate?: string;
+  dateType?: 'CREATED' | 'DELIVERY';
 }
 
 /** Thông tin khách hàng đại lý (dùng trong form tạo đơn) */
@@ -205,6 +207,9 @@ export interface CustomerOption {
   overdueAmount?: number;
   overdueDays?: number;
   deliveryPoints?: DeliveryPoint[];
+  salesRepId?: string;
+  salesRepName?: string;
+  salesRep?: { id: string; name: string };
 }
 
 /** Trạng thái công nợ thời gian thực của đại lý (Task SN-41) */

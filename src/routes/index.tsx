@@ -14,6 +14,7 @@ import { UsersPage } from '../pages/users-page';
 import { AuditLogsPage } from '../pages/audit-logs-page';
 import { ProfilePage } from '../pages/profile-page';
 import { OrdersPage } from '../pages/orders-page';
+import { CreateOrderPage } from '../pages/create-order-page';
 import { StockListPage } from '../pages/inventory/stock-list-page';
 import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
 import { CustomersPage } from '../pages/customers-page';
@@ -150,14 +151,17 @@ export const AppRoutes: React.FC = () => {
               element={
                 <RoleGuard
                   allowedRoles={['ADMIN', 'SALES_REP', 'SALES_MANAGER', 'ACCOUNTANT']}
-                  moduleName="Quản lý Đơn hàng Bán buôn"
+                  moduleName="Quản lý Đơn hàng"
                 />
               }
             >
               {/* SN-38 & SN-39: Tạo & Quản lý Đơn hàng Bán buôn (đã implement) */}
               <Route path="/sales/orders" element={<OrdersPage />} />
+              <Route path="/sales/orders/create" element={<CreateOrderPage />} />
+              <Route path="/sales/orders/edit/:id" element={<CreateOrderPage />} />
               <Route path="/system/orders" element={<Navigate to="/sales/orders" replace />} />
               <Route path="/orders" element={<Navigate to="/sales/orders" replace />} />
+              <Route path="/orders/create" element={<Navigate to="/sales/orders/create" replace />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
