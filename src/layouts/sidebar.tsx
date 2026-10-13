@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { X, ChevronRight, ChevronLeft } from 'lucide-react';
 import logoImg from '../assets/logo.png';
@@ -24,6 +25,7 @@ interface SidebarNavContentProps {
  * - Hỗ trợ chế độ thu gọn (isCollapsed) linh hoạt, tiết kiệm không gian
  * - Tự động lọc các mục menu theo Role (RBAC Dynamic Navigation - SN-11)
  * - Nút bấm đóng/mở dạng mũi tên chỉ vào/ra kèm hiệu ứng hover mượt mà
+ * - Tooltip nổi (Floating Tooltip) khi thu gọn giúp nhận diện icon trực quan
  * - Giao diện Clean SaaS theo tiêu chuẩn UI_GUIDELINES.md
  */
 const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
@@ -33,6 +35,16 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
 }) => {
   const location = useLocation();
   const [currentUser, setCurrentUser] = useState(getStoredUser());
+  const [hoveredTooltip, setHoveredTooltip] = useState<{
+    name: string;
+    top: number;
+    left: number;
+  } | null>(null);
+
+  // Tự động ẩn tooltip khi chuyển trang hoặc bung mở menu
+  useEffect(() => {
+    setHoveredTooltip(null);
+  }, [isCollapsed, location.pathname]);
 
   useEffect(() => {
     const syncUser = () => {
@@ -118,8 +130,18 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
               <button
                 type="button"
                 onClick={onToggleCollapse}
+                onMouseEnter={(e) => {
+                  if (!isCollapsed) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setHoveredTooltip({
+                    name: 'Mở rộng menu',
+                    top: rect.top + rect.height / 2,
+                    left: rect.right + 10,
+                  });
+                }}
+                onMouseLeave={() => setHoveredTooltip(null)}
                 className="group/expand h-10 w-10 flex items-center justify-center rounded-lg border border-slate-200 bg-slate-100/90 text-slate-700 hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-subtle)] hover:shadow-xs transition-colors duration-150 cursor-pointer shadow-2xs"
-                title="Mở rộng menu"
+                title={isCollapsed ? undefined : 'Mở rộng menu'}
                 aria-label="Mở rộng menu"
               >
                 <ChevronRight className="h-5 w-5 transition-colors" strokeWidth={2.5} />
@@ -131,7 +153,10 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
         {/* ===================================================================== */}
         {/* PHẦN 2: DANH MỤC MENU ĐIỀU HƯỚNG THEO VAI TRÒ (DYNAMIC NAVIGATION)    */}
         {/* ===================================================================== */}
-        <div className="mt-3 flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar pr-0">
+        <div 
+          onScroll={() => setHoveredTooltip(null)}
+          className="mt-3 flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar pr-0"
+        >
           <div onClick={(e) => isCollapsed && e.stopPropagation()}>
             <nav className="space-y-3 sm:space-y-3.5">
               {Object.entries(
@@ -166,8 +191,20 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                         <NavLink
                           key={item.path}
                           to={item.path}
-                          onClick={onItemClick}
-                          title={isCollapsed ? item.name : undefined}
+                          onClick={() => {
+                            setHoveredTooltip(null);
+                            onItemClick?.();
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isCollapsed) return;
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setHoveredTooltip({
+                              name: item.name,
+                              top: rect.top + rect.height / 2,
+                              left: rect.right + 10,
+                            });
+                          }}
+                          onMouseLeave={() => setHoveredTooltip(null)}
                           className={`group relative flex items-center min-h-[2.5rem] rounded-lg text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1 ${
                             isCollapsed
                               ? 'justify-center w-full px-2 py-1'
@@ -253,6 +290,26 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
           )}
         </div>
       </div>
+
+      {/* ===================================================================== */}
+      {/* FLOATING TOOLTIP (Dành cho trạng thái Sidebar thu gọn)                */}
+      {/* ===================================================================== */}
+      {isCollapsed && hoveredTooltip && createPortal(
+        <div
+          style={{ top: `${hoveredTooltip.top}px`, left: `${hoveredTooltip.left}px` }}
+          className="fixed z-[9999] -translate-y-1/2 pointer-events-none flex items-center animate-in fade-in-0 zoom-in-95 duration-150 drop-shadow-md"
+        >
+          {/* Mũi tên nhỏ tam giác chỉ sang trái */}
+          <div className="w-0 h-0 border-y-[5px] border-y-transparent border-r-[6px] border-r-slate-900" />
+          {/* Hộp nội dung Tooltip màu tối tương phản cao */}
+          <div className="bg-slate-900/95 backdrop-blur-xs text-white px-3 py-1.5 rounded-lg shadow-xl border border-slate-700/50 whitespace-nowrap">
+            <span className="text-xs font-semibold text-slate-100">
+              {hoveredTooltip.name}
+            </span>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
