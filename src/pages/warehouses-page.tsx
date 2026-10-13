@@ -377,8 +377,10 @@ export function WarehousesPage(): React.ReactElement {
   });
 
   // Assign agency modal state
-  const [selectedAgencyToAssign, setSelectedAgencyToAssign] = useState('');
+  const [selectedAgenciesToAssign, setSelectedAgenciesToAssign] = useState<string[]>([]);
   const [agencySearchQuery, setAgencySearchQuery] = useState('');
+  const [assignedAgencySearchQuery, setAssignedAgencySearchQuery] = useState('');
+  const [locationSearchQuery, setLocationSearchQuery] = useState('');
 
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -460,14 +462,20 @@ export function WarehousesPage(): React.ReactElement {
 
   const selectWarehouse = (warehouseId: string): void => {
     sessionStorage.setItem(SELECTED_WAREHOUSE_STORAGE_KEY, warehouseId);
-    setSelectedId(warehouseId);
-    setLocations([]);
+    if (selectedId !== warehouseId) {
+      setSelectedId(warehouseId);
+      setLocations([]);
+    }
     const selected = warehouses.find((warehouse) => warehouse.id === warehouseId);
     if (selected) setEditForm(getWarehouseEditForm(selected));
   };
 
   const handleOpenWarehouseDetail = (warehouse: Warehouse): void => {
     selectWarehouse(warehouse.id);
+    warehouseService
+      .getLocations(warehouse.id)
+      .then(setLocations)
+      .catch(() => {});
     setIsDetailModalOpen(true);
   };
 
@@ -517,18 +525,59 @@ export function WarehousesPage(): React.ReactElement {
     [agencies, agencyDefaults, selectedId]
   );
 
+  // Filtered assigned agencies by search query (Ảnh 1)
+  const filteredAssignedAgencies = useMemo(() => {
+    const query = normalizeVietnamese(assignedAgencySearchQuery.trim());
+    if (!query) return assignedAgencies;
+    return assignedAgencies.filter((agency) => {
+      const name = normalizeVietnamese(agency.name || '');
+      const code = normalizeVietnamese(agency.code || '');
+      const address = normalizeVietnamese(agency.address || '');
+      const phone = normalizeVietnamese(agency.phone || '');
+      return (
+        name.includes(query) ||
+        code.includes(query) ||
+        address.includes(query) ||
+        phone.includes(query)
+      );
+    });
+  }, [assignedAgencies, assignedAgencySearchQuery]);
+
   // Agencies for the Assign Modal (filtered by search)
   const selectableAgencies = useMemo(() => {
-    const query = agencySearchQuery.trim().toLowerCase();
+    const query = normalizeVietnamese(agencySearchQuery.trim());
     return agencies.filter((agency) => {
       if (!query) return true;
       return (
-        agency.name.toLowerCase().includes(query) ||
-        agency.code.toLowerCase().includes(query) ||
-        (agency.phone && agency.phone.includes(query))
+        normalizeVietnamese(agency.name || '').includes(query) ||
+        normalizeVietnamese(agency.code || '').includes(query) ||
+        (agency.phone && agency.phone.includes(query)) ||
+        (agency.address && normalizeVietnamese(agency.address).includes(query))
       );
     });
   }, [agencies, agencySearchQuery]);
+
+  // Locations filtered by search query
+  const filteredLocations = useMemo(() => {
+    const query = normalizeVietnamese(locationSearchQuery.trim());
+    if (!query) return locations;
+    return locations.filter((loc) => {
+      const code = normalizeVietnamese(loc.code || '');
+      const zone = normalizeVietnamese(loc.zone || '');
+      const aisle = normalizeVietnamese(loc.aisle || '');
+      const rack = normalizeVietnamese(loc.rack || '');
+      const shelf = normalizeVietnamese(loc.shelf || '');
+      const bin = normalizeVietnamese(loc.bin || '');
+      return (
+        code.includes(query) ||
+        zone.includes(query) ||
+        aisle.includes(query) ||
+        rack.includes(query) ||
+        shelf.includes(query) ||
+        bin.includes(query)
+      );
+    });
+  }, [locations, locationSearchQuery]);
 
   // KPI summary statistics for dashboard top cards
   const activeCount = useMemo(
@@ -605,6 +654,12 @@ export function WarehousesPage(): React.ReactElement {
       });
       setIsEditModalOpen(false);
       await reload();
+      try {
+        const updatedLocations = await warehouseService.getLocations(targetId);
+        setLocations(updatedLocations);
+      } catch {
+        // ignore
+      }
       showToast('success', 'Đã cập nhật thông tin kho hàng');
     } catch (error: unknown) {
       showToast('error', getFriendlyErrorMessage(error, 'Không thể cập nhật kho hàng'));
@@ -634,17 +689,28 @@ export function WarehousesPage(): React.ReactElement {
     }
   };
 
-  // ASSIGN AGENCY
+  // ASSIGN AGENCY (Hỗ trợ chọn và gán nhiều đại lý cùng lúc)
   const handleAssignAgency = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
-    if (!selectedAgencyToAssign || !selectedId) return;
+    if (selectedAgenciesToAssign.length === 0 || !selectedId) return;
     setBusy(true);
     try {
-      await warehouseService.setAgencyDefaultWarehouse(selectedAgencyToAssign, selectedId);
-      setAgencyDefaults((current) => ({ ...current, [selectedAgencyToAssign]: selectedId }));
+      await Promise.all(
+        selectedAgenciesToAssign.map((agencyId) =>
+          warehouseService.setAgencyDefaultWarehouse(agencyId, selectedId)
+        )
+      );
+      setAgencyDefaults((current) => {
+        const next = { ...current };
+        selectedAgenciesToAssign.forEach((id) => {
+          next[id] = selectedId;
+        });
+        return next;
+      });
       setIsAssignAgencyModalOpen(false);
-      setSelectedAgencyToAssign('');
-      showToast('success', 'Đã gán kho phục vụ mặc định cho đại lý');
+      const count = selectedAgenciesToAssign.length;
+      setSelectedAgenciesToAssign([]);
+      showToast('success', `Đã gán ${count} đại lý vào kho ${selectedWarehouse?.name || ''}`);
     } catch (error: unknown) {
       showToast('error', getFriendlyErrorMessage(error, 'Không thể gán kho cho đại lý'));
     } finally {
@@ -1166,37 +1232,72 @@ export function WarehousesPage(): React.ReactElement {
                     Định danh vị trí kệ, khu để soạn hàng chuẩn xác theo đơn
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsLocationModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#eff2fe] hover:bg-[#e0e7fe] px-3.5 py-2 text-xs font-semibold text-[#371cdb] transition-colors cursor-pointer"
-                >
-                  <Plus size={14} /> Thêm vị trí mới
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {locations.length > 0 && (
+                    <div className="relative w-48 sm:w-56">
+                      <Search
+                        size={14}
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Tìm vị trí lưu trữ..."
+                        value={locationSearchQuery}
+                        onChange={(e) => setLocationSearchQuery(e.target.value)}
+                        className="w-full h-8 pl-8 pr-7 bg-white rounded-lg border border-slate-200 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-[#371cdb] focus:ring-2 focus:ring-[#371cdb]/10 transition-all"
+                      />
+                      {locationSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setLocationSearchQuery('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLocationSearchQuery('');
+                      setIsLocationModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#eff2fe] hover:bg-[#e0e7fe] px-3.5 py-2 text-xs font-semibold text-[#371cdb] transition-colors cursor-pointer"
+                  >
+                    <Plus size={14} /> Thêm vị trí mới
+                  </button>
+                </div>
               </div>
 
               {locations.length ? (
-                <div className="flex flex-wrap gap-2.5 pt-2">
-                  {locations.map((location) => (
-                    <span
-                      key={location.id}
-                      className="inline-flex items-center rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs font-medium text-slate-700 shadow-2xs"
-                    >
-                      <strong className="text-slate-900 font-mono mr-2">{location.code}</strong>
-                      <span className="text-slate-400">
-                        {[
-                          location.zone,
-                          location.aisle,
-                          location.rack,
-                          location.shelf,
-                          location.bin,
-                        ]
-                          .filter(Boolean)
-                          .join(' / ')}
+                filteredLocations.length ? (
+                  <div className="flex flex-wrap gap-2.5 pt-2">
+                    {filteredLocations.map((location) => (
+                      <span
+                        key={location.id}
+                        className="inline-flex items-center rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs font-medium text-slate-700 shadow-2xs"
+                      >
+                        <strong className="text-slate-900 font-mono mr-2">{location.code}</strong>
+                        <span className="text-slate-400">
+                          {[
+                            location.zone,
+                            location.aisle,
+                            location.rack,
+                            location.shelf,
+                            location.bin,
+                          ]
+                            .filter(Boolean)
+                            .join(' / ')}
+                        </span>
                       </span>
-                    </span>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5 text-center text-xs text-slate-500">
+                    Không tìm thấy vị trí phù hợp với từ khóa "{locationSearchQuery}"
+                  </div>
+                )
               ) : (
                 <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center bg-slate-50/50">
                   <p className="text-xs font-medium text-slate-600">Chưa khai báo vị trí lưu trữ nào cho kho này.</p>
@@ -1211,7 +1312,7 @@ export function WarehousesPage(): React.ReactElement {
               )}
             </div>
 
-            {/* KHỐI 3: KHO MẶC ĐỊNH CỦA ĐẠI LÝ (KÈM THÊM ĐẠI LÝ) */}
+            {/* KHỐI 3: KHO MẶC ĐỊNH CỦA ĐẠI LÝ (KÈM THÊM ĐẠI LÝ & TÌM KIẾM ĐẠI LÝ ĐÃ GÁN) */}
             <div className="rounded-2xl border border-slate-200/90 bg-white p-5 sm:p-6 shadow-2xs space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -1221,53 +1322,95 @@ export function WarehousesPage(): React.ReactElement {
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
                       {assignedAgencies.length}
                     </span>
+                    {assignedAgencySearchQuery && (
+                      <span className="text-[11px] font-normal normal-case text-slate-400">
+                        (Khớp {filteredAssignedAgencies.length})
+                      </span>
+                    )}
                   </h3>
                   <p className="mt-0.5 text-xs text-slate-500">
                     Các đại lý dưới đây sẽ mặc định lấy hàng và xuất kho từ {selectedWarehouse.name}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedAgencyToAssign('');
-                    setAgencySearchQuery('');
-                    setIsAssignAgencyModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#371cdb] hover:bg-[#2d14b8] px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer active:scale-95"
-                >
-                  <Plus size={14} /> Thêm đại lý
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {assignedAgencies.length > 0 && (
+                    <div className="relative w-48 sm:w-56">
+                      <Search
+                        size={14}
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Tìm đại lý đã gán..."
+                        value={assignedAgencySearchQuery}
+                        onChange={(e) => setAssignedAgencySearchQuery(e.target.value)}
+                        className="w-full h-8 pl-8 pr-7 bg-white rounded-lg border border-slate-200 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-[#371cdb] focus:ring-2 focus:ring-[#371cdb]/10 transition-all"
+                      />
+                      {assignedAgencySearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setAssignedAgencySearchQuery('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                          title="Xóa tìm kiếm"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedAgenciesToAssign([]);
+                      setAgencySearchQuery('');
+                      setIsAssignAgencyModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#371cdb] hover:bg-[#2d14b8] px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer active:scale-95"
+                  >
+                    <Plus size={14} /> Thêm đại lý
+                  </button>
+                </div>
               </div>
 
               {assignedAgencies.length ? (
-                <div className="divide-y divide-slate-100 border rounded-xl border-slate-200 overflow-hidden">
-                  {assignedAgencies.map((agency) => (
-                    <div
-                      key={agency.id}
-                      className="flex items-center justify-between p-3.5 text-xs hover:bg-slate-50/80 transition-colors"
-                    >
-                      <div className="min-w-0 pr-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900 text-sm">{agency.name}</span>
-                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono text-slate-600">
-                            {agency.code}
-                          </span>
-                        </div>
-                        <div className="mt-0.5 text-slate-500 truncate">
-                          {agency.address || agency.phone || 'Chưa có thông tin liên hệ'}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => void handleUnassignAgency(agency)}
-                        title="Hủy gán đại lý khỏi kho này"
-                        className="shrink-0 rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
+                filteredAssignedAgencies.length ? (
+                  <div className="divide-y divide-slate-100 border rounded-xl border-slate-200 overflow-hidden">
+                    {filteredAssignedAgencies.map((agency) => (
+                      <div
+                        key={agency.id}
+                        className="flex items-center justify-between p-3.5 text-xs hover:bg-slate-50/80 transition-colors"
                       >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                        <div className="min-w-0 pr-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900 text-sm">{agency.name}</span>
+                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono text-slate-600">
+                              {agency.code}
+                            </span>
+                          </div>
+                          <div className="mt-0.5 text-slate-500 truncate">
+                            {agency.address || agency.phone || 'Chưa có thông tin liên hệ'}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void handleUnassignAgency(agency)}
+                          title="Hủy gán đại lý khỏi kho này"
+                          className="shrink-0 rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-6 text-center text-xs text-slate-500">
+                    <Search className="mx-auto h-6 w-6 text-slate-300 mb-1.5" />
+                    <p className="font-semibold text-slate-700">Không tìm thấy đại lý phù hợp</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Không có đại lý đã gán nào khớp với từ khóa "{assignedAgencySearchQuery}"
+                    </p>
+                  </div>
+                )
               ) : (
                 <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center bg-slate-50/50">
                   <Building className="mx-auto h-8 w-8 text-slate-300" />
@@ -1278,7 +1421,7 @@ export function WarehousesPage(): React.ReactElement {
                   <button
                     type="button"
                     onClick={() => {
-                      setSelectedAgencyToAssign('');
+                      setSelectedAgenciesToAssign([]);
                       setAgencySearchQuery('');
                       setIsAssignAgencyModalOpen(true);
                     }}
@@ -1637,33 +1780,85 @@ export function WarehousesPage(): React.ReactElement {
 
           {/* Danh sách vị trí hiện có */}
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-3 flex items-center justify-between">
-              <span>Danh sách vị trí ({locations.length})</span>
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                <span>Danh sách vị trí ({locations.length})</span>
+                {locationSearchQuery && (
+                  <span className="text-[11px] font-normal normal-case text-slate-400">
+                    (Khớp {filteredLocations.length})
+                  </span>
+                )}
+              </h3>
+
+              {/* Ô tìm kiếm vị trí */}
+              {locations.length > 0 && (
+                <div className="relative w-full sm:w-64">
+                  <Search
+                    size={14}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Tìm mã vị trí, khu, kệ, tầng..."
+                    value={locationSearchQuery}
+                    onChange={(e) => setLocationSearchQuery(e.target.value)}
+                    className="w-full h-8 pl-8 pr-7 bg-white rounded-lg border border-slate-200 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-[#371cdb] focus:ring-2 focus:ring-[#371cdb]/10 transition-all"
+                  />
+                  {locationSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setLocationSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                      title="Xóa tìm kiếm"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
 
             {locations.length ? (
-              <div className="max-h-60 overflow-y-auto divide-y divide-slate-100 border rounded-xl border-slate-200">
-                {locations.map((loc) => (
-                  <div key={loc.id} className="flex items-center justify-between p-3 text-xs hover:bg-slate-50 transition-colors">
-                    <div>
-                      <span className="font-bold text-slate-900 font-mono mr-2">{loc.code}</span>
-                      <span className="text-slate-500">
-                        {[
-                          loc.zone && `Khu: ${loc.zone}`,
-                          loc.aisle && `Dãy: ${loc.aisle}`,
-                          loc.rack && `Kệ: ${loc.rack}`,
-                          loc.shelf && `Tầng: ${loc.shelf}`,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
+              filteredLocations.length ? (
+                <div className="max-h-60 overflow-y-auto divide-y divide-slate-100 border rounded-xl border-slate-200">
+                  {filteredLocations.map((loc) => (
+                    <div
+                      key={loc.id}
+                      className="flex items-center justify-between p-3 text-xs hover:bg-slate-50 transition-colors"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <span className="font-bold text-slate-900 font-mono mr-2">
+                          {loc.code}
+                        </span>
+                        <span className="text-slate-500">
+                          {[
+                            loc.zone && `Khu: ${loc.zone}`,
+                            loc.aisle && `Dãy: ${loc.aisle}`,
+                            loc.rack && `Kệ: ${loc.rack}`,
+                            loc.shelf && `Tầng: ${loc.shelf}`,
+                            loc.bin && `Ngăn: ${loc.bin}`,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </span>
+                      </div>
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200 shrink-0">
+                        Sẵn sàng
                       </span>
                     </div>
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
-                      Sẵn sàng
-                    </span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-6 text-center text-xs text-slate-500">
+                  <Search className="mx-auto h-6 w-6 text-slate-300 mb-1.5" />
+                  <p className="font-semibold text-slate-700">
+                    Không tìm thấy vị trí phù hợp
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Không có vị trí nào khớp với từ khóa "{locationSearchQuery}"
+                  </p>
+                </div>
+              )
             ) : (
               <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500">
                 Chưa có vị trí nào được khai báo cho kho này.
@@ -1674,34 +1869,52 @@ export function WarehousesPage(): React.ReactElement {
       </ModalLayout>
 
       {/* ========================================================================= */}
-      {/* POPUP 4: THÊM ĐẠI LÝ VÀO KHO MẶC ĐỊNH                                      */}
+      {/* POPUP 4: THÊM ĐẠI LÝ VÀO KHO MẶC ĐỊNH (CHỌN NHIỀU, DISABLE ĐẠI LÝ ĐÃ GÁN)   */}
       {/* ========================================================================= */}
       <ModalLayout
         isOpen={isAssignAgencyModalOpen}
         onClose={() => setIsAssignAgencyModalOpen(false)}
         title={`Gán đại lý cho ${selectedWarehouse?.name || ''}`}
-        subtitle="Chỉ định kho này làm kho phục vụ xử lý đơn hàng mặc định cho đại lý"
+        subtitle="Chỉ định kho này làm kho phục vụ xử lý đơn hàng mặc định cho các đại lý"
         icon={<Building2 size={20} className="text-[#371cdb]" />}
-        maxWidth="max-w-xl"
+        maxWidth="max-w-2xl"
         bodyAs="form"
         onFormSubmit={(e) => void handleAssignAgency(e)}
         footer={
-          <div className="flex items-center justify-end gap-2.5 w-full">
-            <button
-              type="button"
-              onClick={() => setIsAssignAgencyModalOpen(false)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              disabled={busy || !selectedAgencyToAssign}
-              onClick={(e) => void handleAssignAgency(e)}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#371cdb] hover:bg-[#2d14b8] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-            >
-              <Check size={16} /> Xác nhận gán kho
-            </button>
+          <div className="flex items-center justify-between w-full">
+            <div className="text-xs text-slate-500 font-medium">
+              {selectedAgenciesToAssign.length > 0 ? (
+                <span>
+                  Đang chọn:{' '}
+                  <strong className="text-[#371cdb] font-bold">
+                    {selectedAgenciesToAssign.length}
+                  </strong>{' '}
+                  đại lý
+                </span>
+              ) : (
+                <span>Chưa chọn đại lý nào</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsAssignAgencyModalOpen(false)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={busy || selectedAgenciesToAssign.length === 0}
+                onClick={(e) => void handleAssignAgency(e)}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#371cdb] hover:bg-[#2d14b8] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <Check size={16} />{' '}
+                {selectedAgenciesToAssign.length > 0
+                  ? `Xác nhận gán (${selectedAgenciesToAssign.length} đại lý)`
+                  : 'Xác nhận gán kho'}
+              </button>
+            </div>
           </div>
         }
       >
@@ -1715,55 +1928,145 @@ export function WarehousesPage(): React.ReactElement {
               type="text"
               value={agencySearchQuery}
               onChange={(e) => setAgencySearchQuery(e.target.value)}
-              placeholder="Tìm đại lý theo mã, tên, số điện thoại..."
-              className="w-full h-10 pl-9 pr-3 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#371cdb] focus:ring-4 focus:ring-[#371cdb]/10"
+              placeholder="Tìm đại lý theo mã, tên, số điện thoại, địa chỉ..."
+              className="w-full h-10 pl-9 pr-8 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#371cdb] focus:ring-4 focus:ring-[#371cdb]/10"
             />
+            {agencySearchQuery && (
+              <button
+                type="button"
+                onClick={() => setAgencySearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                title="Xóa tìm kiếm"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
+          {/* Thanh công cụ Chọn tất cả / Bỏ chọn */}
+          {(() => {
+            const assignableAgencies = selectableAgencies.filter(
+              (a) => agencyDefaults[a.id] !== selectedId
+            );
+            const isAllSelected =
+              assignableAgencies.length > 0 &&
+              assignableAgencies.every((a) => selectedAgenciesToAssign.includes(a.id));
+
+            return (
+              <div className="flex items-center justify-between px-1 text-xs text-slate-600">
+                {assignableAgencies.length > 0 ? (
+                  <label className="flex items-center gap-2 cursor-pointer select-none font-medium">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={() => {
+                        if (isAllSelected) {
+                          // Bỏ chọn tất cả các đại lý khả dụng trong danh sách tìm kiếm
+                          setSelectedAgenciesToAssign((prev) =>
+                            prev.filter((id) => !assignableAgencies.some((a) => a.id === id))
+                          );
+                        } else {
+                          // Chọn tất cả các đại lý khả dụng
+                          const toAdd = assignableAgencies.map((a) => a.id);
+                          setSelectedAgenciesToAssign((prev) => [
+                            ...prev,
+                            ...toAdd.filter((id) => !prev.includes(id)),
+                          ]);
+                        }
+                      }}
+                      className="w-4 h-4 rounded text-[#371cdb] focus:ring-[#371cdb] cursor-pointer"
+                    />
+                    <span>
+                      Chọn tất cả ({assignableAgencies.length} đại lý có thể gán)
+                    </span>
+                  </label>
+                ) : (
+                  <span className="text-slate-400 italic">
+                    Không có đại lý mới nào để gán trong danh sách này
+                  </span>
+                )}
+
+                {selectedAgenciesToAssign.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAgenciesToAssign([])}
+                    className="text-[#371cdb] hover:underline font-semibold cursor-pointer"
+                  >
+                    Bỏ chọn tất cả ({selectedAgenciesToAssign.length})
+                  </button>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Danh sách đại lý */}
-          <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 border rounded-xl border-slate-200">
+          <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 border rounded-xl border-slate-200">
             {selectableAgencies.length ? (
               selectableAgencies.map((agency) => {
                 const currentWarehouseId = agencyDefaults[agency.id];
                 const currentWh = warehouses.find((w) => w.id === currentWarehouseId);
-                const isSelected = selectedAgencyToAssign === agency.id;
                 const isAlreadyThisWarehouse = currentWarehouseId === selectedId;
+                const isSelected = selectedAgenciesToAssign.includes(agency.id);
 
                 return (
                   <div
                     key={agency.id}
-                    onClick={() => setSelectedAgencyToAssign(agency.id)}
-                    className={`flex items-center justify-between p-3 text-xs transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#eff2fe] text-[#371cdb]'
-                        : 'hover:bg-slate-50 text-slate-700'
+                    onClick={() => {
+                      if (isAlreadyThisWarehouse) return;
+                      setSelectedAgenciesToAssign((prev) =>
+                        prev.includes(agency.id)
+                          ? prev.filter((id) => id !== agency.id)
+                          : [...prev, agency.id]
+                      );
+                    }}
+                    className={`flex items-center justify-between p-3 text-xs transition-colors ${
+                      isAlreadyThisWarehouse
+                        ? 'bg-slate-50/80 opacity-70 cursor-not-allowed'
+                        : isSelected
+                        ? 'bg-[#eff2fe] text-[#371cdb] cursor-pointer'
+                        : 'hover:bg-slate-50 text-slate-700 cursor-pointer'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <div className="flex items-center gap-3 min-w-0 pr-2">
                       <input
-                        type="radio"
+                        type="checkbox"
+                        disabled={isAlreadyThisWarehouse}
                         checked={isSelected}
-                        onChange={() => setSelectedAgencyToAssign(agency.id)}
-                        className="text-[#371cdb] focus:ring-[#371cdb]"
+                        onChange={() => {
+                          if (isAlreadyThisWarehouse) return;
+                          setSelectedAgenciesToAssign((prev) =>
+                            prev.includes(agency.id)
+                              ? prev.filter((id) => id !== agency.id)
+                              : [...prev, agency.id]
+                          );
+                        }}
+                        className={`w-4 h-4 rounded text-[#371cdb] focus:ring-[#371cdb] ${
+                          isAlreadyThisWarehouse ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+                        }`}
                       />
                       <div className="min-w-0">
-                        <div className="font-semibold text-slate-900 truncate">
-                          {agency.name}
-                          <span className="ml-1.5 font-normal text-slate-500 font-mono">
+                        <div className="font-semibold text-slate-900 truncate flex items-center gap-1.5">
+                          <span>{agency.name}</span>
+                          <span className="font-normal text-slate-500 font-mono text-[11px]">
                             ({agency.code})
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-400">
-                          {agency.address || agency.phone || 'Chưa có địa chỉ'}
+                        <div className="text-[11px] text-slate-400 truncate">
+                          {agency.address || agency.phone || 'Chưa có thông tin địa chỉ'}
                         </div>
                       </div>
                     </div>
 
                     <div className="shrink-0 text-right">
                       {isAlreadyThisWarehouse ? (
-                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
-                          Đang gán kho này
-                        </span>
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+                            Đang gán kho này
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            (Xóa ở ngoài để hủy gán)
+                          </span>
+                        </div>
                       ) : currentWh ? (
                         <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
                           Đang gán: {currentWh.code}
@@ -1778,17 +2081,50 @@ export function WarehousesPage(): React.ReactElement {
                 );
               })
             ) : (
-              <div className="p-6 text-center text-xs text-slate-400">
-                Không tìm thấy đại lý nào phù hợp
+              <div className="p-8 text-center text-xs text-slate-400">
+                <Search className="mx-auto h-6 w-6 text-slate-300 mb-1.5" />
+                <p className="font-semibold text-slate-600">Không tìm thấy đại lý nào phù hợp</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Thử tìm kiếm với từ khóa khác hoặc xóa ô tìm kiếm
+                </p>
               </div>
             )}
           </div>
 
-          {selectedAgencyToAssign && (
-            <div className="rounded-xl bg-blue-50/70 p-3.5 text-xs text-blue-900 border border-blue-200/60">
-              <p className="font-semibold">Xác nhận chuyển gán:</p>
-              <p className="mt-0.5 text-blue-700">
-                Đại lý <strong>{agencies.find((a) => a.id === selectedAgencyToAssign)?.name}</strong> sẽ được chỉ định lấy hàng từ <strong>{selectedWarehouse?.name}</strong> cho các đơn hàng tiếp theo.
+          {/* Tóm tắt xác nhận chọn nhiều đại lý */}
+          {selectedAgenciesToAssign.length > 0 && (
+            <div className="rounded-xl bg-blue-50/80 p-3.5 text-xs text-blue-900 border border-blue-200/70">
+              <p className="font-semibold flex items-center gap-1.5">
+                <Check size={14} className="text-[#371cdb]" />
+                Xác nhận gán {selectedAgenciesToAssign.length} đại lý:
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+                {selectedAgenciesToAssign.map((id) => {
+                  const ag = agencies.find((a) => a.id === id);
+                  return (
+                    <span
+                      key={id}
+                      className="inline-flex items-center gap-1 bg-white border border-blue-200 px-2 py-0.5 rounded text-[11px] font-medium text-blue-800"
+                    >
+                      {ag?.name || id}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedAgenciesToAssign((prev) => prev.filter((i) => i !== id));
+                        }}
+                        className="text-slate-400 hover:text-rose-600 p-0.5 cursor-pointer"
+                        title="Bỏ đại lý này"
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+              <p className="mt-1.5 text-blue-700 text-[11px]">
+                Tất cả các đại lý trên sẽ được chỉ định lấy hàng và xuất kho từ{' '}
+                <strong>{selectedWarehouse?.name}</strong> cho các đơn hàng tiếp theo.
               </p>
             </div>
           )}
