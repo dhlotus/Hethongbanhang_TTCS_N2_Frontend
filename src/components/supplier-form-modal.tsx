@@ -112,36 +112,113 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Các hàm kiểm tra tính hợp lệ dữ liệu chặt chẽ và thông minh:
+  const validateName = (val: string): string | null => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) return 'Vui lòng nhập tên nhà cung cấp / doanh nghiệp';
+    if (trimmed.length < 3) return 'Tên nhà cung cấp phải có tối thiểu 3 ký tự';
+    if (/^[0-9\W]+$/.test(trimmed)) return 'Tên nhà cung cấp không hợp lệ, không được chỉ gồm số hoặc ký tự đặc biệt';
+    return null;
+  };
+
+  const validateTaxCode = (val: string, isSubmitting = false): string | null => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) {
+      return isSubmitting ? 'Vui lòng nhập mã số thuế của nhà cung cấp' : null;
+    }
+    if (/[^\d]/.test(trimmed)) {
+      return 'Mã số thuế chỉ được chứa các chữ số (0-9), không chứa chữ hay ký tự đặc biệt';
+    }
+    if (trimmed.length > 12) {
+      return `Mã số thuế chỉ gồm đúng 12 chữ số (bạn đang nhập thừa ${trimmed.length - 12} số)`;
+    }
+    if (isSubmitting && trimmed.length !== 12) {
+      return `Mã số thuế phải bao gồm đúng 12 chữ số (bạn mới nhập ${trimmed.length}/12 số - còn thiếu ${12 - trimmed.length} số)`;
+    }
+    return null;
+  };
+
+  const validateContactName = (val: string, isSubmitting = false): string | null => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) {
+      return isSubmitting ? 'Vui lòng nhập tên người liên hệ đại diện' : null;
+    }
+    if (trimmed.length < 2) {
+      return 'Tên người liên hệ phải có tối thiểu 2 ký tự';
+    }
+    if (!/^[a-zA-ZÀ-ỹ\s]+$/u.test(trimmed)) {
+      return 'Tên người liên hệ không được chứa chữ số hoặc ký tự đặc biệt';
+    }
+    return null;
+  };
+
+  const validatePhone = (val: string, isSubmitting = false): string | null => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) {
+      return isSubmitting ? 'Vui lòng nhập số điện thoại liên hệ' : null;
+    }
+    if (/[^\d]/.test(trimmed)) {
+      return 'Số điện thoại chỉ được chứa các chữ số (0-9), không chứa chữ hay ký tự đặc biệt';
+    }
+    if (!trimmed.startsWith('0')) {
+      return 'Số điện thoại phải bắt đầu bằng số 0 (ví dụ: 02838123456 hoặc 0901234567)';
+    }
+    if (trimmed.length > 11) {
+      return `Số điện thoại tối đa 11 chữ số (bạn đang nhập thừa ${trimmed.length - 11} số)`;
+    }
+    if (isSubmitting && trimmed.length < 10) {
+      return `Số điện thoại phải từ 10 đến 11 chữ số (bạn mới nhập ${trimmed.length}/10 số)`;
+    }
+    return null;
+  };
+
+  const validateAddress = (val: string, isSubmitting = false): string | null => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) {
+      return isSubmitting ? 'Vui lòng nhập địa chỉ trụ sở hoặc kho xuất hàng' : null;
+    }
+    if (trimmed.length < 5) {
+      return 'Địa chỉ quá ngắn, vui lòng nhập chi tiết địa chỉ (tối thiểu 5 ký tự)';
+    }
+    return null;
+  };
+
+  const validateEmail = (val: string): string | null => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) return null;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      return 'Email không đúng định dạng hợp lệ (ví dụ: supply@loha.vn)';
+    }
+    return null;
+  };
+
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
 
-    if (!name.trim()) {
-      errs.name = 'Tên nhà cung cấp không được để trống';
-    }
+    const nameErr = validateName(name);
+    if (nameErr) errs.name = nameErr;
+
+    const taxErr = validateTaxCode(taxCode, true);
+    if (taxErr) errs.taxCode = taxErr;
+
+    const contactErr = validateContactName(contactName, true);
+    if (contactErr) errs.contactName = contactErr;
+
+    const phoneErr = validatePhone(phone, true);
+    if (phoneErr) errs.phone = phoneErr;
+
+    const addrErr = validateAddress(address, true);
+    if (addrErr) errs.address = addrErr;
+
+    const emailErr = validateEmail(email);
+    if (emailErr) errs.email = emailErr;
 
     if (isEditMode && code.trim() && /\s/.test(code.trim())) {
       errs.code = 'Mã nhà cung cấp không được chứa khoảng trắng';
     }
 
-    if (taxCode.trim() && !/^[0-9]{12}$/.test(taxCode.trim())) {
-      errs.taxCode = 'Mã số thuế phải bao gồm đúng 12 chữ số';
-    }
-
-    if (contactName.trim() && !/^[a-zA-ZÀ-ỹ\s]+$/u.test(contactName.trim())) {
-      errs.contactName = 'Tên người liên hệ không được chứa chữ số';
-    }
-
-    if (phone.trim()) {
-      const cleanPhone = phone.trim();
-      if (!cleanPhone.startsWith('0')) {
-        errs.phone = 'Số điện thoại phải bắt đầu bằng số 0';
-      } else if (!/^[0-9]+$/.test(cleanPhone) || cleanPhone.length < 10 || cleanPhone.length > 12) {
-        errs.phone = 'Số điện thoại phải từ 10 đến 12 chữ số';
-      }
-    }
-
-    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      errs.email = 'Email không đúng định dạng hợp lệ';
+    if (Object.keys(errs).length > 0) {
+      errs.form = 'Vui lòng kiểm tra và điền đầy đủ, chính xác các trường thông tin bắt buộc.';
     }
 
     setErrors(errs);
@@ -275,13 +352,17 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
             onChange={(e) => {
               const val = e.target.value;
               setName(val);
-              if (val.trim()) {
-                setErrors((prev) => {
-                  const next = { ...prev };
-                  delete next.name;
-                  return next;
-                });
-              }
+              const err = validateName(val);
+              setErrors((prev) => {
+                const next = { ...prev };
+                if (err) next.name = err;
+                else delete next.name;
+                return next;
+              });
+            }}
+            onBlur={() => {
+              const err = validateName(name);
+              if (err) setErrors((prev) => ({ ...prev, name: err }));
             }}
             placeholder="VD: Công ty Cổ phần Nước giải khát LOHA"
             className={`w-full px-3 py-2 rounded-xl border text-xs focus:ring-2 focus:outline-none transition-all ${
@@ -297,27 +378,29 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
         {/* Hàng 3: MST & Người liên hệ */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Mã số thuế</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Mã số thuế <span className="text-rose-500">*</span>
+            </label>
             <div className="relative">
               <FileText className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
               <input
                 type="text"
+                maxLength={13}
                 value={taxCode}
                 onChange={(e) => {
                   const val = e.target.value;
                   setTaxCode(val);
-                  if (val.trim() && !/^[0-9]{12}$/.test(val.trim())) {
-                    setErrors((prev) => ({
-                      ...prev,
-                      taxCode: 'Mã số thuế phải bao gồm đúng 12 chữ số',
-                    }));
-                  } else {
-                    setErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.taxCode;
-                      return next;
-                    });
-                  }
+                  const err = validateTaxCode(val, false);
+                  setErrors((prev) => {
+                    const next = { ...prev };
+                    if (err) next.taxCode = err;
+                    else delete next.taxCode;
+                    return next;
+                  });
+                }}
+                onBlur={() => {
+                  const err = validateTaxCode(taxCode, true);
+                  if (err) setErrors((prev) => ({ ...prev, taxCode: err }));
                 }}
                 placeholder="VD: 031234567890"
                 className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs focus:ring-2 focus:outline-none transition-all ${
@@ -333,7 +416,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Người liên hệ đại diện
+              Người liên hệ đại diện <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
               <User className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
@@ -343,18 +426,17 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
                 onChange={(e) => {
                   const val = e.target.value;
                   setContactName(val);
-                  if (val.trim() && !/^[a-zA-ZÀ-ỹ\s]+$/u.test(val.trim())) {
-                    setErrors((prev) => ({
-                      ...prev,
-                      contactName: 'Tên người liên hệ không được chứa chữ số',
-                    }));
-                  } else {
-                    setErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.contactName;
-                      return next;
-                    });
-                  }
+                  const err = validateContactName(val, false);
+                  setErrors((prev) => {
+                    const next = { ...prev };
+                    if (err) next.contactName = err;
+                    else delete next.contactName;
+                    return next;
+                  });
+                }}
+                onBlur={() => {
+                  const err = validateContactName(contactName, true);
+                  if (err) setErrors((prev) => ({ ...prev, contactName: err }));
                 }}
                 placeholder="VD: Ông Đỗ Quốc Tuấn"
                 className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs focus:ring-2 focus:outline-none transition-all ${
@@ -375,42 +457,28 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Số điện thoại liên hệ
+              Số điện thoại liên hệ <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
               <Phone className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
               <input
                 type="tel"
+                maxLength={11}
                 value={phone}
                 onChange={(e) => {
                   const val = e.target.value;
                   setPhone(val);
-                  const clean = val.trim();
-                  if (clean) {
-                    if (!clean.startsWith('0')) {
-                      setErrors((prev) => ({
-                        ...prev,
-                        phone: 'Số điện thoại phải bắt đầu bằng số 0',
-                      }));
-                    } else if (!/^[0-9]+$/.test(clean) || clean.length < 10 || clean.length > 12) {
-                      setErrors((prev) => ({
-                        ...prev,
-                        phone: 'Số điện thoại phải từ 10 đến 12 chữ số',
-                      }));
-                    } else {
-                      setErrors((prev) => {
-                        const next = { ...prev };
-                        delete next.phone;
-                        return next;
-                      });
-                    }
-                  } else {
-                    setErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.phone;
-                      return next;
-                    });
-                  }
+                  const err = validatePhone(val, false);
+                  setErrors((prev) => {
+                    const next = { ...prev };
+                    if (err) next.phone = err;
+                    else delete next.phone;
+                    return next;
+                  });
+                }}
+                onBlur={() => {
+                  const err = validatePhone(phone, true);
+                  if (err) setErrors((prev) => ({ ...prev, phone: err }));
                 }}
                 placeholder="VD: 02838123456 hoặc 0901234567"
                 className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs focus:ring-2 focus:outline-none transition-all ${
@@ -431,9 +499,27 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setEmail(val);
+                  const err = validateEmail(val);
+                  setErrors((prev) => {
+                    const next = { ...prev };
+                    if (err) next.email = err;
+                    else delete next.email;
+                    return next;
+                  });
+                }}
+                onBlur={() => {
+                  const err = validateEmail(email);
+                  if (err) setErrors((prev) => ({ ...prev, email: err }));
+                }}
                 placeholder="VD: supply@loha.vn"
-                className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+                className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs focus:ring-2 focus:outline-none transition-all ${
+                  errors.email
+                    ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-100'
+                    : 'border-slate-200 focus:border-blue-500 focus:ring-blue-100'
+                }`}
                 disabled={isSubmitting}
               />
             </div>
@@ -444,19 +530,38 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({
         {/* Hàng 5: Địa chỉ trụ sở / kho */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Địa chỉ trụ sở / Kho xuất hàng
+            Địa chỉ trụ sở / Kho xuất hàng <span className="text-rose-500">*</span>
           </label>
           <div className="relative">
             <MapPin className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
             <input
               type="text"
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setAddress(val);
+                const err = validateAddress(val, false);
+                setErrors((prev) => {
+                  const next = { ...prev };
+                  if (err) next.address = err;
+                  else delete next.address;
+                  return next;
+                });
+              }}
+              onBlur={() => {
+                const err = validateAddress(address, true);
+                if (err) setErrors((prev) => ({ ...prev, address: err }));
+              }}
               placeholder="VD: KCN Tân Bình, Tây Thạnh, Tân Phú, TP.HCM"
-              className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+              className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs focus:ring-2 focus:outline-none transition-all ${
+                errors.address
+                  ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-100'
+                  : 'border-slate-200 focus:border-blue-500 focus:ring-blue-100'
+              }`}
               disabled={isSubmitting}
             />
           </div>
+          {errors.address && <p className="text-[11px] text-rose-500 mt-1">{errors.address}</p>}
         </div>
 
         {/* Hàng 6: Điều khoản thanh toán */}
