@@ -14,8 +14,10 @@ import {
   RefreshCw,
   Loader2,
   MapPin,
+  Lock,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
+import { Pagination } from '../components/pagination';
 import { ordersService } from '../services/orders.service';
 import { warehouseService } from '../services/warehouse.service';
 import { customersService } from '../services/customers.service';
@@ -281,9 +283,9 @@ export const CreateOrderPage: React.FC = () => {
   const [searchError, setSearchError] = useState('');
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Phân trang danh sách sản phẩm (tránh tràn danh sách khi có nhiều sản phẩm)
+  // Phân trang danh sách sản phẩm (chuẩn Pagination như Quản lý đại lý)
   const [productPage, setProductPage] = useState(1);
-  const productPageSize = 4;
+  const [productPageSize, setProductPageSize] = useState(6);
   const totalProductPages = Math.max(1, Math.ceil(searchResults.length / productPageSize));
   const pagedSearchResults = useMemo(() => {
     return searchResults.slice((productPage - 1) * productPageSize, productPage * productPageSize);
@@ -292,7 +294,7 @@ export const CreateOrderPage: React.FC = () => {
   // ── 3. Dòng hàng đơn hàng (Order Lines) ──
   const [lines, setLines] = useState<OrderLine[]>([]);
   const [cartPage, setCartPage] = useState(1);
-  const cartPageSize = 4;
+  const [cartPageSize, setCartPageSize] = useState(5);
   const totalCartPages = Math.max(1, Math.ceil(lines.length / cartPageSize));
   const pagedLines = useMemo(() => {
     return lines.slice((cartPage - 1) * cartPageSize, cartPage * cartPageSize);
@@ -1348,12 +1350,12 @@ export const CreateOrderPage: React.FC = () => {
 
           {/* CẢNH BÁO NẾU CHƯA CHỌN ĐẠI LÝ */}
           {!selectedCustomer ? (
-            <div className="p-6 bg-slate-50 border border-dashed border-slate-300 rounded-2xl text-center space-y-2">
-              <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto text-xl font-bold">
-                🔒
+            <div className="py-8 px-6 bg-slate-50/80 border border-dashed border-slate-300 rounded-2xl text-center space-y-2.5">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center mx-auto shadow-xs">
+                <Lock className="w-5 h-5 stroke-[2.2]" />
               </div>
               <h4 className="text-sm font-bold text-slate-800">Chưa thể thêm sản phẩm</h4>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
+              <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
                 Vui lòng <strong>chọn Đại lý ở Khối 1</strong> bên trên để áp dụng bảng giá hiệu lực và kích hoạt nút thêm hàng vào đơn.
               </p>
             </div>
@@ -1469,39 +1471,26 @@ export const CreateOrderPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Thanh Phân Trang Danh Sách Sản Phẩm */}
-              <div className="pt-2 flex items-center justify-between text-xs">
-                <span className="text-slate-500 text-xs">
-                  {searchResults.length > 0 ? (
-                    <>Hiển thị {(productPage - 1) * productPageSize + 1} - {Math.min(productPage * productPageSize, searchResults.length)} trên tổng số {searchResults.length} sản phẩm</>
-                  ) : (
-                    <>0 sản phẩm</>
-                  )}
-                </span>
-                {totalProductPages > 1 && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={productPage <= 1}
-                      onClick={() => setProductPage((p) => Math.max(1, p - 1))}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-                    >
-                      ← Trang trước
-                    </button>
-                    <span className="font-bold px-2 text-slate-800 text-xs">
-                      {productPage} / {totalProductPages}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={productPage >= totalProductPages}
-                      onClick={() => setProductPage((p) => Math.min(totalProductPages, p + 1))}
-                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-                    >
-                      Trang sau →
-                    </button>
-                  </div>
-                )}
-              </div>
+              {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN DANH SÁCH (CHUẨN NHƯ QUẢN LÝ ĐẠI LÝ) ── */}
+              {searchResults.length > 0 && (
+                <div className="pt-2 border-t border-slate-100">
+                  <Pagination
+                    variant="default"
+                    currentPage={productPage}
+                    totalPages={totalProductPages}
+                    totalItems={searchResults.length}
+                    pageSize={productPageSize}
+                    pageSizeOptions={[6, 12, 24]}
+                    itemLabel="sản phẩm"
+                    showFirstLast={true}
+                    onPageChange={(page) => setProductPage(page)}
+                    onPageSizeChange={(newSize) => {
+                      setProductPageSize(newSize);
+                      setProductPage(1);
+                    }}
+                  />
+                </div>
+              )}
             </>
           )}
         </div>
@@ -1630,28 +1619,24 @@ export const CreateOrderPage: React.FC = () => {
                 </table>
               </div>
 
-              {/* Thanh Phân Trang Giỏ Hàng */}
-              {totalCartPages > 1 && (
-                <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-                  <span>Hiển thị trang {cartPage} / {totalCartPages} ({lines.length} sản phẩm)</span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      disabled={cartPage <= 1}
-                      onClick={() => setCartPage((p) => Math.max(1, p - 1))}
-                      className="px-3 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-                    >
-                      ← Trang trước
-                    </button>
-                    <button
-                      type="button"
-                      disabled={cartPage >= totalCartPages}
-                      onClick={() => setCartPage((p) => Math.min(totalCartPages, p + 1))}
-                      className="px-3 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-                    >
-                      Trang sau →
-                    </button>
-                  </div>
+              {/* ── THANH PHÂN TRANG GIỎ HÀNG GẮN LIỀN CHÂN BẢNG (CHUẨN NHƯ QUẢN LÝ ĐẠI LÝ) ── */}
+              {lines.length > 0 && (
+                <div className="pt-2 border-t border-slate-100">
+                  <Pagination
+                    variant="default"
+                    currentPage={cartPage}
+                    totalPages={totalCartPages}
+                    totalItems={lines.length}
+                    pageSize={cartPageSize}
+                    pageSizeOptions={[5, 10, 20]}
+                    itemLabel="dòng hàng"
+                    showFirstLast={true}
+                    onPageChange={(page) => setCartPage(page)}
+                    onPageSizeChange={(newSize) => {
+                      setCartPageSize(newSize);
+                      setCartPage(1);
+                    }}
+                  />
                 </div>
               )}
 
