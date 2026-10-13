@@ -1018,8 +1018,51 @@ export const ordersService = {
    * - Đơn mới luôn bắt đầu ở trạng thái Nháp (DRAFT)
    */
   async cloneOrder(orderId: string): Promise<Order> {
-    const res = await apiClient.post<Order | { data: Order }>(`/orders/${orderId}/clone`);
-    return (res.data as { data?: Order })?.data ?? (res.data as Order);
+    try {
+      const res = await apiClient.post<Order | { data: Order }>(`/orders/${orderId}/clone`);
+      const cloned = (res.data as { data?: Order })?.data ?? (res.data as Order);
+      try {
+        const all = getStoredDemoOrders();
+        saveStoredDemoOrders([cloned, ...all]);
+      } catch {}
+      return cloned;
+    } catch (err: unknown) {
+      try {
+        return this.cloneMockOrder(orderId);
+      } catch {
+        if (err && typeof err === 'object' && 'response' in err) {
+          const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+          const errMsg = axiosErr.response?.data?.message;
+          if (errMsg) {
+            throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
+          }
+        }
+        throw err;
+      }
+    }
+  },
+
+  cloneMockOrder(orderId: string): Order {
+    const all = getStoredDemoOrders();
+    const source = all.find((o) => o.id === orderId || o.orderCode === orderId);
+    if (!source) {
+      throw new Error(`Không tìm thấy đơn hàng cần sao chép (ID: ${orderId})`);
+    }
+    const newCode = `DH${new Date().toISOString().slice(2, 4)}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(10000 + Math.random() * 90000))}`;
+    const newOrder: Order = {
+      ...source,
+      id: `ord-clone-${Date.now()}`,
+      orderCode: newCode,
+      status: 'DRAFT',
+      note: source.note ? `[Bản sao từ ${source.orderCode || source.id}] ${source.note}` : `Bản sao từ ${source.orderCode || source.id}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      approvedAt: undefined,
+      approverId: undefined,
+      approverName: undefined,
+    };
+    saveStoredDemoOrders([newOrder, ...all]);
+    return newOrder;
   },
 
   /**

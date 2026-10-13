@@ -1598,10 +1598,12 @@ export const UsersPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Danh sách 7 vai trò dạng checkbox/cards */}
+                  {/* Danh sách các vai trò nhân sự nội bộ dạng checkbox/cards (Ẩn vai trò Đại lý B2B theo yêu cầu) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {Object.keys(ROLE_CONFIG).map((roleKey) => {
-                      const cfg = ROLE_CONFIG[roleKey];
+                    {Object.keys(ROLE_CONFIG)
+                      .filter((roleKey) => roleKey !== 'CUSTOMER' && roleKey !== USER_ROLES.CUSTOMER)
+                      .map((roleKey) => {
+                        const cfg = ROLE_CONFIG[roleKey];
                       const isSelected = (formData.roles || []).includes(roleKey);
                       const isAdminLocked = isEditingCurrentSelf && roleKey === USER_ROLES.ADMIN;
 

@@ -139,18 +139,19 @@
   /* ========================================================================= */
   /* 7.5 BORDER RADIUS DESIGN TOKENS (UI_GUIDELINES)                           */
   /* ========================================================================= */
+  --radius-xs: 2px;
   --radius-sm: 4px;
   /* Badge, trạng thái nhỏ */
-  --radius-md: 8px;
-  /* Input, Button, Select, Toast */
-  --radius-lg: 12px;
-  /* Card, Dropdown, Modal */
-  --radius-xl: 16px;
-  /* Container hoặc khu vực lớn */
-  --radius-2xl: 16px;
-  /* Giới hạn trần 16px, ngăn chặn bo góc quá tròn kiểu mobile/game */
-  --radius-3xl: 16px;
-  /* Giới hạn trần 16px, ngăn chặn bo góc quá tròn kiểu mobile/game */
+  --radius-md: 6px;
+  /* Badge, chip, rank badge */
+  --radius-lg: 8px;
+  /* Controls: Input, Button, Select, Nav item, Icon container, Row */
+  --radius-xl: 12px;
+  /* Container: Card, Dropdown, Modal, Table (Chuẩn Clean SaaS, không bo góc quá lớn) */
+  --radius-2xl: 12px;
+  /* Giới hạn trần 12px: Đảm bảo không có phần tử nào bị bo tròn quá lớn */
+  --radius-3xl: 12px;
+  /* Giới hạn trần 12px */
   --radius-full: 9999px;
   /* Avatar, Pill, trạng thái dạng viên */
 }
@@ -232,14 +233,17 @@
   /* Disabled -> Border Disabled */
 
   /* 7.5 Border Radius Design Tokens (UI_GUIDELINES) */
+  --radius-xs: 2px;
   --radius-sm: 4px;
   /* Badge, trạng thái nhỏ */
-  --radius-md: 8px;
-  /* Input, Button, Select, Toast */
-  --radius-lg: 12px;
-  /* Card, Dropdown, Modal */
-  --radius-xl: 16px;
-  /* Container hoặc khu vực lớn */
+  --radius-md: 6px;
+  /* Badge, chip, rank badge */
+  --radius-lg: 8px;
+  /* Controls: Input, Button, Select, Toast, Row, Icon */
+  --radius-xl: 12px;
+  /* Card, Dropdown, Modal, Container (Không bo góc quá lớn) */
+  --radius-2xl: 12px;
+  --radius-3xl: 12px;
   --radius-full: 9999px;
   /* Avatar, Pill, trạng thái dạng viên */
 
@@ -1142,3 +1146,38 @@ input.glass-input:-webkit-autofill:active {
     background: transparent !important;
   }
 }
+
+/* ========================================================================== */
+/* SLEEK SLIM SCROLLBAR UTILITIES (TINH TẾ CHO FLOATING LAYOUT)               */
+/* ========================================================================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.65);
+}
+
+/* ========================================================================== */
+/* NO-SCROLLBAR UTILITY (ẨN THANH CUỘN CHO SIDEBAR & KHUNG NỔI)              */
+/* ========================================================================== */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important; /* Firefox */
+}
