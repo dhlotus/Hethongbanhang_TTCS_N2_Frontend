@@ -1350,7 +1350,7 @@ export const CreateOrderPage: React.FC = () => {
 
           {/* CẢNH BÁO NẾU CHƯA CHỌN ĐẠI LÝ */}
           {!selectedCustomer ? (
-            <div className="py-8 px-6 bg-slate-50/80 border border-dashed border-slate-300 rounded-2xl text-center space-y-2.5">
+            <div className="min-h-[220px] py-14 px-6 bg-slate-50/80 border border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center text-center space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center mx-auto shadow-xs">
                 <Lock className="w-5 h-5 stroke-[2.2]" />
               </div>
@@ -1519,8 +1519,8 @@ export const CreateOrderPage: React.FC = () => {
           </div>
 
           {lines.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-2xl">
-              <Package className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+            <div className="min-h-[220px] py-14 px-6 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center space-y-2.5">
+              <Package className="w-10 h-10 text-slate-300 mx-auto" />
               <span>Chưa có sản phẩm nào trong đơn hàng. Vui lòng bấm "+ Thêm" từ danh sách bên trên.</span>
             </div>
           ) : (

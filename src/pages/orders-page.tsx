@@ -381,9 +381,18 @@ export const OrdersPage: React.FC = () => {
   };
   const handleFromDateChange = (val: string) => {
     setFromDate(val);
+    if (val && toDate && val > toDate) {
+      setToDate(val);
+    }
     setPage(1);
   };
   const handleToDateChange = (val: string) => {
+    if (val && fromDate && val < fromDate) {
+      showToast('warning', 'Ngày kết thúc không được nhỏ hơn ngày bắt đầu');
+      setToDate(fromDate);
+      setPage(1);
+      return;
+    }
     setToDate(val);
     setPage(1);
   };
@@ -724,6 +733,7 @@ export const OrdersPage: React.FC = () => {
                   compact={true}
                   value={fromDate}
                   onChange={handleFromDateChange}
+                  max={toDate || undefined}
                   placeholder="dd/mm/yyyy"
                   className="w-full text-xs"
                   title="Chọn ngày bắt đầu (dd/mm/yyyy)"
@@ -743,14 +753,19 @@ export const OrdersPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Ô Đến ngày (chuẩn dd/mm/yyyy) */}
-              <div className="relative flex items-center gap-1.5 bg-slate-50/80 hover:bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all shadow-2xs h-9 min-w-[130px]">
+              {/* Ô Đến ngày (chuẩn dd/mm/yyyy, min = fromDate) */}
+              <div className={`relative flex items-center gap-1.5 bg-slate-50/80 hover:bg-white border rounded-xl px-2.5 py-1.5 transition-all shadow-2xs h-9 min-w-[130px] ${
+                fromDate && toDate && toDate < fromDate
+                  ? 'border-rose-400 ring-2 ring-rose-100'
+                  : 'border-slate-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100'
+              }`}>
                 <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0 pointer-events-none" />
                 <span className="text-[11px] text-slate-500 whitespace-nowrap font-medium pointer-events-none">Đến:</span>
                 <DateInput
                   compact={true}
                   value={toDate}
                   onChange={handleToDateChange}
+                  min={fromDate || undefined}
                   placeholder="dd/mm/yyyy"
                   className="w-full text-xs"
                   title="Chọn ngày kết thúc (dd/mm/yyyy)"
@@ -915,19 +930,9 @@ export const OrdersPage: React.FC = () => {
                   : 'Chưa có đơn hàng nào'}
               </p>
               {hasActiveFilters ? (
-                <>
-                  <p className="text-xs text-slate-500">
-                    Hãy thử đổi từ khóa tìm kiếm, chọn đại lý khác, nới rộng khoảng thời gian hoặc xóa bộ lọc.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleResetFilters}
-                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg font-medium transition-colors"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    Xóa bộ lọc
-                  </button>
-                </>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Hãy thử đổi từ khóa tìm kiếm, chọn đại lý khác hoặc nới rộng khoảng thời gian.
+                </p>
               ) : (
                 (isSalesRep || isSalesManager || isAdmin) && (
                   <button
