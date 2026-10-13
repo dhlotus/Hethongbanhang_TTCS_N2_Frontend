@@ -258,10 +258,18 @@ export const CreateOrderPage: React.FC = () => {
   const [searchError, setSearchError] = useState('');
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Phân trang danh sách sản phẩm (tránh tràn danh sách khi có nhiều sản phẩm)
+  const [productPage, setProductPage] = useState(1);
+  const productPageSize = 4;
+  const totalProductPages = Math.max(1, Math.ceil(searchResults.length / productPageSize));
+  const pagedSearchResults = useMemo(() => {
+    return searchResults.slice((productPage - 1) * productPageSize, productPage * productPageSize);
+  }, [searchResults, productPage, productPageSize]);
+
   // ── 3. Dòng hàng đơn hàng (Order Lines) ──
   const [lines, setLines] = useState<OrderLine[]>([]);
   const [cartPage, setCartPage] = useState(1);
-  const cartPageSize = 5;
+  const cartPageSize = 4;
   const totalCartPages = Math.max(1, Math.ceil(lines.length / cartPageSize));
   const pagedLines = useMemo(() => {
     return lines.slice((cartPage - 1) * cartPageSize, cartPage * cartPageSize);
@@ -626,6 +634,7 @@ export const CreateOrderPage: React.FC = () => {
               );
 
         setSearchResults(filtered);
+        setProductPage(1);
       } catch {
         setSearchResults([]);
         setSearchError('Không thể tải danh sách sản phẩm. Vui lòng thử lại.');
@@ -1035,15 +1044,15 @@ export const CreateOrderPage: React.FC = () => {
         </button>
       </div>
 
-      {/* ── BỐ CỤC 2 CỘT CHÍNH (MASTER-DETAIL CÂN BẰNG 100% CHIỀU CAO) ── */}
+      {/* ── BỐ CỤC 2 CỘT CHÍNH (MASTER-DETAIL CÂN BẰNG 100% CHIỀU CAO 776PX) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         {/* ================================================================= */}
         {/* CỘT TRÁI (5 CỘT): ĐẠI LÝ, CÔNG NỢ, ĐỊA CHỈ & THÔNG TIN GIAO HÀNG */}
         {/* ================================================================= */}
         <div className={`lg:col-span-5 space-y-4 ${mobileTab === 'CUSTOMER' ? 'block' : 'hidden lg:block'}`}>
-          {/* Card 1: Chọn Đại lý & Công nợ (h-[380px]) */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 shadow-xs h-[380px] flex flex-col justify-between">
-            <div className="space-y-2">
+          {/* Card 1: Chọn Đại lý & Công nợ (h-[480px]) */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs h-[480px] flex flex-col justify-between">
+            <div className="space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <Building2 className="w-4 h-4 text-blue-600" />
@@ -1058,18 +1067,18 @@ export const CreateOrderPage: React.FC = () => {
 
               {/* Ô tìm kiếm đại lý */}
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                 <input
                   type="text"
                   value={customerSearch}
                   onChange={(e) => setCustomerSearch(e.target.value)}
                   placeholder="Tìm mã hoặc tên đại lý..."
-                  className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="w-full pl-8.5 pr-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
               </div>
 
-              {/* Danh sách đại lý cuộn lựa chọn (h-[135px]) */}
-              <div className="h-[135px] overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-100 border border-slate-100 rounded-xl p-1 bg-slate-50/30">
+              {/* Danh sách đại lý cuộn lựa chọn rộng rãi (h-[230px] - hiển thị trọn vẹn 3 đại lý không bị cắt thẻ) */}
+              <div className="h-[230px] overflow-y-auto space-y-2 pr-1 divide-y divide-slate-100 border border-slate-100 rounded-xl p-1.5 bg-slate-50/30">
                 {isLoadingCustomers ? (
                   <div className="flex items-center justify-center h-full text-slate-400 gap-2">
                     <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
@@ -1089,7 +1098,7 @@ export const CreateOrderPage: React.FC = () => {
                       <div
                         key={c.id}
                         onClick={() => void handleSelectCustomer(c)}
-                        className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                        className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
                           isSelected
                             ? 'border-blue-500 bg-blue-50/90 ring-2 ring-blue-500/20 shadow-xs'
                             : isLocked
@@ -1122,8 +1131,8 @@ export const CreateOrderPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Khung Thông tin Đại lý & Công nợ (h-[140px]) */}
-            <div className="h-[140px] border border-slate-100 rounded-xl bg-slate-50/60 p-2.5 text-xs flex flex-col justify-between">
+            {/* Khung Thông tin Đại lý & Công nợ (h-[145px]) */}
+            <div className="h-[145px] border border-slate-100 rounded-xl bg-slate-50/60 p-3 text-xs flex flex-col justify-between">
               {selectedCustomer ? (
                 <div className="space-y-1.5 h-full flex flex-col justify-between">
                   <div className="space-y-1 pb-1.5 border-b border-slate-200/70">
@@ -1155,7 +1164,7 @@ export const CreateOrderPage: React.FC = () => {
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="font-bold text-slate-800 flex items-center gap-1">
-                          <CreditCard className="w-3 h-3 text-blue-600" />
+                          <CreditCard className="w-3.5 h-3.5 text-blue-600" />
                           Công nợ
                         </span>
                         <span
@@ -1173,7 +1182,7 @@ export const CreateOrderPage: React.FC = () => {
                         <span className="text-slate-500">Còn lại: <b className="text-emerald-600">{formatCurrency(debtStatus.availableLimit)}</b></span>
                       </div>
                       {debtStatus.creditLimit > 0 && (
-                        <div className="w-full h-1 bg-slate-200 rounded-full overflow-hidden">
+                        <div className="w-full h-1 bg-slate-200 rounded-full overflow-hidden mt-0.5">
                           <div
                             className={`h-full rounded-full transition-all ${
                               (debtStatus.currentDebt / debtStatus.creditLimit) * 100 > 90
@@ -1192,8 +1201,8 @@ export const CreateOrderPage: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-slate-400 text-center gap-1">
-                  <Building2 className="w-5 h-5 text-slate-300" />
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 text-center gap-1.5">
+                  <Building2 className="w-6 h-6 text-slate-300" />
                   <p className="text-xs font-medium text-slate-600">Chưa chọn đại lý</p>
                   <p className="text-[11px] text-slate-400">Chọn 1 đại lý ở trên để xem bảng giá và công nợ</p>
                 </div>
@@ -1201,8 +1210,8 @@ export const CreateOrderPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 2: Điểm Giao Hàng & Ngày Giao & Ghi Chú (h-[270px]) */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 shadow-xs h-[270px] flex flex-col justify-between">
+          {/* Card 2: Điểm Giao Hàng & Ngày Giao & Ghi Chú (h-[280px]) */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs h-[280px] flex flex-col justify-between">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <div className="flex items-center gap-1.5">
                 <MapPin className="w-4 h-4 text-emerald-600" />
@@ -1219,9 +1228,9 @@ export const CreateOrderPage: React.FC = () => {
               )}
             </div>
 
-            <div className="space-y-2 flex-1 pt-1.5 flex flex-col justify-between text-xs">
+            <div className="space-y-2 flex-1 pt-2 flex flex-col justify-between text-xs">
               {/* Hàng 1: Grid 2 cột: Điểm giao hàng & Ngày giao */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="space-y-1">
                   <label className="text-[11px] font-semibold text-slate-700 block">Điểm giao hàng</label>
                   {(deliveryPoints.length > 0 || (selectedCustomer?.deliveryPoints && selectedCustomer.deliveryPoints.length > 0)) ? (
@@ -1279,12 +1288,12 @@ export const CreateOrderPage: React.FC = () => {
               {/* Hàng 3: Ghi chú đơn hàng */}
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold text-slate-700 block">Ghi chú đơn hàng (tuỳ chọn)</label>
-                <input
-                  type="text"
+                <textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="Ghi chú đóng gói hoặc hướng dẫn giao hàng..."
-                  className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-xl bg-slate-50/60 focus:bg-white focus:outline-none"
+                  rows={2}
+                  className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-xl bg-slate-50/60 focus:bg-white focus:outline-none resize-none"
                 />
               </div>
             </div>
@@ -1295,9 +1304,9 @@ export const CreateOrderPage: React.FC = () => {
         {/* CỘT PHẢI (7 CỘT): CÂY SẢN PHẨM & GIỎ HÀNG CHI TIẾT                */}
         {/* ================================================================= */}
         <div className={`lg:col-span-7 space-y-4 ${mobileTab === 'PRODUCTS' ? 'block' : 'hidden lg:block'}`}>
-          {/* Card 3: Danh sách sản phẩm (h-[325px]) */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 shadow-xs h-[325px] flex flex-col justify-between">
-            <div className="space-y-2">
+          {/* Card 3: Danh sách sản phẩm có Phân Trang (h-[420px]) */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs h-[420px] flex flex-col justify-between">
+            <div className="space-y-2.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <FolderTree className="w-4 h-4 text-indigo-600" />
@@ -1318,7 +1327,7 @@ export const CreateOrderPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Thanh chọn nhanh Cây nhóm hàng */}
+              {/* Thanh chọn nhanh Cây nhóm hàng cấp 1 */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
                 <button
                   type="button"
@@ -1351,18 +1360,18 @@ export const CreateOrderPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Lưới danh sách sản phẩm cuộn (h-[195px]) */}
-            <div className="border border-slate-100 rounded-xl overflow-hidden h-[195px] overflow-y-auto divide-y divide-slate-100">
+            {/* Lưới danh sách sản phẩm phân trang (h-[255px]) */}
+            <div className="border border-slate-100 rounded-xl overflow-hidden h-[255px] overflow-y-auto divide-y divide-slate-100">
               {searchError && (
                 <div className="p-4 text-center text-xs text-rose-600">{searchError}</div>
               )}
-              {searchResults.length === 0 ? (
+              {pagedSearchResults.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-400 text-xs py-8">
-                  <Package className="w-7 h-7 text-slate-300 mb-1" />
+                  <Package className="w-8 h-8 text-slate-300 mb-1" />
                   <span>Không tìm thấy sản phẩm nào trong nhóm này</span>
                 </div>
               ) : (
-                searchResults.map((p) => {
+                pagedSearchResults.map((p) => {
                   const available = p.availableStock ?? p.availableQuantity ?? (p.stockQuantity ?? 0);
                   const isOutOfStock = available <= 0;
                   const isAlreadyAdded = lines.some((l) => l.productId === p.id);
@@ -1374,7 +1383,7 @@ export const CreateOrderPage: React.FC = () => {
                   return (
                     <div
                       key={p.id}
-                      className={`p-2 sm:p-2.5 flex items-center justify-between gap-3 transition-colors ${
+                      className={`p-2.5 sm:p-3 flex items-center justify-between gap-3 transition-colors ${
                         isOutOfStock
                           ? 'bg-rose-50/50 opacity-80'
                           : isAlreadyAdded
@@ -1429,10 +1438,44 @@ export const CreateOrderPage: React.FC = () => {
                 })
               )}
             </div>
+
+            {/* Thanh Phân Trang Danh Sách Sản Phẩm */}
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span className="text-slate-500 text-[11px]">
+                {searchResults.length > 0 ? (
+                  <>Hiển thị {(productPage - 1) * productPageSize + 1} - {Math.min(productPage * productPageSize, searchResults.length)} / {searchResults.length} SP</>
+                ) : (
+                  <>0 sản phẩm</>
+                )}
+              </span>
+              {totalProductPages > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={productPage <= 1}
+                    onClick={() => setProductPage((p) => Math.max(1, p - 1))}
+                    className="px-2 py-0.5 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
+                  >
+                    Trước
+                  </button>
+                  <span className="font-semibold px-1 text-slate-700 text-xs">
+                    {productPage}/{totalProductPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={productPage >= totalProductPages}
+                    onClick={() => setProductPage((p) => Math.min(totalProductPages, p + 1))}
+                    className="px-2 py-0.5 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
+                  >
+                    Sau
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Card 4: Giỏ hàng (h-[325px]) */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 shadow-xs h-[325px] flex flex-col justify-between">
+          {/* Card 4: Giỏ hàng & Khối tổng thanh toán (h-[340px]) */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs h-[340px] flex flex-col justify-between">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <div className="flex items-center gap-1.5">
                 <Package className="w-4 h-4 text-blue-600" />
@@ -1453,8 +1496,8 @@ export const CreateOrderPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Khu vực bảng/card giỏ hàng có chiều cao chuẩn h-[170px] */}
-            <div className="h-[170px] overflow-y-auto">
+            {/* Khu vực bảng/card giỏ hàng rộng rãi hơn h-[200px] để hiển thị trọn vẹn 4 sản phẩm không bị cắt */}
+            <div className="h-[200px] overflow-y-auto">
               {lines.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl">
                   <Package className="w-6 h-6 text-slate-300 mb-1" />
@@ -1644,7 +1687,7 @@ export const CreateOrderPage: React.FC = () => {
             {/* Thanh Phân Trang & Khối Tổng kết tài chính cố định ở chân Card 4 */}
             <div className="space-y-1.5 pt-1 border-t border-slate-100">
               {totalCartPages > 1 && (
-                <div className="flex items-center justify-between text-[11px] text-slate-500 pb-1">
+                <div className="flex items-center justify-between text-[11px] text-slate-500 pb-0.5">
                   <span>Trang {cartPage}/{totalCartPages} ({lines.length} SP)</span>
                   <div className="flex items-center gap-1">
                     <button
