@@ -19,6 +19,8 @@ import { showToast } from '../components/toast';
 import { Pagination } from '../components/pagination';
 import { DateInput } from '../components/date-input';
 import { ordersService } from '../services/orders.service';
+import { productsService } from '../services/products.service';
+import type { Product } from '../types/products';
 import type {
   Order,
   OrderStatus,
@@ -110,6 +112,37 @@ export const OrderApprovalsPage: React.FC = () => {
   const [decisionComment, setDecisionComment] = useState('');
   const [modalValidationError, setModalValidationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Dữ liệu sản phẩm & tồn kho khả dụng để kiểm tra đối soát trực tiếp
+  const [productsMap, setProductsMap] = useState<Map<string, Product>>(new Map());
+  const [isLoadingStock, setIsLoadingStock] = useState(false);
+
+  // Tải thông tin tồn kho khi mở modal thẩm định
+  useEffect(() => {
+    let active = true;
+    if (!reviewOrder?.id) return;
+    setIsLoadingStock(true);
+    productsService
+      .getProducts({ limit: 100 })
+      .then((res) => {
+        if (!active) return;
+        const list = Array.isArray(res) ? res : res.data || [];
+        const map = new Map<string, Product>();
+        list.forEach((p) => {
+          if (p.sku) map.set(p.sku.toUpperCase(), p);
+          if (p.id) map.set(p.id, p);
+        });
+        setProductsMap(map);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setIsLoadingStock(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [reviewOrder?.id, refreshKey]);
 
   // Debounce tìm kiếm
   useEffect(() => {
@@ -236,6 +269,42 @@ export const OrderApprovalsPage: React.FC = () => {
     const start = (currentPage - 1) * pageSize;
     return filteredOrders.slice(start, start + pageSize);
   }, [filteredOrders, currentPage, pageSize]);
+
+  // Kiểm tra tồn kho cho các dòng hàng của đơn đang thẩm định
+  const stockCheckResults = useMemo(() => {
+    if (!reviewOrder?.lines) return { outOfStockItems: [], linesStockInfo: [] };
+
+    const linesStockInfo = reviewOrder.lines.map((line) => {
+      const sku = (line.productSku || '').trim().toUpperCase();
+      const product = productsMap.get(sku) || productsMap.get(line.productId || '');
+
+      const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
+      const requiredBase = line.baseQuantity || Math.round((line.quantity || 0) * convRate);
+
+      const physicalStock = product?.physicalStock ?? product?.stockQuantity ?? 1000;
+      const reservedStock = product?.reservedStock ?? 0;
+      const availableStock = product?.availableStock !== undefined
+        ? product.availableStock
+        : (physicalStock - reservedStock);
+      const isSufficient = availableStock >= requiredBase;
+
+      return {
+        line,
+        product,
+        sku,
+        requiredBase,
+        physicalStock,
+        reservedStock,
+        availableStock,
+        baseUnit: product?.baseUnit || line.unit || 'Lon',
+        isSufficient,
+      };
+    });
+
+    const outOfStockItems = linesStockInfo.filter((item) => !item.isSufficient);
+
+    return { outOfStockItems, linesStockInfo };
+  }, [reviewOrder?.lines, productsMap]);
 
   // Xử lý gửi quyết định phê duyệt (Duyệt / Từ chối / Trả lại)
   const handleDecisionSubmit = async (action: OrderApprovalAction) => {
@@ -726,9 +795,36 @@ export const OrderApprovalsPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Tab 1: Danh sách mặt hàng */}
+              {/* Tab 1: Danh sách mặt hàng & Đối soát tồn kho trực tiếp */}
               {activeDetailTab === 'ITEMS' && (
                 <div className="space-y-3">
+                  {/* Alert cảnh báo tồn kho nếu có sản phẩm không đủ hàng */}
+                  {stockCheckResults.outOfStockItems.length > 0 ? (
+                    <div className="p-3.5 bg-rose-50/90 border border-rose-200 rounded-2xl flex items-start gap-3 text-xs text-rose-900 animate-in fade-in">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-bold text-rose-800">
+                          Phát hiện {stockCheckResults.outOfStockItems.length} sản phẩm không đủ tồn khả dụng để duyệt đơn:
+                        </p>
+                        <ul className="list-disc list-inside space-y-0.5 text-slate-700">
+                          {stockCheckResults.outOfStockItems.map((item) => (
+                            <li key={item.sku}>
+                              <strong>{item.line.productName}</strong>: Tồn khả dụng còn <strong>{item.availableStock.toLocaleString('vi-VN')} {item.baseUnit}</strong> (Tồn kho thực tế: {item.physicalStock.toLocaleString('vi-VN')}, Đã giữ cho đơn khác: {item.reservedStock.toLocaleString('vi-VN')}), nhưng đơn này yêu cầu <strong>{item.requiredBase.toLocaleString('vi-VN')} {item.baseUnit}</strong>.
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="text-[11px] text-rose-700 pt-0.5">
+                          💡 Bạn có thể bấm <strong>Trả lại sửa</strong> để NVKD chỉnh sửa lại số lượng hoặc liên hệ Thủ kho nhập thêm hàng.
+                        </p>
+                      </div>
+                    </div>
+                  ) : isOrderPendingApproval(reviewOrder) && !isLoadingStock ? (
+                    <div className="p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-800">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Tồn kho khả dụng đầy đủ cho toàn bộ {reviewOrder.lines?.length || 0} sản phẩm trong đơn. Sẵn sàng phê duyệt!</span>
+                    </div>
+                  ) : null}
+
                   <div className="border border-slate-200 rounded-xl overflow-hidden">
                     <table className="w-full text-xs text-left">
                       <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
@@ -736,31 +832,64 @@ export const OrderApprovalsPage: React.FC = () => {
                           <th className="px-3.5 py-2.5">Sản phẩm / Mã hàng</th>
                           <th className="px-2.5 py-2.5 text-center">Đơn vị</th>
                           <th className="px-2.5 py-2.5 text-center">Số lượng</th>
+                          <th className="px-3 py-2.5 text-center">Tồn khả dụng</th>
                           <th className="px-3 py-2.5 text-right">Đơn giá bán</th>
                           <th className="px-3 py-2.5 text-right">Chiết khấu</th>
                           <th className="px-3 py-2.5 text-right">Thành tiền</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {reviewOrder.lines?.map((line, idx) => (
-                          <tr key={idx}>
-                            <td className="px-3.5 py-2.5">
-                              <p className="font-bold text-slate-900">{line.productName}</p>
-                              <span className="text-[10px] font-mono text-slate-500">{line.productSku}</span>
-                            </td>
-                            <td className="px-2.5 py-2.5 text-center font-medium text-slate-600">{line.unit}</td>
-                            <td className="px-2.5 py-2.5 text-center font-bold text-slate-900">{line.quantity}</td>
-                            <td className="px-3 py-2.5 text-right font-bold text-slate-900">
-                              {formatCurrency(line.unitPrice)}
-                            </td>
-                            <td className="px-3 py-2.5 text-right font-medium text-emerald-700">
-                              {line.discountPercent > 0 ? `${line.discountPercent}%` : '---'}
-                            </td>
-                            <td className="px-3 py-2.5 text-right font-extrabold text-indigo-700">
-                              {formatCurrency(line.lineTotal)}
-                            </td>
-                          </tr>
-                        ))}
+                        {reviewOrder.lines?.map((line, idx) => {
+                          const itemStock = stockCheckResults.linesStockInfo[idx];
+
+                          return (
+                            <tr key={idx}>
+                              <td className="px-3.5 py-2.5">
+                                <p className="font-bold text-slate-900">{line.productName}</p>
+                                <span className="text-[10px] font-mono text-slate-500">{line.productSku}</span>
+                              </td>
+                              <td className="px-2.5 py-2.5 text-center font-medium text-slate-600">{line.unit}</td>
+                              <td className="px-2.5 py-2.5 text-center font-bold text-slate-900">{line.quantity}</td>
+                              {/* Cột Tồn khả dụng trực quan */}
+                              <td className="px-3 py-2.5 text-center">
+                                {isLoadingStock ? (
+                                  <span className="text-[10px] text-slate-400">Đang đối soát...</span>
+                                ) : itemStock ? (
+                                  <div>
+                                    <span
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                                        itemStock.isSufficient
+                                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                          : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                      }`}
+                                    >
+                                      {itemStock.isSufficient ? (
+                                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                      ) : (
+                                        <AlertCircle className="w-3 h-3 text-rose-600" />
+                                      )}
+                                      {itemStock.availableStock.toLocaleString('vi-VN')} {itemStock.baseUnit}
+                                    </span>
+                                    <span className="block text-[10px] text-slate-400 mt-0.5">
+                                      Kho: {itemStock.physicalStock.toLocaleString('vi-VN')} · Đã giữ: {itemStock.reservedStock.toLocaleString('vi-VN')}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400">---</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5 text-right font-bold text-slate-900">
+                                {formatCurrency(line.unitPrice)}
+                              </td>
+                              <td className="px-3 py-2.5 text-right font-medium text-emerald-700">
+                                {line.discountPercent > 0 ? `${line.discountPercent}%` : '---'}
+                              </td>
+                              <td className="px-3 py-2.5 text-right font-extrabold text-indigo-700">
+                                {formatCurrency(line.lineTotal)}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
