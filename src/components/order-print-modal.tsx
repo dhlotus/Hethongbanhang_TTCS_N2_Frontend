@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Printer,
@@ -9,7 +9,7 @@ import {
   Calendar,
   User,
   FileText,
-  CheckCircle2,
+  Info,
 } from 'lucide-react';
 import { BarcodeSvg } from './barcode-svg';
 import { numberToVietnameseWords } from '../utils/number-to-words';
@@ -62,236 +62,449 @@ export const OrderPrintModal: React.FC<OrderPrintModalProps> = ({
   onClose,
 }) => {
   const printContentRef = useRef<HTMLDivElement>(null);
+  const [pdfNotice, setPdfNotice] = useState<string | null>(null);
+
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // Quản lý class body và phím ESC để đóng modal
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('has-order-print-open');
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          onCloseRef.current();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+        document.body.classList.remove('has-order-print-open');
+      };
+    } else {
+      document.body.classList.remove('has-order-print-open');
+      setPdfNotice(null);
+    }
+  }, [isOpen]);
+
+  // Đồng bộ trạng thái mở modal vào sessionStorage & URL query để ấn F5 vẫn mở đúng trang In / Xuất PDF
+  useEffect(() => {
+    if (isOpen && order) {
+      const code = order.orderCode || order.id || '';
+      try {
+        sessionStorage.setItem('loha_active_print_order_id', code);
+        sessionStorage.setItem('loha_active_print_order_data', JSON.stringify(order));
+      } catch {}
+
+      try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('printOrderId') !== code) {
+          url.searchParams.set('printOrderId', code);
+          window.history.replaceState({}, '', url.toString());
+        }
+      } catch {}
+    } else if (!isOpen) {
+      try {
+        sessionStorage.removeItem('loha_active_print_order_id');
+        sessionStorage.removeItem('loha_active_print_order_data');
+      } catch {}
+
+      try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('printOrderId')) {
+          url.searchParams.delete('printOrderId');
+          window.history.replaceState({}, '', url.toString());
+        }
+      } catch {}
+    }
+  }, [isOpen, order]);
 
   if (!isOpen || !order) return null;
 
+  const totalQuantity = (order.lines || []).reduce(
+    (sum, line) => sum + (line.quantity || 0),
+    0
+  );
+
+  /**
+   * In độc lập qua Hidden Iframe:
+   * Loại bỏ 100% trang trắng rác, chỉ in DUY NHẤT phiếu đơn hàng chuẩn A4 Full trang
+   */
+  const executeIframePrint = (isPdf = false) => {
+    const contentElement = printContentRef.current;
+    if (!contentElement) {
+      window.print();
+      return;
+    }
+
+    if (isPdf) {
+      setPdfNotice(
+        `Đang xuất PDF: Trong hộp thoại in, chọn máy in đích là "Lưu dưới dạng PDF" (Save as PDF) hoặc "Microsoft Print to PDF" rồi nhấn Lưu.`
+      );
+    }
+
+    // Dọn dẹp iframe cũ nếu có
+    const oldIframe = document.getElementById('order-print-engine-iframe');
+    if (oldIframe) {
+      oldIframe.remove();
+    }
+
+    // Tạo hidden iframe chuyên dụng
+    const iframe = document.createElement('iframe');
+    iframe.id = 'order-print-engine-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.visibility = 'hidden';
+    document.body.appendChild(iframe);
+
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!iframeDoc) {
+      window.print();
+      return;
+    }
+
+    // Thu thập các thẻ style hiện hành từ ứng dụng
+    const styleTags = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map((el) => el.outerHTML)
+      .join('\n');
+
+    const documentTitle = `Phieu_Xac_Nhan_Don_Hang_${order.orderCode || 'LOHA'}`;
+
+    iframeDoc.open();
+    iframeDoc.write(`
+      <!DOCTYPE html>
+      <html lang="vi">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>${documentTitle}</title>
+        ${styleTags}
+        <style>
+          /* ======================================================= */
+          /* CHUẨN HÓA IN ẤN & XUẤT PDF A4 PORTRAIT FULL TRANG SẮC NÉT */
+          /* ======================================================= */
+          @page {
+            size: A4 portrait;
+            margin: 8mm 10mm 8mm 10mm;
+          }
+
+          *, *::before, *::after {
+            box-sizing: border-box !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            color: #0f172a !important;
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+            font-size: 13px !important;
+            line-height: 1.45 !important;
+            width: 100% !important;
+            height: auto !important;
+          }
+
+          #order-print-document {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: #ffffff !important;
+          }
+
+          /* Bảng sản phẩm rộng 100%, nét viền rõ đậm */
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin: 0 !important;
+          }
+
+          th, td {
+            border: 1px solid #94a3b8 !important;
+            padding: 6px 8px !important;
+            vertical-align: middle !important;
+          }
+
+          thead {
+            display: table-header-group !important;
+          }
+
+          th {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+            font-weight: 700 !important;
+          }
+
+          tr {
+            page-break-inside: avoid !important;
+          }
+
+          /* Không ngắt trang giữa các khối tổng kết và chữ ký */
+          .print-no-break {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+        </style>
+      </head>
+      <body>
+        <div id="order-print-document">
+          ${contentElement.innerHTML}
+        </div>
+      </body>
+      </html>
+    `);
+    iframeDoc.close();
+
+    // Kích hoạt lệnh in sau khi DOM trong iframe hoàn tất
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (err) {
+        console.error('Lỗi in iframe, chuyển sang window.print:', err);
+        window.print();
+      }
+    }, 300);
+  };
+
   const handlePrint = () => {
-    window.print();
+    executeIframePrint(false);
   };
 
   const handleExportPdf = () => {
-    // Kích hoạt hộp thoại in hệ thống (cho phép lưu trực tiếp thành PDF sắc nét)
-    window.print();
+    executeIframePrint(true);
   };
 
   const modalElement = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:static">
-      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden print:max-h-none print:shadow-none print:w-full print:rounded-none">
-        {/* Thanh công cụ Modal (Nền trắng sáng sủa, sạch sẽ, chuẩn UI Guidelines) */}
-        <div className="flex items-center justify-between px-5 py-3.5 bg-white border-b border-slate-200 shrink-0 print:hidden">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#371cdb]">
-              <FileText className="w-4 h-4" />
+    <div className="print-modal-backdrop fixed inset-0 z-50 flex flex-col w-screen h-screen bg-slate-900/70 backdrop-blur-xs overflow-hidden print:p-0 print:bg-white print:static">
+      <div className="print-modal-container bg-white w-full h-full flex flex-col overflow-hidden print:shadow-none print:w-full print:rounded-none">
+        {/* Thanh công cụ Trên cùng */}
+        <div className="flex items-center justify-between px-6 py-3.5 bg-white border-b border-slate-200 shrink-0 shadow-xs print:hidden z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#371cdb] shadow-2xs">
+              <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-slate-900 tracking-wide">
-                Xem Trước & Xuất Mẫu In Đơn Hàng (SN-47)
-              </h2>
-              <p className="text-xs text-slate-500">
-                Mã đơn: <span className="font-mono font-bold text-[#371cdb] bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">{order.orderCode}</span> · Đưa đại lý xác nhận tại chỗ
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-wide">
+                  Xem Trước & Xuất Mẫu In Đơn Hàng (SN-47)
+                </h2>
+                <span className="font-mono font-bold text-xs text-[#371cdb] bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                  {order.orderCode}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 hidden sm:block">
+                Hiển thị toàn màn hình chuẩn A4 · Đầy đủ thông tin không che khuất
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-[#371cdb] text-white hover:bg-[#2d16b5] shadow-xs transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-[#371cdb] text-white hover:bg-[#2d16b5] shadow-xs hover:shadow transition-all cursor-pointer"
               title="In trực tiếp ra máy in A4 / máy in nhiệt"
             >
-              <Printer className="w-3.5 h-3.5" />
-              In đơn hàng
+              <Printer className="w-4 h-4" />
+              <span>In đơn hàng</span>
             </button>
             <button
               type="button"
               onClick={handleExportPdf}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 shadow-2xs transition-colors cursor-pointer"
               title="Xuất file PDF để lưu trữ hoặc gửi Zalo cho đại lý"
             >
-              <Download className="w-3.5 h-3.5" />
-              Xuất PDF
+              <Download className="w-4 h-4" />
+              <span>Xuất PDF</span>
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer ml-1"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer ml-1"
               aria-label="Đóng"
+              title="Đóng cửa sổ xem trước (Phím ESC)"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
+              <span className="hidden sm:inline">Đóng</span>
             </button>
           </div>
         </div>
 
-        {/* Nội dung Mẫu in chuẩn A4 (Có thể cuộn trên màn hình & In thực tế) */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-50 print:bg-white print:p-0 print:overflow-visible">
+        {/* Thông báo hướng dẫn khi xuất PDF */}
+        {pdfNotice && (
+          <div className="px-6 py-2.5 bg-blue-50 border-b border-blue-200 text-blue-900 text-xs sm:text-sm flex items-center justify-between gap-3 shrink-0 print:hidden animate-fade-in">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-blue-600 shrink-0" />
+              <span>{pdfNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPdfNotice(null)}
+              className="text-blue-600 hover:text-blue-900 text-xs font-bold underline cursor-pointer"
+            >
+              Đã hiểu
+            </button>
+          </div>
+        )}
+
+        {/* Nội dung Mẫu in chuẩn SN-47 (Có LOHA SALES & Không còn Ghi chú đường) */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-100/90 print:bg-white print:p-0 print:overflow-visible flex justify-center items-start">
           <div
             ref={printContentRef}
             id="order-print-document"
-            className="bg-white max-w-[210mm] mx-auto p-6 sm:p-8 rounded-xl shadow-xs border border-slate-200 text-slate-900 print:shadow-none print:border-none print:p-0 print:max-w-none text-xs sm:text-sm"
+            className="bg-white w-full max-w-5xl p-6 sm:p-10 rounded-2xl shadow-lg border border-slate-300 text-slate-900 print:shadow-none print:border-none print:p-0 print:max-w-none text-xs sm:text-[13px] leading-relaxed my-auto sm:my-0"
           >
-            {/* Header Mẫu in: Logo công ty & Mã vạch tra cứu */}
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-4 border-b-2 border-slate-900">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <div className="px-2.5 py-1 bg-[#371cdb] text-white font-extrabold text-sm sm:text-base rounded-md tracking-wider">
-                    LOHA SALES
-                  </div>
-                  <span className="font-bold text-slate-800 text-xs sm:text-sm uppercase tracking-wide">
-                    Hệ Thống Phân Phối B2B
-                  </span>
+            {/* Header Mẫu in: Logo LOHA SALES & Mã vạch tra cứu */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b-2 border-slate-900 print-no-break">
+              <div className="flex items-center">
+                <div className="px-3.5 py-1.5 bg-[#371cdb] text-white font-black text-base sm:text-lg rounded-lg tracking-wider shadow-2xs">
+                  LOHA SALES
                 </div>
-                <h1 className="font-bold text-slate-900 text-xs sm:text-sm uppercase pt-1">
-                  CÔNG TY CỔ PHẦN PHÂN PHỐI & THỰC PHẨM DINH DƯỠNG LOHA VIỆT NAM
-                </h1>
-                <p className="text-[11px] text-slate-600">
-                  Địa chỉ: 123 Nguyễn Trọng Tuyển, Phường 8, Quận Phú Nhuận, TP. Hồ Chí Minh
-                </p>
-                <p className="text-[11px] text-slate-600">
-                  Hotline: <span className="font-semibold text-slate-800">1900 6868</span> · Email: <span className="font-semibold text-slate-800">sales@loha.vn</span> · MST: <span className="font-semibold text-slate-800">0312456789</span>
-                </p>
               </div>
 
-              {/* Mã vạch Barcode SVG (SN-47: Có mã đơn và mã vạch để kho tra cứu nhanh) */}
-              <div className="flex flex-col items-center sm:items-end justify-center bg-slate-50 p-2 sm:p-2.5 rounded-lg border border-slate-200 self-stretch sm:self-auto shrink-0 print:bg-transparent print:border-none">
-                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-1">
+              {/* Mã vạch Barcode SVG (SN-47: Tra cứu kho siêu nhanh) */}
+              <div className="flex flex-col items-center sm:items-end justify-center bg-slate-50 p-2.5 rounded-xl border border-slate-300 self-stretch sm:self-auto shrink-0 print:bg-transparent print:border-none">
+                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-600 mb-0.5">
                   MÃ TRA CỨU KHO (BARCODE)
                 </div>
                 <BarcodeSvg
                   value={order.orderCode || 'DH-UNKNOWN'}
-                  height={46}
+                  height={50}
                   showText={true}
-                  className="max-w-[190px]"
+                  className="max-w-[200px]"
                 />
               </div>
             </div>
 
             {/* Tiêu đề Phiếu Đặt Hàng */}
-            <div className="text-center my-4 sm:my-5">
-              <h2 className="text-base sm:text-xl font-extrabold uppercase text-slate-900 tracking-tight">
+            <div className="text-center my-4 sm:my-5 print-no-break">
+              <h2 className="text-xl sm:text-2xl font-black uppercase text-slate-950 tracking-tight">
                 PHIẾU XÁC NHẬN ĐƠN ĐẶT HÀNG
               </h2>
-              <p className="text-xs text-slate-500 mt-1">
-                (Dành cho Đại lý kiểm tra & xác nhận tại chỗ trước khi rời đi)
-              </p>
             </div>
 
-            {/* Khối Thông tin Đại lý & Điểm giao hàng */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
+            {/* Khối Thông tin Đại lý & Điểm giao hàng (ĐÃ XÓA GHI CHÚ ĐƯỜNG) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-4 print-no-break">
               {/* Cột 1: Thông tin Đại lý */}
-              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1.5 print:bg-white print:border-slate-300">
-                <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-[#371cdb] border-b border-slate-200 pb-1 mb-1.5">
+              <div className="p-3.5 rounded-xl border border-slate-300 bg-slate-50/80 space-y-1.5 print:bg-white print:border-slate-400">
+                <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-[#371cdb] border-b border-slate-200 pb-1 mb-1">
                   <Building2 className="w-3.5 h-3.5 shrink-0" />
                   <span>Thông Tin Đại Lý</span>
                 </div>
-                <div className="text-xs">
-                  <span className="text-slate-500">Tên đại lý: </span>
-                  <span className="font-bold text-slate-900">{order.customerName}</span>
+                <div className="text-xs sm:text-[13px]">
+                  <span className="text-slate-600 font-medium">Tên đại lý: </span>
+                  <span className="font-bold text-slate-950">{order.customerName}</span>
                 </div>
-                <div className="text-xs">
-                  <span className="text-slate-500">Mã đại lý: </span>
-                  <span className="font-mono font-semibold text-slate-800">{order.customerCode}</span>
+                <div className="text-xs sm:text-[13px]">
+                  <span className="text-slate-600 font-medium">Mã đại lý: </span>
+                  <span className="font-mono font-bold text-slate-900">{order.customerCode || '—'}</span>
                 </div>
-                <div className="text-xs">
-                  <span className="text-slate-500">Phân cấp: </span>
-                  <span className="font-medium text-slate-700">{getCustomerGroupLabel(order.customerGroup)}</span>
+                <div className="text-xs sm:text-[13px]">
+                  <span className="text-slate-600 font-medium">Phân cấp: </span>
+                  <span className="font-semibold text-slate-800">
+                    {getCustomerGroupLabel(order.customerGroup)}
+                  </span>
                 </div>
-                <div className="text-xs">
-                  <span className="text-slate-500">Số điện thoại: </span>
-                  <span className="font-medium text-slate-800">{order.deliveryPoint?.phone || '—'}</span>
+                <div className="text-xs sm:text-[13px]">
+                  <span className="text-slate-600 font-medium">Số điện thoại: </span>
+                  <span className="font-bold text-slate-900">{order.deliveryPoint?.phone || '—'}</span>
                 </div>
               </div>
 
-              {/* Cột 2: Thông tin Giao nhận */}
-              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1.5 print:bg-white print:border-slate-300">
-                <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-[#371cdb] border-b border-slate-200 pb-1 mb-1.5">
+              {/* Cột 2: Thông tin Giao nhận (ĐÃ XÓA GHI CHÚ ĐƯỜNG) */}
+              <div className="p-3.5 rounded-xl border border-slate-300 bg-slate-50/80 space-y-1.5 print:bg-white print:border-slate-400">
+                <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-[#371cdb] border-b border-slate-200 pb-1 mb-1">
                   <MapPin className="w-3.5 h-3.5 shrink-0" />
                   <span>Điểm Giao Hàng & Nhận Hàng</span>
                 </div>
-                <div className="text-xs">
-                  <span className="text-slate-500">Điểm giao: </span>
-                  <span className="font-semibold text-slate-800">
+                <div className="text-xs sm:text-[13px]">
+                  <span className="text-slate-600 font-medium">Điểm giao: </span>
+                  <span className="font-bold text-slate-900">
                     {order.deliveryPoint?.name || 'Giao tại địa chỉ đại lý'}
                   </span>
                 </div>
-                <div className="text-xs">
-                  <span className="text-slate-500">Người nhận: </span>
-                  <span className="font-medium text-slate-800">
+                <div className="text-xs sm:text-[13px]">
+                  <span className="text-slate-600 font-medium">Người nhận: </span>
+                  <span className="font-bold text-slate-900">
                     {order.deliveryPoint?.receiverName || order.customerName}
                   </span>
                 </div>
-                <div className="text-xs">
-                  <span className="text-slate-500">Địa chỉ giao: </span>
-                  <span className="font-medium text-slate-800">
+                <div className="text-xs sm:text-[13px]">
+                  <span className="text-slate-600 font-medium">Địa chỉ giao: </span>
+                  <span className="font-semibold text-slate-900">
                     {order.deliveryPoint?.address || 'Theo địa chỉ đăng ký đại lý'}
                   </span>
                 </div>
-                {order.deliveryPoint?.roadNote && (
-                  <div className="text-xs text-amber-900 bg-amber-50/70 px-2 py-1 rounded border border-amber-200">
-                    <span className="font-semibold">Ghi chú đường: </span>
-                    {order.deliveryPoint.roadNote}
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Thông tin đơn hàng (Ngày hẹn giao, NV kinh doanh) */}
-            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-100 rounded-lg text-xs mb-4 print:bg-slate-50 print:border print:border-slate-300">
+            {/* Thông tin đơn hàng (Thời gian & NVKD) */}
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-100 rounded-xl text-xs sm:text-[13px] mb-4 print:bg-slate-50 print:border print:border-slate-300 print-no-break">
               <div className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                <span className="text-slate-600">Ngày đặt:</span>
-                <span className="font-semibold text-slate-800">{formatDate(order.createdAt)}</span>
+                <Calendar className="w-3.5 h-3.5 text-slate-600" />
+                <span className="text-slate-700">Ngày đặt:</span>
+                <span className="font-bold text-slate-900">{formatDate(order.createdAt)}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                <span className="text-slate-600">Ngày hẹn giao:</span>
+                <Calendar className="w-3.5 h-3.5 text-indigo-700" />
+                <span className="text-slate-700">Ngày hẹn giao:</span>
                 <span className="font-bold text-indigo-700">{formatDate(order.deliveryDate)}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-slate-500" />
-                <span className="text-slate-600">Nhân viên phụ trách:</span>
-                <span className="font-semibold text-slate-800">{order.salesRepName || 'NVKD Loha'}</span>
+                <User className="w-3.5 h-3.5 text-slate-600" />
+                <span className="text-slate-700">NV phụ trách:</span>
+                <span className="font-bold text-slate-900">{order.salesRepName || 'Trần Văn Nam'}</span>
               </div>
             </div>
 
-            {/* Bảng Chi Tiết Dòng Hàng (SN-47) */}
-            <div className="border border-slate-300 rounded-lg overflow-hidden mb-4">
-              <table className="w-full text-left border-collapse text-xs">
+            {/* Bảng Chi Tiết Dòng Hàng (SN-47: Rộng 100%, nét căng) */}
+            <div className="border border-slate-300 rounded-xl overflow-hidden mb-4 shadow-2xs">
+              <table className="w-full text-left border-collapse text-xs sm:text-[13px]">
                 <thead>
-                  <tr className="bg-slate-100 text-slate-700 border-b border-slate-300 font-semibold print:bg-slate-200">
-                    <th className="py-2.5 px-2 text-center w-8 border-r border-slate-300">STT</th>
-                    <th className="py-2.5 px-2.5 border-r border-slate-300">Mã SKU</th>
+                  <tr className="bg-slate-100 text-slate-900 border-b border-slate-300 font-bold print:bg-slate-200">
+                    <th className="py-2.5 px-2 text-center w-9 border-r border-slate-300">STT</th>
+                    <th className="py-2.5 px-2.5 border-r border-slate-300 w-24">Mã SKU</th>
                     <th className="py-2.5 px-3 border-r border-slate-300">Tên Mặt Hàng</th>
                     <th className="py-2.5 px-2 text-center border-r border-slate-300 w-16">ĐVT</th>
                     <th className="py-2.5 px-2 text-right border-r border-slate-300 w-14">SL</th>
                     <th className="py-2.5 px-2.5 text-right border-r border-slate-300 w-24">Đơn Giá Gốc</th>
-                    <th className="py-2.5 px-2 text-center border-r border-slate-300 w-14">CK (%)</th>
+                    <th className="py-2.5 px-2 text-center border-r border-slate-300 w-16">CK (%)</th>
                     <th className="py-2.5 px-2.5 text-right border-r border-slate-300 w-24">Đơn Giá CK</th>
                     <th className="py-2.5 px-3 text-right w-28">Thành Tiền</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-slate-300">
                   {order.lines.map((line, index) => (
                     <tr key={index} className="hover:bg-slate-50/50">
-                      <td className="py-2 px-2 text-center font-medium text-slate-500 border-r border-slate-200">
+                      <td className="py-2.5 px-2 text-center font-semibold text-slate-600 border-r border-slate-300">
                         {index + 1}
                       </td>
-                      <td className="py-2 px-2.5 font-mono text-[11px] text-slate-600 border-r border-slate-200">
+                      <td className="py-2.5 px-2.5 font-mono font-semibold text-slate-700 border-r border-slate-300">
                         {line.productSku}
                       </td>
-                      <td className="py-2 px-3 font-medium text-slate-900 border-r border-slate-200">
+                      <td className="py-2.5 px-3 font-bold text-slate-950 border-r border-slate-300">
                         {line.productName}
                       </td>
-                      <td className="py-2 px-2 text-center text-slate-600 border-r border-slate-200">
+                      <td className="py-2.5 px-2 text-center font-medium text-slate-700 border-r border-slate-300">
                         {line.unit}
                       </td>
-                      <td className="py-2 px-2 text-right font-bold text-slate-900 border-r border-slate-200">
+                      <td className="py-2.5 px-2 text-right font-black text-slate-950 border-r border-slate-300">
                         {line.quantity}
                       </td>
-                      <td className="py-2 px-2.5 text-right text-slate-600 border-r border-slate-200">
+                      <td className="py-2.5 px-2.5 text-right font-medium text-slate-700 border-r border-slate-300">
                         {formatCurrency(line.listPrice)}
                       </td>
-                      <td className="py-2 px-2 text-center border-r border-slate-200">
+                      <td className="py-2.5 px-2 text-center border-r border-slate-300">
                         {line.discountPercent > 0 ? (
                           <span className="font-bold text-emerald-700">
                             {line.discountPercent}%
@@ -300,116 +513,66 @@ export const OrderPrintModal: React.FC<OrderPrintModalProps> = ({
                           <span className="text-slate-400">0%</span>
                         )}
                       </td>
-                      <td className="py-2 px-2.5 text-right text-slate-800 border-r border-slate-200">
+                      <td className="py-2.5 px-2.5 text-right font-semibold text-slate-900 border-r border-slate-300">
                         {formatCurrency(line.unitPrice)}
                       </td>
-                      <td className="py-2 px-3 text-right font-bold text-slate-900">
+                      <td className="py-2.5 px-3 text-right font-black text-slate-950">
                         {formatCurrency(line.lineTotal)}
                       </td>
                     </tr>
                   ))}
+                  {/* Dòng Tổng số lượng mặt hàng (Ảnh 1) */}
+                  <tr className="bg-slate-50/80 font-bold border-t border-slate-300 print:bg-slate-100">
+                    <td colSpan={4} className="py-2 px-3 text-right text-slate-800 border-r border-slate-300 uppercase">
+                      TỔNG SỐ LƯỢNG MẶT HÀNG:
+                    </td>
+                    <td className="py-2 px-2 text-right text-slate-950 text-sm border-r border-slate-300">
+                      {totalQuantity}
+                    </td>
+                    <td colSpan={4} className="py-2 px-3 text-right text-slate-500 font-normal italic text-xs">
+                      (Đã bao gồm chiết khấu áp dụng theo cấp đại lý)
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
 
             {/* Bảng Tổng Hợp Tài Chính & Chiết Khấu */}
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 p-3.5 rounded-xl border border-slate-300 bg-slate-50/60 mb-4 print:bg-white">
-              <div className="w-full sm:w-1/2 space-y-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start p-3.5 rounded-xl border border-slate-300 bg-slate-50/80 mb-4 print:bg-white print-no-break">
+              <div className="space-y-1.5 overflow-hidden">
                 {order.note && (
-                  <div className="text-xs">
-                    <span className="font-bold text-slate-700">Ghi chú đơn hàng: </span>
-                    <span className="text-slate-600 italic">{order.note}</span>
+                  <div className="text-xs sm:text-[13px] leading-relaxed break-words break-all">
+                    <span className="font-bold text-slate-800">Ghi chú đơn hàng: </span>
+                    <span className="text-slate-700 italic">
+                      {order.note}
+                    </span>
                   </div>
                 )}
-                <div className="pt-1 text-xs">
-                  <span className="font-bold text-slate-800">Số tiền bằng chữ: </span>
-                  <span className="font-semibold text-indigo-900 italic">
+                <div className="pt-0.5 text-xs sm:text-[13px] leading-relaxed break-words">
+                  <span className="font-bold text-slate-900">Số tiền bằng chữ: </span>
+                  <span className="font-bold text-indigo-950 italic">
                     {numberToVietnameseWords(order.grandTotal)}
                   </span>
                 </div>
               </div>
 
-              <div className="w-full sm:w-1/2 sm:max-w-xs space-y-1 text-xs self-end">
-                <div className="flex justify-between text-slate-600">
+              <div className="space-y-1.5 text-xs sm:text-[13px] sm:max-w-xs sm:ml-auto w-full">
+                <div className="flex justify-between text-slate-700">
                   <span>Tổng tiền niêm yết:</span>
-                  <span className="font-medium text-slate-800">{formatCurrency(order.subtotal)}</span>
+                  <span className="font-semibold text-slate-900">{formatCurrency(order.subtotal)}</span>
                 </div>
                 {order.totalDiscount > 0 && (
-                  <div className="flex justify-between text-emerald-700 font-semibold">
+                  <div className="flex justify-between text-emerald-700 font-bold">
                     <span>Tổng tiền chiết khấu:</span>
                     <span>- {formatCurrency(order.totalDiscount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm font-extrabold text-slate-900 pt-1.5 border-t border-slate-300">
+                <div className="flex justify-between text-sm sm:text-base font-black text-slate-950 pt-2 border-t border-slate-400">
                   <span>TỔNG THANH TOÁN:</span>
-                  <span className="text-[#371cdb] text-base">{formatCurrency(order.grandTotal)}</span>
+                  <span className="text-[#371cdb] text-base sm:text-lg">{formatCurrency(order.grandTotal)}</span>
                 </div>
               </div>
             </div>
-
-            {/* Chữ Ký Xác Nhận 3 Bên Tại Chỗ */}
-            <div className="pt-3 pb-8 grid grid-cols-3 gap-3 text-center text-xs border-t border-dashed border-slate-300">
-              <div className="space-y-12">
-                <div>
-                  <p className="font-bold uppercase text-slate-900">ĐẠI DIỆN ĐẠI LÝ</p>
-                  <p className="text-[11px] text-slate-500 italic">(Ký, ghi rõ họ tên)</p>
-                </div>
-                <div className="text-[11px] text-slate-400 italic">
-                  ................................................
-                </div>
-              </div>
-
-              <div className="space-y-12">
-                <div>
-                  <p className="font-bold uppercase text-slate-900">NHÂN VIÊN KINH DOANH</p>
-                  <p className="text-[11px] text-slate-500 italic">(Ký, ghi rõ họ tên)</p>
-                </div>
-                <div className="text-xs font-semibold text-slate-800">
-                  {order.salesRepName || 'NVKD Loha'}
-                </div>
-              </div>
-
-              <div className="space-y-12">
-                <div>
-                  <p className="font-bold uppercase text-slate-900">THỦ KHO TRA CỨU</p>
-                  <p className="text-[11px] text-slate-500 italic">(Xác nhận xuất kho)</p>
-                </div>
-                <div className="text-[11px] text-slate-400 italic">
-                  ................................................
-                </div>
-              </div>
-            </div>
-
-            {/* Footer bản in */}
-            <div className="text-center text-[10px] text-slate-400 pt-3 border-t border-slate-200">
-              Phiếu in được khởi tạo tự động từ Hệ thống Quản lý Bán hàng & Kho LOHA SALES B2B · Ngày in: {new Date().toLocaleString('vi-VN')}
-            </div>
-          </div>
-        </div>
-
-        {/* Footer modal (chỉ hiện trên màn hình) */}
-        <div className="px-5 py-3 border-t border-slate-200 bg-white flex items-center justify-between shrink-0 print:hidden">
-          <div className="text-xs text-slate-500 flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>Mẫu in đã sẵn sàng theo khổ giấy chuẩn A4 với mã vạch kho</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-[#371cdb] text-white hover:bg-[#2d16b5] shadow-xs transition-colors cursor-pointer"
-            >
-              <Printer className="w-4 h-4" />
-              In đơn ngay
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
-            >
-              Đóng
-            </button>
           </div>
         </div>
       </div>
