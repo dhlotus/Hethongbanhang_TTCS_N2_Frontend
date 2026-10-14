@@ -205,6 +205,7 @@ export const OrdersPage: React.FC = () => {
   const initialFromDate = searchParams.get('fromDate') || '';
   const initialToDate = searchParams.get('toDate') || '';
   const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const initialLimit = Math.max(1, parseInt(searchParams.get('limit') || '10', 10) || 10);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -213,7 +214,7 @@ export const OrdersPage: React.FC = () => {
   const [totalAmount, setTotalAmount] = useState(0);
   const [page, setPage] = useState(initialPage);
   const [totalPages, setTotalPages] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(initialLimit);
 
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>(initialStatus);
   const [searchInput, setSearchInput] = useState(initialSearch);
@@ -232,7 +233,17 @@ export const OrdersPage: React.FC = () => {
   const [decisionComment, setDecisionComment] = useState('');
   const [approvalHistory, setApprovalHistory] = useState<OrderApprovalHistory[]>([]);
   const [isLoadingApprovalHistory, setIsLoadingApprovalHistory] = useState(false);
-  const [printOrder, setPrintOrder] = useState<Order | null>(null);
+  // Khởi tạo trực tiếp từ cache để khi F5 tải lại trang thì modal In / Xuất PDF xuất hiện ngay lập tức
+  const [printOrder, setPrintOrder] = useState<Order | null>(() => {
+    try {
+      const cached = sessionStorage.getItem('loha_active_print_order_data');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && (parsed.id || parsed.orderCode)) return parsed;
+      }
+    } catch {}
+    return null;
+  });
   const [selectedOrderForReorder, setSelectedOrderForReorder] = useState<Order | null>(null);
   const [isCloning, setIsCloning] = useState<string | null>(null);
 
@@ -355,6 +366,9 @@ export const OrdersPage: React.FC = () => {
     if (page > 1) {
       params.set('page', String(page));
     }
+    if (limit !== 10) {
+      params.set('limit', String(limit));
+    }
     if (urlCustomerId) {
       params.set('customerId', urlCustomerId);
     }
@@ -364,7 +378,7 @@ export const OrdersPage: React.FC = () => {
     if (currentQuery !== newQuery) {
       setSearchParams(params, { replace: true });
     }
-  }, [searchTerm, statusFilter, selectedRegion, fromDate, toDate, page, urlCustomerId, searchParams, setSearchParams]);
+  }, [searchTerm, statusFilter, selectedRegion, fromDate, toDate, page, limit, urlCustomerId, searchParams, setSearchParams]);
 
   // Đồng bộ từ URL ngược lại state khi người dùng dùng nút Back/Forward của trình duyệt
   useEffect(() => {
@@ -393,6 +407,10 @@ export const OrdersPage: React.FC = () => {
     const p = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
     if (p !== page) {
       setPage(p);
+    }
+    const l = Math.max(1, parseInt(searchParams.get('limit') || '10', 10) || 10);
+    if (l !== limit) {
+      setLimit(l);
     }
   }, [searchParams]);
 
@@ -484,6 +502,25 @@ export const OrdersPage: React.FC = () => {
     user?.fullName,
   ]);
 
+  // Khôi phục modal In / Xuất PDF khi người dùng ấn F5 hoặc truy cập qua URL có query ?printOrderId=...
+  useEffect(() => {
+    const printId = searchParams.get('printOrderId') || searchParams.get('print');
+    if (!printId || printOrder) return;
+
+    const found = orders.find((o) => o.id === printId || o.orderCode === printId);
+    if (found) {
+      setPrintOrder(found);
+      return;
+    }
+
+    ordersService
+      .getOrderById(printId)
+      .then((ord) => {
+        if (ord) setPrintOrder(ord);
+      })
+      .catch(() => {});
+  }, [searchParams, orders, printOrder]);
+
   useEffect(() => {
     let isMounted = true;
     if (!viewOrder?.id) {
@@ -517,6 +554,12 @@ export const OrdersPage: React.FC = () => {
         'success',
         `Sao chép thành công đơn ${targetOrder.orderCode} thành bản sao mới ${cloned.orderCode}! Bản sao luôn bắt đầu ở trạng thái Nháp. Giá và chiết khấu đã được tính lại theo bảng giá hiện hành.`,
       );
+      if (statusFilter !== 'ALL' && statusFilter !== 'DRAFT') {
+        setStatusFilter('ALL');
+      }
+      setSearchInput('');
+      setSearchTerm('');
+      setPage(1);
       setRefreshKey((k) => k + 1);
       if (viewOrder?.id === targetOrder.id) {
         setViewOrder(null);
@@ -529,9 +572,34 @@ export const OrdersPage: React.FC = () => {
     }
   };
 
-  /** Mở modal in / xuất PDF đơn hàng (SN-47) */
+  /** Mở modal in / xuất PDF đơn hàng (SN-47) và lưu URL/Session để F5 không bị mất */
   const handleOpenPrint = (targetOrder: Order): void => {
     setPrintOrder(targetOrder);
+    try {
+      const code = targetOrder.orderCode || targetOrder.id || '';
+      sessionStorage.setItem('loha_active_print_order_id', code);
+      sessionStorage.setItem('loha_active_print_order_data', JSON.stringify(targetOrder));
+    } catch {}
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('printOrderId', targetOrder.orderCode || targetOrder.id || '');
+      return next;
+    }, { replace: true });
+  };
+
+  /** Đóng modal in / xuất PDF và dọn dẹp URL, cache */
+  const handleClosePrint = (): void => {
+    setPrintOrder(null);
+    try {
+      sessionStorage.removeItem('loha_active_print_order_id');
+      sessionStorage.removeItem('loha_active_print_order_data');
+    } catch {}
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('printOrderId');
+      next.delete('print');
+      return next;
+    }, { replace: true });
   };
 
   const submitApprovalDecision = async (
@@ -1300,7 +1368,8 @@ export const OrdersPage: React.FC = () => {
                   pageSize={limit}
                   pageSizeOptions={[10, 20, 50]}
                   itemLabel="đơn hàng"
-                  showFirstLast={true}
+                  showRecordRange={false}
+                  showFirstLast={false}
                   onPageChange={(p) => setPage(p)}
                   onPageSizeChange={(sz) => {
                     setLimit(sz);
@@ -1679,7 +1748,7 @@ export const OrdersPage: React.FC = () => {
       <OrderPrintModal
         order={printOrder}
         isOpen={Boolean(printOrder)}
-        onClose={() => setPrintOrder(null)}
+        onClose={handleClosePrint}
       />
 
       {/* Modal Xác nhận Duyệt Đơn & Giữ chỗ Tồn kho (SN-180) */}

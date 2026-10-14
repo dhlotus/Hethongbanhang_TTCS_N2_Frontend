@@ -733,7 +733,6 @@ export const INITIAL_DEMO_ORDERS: Order[] = [
       address: '88 Xã Đàn, Q.Đống Đa, Hà Nội',
       receiverName: 'Anh Vũ Đình Bắc',
       phone: '0912345603',
-      roadNote: 'Giao sáng sớm trước 7h hoặc chiều sau 19h tránh cấm tải',
     },
     deliveryDate: '2026-10-16',
     lines: [
