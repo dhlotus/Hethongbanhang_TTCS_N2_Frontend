@@ -28,6 +28,8 @@ import { DeliveryPointModal } from '../components/delivery-point-modal';
 import { LockAgencyModal } from '../components/lock-agency-modal';
 import { AssignSalesRepModal } from '../components/assign-sales-rep-modal';
 import { BulkTransferTerritoryModal } from '../components/bulk-transfer-territory-modal';
+import axios from 'axios';
+import { tokenStorage } from '../utils/token-storage';
 import { Pagination } from '../components/pagination';
 import { customerService, getStoredCustomers } from '../services/customer.service';
 import type { Customer, CreateCustomerPayload, DeliveryPoint, SalesRepOption, BulkTransferResult } from '../types/customer.types';
@@ -178,6 +180,20 @@ export const CustomersPage: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Phân quyền RBAC (SN-35: Chỉ Admin và Quản lý kinh doanh được gán / chuyển giao địa bàn)
+  const currentUser = tokenStorage.getUser();
+  const userRoles = useMemo(() => {
+    return currentUser?.roles || (currentUser?.role ? [currentUser.role] : []);
+  }, [currentUser]);
+
+  const isManagerOrAdmin = useMemo(() => {
+    if (!currentUser || userRoles.length === 0) return true;
+    return userRoles.some((r) => {
+      const u = r.toUpperCase();
+      return u.includes('ADMIN') || u.includes('MANAGER');
+    });
+  }, [currentUser, userRoles]);
   const [formBannerError, setFormBannerError] = useState<string | null>(null);
   const [formData, setFormData] = useState<CreateCustomerPayload>({
     name: '',
@@ -750,9 +766,12 @@ export const CustomersPage: React.FC = () => {
       // Tải lại danh sách từ server ở trang 1 để cập nhật dữ liệu đại lý mới
       void loadCustomers({ page: 1 });
     } catch (err: unknown) {
-      const respData = (err as any)?.response?.data;
       let errMsg = 'Không thể tạo đại lý mới. Vui lòng kiểm tra lại thông tin.';
-      if (respData) {
+      if (
+        axios.isAxiosError<{ message?: string | string[]; error?: string }>(err) &&
+        err.response?.data
+      ) {
+        const respData = err.response.data;
         if (Array.isArray(respData.message)) {
           errMsg = respData.message.join('; ');
         } else if (typeof respData.message === 'string') {
@@ -800,12 +819,15 @@ export const CustomersPage: React.FC = () => {
       setDeleteModalCustomer(null);
       void loadCustomers();
     } catch (err: unknown) {
-      const errMsg =
-        err && typeof err === 'object' && 'response' in err && (err as any).response?.data?.message
-          ? (err as any).response.data.message
-          : err instanceof Error
-          ? err.message
-          : 'Không thể xóa đại lý.';
+      let errMsg = 'Không thể xóa đại lý.';
+      if (
+        axios.isAxiosError<{ message?: string }>(err) &&
+        err.response?.data?.message
+      ) {
+        errMsg = err.response.data.message;
+      } else if (err instanceof Error) {
+        errMsg = err.message;
+      }
       showToast('error', 'Chặn xóa đại lý', errMsg);
     } finally {
       setIsDeleting(false);
@@ -998,15 +1020,17 @@ export const CustomersPage: React.FC = () => {
             <span>Làm mới</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => setIsBulkTransferOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors shadow-xs cursor-pointer"
-            title="Chuyển giao địa bàn hàng loạt khi nhân sự nghỉ việc (SN-35)"
-          >
-            <ArrowRightLeft className="w-4 h-4 text-purple-600" />
-            <span>Chuyển giao địa bàn</span>
-          </button>
+          {isManagerOrAdmin && (
+            <button
+              type="button"
+              onClick={() => setIsBulkTransferOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-colors shadow-xs cursor-pointer"
+              title="Chuyển giao địa bàn hàng loạt khi nhân sự nghỉ việc (SN-35)"
+            >
+              <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
+              <span>Chuyển giao địa bàn</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -1367,15 +1391,17 @@ export const CustomersPage: React.FC = () => {
                           )}
 
                           {/* Nút Phân công NVKD phụ trách chính (SN-35) */}
-                          <button
-                            type="button"
-                            onClick={() => handleOpenAssignModal(customer)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors cursor-pointer"
-                            title="Phân công nhân viên kinh doanh phụ trách (SN-35)"
-                          >
-                            <UserCheck className="w-3.5 h-3.5 text-blue-600" />
-                            <span className="hidden md:inline">Phân công</span>
-                          </button>
+                          {isManagerOrAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAssignModal(customer)}
+                              className="inline-flex items-center gap-1 h-8 px-2.5 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer"
+                              title="Phân công nhân viên kinh doanh phụ trách (SN-35)"
+                            >
+                              <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
+                              <span className="hidden md:inline">Phân công</span>
+                            </button>
+                          )}
 
                           <button
                             type="button"

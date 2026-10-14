@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { apiClient } from './api';
 import { tokenStorage } from '../utils/token-storage';
 import {
@@ -417,10 +418,7 @@ export function filterDemoCustomers(params: CustomerFilterParams = {}): Paginate
 
     if (isSalesRep && !isManagerOrAdmin) {
       list = list.filter((c) => {
-        if (c.salesRepId === currentUser.id || c.salesRep?.id === currentUser.id) {
-          return true;
-        }
-        return c.salesRepId === 'usr-sale-01' || c.salesRepId === 'usr-sales-002';
+        return c.salesRepId === currentUser.id || c.salesRep?.id === currentUser.id;
       });
     }
   }
@@ -513,8 +511,7 @@ export const customerService = {
       }
       return res.data;
     } catch (err: unknown) {
-      const axiosErr = err as any;
-      if (axiosErr?.response?.data) {
+      if (axios.isAxiosError(err) && err.response?.data) {
         throw err;
       }
 
