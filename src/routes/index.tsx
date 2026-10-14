@@ -28,6 +28,7 @@ import { ShipmentsPage } from '../pages/shipments-page';
 import { ReturnsPage } from '../pages/returns-page';
 import { DashboardPage } from '../pages/dashboard-page';
 import { AgencyPortalPage } from '../pages/agency-portal-page';
+import { PortalOrderConfirmPage } from '../pages/portal-order-confirm-page';
 import { NotFoundPage } from '../pages/not-found-page';
 import { ForbiddenPage } from '../pages/forbidden-page';
 import { ProtectedRoute } from '../components/protected-route';
@@ -98,6 +99,8 @@ export const AppRoutes: React.FC = () => {
             >
               <Route path="/portal" element={<AgencyPortalPage />} />
               <Route path="/portal/orders" element={<AgencyPortalPage />} />
+              <Route path="/portal/orders/confirm" element={<PortalOrderConfirmPage />} />
+              <Route path="/portal/orders/create" element={<Navigate to="/portal/orders/confirm" replace />} />
               {/* SN-170 & SN-174: Cổng Theo dõi vận chuyển & Danh sách đơn Đại lý */}
               <Route path="/portal/tracking" element={<PortalOrdersPage />} />
               <Route

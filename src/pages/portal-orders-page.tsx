@@ -13,6 +13,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   AlertCircle,
   FileText,
   Package,
@@ -117,7 +118,7 @@ export const PortalOrdersPage: React.FC = () => {
 
   // Bộ lọc
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<string>(isTrackingRoute ? 'SHIPPED' : 'ALL');
+  const [activeTab, setActiveTab] = useState<string>('ALL');
 
   // Modal xem chi tiết
   const [selectedOrderForDetail, setSelectedOrderForDetail] = useState<Order | null>(null);
@@ -126,16 +127,20 @@ export const PortalOrdersPage: React.FC = () => {
   // Modal in đơn
   const [selectedOrderForPrint, setSelectedOrderForPrint] = useState<Order | null>(null);
 
+  // Menu thao tác dropdown (Hình 1)
+  const [actionMenuOrderId, setActionMenuOrderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleGlobalClick = () => setActionMenuOrderId(null);
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
+
   // Tải danh sách đơn hàng của đại lý (SN-170: Chỉ thấy đơn của chính mình)
   const loadOrders = useCallback(async () => {
     setIsLoading(true);
     try {
-      let statusFilter: OrderStatus | 'ALL' | undefined;
-      if (activeTab === 'SHORT_DELIVERY' || activeTab === 'ALL') {
-        statusFilter = 'ALL';
-      } else {
-        statusFilter = activeTab as OrderStatus;
-      }
+      const statusFilter = activeTab === 'ALL' ? undefined : (activeTab as OrderStatus);
 
       const res = await ordersService.getMyOrders({
         page,
@@ -144,19 +149,8 @@ export const PortalOrdersPage: React.FC = () => {
         status: statusFilter,
       });
 
-      let filteredList = res.data;
-      if (activeTab === 'SHORT_DELIVERY') {
-        filteredList = filteredList.filter(
-          (o) =>
-            o.isShortDelivery ||
-            o.lines.some(
-              (l) => l.deliveredQuantity !== undefined && l.deliveredQuantity < l.quantity,
-            ),
-        );
-      }
-
-      setOrders(filteredList);
-      setTotal(activeTab === 'SHORT_DELIVERY' ? filteredList.length : res.total);
+      setOrders(res.data);
+      setTotal(res.total);
       setTotalPages(res.totalPages || 1);
     } catch (error) {
       showToast(
@@ -213,7 +207,7 @@ export const PortalOrdersPage: React.FC = () => {
       {/* =================================================================== */}
       {/* 2. Thống kê nhanh các chỉ số (KPI Cards)                             */}
       {/* =================================================================== */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         {/* Tổng đơn hàng */}
         <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs hover:shadow-xs transition-shadow">
           <div className="flex items-center justify-between">
@@ -225,7 +219,6 @@ export const PortalOrdersPage: React.FC = () => {
             </div>
           </div>
           <div className="mt-2 text-2xl font-extrabold text-slate-900">{total}</div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Tất cả đơn của đại lý</p>
         </div>
 
         {/* Đang vận chuyển */}
@@ -241,11 +234,6 @@ export const PortalOrdersPage: React.FC = () => {
           <div className="mt-2 text-2xl font-extrabold text-indigo-900">
             {summaryMetrics.shippingCount}
           </div>
-          <p className="text-[11px] text-indigo-700 mt-0.5">
-            {summaryMetrics.nearestDelivery
-              ? `Dự kiến sớm nhất: ${formatDate(summaryMetrics.nearestDelivery)}`
-              : 'Xe tải đang vận chuyển'}
-          </p>
         </div>
 
         {/* Đã giao thành công */}
@@ -261,30 +249,6 @@ export const PortalOrdersPage: React.FC = () => {
           <div className="mt-2 text-2xl font-extrabold text-emerald-900">
             {summaryMetrics.deliveredCount}
           </div>
-          <p className="text-[11px] text-emerald-700 mt-0.5">Đã bàn giao kho nhận</p>
-        </div>
-
-        {/* Đơn có dòng giao thiếu (SN-170) */}
-        <div
-          onClick={() => setActiveTab('SHORT_DELIVERY')}
-          className={`rounded-xl border p-4 shadow-2xs hover:shadow-xs transition-all cursor-pointer ${
-            summaryMetrics.shortDeliveryCount > 0
-              ? 'border-amber-300 bg-amber-50/60 text-amber-900 ring-1 ring-amber-300/60'
-              : 'border-slate-200/80 bg-white'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider">Có dòng giao thiếu</span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-800">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 text-2xl font-extrabold">{summaryMetrics.shortDeliveryCount}</div>
-          <p className="text-[11px] mt-0.5 opacity-90">
-            {summaryMetrics.shortDeliveryCount > 0
-              ? 'Bấm để lọc xem đơn thiếu hàng'
-              : 'Không có đơn nào thiếu'}
-          </p>
         </div>
       </div>
 
@@ -338,11 +302,10 @@ export const PortalOrdersPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
           {[
             { id: 'ALL', label: 'Tất cả đơn hàng' },
-            { id: 'SHIPPED', label: 'Đang vận chuyển' },
-            { id: 'PROCESSING', label: 'Đang soạn hàng' },
-            { id: 'DELIVERED', label: 'Giao thành công' },
-            { id: 'SHORT_DELIVERY', label: '⚠️ Có giao thiếu hàng (SN-170)' },
             { id: 'PENDING', label: 'Chờ xét duyệt' },
+            { id: 'PROCESSING', label: 'Đang soạn hàng' },
+            { id: 'SHIPPED', label: 'Đang vận chuyển' },
+            { id: 'DELIVERED', label: 'Giao thành công' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -471,27 +434,48 @@ export const PortalOrdersPage: React.FC = () => {
                           {formatCurrency(order.grandTotal)}
                         </td>
                         <td
-                          className="py-3.5 px-4 text-center"
+                          className="py-3 px-4 text-center"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="flex items-center justify-center gap-1.5">
+                          <div className="relative inline-block text-left">
                             <button
                               type="button"
-                              onClick={() => setSelectedOrderForDetail(order)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-light)] transition-colors cursor-pointer"
-                              title="Xem chi tiết đơn hàng"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActionMenuOrderId((prev) => (prev === order.id ? null : order.id));
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all cursor-pointer shadow-2xs"
                             >
-                              <Eye className="w-4 h-4" />
+                              <span>Thao tác</span>
+                              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedOrderForReorder(order)}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold text-[var(--color-primary)] bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] hover:text-white transition-all cursor-pointer shadow-2xs"
-                              title="Đặt lại đơn này (SN-174)"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                              <span>Đặt lại</span>
-                            </button>
+
+                            {actionMenuOrderId === order.id && (
+                              <div className="absolute right-0 mt-1.5 w-36 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionMenuOrderId(null);
+                                    setSelectedOrderForDetail(order);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2 cursor-pointer transition-colors"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>Xem chi tiết</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionMenuOrderId(null);
+                                    setSelectedOrderForReorder(order);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2 cursor-pointer transition-colors"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>Đặt lại đơn</span>
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>

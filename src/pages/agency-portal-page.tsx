@@ -193,7 +193,40 @@ export const AgencyPortalPage: React.FC = () => {
   // ──────────────────────────────────────────────────────────────────────────
   // 4. STATE GIỎ HÀNG & BOTTOM SHEET (MOBILE-FIRST)
   // ──────────────────────────────────────────────────────────────────────────
-  const [cart, setCart] = useState<Record<string, CartItem>>({});
+  const [cart, setCart] = useState<Record<string, CartItem>>(() => {
+    try {
+      const raw = sessionStorage.getItem('loha_portal_cart');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {};
+  });
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('loha_portal_cart', JSON.stringify(cart));
+    } catch {}
+  }, [cart]);
+
+  // Lắng nghe khi giỏ hàng được cập nhật từ trang Xác nhận đơn hàng
+  useEffect(() => {
+    const handleCartSync = () => {
+      try {
+        const raw = sessionStorage.getItem('loha_portal_cart');
+        if (raw) {
+          setCart(JSON.parse(raw));
+        } else {
+          setCart({});
+        }
+      } catch {}
+    };
+    window.addEventListener('loha_portal_cart_updated', handleCartSync);
+    window.addEventListener('storage', handleCartSync);
+    return () => {
+      window.removeEventListener('loha_portal_cart_updated', handleCartSync);
+      window.removeEventListener('storage', handleCartSync);
+    };
+  }, []);
+
   const [cartStep, setCartStep] = useState<1 | 2>(1);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState<boolean>(false);
   const [customDeliveryAddress, setCustomDeliveryAddress] = useState<string>('');
@@ -1180,9 +1213,6 @@ export const AgencyPortalPage: React.FC = () => {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-indigo-600 text-white shadow-sm text-xs sm:text-sm font-semibold self-start select-none">
             <Package className="w-4 h-4" />
             <span>Danh mục đặt hàng</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-white font-mono">
-              {availableCatalog.length}
-            </span>
           </div>
 
           {/* Ô tìm kiếm có gợi ý thông minh */}
@@ -1401,7 +1431,7 @@ export const AgencyPortalPage: React.FC = () => {
                 {/* Phía phải: Số lượng hiển thị & Nút Làm mới */}
                 <div className="flex items-center gap-2.5 text-xs text-slate-500">
                   <span>
-                    Hiển thị <strong className="text-slate-800">{availableCatalog.length}</strong> / {products.length} sản phẩm
+                    <strong className="text-slate-800">{availableCatalog.length}</strong> sản phẩm
                   </span>
                   <button
                     type="button"
@@ -1633,14 +1663,10 @@ export const AgencyPortalPage: React.FC = () => {
             </div>
 
             {/* Thông báo chính sách giá */}
-            {effectivePriceList && (
-              <div className="mb-4 bg-indigo-50/70 border border-indigo-100 rounded-xl p-3 flex items-start gap-2.5 text-xs text-indigo-900">
-                <Info className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                <div>
-                  Đang áp dụng <strong className="font-semibold">{effectivePriceList.name}</strong> ({groupBadge.label}). Đơn giá hiển thị dưới đây đã được tính tự động theo mức chiết khấu quy định cho nhóm của bạn.
-                </div>
-              </div>
-            )}
+            <div className="mb-4 bg-indigo-50/70 border border-indigo-100 rounded-xl px-3.5 py-2.5 flex items-center gap-2 text-xs text-indigo-900 font-medium">
+              <Info className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span>Bảng giá đại lý tháng 11/2026</span>
+            </div>
 
             {/* Loading (chỉ hiện khi chưa có sản phẩm nào) */}
             {isLoadingCatalog && products.length === 0 && (
@@ -1829,7 +1855,7 @@ export const AgencyPortalPage: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => { setCartStep(1); if (!customDeliveryAddress) { setCustomDeliveryAddress(selectedDeliveryPoint?.address || currentCustomer?.address || ""); } setIsCartDrawerOpen(true); }}
+              onClick={() => navigate('/portal/orders/confirm')}
               className="py-2.5 px-5 sm:px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
             >
               <span>Xem giỏ hàng</span>
@@ -2327,11 +2353,11 @@ export const AgencyPortalPage: React.FC = () => {
                       <span className="font-mono text-slate-500 line-through">{formatVND(cartTotals.listSubtotal)}</span>
                     </div>
                     <div className="flex justify-between text-emerald-700 font-medium">
-                      <span>Chiết khấu sỉ theo chính sách:</span>
+                      <span>Chiết khấu theo chính sách:</span>
                       <span className="font-bold font-mono">-{formatVND(cartTotals.totalDiscount)}</span>
                     </div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>Tổng tiền hàng đơn này (sau CK):</span>
+                    <div className="flex justify-between text-slate-800 pt-1 border-t border-slate-100 font-bold">
+                      <span>Tổng thanh toán:</span>
                       <span className="font-bold text-indigo-600 font-mono text-sm">{formatVND(cartTotals.grandTotal)}</span>
                     </div>
                     <div className="flex justify-between text-slate-600 pt-1 border-t border-slate-200">

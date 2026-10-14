@@ -42,6 +42,16 @@ const getPageHeaderInfo = (
       ],
     };
   }
+  if (pathname === '/portal/orders/confirm' || pathname === '/portal/orders/create') {
+    return {
+      title: 'Xác nhận đơn hàng',
+      category: 'Mua hàng & Giao nhận',
+      breadcrumbs: [
+        { label: 'Cổng đặt hàng', path: '/portal/orders' },
+        { label: 'Xác nhận đơn hàng' },
+      ],
+    };
+  }
   if (pathname.startsWith('/sales/orders/edit')) {
     return {
       title: 'Chỉnh sửa đơn hàng',
