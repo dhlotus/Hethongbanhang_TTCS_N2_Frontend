@@ -15,7 +15,6 @@ import {
   Loader2,
   MapPin,
   Lock,
-  Calendar,
   FileText,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
@@ -242,6 +241,7 @@ export const CreateOrderPage: React.FC = () => {
   const [deliveryPoint, setDeliveryPoint] = useState<Partial<DeliveryPoint>>({});
   const [deliveryPoints, setDeliveryPoints] = useState<CustomerDeliveryPoint[]>([]);
   const [isCustomDeliveryAddress, setIsCustomDeliveryAddress] = useState(false);
+  const [isCustomerSelectorOpen, setIsCustomerSelectorOpen] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState(getDefaultDeliveryDate());
   const [note, setNote] = useState('');
 
@@ -331,7 +331,7 @@ export const CreateOrderPage: React.FC = () => {
 
   // Phân trang danh sách sản phẩm (chuẩn Pagination như Quản lý đại lý)
   const [productPage, setProductPage] = useState(1);
-  const [productPageSize, setProductPageSize] = useState(6);
+  const [productPageSize, setProductPageSize] = useState(12);
   const totalProductPages = Math.max(1, Math.ceil(searchResults.length / productPageSize));
   const pagedSearchResults = useMemo(() => {
     return searchResults.slice((productPage - 1) * productPageSize, productPage * productPageSize);
@@ -478,6 +478,7 @@ export const CreateOrderPage: React.FC = () => {
     }
     setSelectedCustomer(c);
     setIsCustomDeliveryAddress(false);
+    setIsCustomerSelectorOpen(false);
 
     try {
       const points = await customersService.getDeliveryPoints(c.id);
@@ -1050,128 +1051,140 @@ export const CreateOrderPage: React.FC = () => {
             )}
           </div>
 
-          {/* Phần 1.1: Tìm kiếm và Chọn Đại lý (Phẳng, không lồng card) */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="relative flex-1 min-w-[240px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={customerSearch}
-                  onChange={(e) => setCustomerSearch(e.target.value)}
-                  placeholder="Tìm nhanh theo mã hoặc tên đại lý..."
-                  className="w-full h-[38px] pl-9 pr-4 text-xs border border-slate-200 rounded-lg bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
-                />
-              </div>
-              <span className="text-xs text-slate-400 font-medium shrink-0">
-                {isLoadingCustomers ? 'Đang tìm kiếm...' : `${customers.length} đại lý`}
-              </span>
-            </div>
-
-            {/* Danh sách đại lý cuộn hiển thị trực tiếp dạng lưới 3 cột trên Desktop */}
-            <div className="max-h-[260px] overflow-y-auto pr-1">
-              {isLoadingCustomers ? (
-                <div className="flex items-center justify-center py-10 text-slate-400 gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
-                  <span className="text-xs">Đang tải danh sách đại lý...</span>
-                </div>
-              ) : customers.length === 0 ? (
-                <div className="flex items-center justify-center py-10 text-slate-400 text-xs">
-                  Không tìm thấy đại lý nào phù hợp
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                  {customers.map((c) => {
-                    const isSelected = selectedCustomer?.id === c.id;
-                    const isLocked = c.status === 'LOCKED';
-                    const groupInfo = getCustomerGroupBadge(c.group);
-
-                    return (
-                      <div
-                        key={c.id}
-                        onClick={() => void handleSelectCustomer(c)}
-                        className={`p-3 rounded-lg border transition-all cursor-pointer ${
-                          isSelected
-                            ? 'border-indigo-600 bg-indigo-50/80 ring-2 ring-indigo-500/20 shadow-xs'
-                            : isLocked
-                            ? 'border-rose-300 bg-rose-50/70'
-                            : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold text-slate-900 truncate" title={c.name}>{c.name}</p>
-                            <div className="mt-0.5 text-[11px] text-slate-500 font-mono font-semibold">
-                              {c.code}
-                            </div>
-                          </div>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${groupInfo.badgeClass}`}>
-                            {groupInfo.label}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Phần 1.2: Bảng tóm tắt Đại lý đã chọn (Thanh thông tin gọn gàng) */}
+          {/* Phần 1.1: Bảng tóm tắt Đại lý đã chọn (Tự động thu gọn khi đã chọn, có nút Đổi đại lý) */}
           {selectedCustomer ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-lg text-xs">
-              <div className="space-y-0.5 min-w-0">
-                <div className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Đại lý đang chọn</div>
-                <div className="font-bold text-slate-900 text-sm truncate" title={selectedCustomer.name}>{selectedCustomer.name}</div>
-                <div className="text-slate-600 font-mono text-xs">
-                  {selectedCustomer.code}
+            <div className="p-3.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1 min-w-0">
+                <div className="space-y-0.5 min-w-0">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Đại lý đặt hàng</div>
+                  <div className="font-bold text-slate-900 text-sm truncate" title={selectedCustomer.name}>{selectedCustomer.name}</div>
+                  <div className="text-slate-500 font-mono text-xs">{selectedCustomer.code}</div>
                 </div>
-              </div>
 
-              <div className="space-y-0.5 min-w-0">
-                <div className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Chính sách áp dụng</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="font-bold text-slate-900 truncate">
-                    {isLoadingPriceList ? 'Đang tải...' : effectivePriceList ? effectivePriceList.name : (priceListError || 'Bảng giá chuẩn')}
-                  </span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${getCustomerGroupBadge(selectedCustomer.group).badgeClass}`}>
-                    {getCustomerGroupBadge(selectedCustomer.group).label}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-0.5 min-w-0">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider flex items-center gap-1">
-                    <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
-                    Hạn mức công nợ
-                  </span>
-                  {debtStatus && (
-                    <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full ${debtStatus.canCreateOrder ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                      {debtStatus.canCreateOrder ? 'Hợp lệ' : 'Bị khóa nợ'}
+                <div className="space-y-0.5 min-w-0">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Chính sách áp dụng</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="font-bold text-slate-900 truncate">
+                      {isLoadingPriceList ? 'Đang tải...' : effectivePriceList ? effectivePriceList.name : (priceListError || 'Bảng giá chuẩn')}
                     </span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${getCustomerGroupBadge(selectedCustomer.group).badgeClass}`}>
+                      {getCustomerGroupBadge(selectedCustomer.group).label}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                      <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
+                      Hạn mức công nợ
+                    </span>
+                    {debtStatus && (
+                      <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full ${debtStatus.canCreateOrder ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                        {debtStatus.canCreateOrder ? 'Hợp lệ' : 'Bị khóa nợ'}
+                      </span>
+                    )}
+                  </div>
+                  {debtStatus ? (
+                    <div className="flex items-center gap-3 text-xs pt-1">
+                      <div>
+                        <span className="text-slate-500 text-[11px]">Dư nợ: </span>
+                        <span className="font-bold text-slate-900">{formatCurrency(debtStatus.currentDebt)}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 text-[11px]">Khả dụng: </span>
+                        <span className="font-bold text-emerald-700">{formatCurrency(debtStatus.availableLimit)}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-slate-400 text-xs py-1">Đang tải trạng thái công nợ...</div>
                   )}
                 </div>
-                {debtStatus ? (
-                  <div className="flex items-center gap-3 text-xs pt-1">
-                    <div>
-                      <span className="text-slate-500 text-[11px]">Dư nợ: </span>
-                      <span className="font-bold text-slate-900">{formatCurrency(debtStatus.currentDebt)}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 text-[11px]">Khả dụng: </span>
-                      <span className="font-bold text-emerald-700">{formatCurrency(debtStatus.availableLimit)}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-slate-400 text-xs py-1">Đang tải trạng thái công nợ...</div>
-                )}
               </div>
+
+              <button
+                type="button"
+                onClick={() => setIsCustomerSelectorOpen((prev) => !prev)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-colors cursor-pointer shrink-0 shadow-2xs"
+                title={isCustomerSelectorOpen ? 'Thu gọn danh sách đại lý' : 'Chọn đại lý khác'}
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-indigo-600" />
+                <span>{isCustomerSelectorOpen ? 'Thu gọn' : 'Đổi đại lý'}</span>
+              </button>
             </div>
           ) : (
             <div className="py-3 px-4 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-lg flex items-center justify-center gap-2">
               <Building2 className="w-4 h-4 text-slate-300 shrink-0" />
-              <span>Chưa chọn đại lý</span>
+              <span>Vui lòng chọn đại lý đặt hàng bên dưới</span>
+            </div>
+          )}
+
+          {/* Phần 1.2: Vùng chọn đại lý (Tự động mở khi chưa chọn, thu gọn khi đã chọn) */}
+          {(!selectedCustomer || isCustomerSelectorOpen) && (
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="relative flex-1 min-w-[240px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                    placeholder="Tìm nhanh theo mã hoặc tên đại lý..."
+                    className="w-full h-[38px] pl-9 pr-4 text-xs border border-slate-200 rounded-lg bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
+                  />
+                </div>
+                <span className="text-xs text-slate-400 font-medium shrink-0">
+                  {isLoadingCustomers ? 'Đang tìm kiếm...' : `${customers.length} đại lý`}
+                </span>
+              </div>
+
+              {/* Danh sách đại lý cuộn hiển thị trực tiếp dạng lưới 3 cột trên Desktop */}
+              <div className="max-h-[260px] overflow-y-auto pr-1">
+                {isLoadingCustomers ? (
+                  <div className="flex items-center justify-center py-10 text-slate-400 gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
+                    <span className="text-xs">Đang tải danh sách đại lý...</span>
+                  </div>
+                ) : customers.length === 0 ? (
+                  <div className="flex items-center justify-center py-10 text-slate-400 text-xs">
+                    Không tìm thấy đại lý nào phù hợp
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    {customers.map((c) => {
+                      const isSelected = selectedCustomer?.id === c.id;
+                      const isLocked = c.status === 'LOCKED';
+                      const groupInfo = getCustomerGroupBadge(c.group);
+
+                      return (
+                        <div
+                          key={c.id}
+                          onClick={() => void handleSelectCustomer(c)}
+                          className={`p-3 rounded-lg border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-indigo-600 bg-indigo-50/80 ring-2 ring-indigo-500/20 shadow-xs'
+                              : isLocked
+                              ? 'border-rose-300 bg-rose-50/70'
+                              : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-slate-900 truncate" title={c.name}>{c.name}</p>
+                              <div className="mt-0.5 text-[11px] text-slate-500 font-mono font-semibold">
+                                {c.code}
+                              </div>
+                            </div>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${groupInfo.badgeClass}`}>
+                              {groupInfo.label}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1244,7 +1257,6 @@ export const CreateOrderPage: React.FC = () => {
             {/* Cột B: Ngày giao hàng */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 h-5">
-                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Ngày giao hàng</span>
               </label>
               <DateInput
@@ -1282,9 +1294,14 @@ export const CreateOrderPage: React.FC = () => {
         {/* ================================================================= */}
         <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <FolderTree className="w-5 h-5 text-indigo-600" />
               <h3 className="text-base font-bold text-slate-900">Danh sách sản phẩm</h3>
+              {lines.length > 0 && (
+                <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
+                  Giỏ hàng: {lines.length} sản phẩm ({formatCurrency(totals.grandTotal)})
+                </span>
+              )}
             </div>
             <div className="relative w-full sm:w-72 mt-1 sm:mt-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -1397,7 +1414,7 @@ export const CreateOrderPage: React.FC = () => {
                     totalPages={totalProductPages}
                     totalItems={searchResults.length}
                     pageSize={productPageSize}
-                    pageSizeOptions={[6, 12, 24]}
+                    pageSizeOptions={[8, 12, 24]}
                     itemLabel="sản phẩm"
                     showRecordRange={false}
                     showFirstLast={false}
