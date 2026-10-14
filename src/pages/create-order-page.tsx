@@ -16,7 +16,11 @@ import {
   MapPin,
   Lock,
   FileText,
+  ChevronDown,
+  Check,
+  X,
 } from 'lucide-react';
+import { matchesSearchTerm } from '../utils/vietnamese';
 import { showToast } from '../components/toast';
 import { Pagination } from '../components/pagination';
 import { ordersService } from '../services/orders.service';
@@ -244,6 +248,42 @@ export const CreateOrderPage: React.FC = () => {
   const [isCustomDeliveryAddress, setIsCustomDeliveryAddress] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState(getDefaultDeliveryDate());
   const [note, setNote] = useState('');
+
+  // Quản lý Searchable Select đại lý
+  const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const customerDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Lắng nghe click bên ngoài và phím Escape để đóng dropdown đại lý
+  useEffect(() => {
+    const handleDocumentClick = (e: MouseEvent) => {
+      if (customerDropdownRef.current && !customerDropdownRef.current.contains(e.target as Node)) {
+        setIsCustomerDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsCustomerDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleDocumentClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleDocumentClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Lọc danh sách đại lý theo từ khóa tìm kiếm (hỗ trợ tiếng Việt không dấu)
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearchTerm.trim()) return customers;
+    return customers.filter(
+      (c) =>
+        matchesSearchTerm(c.name, customerSearchTerm) ||
+        matchesSearchTerm(c.code, customerSearchTerm) ||
+        (c.address && matchesSearchTerm(c.address, customerSearchTerm))
+    );
+  }, [customers, customerSearchTerm]);
 
   // Danh sách điểm giao hàng khả dụng của đại lý
   const availableDeliveryPoints = useMemo(() => {
@@ -1276,7 +1316,7 @@ export const CreateOrderPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 pb-16 sm:pb-24 max-w-full overflow-x-hidden p-2 sm:p-4">
+    <div className={`space-y-4 max-w-full overflow-x-hidden p-2 sm:p-4 ${lines.length > 0 ? 'pb-16 sm:pb-24' : 'pb-6'}`}>
       {/* ── SEGMENTED CONTROL TAB CHUYỂN ĐỔI TRÊN MOBILE (360PX) ── */}
       <div className="flex lg:hidden bg-slate-100 p-1 rounded-xl text-xs font-semibold">
         <button
@@ -1359,31 +1399,137 @@ export const CreateOrderPage: React.FC = () => {
               </span>
             </div>
 
-            <div className="relative">
-              <select
-                id="customer-select"
-                value={selectedCustomer?.id || ''}
-                onChange={(e) => {
-                  const found = customers.find((c) => c.id === e.target.value);
-                  if (found) {
-                    void handleSelectCustomer(found);
+            {/* Searchable Select Combobox */}
+            <div ref={customerDropdownRef} className="relative">
+              {/* Trigger Button */}
+              <button
+                type="button"
+                id="customer-combobox-button"
+                onClick={() => {
+                  if (!isLoadingCustomers) {
+                    setIsCustomerDropdownOpen((prev) => !prev);
+                    setCustomerSearchTerm('');
                   }
                 }}
                 disabled={isLoadingCustomers}
-                className="w-full h-10 pl-3.5 pr-8 text-xs sm:text-sm border border-slate-200 rounded-xl bg-slate-50/60 hover:bg-white focus:bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all cursor-pointer shadow-2xs"
+                className={`w-full h-11 px-3.5 text-left text-xs sm:text-sm border rounded-xl bg-slate-50/60 hover:bg-white focus:bg-white flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs ${
+                  isCustomerDropdownOpen
+                    ? 'border-indigo-500 ring-2 ring-indigo-100 bg-white'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
               >
-                <option value="" disabled>
-                  {isLoadingCustomers ? '-- Đang tải danh sách đại lý... --' : '-- Chọn đại lý đặt hàng --'}
-                </option>
-                {customers.map((c) => {
-                  const groupBadge = getCustomerGroupBadge(c.group);
-                  return (
-                    <option key={c.id} value={c.id}>
-                      {c.code} - {c.name} ({groupBadge.label})
-                    </option>
-                  );
-                })}
-              </select>
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <Building2 className="w-4 h-4 text-indigo-600 shrink-0" />
+                  {selectedCustomer ? (
+                    <span className="font-semibold text-slate-800 truncate">
+                      <span className="font-mono text-indigo-700 mr-1.5">{selectedCustomer.code}</span>
+                      - {selectedCustomer.name}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">
+                      {isLoadingCustomers ? 'Đang tải danh sách đại lý...' : '-- Chọn đại lý đặt hàng (có thể tìm kiếm nhanh) --'}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {selectedCustomer && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getCustomerGroupBadge(selectedCustomer.group).badgeClass}`}>
+                      {getCustomerGroupBadge(selectedCustomer.group).label}
+                    </span>
+                  )}
+                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isCustomerDropdownOpen ? 'rotate-180 text-indigo-600' : ''}`} />
+                </div>
+              </button>
+
+              {/* Menu Dropdown tích hợp thanh tìm kiếm trực tiếp */}
+              {isCustomerDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                  {/* Ô tìm kiếm nhanh */}
+                  <div className="p-2.5 border-b border-slate-100 bg-slate-50/70 flex items-center gap-2">
+                    <Search className="w-4 h-4 text-indigo-500 shrink-0 ml-1" />
+                    <input
+                      autoFocus
+                      type="text"
+                      value={customerSearchTerm}
+                      onChange={(e) => setCustomerSearchTerm(e.target.value)}
+                      placeholder="Tìm nhanh theo mã hoặc tên đại lý..."
+                      className="w-full text-xs sm:text-sm bg-transparent outline-none text-slate-800 placeholder:text-slate-400"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    {customerSearchTerm && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCustomerSearchTerm('');
+                        }}
+                        className="p-1 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                        title="Xóa tìm kiếm"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Danh sách đại lý đã lọc */}
+                  <div className="max-h-60 overflow-y-auto divide-y divide-slate-100/80">
+                    {filteredCustomers.length === 0 ? (
+                      <div className="py-8 px-4 text-center text-xs text-slate-400">
+                        Không tìm thấy đại lý nào phù hợp với &quot;<strong className="text-slate-600">{customerSearchTerm}</strong>&quot;
+                      </div>
+                    ) : (
+                      filteredCustomers.map((c) => {
+                        const isSelected = selectedCustomer?.id === c.id;
+                        const groupBadge = getCustomerGroupBadge(c.group);
+
+                        return (
+                          <div
+                            key={c.id}
+                            onClick={() => {
+                              void handleSelectCustomer(c);
+                              setIsCustomerDropdownOpen(false);
+                              setCustomerSearchTerm('');
+                            }}
+                            className={`px-3.5 py-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                              isSelected
+                                ? 'bg-indigo-50/90 text-indigo-900 font-medium'
+                                : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-xs font-bold text-indigo-700 shrink-0 bg-indigo-50 px-1.5 py-0.5 rounded">
+                                  {c.code}
+                                </span>
+                                <span className="text-xs sm:text-sm font-semibold truncate" title={c.name}>
+                                  {c.name}
+                                </span>
+                              </div>
+                              {c.address && (
+                                <p className="text-[11px] text-slate-400 truncate mt-0.5 ml-0.5">{c.address}</p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${groupBadge.badgeClass}`}>
+                                {groupBadge.label}
+                              </span>
+                              {isSelected && <Check className="w-4 h-4 text-indigo-600" />}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Footer nhỏ */}
+                  <div className="px-3.5 py-1.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>{filteredCustomers.length} đại lý phù hợp</span>
+                    <span className="hidden sm:inline">Nhấn Esc để đóng</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Bảng tóm tắt Chính sách giá & Công nợ của Đại lý đã chọn */}
@@ -1877,91 +2023,91 @@ export const CreateOrderPage: React.FC = () => {
 
       </div>
 
-      {/* ── KHỐI TỔNG THANH TOÁN VÀ NÚT HÀNH ĐỘNG BÁM DÍNH Ở ĐÁY TRANG (STICKY BOTTOM) ── */}
-      <div className="sticky bottom-0 z-30 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl shadow-[0_-4px_25px_rgba(0,0,0,0.08)] p-3.5 sm:p-4 transition-all">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4">
-          {/* Cụm trái: Chi tiết tiền hàng & chiết khấu */}
-          <div className="space-y-1 text-xs text-slate-600 w-full md:w-auto">
-            <div className="flex items-center justify-between md:justify-start gap-2 flex-wrap">
-              <span>Tiền hàng (giá niêm yết):</span>
-              <strong className="text-slate-900">{formatCurrency(totals.subtotal)}</strong>
-              {lines.length > 0 && (
+      {/* ── KHỐI TỔNG THANH TOÁN VÀ NÚT HÀNH ĐỘNG BÁM DÍNH Ở ĐÁY TRANG (CHỈ HIỆN KHI ĐÃ CÓ HÀNG TRONG ĐƠN) ── */}
+      {lines.length > 0 && (
+        <div className="sticky bottom-0 z-30 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl shadow-[0_-4px_25px_rgba(0,0,0,0.08)] p-3.5 sm:p-4 transition-all animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4">
+            {/* Cụm trái: Chi tiết tiền hàng & chiết khấu */}
+            <div className="space-y-1 text-xs text-slate-600 w-full md:w-auto">
+              <div className="flex items-center justify-between md:justify-start gap-2 flex-wrap">
+                <span>Tiền hàng (giá niêm yết):</span>
+                <strong className="text-slate-900">{formatCurrency(totals.subtotal)}</strong>
                 <span className="text-[11px] text-slate-400 font-medium">({lines.length} mặt hàng)</span>
+              </div>
+              {totals.totalDiscount > 0 && (
+                <div className="flex items-center justify-between md:justify-start gap-2 text-emerald-700 font-semibold">
+                  <span>Chiết khấu tự động:</span>
+                  <span>-{formatCurrency(totals.totalDiscount)}</span>
+                </div>
               )}
             </div>
-            {totals.totalDiscount > 0 && (
-              <div className="flex items-center justify-between md:justify-start gap-2 text-emerald-700 font-semibold">
-                <span>Chiết khấu tự động:</span>
-                <span>-{formatCurrency(totals.totalDiscount)}</span>
-              </div>
-            )}
-          </div>
 
-          {/* Cụm phải: Tổng phải thu & Các nút thao tác */}
-          <div className="flex items-center justify-between md:justify-end gap-3 sm:gap-4 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
-            <div className="text-left md:text-right">
-              <div className="text-[10px] sm:text-xs text-slate-500 font-semibold uppercase tracking-wider">TỔNG PHẢI THU</div>
-              <div className="text-xl sm:text-2xl font-black text-indigo-700 leading-tight">
-                {formatCurrency(totals.grandTotal)}
+            {/* Cụm phải: Tổng phải thu & Các nút thao tác */}
+            <div className="flex items-center justify-between md:justify-end gap-3 sm:gap-4 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+              <div className="text-left md:text-right">
+                <div className="text-[10px] sm:text-xs text-slate-500 font-semibold uppercase tracking-wider">TỔNG PHẢI THU</div>
+                <div className="text-xl sm:text-2xl font-black text-indigo-700 leading-tight">
+                  {formatCurrency(totals.grandTotal)}
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Chỉ hiển thị nút Lưu nháp khi tạo đơn mới hoặc đơn đang ở trạng thái Nháp */}
-              {(!editingOrder || editingOrder.status === 'DRAFT') && (
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Chỉ hiển thị nút Lưu nháp khi tạo đơn mới hoặc đơn đang ở trạng thái Nháp */}
+                {(!editingOrder || editingOrder.status === 'DRAFT') && (
+                  <button
+                    type="button"
+                    onClick={() => handleSubmit(false, true)}
+                    disabled={isSubmitting || lines.length === 0}
+                    className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl transition-all disabled:opacity-40 cursor-pointer shadow-2xs"
+                    title="Lưu bản nháp để tiếp tục chỉnh sửa sau"
+                  >
+                    <Save className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Lưu nháp</span>
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => handleSubmit(false, true)}
-                  disabled={isSubmitting || lines.length === 0}
-                  className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl transition-all disabled:opacity-40 cursor-pointer shadow-2xs"
-                  title="Lưu bản nháp để tiếp tục chỉnh sửa sau"
+                  onClick={() => handleSubmit(false, false)}
+                  disabled={
+                    isSubmitting ||
+                    lines.length === 0 ||
+                    hasStockError ||
+                    isLoadingPriceList ||
+                    !effectivePriceList ||
+                    (debtStatus !== null && !debtStatus.canCreateOrder)
+                  }
+                  className={`px-4 sm:px-5 py-2 sm:py-2.5 text-xs font-bold text-white rounded-xl transition-all shadow-xs cursor-pointer ${
+                    hasStockError
+                      ? 'bg-rose-400 opacity-60 cursor-not-allowed'
+                      : debtStatus &&
+                        debtStatus.creditLimit > 0 &&
+                        debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit
+                      ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
+                      : 'bg-indigo-600 hover:bg-indigo-700'
+                  } disabled:opacity-40 disabled:cursor-not-allowed`}
                 >
-                  <Save className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Lưu nháp</span>
+                  {isSubmitting ? (
+                    <span className="flex items-center gap-1.5">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Đang gửi...</span>
+                    </span>
+                  ) : hasStockError ? (
+                    'Vượt tồn kho'
+                  ) : debtStatus &&
+                    debtStatus.creditLimit > 0 &&
+                    debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit ? (
+                    'Gửi Duyệt'
+                  ) : editingOrder ? (
+                    'Cập nhật đơn hàng'
+                  ) : (
+                    'Tạo đơn hàng'
+                  )}
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => handleSubmit(false, false)}
-                disabled={
-                  isSubmitting ||
-                  lines.length === 0 ||
-                  hasStockError ||
-                  isLoadingPriceList ||
-                  !effectivePriceList ||
-                  (debtStatus !== null && !debtStatus.canCreateOrder)
-                }
-                className={`px-4 sm:px-5 py-2 sm:py-2.5 text-xs font-bold text-white rounded-xl transition-all shadow-xs cursor-pointer ${
-                  hasStockError
-                    ? 'bg-rose-400 opacity-60 cursor-not-allowed'
-                    : debtStatus &&
-                      debtStatus.creditLimit > 0 &&
-                      debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit
-                    ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
-                    : 'bg-indigo-600 hover:bg-indigo-700'
-                } disabled:opacity-40 disabled:cursor-not-allowed`}
-              >
-                {isSubmitting ? (
-                  <span className="flex items-center gap-1.5">
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Đang gửi...</span>
-                  </span>
-                ) : hasStockError ? (
-                  'Vượt tồn kho'
-                ) : debtStatus &&
-                  debtStatus.creditLimit > 0 &&
-                  debtStatus.currentDebt + totals.grandTotal > debtStatus.creditLimit ? (
-                  'Gửi Duyệt'
-                ) : editingOrder ? (
-                  'Cập nhật đơn hàng'
-                ) : (
-                  'Tạo đơn hàng'
-                )}
-              </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ── MODALS HỖ TRỢ ── */}
       {/* Modal Xác nhận gửi duyệt khi vượt hạn mức công nợ */}
