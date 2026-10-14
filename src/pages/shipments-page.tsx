@@ -12,8 +12,11 @@ import {
   MapPin,
   User,
   Trash2,
+  AlertCircle,
 } from 'lucide-react';
 import { shipmentsService, type Shipment } from '../services/shipments.service';
+import { ordersService } from '../services/orders.service';
+import type { Order } from '../types/order';
 import { showToast } from '../components/toast';
 import { getStoredUser } from '../utils/navigation';
 import { USER_ROLES } from '../types/auth';
@@ -88,6 +91,123 @@ export const ShipmentsPage: React.FC = () => {
   const [newTrackingNumber, setNewTrackingNumber] = useState('');
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
 
+  // Validation errors
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [orderCodeError, setOrderCodeError] = useState<string | null>(null);
+  const [customerNameError, setCustomerNameError] = useState<string | null>(null);
+  const [addressError, setAddressError] = useState<string | null>(null);
+
+  // Danh sách đơn hàng sẵn sàng xuất kho để gợi ý
+  const [readyOrders, setReadyOrders] = useState<Order[]>([]);
+
+  // Tải danh sách đơn hàng để gợi ý khi mở modal
+  useEffect(() => {
+    if (isCreateOpen) {
+      ordersService.getOrders({ limit: 100 })
+        .then((res) => {
+          if (res?.data) {
+            setReadyOrders(res.data);
+          }
+        })
+        .catch(() => {
+          // Bỏ qua nếu có lỗi mạng
+        });
+    } else {
+      // Reset lỗi khi đóng modal
+      setPhoneError(null);
+      setOrderCodeError(null);
+      setCustomerNameError(null);
+      setAddressError(null);
+    }
+  }, [isCreateOpen]);
+
+  // Hàm kiểm tra tính hợp lệ của số điện thoại:
+  // - Khi đang gõ: Cảnh báo ngay nếu nhập chữ, không bắt đầu bằng 0, hoặc nhập thừa > 10 số
+  // - Khi bấm Lưu: Cảnh báo nếu để trống hoặc chưa đủ 10 số
+  const validatePhoneInput = (val: string, isSubmitting = false): string | null => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) {
+      return isSubmitting ? 'Vui lòng nhập số điện thoại người nhận hàng' : null;
+    }
+    if (/[^\d]/.test(trimmed)) {
+      return 'Số điện thoại chỉ được chứa các chữ số (0-9), không chứa chữ hay ký tự đặc biệt';
+    }
+    if (!trimmed.startsWith('0')) {
+      return 'Số điện thoại phải bắt đầu bằng số 0 (ví dụ: 0988xxxxxx)';
+    }
+    if (trimmed.length > 10) {
+      return `Số điện thoại chỉ gồm đúng 10 chữ số (bạn đang nhập thừa ${trimmed.length - 10} số)`;
+    }
+    if (isSubmitting && trimmed.length < 10) {
+      return `Số điện thoại phải gồm đúng 10 chữ số (mới nhập ${trimmed.length}/10 số - còn thiếu ${10 - trimmed.length} số)`;
+    }
+    if (isSubmitting && !/^(03|05|07|08|09|02)[0-9]{8}$/.test(trimmed)) {
+      return 'Đầu số điện thoại không hợp lệ (hỗ trợ các đầu số 03, 05, 07, 08, 09, 02)';
+    }
+    return null;
+  };
+
+  // Xử lý thay đổi mã đơn hàng & tự động điền thông tin nếu khớp
+  const handleOrderCodeChange = (codeVal: string) => {
+    const upper = codeVal.toUpperCase();
+    setNewOrderCode(upper);
+    const trimmed = upper.trim();
+    if (!trimmed) {
+      setOrderCodeError('Vui lòng nhập hoặc chọn Mã đơn hàng');
+    } else if (trimmed.length < 4) {
+      setOrderCodeError('Mã đơn hàng phải có tối thiểu 4 ký tự');
+    } else {
+      setOrderCodeError(null);
+    }
+
+    // Tự động kiểm tra đơn hàng có sẵn để điền nhanh thông tin đại lý
+    const matched = readyOrders.find(
+      (o) => o.orderCode?.toUpperCase() === trimmed || o.id?.toUpperCase() === trimmed
+    );
+    if (matched) {
+      if (matched.customerName) {
+        setNewCustomerName(matched.customerName);
+        setCustomerNameError(null);
+      }
+      const receiver = matched.deliveryPoint?.receiverName || matched.deliveryPoint?.contactPerson || matched.customerName || '';
+      if (receiver) setNewReceiverName(receiver);
+
+      const phone = matched.deliveryPoint?.phone || '';
+      if (phone) {
+        setNewPhone(phone);
+        setPhoneError(validatePhoneInput(phone, false));
+      }
+
+      const addr = matched.deliveryPoint?.address || '';
+      if (addr) {
+        setNewDeliveryAddress(addr);
+        setAddressError(null);
+      }
+    }
+  };
+
+  const handleCustomerNameChange = (val: string) => {
+    setNewCustomerName(val);
+    if (!val.trim()) {
+      setCustomerNameError('Vui lòng nhập Tên đại lý / Khách hàng');
+    } else if (val.trim().length < 2) {
+      setCustomerNameError('Tên đại lý phải có tối thiểu 2 ký tự');
+    } else {
+      setCustomerNameError(null);
+    }
+  };
+
+  const handleDeliveryAddressChange = (val: string) => {
+    setNewDeliveryAddress(val);
+    if (!val.trim()) {
+      setAddressError('Vui lòng nhập Địa chỉ giao hàng');
+    } else if (val.trim().length < 5) {
+      setAddressError('Địa chỉ giao hàng quá ngắn, vui lòng nhập chi tiết');
+    } else {
+      setAddressError(null);
+    }
+  };
+
   // Modal cập nhật trạng thái
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
   const [updateStatusVal, setUpdateStatusVal] = useState<Shipment['status']>('PICKING');
@@ -116,17 +236,42 @@ export const ShipmentsPage: React.FC = () => {
     fetchShipments();
   }, [fetchShipments]);
 
-  // Xử lý tạo phiếu xuất
+  // Xử lý tạo phiếu xuất với đầy đủ validation logic
   const handleCreateShipment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newOrderCode.trim() || !newCustomerName.trim()) {
-      showToast('error', 'Vui lòng nhập Mã đơn hàng và Tên đại lý');
+
+    const trimmedOrderCode = newOrderCode.trim();
+    const orderErr = !trimmedOrderCode
+      ? 'Vui lòng nhập hoặc chọn Mã đơn hàng'
+      : trimmedOrderCode.length < 4
+      ? 'Mã đơn hàng phải có tối thiểu 4 ký tự (ví dụ: DH2610-66569)'
+      : null;
+    const custErr = !newCustomerName.trim()
+      ? 'Vui lòng nhập Tên đại lý / Khách hàng'
+      : newCustomerName.trim().length < 2
+      ? 'Tên đại lý phải có tối thiểu 2 ký tự'
+      : null;
+    const phoneErr = validatePhoneInput(newPhone, true);
+    const addrErr = !newDeliveryAddress.trim()
+      ? 'Vui lòng nhập Địa chỉ giao hàng'
+      : newDeliveryAddress.trim().length < 5
+      ? 'Địa chỉ giao hàng quá ngắn, vui lòng nhập chi tiết'
+      : null;
+
+    setOrderCodeError(orderErr);
+    setCustomerNameError(custErr);
+    setPhoneError(phoneErr);
+    setAddressError(addrErr);
+
+    if (orderErr || custErr || phoneErr || addrErr) {
+      showToast('warning', phoneErr || orderErr || custErr || addrErr || 'Vui lòng kiểm tra lại thông tin');
       return;
     }
+
     try {
       setIsSubmittingCreate(true);
       await shipmentsService.createShipment({
-        orderCode: newOrderCode.trim(),
+        orderCode: trimmedOrderCode,
         customerName: newCustomerName.trim(),
         receiverName: newReceiverName.trim() || newCustomerName.trim(),
         phone: newPhone.trim(),
@@ -143,6 +288,10 @@ export const ShipmentsPage: React.FC = () => {
       setNewPhone('');
       setNewDeliveryAddress('');
       setNewTrackingNumber('');
+      setPhoneError(null);
+      setOrderCodeError(null);
+      setCustomerNameError(null);
+      setAddressError(null);
       fetchShipments();
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -588,29 +737,65 @@ export const ShipmentsPage: React.FC = () => {
               Tạo Phiếu Xuất Kho & Giao Hàng Mới
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-sm">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Mã đơn hàng *</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Mã đơn hàng <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
+                  list="ready-orders-datalist"
                   value={newOrderCode}
-                  onChange={(e) => setNewOrderCode(e.target.value)}
+                  onChange={(e) => handleOrderCodeChange(e.target.value)}
                   placeholder="Ví dụ: DH2610-66569"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 font-mono text-sm transition-colors ${
+                    orderCodeError
+                      ? 'border-rose-400 focus:ring-rose-200 focus:border-rose-500 bg-rose-50/20'
+                      : 'border-slate-200 focus:ring-blue-500 bg-white'
+                  }`}
                 />
+                <datalist id="ready-orders-datalist">
+                  {readyOrders.map((o) => (
+                    <option key={o.id || o.orderCode} value={o.orderCode || o.id}>
+                      {o.customerName ? `${o.customerName} (${o.orderCode})` : o.orderCode}
+                    </option>
+                  ))}
+                </datalist>
+                {orderCodeError ? (
+                  <p className="text-xs text-rose-500 font-medium mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {orderCodeError}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Gõ mã hoặc chọn từ danh sách đơn đã duyệt
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Tên đại lý / Khách hàng *</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Tên đại lý / Khách hàng <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   value={newCustomerName}
-                  onChange={(e) => setNewCustomerName(e.target.value)}
+                  onChange={(e) => handleCustomerNameChange(e.target.value)}
                   placeholder="Ví dụ: Đại lý Minh Khang"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 text-sm transition-colors ${
+                    customerNameError
+                      ? 'border-rose-400 focus:ring-rose-200 focus:border-rose-500 bg-rose-50/20'
+                      : 'border-slate-200 focus:ring-blue-500 bg-white'
+                  }`}
                 />
+                {customerNameError && (
+                  <p className="text-xs text-rose-500 font-medium mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {customerNameError}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -620,41 +805,86 @@ export const ShipmentsPage: React.FC = () => {
                   value={newReceiverName}
                   onChange={(e) => setNewReceiverName(e.target.value)}
                   placeholder="Tên người nhận hàng"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Số điện thoại</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Số điện thoại <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="tel"
+                  maxLength={11}
                   value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setNewPhone(val);
+                    setPhoneError(validatePhoneInput(val, false));
+                  }}
+                  onBlur={() => {
+                    setPhoneError(validatePhoneInput(newPhone, true));
+                  }}
                   placeholder="0988xxxxxx"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 text-sm transition-colors ${
+                    phoneError
+                      ? 'border-rose-400 focus:ring-rose-200 focus:border-rose-500 bg-rose-50/20'
+                      : 'border-slate-200 focus:ring-blue-500 bg-white'
+                  }`}
                 />
+                {phoneError ? (
+                  <p className="text-xs text-rose-500 font-medium mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {phoneError}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Đúng 10 chữ số, bắt đầu bằng số 0
+                  </p>
+                )}
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Địa chỉ giao hàng</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Địa chỉ giao hàng <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
+                  required
                   value={newDeliveryAddress}
-                  onChange={(e) => setNewDeliveryAddress(e.target.value)}
-                  placeholder="Địa chỉ kho đại lý..."
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => handleDeliveryAddressChange(e.target.value)}
+                  placeholder="Địa chỉ kho đại lý nhận hàng..."
+                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 text-sm transition-colors ${
+                    addressError
+                      ? 'border-rose-400 focus:ring-rose-200 focus:border-rose-500 bg-rose-50/20'
+                      : 'border-slate-200 focus:ring-blue-500 bg-white'
+                  }`}
                 />
+                {addressError && (
+                  <p className="text-xs text-rose-500 font-medium mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {addressError}
+                  </p>
+                )}
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Đơn vị vận chuyển</label>
                 <input
                   type="text"
+                  list="carrier-suggestions-list"
                   value={newCarrierName}
                   onChange={(e) => setNewCarrierName(e.target.value)}
                   placeholder="Giao Hàng Nhanh / Viettel Post"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
+                <datalist id="carrier-suggestions-list">
+                  <option value="Giao Hàng Nhanh (GHN)" />
+                  <option value="Viettel Post" />
+                  <option value="Giao Hàng Tiết Kiệm (GHTK)" />
+                  <option value="VNPost (Bưu Điện)" />
+                  <option value="Đội xe giao hàng nội bộ LOHA" />
+                </datalist>
               </div>
 
               <div>
@@ -662,9 +892,9 @@ export const ShipmentsPage: React.FC = () => {
                 <input
                   type="text"
                   value={newTrackingNumber}
-                  onChange={(e) => setNewTrackingNumber(e.target.value)}
+                  onChange={(e) => setNewTrackingNumber(e.target.value.toUpperCase().replace(/\s+/g, ''))}
                   placeholder="TRK-2026-..."
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                 />
               </div>
             </div>

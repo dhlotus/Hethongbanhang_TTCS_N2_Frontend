@@ -31,7 +31,6 @@ import {
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ordersService } from '../services/orders.service';
-import { usersService } from '../services/users.service';
 import { OrderPrintModal } from '../components/order-print-modal';
 import { ReorderModal } from '../components/reorder-modal';
 import { getStoredUser } from '../utils/navigation';
@@ -75,85 +74,85 @@ const ORDER_STATUS_CONFIG: Record<
 > = {
   DRAFT: {
     label: 'Nháp',
-    bgClass: 'bg-slate-100',
+    bgClass: 'bg-slate-100 border border-slate-200/70',
     textClass: 'text-slate-600',
     icon: <FileText className="w-3 h-3" />,
   },
   PENDING: {
     label: 'Chờ duyệt',
-    bgClass: 'bg-amber-50',
+    bgClass: 'bg-amber-50 border border-amber-200/70',
     textClass: 'text-amber-700',
     icon: <Clock className="w-3 h-3" />,
   },
   PENDING_APPROVAL: {
     label: 'Chờ duyệt hạn mức',
-    bgClass: 'bg-amber-100 ring-1 ring-amber-300',
+    bgClass: 'bg-amber-50 border border-amber-200/70',
     textClass: 'text-amber-800',
     icon: <AlertTriangle className="w-3 h-3" />,
   },
   PENDING_INVENTORY_APPROVAL: {
     label: 'Chờ duyệt tồn kho',
-    bgClass: 'bg-rose-50',
+    bgClass: 'bg-rose-50 border border-rose-200/70',
     textClass: 'text-rose-700',
     icon: <AlertCircle className="w-3 h-3" />,
   },
   APPROVED: {
-    label: 'Đã duyệt (Đang giữ chỗ)',
-    bgClass: 'bg-indigo-50 ring-1 ring-indigo-200',
+    label: 'Đã duyệt',
+    bgClass: 'bg-indigo-50 border border-indigo-200/80',
     textClass: 'text-indigo-700',
     icon: <Lock className="w-3 h-3 text-indigo-600" />,
   },
   REJECTED: {
     label: 'Từ chối',
-    bgClass: 'bg-red-50',
+    bgClass: 'bg-red-50 border border-red-200/70',
     textClass: 'text-red-700',
     icon: <XCircle className="w-3 h-3" />,
   },
   RETURNED_FOR_UPDATE: {
     label: 'Trả lại sửa',
-    bgClass: 'bg-orange-50',
+    bgClass: 'bg-orange-50 border border-orange-200/70',
     textClass: 'text-orange-700',
     icon: <CornerUpLeft className="w-3 h-3" />,
   },
   PROCESSING: {
     label: 'Đang soạn',
-    bgClass: 'bg-purple-50',
+    bgClass: 'bg-purple-50 border border-purple-200/70',
     textClass: 'text-purple-700',
     icon: <Package className="w-3 h-3" />,
   },
   SHIPPED: {
     label: 'Đã xuất kho',
-    bgClass: 'bg-cyan-50',
+    bgClass: 'bg-cyan-50 border border-cyan-200/70',
     textClass: 'text-cyan-700',
     icon: <Truck className="w-3 h-3" />,
   },
   DELIVERED: {
     label: 'Giao thành công',
-    bgClass: 'bg-green-50',
-    textClass: 'text-green-700',
+    bgClass: 'bg-emerald-50 border border-emerald-200/70',
+    textClass: 'text-emerald-700',
     icon: <CheckCircle2 className="w-3 h-3" />,
   },
   CANCELLED: {
     label: 'Đã hủy',
-    bgClass: 'bg-red-50',
-    textClass: 'text-red-600',
+    bgClass: 'bg-rose-50 border border-rose-200/70',
+    textClass: 'text-rose-600',
     icon: <X className="w-3 h-3" />,
   },
   RETURNED: {
     label: 'Hoàn hàng',
-    bgClass: 'bg-orange-50',
+    bgClass: 'bg-orange-50 border border-orange-200/70',
     textClass: 'text-orange-700',
     icon: <AlertCircle className="w-3 h-3" />,
   },
   CLOSED: {
     label: 'Đã đóng',
-    bgClass: 'bg-slate-200',
+    bgClass: 'bg-slate-100 border border-slate-200/70',
     textClass: 'text-slate-800',
     icon: <CheckCircle2 className="w-3 h-3" />,
   },
 };
 
-/** Badge trạng thái đơn hàng (SN-180: Hiển thị Đang giữ chỗ khi Đã duyệt) */
+/** Badge trạng thái đơn hàng */
 interface OrderStatusBadgeProps {
   status: OrderStatus;
   reservedUntil?: string;
@@ -164,20 +163,15 @@ const OrderStatusBadge: React.FC<OrderStatusBadgeProps> = ({ status, reservedUnt
   if (!cfg) return null;
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${cfg.bgClass} ${cfg.textClass}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${cfg.bgClass} ${cfg.textClass}`}
       title={
         status === 'APPROVED' && reservedUntil
-          ? `Hạn giữ chỗ tồn kho: ${formatDate(reservedUntil)}`
+          ? `Đã duyệt (Hạn giữ chỗ tồn kho: ${formatDate(reservedUntil)})`
           : undefined
       }
     >
       {cfg.icon}
       <span>{cfg.label}</span>
-      {status === 'APPROVED' && reservedUntil && (
-        <span className="text-[10px] opacity-75 font-normal ml-0.5" title="Hạn giữ tồn 24h">
-          ({formatDate(reservedUntil)})
-        </span>
-      )}
     </span>
   );
 };
@@ -195,41 +189,43 @@ const STATUS_TABS: { key: OrderStatus | 'ALL'; label: string }[] = [
 ];
 
 export const OrdersPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const urlCustomerId = searchParams.get('customerId');
   const shouldOpenCreate = searchParams.get('createOrder') === 'true' || !!urlCustomerId;
+
+  const initialSearch = searchParams.get('search') || searchParams.get('q') || '';
+  const initialStatus = (() => {
+    const requestedStatus = searchParams.get('status');
+    return STATUS_TABS.some((tab) => tab.key === requestedStatus)
+      ? (requestedStatus as OrderStatus | 'ALL')
+      : 'ALL';
+  })();
+  const initialRegion = searchParams.get('region') || 'ALL';
+  const initialFromDate = searchParams.get('fromDate') || '';
+  const initialToDate = searchParams.get('toDate') || '';
+  const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const initialLimit = Math.max(1, parseInt(searchParams.get('limit') || '10', 10) || 10);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage);
   const [totalPages, setTotalPages] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(initialLimit);
 
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>(() => {
-    const requestedStatus = searchParams.get('status');
-    return STATUS_TABS.some((tab) => tab.key === requestedStatus)
-      ? requestedStatus as OrderStatus
-      : 'ALL';
-  });
-  const [searchInput, setSearchInput] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>(initialStatus);
+  const [searchInput, setSearchInput] = useState(initialSearch);
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
 
-  // ── SN-46: Bộ lọc đa tiêu chí cho Quản lý kinh doanh ──
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('ALL');
-  const [selectedSalesRepId, setSelectedSalesRepId] = useState<string>('ALL');
-  const [selectedRegion, setSelectedRegion] = useState<string>('ALL');
-  const [fromDate, setFromDate] = useState<string>('');
-  const [toDate, setToDate] = useState<string>('');
+  // Bộ lọc
+  const [selectedRegion, setSelectedRegion] = useState<string>(initialRegion);
+  const [fromDate, setFromDate] = useState<string>(initialFromDate);
+  const [toDate, setToDate] = useState<string>(initialToDate);
 
-  // Danh sách đại lý & nhân viên kinh doanh cho dropdown lọc
-  const [customerOptions, setCustomerOptions] = useState<{ id: string; name: string; code?: string }[]>([]);
-  const [salesRepOptions, setSalesRepOptions] = useState<{ id: string; name: string }[]>([]);
-
-      const [viewOrder, setViewOrder] = useState<Order | null>(null);
+  const [viewOrder, setViewOrder] = useState<Order | null>(null);
   const [approvingOrder, setApprovingOrder] = useState(false);
   // Trạng thái hủy đơn hàng (SN-45)
   const [cancelingOrder, setCancelingOrder] = useState<Order | null>(null);
@@ -237,7 +233,17 @@ export const OrdersPage: React.FC = () => {
   const [decisionComment, setDecisionComment] = useState('');
   const [approvalHistory, setApprovalHistory] = useState<OrderApprovalHistory[]>([]);
   const [isLoadingApprovalHistory, setIsLoadingApprovalHistory] = useState(false);
-  const [printOrder, setPrintOrder] = useState<Order | null>(null);
+  // Khởi tạo trực tiếp từ cache để khi F5 tải lại trang thì modal In / Xuất PDF xuất hiện ngay lập tức
+  const [printOrder, setPrintOrder] = useState<Order | null>(() => {
+    try {
+      const cached = sessionStorage.getItem('loha_active_print_order_data');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && (parsed.id || parsed.orderCode)) return parsed;
+      }
+    } catch {}
+    return null;
+  });
   const [selectedOrderForReorder, setSelectedOrderForReorder] = useState<Order | null>(null);
   const [isCloning, setIsCloning] = useState<string | null>(null);
 
@@ -300,81 +306,6 @@ export const OrdersPage: React.FC = () => {
   // Kế toán, Quản lý kho, Thủ kho, Quản lý kinh doanh và Admin đều có quyền xem đơn toàn công ty
   const canViewAllRep = isAdmin || isSalesManager || isAccountant || isWarehouse;
 
-  // Tải danh sách đại lý cho dropdown bộ lọc (loại trừ các điểm bán lẻ nội bộ RETAIL, showroom, kiosk)
-  useEffect(() => {
-    ordersService.getCustomers().then((list) => {
-      if (Array.isArray(list)) {
-        const validAgencies = list.filter((c) => {
-          const isRetailShowroom =
-            c.group === 'RETAIL' ||
-            (c.code && /^DL-001[1-5]$/i.test(c.code)) ||
-            (c.code && /^DL-003[0-9]$/i.test(c.code)) ||
-            c.name?.toLowerCase().includes('showroom') ||
-            c.name?.toLowerCase().includes('kiosk') ||
-            c.name?.toLowerCase().includes('trung tâm trải nghiệm') ||
-            c.name?.toLowerCase().includes('bán lẻ trực tiếp') ||
-            c.name?.toLowerCase().includes('trưng bày & bán lẻ');
-          return !isRetailShowroom;
-        });
-        setCustomerOptions(validAgencies.map((c) => ({ id: c.id, name: c.name, code: c.code })));
-      }
-    }).catch(() => {});
-  }, []);
-
-  // Tải danh sách nhân viên kinh doanh cho dropdown bộ lọc
-  useEffect(() => {
-    const fallbackSalesReps = [
-      { id: 'usr-sale-01', name: 'Trần Văn Long (NVKD)' },
-      { id: 'usr-sale-02', name: 'Nguyễn Thị Hằng (NVKD)' },
-      { id: 'usr-sales-002', name: 'Trần Văn Nam (NVKD)' },
-      { id: 'usr-sale-03', name: 'Phạm Minh Tuấn (NVKD)' },
-      { id: 'usr-salesmgr-003', name: 'Lê Hoàng (QLKD)' },
-    ];
-    setSalesRepOptions(fallbackSalesReps);
-
-    usersService.getUsers({ limit: 100 }).then((res) => {
-      if (res?.data && res.data.length > 0) {
-        const reps = res.data
-          .filter((u) => {
-            // Chỉ lấy nhân viên kinh doanh hoặc quản lý kinh doanh, không lấy Admin, Kế toán, Thủ kho
-            const isSales = u.roles?.includes('SALES_REP') || u.roles?.includes('SALES_MANAGER');
-            const isAdmin = u.roles?.includes('ADMIN') || u.role === 'ADMIN';
-            if (!isSales || isAdmin) return false;
-            // Bỏ các nhân viên mock/test không đúng
-            const isMockEmployee =
-              /Nhân Viên \d+/i.test(u.fullName) ||
-              /nguyen van a/i.test(u.fullName) ||
-              /vũ văn bảy/i.test(u.fullName) ||
-              /nguyễn văn một/i.test(u.fullName) ||
-              /đa vai trò/i.test(u.fullName) ||
-              /kim chi/i.test(u.fullName) ||
-              u.username?.startsWith('employee_') ||
-              u.username?.startsWith('test_');
-            return !isMockEmployee;
-          })
-          .map((u) => {
-            const cleanName = u.fullName.replace(/\s*\([^)]*\)/g, '').trim();
-            const roleLabel = u.roles?.includes('SALES_MANAGER') ? 'QLKD' : 'NVKD';
-            return {
-              id: u.id,
-              name: `${cleanName} (${roleLabel})`,
-            };
-          });
-        if (reps.length > 0) {
-          setSalesRepOptions(reps);
-        }
-      }
-    }).catch(() => {});
-  }, []);
-
-  const handleCustomerChange = (val: string) => {
-    setSelectedCustomerId(val);
-    setPage(1);
-  };
-  const handleSalesRepChange = (val: string) => {
-    setSelectedSalesRepId(val);
-    setPage(1);
-  };
   const handleRegionChange = (val: string) => {
     setSelectedRegion(val);
     setPage(1);
@@ -401,8 +332,6 @@ export const OrdersPage: React.FC = () => {
     setSearchInput('');
     setSearchTerm('');
     setStatusFilter('ALL');
-    setSelectedCustomerId('ALL');
-    setSelectedSalesRepId('ALL');
     setSelectedRegion('ALL');
     setFromDate('');
     setToDate('');
@@ -412,11 +341,78 @@ export const OrdersPage: React.FC = () => {
   const hasActiveFilters =
     statusFilter !== 'ALL' ||
     searchTerm !== '' ||
-    selectedCustomerId !== 'ALL' ||
-    (canViewAllRep && selectedSalesRepId !== 'ALL') ||
     selectedRegion !== 'ALL' ||
     fromDate !== '' ||
     toDate !== '';
+
+  // Đồng bộ trạng thái bộ lọc & phân trang vào URL query parameters
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (searchTerm.trim()) {
+      params.set('search', searchTerm.trim());
+    }
+    if (statusFilter !== 'ALL') {
+      params.set('status', statusFilter);
+    }
+    if (selectedRegion !== 'ALL') {
+      params.set('region', selectedRegion);
+    }
+    if (fromDate) {
+      params.set('fromDate', fromDate);
+    }
+    if (toDate) {
+      params.set('toDate', toDate);
+    }
+    if (page > 1) {
+      params.set('page', String(page));
+    }
+    if (limit !== 10) {
+      params.set('limit', String(limit));
+    }
+    if (urlCustomerId) {
+      params.set('customerId', urlCustomerId);
+    }
+
+    const currentQuery = searchParams.toString();
+    const newQuery = params.toString();
+    if (currentQuery !== newQuery) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [searchTerm, statusFilter, selectedRegion, fromDate, toDate, page, limit, urlCustomerId, searchParams, setSearchParams]);
+
+  // Đồng bộ từ URL ngược lại state khi người dùng dùng nút Back/Forward của trình duyệt
+  useEffect(() => {
+    const q = searchParams.get('search') || searchParams.get('q') || '';
+    if (q !== searchTerm) {
+      setSearchInput(q);
+      setSearchTerm(q);
+    }
+    const s = searchParams.get('status');
+    const validStatus = STATUS_TABS.some((tab) => tab.key === s) ? (s as OrderStatus | 'ALL') : 'ALL';
+    if (validStatus !== statusFilter) {
+      setStatusFilter(validStatus);
+    }
+    const r = searchParams.get('region') || 'ALL';
+    if (r !== selectedRegion) {
+      setSelectedRegion(r);
+    }
+    const fd = searchParams.get('fromDate') || '';
+    if (fd !== fromDate) {
+      setFromDate(fd);
+    }
+    const td = searchParams.get('toDate') || '';
+    if (td !== toDate) {
+      setToDate(td);
+    }
+    const p = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    if (p !== page) {
+      setPage(p);
+    }
+    const l = Math.max(1, parseInt(searchParams.get('limit') || '10', 10) || 10);
+    if (l !== limit) {
+      setLimit(l);
+    }
+  }, [searchParams]);
 
   // Tự động chuyển hướng sang trang tạo đơn khi có createOrder hoặc customerId trên URL
   useEffect(() => {
@@ -456,14 +452,14 @@ export const OrdersPage: React.FC = () => {
       try {
         const effectiveSalesRep = !canViewAllRep
           ? (user?.id || user?.fullName)
-          : (selectedSalesRepId !== 'ALL' ? selectedSalesRepId : undefined);
+          : undefined;
 
         const res = await ordersService.getOrders({
           page,
           limit,
           status: statusFilter,
           search: searchTerm || undefined,
-          customerId: selectedCustomerId !== 'ALL' ? selectedCustomerId : undefined,
+          customerId: urlCustomerId || undefined,
           salesRepId: effectiveSalesRep,
           region: selectedRegion !== 'ALL' ? selectedRegion : undefined,
           fromDate: fromDate || undefined,
@@ -496,8 +492,7 @@ export const OrdersPage: React.FC = () => {
     limit,
     statusFilter,
     searchTerm,
-    selectedCustomerId,
-    selectedSalesRepId,
+    urlCustomerId,
     selectedRegion,
     fromDate,
     toDate,
@@ -506,6 +501,25 @@ export const OrdersPage: React.FC = () => {
     user?.id,
     user?.fullName,
   ]);
+
+  // Khôi phục modal In / Xuất PDF khi người dùng ấn F5 hoặc truy cập qua URL có query ?printOrderId=...
+  useEffect(() => {
+    const printId = searchParams.get('printOrderId') || searchParams.get('print');
+    if (!printId || printOrder) return;
+
+    const found = orders.find((o) => o.id === printId || o.orderCode === printId);
+    if (found) {
+      setPrintOrder(found);
+      return;
+    }
+
+    ordersService
+      .getOrderById(printId)
+      .then((ord) => {
+        if (ord) setPrintOrder(ord);
+      })
+      .catch(() => {});
+  }, [searchParams, orders, printOrder]);
 
   useEffect(() => {
     let isMounted = true;
@@ -540,6 +554,12 @@ export const OrdersPage: React.FC = () => {
         'success',
         `Sao chép thành công đơn ${targetOrder.orderCode} thành bản sao mới ${cloned.orderCode}! Bản sao luôn bắt đầu ở trạng thái Nháp. Giá và chiết khấu đã được tính lại theo bảng giá hiện hành.`,
       );
+      if (statusFilter !== 'ALL' && statusFilter !== 'DRAFT') {
+        setStatusFilter('ALL');
+      }
+      setSearchInput('');
+      setSearchTerm('');
+      setPage(1);
       setRefreshKey((k) => k + 1);
       if (viewOrder?.id === targetOrder.id) {
         setViewOrder(null);
@@ -552,9 +572,34 @@ export const OrdersPage: React.FC = () => {
     }
   };
 
-  /** Mở modal in / xuất PDF đơn hàng (SN-47) */
+  /** Mở modal in / xuất PDF đơn hàng (SN-47) và lưu URL/Session để F5 không bị mất */
   const handleOpenPrint = (targetOrder: Order): void => {
     setPrintOrder(targetOrder);
+    try {
+      const code = targetOrder.orderCode || targetOrder.id || '';
+      sessionStorage.setItem('loha_active_print_order_id', code);
+      sessionStorage.setItem('loha_active_print_order_data', JSON.stringify(targetOrder));
+    } catch {}
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('printOrderId', targetOrder.orderCode || targetOrder.id || '');
+      return next;
+    }, { replace: true });
+  };
+
+  /** Đóng modal in / xuất PDF và dọn dẹp URL, cache */
+  const handleClosePrint = (): void => {
+    setPrintOrder(null);
+    try {
+      sessionStorage.removeItem('loha_active_print_order_id');
+      sessionStorage.removeItem('loha_active_print_order_data');
+    } catch {}
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('printOrderId');
+      next.delete('print');
+      return next;
+    }, { replace: true });
   };
 
   const submitApprovalDecision = async (
@@ -663,53 +708,53 @@ export const OrdersPage: React.FC = () => {
       <div className="space-y-6">
 
         {/* ── THỐNG KÊ DOANH SỐ & TỔNG TIỀN ĐANG LỌC (SN-46) ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
           {/* Card 1: Tổng số đơn hàng */}
-          <div className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-              <ShoppingCart className="w-5 h-5" />
+          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs hover:shadow-sm transition-all flex items-center">
+            <div className="w-12 h-12 rounded-lg bg-indigo-50/80 text-indigo-600 border border-indigo-100/60 flex items-center justify-center shrink-0">
+              <ShoppingCart className="w-6 h-6" />
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-slate-500">Số đơn đang lọc</p>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-xl font-bold text-slate-900">{total}</span>
+            <div className="ml-4 w-0 flex-1 min-w-0">
+              <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Số đơn đang lọc</dt>
+              <dd className="mt-1 flex items-baseline gap-1.5">
+                <span className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 tabular-nums">{total}</span>
                 <span className="text-xs text-slate-400 font-medium">đơn</span>
-              </div>
+              </dd>
             </div>
           </div>
 
           {/* Card 2: Tổng tiền tập kết quả đang lọc (Tiêu chí then chốt SN-46) */}
-          <div className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3.5 bg-gradient-to-br from-white via-white to-emerald-50/40">
-            <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <TrendingUp className="w-5 h-5" />
+          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs hover:shadow-sm transition-all flex items-center">
+            <div className="w-12 h-12 rounded-lg bg-emerald-50/80 text-emerald-600 border border-emerald-100/60 flex items-center justify-center shrink-0">
+              <TrendingUp className="w-6 h-6" />
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="text-xs font-medium text-slate-500">Tổng tiền đang lọc</p>
-                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded-full">
+            <div className="ml-4 w-0 flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">Tổng tiền đang lọc</dt>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/50">
                   Toàn tập lọc
                 </span>
               </div>
-              <p className="text-lg sm:text-xl font-bold text-emerald-700 mt-0.5 truncate" title={formatCurrency(totalAmount)}>
+              <dd className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate tabular-nums" title={formatCurrency(totalAmount)}>
                 {formatCurrency(totalAmount)}
-              </p>
+              </dd>
             </div>
           </div>
         </div>
 
         {/* ── BỘ LỌC ĐA TIÊU CHÍ & HÀNH ĐỘNG (SN-46) ── */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 space-y-3.5 shadow-xs">
+        <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 space-y-3.5 shadow-xs">
           {/* Hàng 1: Ô tìm kiếm + Khoảng ngày + Nhóm nút hành động */}
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
             {/* Ô tìm kiếm từ khóa */}
-            <div className="relative flex-1 min-w-[260px]">
+            <div className="relative flex-1 min-w-[220px]">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               <input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Tìm mã đơn, tên đại lý, mã đại lý, nhân viên..."
-                className="w-full pl-10 pr-9 py-2 text-xs font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-slate-50/60 hover:bg-white focus:bg-white transition-all placeholder-slate-400"
+                className="w-full pl-10 pr-9 py-2 text-xs font-medium border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 bg-slate-50/60 hover:bg-white focus:bg-white transition-all placeholder-slate-400"
               />
               {searchInput && (
                 <button
@@ -726,7 +771,7 @@ export const OrdersPage: React.FC = () => {
             {/* Bộ lọc từ ngày - đến ngày */}
             <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
               {/* Ô Từ ngày (chuẩn dd/mm/yyyy) */}
-              <div className="relative flex items-center gap-1.5 bg-slate-50/80 hover:bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all shadow-2xs h-9 min-w-[130px]">
+              <div className="relative flex items-center gap-1.5 bg-slate-50/80 hover:bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all shadow-2xs h-9 min-w-[130px]">
                 <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0 pointer-events-none" />
                 <span className="text-[11px] text-slate-500 whitespace-nowrap font-medium pointer-events-none">Từ:</span>
                 <DateInput
@@ -754,10 +799,10 @@ export const OrdersPage: React.FC = () => {
               </div>
 
               {/* Ô Đến ngày (chuẩn dd/mm/yyyy, min = fromDate) */}
-              <div className={`relative flex items-center gap-1.5 bg-slate-50/80 hover:bg-white border rounded-xl px-2.5 py-1.5 transition-all shadow-2xs h-9 min-w-[130px] ${
+              <div className={`relative flex items-center gap-1.5 bg-slate-50/80 hover:bg-white border rounded-lg px-2.5 py-1.5 transition-all shadow-2xs h-9 min-w-[130px] ${
                 fromDate && toDate && toDate < fromDate
                   ? 'border-rose-400 ring-2 ring-rose-100'
-                  : 'border-slate-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100'
+                  : 'border-slate-200 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10'
               }`}>
                 <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0 pointer-events-none" />
                 <span className="text-[11px] text-slate-500 whitespace-nowrap font-medium pointer-events-none">Đến:</span>
@@ -786,17 +831,17 @@ export const OrdersPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Cụm nút hành động: Làm mới & Tạo đơn hàng */}
-            <div className="flex items-center gap-2 shrink-0 ml-auto lg:ml-0">
+            {/* Cụm nút hành động: Làm mới & Tạo đơn hàng (trên màn hình lớn >= xl) */}
+            <div className="flex items-center gap-2 shrink-0 self-end xl:self-auto">
               <button
                 type="button"
                 onClick={() => setRefreshKey((k) => k + 1)}
                 disabled={loading}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-2xs disabled:opacity-50 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-2xs disabled:opacity-50 cursor-pointer"
                 title="Làm mới danh sách đơn hàng"
               >
                 <RefreshCw
-                  className={`w-3.5 h-3.5 shrink-0 ${loading ? 'animate-spin text-blue-600' : 'text-slate-500'}`}
+                  className={`w-3.5 h-3.5 shrink-0 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`}
                 />
                 <span className="hidden sm:inline">Làm mới</span>
               </button>
@@ -805,7 +850,7 @@ export const OrdersPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/sales/orders/create')}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.99] rounded-xl transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                  className="hidden xl:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
                   title="Tạo đơn hàng bán buôn mới"
                 >
                   <Plus className="w-3.5 h-3.5 shrink-0" />
@@ -815,115 +860,90 @@ export const OrdersPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Hàng 2: Grid 4 Dropdown Bộ lọc (Trạng thái, Đại lý, NVKD, Khu vực) & Nút Reset */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-2.5 border-t border-slate-100">
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold shrink-0">
-              <Filter className="w-3.5 h-3.5 text-slate-400" />
-              <span className="hidden sm:inline">Bộ lọc:</span>
-            </div>
+          {/* Hàng 2: Bộ lọc (Trạng thái, Khu vực) & Nút Reset + Nút Tạo đơn hàng trên màn hình nhỏ */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-2.5 border-t border-slate-100">
+            <div className="flex flex-wrap items-center gap-2.5 flex-1">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold shrink-0">
+                <Filter className="w-3.5 h-3.5 text-slate-400" />
+                <span>Bộ lọc:</span>
+              </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 flex-1">
               {/* 1. Dropdown Trạng thái đơn hàng */}
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value as OrderStatus | 'ALL');
-                  setPage(1);
-                }}
-                aria-label="Lọc theo trạng thái đơn hàng"
-                className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer shadow-2xs"
-              >
-                {STATUS_TABS.map((tab) => (
-                  <option key={tab.key} value={tab.key}>
-                    {tab.key === 'ALL' ? 'Tất cả trạng thái' : tab.label}
-                  </option>
-                ))}
-              </select>
+              <div className="w-full sm:w-48 md:w-52">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value as OrderStatus | 'ALL');
+                    setPage(1);
+                  }}
+                  aria-label="Lọc theo trạng thái đơn hàng"
+                  className="w-full text-xs font-medium border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer shadow-2xs"
+                >
+                  {STATUS_TABS.map((tab) => (
+                    <option key={tab.key} value={tab.key}>
+                      {tab.key === 'ALL' ? 'Tất cả trạng thái' : tab.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              {/* 2. Dropdown Đại lý */}
-              <select
-                value={selectedCustomerId}
-                onChange={(e) => handleCustomerChange(e.target.value)}
-                aria-label="Lọc theo đại lý"
-                className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer shadow-2xs truncate"
-              >
-                <option value="ALL">Tất cả đại lý</option>
-                {customerOptions.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} {c.code ? `(${c.code})` : ''}
-                  </option>
-                ))}
-              </select>
+              {/* 2. Dropdown Khu vực */}
+              <div className="w-full sm:w-40 md:w-44">
+                <select
+                  value={selectedRegion}
+                  onChange={(e) => handleRegionChange(e.target.value)}
+                  aria-label="Lọc theo khu vực"
+                  className="w-full text-xs font-medium border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer shadow-2xs"
+                >
+                  <option value="ALL">Tất cả khu vực</option>
+                  <option value="Miền Bắc">Miền Bắc</option>
+                  <option value="Miền Trung">Miền Trung</option>
+                  <option value="Miền Nam">Miền Nam</option>
+                </select>
+              </div>
 
-              {/* 3. Dropdown Nhân viên kinh doanh */}
-              <select
-                value={canViewAllRep ? selectedSalesRepId : (user?.id || user?.fullName || 'CURRENT_USER')}
-                onChange={(e) => handleSalesRepChange(e.target.value)}
-                disabled={!canViewAllRep}
-                aria-label="Lọc theo nhân viên kinh doanh"
-                title={!canViewAllRep ? 'Bạn chỉ có quyền xem đơn do mình phụ trách' : 'Lọc theo nhân viên kinh doanh'}
-                className={`w-full text-xs font-medium border rounded-xl px-3 py-2 transition-all focus:outline-none shadow-2xs truncate ${
-                  !canViewAllRep
-                    ? 'bg-slate-100 text-slate-500 border-slate-200 cursor-not-allowed opacity-90'
-                    : 'bg-slate-50/70 hover:bg-white text-slate-700 border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 cursor-pointer'
-                }`}
-              >
-                {!canViewAllRep ? (
-                  <option value={user?.id || user?.fullName || 'CURRENT_USER'}>
-                    {user?.fullName || user?.username || 'Tôi (NVKD)'}
-                  </option>
-                ) : (
-                  <>
-                    <option value="ALL">Tất cả NVKD</option>
-                    {salesRepOptions.map((rep) => (
-                      <option key={rep.id} value={rep.id}>
-                        {rep.name}
-                      </option>
-                    ))}
-                  </>
-                )}
-              </select>
-
-              {/* 4. Dropdown Khu vực */}
-              <select
-                value={selectedRegion}
-                onChange={(e) => handleRegionChange(e.target.value)}
-                aria-label="Lọc theo khu vực"
-                className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all cursor-pointer shadow-2xs"
-              >
-                <option value="ALL">Tất cả khu vực</option>
-                <option value="Miền Bắc">Miền Bắc</option>
-                <option value="Miền Trung">Miền Trung</option>
-                <option value="Miền Nam">Miền Nam</option>
-              </select>
+              {/* Nút Đặt lại bộ lọc */}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-lg transition-all shrink-0 cursor-pointer shadow-2xs"
+                  title="Đặt lại toàn bộ tiêu chí lọc"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Xóa lọc</span>
+                </button>
+              )}
             </div>
 
-            {/* Nút Đặt lại bộ lọc */}
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-xl transition-all shrink-0 cursor-pointer shadow-2xs"
-                title="Đặt lại toàn bộ tiêu chí lọc"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Xóa lọc</span>
-              </button>
+            {/* Nút Tạo đơn hàng xuất hiện ở dòng thứ 2 trên màn hình nhỏ (< xl) */}
+            {(isSalesRep || isSalesManager || isAdmin) && (
+              <div className="xl:hidden shrink-0 pt-1 sm:pt-0">
+                <button
+                  type="button"
+                  onClick={() => navigate('/sales/orders/create')}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
+                  title="Tạo đơn hàng bán buôn mới"
+                >
+                  <Plus className="w-3.5 h-3.5 shrink-0" />
+                  <span>Tạo Đơn hàng</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
 
         {/* Danh sách đơn hàng */}
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-xs">
 
           {isInitialLoading && loading && orders.length === 0 ? (
             <div className="p-12 text-center">
-              <RefreshCw className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-3" />
+              <RefreshCw className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-3" />
               <p className="text-sm text-slate-500">Đang tải danh sách đơn hàng...</p>
             </div>
           ) : orders.length === 0 ? (
             <div className="p-10 text-center text-slate-400 space-y-2">
-              <ShoppingCart className="w-12 h-12 mx-auto mb-2 opacity-25" />
+              <ShoppingCart className="w-12 h-12 mx-auto mb-2 opacity-25 text-slate-400" />
               <p className="text-sm font-medium text-slate-700">
                 {hasActiveFilters
                   ? 'Không tìm thấy đơn hàng nào phù hợp với bộ lọc'
@@ -931,13 +951,13 @@ export const OrdersPage: React.FC = () => {
               </p>
               {hasActiveFilters ? (
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Hãy thử đổi từ khóa tìm kiếm, chọn đại lý khác hoặc nới rộng khoảng thời gian.
+                  Hãy thử đổi từ khóa tìm kiếm hoặc nới rộng khoảng thời gian.
                 </p>
               ) : (
                 (isSalesRep || isSalesManager || isAdmin) && (
                   <button
                     onClick={() => navigate('/sales/orders/create')}
-                    className="mt-3 text-sm text-blue-600 hover:underline inline-block"
+                    className="mt-3 text-sm text-indigo-600 hover:underline inline-block font-semibold"
                   >
                     + Tạo đơn hàng đầu tiên
                   </button>
@@ -946,75 +966,93 @@ export const OrdersPage: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* Desktop Table */}
+              {/* Desktop Table: Tối ưu chuẩn 6 cột, không ép min-width cứng, hiển thị linh hoạt không bị thanh kéo ngang */}
               <div className="hidden sm:block overflow-x-auto">
-                <table className="w-full text-sm table-fixed min-w-[1000px]">
+                <table className="w-full text-sm divide-y divide-slate-100">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/70">
-                      <th className="w-[140px] px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left w-[18%]">
                         Mã đơn
                       </th>
-                      <th className="w-[240px] px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left w-[32%]">
                         Đại lý
                       </th>
-                      <th className="w-[180px] px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                        NVKD / Khu vực
-                      </th>
-                      <th className="w-[120px] px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-left w-[14%]">
                         Ngày giao
                       </th>
-                      <th className="w-[140px] px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-right w-[16%]">
                         Tổng phải thu
                       </th>
-                      <th className="w-[170px] px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-center w-[10%]">
                         Trạng thái
                       </th>
-                      <th className="w-[110px] px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      <th className="px-4 py-3 text-right w-[10%] min-w-[105px]">
                         Thao tác
                       </th>
                     </tr>
                   </thead>
-                  <tbody className={`divide-y divide-slate-100 transition-opacity duration-150 ${loading ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
+                  <tbody className={`divide-y divide-slate-100/90 transition-opacity duration-150 ${loading ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
                     {orders.map((order) => {
                       return (
-                        <tr key={order.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-3">
-                            <p className="font-medium text-slate-800 truncate" title={order.orderCode ?? order.id}>
-                              {order.orderCode ?? order.id?.slice(-8)}
-                            </p>
-                            <p className="text-xs text-slate-400">{formatDate(order.createdAt)}</p>
+                        <tr key={order.id} className="hover:bg-indigo-50/25 transition-colors group">
+                          {/* 1. Mã đơn: Interactive monospace badge */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => setViewOrder(order)}
+                              className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200/60 px-2.5 py-1 rounded-md transition-all cursor-pointer shadow-2xs group-hover:border-indigo-300"
+                              title={`Xem chi tiết đơn ${order.orderCode ?? order.id}`}
+                            >
+                              <FileText className="w-3 h-3 text-indigo-500 group-hover:text-indigo-700 transition-colors" />
+                              <span>{order.orderCode ?? order.id?.slice(-8)}</span>
+                            </button>
                           </td>
-                          <td className="px-4 py-3">
-                            <p className="text-slate-700 font-medium truncate" title={order.customerName}>
+
+                          {/* 2. Đại lý: Typography đẹp, click để xem */}
+                          <td className="px-4 py-3.5">
+                            <button
+                              type="button"
+                              onClick={() => setViewOrder(order)}
+                              className="text-left font-semibold text-slate-800 hover:text-indigo-600 transition-colors line-clamp-1 text-sm cursor-pointer block max-w-full"
+                              title={order.customerName}
+                            >
                               {order.customerName}
-                            </p>
-                            <p className="text-xs text-slate-400 truncate">{order.customerCode}</p>
+                            </button>
                           </td>
-                          <td className="px-4 py-3">
-                            <p className="text-slate-700 font-medium truncate">{order.salesRepName || '—'}</p>
-                            <p className="text-xs text-slate-400 truncate">
-                              {order.region || (order.deliveryPoint?.address?.includes('Hà Nội') ? 'Miền Bắc' : order.deliveryPoint?.address?.includes('Đà Nẵng') ? 'Miền Trung' : 'Miền Nam')}
-                            </p>
+
+                          {/* 3. Ngày giao: Clean badge với icon Calendar */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/60">
+                              <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                              {formatDate(order.deliveryDate)}
+                            </span>
                           </td>
-                          <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
-                            {formatDate(order.deliveryDate)}
+
+                          {/* 4. Tổng phải thu: Tabular figures, bold, crisp alignment */}
+                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                            <span className="font-bold text-slate-900 tabular-nums text-sm">
+                              {formatCurrency(order.grandTotal)}
+                            </span>
                           </td>
-                          <td className="px-4 py-3 text-right font-semibold text-slate-800 whitespace-nowrap">
-                            {formatCurrency(order.grandTotal)}
-                          </td>
-                          <td className="px-4 py-3 text-center">
+
+                          {/* 5. Trạng thái */}
+                          <td className="px-4 py-3.5 text-center whitespace-nowrap">
                             <OrderStatusBadge status={order.status} reservedUntil={order.reservedUntil} />
                             {(order.isShortDelivery ||
                               order.lines?.some(
                                 (l) => l.deliveredQuantity !== undefined && l.deliveredQuantity < l.quantity,
                               )) && (
-                              <span className="mt-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                                <AlertTriangle className="w-2.5 h-2.5" /> Giao thiếu
-                              </span>
+                              <div className="mt-1">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                  <AlertTriangle className="w-2.5 h-2.5 text-amber-500" /> Giao thiếu
+                                </span>
+                              </div>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-center">
-                            <div className="relative inline-block text-left order-action-dropdown-container">
+
+                          {/* 6. Thao tác: Giữ chữ "Thao tác" không bao giờ bị nhảy dòng */}
+                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                            <div className="relative inline-flex items-center justify-end order-action-dropdown-container">
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -1034,17 +1072,17 @@ export const OrdersPage: React.FC = () => {
                                     setOpenActionMenuId(order.id ?? null);
                                   }
                                 }}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none ${
+                                className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none whitespace-nowrap shrink-0 ${
                                   openActionMenuId === order.id
-                                    ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-xs'
-                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-slate-300'
+                                    ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs ring-2 ring-indigo-500/10'
+                                    : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300'
                                 }`}
                                 title="Thao tác"
                               >
-                                <span>Thao tác</span>
+                                <span className="whitespace-nowrap">Thao tác</span>
                                 <ChevronDown
-                                  className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${
-                                    openActionMenuId === order.id ? 'rotate-180 text-blue-600' : ''
+                                  className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${
+                                    openActionMenuId === order.id ? 'rotate-180 text-indigo-600' : ''
                                   }`}
                                 />
                               </button>
@@ -1079,7 +1117,7 @@ export const OrdersPage: React.FC = () => {
                           setActionMenuAnchor(null);
                           setViewOrder(order);
                         }}
-                        className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                        className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
                       >
                         <Eye className="w-4 h-4 text-slate-400" />
                         <span>Xem chi tiết</span>
@@ -1094,9 +1132,9 @@ export const OrdersPage: React.FC = () => {
                             setActionMenuAnchor(null);
                             navigate(`/sales/orders/edit/${order.id}`);
                           }}
-                          className="w-full text-left px-3.5 py-2 text-xs text-blue-600 hover:bg-blue-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                          className="w-full text-left px-3.5 py-2 text-xs text-indigo-600 hover:bg-indigo-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
                         >
-                          <Edit3 className="w-4 h-4 text-blue-600" />
+                          <Edit3 className="w-4 h-4 text-indigo-600" />
                           <span>Chỉnh sửa đơn</span>
                         </button>
                       )}
@@ -1330,7 +1368,8 @@ export const OrdersPage: React.FC = () => {
                   pageSize={limit}
                   pageSizeOptions={[10, 20, 50]}
                   itemLabel="đơn hàng"
-                  showFirstLast={true}
+                  showRecordRange={false}
+                  showFirstLast={false}
                   onPageChange={(p) => setPage(p)}
                   onPageSizeChange={(sz) => {
                     setLimit(sz);
@@ -1709,7 +1748,7 @@ export const OrdersPage: React.FC = () => {
       <OrderPrintModal
         order={printOrder}
         isOpen={Boolean(printOrder)}
-        onClose={() => setPrintOrder(null)}
+        onClose={handleClosePrint}
       />
 
       {/* Modal Xác nhận Duyệt Đơn & Giữ chỗ Tồn kho (SN-180) */}

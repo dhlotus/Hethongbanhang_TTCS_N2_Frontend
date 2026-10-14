@@ -81,6 +81,7 @@ export interface Customer {
   lockedBy?: string;
   taxCode?: string;
   email?: string;
+  userId?: string;
   deliveryPoints?: DeliveryPoint[];
   paymentTerms?: string;
   temporaryCreditLimit?: number;

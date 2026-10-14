@@ -87,14 +87,16 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+      className={`fixed inset-0 z-[70] flex items-center justify-center p-4 ${
+        isClosing || !isOpen ? 'pointer-events-none' : ''
+      }`}
       role="dialog"
       aria-modal="true"
     >
       {/* Backdrop */}
       <div
         className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-150 ${
-          isClosing ? 'opacity-0' : 'opacity-100'
+          isClosing || !isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
         onClick={() => !isLoading && onCancel()}
       />

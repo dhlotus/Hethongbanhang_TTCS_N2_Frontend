@@ -71,8 +71,8 @@ export const AdminLayout: React.FC = () => {
   }, []);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-50 font-sans antialiased text-slate-900">
-      {/* 1. Sidebar điều hướng (Desktop cố định/thu gọn & Mobile Drawer) */}
+    <div className="flex h-screen w-full overflow-hidden bg-slate-50/70 font-sans antialiased text-slate-900">
+      {/* 1. Sidebar điều hướng liền mạch chuẩn Enterprise B2B */}
       <Sidebar
         isOpen={isMobileMenuOpen}
         onClose={handleCloseMobileMenu}
@@ -80,14 +80,14 @@ export const AdminLayout: React.FC = () => {
         onToggleCollapse={handleToggleSidebarCollapse}
       />
 
-      {/* 2. Khung bên phải: Header cố định + Vùng Main Content */}
+      {/* 2. Khung bên phải: Header liền khối + Vùng Main Content */}
       <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
-        {/* Header trên cùng */}
+        {/* Header trên cùng liền mạch */}
         <Header onToggleMobileMenu={handleToggleMobileMenu} />
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-5 sm:p-7 lg:p-8 xl:p-9">
-          <div className="mx-auto w-full max-w-[1600px] page-transition">
+        <main className="flex-1 overflow-y-auto min-h-0 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 xl:px-10">
+          <div className="mx-auto w-full max-w-7xl page-transition">
             <Outlet />
           </div>
         </main>

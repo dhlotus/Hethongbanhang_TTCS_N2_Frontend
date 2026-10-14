@@ -44,7 +44,7 @@ export const LowStockAlertsWidget: React.FC<LowStockAlertsWidgetProps> = ({
   }, [warehouseId, refreshKey]);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-red-200 bg-white shadow-xs">
+    <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs">
       <div className="flex items-center justify-between border-b border-red-100 bg-red-50 px-5 py-4">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-red-600" />

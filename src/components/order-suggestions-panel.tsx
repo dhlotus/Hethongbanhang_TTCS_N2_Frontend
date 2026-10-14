@@ -25,6 +25,7 @@ interface OrderSuggestionsPanelProps {
   existingProductIds: string[];
   existingProductSkus: string[];
   onAddSuggestedItem: (item: SuggestedProductItem, quantity: number) => void;
+  onAddAllSuggestedItems?: (itemsWithQty: Array<{ item: SuggestedProductItem; quantity: number }>) => void;
   onReorderPreviousOrder: (items: LatestOrderItem[]) => void;
 }
 
@@ -47,6 +48,7 @@ export const OrderSuggestionsPanel: React.FC<OrderSuggestionsPanelProps> = ({
   existingProductIds,
   existingProductSkus,
   onAddSuggestedItem,
+  onAddAllSuggestedItems,
   onReorderPreviousOrder,
 }) => {
   void _customerName;
@@ -120,6 +122,21 @@ export const OrderSuggestionsPanel: React.FC<OrderSuggestionsPanelProps> = ({
     setTimeout(() => setIsApplyingReorder(false), 600);
   };
 
+  const handleAddAllSuggestions = () => {
+    if (!data?.suggestions || data.suggestions.length === 0) return;
+    const itemsWithQty = data.suggestions.map((item) => ({
+      item,
+      quantity: itemQuantities[item.productId || item.sku] || item.averageQuantity || 1,
+    }));
+    if (onAddAllSuggestedItems) {
+      onAddAllSuggestedItems(itemsWithQty);
+    } else {
+      itemsWithQty.forEach(({ item, quantity }) => {
+        onAddSuggestedItem(item, quantity);
+      });
+    }
+  };
+
   const isItemAlreadyAdded = (item: SuggestedProductItem): boolean => {
     return (
       existingProductIds.includes(item.productId) ||
@@ -134,19 +151,10 @@ export const OrderSuggestionsPanel: React.FC<OrderSuggestionsPanelProps> = ({
       {/* Tiêu đề & Thu phóng */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-xs">
-            <Sparkles className="h-4 w-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="text-sm font-bold text-slate-800">
-                Gợi Ý Mặt Hàng Đại Lý Thường Mua
-              </h4>
-              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
-                3 tháng gần nhất (SN-43)
-              </span>
-            </div>
-          </div>
+          <Sparkles className="w-5 h-5 text-indigo-600" />
+          <h4 className="text-sm font-bold text-slate-900">
+            Gợi ý mặt hàng thường mua
+          </h4>
         </div>
 
         <button
@@ -230,13 +238,25 @@ export const OrderSuggestionsPanel: React.FC<OrderSuggestionsPanelProps> = ({
               {/* Danh sách mặt hàng mua đều đặn (AC1) */}
               {data.suggestions && data.suggestions.length > 0 ? (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-slate-500 px-0.5">
-                    <span className="font-medium">
-                      Mặt hàng khách lấy đều đặn ({data.suggestions.length} sản phẩm):
-                    </span>
-                    <span className="text-[11px] text-slate-400">
-                      Tự động gợi ý theo số lượng bình quân
-                    </span>
+                  <div className="flex items-center justify-between gap-2 flex-wrap text-xs text-slate-500 px-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-800">
+                        Mặt hàng khách lấy đều đặn ({data.suggestions.length} sản phẩm):
+                      </span>
+                      <span className="text-[11px] text-slate-400 hidden sm:inline">
+                        (Tự động gợi ý theo số lượng bình quân)
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleAddAllSuggestions}
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 active:scale-98 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer"
+                      title="Thêm tất cả mặt hàng gợi ý vào đơn với số lượng đang chọn"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Thêm tất cả hàng gợi ý</span>
+                    </button>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">

@@ -14,7 +14,6 @@ import {
   Calendar,
   FileText,
   Building2,
-  User,
   RefreshCw,
   X,
   Sparkles,
@@ -93,19 +92,19 @@ interface CartItem {
 
 export const AgencyPortalPage: React.FC = () => {
   // ──────────────────────────────────────────────────────────────────────────
-  // 1. STATE THÔNG TIN ĐẠI LÝ & TÀI KHOẢN (SN-49)
+  // 1. STATE THÔNG TIN ĐẠI LÝ & TÀI KHOẢN (SN-49: Cách ly dữ liệu theo Token)
   // ──────────────────────────────────────────────────────────────────────────
   const [currentUser] = useState(() => getStoredUser() || tokenStorage.getUser());
-  const [customersList, setCustomersList] = useState<Customer[]>(() => customerService.getStoredCustomers());
   
-  // Khởi tạo ngay đại lý đầu tiên để tránh chớp 0 đ
+  // Khởi tạo thông tin đại lý dựa trên token của người dùng đang đăng nhập
   const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(() => {
     const list = customerService.getStoredCustomers();
     const user = tokenStorage.getUser() || getStoredUser();
     const matched = list.find(
       (c) =>
         c.id === user?.id ||
-        (user?.username && c.code.toLowerCase() === user.username.toLowerCase()) ||
+        (user?.email && c.email && user.email.toLowerCase() === c.email.toLowerCase()) ||
+        (user?.username && c.code && c.code.toLowerCase() === user.username.toLowerCase()) ||
         (user?.email && c.phone && user.email.includes(c.phone))
     );
     return matched || list[0] || null;
@@ -229,95 +228,63 @@ export const AgencyPortalPage: React.FC = () => {
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
 
   // ──────────────────────────────────────────────────────────────────────────
-  // TẢI DANH SÁCH ĐẠI LÝ (KHÔNG GÂY VÒNG LẶP RENDER)
+  // TẢI HỒ SƠ ĐẠI LÝ B2B TỪ TOKEN ĐĂNG NHẬP (CÁCH LY DỮ LIỆU)
   // ──────────────────────────────────────────────────────────────────────────
-  const [isSyncingCustomers, setIsSyncingCustomers] = useState<boolean>(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(false);
 
-  const loadCustomers = useCallback(async (isManualRefresh = false) => {
+  const loadCurrentAgencyProfile = useCallback(async (isManualRefresh = false) => {
     try {
-      if (isManualRefresh) setIsSyncingCustomers(true);
-      let list = customerService.getStoredCustomers();
+      if (isManualRefresh) setIsLoadingProfile(true);
+      const user = tokenStorage.getUser() || currentUser;
+
+      // 1. Ưu tiên gọi API lấy profile đại lý tương ứng với Token hiện tại
       try {
-        const res = await customerService.getCustomers({ limit: 100 });
-        if (res?.data && res.data.length > 0) {
-          list = res.data;
+        const portalCust = await customerService.getPortalProfile();
+        if (portalCust && portalCust.id) {
+          setCurrentCustomer(portalCust);
+          if (portalCust.deliveryPoints?.length) {
+            const defaultDp = portalCust.deliveryPoints.find((dp) => dp.isDefault) || portalCust.deliveryPoints[0];
+            setSelectedDeliveryPoint(defaultDp);
+          }
+          if (isManualRefresh) {
+            showToast('success', `Đã đồng bộ thông tin đại lý: ${portalCust.name}`);
+          }
+          return;
         }
       } catch {
-        // Fallback local
+        // Fallback tra cứu cục bộ nếu API portal chưa sẵn sàng
       }
 
-      setCustomersList(list);
-
-      const user = tokenStorage.getUser() || currentUser;
+      // 2. Tra cứu cục bộ khớp với người dùng đang đăng nhập
+      const list = customerService.getStoredCustomers();
       const matchedCustomer = list.find(
         (c) =>
           c.id === user?.id ||
-          (user?.username && c.code.toLowerCase() === user.username.toLowerCase()) ||
+          (user?.email && c.email && user.email.toLowerCase() === c.email.toLowerCase()) ||
+          (user?.username && c.code && c.code.toLowerCase() === user.username.toLowerCase()) ||
           (user?.email && c.phone && user.email.includes(c.phone))
       );
 
-      setCurrentCustomer((prev) => {
-        if (prev) {
-          const stillExists = list.find((c) => c.id === prev.id || c.code === prev.code);
-          if (stillExists) return stillExists;
-        }
-        const target = matchedCustomer || list[0] || null;
-        if (target?.deliveryPoints?.length) {
-          const defaultDp = target.deliveryPoints.find((dp) => dp.isDefault) || target.deliveryPoints[0];
+      if (matchedCustomer) {
+        setCurrentCustomer(matchedCustomer);
+        if (matchedCustomer.deliveryPoints?.length) {
+          const defaultDp = matchedCustomer.deliveryPoints.find((dp) => dp.isDefault) || matchedCustomer.deliveryPoints[0];
           setSelectedDeliveryPoint(defaultDp);
         }
-        return target;
-      });
-
+      }
       if (isManualRefresh) {
-        showToast('success', `Đã đồng bộ ${list.length} đại lý từ hệ thống`);
+        showToast('info', 'Đã tải thông tin đại lý của bạn');
       }
     } catch (err) {
       console.error('Lỗi tải thông tin đại lý:', err);
     } finally {
-      if (isManualRefresh) setIsSyncingCustomers(false);
+      if (isManualRefresh) setIsLoadingProfile(false);
     }
   }, [currentUser]);
 
   useEffect(() => {
-    void loadCustomers();
-  }, [loadCustomers]);
-
-  // Lắng nghe sự kiện đồng bộ đại lý toàn ứng dụng
-  useEffect(() => {
-    const handleCustomersUpdated = (e?: Event) => {
-      const customEvent = e as CustomEvent<Customer[]>;
-      let updatedList = customEvent?.detail;
-      if (!updatedList || !Array.isArray(updatedList)) {
-        updatedList = customerService.getStoredCustomers();
-      }
-      if (updatedList && updatedList.length > 0) {
-        setCustomersList(updatedList);
-        setCurrentCustomer((prev) => {
-          if (!prev) return updatedList[0];
-          const found = updatedList.find((c) => c.id === prev.id || c.code === prev.code);
-          if (!found) return updatedList[0];
-          if (
-            found.creditLimit === prev.creditLimit &&
-            found.currentDebt === prev.currentDebt &&
-            found.customerGroup === prev.customerGroup &&
-            found.name === prev.name
-          ) {
-            return prev;
-          }
-          return found;
-        });
-      }
-    };
-
-    window.addEventListener('loha_customers_updated', handleCustomersUpdated);
-    window.addEventListener('storage', handleCustomersUpdated);
-
-    return () => {
-      window.removeEventListener('loha_customers_updated', handleCustomersUpdated);
-      window.removeEventListener('storage', handleCustomersUpdated);
-    };
-  }, []);
+    void loadCurrentAgencyProfile();
+  }, [loadCurrentAgencyProfile]);
 
   // ──────────────────────────────────────────────────────────────────────────
   // TẢI CÔNG NỢ REAL-TIME CỦA ĐẠI LÝ (SN-41 & SN-49)
@@ -794,13 +761,26 @@ export const AgencyPortalPage: React.FC = () => {
   // TÍNH MỨC CHIẾT KHẤU ĐỒNG BỘ THEO CHÍNH SÁCH SẢN LƯỢNG HỆ THỐNG (SN-28 / SN-49)
   // - Giá niêm yết của đơn hàng luôn lấy từ đúng bảng giá của cấp đại lý đó (agencyPrice)
   // - Nếu sản phẩm đạt nấc chiết khấu sản lượng của hệ thống, giảm tiếp trên đơn giá đại lý
+  // - SINGLE SOURCE OF TRUTH: Chống âm tiền, phân biệt rõ ràng FIXED_AMOUNT (VNĐ) và PERCENTAGE (%)
   // ──────────────────────────────────────────────────────────────────────────
   const getItemEffectiveDiscount = useCallback((item: CartItem) => {
-    const baseQuantity = Math.round(item.quantity * (item.conversionRate || 1));
+    const baseQuantity = Math.max(1, Math.round(item.quantity * (item.conversionRate || 1)));
     const prodSku = item.product.sku || (item.product as unknown as { sku?: string }).sku || '';
     const prodId = item.product.id || '';
     const catId = item.product.categoryId || item.product.category || '';
     const prodName = item.product.name || '';
+
+    // Giá niêm yết của đại lý: lấy từ đúng giá bảng giá của cấp đại lý đó (agencyPrice)
+    const basePrice = Math.max(
+      0,
+      Math.round(
+        (item.product as unknown as { agencyPrice?: number })?.agencyPrice ||
+          item.unitPrice ||
+          item.listPrice ||
+          item.product.price ||
+          0
+      )
+    );
 
     const policyInfo = getApplicablePolicyInfo(
       discountPolicies,
@@ -808,27 +788,27 @@ export const AgencyPortalPage: React.FC = () => {
       catId,
       baseQuantity,
       prodSku || prodId,
-      prodName
+      prodName,
+      basePrice
     );
 
-    // Giá niêm yết của đại lý: lấy từ đúng giá bảng giá của cấp đại lý đó (agencyPrice)
-    const basePrice =
-      (item.product as unknown as { agencyPrice?: number })?.agencyPrice ||
-      item.unitPrice ||
-      item.listPrice ||
-      item.product.price;
-
+    const isFixed = policyInfo.discountType === 'FIXED_AMOUNT';
     const effectiveDiscountPercent = policyInfo.policy
       ? policyInfo.discountPercent
       : 0;
 
-    const effectiveUnitPrice = effectiveDiscountPercent > 0
-      ? Math.round(basePrice * (1 - effectiveDiscountPercent / 100))
-      : basePrice;
+    // Chiết khấu tiền mặt trên 1 đơn vị: Không bao giờ lớn hơn Giá gốc của sản phẩm
+    const discountAmountPerUnit = policyInfo.policy
+      ? Math.min(basePrice, Math.max(0, policyInfo.discountAmountPerUnit))
+      : 0;
+
+    // Giá sau CK = Math.max(0, Giá gốc - Giá trị CK) -> Tuyệt đối không âm
+    const effectiveUnitPrice = Math.max(0, basePrice - discountAmountPerUnit);
 
     const itemSubtotal = item.quantity * basePrice;
-    const itemGrandTotal = item.quantity * effectiveUnitPrice;
+    const itemGrandTotal = Math.max(0, item.quantity * effectiveUnitPrice);
     const itemDiscountTotal = Math.max(0, itemSubtotal - itemGrandTotal);
+    const displayText = policyInfo.displayText || (isFixed ? `Giảm ${policyInfo.discountRawValue.toLocaleString('vi-VN')} đ` : `Giảm ${effectiveDiscountPercent}%`);
 
     return {
       policyInfo,
@@ -838,6 +818,9 @@ export const AgencyPortalPage: React.FC = () => {
       itemSubtotal,
       itemGrandTotal,
       itemDiscountTotal,
+      discountAmountPerUnit,
+      displayText,
+      isFixed,
     };
   }, [discountPolicies]);
 
@@ -1164,38 +1147,21 @@ export const AgencyPortalPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Test Switcher nếu có nhiều đại lý & nút Đồng bộ hệ thống mở */}
-            <div className="flex items-center gap-2 bg-slate-50 rounded-xl p-2 border border-slate-200/80 self-start sm:self-auto">
-              <User className="w-4 h-4 text-slate-500 shrink-0" />
-              <span className="text-xs text-slate-600 whitespace-nowrap">Đổi đại lý test:</span>
-              <select
-                value={currentCustomer?.id || ''}
-                onChange={(e) => {
-                  const found = customersList.find((c) => c.id === e.target.value);
-                  if (found) {
-                    setCurrentCustomer(found);
-                    setCart({});
-                    if (found.deliveryPoints?.length) setSelectedDeliveryPoint(found.deliveryPoints[0]);
-                    void fetchCustomerDebt(found.id);
-                    showToast('info', `Đã chuyển sang đại lý: ${found.name}`);
-                  }
-                }}
-                className="bg-white text-slate-800 text-xs rounded-lg px-2.5 py-1.5 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[220px] truncate"
-              >
-                {customersList.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.code} - {c.name}
-                  </option>
-                ))}
-              </select>
+            {/* Nút Làm mới dữ liệu cho Đại lý */}
+            <div className="flex items-center gap-2.5 self-start sm:self-auto">
               <button
                 type="button"
-                onClick={() => void loadCustomers(true)}
-                disabled={isSyncingCustomers}
-                title="Đồng bộ danh sách đại lý từ hệ thống"
-                className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition-colors"
+                onClick={() => {
+                  void loadCurrentAgencyProfile(true);
+                  if (currentCustomer?.id) void fetchCustomerDebt(currentCustomer.id);
+                  void loadMyOrders();
+                }}
+                disabled={isLoadingProfile}
+                title="Làm mới dữ liệu hồ sơ & công nợ đại lý"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200/80 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200/80 shadow-2xs disabled:opacity-60"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCustomers ? 'animate-spin text-indigo-600' : ''}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingProfile ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
+                <span className="hidden sm:inline">Làm mới</span>
               </button>
             </div>
           </div>
@@ -1920,8 +1886,8 @@ export const AgencyPortalPage: React.FC = () => {
                                     : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/20 active:scale-[0.98]'
                                 }`}
                               >
-                                <Plus className="w-4 h-4" />
-                                <span>{isOutOfStock ? 'Hết hàng' : '+ Thêm giỏ'}</span>
+                                {!isOutOfStock && <Plus className="w-4 h-4" />}
+                                <span>{isOutOfStock ? 'Hết hàng' : 'Thêm giỏ'}</span>
                               </button>
                             )}
                           </div>
@@ -2368,7 +2334,11 @@ export const AgencyPortalPage: React.FC = () => {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-mono text-slate-400 uppercase">{item.product.sku}</span>
-                                {effectiveDiscountPercent > 0 ? (
+                                {calc.isFixed ? (
+                                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                    -{formatVND(calc.discountAmountPerUnit)}
+                                  </span>
+                                ) : effectiveDiscountPercent > 0 ? (
                                   <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
                                     -{effectiveDiscountPercent}%
                                   </span>
@@ -2394,11 +2364,15 @@ export const AgencyPortalPage: React.FC = () => {
                                     {formatVND(basePrice)}
                                   </span>
                                 )}
-                                {effectiveDiscountPercent > 0 && (
+                                {calc.isFixed ? (
+                                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                    -{formatVND(calc.discountAmountPerUnit)}
+                                  </span>
+                                ) : effectiveDiscountPercent > 0 ? (
                                   <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
                                     -{effectiveDiscountPercent}%
                                   </span>
-                                )}
+                                ) : null}
                               </div>
                               {/* Gợi ý nấc chiết khấu tiếp theo nếu có */}
                               {policyInfo.policy && (
@@ -2409,7 +2383,7 @@ export const AgencyPortalPage: React.FC = () => {
                                   </div>
                                   {policyInfo.currentTier ? (
                                     <div className="text-emerald-700 font-medium">
-                                      ✓ Đang đạt nấc {policyInfo.currentTier.minQuantity} - {policyInfo.currentTier.maxQuantity || '∞'} {item.unit}: <strong className="underline font-bold">Giảm {policyInfo.discountPercent}%</strong>
+                                      ✓ Đang đạt nấc {policyInfo.currentTier.minQuantity} - {policyInfo.currentTier.maxQuantity || '∞'} {item.unit}: <strong className="underline font-bold">{calc.displayText}</strong>
                                     </div>
                                   ) : (
                                     <div className="text-slate-500 font-medium">
@@ -2419,7 +2393,7 @@ export const AgencyPortalPage: React.FC = () => {
                                   {policyInfo.nextTier && (
                                     <div className="text-slate-600 font-medium flex items-center gap-1">
                                       <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
-                                      <span>Mua thêm <strong>+{policyInfo.quantityNeededForNext} {item.unit}</strong> để nâng lên nấc <strong>{policyInfo.nextTier.minQuantity}+</strong> (Giảm <strong>{policyInfo.nextTier.discountValue}%</strong>)!</span>
+                                      <span>Mua thêm <strong>+{policyInfo.quantityNeededForNext} {item.unit}</strong> để nâng lên nấc <strong>{policyInfo.nextTier.minQuantity}+</strong> ({policyInfo.discountType === 'FIXED_AMOUNT' ? `Giảm ${Number(policyInfo.nextTier.discountValue).toLocaleString('vi-VN')} đ` : `Giảm ${policyInfo.nextTier.discountValue}%`})!</span>
                                     </div>
                                   )}
                                 </div>
@@ -2542,7 +2516,11 @@ export const AgencyPortalPage: React.FC = () => {
                                 )}
                               </td>
                               <td className="py-2.5 px-2 text-center font-bold">
-                                {effectiveDiscountPercent > 0 ? (
+                                {calc.isFixed ? (
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                                    -{formatVND(calc.discountAmountPerUnit)}
+                                  </span>
+                                ) : effectiveDiscountPercent > 0 ? (
                                   <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold">
                                     -{effectiveDiscountPercent}%
                                   </span>

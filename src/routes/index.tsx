@@ -15,6 +15,7 @@ import { AuditLogsPage } from '../pages/audit-logs-page';
 import { ProfilePage } from '../pages/profile-page';
 import { OrdersPage } from '../pages/orders-page';
 import { CreateOrderPage } from '../pages/create-order-page';
+import { OrderApprovalsPage } from '../pages/order-approvals-page';
 import { StockListPage } from '../pages/inventory/stock-list-page';
 import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
 import { CustomersPage } from '../pages/customers-page';
@@ -97,18 +98,7 @@ export const AppRoutes: React.FC = () => {
             >
               <Route path="/portal" element={<AgencyPortalPage />} />
               <Route path="/portal/orders" element={<AgencyPortalPage />} />
-              <Route
-                path="/portal/tracking"
-                element={
-                  <RoleModulePage
-                    title="Theo dõi Đơn hàng & Giao hàng"
-                    subtitle="Tra cứu lộ trình vận chuyển, tình trạng đóng gói xuất kho và biên bản bàn giao"
-                    requiredRole="Đại lý B2B"
-                  />
-                }
-              />
-              {/* SN-170 & SN-174: Cổng Đơn hàng Đại lý & Theo dõi vận chuyển */}
-              <Route path="/portal/orders" element={<PortalOrdersPage />} />
+              {/* SN-170 & SN-174: Cổng Theo dõi vận chuyển & Danh sách đơn Đại lý */}
               <Route path="/portal/tracking" element={<PortalOrdersPage />} />
               <Route
                 path="/portal/debt"
@@ -171,14 +161,14 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={['SALES_MANAGER']}
+                  allowedRoles={['SALES_MANAGER', 'ADMIN']}
                   moduleName="Quản lý & Điều hành Kinh doanh"
                 />
               }
             >
               <Route
                 path="/sales/approvals"
-                element={<Navigate to="/sales/orders?status=PENDING_APPROVAL" replace />}
+                element={<OrderApprovalsPage />}
               />
               <Route
                 path="/reports/sales"

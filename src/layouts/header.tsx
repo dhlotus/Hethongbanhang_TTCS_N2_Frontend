@@ -17,14 +17,42 @@ interface HeaderProps {
   onToggleMobileMenu: () => void;
 }
 
+interface PageHeaderInfo {
+  title: string;
+  category: string;
+  breadcrumbs?: Array<{ label: string; path?: string }>;
+}
+
 /**
  * Lấy tiêu đề trang dựa theo danh mục điều hướng của người dùng hiện tại và URL
- * Đảm bảo 100% tên tab trên Navbar và tiêu đề trên Header luôn đồng nhất tuyệt đối
+ * Hỗ trợ breadcrumbs phân cấp khi vào các trang con (ví dụ: Quản lý đơn hàng > Tạo đơn hàng mới)
  */
 const getPageHeaderInfo = (
   pathname: string,
   userMenuItems: MenuItem[] = []
-): { title: string; category: string } => {
+): PageHeaderInfo => {
+  // 0. Trang con phân cấp (Breadcrumbs)
+  if (pathname === '/sales/orders/create' || pathname === '/orders/create') {
+    return {
+      title: 'Tạo đơn hàng mới',
+      category: 'Bán hàng',
+      breadcrumbs: [
+        { label: 'Quản lý đơn hàng', path: '/sales/orders' },
+        { label: 'Tạo đơn hàng mới' },
+      ],
+    };
+  }
+  if (pathname.startsWith('/sales/orders/edit')) {
+    return {
+      title: 'Chỉnh sửa đơn hàng',
+      category: 'Bán hàng',
+      breadcrumbs: [
+        { label: 'Quản lý đơn hàng', path: '/sales/orders' },
+        { label: 'Chỉnh sửa đơn hàng' },
+      ],
+    };
+  }
+
   // 1. Ưu tiên khớp chính xác theo menu item của người dùng hiện tại trên Navbar
   const sortedUserItems = [...userMenuItems].sort((a, b) => b.path.length - a.path.length);
   const matchedUserItem = sortedUserItems.find(
@@ -164,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   };
 
   const menuItems = getNavigationItems(currentUser?.roles || currentUser?.role);
-  const { title } = getPageHeaderInfo(location.pathname, menuItems);
+  const { title, breadcrumbs } = getPageHeaderInfo(location.pathname, menuItems);
   const context = getUserContext(currentUser);
   const cleanFullName =
     (context.fullName || '').replace(/\s*\([^)]*\)/g, '').trim() ||
@@ -172,7 +200,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     'Người dùng';
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 backdrop-blur-xs px-4 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-xs px-4 sm:px-6 lg:px-8 shadow-2xs">
       {/* =================================================================== */}
       {/* 1. BÊN TRÁI: NÚT ĐÓNG MỞ NAVBAR & TIÊU ĐỀ TRANG                     */}
       {/* =================================================================== */}
@@ -181,20 +209,55 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         <button
           type="button"
           onClick={onToggleMobileMenu}
-          className="inline-flex lg:hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:outline-none transition-colors cursor-pointer"
+          className="inline-flex lg:hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:outline-none transition-colors cursor-pointer"
           aria-label="Mở menu điều hướng"
         >
           <Menu className="h-5 w-5" />
         </button>
 
-        {/* Tiêu đề trang với animation chuyển đổi siêu mượt mà */}
+        {/* Tiêu đề trang hoặc breadcrumb phân cấp */}
         <div className="overflow-hidden min-w-0">
-          <h1
-            key={location.pathname}
-            className="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate animate-header-title"
-          >
-            {title}
-          </h1>
+          {breadcrumbs && breadcrumbs.length > 1 ? (
+            <nav
+              aria-label="Breadcrumb"
+              key={location.pathname}
+              className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base tracking-tight animate-header-title min-w-0"
+            >
+              {breadcrumbs.map((crumb, idx) => {
+                const isLast = idx === breadcrumbs.length - 1;
+                return (
+                  <React.Fragment key={crumb.label}>
+                    {idx > 0 && (
+                      <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 shrink-0" />
+                    )}
+                    {isLast ? (
+                      <span className="text-slate-900 font-bold truncate">
+                        {crumb.label}
+                      </span>
+                    ) : crumb.path ? (
+                      <Link
+                        to={crumb.path}
+                        className="text-slate-500 hover:text-indigo-600 transition-colors truncate font-semibold"
+                      >
+                        {crumb.label}
+                      </Link>
+                    ) : (
+                      <span className="text-slate-500 truncate font-semibold">
+                        {crumb.label}
+                      </span>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </nav>
+          ) : (
+            <h1
+              key={location.pathname}
+              className="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate animate-header-title"
+            >
+              {title}
+            </h1>
+          )}
         </div>
       </div>
 
@@ -237,7 +300,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               {cleanFullName}
             </span>
             <span
-              className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-0.2 text-[10px] font-semibold mt-0.5 w-fit max-w-[140px] truncate ${context.badgeClass}`}
+              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold mt-0.5 w-fit max-w-[140px] truncate ${context.badgeClass}`}
               title={context.roleLabel}
             >
               <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${context.dotClass}`} />
@@ -401,14 +464,14 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                     <button
                       type="button"
                       onClick={() => setShowLogoutModal(false)}
-                      className="w-full rounded-md border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                      className="w-full rounded-lg border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
                     >
                       Hủy
                     </button>
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full rounded-md bg-rose-600 hover:bg-rose-700 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-600/20 transition-all cursor-pointer active:scale-98"
+                      className="w-full rounded-lg bg-rose-600 hover:bg-rose-700 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-600/20 transition-all cursor-pointer active:scale-98"
                     >
                       Đăng xuất
                     </button>

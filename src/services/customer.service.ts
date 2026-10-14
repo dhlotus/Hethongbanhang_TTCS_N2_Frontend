@@ -551,6 +551,14 @@ export const customerService = {
     }
   },
 
+  /**
+   * Lấy hồ sơ của chính Đại lý B2B đang đăng nhập (Cổng B2B - Cách ly dữ liệu)
+   */
+  async getPortalProfile(): Promise<Customer> {
+    const res = await apiClient.get<Customer>('/customers/portal/profile');
+    return res.data;
+  },
+
   async getDeliveryPoints(customerId: string): Promise<DeliveryPoint[]> {
     try {
       const res = await apiClient.get<DeliveryPoint[]>(`/customers/${customerId}/delivery-points`);
