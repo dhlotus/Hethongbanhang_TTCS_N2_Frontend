@@ -22,12 +22,14 @@ import {
   Trash2,
   Tag,
   ArrowRightLeft,
+  History,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
 import { LockAgencyModal } from '../components/lock-agency-modal';
 import { AssignSalesRepModal } from '../components/assign-sales-rep-modal';
 import { BulkTransferTerritoryModal } from '../components/bulk-transfer-territory-modal';
+import { AssignmentHistoryModal } from '../components/assignment-history-modal';
 import axios from 'axios';
 import { tokenStorage } from '../utils/token-storage';
 import { Pagination } from '../components/pagination';
@@ -174,6 +176,7 @@ export const CustomersPage: React.FC = () => {
 
   // Modal Chuyển giao địa bàn hàng loạt (SN-35)
   const [isBulkTransferOpen, setIsBulkTransferOpen] = useState<boolean>(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
   const [availableSalesReps, setAvailableSalesReps] = useState<SalesRepOption[]>([]);
 
   // Modal thêm đại lý mới
@@ -1021,15 +1024,27 @@ export const CustomersPage: React.FC = () => {
           </button>
 
           {isManagerOrAdmin && (
-            <button
-              type="button"
-              onClick={() => setIsBulkTransferOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-colors shadow-xs cursor-pointer"
-              title="Chuyển giao địa bàn hàng loạt khi nhân sự nghỉ việc (SN-35)"
-            >
-              <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
-              <span>Chuyển giao địa bàn</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setIsHistoryModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+                title="Xem lịch sử chuyển giao và phân công địa bàn (SN-35)"
+              >
+                <History className="w-4 h-4 text-indigo-600" />
+                <span>Lịch sử chuyển giao</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsBulkTransferOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-colors shadow-xs cursor-pointer"
+                title="Chuyển giao địa bàn hàng loạt khi nhân sự nghỉ việc (SN-35)"
+              >
+                <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
+                <span>Chuyển giao địa bàn</span>
+              </button>
+            </>
           )}
 
           <button
@@ -2027,6 +2042,13 @@ export const CustomersPage: React.FC = () => {
         allCustomers={customers}
         salesReps={availableSalesReps}
         onSuccess={handleBulkTransferSuccess}
+      />
+
+      {/* ── MODAL XEM LỊCH SỬ CHUYỂN GIAO & PHÂN CÔNG ĐỊA BÀN (SN-35) ── */}
+      <AssignmentHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        salesReps={availableSalesReps}
       />
     </div>
   );

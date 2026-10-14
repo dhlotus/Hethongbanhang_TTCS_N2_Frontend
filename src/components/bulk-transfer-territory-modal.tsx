@@ -120,8 +120,9 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
         notes: notes.trim() || undefined,
       });
 
+      const toName = result.toSalesRep.fullName || result.toSalesRep.name || 'nhân sự tiếp nhận';
       toast.success(
-        `Đã chuyển giao thành công ${result.transferredCount} đại lý cho ${result.toSalesRep.fullName}!`,
+        `Đã chuyển giao thành công ${result.transferredCount} đại lý cho ${toName}!`,
       );
       onSuccess(result);
       onClose();

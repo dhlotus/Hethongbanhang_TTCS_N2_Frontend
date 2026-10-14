@@ -173,8 +173,8 @@ export interface BulkTransferPayload {
 export interface BulkTransferResult {
   transferBatchId: string;
   transferredCount: number;
-  fromSalesRep: { id: string; fullName: string; email: string };
-  toSalesRep: { id: string; fullName: string; email: string };
+  fromSalesRep: { id: string; name?: string; fullName?: string; email?: string };
+  toSalesRep: { id: string; name?: string; fullName?: string; email?: string };
   reason: string;
   notes?: string;
   transferredCustomers: Array<{

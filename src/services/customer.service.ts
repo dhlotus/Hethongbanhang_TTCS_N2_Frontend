@@ -1031,6 +1031,9 @@ export const customerService = {
   async getAssignmentHistory(params?: {
     fromSalesRepId?: string;
     toSalesRepId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
   }): Promise<{ data: CustomerAssignmentHistory[]; total: number }> {
     try {
       const res = await apiClient.get<{
@@ -1045,6 +1048,17 @@ export const customerService = {
       }
       if (params?.toSalesRepId) {
         list = list.filter((h) => h.toSalesRepId === params.toSalesRepId);
+      }
+      if (params?.search && params.search.trim()) {
+        const s = params.search.trim().toLowerCase();
+        list = list.filter(
+          (h) =>
+            h.customerName?.toLowerCase().includes(s) ||
+            h.customerCode?.toLowerCase().includes(s) ||
+            h.reason?.toLowerCase().includes(s) ||
+            h.fromSalesRepName?.toLowerCase().includes(s) ||
+            h.toSalesRepName?.toLowerCase().includes(s),
+        );
       }
       return { data: list, total: list.length };
     }
