@@ -23,6 +23,7 @@ import {
   Tag,
   Pencil,
   ChevronDown,
+  Eye,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
@@ -174,26 +175,51 @@ export const CustomersPage: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+  const [actionMenuAnchor, setActionMenuAnchor] = useState<{
+    top: number;
+    right: number;
+    isDropUp: boolean;
+  } | null>(null);
 
-  // Đóng dropdown thao tác khi click ra ngoài hoặc nhấn phím Escape
+  // Modal xem chi tiết đại lý (View Detail Modal)
+  const [viewCustomer, setViewCustomer] = useState<Customer | null>(null);
+
+  // Đóng dropdown thao tác khi click ra ngoài, cuộn trang hoặc nhấn phím Escape
   useEffect(() => {
     const handleDocClick = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest('.customer-action-dropdown-container')) {
+      if (
+        !(e.target as HTMLElement).closest('.customer-action-dropdown-container') &&
+        !(e.target as HTMLElement).closest('.customer-action-portal-menu')
+      ) {
         setOpenActionMenuId(null);
+        setActionMenuAnchor(null);
       }
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpenActionMenuId(null);
+        setActionMenuAnchor(null);
+        if (viewCustomer) {
+          setViewCustomer(null);
+        }
       }
     };
+    const handleScrollOrResize = () => {
+      setOpenActionMenuId(null);
+      setActionMenuAnchor(null);
+    };
+
     document.addEventListener('click', handleDocClick);
     document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
     return () => {
       document.removeEventListener('click', handleDocClick);
       document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
     };
-  }, []);
+  }, [viewCustomer]);
 
   // Modal thêm đại lý mới
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
@@ -1277,340 +1303,293 @@ export const CustomersPage: React.FC = () => {
           </div>
         ) : (
           <>
+            {/* Desktop Table: Chuẩn 6 cột đồng bộ thiết kế Quản lý đơn hàng, không wrap dưới chân */}
             <div className="overflow-x-auto min-h-[360px]">
-              <table className="w-full text-left text-xs sm:text-sm text-slate-600">
-                <thead className="bg-slate-50/70 text-slate-500 text-xs uppercase font-semibold border-b border-slate-100 tracking-wide">
-                  <tr>
-                    <th className="px-4 py-3.5">Mã & Tên Đại Lý</th>
-                    <th className="px-4 py-3.5">Liên Hệ</th>
-                    <th className="px-4 py-3.5">Phân Nhóm & Phụ Trách</th>
-                    <th className="px-4 py-3.5">Hạn Mức & Dư Nợ</th>
-                    <th className="px-4 py-3.5">Điểm Giao Hàng</th>
-                    <th className="px-4 py-3.5">Trạng Thái</th>
-                    <th className="px-4 py-3.5 text-center">Thao Tác</th>
+              <table className="w-full text-sm divide-y divide-slate-100">
+                <thead>
+                  <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left w-[15%]">Mã đại lý</th>
+                    <th className="px-4 py-3 text-left w-[35%]">Đại lý</th>
+                    <th className="px-4 py-3 text-left w-[15%]">Phân nhóm</th>
+                    <th className="px-4 py-3 text-right w-[15%]">Dư nợ hiện tại</th>
+                    <th className="px-4 py-3 text-center w-[10%]">Trạng thái</th>
+                    <th className="px-4 py-3 text-right w-[10%] min-w-[105px]">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
-                {customers.map((customer, idx) => {
-                  const isDropUp =
-                    idx >= Math.max(1, customers.length - 2) ||
-                    (customers.length > 3 && idx >= Math.floor(customers.length / 2));
+                <tbody
+                  className={`divide-y divide-slate-100/90 transition-opacity duration-150 ${
+                    loading ? 'opacity-60 pointer-events-none' : 'opacity-100'
+                  }`}
+                >
+                  {customers.map((customer) => {
+                    const isOverLimit =
+                      (customer.creditLimit || 0) > 0 &&
+                      (customer.currentDebt || 0) > (customer.creditLimit || 0);
 
-                  return (
-                    <tr key={customer.id} className="hover:bg-slate-50/60 transition-colors group">
-                      {/* Cột 1: Mã & Tên Đại lý */}
-                      <td className="px-4 py-3.5">
-                        <div className="font-semibold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors">
-                          {customer.name}
-                        </div>
-                        <div className="text-xs text-slate-500 font-mono mt-0.5">
-                          {customer.code} • {customer.region || 'Miền Nam'}
-                        </div>
-                        {customer.address && (
-                          <div
-                            className="text-xs text-slate-400 line-clamp-1 mt-0.5"
-                            title={customer.address}
+                    return (
+                      <tr key={customer.id} className="hover:bg-indigo-50/25 transition-colors group">
+                        {/* 1. Mã đại lý: Interactive monospace badge */}
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setViewCustomer(customer)}
+                            className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200/60 px-2.5 py-1 rounded-md transition-all cursor-pointer shadow-2xs group-hover:border-indigo-300"
+                            title={`Xem chi tiết đại lý ${customer.code}`}
                           >
-                            {customer.address}
-                          </div>
-                        )}
-                      </td>
+                            <Building2 className="w-3 h-3 text-indigo-500 group-hover:text-indigo-700 transition-colors" />
+                            <span>{customer.code}</span>
+                          </button>
+                        </td>
 
-                      {/* Cột 2: Liên hệ */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1.5 text-slate-700">
-                          <Phone className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="font-mono text-xs">{customer.phone}</span>
-                        </div>
-                        {customer.email && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1">
-                            <Mail className="w-3.5 h-3.5 text-slate-400" />
-                            <span className="truncate max-w-[140px]">{customer.email}</span>
-                          </div>
-                        )}
-                      </td>
+                        {/* 2. Tên đại lý: Typography sạch đẹp, 1 dòng, click xem chi tiết */}
+                        <td className="px-4 py-3.5">
+                          <button
+                            type="button"
+                            onClick={() => setViewCustomer(customer)}
+                            className="text-left font-semibold text-slate-800 hover:text-indigo-600 transition-colors line-clamp-1 text-sm cursor-pointer block max-w-full"
+                            title={customer.name}
+                          >
+                            {customer.name}
+                          </button>
+                        </td>
 
-                      {/* Cột 3: Phân nhóm & Phụ trách */}
-                      <td className="px-4 py-3.5">
-                        <div>
+                        {/* 3. Phân nhóm: Pill badge tinh tế, không wrap người phụ trách */}
+                        <td className="px-4 py-3.5 whitespace-nowrap">
                           <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${customer.customerGroup === 'AGENT_LEVEL_1'
-                                ? 'bg-indigo-50 text-[var(--color-primary)] border border-indigo-100'
-                                : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                              }`}
+                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${
+                              customer.customerGroup === 'AGENT_LEVEL_1'
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200/60'
+                                : customer.customerGroup === 'AGENT_LEVEL_2'
+                                ? 'bg-sky-50 text-sky-700 border-sky-200/60'
+                                : customer.customerGroup === 'WHOLESALE'
+                                ? 'bg-teal-50 text-teal-700 border-teal-200/60'
+                                : 'bg-amber-50 text-amber-700 border-amber-200/60'
+                            }`}
                           >
                             {getGroupLabel(customer.customerGroup)}
                           </span>
-                        </div>
-                        {(customer.salesRepName || customer.salesRep?.name) && (
-                          <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-1">
-                            <UserCheck className="w-3 h-3 text-slate-400" />
-                            <span>{customer.salesRepName || customer.salesRep?.name}</span>
-                          </div>
-                        )}
-                      </td>
+                        </td>
 
-                      {/* Cột 4: Hạn mức & Công nợ thông minh */}
-                      <td className="px-4 py-3.5 min-w-[200px]">
-                        {customer.creditLimit > 0 ? (
-                          (() => {
-                            const debt = customer.currentDebt || 0;
-                            const limit = customer.creditLimit;
-                            const rawPct = Math.round((debt / limit) * 100);
-                            const isOverLimit = debt > limit;
-                            const isCritical = rawPct >= 90;
-                            const isWarning = rawPct >= 70 && rawPct < 90;
-                            const available = Math.max(0, limit - debt);
-
-                            // Phân cấp màu sắc theo 3 ngưỡng an toàn chuẩn UI/UX
-                            const barColor = isOverLimit || isCritical
-                              ? 'bg-rose-500'
-                              : isWarning
-                              ? 'bg-amber-500'
-                              : 'bg-emerald-500';
-
-                            const textColor = isOverLimit || isCritical
-                              ? 'text-rose-600 font-bold'
-                              : isWarning
-                              ? 'text-amber-700 font-semibold'
-                              : 'text-slate-800 font-semibold';
-
-                            const badgeStyle = isOverLimit
-                              ? 'bg-rose-100 text-rose-700 border-rose-200'
-                              : isCritical
-                              ? 'bg-rose-50 text-rose-600 border-rose-200'
-                              : isWarning
-                              ? 'bg-amber-50 text-amber-700 border-amber-200'
-                              : 'bg-emerald-50 text-emerald-700 border-emerald-200';
-
-                            return (
-                              <div className="space-y-1.5">
-                                {/* Hàng 1: Dư nợ hiện tại & Huy hiệu % sử dụng */}
-                                <div className="flex items-center justify-between gap-1.5">
-                                  <div className="flex items-baseline gap-1">
-                                    <span className="text-[11px] text-slate-400 font-medium">Nợ:</span>
-                                    <span className={`text-xs sm:text-sm ${textColor}`}>
-                                      {formatVnd(debt)}
-                                    </span>
-                                  </div>
-                                  <span
-                                    className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${badgeStyle} shrink-0`}
-                                  >
-                                    {isOverLimit ? `Vượt trần (${rawPct}%)` : `${rawPct}%`}
-                                  </span>
-                                </div>
-
-                                {/* Hàng 2: Thanh tiến trình hạn mức trực quan */}
-                                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-2xs">
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-300 ${barColor}`}
-                                    style={{ width: `${Math.min(100, Math.max(0, rawPct))}%` }}
-                                  />
-                                </div>
-
-                                {/* Hàng 3: Hạn mức tối đa & Số dư nợ còn khả dụng */}
-                                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                                  <span title={`Hạn mức: ${formatVnd(limit)}`}>
-                                    HM: <strong className="text-slate-600 font-medium">{formatVnd(limit)}</strong>
-                                  </span>
-                                  <span>
-                                    {isOverLimit ? (
-                                      <span className="text-rose-600 font-semibold">
-                                        Quá: {formatVnd(debt - limit)}
-                                      </span>
-                                    ) : (
-                                      <span>
-                                        Còn: <strong className="text-emerald-700 font-medium">{formatVnd(available)}</strong>
-                                      </span>
-                                    )}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })()
-                        ) : (
-                          <div className="py-1">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-500 border border-slate-200/80">
-                              Chưa cấp hạn mức
-                            </span>
-                            {customer.currentDebt > 0 && (
-                              <div className="text-xs text-rose-600 font-bold mt-1">
-                                Nợ: {formatVnd(customer.currentDebt)}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Cột 5: Điểm giao hàng (SN-31 & SN-32) */}
-                      <td className="px-4 py-3.5">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenDeliveryPoints(customer)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:text-[var(--color-primary)] hover:border-indigo-200 transition-colors shadow-2xs"
-                        >
-                          <MapPin className="w-3.5 h-3.5 text-[var(--color-primary)]" />
-                          <span>{customer.deliveryPoints?.length || 0} Điểm giao</span>
-                        </button>
-                      </td>
-
-                      {/* Cột 6: Trạng thái */}
-                      <td className="px-4 py-3.5">
-                        {customer.status === 'LOCKED' ? (
+                        {/* 4. Dư nợ hiện tại: Số tiền tabular-nums rõ ràng, căn phải chuẩn ảnh Quản lý đơn hàng */}
+                        <td className="px-4 py-3.5 text-right whitespace-nowrap">
                           <span
-                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200"
-                            title={`Lý do khóa: ${customer.lockReason || 'Không xác định'}`}
-                          >
-                            <Lock className="w-3 h-3 text-rose-500" />
-                            <span>Khóa giao dịch</span>
-                          </span>
-                        ) : customer.status === 'ACTIVE' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            Hoạt động
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                            Tạm dừng
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Cột 7: Thao tác (Gom thành 1 nút dropdown) */}
-                      <td className="px-4 py-3.5 text-center">
-                        <div className="relative inline-block text-left customer-action-dropdown-container">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenActionMenuId(openActionMenuId === customer.id ? null : customer.id);
-                            }}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none ${
-                              openActionMenuId === customer.id
-                                ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-xs'
-                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-slate-300'
+                            className={`font-bold tabular-nums text-sm ${
+                              isOverLimit ? 'text-rose-600' : 'text-slate-900'
                             }`}
-                            title="Thao tác"
+                            title={
+                              customer.creditLimit
+                                ? `Dư nợ: ${formatVnd(customer.currentDebt || 0)} / Hạn mức: ${formatVnd(
+                                    customer.creditLimit
+                                  )}`
+                                : undefined
+                            }
                           >
-                            <span>Thao tác</span>
-                            <ChevronDown
-                              className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${
-                                openActionMenuId === customer.id ? 'rotate-180 text-blue-600' : ''
-                              }`}
-                            />
-                          </button>
+                            {formatVnd(customer.currentDebt || 0)}
+                          </span>
+                        </td>
 
-                          {openActionMenuId === customer.id && (
-                            <div
-                              className={`absolute right-0 ${
-                                isDropUp ? 'bottom-full mb-1 origin-bottom-right' : 'top-full mt-1 origin-top-right'
-                              } w-48 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100`}
+                        {/* 5. Trạng thái: Pill badge bo tròn đồng bộ */}
+                        <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                          {customer.status === 'LOCKED' ? (
+                            <span
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200/60"
+                              title={`Lý do khóa: ${customer.lockReason || 'Không xác định'}`}
                             >
-                              <div className="py-1">
-                                {/* 1. Lên đơn hàng B2B */}
-                                <button
-                                  type="button"
-                                  disabled={customer.status === 'LOCKED'}
-                                  onClick={() => {
-                                    setOpenActionMenuId(null);
-                                    navigate(`/sales/orders?customerId=${customer.id}`);
-                                  }}
-                                  className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
-                                    customer.status === 'LOCKED'
-                                      ? 'opacity-40 cursor-not-allowed text-slate-400 bg-slate-50/50'
-                                      : 'text-blue-600 hover:bg-blue-50 cursor-pointer font-medium'
-                                  }`}
-                                  title={
-                                    customer.status === 'LOCKED'
-                                      ? 'Đại lý đang bị khóa giao dịch, không thể lên đơn!'
-                                      : 'Tạo đơn hàng B2B cho đại lý này'
-                                  }
-                                >
-                                  <ShoppingCart className="w-4 h-4 text-blue-600" />
-                                  <span>Lên đơn hàng mới</span>
-                                </button>
-
-                                {/* 2. Sửa hạn mức công nợ */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setOpenActionMenuId(null);
-                                    handleOpenCreditLimitModal(customer);
-                                  }}
-                                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-amber-700 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                >
-                                  <Pencil className="w-4 h-4 text-amber-600" />
-                                  <span>Sửa hạn mức</span>
-                                </button>
-
-                                {/* 3. Điểm giao hàng */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setOpenActionMenuId(null);
-                                    handleOpenDeliveryPoints(customer);
-                                  }}
-                                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                >
-                                  <MapPin className="w-4 h-4 text-indigo-500" />
-                                  <span>Điểm giao hàng ({customer.deliveryPoints?.length || 0})</span>
-                                </button>
-                              </div>
-
-                              <div className="py-1">
-                                {/* 4. Khóa / Mở khóa giao dịch */}
-                                {customer.status === 'LOCKED' ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      handleOpenUnlockModal(customer);
-                                    }}
-                                    className="w-full text-left px-3.5 py-2 text-xs text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
-                                  >
-                                    <Unlock className="w-4 h-4 text-emerald-600" />
-                                    <span>Mở khóa giao dịch</span>
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      handleOpenLockModal(customer);
-                                    }}
-                                    className="w-full text-left px-3.5 py-2 text-xs text-amber-700 hover:bg-amber-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
-                                  >
-                                    <Lock className="w-4 h-4 text-amber-600" />
-                                    <span>Khóa giao dịch</span>
-                                  </button>
-                                )}
-
-                                {/* 5. Xóa đại lý */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setOpenActionMenuId(null);
-                                    handleOpenDeleteModal(customer);
-                                  }}
-                                  className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
-                                >
-                                  <Trash2 className="w-4 h-4 text-rose-500" />
-                                  <span>Xóa đại lý</span>
-                                </button>
-                              </div>
-                            </div>
+                              <Lock className="w-3 h-3 text-rose-500" />
+                              <span>Khóa giao dịch</span>
+                            </span>
+                          ) : customer.status === 'ACTIVE' ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              <span>Hoạt động</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200/60">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                              <span>Tạm dừng</span>
+                            </span>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
 
-          {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN BẢNG (KHÔNG ĐÈ NỘI DUNG) ── */}
+                        {/* 6. Thao tác: Giữ chữ "Thao tác" không bao giờ bị nhảy dòng */}
+                        <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                          <div className="relative inline-flex items-center justify-end customer-action-dropdown-container">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (openActionMenuId === customer.id) {
+                                  setOpenActionMenuId(null);
+                                  setActionMenuAnchor(null);
+                                } else {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const spaceBelow = window.innerHeight - rect.bottom;
+                                  const shouldDropUp = spaceBelow < 280 && rect.top > 280;
+                                  setActionMenuAnchor({
+                                    top: shouldDropUp ? rect.top - 4 : rect.bottom + 4,
+                                    right: window.innerWidth - rect.right,
+                                    isDropUp: shouldDropUp,
+                                  });
+                                  setOpenActionMenuId(customer.id ?? null);
+                                }
+                              }}
+                              className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none whitespace-nowrap shrink-0 ${
+                                openActionMenuId === customer.id
+                                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs ring-2 ring-indigo-500/10'
+                                  : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300'
+                              }`}
+                              title="Thao tác"
+                            >
+                              <span className="whitespace-nowrap">Thao tác</span>
+                              <ChevronDown
+                                className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${
+                                  openActionMenuId === customer.id ? 'rotate-180 text-indigo-600' : ''
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Dropdown Menu Portal Thao tác: không bị tràn hay cắt bởi container */}
+            {openActionMenuId && actionMenuAnchor && typeof document !== 'undefined' && (() => {
+              const customer = customers.find((c) => c.id === openActionMenuId);
+              if (!customer) return null;
+              return createPortal(
+                <div
+                  className="customer-action-portal-menu fixed w-52 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-[9999] animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100"
+                  style={{
+                    top: actionMenuAnchor.isDropUp ? undefined : `${actionMenuAnchor.top}px`,
+                    bottom: actionMenuAnchor.isDropUp ? `${window.innerHeight - actionMenuAnchor.top}px` : undefined,
+                    right: `${actionMenuAnchor.right}px`,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="py-1">
+                    {/* 1. Xem chi tiết đại lý */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenActionMenuId(null);
+                        setActionMenuAnchor(null);
+                        setViewCustomer(customer);
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                    >
+                      <Eye className="w-4 h-4 text-slate-400" />
+                      <span>Xem chi tiết</span>
+                    </button>
+
+                    {/* 2. Lên đơn hàng mới */}
+                    <button
+                      type="button"
+                      disabled={customer.status === 'LOCKED'}
+                      onClick={() => {
+                        setOpenActionMenuId(null);
+                        setActionMenuAnchor(null);
+                        navigate(`/sales/orders/create?customerId=${customer.id}`);
+                      }}
+                      className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
+                        customer.status === 'LOCKED'
+                          ? 'opacity-40 cursor-not-allowed text-slate-400 bg-slate-50/50'
+                          : 'text-indigo-600 hover:bg-indigo-50 cursor-pointer font-medium'
+                      }`}
+                      title={
+                        customer.status === 'LOCKED'
+                          ? 'Đại lý đang bị khóa giao dịch, không thể lên đơn!'
+                          : 'Tạo đơn hàng B2B cho đại lý này'
+                      }
+                    >
+                      <ShoppingCart className="w-4 h-4 text-indigo-600" />
+                      <span>Lên đơn hàng mới</span>
+                    </button>
+                  </div>
+
+                  <div className="py-1">
+                    {/* 3. Sửa hạn mức công nợ */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenActionMenuId(null);
+                        setActionMenuAnchor(null);
+                        handleOpenCreditLimitModal(customer);
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-amber-700 flex items-center gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <Pencil className="w-4 h-4 text-amber-600" />
+                      <span>Sửa hạn mức</span>
+                    </button>
+
+                    {/* 4. Quản lý điểm giao hàng */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenActionMenuId(null);
+                        setActionMenuAnchor(null);
+                        handleOpenDeliveryPoints(customer);
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <MapPin className="w-4 h-4 text-indigo-500" />
+                      <span>Điểm giao hàng ({customer.deliveryPoints?.length || 0})</span>
+                    </button>
+                  </div>
+
+                  <div className="py-1">
+                    {/* 5. Khóa / Mở khóa giao dịch */}
+                    {customer.status === 'LOCKED' ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionMenuId(null);
+                          setActionMenuAnchor(null);
+                          handleOpenUnlockModal(customer);
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                      >
+                        <Unlock className="w-4 h-4 text-emerald-600" />
+                        <span>Mở khóa giao dịch</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionMenuId(null);
+                          setActionMenuAnchor(null);
+                          handleOpenLockModal(customer);
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-amber-700 hover:bg-amber-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                      >
+                        <Lock className="w-4 h-4 text-amber-600" />
+                        <span>Khóa giao dịch</span>
+                      </button>
+                    )}
+
+                    {/* 6. Xóa đại lý */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenActionMenuId(null);
+                        setActionMenuAnchor(null);
+                        handleOpenDeleteModal(customer);
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                    >
+                      <Trash2 className="w-4 h-4 text-rose-500" />
+                      <span>Xóa đại lý</span>
+                    </button>
+                  </div>
+                </div>,
+                document.body
+              );
+            })()}
+
+          {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN BẢNG (CHUẨN HÌNH 2) ── */}
           {totalItems > 0 && (
             <Pagination
               variant="default"
@@ -1620,7 +1599,8 @@ export const CustomersPage: React.FC = () => {
               pageSize={pageSize}
               pageSizeOptions={[10, 20, 50]}
               itemLabel="đại lý"
-              showFirstLast={true}
+              showRecordRange={false}
+              showFirstLast={false}
               onPageChange={(page) => handlePageChange(page)}
               onPageSizeChange={handlePageSizeChange}
             />
@@ -2188,6 +2168,313 @@ export const CustomersPage: React.FC = () => {
         onSubmit={handleSubmitCreditLimit}
         loading={isCreditLimitSubmitting}
       />
+
+      {/* ── MODAL XEM CHI TIẾT ĐẠI LÝ (VIEW DETAIL MODAL) ── */}
+      {viewCustomer &&
+        createPortal(
+          <div
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setViewCustomer(null);
+              }
+            }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150"
+          >
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200/90 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+              {/* Header */}
+              <div className="px-6 py-4.5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/70">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base font-bold text-slate-900 truncate" title={viewCustomer.name}>
+                        {viewCustomer.name}
+                      </h3>
+                      <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+                        {viewCustomer.code}
+                      </span>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          viewCustomer.customerGroup === 'AGENT_LEVEL_1'
+                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                            : viewCustomer.customerGroup === 'AGENT_LEVEL_2'
+                            ? 'bg-sky-50 text-sky-700 border border-sky-100'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                        }`}
+                      >
+                        {getGroupLabel(viewCustomer.customerGroup)}
+                      </span>
+                      {viewCustomer.status === 'LOCKED' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                          <Lock className="w-3 h-3" /> Khóa GD
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Hoạt động
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Khu vực: <span className="font-medium text-slate-700">{viewCustomer.region || 'Miền Nam'}</span>
+                      {viewCustomer.taxCode && (
+                        <> • MST: <span className="font-mono font-medium text-slate-700">{viewCustomer.taxCode}</span></>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewCustomer(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer shrink-0 ml-2"
+                  title="Đóng (Esc)"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                {/* Cảnh báo nếu đại lý bị khóa giao dịch */}
+                {viewCustomer.status === 'LOCKED' && (
+                  <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-rose-900">Đại lý đang bị tạm khóa giao dịch (SN-36)</p>
+                      <p className="mt-0.5 text-rose-700 leading-relaxed">
+                        Lý do: {viewCustomer.lockReason || 'Chưa cung cấp lý do cụ thể.'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 1: Hạn mức tín dụng & Dư nợ (Card-based) */}
+                <div className="bg-slate-50/70 rounded-xl border border-slate-200/80 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-indigo-600" />
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                        Hạn mức tín dụng & Công nợ
+                      </h4>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = viewCustomer;
+                        setViewCustomer(null);
+                        handleOpenCreditLimitModal(target);
+                      }}
+                      className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      <span>Sửa hạn mức</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                    <div className="bg-white p-3 rounded-lg border border-slate-200/60 shadow-2xs">
+                      <span className="text-[11px] text-slate-400 font-medium block">Hạn mức tối đa</span>
+                      <span className="text-sm font-bold text-slate-900 tabular-nums">
+                        {formatVnd(viewCustomer.creditLimit || 0)}
+                      </span>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg border border-slate-200/60 shadow-2xs">
+                      <span className="text-[11px] text-slate-400 font-medium block">Dư nợ hiện tại</span>
+                      <span
+                        className={`text-sm font-bold tabular-nums ${
+                          (viewCustomer.currentDebt || 0) > (viewCustomer.creditLimit || 0) &&
+                          (viewCustomer.creditLimit || 0) > 0
+                            ? 'text-rose-600'
+                            : 'text-slate-900'
+                        }`}
+                      >
+                        {formatVnd(viewCustomer.currentDebt || 0)}
+                      </span>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg border border-slate-200/60 shadow-2xs">
+                      <span className="text-[11px] text-slate-400 font-medium block">Còn khả dụng</span>
+                      <span className="text-sm font-bold text-emerald-700 tabular-nums">
+                        {formatVnd(
+                          Math.max(0, (viewCustomer.creditLimit || 0) - (viewCustomer.currentDebt || 0))
+                        )}
+                      </span>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg border border-slate-200/60 shadow-2xs">
+                      <span className="text-[11px] text-slate-400 font-medium block">Hạn nợ tối đa</span>
+                      <span className="text-sm font-bold text-slate-900">
+                        {viewCustomer.maxDebtDays || 30} ngày
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Thanh tiến trình % công nợ */}
+                  {viewCustomer.creditLimit > 0 &&
+                    (() => {
+                      const debt = viewCustomer.currentDebt || 0;
+                      const limit = viewCustomer.creditLimit;
+                      const rawPct = Math.round((debt / limit) * 100);
+                      const isOver = debt > limit;
+                      const barColor =
+                        isOver || rawPct >= 90
+                          ? 'bg-rose-500'
+                          : rawPct >= 70
+                          ? 'bg-amber-500'
+                          : 'bg-emerald-500';
+                      return (
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-slate-500 font-medium">Tỷ lệ sử dụng hạn mức</span>
+                            <span className={`font-bold ${isOver ? 'text-rose-600' : 'text-slate-700'}`}>
+                              {isOver ? `Vượt hạn mức (${rawPct}%)` : `${rawPct}%`}
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-200/80 rounded-full h-2 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${barColor}`}
+                              style={{ width: `${Math.min(100, rawPct)}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
+                </div>
+
+                {/* Section 2: Thông tin liên hệ & Vận hành */}
+                <div className="bg-white rounded-xl border border-slate-200/80 p-4 space-y-3 shadow-2xs">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-indigo-600" />
+                    <span>Thông tin liên hệ & Phụ trách</span>
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                    <div className="flex items-start gap-2.5">
+                      <Phone className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">Số điện thoại liên hệ</span>
+                        <span className="font-mono font-semibold text-slate-800 text-sm">
+                          {viewCustomer.phone || '—'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Mail className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">Email liên hệ (Tài khoản B2B)</span>
+                        <span className="font-medium text-slate-800 break-all">{viewCustomer.email || '—'}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5 sm:col-span-2">
+                      <MapPin className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">Địa chỉ trụ sở / kinh doanh</span>
+                        <span className="font-medium text-slate-800">{viewCustomer.address || '—'}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <UserCheck className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">Nhân viên kinh doanh phụ trách</span>
+                        <span className="font-semibold text-slate-800">
+                          {viewCustomer.salesRepName || viewCustomer.salesRep?.name || 'Chưa phân công'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Tag className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">Bảng giá áp dụng</span>
+                        <span className="font-semibold text-indigo-700">
+                          {getPriceListInfo(viewCustomer.customerGroup || 'AGENT_LEVEL_2').title}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 3: Điểm giao hàng (SN-31 & SN-32) */}
+                <div className="bg-white rounded-xl border border-slate-200/80 p-4 space-y-3 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-indigo-600" />
+                      <span>Điểm giao hàng ({viewCustomer.deliveryPoints?.length || 0})</span>
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = viewCustomer;
+                        setViewCustomer(null);
+                        handleOpenDeliveryPoints(target);
+                      }}
+                      className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 hover:underline cursor-pointer"
+                    >
+                      + Quản lý điểm giao
+                    </button>
+                  </div>
+
+                  {viewCustomer.deliveryPoints && viewCustomer.deliveryPoints.length > 0 ? (
+                    <div className="divide-y divide-slate-100 border border-slate-100 rounded-lg overflow-hidden">
+                      {viewCustomer.deliveryPoints.map((dp, i) => (
+                        <div
+                          key={dp.id || i}
+                          className="p-3 text-xs flex items-start justify-between gap-3 bg-slate-50/40 hover:bg-slate-50 transition-colors"
+                        >
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-slate-900">{dp.name}</span>
+                              {dp.isDefault && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  Mặc định
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-slate-600">{dp.address}</p>
+                            {(dp.receiverName || dp.phone) && (
+                              <p className="text-slate-400 text-[11px]">
+                                Người nhận: <span className="text-slate-700">{dp.receiverName || '—'}</span> • SĐT:{' '}
+                                <span className="font-mono text-slate-700">{dp.phone || '—'}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic py-1">
+                      Chưa có điểm giao hàng phụ. Hệ thống sẽ giao tới địa chỉ trụ sở chính của đại lý.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-3.5 border-t border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/70">
+                <button
+                  type="button"
+                  onClick={() => setViewCustomer(null)}
+                  className="px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
+                >
+                  Đóng
+                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={viewCustomer.status === 'LOCKED'}
+                    onClick={() => {
+                      const target = viewCustomer;
+                      setViewCustomer(null);
+                      navigate(`/sales/orders/create?customerId=${target.id}`);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    <span>Lên đơn hàng mới</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

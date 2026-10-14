@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 export interface PaginationProps {
   currentPage: number;
@@ -8,6 +8,7 @@ export interface PaginationProps {
   pageSize?: number;
   pageSizeOptions?: number[];
   itemLabel?: string;
+  showRecordRange?: boolean;
   onPageChange: (page: number) => void;
   onPageSizeChange?: (size: number) => void;
   className?: string;
@@ -16,13 +17,12 @@ export interface PaginationProps {
 }
 
 /**
- * Component Pagination chuẩn LOHA SALES (UI_GUIDELINES Section 28)
- * - Hỗ trợ variant 'floating': Tách rời, nổi lơ lửng ở đáy màn hình với hiệu ứng Glassmorphism & Shadow
- * - Nút trang kích thước chuẩn, bo góc rounded-xl hiện đại
- * - Trang hiện tại nổi bật bằng màu Primary Brand Color kèm hiệu ứng đổ bóng
- * - Hỗ trợ nhảy trang đầu / trang cuối tiện lợi (ChevronsLeft / ChevronsRight)
- * - Hiển thị dải số trang thông minh với dấu ba chấm "..."
- * - Hiển thị số bản ghi và dropdown chọn số dòng / trang (10, 20, 50)
+ * Component Pagination chuẩn LOHA SALES (UI_GUIDELINES Section 28 & Section 91)
+ * - Nút trang kích thước chuẩn h-8, bo góc rounded-lg đồng bộ với toàn hệ thống
+ * - Trang hiện tại nổi bật bằng màu Primary Brand Color (Indigo-600)
+ * - Tự động ẩn nút Đầu / Cuối khi số trang ít (<= 5) để tránh quá nhiều nút thừa
+ * - Cho phép ẩn dải hiển thị số bản ghi bằng prop showRecordRange={false}
+ * - Dropdown chọn số dòng / trang bo góc rounded-lg đồng nhất
  */
 export const Pagination: React.FC<PaginationProps> = ({
   currentPage,
@@ -31,6 +31,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   pageSize,
   pageSizeOptions = [10, 20, 50],
   itemLabel = 'bản ghi',
+  showRecordRange = true,
   onPageChange,
   onPageSizeChange,
   className = '',
@@ -88,11 +89,14 @@ export const Pagination: React.FC<PaginationProps> = ({
       ? 'flex flex-col sm:flex-row items-center justify-between gap-3 text-xs select-none px-4 sm:px-6 py-3 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xl shadow-slate-900/10'
       : 'flex flex-col sm:flex-row items-center justify-between gap-3 text-xs select-none px-4 py-3 bg-white border-t border-slate-100';
 
+  // Chỉ hiển thị nút nhảy Đầu / Cuối khi số trang lớn (> 5) và có bật cờ showFirstLast
+  const shouldRenderFirstLast = showFirstLast && validTotalPages > 5;
+
   return (
     <div className={`${containerClasses} ${className}`}>
-      {/* Thông tin tổng số bản ghi & tùy chọn số dòng/trang */}
+      {/* Thông tin số dòng/trang & số bản ghi */}
       <div className="flex flex-wrap items-center gap-3 text-slate-500 font-medium">
-        {totalItems !== undefined && (
+        {showRecordRange && totalItems !== undefined && (
           <span className="flex items-center gap-1">
             Hiển thị <strong className="text-slate-800 font-bold">{fromIndex} - {toIndex}</strong> /{' '}
             <strong className="text-slate-800 font-bold">{totalItems}</strong> {itemLabel}
@@ -100,13 +104,13 @@ export const Pagination: React.FC<PaginationProps> = ({
         )}
 
         {onPageSizeChange && pageSize && (
-          <div className="flex items-center gap-1.5 ml-1 sm:ml-2">
-            <span className="text-slate-400">Số dòng:</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-500 text-xs font-medium">Số dòng:</span>
             <select
               value={pageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
               aria-label="Chọn số dòng trên một trang"
-              className="h-8 px-3 rounded-full border border-slate-200/90 bg-slate-50/80 hover:bg-white text-slate-700 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 font-semibold cursor-pointer shadow-2xs hover:border-slate-300 transition-all text-xs"
+              className="h-8 px-2.5 rounded-lg border border-slate-200 bg-slate-50/70 hover:bg-white text-slate-700 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 font-medium cursor-pointer shadow-2xs hover:border-slate-300 transition-all text-xs"
             >
               {pageSizeOptions.map((opt) => (
                 <option key={opt} value={opt}>
@@ -120,16 +124,16 @@ export const Pagination: React.FC<PaginationProps> = ({
 
       {/* Cụm nút chuyển trang */}
       <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap justify-center">
-        {/* Nút Trang đầu (« Đầu) */}
-        {showFirstLast && (
+        {/* Nút Trang đầu */}
+        {shouldRenderFirstLast && (
           <button
             type="button"
             onClick={() => onPageChange(1)}
             disabled={safePage <= 1}
-            className="h-8 px-3 flex items-center justify-center gap-1 rounded-full border border-slate-200/90 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-30 disabled:hover:bg-white disabled:hover:border-slate-200 disabled:cursor-not-allowed transition-all cursor-pointer font-medium active:scale-95 shadow-2xs text-xs"
-            title="Nhảy về trang đầu tiên (Trang 1)"
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300 disabled:opacity-30 disabled:hover:bg-white disabled:hover:border-slate-200 disabled:hover:text-slate-500 disabled:cursor-not-allowed transition-all cursor-pointer font-medium active:scale-95 shadow-2xs text-xs"
+            title="Trang đầu tiên"
           >
-            <span>« Đầu</span>
+            <ChevronsLeft className="w-3.5 h-3.5" />
           </button>
         )}
 
@@ -138,7 +142,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           type="button"
           onClick={() => onPageChange(safePage - 1)}
           disabled={safePage <= 1}
-          className="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-500 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-30 disabled:hover:bg-white disabled:hover:border-slate-200 disabled:cursor-not-allowed transition-all cursor-pointer active:scale-95 shadow-2xs"
+          className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300 disabled:opacity-30 disabled:hover:bg-white disabled:hover:border-slate-200 disabled:hover:text-slate-600 disabled:cursor-not-allowed transition-all cursor-pointer active:scale-95 shadow-2xs"
           title="Trang trước"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
@@ -166,10 +170,10 @@ export const Pagination: React.FC<PaginationProps> = ({
                 key={`page-${pageNum}`}
                 type="button"
                 onClick={() => onPageChange(pageNum)}
-                className={`w-8 h-8 flex items-center justify-center rounded-full font-bold transition-all duration-150 cursor-pointer text-xs active:scale-95 ${
+                className={`min-w-[32px] h-8 px-2 flex items-center justify-center rounded-lg transition-all duration-150 cursor-pointer text-xs active:scale-95 ${
                   isActive
-                    ? 'bg-[#2424eb] text-white shadow-md shadow-indigo-500/25 ring-2 ring-[#2424eb]/20'
-                    : 'border border-slate-200/90 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-2xs'
+                    ? 'bg-indigo-600 border border-indigo-600 text-white font-bold shadow-xs shadow-indigo-600/20'
+                    : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300 font-semibold shadow-2xs'
                 }`}
               >
                 {pageNum}
@@ -183,22 +187,22 @@ export const Pagination: React.FC<PaginationProps> = ({
           type="button"
           onClick={() => onPageChange(safePage + 1)}
           disabled={safePage >= validTotalPages}
-          className="w-8 h-8 flex items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-30 disabled:hover:bg-white disabled:hover:border-slate-200 disabled:cursor-not-allowed transition-all cursor-pointer active:scale-95 shadow-2xs"
+          className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300 disabled:opacity-30 disabled:hover:bg-white disabled:hover:border-slate-200 disabled:hover:text-slate-600 disabled:cursor-not-allowed transition-all cursor-pointer active:scale-95 shadow-2xs"
           title="Trang sau"
         >
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
 
-        {/* Nút Trang cuối (Cuối ») */}
-        {showFirstLast && (
+        {/* Nút Trang cuối */}
+        {shouldRenderFirstLast && (
           <button
             type="button"
             onClick={() => onPageChange(validTotalPages)}
             disabled={safePage >= validTotalPages}
-            className="h-8 px-3 flex items-center justify-center gap-1 rounded-full border border-slate-200/90 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-30 disabled:hover:bg-white disabled:hover:border-slate-200 disabled:cursor-not-allowed transition-all cursor-pointer font-medium active:scale-95 shadow-2xs text-xs"
-            title={`Nhảy xuống trang cuối cùng (Trang ${validTotalPages})`}
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300 disabled:opacity-30 disabled:hover:bg-white disabled:hover:border-slate-200 disabled:hover:text-slate-500 disabled:cursor-not-allowed transition-all cursor-pointer font-medium active:scale-95 shadow-2xs text-xs"
+            title={`Trang cuối (${validTotalPages})`}
           >
-            <span>Cuối »</span>
+            <ChevronsRight className="w-3.5 h-3.5" />
           </button>
         )}
       </div>

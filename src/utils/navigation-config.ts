@@ -302,7 +302,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     {
       id: 'sales-orders',
       name: 'Đơn hàng chuẩn bị xuất',
-      path: '/sales/orders',
+      path: '/warehouse/orders',
       icon: ShoppingCart,
       category: 'Soạn hàng & Giao nhận',
     },
@@ -369,7 +369,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     {
       id: 'sales-orders',
       name: 'Quản lý đơn hàng',
-      path: '/sales/orders',
+      path: '/warehouse/orders',
       icon: ShoppingCart,
       category: 'Soạn hàng & Giao nhận',
     },

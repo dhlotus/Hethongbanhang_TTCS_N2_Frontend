@@ -151,19 +151,10 @@ export const OrderSuggestionsPanel: React.FC<OrderSuggestionsPanelProps> = ({
       {/* Tiêu đề & Thu phóng */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-xs">
-            <Sparkles className="h-4 w-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="text-sm font-bold text-slate-800">
-                Gợi Ý Mặt Hàng Đại Lý Thường Mua
-              </h4>
-              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
-                3 tháng gần nhất
-              </span>
-            </div>
-          </div>
+          <Sparkles className="w-5 h-5 text-indigo-600" />
+          <h4 className="text-sm font-bold text-slate-900">
+            Gợi ý mặt hàng thường mua
+          </h4>
         </div>
 
         <button

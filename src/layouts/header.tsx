@@ -17,14 +17,42 @@ interface HeaderProps {
   onToggleMobileMenu: () => void;
 }
 
+interface PageHeaderInfo {
+  title: string;
+  category: string;
+  breadcrumbs?: Array<{ label: string; path?: string }>;
+}
+
 /**
  * Lấy tiêu đề trang dựa theo danh mục điều hướng của người dùng hiện tại và URL
- * Đảm bảo 100% tên tab trên Navbar và tiêu đề trên Header luôn đồng nhất tuyệt đối
+ * Hỗ trợ breadcrumbs phân cấp khi vào các trang con (ví dụ: Quản lý đơn hàng > Tạo đơn hàng mới)
  */
 const getPageHeaderInfo = (
   pathname: string,
   userMenuItems: MenuItem[] = []
-): { title: string; category: string } => {
+): PageHeaderInfo => {
+  // 0. Trang con phân cấp (Breadcrumbs)
+  if (pathname === '/sales/orders/create' || pathname === '/orders/create') {
+    return {
+      title: 'Tạo đơn hàng mới',
+      category: 'Bán hàng',
+      breadcrumbs: [
+        { label: 'Quản lý đơn hàng', path: '/sales/orders' },
+        { label: 'Tạo đơn hàng mới' },
+      ],
+    };
+  }
+  if (pathname.startsWith('/sales/orders/edit')) {
+    return {
+      title: 'Chỉnh sửa đơn hàng',
+      category: 'Bán hàng',
+      breadcrumbs: [
+        { label: 'Quản lý đơn hàng', path: '/sales/orders' },
+        { label: 'Chỉnh sửa đơn hàng' },
+      ],
+    };
+  }
+
   // 1. Ưu tiên khớp chính xác theo menu item của người dùng hiện tại trên Navbar
   const sortedUserItems = [...userMenuItems].sort((a, b) => b.path.length - a.path.length);
   const matchedUserItem = sortedUserItems.find(
@@ -164,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   };
 
   const menuItems = getNavigationItems(currentUser?.roles || currentUser?.role);
-  const { title } = getPageHeaderInfo(location.pathname, menuItems);
+  const { title, breadcrumbs } = getPageHeaderInfo(location.pathname, menuItems);
   const context = getUserContext(currentUser);
   const cleanFullName =
     (context.fullName || '').replace(/\s*\([^)]*\)/g, '').trim() ||
@@ -187,14 +215,49 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           <Menu className="h-5 w-5" />
         </button>
 
-        {/* Tiêu đề trang với animation chuyển đổi siêu mượt mà */}
+        {/* Tiêu đề trang hoặc breadcrumb phân cấp */}
         <div className="overflow-hidden min-w-0">
-          <h1
-            key={location.pathname}
-            className="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate animate-header-title"
-          >
-            {title}
-          </h1>
+          {breadcrumbs && breadcrumbs.length > 1 ? (
+            <nav
+              aria-label="Breadcrumb"
+              key={location.pathname}
+              className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base tracking-tight animate-header-title min-w-0"
+            >
+              {breadcrumbs.map((crumb, idx) => {
+                const isLast = idx === breadcrumbs.length - 1;
+                return (
+                  <React.Fragment key={crumb.label}>
+                    {idx > 0 && (
+                      <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 shrink-0" />
+                    )}
+                    {isLast ? (
+                      <span className="text-slate-900 font-bold truncate">
+                        {crumb.label}
+                      </span>
+                    ) : crumb.path ? (
+                      <Link
+                        to={crumb.path}
+                        className="text-slate-500 hover:text-indigo-600 transition-colors truncate font-semibold"
+                      >
+                        {crumb.label}
+                      </Link>
+                    ) : (
+                      <span className="text-slate-500 truncate font-semibold">
+                        {crumb.label}
+                      </span>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </nav>
+          ) : (
+            <h1
+              key={location.pathname}
+              className="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate animate-header-title"
+            >
+              {title}
+            </h1>
+          )}
         </div>
       </div>
 

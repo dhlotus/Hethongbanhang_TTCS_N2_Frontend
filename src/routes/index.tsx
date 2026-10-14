@@ -141,7 +141,14 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={['ADMIN', 'SALES_REP', 'SALES_MANAGER', 'ACCOUNTANT']}
+                  allowedRoles={[
+                    'ADMIN',
+                    'SALES_REP',
+                    'SALES_MANAGER',
+                    'ACCOUNTANT',
+                    'WAREHOUSE_KEEPER',
+                    'WAREHOUSE_MANAGER',
+                  ]}
                   moduleName="Quản lý Đơn hàng"
                 />
               }
@@ -264,6 +271,8 @@ export const AppRoutes: React.FC = () => {
                 path="/inventory/audits"
                 element={<InventoryAuditsPage />}
               />
+              {/* Route chuyên biệt cho Đơn hàng chuẩn bị xuất thuộc phân hệ Kho vận (SN-180) */}
+              <Route path="/warehouse/orders" element={<OrdersPage />} />
             </Route>
 
             <Route
