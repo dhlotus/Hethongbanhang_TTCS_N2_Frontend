@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, CreditCard, AlertCircle, Check, ShieldAlert } from 'lucide-react';
+import { X, CreditCard, AlertCircle, AlertTriangle, Check, ShieldAlert } from 'lucide-react';
 import type { CreditLimit, UpdateCreditLimitPayload } from '../../types/credit-limit.type';
-import { PaymentTerm } from '../../types/credit-limit.type';
 import type { Customer } from '../../types/customer.types';
 
 export type EditableAgencyItem =
@@ -37,8 +36,8 @@ const formatVND = (val: number): string => {
 };
 
 /**
- * Component Form Modal Cập nhật Hạn mức Công nợ (SN-34)
- * Các input: Hạn mức tiền, Số ngày nợ, Lý do thay đổi (BẮT BUỘC)
+ * Component Form Modal Cập nhật Hạn mức Công nợ (SN-34 Scope)
+ * Đúng chuẩn 3 trường: Hạn mức tiền tối đa, Số ngày nợ tối đa, Lý do thay đổi (BẮT BUỘC)
  */
 export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
   isOpen,
@@ -48,20 +47,20 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
   loading = false,
 }) => {
   const [creditLimitStr, setCreditLimitStr] = useState<string>('0');
-  const [maxDebtDays, setMaxDebtDays] = useState<number>(30);
+  const [maxDebtDaysStr, setMaxDebtDaysStr] = useState<string>('30');
   const [reason, setReason] = useState<string>('');
-  const [paymentTerms, setPaymentTerms] = useState<string>(PaymentTerm.NET_30);
-  const [temporaryCreditLimitStr, setTemporaryCreditLimitStr] = useState<string>('0');
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [reasonError, setReasonError] = useState<string>('');
+  const [touchedReason, setTouchedReason] = useState<boolean>(false);
 
   useEffect(() => {
     if (item) {
       setCreditLimitStr(formatVND(item.creditLimit || 0));
-      setMaxDebtDays(item.maxDebtDays || 30);
-      setPaymentTerms(item.paymentTerms || PaymentTerm.NET_30);
-      setTemporaryCreditLimitStr(formatVND(item.temporaryCreditLimit || 0));
+      setMaxDebtDaysStr(String(item.maxDebtDays ?? 30));
       setReason('');
       setErrorMsg('');
+      setReasonError('');
+      setTouchedReason(false);
     }
   }, [item, isOpen]);
 
@@ -83,26 +82,105 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
     item.id;
   const currentDebt = item.currentDebt || 0;
 
+  // Cho phép xóa sạch (empty string) khi backspace
   const handleMoneyChange = (raw: string, setter: (val: string) => void) => {
+    if (raw === '' || raw.trim() === '') {
+      setter('');
+      return;
+    }
     const numericOnly = raw.replace(/\D/g, '');
-    const num = Number(numericOnly || 0);
+    if (!numericOnly) {
+      setter('');
+      return;
+    }
+    const num = Number(numericOnly);
     setter(formatVND(num));
   };
 
+  const handleMoneyBlur = (
+    currentVal: string,
+    setter: (val: string) => void,
+    defaultValue = 0
+  ) => {
+    if (!currentVal.trim()) {
+      setter(formatVND(defaultValue));
+    }
+  };
+
+  // Nhập số ngày nợ tối đa (InputNumber hỗ trợ xóa rỗng)
+  const handleMaxDebtDaysChange = (raw: string) => {
+    if (raw === '') {
+      setMaxDebtDaysStr('');
+      return;
+    }
+    const numericOnly = raw.replace(/\D/g, '');
+    if (numericOnly === '') {
+      setMaxDebtDaysStr('');
+      return;
+    }
+    const days = Math.min(365, Number(numericOnly));
+    setMaxDebtDaysStr(String(days));
+  };
+
+  const handleMaxDebtDaysBlur = () => {
+    if (maxDebtDaysStr === '') {
+      const defaultDays = item.maxDebtDays ?? 30;
+      setMaxDebtDaysStr(String(defaultDays));
+    }
+  };
+
   const parsedCreditLimit = Number(creditLimitStr.replace(/\D/g, '') || 0);
-  const parsedTempLimit = Number(temporaryCreditLimitStr.replace(/\D/g, '') || 0);
-  const totalNewEffectiveLimit = parsedCreditLimit + parsedTempLimit;
+  const parsedMaxDebtDays =
+    maxDebtDaysStr === '' ? (item.maxDebtDays ?? 30) : Number(maxDebtDaysStr);
+  const effectiveLimit = parsedCreditLimit + (item.temporaryCreditLimit || 0);
   const difference = parsedCreditLimit - (item.creditLimit || 0);
 
-  // Tính tỷ lệ sử dụng mới dựa trên dư nợ hiện tại
-  const newUsageRate =
-    totalNewEffectiveLimit > 0
-      ? Math.round((currentDebt / totalNewEffectiveLimit) * 10000) / 100
-      : 100;
+  // Tính tỷ lệ sử dụng mới dựa trên dư nợ hiện tại (làm tròn số nguyên chuẩn)
+  const rawUsageRate =
+    effectiveLimit > 0 ? (currentDebt / effectiveLimit) * 100 : 100;
+  const roundedUsageRate = Math.round(rawUsageRate);
+
+  // Kiểm tra trùng lặp dữ liệu (Prevent Duplicate/Dirty Log)
+  const initialCreditLimit = item.creditLimit || 0;
+  const initialDebtDays = item.maxDebtDays ?? 30;
+
+  const isUnchanged =
+    parsedCreditLimit === initialCreditLimit &&
+    parsedMaxDebtDays === initialDebtDays;
+
+  // Validation Rules tiếng Việt
+  const validateReasonRule = (text: string): string => {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      return 'Vui lòng nhập lý do thay đổi hạn mức công nợ!';
+    }
+    if (trimmed.length < 10) {
+      return 'Lý do phải có độ dài tối thiểu 10 ký tự!';
+    }
+    return '';
+  };
+
+  const handleReasonChange = (val: string) => {
+    setReason(val);
+    if (touchedReason) {
+      setReasonError(validateReasonRule(val));
+    }
+  };
+
+  const handleReasonBlur = () => {
+    setTouchedReason(true);
+    setReasonError(validateReasonRule(reason));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+
+    // Chặn submit nếu không có gì thay đổi
+    if (isUnchanged) {
+      setErrorMsg('Dữ liệu hạn mức và số ngày nợ chưa có thay đổi nào so với hiện tại.');
+      return;
+    }
 
     // 1. Validate Hạn mức tiền
     if (parsedCreditLimit < 0) {
@@ -111,29 +189,31 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
     }
 
     // 2. Validate Số ngày nợ
-    if (maxDebtDays === undefined || maxDebtDays === null || maxDebtDays < 0) {
+    if (parsedMaxDebtDays < 0) {
       setErrorMsg('Số ngày nợ tối đa phải lớn hơn hoặc bằng 0.');
       return;
     }
 
     // 3. Validate Lý do thay đổi (BẮT BUỘC)
-    if (!reason.trim() || reason.trim().length < 5) {
-      setErrorMsg('Vui lòng nhập lý do thay đổi hạn mức (tối thiểu 5 ký tự) để phục vụ kiểm toán.');
+    const err = validateReasonRule(reason);
+    if (err) {
+      setTouchedReason(true);
+      setReasonError(err);
       return;
     }
 
     const payload: UpdateCreditLimitPayload = {
       creditLimit: parsedCreditLimit,
-      maxDebtDays,
+      maxDebtDays: parsedMaxDebtDays,
       reason: reason.trim(),
-      paymentTerms,
-      temporaryCreditLimit: parsedTempLimit > 0 ? parsedTempLimit : undefined,
     };
 
     try {
       await onSubmit(agencyId, payload);
-    } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Đã có lỗi xảy ra khi lưu dữ liệu.');
+    } catch (errSubmit: unknown) {
+      setErrorMsg(
+        errSubmit instanceof Error ? errSubmit.message : 'Đã có lỗi xảy ra khi lưu dữ liệu.'
+      );
     }
   };
 
@@ -147,7 +227,7 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
               <CreditCard className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-900">Cập Nhật Hạn Mức Công Nợ (SN-34)</h3>
+              <h3 className="text-lg font-bold text-slate-900">Cập Nhật Hạn Mức Công Nợ</h3>
               <p className="text-xs text-slate-500">
                 Đại lý: <strong className="text-slate-700">{displayName}</strong>
                 {displayCode ? ` (${displayCode})` : ''}
@@ -163,8 +243,8 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
           </button>
         </div>
 
-        {/* Body Modal Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+        {/* Body Modal Form - noValidate để triệt tiêu popup tiếng Anh của trình duyệt */}
+        <form noValidate onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
           {errorMsg && (
             <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
@@ -202,18 +282,19 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
             </div>
           </div>
 
+          {/* Đúng 2 trường cấu hình chuẩn Jira SN-34: Hạn mức tiền & Số ngày nợ */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Input 1: Hạn mức tiền tối đa */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Hạn mức tiền tối đa (VND) <span className="text-red-500">*</span>
+                Hạn mức tiền tối đa <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <input
                   type="text"
-                  required
                   value={creditLimitStr}
                   onChange={(e) => handleMoneyChange(e.target.value, setCreditLimitStr)}
+                  onBlur={() => handleMoneyBlur(creditLimitStr, setCreditLimitStr, item.creditLimit || 0)}
                   className="w-full px-3 py-2 pr-10 text-sm font-semibold rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
                   placeholder="Ví dụ: 100,000,000"
                 />
@@ -221,9 +302,6 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
                   đ
                 </span>
               </div>
-              <p className="mt-1 text-[11px] text-slate-500">
-                Số tiền công nợ tối đa đại lý được phép nợ gối đầu.
-              </p>
             </div>
 
             {/* Input 2: Số ngày nợ tối đa */}
@@ -233,122 +311,111 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
               </label>
               <div className="relative">
                 <input
-                  type="number"
-                  min="0"
-                  max="365"
-                  required
-                  value={maxDebtDays}
-                  onChange={(e) => setMaxDebtDays(Number(e.target.value) || 0)}
-                  className="w-full px-3 py-2 pr-12 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
+                  type="text"
+                  inputMode="numeric"
+                  value={maxDebtDaysStr}
+                  onChange={(e) => handleMaxDebtDaysChange(e.target.value)}
+                  onBlur={handleMaxDebtDaysBlur}
+                  className="w-full px-3 py-2 pr-12 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] font-semibold"
                   placeholder="Ví dụ: 30"
                 />
                 <span className="absolute right-3 top-2.5 text-xs text-slate-400">ngày</span>
               </div>
-              <p className="mt-1 text-[11px] text-slate-500">
-                Thời hạn được phép nợ kể từ khi giao hàng trước khi đến hạn thanh toán.
-              </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Input: Điều khoản thanh toán */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Điều khoản thanh toán
-              </label>
-              <select
-                value={paymentTerms}
-                onChange={(e) => setPaymentTerms(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] bg-white"
-              >
-                <option value={PaymentTerm.COD}>COD - Thanh toán ngay khi nhận hàng</option>
-                <option value={PaymentTerm.NET_15}>NET 15 - Thanh toán trong 15 ngày</option>
-                <option value={PaymentTerm.NET_30}>
-                  NET 30 - Thanh toán trong 30 ngày (Chuẩn)
-                </option>
-                <option value={PaymentTerm.NET_45}>NET 45 - Thanh toán trong 45 ngày</option>
-                <option value={PaymentTerm.NET_60}>NET 60 - Thanh toán trong 60 ngày</option>
-                <option value={PaymentTerm.EOM_30}>EOM + 30 - Cuối tháng cộng 30 ngày</option>
-              </select>
-            </div>
-
-            {/* Input: Hạn mức tạm thời */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Hạn mức tạm thời cấp thêm (Mùa vụ)
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={temporaryCreditLimitStr}
-                  onChange={(e) => handleMoneyChange(e.target.value, setTemporaryCreditLimitStr)}
-                  className="w-full px-3 py-2 pr-10 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
-                  placeholder="0"
-                />
-                <span className="absolute right-3 top-2.5 text-xs text-slate-400 font-medium">
-                  đ
-                </span>
+          {/* Hộp Thông báo Dư nợ Động (Dynamic Alert Box) theo 3 cấp độ tỷ lệ */}
+          {roundedUsageRate >= 100 ? (
+            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <div className="text-xs text-red-900 leading-relaxed font-medium">
+                <p>
+                  <strong>Cảnh báo: Hạn mức mới thấp hơn dư nợ hiện tại!</strong> Dư nợ hiện hành của đại lý: <strong>{formatVND(currentDebt)} đ</strong> (chiếm <strong>{roundedUsageRate}%</strong> hạn mức mới).
+                </p>
               </div>
             </div>
-          </div>
-
-          {/* Thông tin dư nợ hiện tại & tỷ lệ dự kiến */}
-          <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-100 flex items-start gap-3">
-            <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-            <div className="text-xs text-blue-900 leading-relaxed">
-              <p>
-                Dư nợ hiện hành của đại lý: <strong>{formatVND(currentDebt)} đ</strong>. Với
-                hạn mức mới, tỷ lệ sử dụng công nợ ước tính là <strong>{newUsageRate}%</strong>.
-              </p>
+          ) : roundedUsageRate >= 80 ? (
+            <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="text-xs text-amber-900 leading-relaxed">
+                <p>
+                  Dư nợ hiện hành của đại lý: <strong>{formatVND(currentDebt)} đ</strong>. Với hạn mức mới, tỷ lệ sử dụng công nợ ước tính là <strong>{roundedUsageRate}%</strong> (cảnh báo: tiệm cận hạn mức an toàn).
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 flex items-start gap-3">
+              <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+              <div className="text-xs text-blue-900 leading-relaxed">
+                <p>
+                  Dư nợ hiện hành của đại lý: <strong>{formatVND(currentDebt)} đ</strong>. Với hạn mức mới, tỷ lệ sử dụng công nợ ước tính là <strong>{roundedUsageRate}%</strong>.
+                </p>
+              </div>
+            </div>
+          )}
 
-          {/* Input 3: Lý do thay đổi (BẮT BUỘC) */}
+          {/* Input 3: Lý do thay đổi (BẮT BUỘC) với Ant Design Rule validation tiếng Việt */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">
               Lý do thay đổi hạn mức (BẮT BUỘC) <span className="text-red-500">*</span>
             </label>
             <textarea
-              required
               rows={3}
               value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Nhập lý do thay đổi hạn mức công nợ (tối thiểu 5 ký tự) để phục vụ kiểm toán hệ thống..."
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
+              onChange={(e) => handleReasonChange(e.target.value)}
+              onBlur={handleReasonBlur}
+              placeholder="Nhập lý do thay đổi hạn mức công nợ (tối thiểu 10 ký tự)..."
+              className={`w-full px-3 py-2 text-sm rounded-lg border transition-colors ${
+                reasonError
+                  ? 'border-red-400 focus:ring-2 focus:ring-red-400/20 focus:border-red-500'
+                  : 'border-slate-300 focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]'
+              } focus:outline-none`}
             />
-            <p className="mt-1 text-[11px] text-slate-400">
-              Lý do này sẽ được ghi nhận vào Nhật ký kiểm toán hệ thống (Audit Log) trong Database
-              Transaction.
-            </p>
+            {reasonError && (
+              <p className="mt-1.5 text-xs text-red-500 font-medium flex items-center gap-1">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>{reasonError}</span>
+              </p>
+            )}
           </div>
 
           {/* Footer nút bấm */}
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-            >
-              Hủy bỏ
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-5 py-2 text-xs font-semibold text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5 disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <div className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Đang lưu...</span>
-                </>
-              ) : (
-                <>
-                  <Check className="h-4 w-4" />
-                  <span>Lưu hạn mức công nợ</span>
-                </>
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+            <div>
+              {isUnchanged && (
+                <span className="text-xs text-slate-400 font-medium">
+                  Chưa có thay đổi nào so với hiện tại
+                </span>
               )}
-            </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="submit"
+                disabled={loading || isUnchanged}
+                title={isUnchanged ? 'Vui lòng thay đổi hạn mức hoặc số ngày nợ trước khi lưu' : ''}
+                className="px-5 py-2 text-xs font-semibold text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <>
+                    <div className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Đang lưu...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" />
+                    <span>Lưu hạn mức công nợ</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>
