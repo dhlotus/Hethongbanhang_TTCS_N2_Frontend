@@ -205,6 +205,7 @@ export const OrdersPage: React.FC = () => {
   const initialFromDate = searchParams.get('fromDate') || '';
   const initialToDate = searchParams.get('toDate') || '';
   const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const initialLimit = Math.max(1, parseInt(searchParams.get('limit') || '10', 10) || 10);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -213,7 +214,7 @@ export const OrdersPage: React.FC = () => {
   const [totalAmount, setTotalAmount] = useState(0);
   const [page, setPage] = useState(initialPage);
   const [totalPages, setTotalPages] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(initialLimit);
 
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>(initialStatus);
   const [searchInput, setSearchInput] = useState(initialSearch);
@@ -365,6 +366,9 @@ export const OrdersPage: React.FC = () => {
     if (page > 1) {
       params.set('page', String(page));
     }
+    if (limit !== 10) {
+      params.set('limit', String(limit));
+    }
     if (urlCustomerId) {
       params.set('customerId', urlCustomerId);
     }
@@ -374,7 +378,7 @@ export const OrdersPage: React.FC = () => {
     if (currentQuery !== newQuery) {
       setSearchParams(params, { replace: true });
     }
-  }, [searchTerm, statusFilter, selectedRegion, fromDate, toDate, page, urlCustomerId, searchParams, setSearchParams]);
+  }, [searchTerm, statusFilter, selectedRegion, fromDate, toDate, page, limit, urlCustomerId, searchParams, setSearchParams]);
 
   // Đồng bộ từ URL ngược lại state khi người dùng dùng nút Back/Forward của trình duyệt
   useEffect(() => {
@@ -403,6 +407,10 @@ export const OrdersPage: React.FC = () => {
     const p = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
     if (p !== page) {
       setPage(p);
+    }
+    const l = Math.max(1, parseInt(searchParams.get('limit') || '10', 10) || 10);
+    if (l !== limit) {
+      setLimit(l);
     }
   }, [searchParams]);
 
@@ -1360,7 +1368,8 @@ export const OrdersPage: React.FC = () => {
                   pageSize={limit}
                   pageSizeOptions={[10, 20, 50]}
                   itemLabel="đơn hàng"
-                  showFirstLast={true}
+                  showRecordRange={false}
+                  showFirstLast={false}
                   onPageChange={(p) => setPage(p)}
                   onPageSizeChange={(sz) => {
                     setLimit(sz);

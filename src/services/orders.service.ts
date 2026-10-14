@@ -13,6 +13,7 @@ import type {
   CustomerOption,
   DiscontinuedProductItem,
   Order,
+  OrderLine,
   OrderApprovalAction,
   OrderApprovalHistory,
   OrderQueryParams,
