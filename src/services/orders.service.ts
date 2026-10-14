@@ -683,8 +683,22 @@ export const ordersService = {
    * Lấy chi tiết 1 đơn hàng theo ID trực tiếp từ máy chủ (SN-38)
    */
   async getOrderById(id: string): Promise<Order> {
-    const res = await apiClient.get<Order | { data: Order }>(`/orders/${id}`);
-    return (res.data as { data?: Order })?.data ?? (res.data as Order);
+    const token = tokenStorage.getAccessToken();
+    const isDemo = token?.startsWith('demo-jwt-');
+    if (isDemo) {
+      const all = getStoredDemoOrders();
+      const found = all.find((o) => o.id === id || o.orderCode === id);
+      if (found) return found;
+    }
+    try {
+      const res = await apiClient.get<Order | { data: Order }>(`/orders/${id}`);
+      return (res.data as { data?: Order })?.data ?? (res.data as Order);
+    } catch (err) {
+      const all = getStoredDemoOrders();
+      const found = all.find((o) => o.id === id || o.orderCode === id);
+      if (found) return found;
+      throw err;
+    }
   },
 
   /**
@@ -1048,12 +1062,45 @@ export const ordersService = {
     if (!source) {
       throw new Error(`Không tìm thấy đơn hàng cần sao chép (ID: ${orderId})`);
     }
+
+    // SN-48: Áp lại giá và chiết khấu hiện hành của đại lý, không kế thừa giá cũ
+    const customerGroup = (source.customerGroup || 'AGENT_LEVEL_1') as CustomerGroupType;
+    const discountRate = customerGroup === 'AGENT_LEVEL_1' ? 5 : customerGroup === 'AGENT_LEVEL_2' ? 3 : 0;
+
+    const newLines: OrderLine[] = (source.lines || []).map((line) => {
+      const foundProduct = MOCK_PRODUCTS.find(
+        (p) => p.sku?.toUpperCase() === line.productSku?.toUpperCase() || p.id === line.productId
+      );
+      const convRate = line.conversionRate > 0 ? line.conversionRate : 1;
+      const baseCatalogPrice = foundProduct?.price ?? (line.listPrice || 25000);
+      const currentListPrice = Math.round(baseCatalogPrice * convRate);
+      const currentUnitPrice = Math.round((currentListPrice * (100 - discountRate)) / 100);
+      const lineTotal = line.quantity * currentUnitPrice;
+
+      return {
+        ...line,
+        listPrice: currentListPrice,
+        unitPrice: currentUnitPrice,
+        discountPercent: discountRate,
+        lineTotal,
+        isPriceManuallyEdited: false,
+      };
+    });
+
+    const subtotal = newLines.reduce((sum, l) => sum + (l.listPrice || l.unitPrice) * l.quantity, 0);
+    const grandTotal = newLines.reduce((sum, l) => sum + l.lineTotal, 0);
+    const totalDiscount = Math.max(0, subtotal - grandTotal);
+
     const newCode = `DH${new Date().toISOString().slice(2, 4)}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(10000 + Math.random() * 90000))}`;
     const newOrder: Order = {
       ...source,
       id: `ord-clone-${Date.now()}`,
       orderCode: newCode,
       status: 'DRAFT',
+      lines: newLines,
+      subtotal,
+      totalDiscount,
+      grandTotal,
       note: source.note ? `[Bản sao từ ${source.orderCode || source.id}] ${source.note}` : `Bản sao từ ${source.orderCode || source.id}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -1062,6 +1109,9 @@ export const ordersService = {
       approverName: undefined,
     };
     saveStoredDemoOrders([newOrder, ...all]);
+    try {
+      window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: newOrder }));
+    } catch {}
     return newOrder;
   },
 
