@@ -232,7 +232,17 @@ export const OrdersPage: React.FC = () => {
   const [decisionComment, setDecisionComment] = useState('');
   const [approvalHistory, setApprovalHistory] = useState<OrderApprovalHistory[]>([]);
   const [isLoadingApprovalHistory, setIsLoadingApprovalHistory] = useState(false);
-  const [printOrder, setPrintOrder] = useState<Order | null>(null);
+  // Khởi tạo trực tiếp từ cache để khi F5 tải lại trang thì modal In / Xuất PDF xuất hiện ngay lập tức
+  const [printOrder, setPrintOrder] = useState<Order | null>(() => {
+    try {
+      const cached = sessionStorage.getItem('loha_active_print_order_data');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && (parsed.id || parsed.orderCode)) return parsed;
+      }
+    } catch {}
+    return null;
+  });
   const [selectedOrderForReorder, setSelectedOrderForReorder] = useState<Order | null>(null);
   const [isCloning, setIsCloning] = useState<string | null>(null);
 
@@ -484,6 +494,25 @@ export const OrdersPage: React.FC = () => {
     user?.fullName,
   ]);
 
+  // Khôi phục modal In / Xuất PDF khi người dùng ấn F5 hoặc truy cập qua URL có query ?printOrderId=...
+  useEffect(() => {
+    const printId = searchParams.get('printOrderId') || searchParams.get('print');
+    if (!printId || printOrder) return;
+
+    const found = orders.find((o) => o.id === printId || o.orderCode === printId);
+    if (found) {
+      setPrintOrder(found);
+      return;
+    }
+
+    ordersService
+      .getOrderById(printId)
+      .then((ord) => {
+        if (ord) setPrintOrder(ord);
+      })
+      .catch(() => {});
+  }, [searchParams, orders, printOrder]);
+
   useEffect(() => {
     let isMounted = true;
     if (!viewOrder?.id) {
@@ -529,9 +558,34 @@ export const OrdersPage: React.FC = () => {
     }
   };
 
-  /** Mở modal in / xuất PDF đơn hàng (SN-47) */
+  /** Mở modal in / xuất PDF đơn hàng (SN-47) và lưu URL/Session để F5 không bị mất */
   const handleOpenPrint = (targetOrder: Order): void => {
     setPrintOrder(targetOrder);
+    try {
+      const code = targetOrder.orderCode || targetOrder.id || '';
+      sessionStorage.setItem('loha_active_print_order_id', code);
+      sessionStorage.setItem('loha_active_print_order_data', JSON.stringify(targetOrder));
+    } catch {}
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('printOrderId', targetOrder.orderCode || targetOrder.id || '');
+      return next;
+    }, { replace: true });
+  };
+
+  /** Đóng modal in / xuất PDF và dọn dẹp URL, cache */
+  const handleClosePrint = (): void => {
+    setPrintOrder(null);
+    try {
+      sessionStorage.removeItem('loha_active_print_order_id');
+      sessionStorage.removeItem('loha_active_print_order_data');
+    } catch {}
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('printOrderId');
+      next.delete('print');
+      return next;
+    }, { replace: true });
   };
 
   const submitApprovalDecision = async (
@@ -1679,7 +1733,7 @@ export const OrdersPage: React.FC = () => {
       <OrderPrintModal
         order={printOrder}
         isOpen={Boolean(printOrder)}
-        onClose={() => setPrintOrder(null)}
+        onClose={handleClosePrint}
       />
 
       {/* Modal Xác nhận Duyệt Đơn & Giữ chỗ Tồn kho (SN-180) */}

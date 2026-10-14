@@ -1180,4 +1180,51 @@ input.glass-input:-webkit-autofill:active {
 .no-scrollbar {
   -ms-overflow-style: none !important; /* IE and Edge */
   scrollbar-width: none !important; /* Firefox */
-}
+}
+
+/* ========================================================================== */
+/* PRINT STYLES - HỖ TRỢ IN ẤN VÀ XUẤT PDF CHUẨN A4 ĐỘC LẬP                    */
+/* ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm 8mm 10mm;
+  }
+
+  /* Ẩn toàn bộ giao diện website chính khi modal in đang mở (loại bỏ hoàn toàn trang trắng số 1) */
+  body.has-order-print-open #root {
+    display: none !important;
+  }
+
+  body.has-order-print-open {
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body.has-order-print-open .print-modal-backdrop {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body.has-order-print-open .print-modal-container {
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Chỉ in nội dung phiếu */
+  #order-print-document {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
+
