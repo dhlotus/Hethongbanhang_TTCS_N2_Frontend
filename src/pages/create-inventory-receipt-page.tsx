@@ -81,7 +81,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
   const [referenceDocument, setReferenceDocument] = useState("");
   const [receiptDate, setReceiptDate] = useState<string>(getTodayString);
   const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<ReceiptItemForm[]>([createInitialItem()]);
+  const [items, setItems] = useState<ReceiptItemForm[]>([]);
 
   /**
    * Reset form về trạng thái ban đầu sạch sẽ (SN-178)
@@ -93,7 +93,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
     setReceiptDate(getTodayString());
     setNotes("");
     setShowValidationErrors(false);
-    setItems([createInitialItem()]);
+    setItems([]);
   }, []);
 
   /**
@@ -445,11 +445,10 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                 <select
                   value={supplierId}
                   onChange={(e) => setSupplierId(e.target.value)}
-                  className={`w-full pl-10 pr-3 py-2 bg-white border ${
-                    showValidationErrors && !supplierId
+                  className={`w-full pl-10 pr-3 py-2 bg-white border ${showValidationErrors && !supplierId
                       ? "border-rose-500 ring-1 ring-rose-200"
                       : "border-slate-300 focus:border-[#371cdb]"
-                  } rounded-xl focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 text-xs font-medium text-slate-800 transition-all truncate`}
+                    } rounded-xl focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 text-xs font-medium text-slate-800 transition-all truncate`}
                 >
                   <option value="">-- Chọn NCC giao hàng --</option>
                   {suppliers.map((s) => (
@@ -519,7 +518,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                 Toàn bộ bề ngang được tối ưu cho việc nhập thông tin chi tiết, Số lô và HSD được tách thành các cột riêng biệt
               </p>
             </div>
-            
+
             {/* Cụm góc trên bên phải: Nút + Thêm dòng hàng nằm cạnh badge Mặt hàng đã chọn */}
             <div className="flex items-center gap-3">
               <button
@@ -569,12 +568,16 @@ export const CreateInventoryReceiptPage: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="p-12 text-center text-slate-400">
-                      <Package className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                      <p className="font-medium text-slate-600">Chưa có dòng hàng nào</p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Bấm nút &quot;+ Thêm dòng hàng&quot; ở thanh tiêu đề bên trên để bắt đầu chọn sản phẩm
-                      </p>
+                    <td colSpan={9} className="py-14 px-4 text-center text-slate-400">
+                      <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
+                        <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-3 shadow-2xs">
+                          <Package className="w-7 h-7 text-slate-400" />
+                        </div>
+                        <p className="font-semibold text-slate-700 text-sm">Chưa có dòng hàng nào</p>
+                        <p className="text-xs text-slate-500 mt-1 mb-4 text-center">
+                          Chưa có dòng hàng nào. Bấm &quot;+ Thêm dòng hàng&quot; để bắt đầu chọn sản phẩm.
+                        </p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -672,11 +675,10 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                                 handleItemChange(idx, "packageQuantity", parseFloat(e.target.value) || 0)
                               }
                               placeholder="0"
-                              className={`w-full px-2.5 py-1.5 bg-white border ${
-                                showValidationErrors && (!item.packageQuantity || item.packageQuantity <= 0)
+                              className={`w-full px-2.5 py-1.5 bg-white border ${showValidationErrors && (!item.packageQuantity || item.packageQuantity <= 0)
                                   ? "border-rose-500 ring-1 ring-rose-200"
                                   : "border-slate-300 focus:border-[#371cdb]"
-                              } rounded-lg focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 text-xs text-right font-mono font-medium text-slate-900 transition-all`}
+                                } rounded-lg focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 text-xs text-right font-mono font-medium text-slate-900 transition-all`}
                             />
                             {item.conversionFactor > 1 && (
                               <div className="text-[10px] text-[#371cdb] font-medium font-mono text-right mt-1 whitespace-nowrap">
@@ -695,13 +697,12 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                               value={item.batchNumber}
                               onChange={(e) => handleItemChange(idx, "batchNumber", e.target.value)}
                               placeholder={isBatchManaged ? "LOT-202610-A (*)" : "LOT-..."}
-                              className={`w-full px-2.5 py-1.5 bg-white border ${
-                                isBatchManaged && showValidationErrors && !item.batchNumber.trim()
+                              className={`w-full px-2.5 py-1.5 bg-white border ${isBatchManaged && showValidationErrors && !item.batchNumber.trim()
                                   ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-200"
                                   : isBatchManaged && !item.batchNumber.trim()
-                                  ? "border-amber-300 bg-amber-50/20 focus:border-[#371cdb]"
-                                  : "border-slate-300 focus:border-[#371cdb]"
-                              } rounded-lg text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 transition-all`}
+                                    ? "border-amber-300 bg-amber-50/20 focus:border-[#371cdb]"
+                                    : "border-slate-300 focus:border-[#371cdb]"
+                                } rounded-lg text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 transition-all`}
                             />
                             {isBatchManaged && (
                               <span className="text-[10px] text-amber-600 block mt-1 font-medium">
@@ -719,15 +720,14 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                               value={item.expiryDate}
                               onChange={(e) => handleItemChange(idx, "expiryDate", e.target.value)}
                               title="Hạn sử dụng (HSD)"
-                              className={`w-full px-2 py-1.5 bg-white border ${
-                                (isBatchManaged || Boolean(item.batchNumber)) &&
-                                showValidationErrors &&
-                                !item.expiryDate.trim()
+                              className={`w-full px-2 py-1.5 bg-white border ${(isBatchManaged || Boolean(item.batchNumber)) &&
+                                  showValidationErrors &&
+                                  !item.expiryDate.trim()
                                   ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-200"
                                   : isBatchManaged && !item.expiryDate.trim()
-                                  ? "border-amber-300 bg-amber-50/20 focus:border-[#371cdb]"
-                                  : "border-slate-300 focus:border-[#371cdb]"
-                              } rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 transition-all font-mono`}
+                                    ? "border-amber-300 bg-amber-50/20 focus:border-[#371cdb]"
+                                    : "border-slate-300 focus:border-[#371cdb]"
+                                } rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 transition-all font-mono`}
                             />
                             <div className="flex items-center justify-between text-[10px] text-slate-400 gap-1 pt-0.5">
                               <span className="shrink-0">NSX:</span>
