@@ -832,7 +832,9 @@ export const CreateOrderPage: React.FC = () => {
   const stockErrors = useMemo(() => {
     return lines.filter((l) => {
       const available = l.availableStock ?? l.stockAvailable ?? 0;
-      return l.quantity > available;
+      const rate = l.conversionRate || 1;
+      const maxOrderQty = Math.floor(available / rate);
+      return l.quantity > maxOrderQty;
     });
   }, [lines]);
   const hasStockError = stockErrors.length > 0;
@@ -1476,7 +1478,9 @@ export const CreateOrderPage: React.FC = () => {
                   <tbody className="divide-y divide-slate-100 font-medium">
                     {pagedLines.map((l) => {
                       const avail = l.availableStock ?? l.stockAvailable ?? 0;
-                      const isOver = l.quantity > avail;
+                      const rate = l.conversionRate || 1;
+                      const maxOrderQty = Math.floor(avail / rate);
+                      const isOver = l.quantity > maxOrderQty;
 
                       return (
                         <tr key={l.id} className={`hover:bg-slate-50/70 transition-colors ${isOver ? 'bg-rose-50/60' : ''}`}>
@@ -1484,7 +1488,26 @@ export const CreateOrderPage: React.FC = () => {
                             <p className="font-bold text-slate-900">{l.productName}</p>
                             <p className="text-[11px] text-slate-400 font-mono">{l.productSku}</p>
                             {isOver && (
-                              <p className="text-[10px] text-rose-600 font-semibold mt-0.5">Vượt tồn khả dụng (Còn lại {avail} {l.baseUnit})</p>
+                              <div className="flex items-center gap-1.5 flex-wrap mt-0.5 text-[10px]">
+                                <span className="text-rose-600 font-semibold">
+                                  Vượt tồn khả dụng (Còn lại {avail} {l.baseUnit})
+                                </span>
+                                {maxOrderQty > 0 ? (
+                                  <>
+                                    <span className="text-slate-300">•</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateLine(l.id!, 'quantity', maxOrderQty)}
+                                      className="text-indigo-600 hover:text-indigo-800 font-bold hover:underline cursor-pointer transition-colors inline-flex items-center"
+                                      title={`Bấm để điều chỉnh số lượng về mức tồn khả dụng: ${maxOrderQty} ${l.unit}`}
+                                    >
+                                      Đặt {maxOrderQty} {l.unit}
+                                    </button>
+                                  </>
+                                ) : (
+                                  <span className="text-slate-400 italic">(Kho đã hết hàng)</span>
+                                )}
+                              </div>
                             )}
                           </td>
                           <td className="px-3 py-3 text-center">
