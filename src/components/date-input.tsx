@@ -143,7 +143,7 @@ export const DateInput: React.FC<DateInputProps> = ({
 
       <div
         onClick={handleOpenPicker}
-        className={`relative flex items-center w-full px-3 py-2 text-xs rounded-lg border transition-all cursor-pointer select-none bg-white ${
+        className={`relative flex items-center w-full h-[38px] px-3 py-2 text-xs rounded-lg border transition-all cursor-pointer select-none bg-white ${
           disabled
             ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
             : isInvalid

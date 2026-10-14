@@ -15,13 +15,14 @@ import {
   Loader2,
   MapPin,
   Lock,
+  Calendar,
+  FileText,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { Pagination } from '../components/pagination';
 import { ordersService } from '../services/orders.service';
 import { warehouseService } from '../services/warehouse.service';
 import { customersService } from '../services/customers.service';
-import { categoriesService } from '../services/categories.service';
 import type { DeliveryPoint as CustomerDeliveryPoint } from '../types/customer.types';
 import { tokenStorage } from '../utils/token-storage';
 import { getStoredUser } from '../utils/navigation';
@@ -35,7 +36,6 @@ import type {
   CustomerDebtStatus,
 } from '../types/order';
 import type { Product, ProductUnit } from '../types/products';
-import type { CategoryTreeNode } from '../types/categories';
 import type { AgencyWarehouseDetail } from '../types/warehouse.types';
 import { DateInput } from '../components/date-input';
 
@@ -241,10 +241,21 @@ export const CreateOrderPage: React.FC = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null);
   const [deliveryPoint, setDeliveryPoint] = useState<Partial<DeliveryPoint>>({});
   const [deliveryPoints, setDeliveryPoints] = useState<CustomerDeliveryPoint[]>([]);
+  const [isCustomDeliveryAddress, setIsCustomDeliveryAddress] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState(getDefaultDeliveryDate());
   const [note, setNote] = useState('');
+
+  // Danh sách điểm giao hàng khả dụng của đại lý
+  const availableDeliveryPoints = useMemo(() => {
+    if (deliveryPoints.length > 0) return deliveryPoints;
+    if (selectedCustomer?.deliveryPoints && selectedCustomer.deliveryPoints.length > 0) {
+      return selectedCustomer.deliveryPoints;
+    }
+    return [];
+  }, [deliveryPoints, selectedCustomer?.deliveryPoints]);
+
   // Xử lý ghi chú: Tối đa 100 ký tự, cho phép xóa tự do và chặn phím gõ thêm khi đã đầy
-  const handleNoteKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleNoteKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     // 1. Phím xóa (Backspace, Delete) luôn luôn được phép
     if (e.key === 'Backspace' || e.key === 'Delete') {
       return;
@@ -263,15 +274,15 @@ export const CreateOrderPage: React.FC = () => {
     }
 
     // 4. Nếu đã đạt 100 ký tự và không bôi đen ký tự nào để thay thế -> chặn gõ thêm phím cứng
-    const textarea = e.currentTarget;
-    const hasSelection = textarea.selectionStart !== textarea.selectionEnd;
+    const input = e.currentTarget;
+    const hasSelection = (input.selectionStart ?? 0) !== (input.selectionEnd ?? 0);
     if (note.length >= 100 && !hasSelection) {
       e.preventDefault();
       e.stopPropagation();
     }
   }, [note.length]);
 
-  const handleNoteChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleNoteChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     let val = e.target.value;
 
     // Luôn khống chế tối đa 100 ký tự
@@ -283,17 +294,17 @@ export const CreateOrderPage: React.FC = () => {
     setNote(val);
   }, []);
 
-  const handleNotePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+  const handleNotePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const pastedText = e.clipboardData.getData('text') || '';
-    const textarea = e.currentTarget;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const currentVal = textarea.value;
+    const input = e.currentTarget;
+    const start = input.selectionStart ?? 0;
+    const end = input.selectionEnd ?? 0;
+    const currentVal = input.value;
 
     // Cắt vừa vặn 100 ký tự khi dán
     const newVal = (currentVal.slice(0, start) + pastedText + currentVal.slice(end)).slice(0, 100);
     e.preventDefault();
-    textarea.value = newVal;
+    input.value = newVal;
     setNote(newVal);
   }, []);
 
@@ -311,22 +322,7 @@ export const CreateOrderPage: React.FC = () => {
   void isLoadingDebt;
   const [showCreditApprovalModal, setShowCreditApprovalModal] = useState<boolean>(false);
 
-  // ── 2. Cây danh mục & Sản phẩm ──
-  const [categoriesTree, setCategoriesTree] = useState<CategoryTreeNode[]>([]);
-  // Chỉ lấy nhánh cấp 1 chính thức từ Cây sản phẩm, loại bỏ nhóm thử nghiệm/trống
-  const rootCategories = useMemo(() => {
-    return categoriesTree.filter((cat) => {
-      const isLevel1 = cat.level === 1 || !cat.parentId;
-      const isActive = cat.status !== 'INACTIVE';
-      const isNotTest = !cat.name.toLowerCase().includes('thử nghiệm') &&
-        !cat.name.toLowerCase().includes('test') &&
-        !cat.name.toLowerCase().includes('(trống)');
-      return isLevel1 && isActive && isNotTest;
-    });
-  }, [categoriesTree]);
-  const [isLoadingTree, setIsLoadingTree] = useState(false);
-  void isLoadingTree;
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('ALL');
+  // ── 2. Sản phẩm & Tìm kiếm ──
   const [productQuery, setProductQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -368,6 +364,7 @@ export const CreateOrderPage: React.FC = () => {
         if (ord.note) setNote(ord.note);
         if (ord.deliveryPoint) {
           setDeliveryPoint(ord.deliveryPoint);
+          setIsCustomDeliveryAddress(!ord.deliveryPoint.id && Boolean(ord.deliveryPoint.address));
         }
         if (ord.lines && ord.lines.length > 0) {
           setLines(ord.lines);
@@ -398,21 +395,6 @@ export const CreateOrderPage: React.FC = () => {
       });
   }, [editOrderId]);
 
-  // ── Tải cây nhóm hàng ──
-  useEffect(() => {
-    setIsLoadingTree(true);
-    categoriesService
-      .getCategoryTree()
-      .then((tree) => {
-        setCategoriesTree(tree);
-      })
-      .catch((err) => {
-        console.error('Không thể tải cây nhóm hàng:', err);
-      })
-      .finally(() => {
-        setIsLoadingTree(false);
-      });
-  }, []);
 
   // ── Tải danh sách đại lý (Chỉ hiển thị đại lý được phân công nếu là NVKD) ──
   const hasAutoSelectedRef = useRef(false);
@@ -495,6 +477,7 @@ export const CreateOrderPage: React.FC = () => {
       ordersService.clearDraft(DRAFT_KEY);
     }
     setSelectedCustomer(c);
+    setIsCustomDeliveryAddress(false);
 
     try {
       const points = await customersService.getDeliveryPoints(c.id);
@@ -676,7 +659,7 @@ export const CreateOrderPage: React.FC = () => {
     };
   }, [selectedCustomer]);
 
-  // ── Tìm kiếm sản phẩm theo Cây nhóm hàng & Từ khóa (debounce 300ms) ──
+  // ── Tìm kiếm sản phẩm theo Từ khóa (debounce 300ms) ──
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(async () => {
@@ -689,18 +672,7 @@ export const CreateOrderPage: React.FC = () => {
           selectedCustomer?.id,
         );
 
-        // Lọc theo Cây nhóm hàng nếu được chọn
-        const filtered =
-          selectedCategoryId === 'ALL'
-            ? results
-            : results.filter(
-                (p) =>
-                  p.categoryId === selectedCategoryId ||
-                  p.category === selectedCategoryId ||
-                  p.category?.includes(selectedCategoryId),
-              );
-
-        setSearchResults(filtered);
+        setSearchResults(results);
         setProductPage(1);
       } catch {
         setSearchResults([]);
@@ -713,7 +685,7 @@ export const CreateOrderPage: React.FC = () => {
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
-  }, [productQuery, selectedCategoryId, selectedCustomer?.id]);
+  }, [productQuery, selectedCustomer?.id]);
 
   // ── Khôi phục nháp từ localStorage nếu tạo mới (chỉ chạy 1 lần khi mount) ──
   const hasRestoredDraftRef = useRef(false);
@@ -1009,23 +981,6 @@ export const CreateOrderPage: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-6 max-w-full overflow-x-hidden p-2 sm:p-4">
-      {/* ── NÚT QUAY LẠI GỌN GÀNG TRÊN ĐẦU ── */}
-      <div className="flex items-center justify-between gap-2">
-        <Link
-          to="/sales/orders"
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors shrink-0"
-          title="Quay lại danh sách đơn hàng"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Quay lại</span>
-        </Link>
-        {editingOrder && (
-          <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md">
-            Đang sửa đơn: {editingOrder.orderCode}
-          </span>
-        )}
-      </div>
-
       {/* ── SEGMENTED CONTROL TAB CHUYỂN ĐỔI TRÊN MOBILE (360PX) ── */}
       <div className="flex lg:hidden bg-slate-100 p-1 rounded-xl text-xs font-semibold">
         <button
@@ -1067,10 +1022,26 @@ export const CreateOrderPage: React.FC = () => {
         {/* KHỐI 1: THÔNG TIN ĐẠI LÝ & GIAO HÀNG (FULL-WIDTH CARD)           */}
         {/* ================================================================= */}
         <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-indigo-600" />
-              <h3 className="text-base font-bold text-slate-900">Thông tin đại lý & giao hàng</h3>
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <Link
+                to="/sales/orders"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shrink-0 shadow-2xs"
+                title="Quay lại danh sách đơn hàng"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Quay lại</span>
+              </Link>
+              <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-indigo-600" />
+                <h3 className="text-base font-bold text-slate-900">Thông tin đại lý & giao hàng</h3>
+              </div>
+              {editingOrder && (
+                <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-md">
+                  Đang sửa đơn: {editingOrder.orderCode}
+                </span>
+              )}
             </div>
             {isSalesRepOnly && (
               <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200" title="Chỉ hiển thị đại lý được phân công cho bạn">
@@ -1080,32 +1051,41 @@ export const CreateOrderPage: React.FC = () => {
           </div>
 
           {/* Phần 1.1: Tìm kiếm và Chọn Đại lý */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-700">Chọn đại lý đặt hàng</label>
+          <div className="rounded-xl border border-slate-200/90 bg-slate-50/50 p-3.5 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Building2 className="w-4 h-4 text-indigo-600" />
+                <span>CHỌN ĐẠI LÝ ĐẶT HÀNG</span>
+              </label>
+              <span className="text-[11px] text-slate-500">
+                {isLoadingCustomers ? 'Đang tìm kiếm...' : `Hiển thị ${customers.length} đại lý`}
+              </span>
+            </div>
+
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 value={customerSearch}
                 onChange={(e) => setCustomerSearch(e.target.value)}
-                placeholder="Tìm nhanh theo mã đại lý, tên hoặc số điện thoại..."
-                className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
+                placeholder="Tìm nhanh theo mã hoặc tên đại lý..."
+                className="w-full h-[38px] pl-9 pr-4 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
               />
             </div>
 
-            {/* Danh sách đại lý cuộn hiển thị dạng lưới 3 cột trên Desktop */}
-            <div className="max-h-[190px] overflow-y-auto p-1.5 border border-slate-100 rounded-xl bg-slate-50/40">
+            {/* Danh sách đại lý cuộn hiển thị dạng lưới 3 cột trên Desktop (Khung nhìn lớn, trực quan) */}
+            <div className="max-h-[300px] overflow-y-auto p-2 border border-slate-200/80 rounded-xl bg-white shadow-2xs">
               {isLoadingCustomers ? (
-                <div className="flex items-center justify-center py-8 text-slate-400 gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                <div className="flex items-center justify-center py-10 text-slate-400 gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
                   <span className="text-xs">Đang tải danh sách đại lý...</span>
                 </div>
               ) : customers.length === 0 ? (
-                <div className="flex items-center justify-center py-8 text-slate-400 text-xs">
+                <div className="flex items-center justify-center py-10 text-slate-400 text-xs">
                   Không tìm thấy đại lý nào phù hợp
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {customers.map((c) => {
                     const isSelected = selectedCustomer?.id === c.id;
                     const isLocked = c.status === 'LOCKED';
@@ -1115,7 +1095,7 @@ export const CreateOrderPage: React.FC = () => {
                       <div
                         key={c.id}
                         onClick={() => void handleSelectCustomer(c)}
-                        className={`p-2.5 rounded-lg border transition-all cursor-pointer ${
+                        className={`p-3 rounded-lg border transition-all cursor-pointer ${
                           isSelected
                             ? 'border-indigo-600 bg-indigo-50/80 ring-2 ring-indigo-500/20 shadow-xs'
                             : isLocked
@@ -1123,17 +1103,11 @@ export const CreateOrderPage: React.FC = () => {
                             : 'border-slate-200/80 bg-white hover:bg-slate-50 hover:border-slate-300'
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-1.5">
+                        <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold text-slate-900 truncate">{c.name}</p>
-                            <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-500 flex-wrap">
-                              <span className="font-mono font-semibold text-slate-700">{c.code}</span>
-                              {c.phone && (
-                                <>
-                                  <span>·</span>
-                                  <span>{c.phone}</span>
-                                </>
-                              )}
+                            <p className="text-xs font-bold text-slate-900 truncate" title={c.name}>{c.name}</p>
+                            <div className="mt-0.5 text-[11px] text-slate-500 font-mono font-semibold">
+                              {c.code}
                             </div>
                           </div>
                           <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${groupInfo.badgeClass}`}>
@@ -1155,7 +1129,7 @@ export const CreateOrderPage: React.FC = () => {
                 <div className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Đại lý đang chọn</div>
                 <div className="font-bold text-slate-900 text-sm truncate" title={selectedCustomer.name}>{selectedCustomer.name}</div>
                 <div className="text-slate-600 font-mono text-xs">
-                  {selectedCustomer.code} {selectedCustomer.phone ? `· ${selectedCustomer.phone}` : ''}
+                  {selectedCustomer.code}
                 </div>
               </div>
 
@@ -1200,57 +1174,85 @@ export const CreateOrderPage: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="p-3 bg-amber-50/60 border border-amber-200/80 rounded-xl flex items-center gap-2 text-amber-800 text-xs">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Vui lòng chọn đại lý ở danh sách trên để tiếp tục.</span>
+            <div className="py-4 px-4 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl flex items-center justify-center gap-2">
+              <Building2 className="w-4 h-4 text-slate-300 shrink-0" />
+              <span>Chưa chọn đại lý</span>
             </div>
           )}
 
-          {/* Phần 1.3: Thông tin Giao hàng & Ngày giao & Ghi chú */}
+          {/* Phần 1.3: Thông tin Giao hàng & Ngày giao & Ghi chú (Canh chỉnh đều hàng ngang, chiều cao chuẩn 38px) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-slate-100 text-xs">
             {/* Cột A: Điểm giao hàng */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 h-5">
                 <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                Điểm giao hàng
+                <span>Điểm giao hàng</span>
               </label>
-              {(deliveryPoints.length > 0 || (selectedCustomer?.deliveryPoints && selectedCustomer.deliveryPoints.length > 0)) ? (
-                <select
-                  value={deliveryPoint.id ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (!val || val === 'custom') {
-                      setDeliveryPoint({ address: '', name: 'Địa chỉ tự nhập' });
-                    } else {
-                      const pool = deliveryPoints.length > 0 ? deliveryPoints : (selectedCustomer?.deliveryPoints || []);
-                      const dp = pool.find((p) => p.id === val);
-                      if (dp) setDeliveryPoint(dp);
-                    }
-                  }}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50/60 focus:bg-white focus:outline-none"
-                >
-                  <option value="">-- Chọn điểm giao đã lưu --</option>
-                  {(deliveryPoints.length > 0 ? deliveryPoints : (selectedCustomer?.deliveryPoints || [])).map((dp) => (
-                    <option key={dp.id} value={dp.id}>
-                      {dp.name} — {dp.address}
-                    </option>
-                  ))}
-                  <option value="custom">Tự nhập địa chỉ khác...</option>
-                </select>
-              ) : null}
-              <input
-                type="text"
-                value={deliveryPoint.address ?? ''}
-                onChange={(e) => setDeliveryPoint((prev) => ({ ...prev, address: e.target.value }))}
-                placeholder="Địa chỉ giao hàng chi tiết..."
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50/60 focus:bg-white focus:outline-none"
-              />
+              {availableDeliveryPoints.length > 0 ? (
+                isCustomDeliveryAddress ? (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={deliveryPoint.address ?? ''}
+                      onChange={(e) => setDeliveryPoint({ address: e.target.value, name: 'Địa chỉ tự nhập' })}
+                      placeholder="Nhập địa chỉ giao hàng chi tiết..."
+                      className="w-full h-[38px] pl-3 pr-20 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomDeliveryAddress(false);
+                        if (availableDeliveryPoints.length > 0) {
+                          setDeliveryPoint(availableDeliveryPoints[0]);
+                        }
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                    >
+                      Chọn điểm lưu
+                    </button>
+                  </div>
+                ) : (
+                  <select
+                    value={deliveryPoint.id ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === 'custom') {
+                        setIsCustomDeliveryAddress(true);
+                        setDeliveryPoint({ address: '', name: 'Địa chỉ tự nhập' });
+                      } else {
+                        const dp = availableDeliveryPoints.find((p) => p.id === val);
+                        if (dp) setDeliveryPoint(dp);
+                      }
+                    }}
+                    className="w-full h-[38px] px-3 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400 truncate"
+                  >
+                    <option value="">-- Chọn điểm giao đã lưu --</option>
+                    {availableDeliveryPoints.map((dp) => (
+                      <option key={dp.id} value={dp.id}>
+                        {dp.name ? `${dp.name} — ${dp.address}` : dp.address}
+                      </option>
+                    ))}
+                    <option value="custom">✏️ Tự nhập địa chỉ khác...</option>
+                  </select>
+                )
+              ) : (
+                <input
+                  type="text"
+                  value={deliveryPoint.address ?? ''}
+                  onChange={(e) => setDeliveryPoint((prev) => ({ ...prev, address: e.target.value }))}
+                  placeholder="Địa chỉ giao hàng chi tiết..."
+                  className="w-full h-[38px] px-3 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                />
+              )}
             </div>
 
             {/* Cột B: Ngày giao hàng */}
             <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 h-5">
+                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Ngày giao hàng</span>
+              </label>
               <DateInput
-                label="Ngày giao hàng"
                 showClear={false}
                 value={deliveryDate}
                 onChange={(val) => setDeliveryDate(val)}
@@ -1262,16 +1264,19 @@ export const CreateOrderPage: React.FC = () => {
 
             {/* Cột C: Ghi chú */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Ghi chú</label>
-              <textarea
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 h-5">
+                <FileText className="w-3.5 h-3.5 text-slate-500" />
+                <span>Ghi chú</span>
+              </label>
+              <input
+                type="text"
                 value={note}
                 maxLength={100}
                 onKeyDown={handleNoteKeyDown}
                 onChange={handleNoteChange}
                 onPaste={handleNotePaste}
                 placeholder="Ghi chú đơn hàng..."
-                rows={2}
-                className="w-full px-3 py-1.5 text-xs border border-slate-200 bg-slate-50/60 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-400 rounded-lg focus:outline-none resize-none transition-colors"
+                className="w-full h-[38px] px-3 text-xs border border-slate-200 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-400 rounded-lg transition-colors"
               />
             </div>
           </div>
@@ -1301,50 +1306,14 @@ export const CreateOrderPage: React.FC = () => {
             </div>
           </div>
 
-          {/* CẢNH BÁO NẾU CHƯA CHỌN ĐẠI LÝ */}
+          {/* CẢNH BÁO NẾU CHƯA CHỌN ĐẠI LÝ (RÚT GỌN CHUẨN CARD CUỐI) */}
           {!selectedCustomer ? (
-            <div className="min-h-[220px] py-14 px-6 bg-slate-50/80 border border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-center space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center mx-auto shadow-xs">
-                <Lock className="w-5 h-5 stroke-[2.2]" />
-              </div>
-              <h4 className="text-sm font-bold text-slate-800">Chưa thể thêm sản phẩm</h4>
-              <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-                Vui lòng chọn đại lý trước để áp dụng bảng giá và chọn sản phẩm.
-              </p>
+            <div className="min-h-[160px] py-10 px-6 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center space-y-2">
+              <Lock className="w-8 h-8 text-slate-300 mx-auto" />
+              <span>Chưa chọn đại lý</span>
             </div>
           ) : (
             <>
-              {/* Thanh chọn nhanh Cây nhóm hàng cấp 1 */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs no-scrollbar">
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategoryId('ALL')}
-                  className={`px-3.5 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                    selectedCategoryId === 'ALL'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
-                  }`}
-                >
-                  Tất cả nhóm hàng
-                </button>
-                {rootCategories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setSelectedCategoryId(cat.id)}
-                    className={`px-3.5 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all cursor-pointer ${
-                      selectedCategoryId === cat.id
-                        ? 'bg-indigo-600 text-white shadow-xs font-semibold'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
-                    }`}
-                  >
-                    {cat.name}
-                    {cat.productCount > 0 && (
-                      <span className="ml-1 opacity-75 text-[10px]">({cat.productCount})</span>
-                    )}
-                  </button>
-                ))}
-              </div>
 
               {/* Lưới danh sách sản phẩm phân trang dạng 2 cột trên Desktop cực kỳ rộng rãi */}
               <div className="border border-slate-200/80 rounded-xl overflow-hidden bg-slate-50/20 p-2">
@@ -1424,7 +1393,7 @@ export const CreateOrderPage: React.FC = () => {
                 )}
               </div>
 
-              {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN DANH SÁCH ── */}
+              {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN DANH SÁCH (CHUẨN FOOTER NHƯ QUẢN LÝ ĐƠN HÀNG) ── */}
               {searchResults.length > 0 && (
                 <div className="pt-2 border-t border-slate-100">
                   <Pagination
@@ -1435,7 +1404,8 @@ export const CreateOrderPage: React.FC = () => {
                     pageSize={productPageSize}
                     pageSizeOptions={[6, 12, 24]}
                     itemLabel="sản phẩm"
-                    showFirstLast={true}
+                    showRecordRange={false}
+                    showFirstLast={false}
                     onPageChange={(page) => setProductPage(page)}
                     onPageSizeChange={(newSize) => {
                       setProductPageSize(newSize);
@@ -1571,7 +1541,7 @@ export const CreateOrderPage: React.FC = () => {
                 </table>
               </div>
 
-              {/* ── THANH PHÂN TRANG GIỎ HÀNG GẮN LIỀN CHÂN BẢNG (CHUẨN NHƯ QUẢN LÝ ĐẠI LÝ) ── */}
+              {/* ── THANH PHÂN TRANG GIỎ HÀNG GẮN LIỀN CHÂN BẢNG (CHUẨN FOOTER NHƯ QUẢN LÝ ĐƠN HÀNG) ── */}
               {lines.length > 0 && (
                 <div className="pt-2 border-t border-slate-100">
                   <Pagination
@@ -1582,7 +1552,8 @@ export const CreateOrderPage: React.FC = () => {
                     pageSize={cartPageSize}
                     pageSizeOptions={[5, 10, 20]}
                     itemLabel="dòng hàng"
-                    showFirstLast={true}
+                    showRecordRange={false}
+                    showFirstLast={false}
                     onPageChange={(page) => setCartPage(page)}
                     onPageSizeChange={(newSize) => {
                       setCartPageSize(newSize);
