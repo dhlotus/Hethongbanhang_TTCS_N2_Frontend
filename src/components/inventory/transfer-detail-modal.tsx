@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Building2,
   Calendar,
@@ -12,6 +12,7 @@ import {
   Truck,
 } from 'lucide-react';
 import { ModalLayout } from '../modal-layout';
+import { TransferPrintModal } from './transfer-print-modal';
 import type { InternalTransfer } from '../../types/internal-transfer.types';
 
 interface TransferDetailModalProps {
@@ -27,6 +28,8 @@ export const TransferDetailModal: React.FC<TransferDetailModalProps> = ({
   onClose,
   onConfirmReceipt,
 }) => {
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+
   if (!transfer) return null;
 
   const getStatusBadge = () => {
@@ -72,10 +75,11 @@ export const TransferDetailModal: React.FC<TransferDetailModalProps> = ({
   };
 
   const handlePrint = () => {
-    window.print();
+    setPrintModalOpen(true);
   };
 
   return (
+    <>
     <ModalLayout
       isOpen={isOpen}
       onClose={onClose}
@@ -105,10 +109,7 @@ export const TransferDetailModal: React.FC<TransferDetailModalProps> = ({
             {transfer.status === 'IN_TRANSIT' && onConfirmReceipt && (
               <button
                 type="button"
-                onClick={() => {
-                  onClose();
-                  onConfirmReceipt(transfer);
-                }}
+                onClick={() => onConfirmReceipt(transfer)}
                 className="px-5 py-2 text-xs font-bold text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] rounded-lg shadow-sm transition-all inline-flex items-center gap-1.5 cursor-pointer"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -235,7 +236,7 @@ export const TransferDetailModal: React.FC<TransferDetailModalProps> = ({
                         <span className="text-[11px] text-slate-400">{item.baseUnit}</span>
                       </td>
                       <td className="py-3 px-3 text-right">
-                        {item.receivedQuantity !== undefined ? (
+                        {item.receivedQuantity != null ? (
                           <span
                             className={`font-bold ${
                               hasDiscrepancy ? 'text-rose-600' : 'text-emerald-700'
@@ -248,7 +249,7 @@ export const TransferDetailModal: React.FC<TransferDetailModalProps> = ({
                         )}
                       </td>
                       <td className="py-3 px-3 text-center">
-                        {item.discrepancyQuantity === undefined ? (
+                        {item.discrepancyQuantity == null ? (
                           <span className="text-slate-400">—</span>
                         ) : item.discrepancyQuantity === 0 ? (
                           <span className="text-emerald-600 font-semibold">Khớp 100%</span>
@@ -280,5 +281,12 @@ export const TransferDetailModal: React.FC<TransferDetailModalProps> = ({
         </div>
       </div>
     </ModalLayout>
+
+    <TransferPrintModal
+      isOpen={printModalOpen}
+      transfer={transfer}
+      onClose={() => setPrintModalOpen(false)}
+    />
+    </>
   );
 };

@@ -98,3 +98,48 @@ export const numberToVietnameseWords = (amount: number): string => {
 
   return `${finalString} đồng chẵn`;
 };
+
+/**
+ * Chuyển đổi số lượng nguyên thành chuỗi chữ Tiếng Việt (không kèm đơn vị tiền tệ)
+ * Ví dụ: 15 -> "Mười lăm", 120 -> "Một trăm hai mươi"
+ */
+export const quantityToVietnameseWords = (quantity: number): string => {
+  if (isNaN(quantity) || quantity === 0) {
+    return 'Không';
+  }
+
+  const isNegative = quantity < 0;
+  let remaining = Math.abs(Math.round(quantity));
+
+  const groups: number[] = [];
+  while (remaining > 0) {
+    groups.push(remaining % 1000);
+    remaining = Math.floor(remaining / 1000);
+  }
+
+  const parts: string[] = [];
+  for (let i = groups.length - 1; i >= 0; i--) {
+    const value = groups[i];
+    if (value > 0) {
+      const showZeroHundred = i < groups.length - 1;
+      const text = readThreeDigits(value, showZeroHundred);
+      const scale = SCALES[i];
+      parts.push(scale ? `${text} ${scale}` : text);
+    }
+  }
+
+  let finalString = parts.join(' ').trim();
+  if (!finalString) {
+    return 'Không';
+  }
+
+  // Viết hoa chữ cái đầu tiên
+  finalString = finalString.charAt(0).toUpperCase() + finalString.slice(1);
+
+  if (isNegative) {
+    finalString = `Âm ${finalString.toLowerCase()}`;
+  }
+
+  return finalString;
+};
+

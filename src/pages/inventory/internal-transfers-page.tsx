@@ -14,6 +14,7 @@ import {
   Check,
   Copy,
   FileText,
+  Printer,
 } from 'lucide-react';
 import { showToast } from '../../components/toast';
 import { internalTransfersService } from '../../services/internal-transfers.service';
@@ -21,6 +22,7 @@ import { warehouseService } from '../../services/warehouse.service';
 import { CreateTransferModal } from '../../components/inventory/create-transfer-modal';
 import { ConfirmTransferReceiptModal } from '../../components/inventory/confirm-transfer-receipt-modal';
 import { TransferDetailModal } from '../../components/inventory/transfer-detail-modal';
+import { TransferPrintModal } from '../../components/inventory/transfer-print-modal';
 import { TransferKpiHeader } from '../../components/inventory/transfer-kpi-header';
 import { TransferFilters } from '../../components/inventory/transfer-filters';
 import type {
@@ -45,7 +47,9 @@ export const InternalTransfersPage: React.FC = () => {
   const [createModalOpen, setCreateModalOpen] = useState<boolean>(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState<boolean>(false);
   const [detailModalOpen, setDetailModalOpen] = useState<boolean>(false);
+  const [printModalOpen, setPrintModalOpen] = useState<boolean>(false);
   const [selectedTransfer, setSelectedTransfer] = useState<InternalTransfer | null>(null);
+  const [printTransfer, setPrintTransfer] = useState<InternalTransfer | null>(null);
 
   // Copy code feedback
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -268,9 +272,11 @@ export const InternalTransfersPage: React.FC = () => {
                   <th className="py-3 px-4 min-w-[240px]">Tuyến chuyển kho</th>
                   <th className="py-3 px-4 w-32 text-center">Trạng thái</th>
                   <th className="py-3 px-4 min-w-[180px]">Mặt hàng & Số lượng</th>
-                  <th className="py-3 px-4 w-40">Thời gian xuất</th>
-                  <th className="py-3 px-4 w-40">Người tạo</th>
-                  <th className="py-3 px-4 w-28 text-right">Thao tác</th>
+                  <th className="py-3 px-4 w-36">Thời gian xuất</th>
+                  <th className="py-3 px-4 w-36">Người tạo</th>
+                  <th className="py-3 px-4 w-32 text-right sticky right-0 bg-slate-50/95 backdrop-blur-xs shadow-[-4px_0_8px_rgba(0,0,0,0.04)] z-10">
+                    Thao tác
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
@@ -369,7 +375,7 @@ export const InternalTransfersPage: React.FC = () => {
                       </td>
 
                       {/* Thao tác */}
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-3 px-4 text-right sticky right-0 bg-white group-hover:bg-slate-50 transition-colors shadow-[-4px_0_8px_rgba(0,0,0,0.04)] z-10">
                         <div
                           className="flex items-center justify-end gap-1.5"
                           onClick={(e) => e.stopPropagation()}
@@ -385,6 +391,17 @@ export const InternalTransfersPage: React.FC = () => {
                               Nhận hàng
                             </button>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPrintTransfer(transfer);
+                              setPrintModalOpen(true);
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                            title="In phiếu xuất điều chuyển"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleOpenDetail(transfer)}
@@ -410,6 +427,9 @@ export const InternalTransfersPage: React.FC = () => {
         onClose={() => setCreateModalOpen(false)}
         onSuccess={(newTransfer) => {
           setTransfers((prev) => [newTransfer, ...prev]);
+          // Tự động mở cửa sổ in phiếu điều chuyển theo chuẩn A4 ngay sau khi tạo
+          setPrintTransfer(newTransfer);
+          setPrintModalOpen(true);
         }}
       />
 
@@ -440,6 +460,17 @@ export const InternalTransfersPage: React.FC = () => {
           setDetailModalOpen(false);
           setSelectedTransfer(transferToConfirm);
           setConfirmModalOpen(true);
+        }}
+      />
+
+      {/* MODAL IN PHIẾU XUẤT ĐIỀU CHUYỂN A4 (SN-181) */}
+      <TransferPrintModal
+        isOpen={printModalOpen}
+        transfer={printTransfer}
+        warehouses={warehouses}
+        onClose={() => {
+          setPrintModalOpen(false);
+          setPrintTransfer(null);
         }}
       />
     </div>
