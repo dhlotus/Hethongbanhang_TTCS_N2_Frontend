@@ -546,6 +546,12 @@ export const OrdersPage: React.FC = () => {
         'success',
         `Sao chép thành công đơn ${targetOrder.orderCode} thành bản sao mới ${cloned.orderCode}! Bản sao luôn bắt đầu ở trạng thái Nháp. Giá và chiết khấu đã được tính lại theo bảng giá hiện hành.`,
       );
+      if (statusFilter !== 'ALL' && statusFilter !== 'DRAFT') {
+        setStatusFilter('ALL');
+      }
+      setSearchInput('');
+      setSearchTerm('');
+      setPage(1);
       setRefreshKey((k) => k + 1);
       if (viewOrder?.id === targetOrder.id) {
         setViewOrder(null);
