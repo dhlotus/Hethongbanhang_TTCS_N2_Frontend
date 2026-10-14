@@ -98,7 +98,7 @@ export const Pagination: React.FC<PaginationProps> = ({
       <div className="flex flex-wrap items-center gap-3 text-slate-500 font-medium">
         {showRecordRange && totalItems !== undefined && (
           <span className="flex items-center gap-1">
-            Hiển thị <strong className="text-slate-800 font-bold">{fromIndex} - {toIndex}</strong> /{' '}
+            Hiển thị <strong className="text-slate-800 font-bold">{fromIndex} - {toIndex}</strong> trong số{' '}
             <strong className="text-slate-800 font-bold">{totalItems}</strong> {itemLabel}
           </span>
         )}
