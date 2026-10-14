@@ -28,7 +28,7 @@ export const InventoryReceiptsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
   const [searchInput, setSearchInput] = useState("");
@@ -53,20 +53,22 @@ export const InventoryReceiptsPage: React.FC = () => {
       setLoading(true);
       const res = await inventoryReceiptsService.findAll({
         page,
-        limit,
+        limit: pageSize,
         search: searchTerm || undefined,
         status: selectedStatus !== "ALL" ? selectedStatus : undefined,
       });
       setReceipts(res.data || []);
-      setTotal(res.total || 0);
-      setTotalPages(res.totalPages || 1);
+      const totalCount = res.total || 0;
+      setTotal(totalCount);
+      const computedTotalPages = Math.ceil(totalCount / pageSize) || res.totalPages || 1;
+      setTotalPages(computedTotalPages);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       showToast("error", err.response?.data?.message || "Lỗi khi tải danh sách phiếu nhập");
     } finally {
       setLoading(false);
     }
-  }, [page, limit, searchTerm, selectedStatus]);
+  }, [page, pageSize, searchTerm, selectedStatus]);
 
   useEffect(() => {
     fetchReceipts();
@@ -133,7 +135,7 @@ export const InventoryReceiptsPage: React.FC = () => {
             Nhập kho từ Nhà cung cấp
           </h1>
           <p className="text-slate-500 text-sm mt-1">
-            Ghi nhận hàng về đúng lô và số lượng ngay khi xe dỡ hàng tại kho (SN-178)
+            Ghi nhận hàng về đúng lô và số lượng ngay khi xe dỡ hàng tại kho
           </p>
         </div>
         <button
@@ -310,11 +312,12 @@ export const InventoryReceiptsPage: React.FC = () => {
           currentPage={page}
           totalPages={totalPages}
           totalItems={total}
-          pageSize={limit}
+          pageSize={pageSize}
+          pageSizeOptions={[10, 20, 50]}
           itemLabel="phiếu nhập"
           onPageChange={setPage}
-          onPageSizeChange={(newLimit) => {
-            setLimit(newLimit);
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
             setPage(1);
           }}
         />
@@ -333,7 +336,7 @@ export const InventoryReceiptsPage: React.FC = () => {
       <ModalLayout
         isOpen={confirmModalOpen}
         onClose={() => setConfirmModalOpen(false)}
-        title="Xác nhận phiếu nhập kho (SN-178)"
+        title="Xác nhận phiếu nhập kho"
       >
         <div className="p-6 text-center space-y-4">
           <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
