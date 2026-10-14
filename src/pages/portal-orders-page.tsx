@@ -11,7 +11,6 @@ import {
   Clock,
   AlertTriangle,
   Calendar,
-  Building2,
   ChevronLeft,
   ChevronRight,
   AlertCircle,
@@ -25,7 +24,6 @@ import { CustomerOrderDetailModal } from '../components/customer-order-detail-mo
 import { ReorderModal } from '../components/reorder-modal';
 import { OrderPrintModal } from '../components/order-print-modal';
 import type { Order, OrderStatus } from '../types/order';
-import { tokenStorage } from '../utils/token-storage';
 
 
 /** Định dạng tiền tệ VND */
@@ -128,8 +126,6 @@ export const PortalOrdersPage: React.FC = () => {
   // Modal in đơn
   const [selectedOrderForPrint, setSelectedOrderForPrint] = useState<Order | null>(null);
 
-  const currentUser = tokenStorage.getUser();
-
   // Tải danh sách đơn hàng của đại lý (SN-170: Chỉ thấy đơn của chính mình)
   const loadOrders = useCallback(async () => {
     setIsLoading(true);
@@ -213,46 +209,6 @@ export const PortalOrdersPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* =================================================================== */}
-      {/* 1. Header Banner Phân hệ Đại lý                                      */}
-      {/* =================================================================== */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 sm:p-7 shadow-xs">
-        <div className="absolute -top-12 -right-12 h-44 w-44 rounded-full bg-indigo-50/70 blur-2xl pointer-events-none" />
-
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary)] text-xs font-bold">
-              <Building2 className="w-3.5 h-3.5" />
-              Đại lý Cấp 1 • Phân phối Độc quyền
-            </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-              {isTrackingRoute ? 'Theo Dõi Đơn Hàng & Lộ Trình Giao Nhận' : 'Cổng Quản Lý Đơn Hàng & Đặt Lại Định Kỳ'}
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-2xl">
-              Tra cứu tiến độ vận chuyển hàng hóa, đối chiếu số lượng thực giao và đặt lại các đơn hàng quen thuộc chỉ trong vài giây.
-            </p>
-          </div>
-
-          {/* Thẻ tóm tắt thông tin đại lý */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-2.5 text-xs">
-              <span className="text-slate-400 block font-medium">Đại lý sở hữu:</span>
-              <span className="font-bold text-slate-800 text-sm">
-                {currentUser?.fullName || 'Đại Lý Cửa Hàng Minh Khang'}
-              </span>
-            </div>
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={() => void loadOrders()}
-              leftIcon={<RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />}
-              className="cursor-pointer"
-            >
-              Làm mới
-            </Button>
-          </div>
-        </div>
-      </div>
 
       {/* =================================================================== */}
       {/* 2. Thống kê nhanh các chỉ số (KPI Cards)                             */}
@@ -358,8 +314,23 @@ export const PortalOrdersPage: React.FC = () => {
             )}
           </div>
 
-          <div className="text-xs text-slate-500 text-right">
-            Hiển thị <span className="font-bold text-slate-800">{orders.length}</span> đơn hàng
+          {/* Counter & Nút Làm mới */}
+          <div className="flex items-center gap-2.5 text-xs text-slate-500 justify-between sm:justify-end">
+            <span>
+              Hiển thị <strong className="font-bold text-slate-800">{orders.length}</strong> đơn hàng
+            </span>
+            <button
+              type="button"
+              onClick={() => void loadOrders()}
+              disabled={isLoading}
+              title="Làm mới danh sách đơn hàng"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200/80 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200/80 shadow-2xs disabled:opacity-60"
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`}
+              />
+              <span>Làm mới</span>
+            </button>
           </div>
         </div>
 

@@ -30,26 +30,37 @@ export const ConfirmTransferReceiptModal: React.FC<ConfirmTransferReceiptModalPr
   onClose,
   onSuccess,
 }) => {
-  const [inspections, setInspections] = useState<ItemInspectionState[]>(() => {
-    if (!transfer) return [];
-    return transfer.items.map((item) => ({
-      itemId: item.id,
-      sku: item.sku,
-      productName: item.productName,
-      unit: item.unit,
-      transferQuantity: item.transferQuantity,
-      conversionRate: item.conversionRate,
-      baseUnit: item.baseUnit,
-      receivedQuantity:
-        item.receivedQuantity !== undefined ? item.receivedQuantity : item.transferQuantity,
-      discrepancyReason: item.discrepancyReason || '',
-    }));
-  });
-  const [generalDiscrepancyReason, setGeneralDiscrepancyReason] = useState<string>(
-    () => transfer?.discrepancyReason || '',
-  );
-  const [notes, setNotes] = useState<string>(() => transfer?.notes || '');
+  const [inspections, setInspections] = useState<ItemInspectionState[]>([]);
+  const [generalDiscrepancyReason, setGeneralDiscrepancyReason] = useState<string>('');
+  const [notes, setNotes] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
+
+  const [prevTransferId, setPrevTransferId] = useState<string | null>(null);
+
+  // Đồng bộ dữ liệu khi transfer thay đổi hoặc modal mở ra theo chuẩn React
+  if (isOpen && transfer && transfer.id !== prevTransferId) {
+    setPrevTransferId(transfer.id);
+    setInspections(
+      transfer.items.map((item) => ({
+        itemId: item.id,
+        sku: item.sku,
+        productName: item.productName,
+        unit: item.unit,
+        transferQuantity: item.transferQuantity,
+        conversionRate: item.conversionRate,
+        baseUnit: item.baseUnit,
+        receivedQuantity:
+          item.receivedQuantity != null ? item.receivedQuantity : item.transferQuantity,
+        discrepancyReason: item.discrepancyReason || '',
+      })),
+    );
+    setGeneralDiscrepancyReason(transfer.discrepancyReason || '');
+    setNotes(transfer.notes || '');
+  }
+
+  if (!isOpen && prevTransferId !== null) {
+    setPrevTransferId(null);
+  }
 
   // Cập nhật số lượng thực nhận
   const handleQuantityChange = (index: number, val: number) => {
