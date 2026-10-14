@@ -146,9 +146,18 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
   const initialCreditLimit = item.creditLimit || 0;
   const initialDebtDays = item.maxDebtDays ?? 30;
 
-  const isUnchanged =
+  const isValuesUnchanged =
     parsedCreditLimit === initialCreditLimit &&
     parsedMaxDebtDays === initialDebtDays;
+
+  const isReasonEmpty = reason.trim().length === 0;
+
+  // Nút "Lưu hạn mức công nợ" chỉ bị DISABLE khi:
+  // Giá trị (Hạn mức tối đa + Số ngày nợ tối đa) GIỮ NGUYÊN SO VỚI BAN ĐẦU VÀ Lý do thay đổi đang TRỐNG (.trim().length === 0)
+  // Nút sẽ ENABLE ngay khi:
+  // - Người dùng nhập Lý do hợp lệ (đạt từ 10 ký tự trở lên)
+  // - HOẶC Người dùng điều chỉnh số Hạn mức tối đa / Số ngày nợ khác với giá trị ban đầu
+  const isButtonDisabled = loading || (isValuesUnchanged && isReasonEmpty);
 
   // Helper trích xuất thông báo lỗi thân thiện (SN-34)
   const getFriendlyCreditLimitErrorMessage = (err: unknown): string => {
@@ -214,7 +223,7 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
     setErrorMsg('');
 
     // Chặn submit nếu không có gì thay đổi
-    if (isUnchanged) {
+    if (isValuesUnchanged) {
       setErrorMsg('Dữ liệu hạn mức và số ngày nợ chưa có thay đổi nào so với hiện tại.');
       return;
     }
@@ -425,25 +434,35 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
           </div>
 
           {/* Footer nút bấm (Đã xóa nút Hủy bỏ, chỉ giữ nút Lưu và [X]) */}
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3 min-h-[44px]">
             <div>
-              {isUnchanged ? (
+              {isValuesUnchanged && isReasonEmpty ? (
                 <span className="text-xs text-slate-400 font-medium">
                   Chưa có thay đổi nào so với hiện tại
                 </span>
-              ) : (
-                <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                  <Check className="h-3.5 w-3.5" />
-                  Đã phát hiện thay đổi hạn mức
+              ) : reason.trim().length < 10 ? (
+                <span className="text-xs text-amber-600 font-medium flex items-center gap-1">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span>Vui lòng nhập lý do cụ thể (tối thiểu 10 ký tự) để lưu</span>
                 </span>
-              )}
+              ) : isValuesUnchanged ? (
+                <span className="text-xs text-slate-400 font-medium">
+                  Chưa có thay đổi nào so với hiện tại
+                </span>
+              ) : null}
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="submit"
-                disabled={loading || isUnchanged}
-                title={isUnchanged ? 'Vui lòng thay đổi hạn mức hoặc số ngày nợ trước khi lưu' : ''}
-                className="px-5 py-2 text-xs font-semibold text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={isButtonDisabled}
+                title={
+                  isButtonDisabled
+                    ? 'Chưa có thay đổi nào so với hiện tại'
+                    : reason.trim().length < 10
+                    ? 'Vui lòng nhập lý do cụ thể (tối thiểu 10 ký tự) để lưu'
+                    : ''
+                }
+                className="px-5 py-2 text-xs font-semibold text-white bg-[var(--color-primary)] rounded-lg shadow-sm transition-all flex items-center gap-1.5 enabled:hover:bg-[var(--color-primary-hover)] enabled:hover:shadow enabled:active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[var(--color-primary)] disabled:hover:shadow-none"
               >
                 {loading ? (
                   <>
