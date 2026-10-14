@@ -12,6 +12,7 @@
   --color-primary: #371cdb;
   /* Blue-Purple / Indigo Purple - Primary (Chuẩn Logo #371CDB) */
   --color-primary-hover: #2d14b8;
+  --color-primary-dark: #2d14b8;
   --color-primary-active: #240f99;
   --color-primary-light: #eff2fe;
   /* Nền xanh-tím nhạt sạch sẽ, loại bỏ hoàn toàn ánh tím hồng */
@@ -160,6 +161,7 @@
   /* 1.8 Brand Color Design Tokens (Blue-Purple / Indigo Purple theo Logo) */
   --color-primary: #371cdb;
   --color-primary-hover: #2d14b8;
+  --color-primary-dark: #2d14b8;
   --color-primary-active: #240f99;
   --color-primary-light: #eff2fe;
   --color-primary-subtle: #e0e7fe;
