@@ -2023,10 +2023,10 @@ export const CreateOrderPage: React.FC = () => {
 
       </div>
 
-      {/* ── KHỐI TỔNG THANH TOÁN VÀ NÚT HÀNH ĐỘNG POSITION FIXED Ở ĐÁY TRANG ── */}
+      {/* ── KHỐI TỔNG THANH TOÁN VÀ NÚT HÀNH ĐỘNG POSITION FIXED Ở ĐÁY TRANG (VỪA VẶN VỚI NAVBAR) ── */}
       {lines.length > 0 && (
-        <div className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] py-3 sm:py-3.5 transition-all animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-10">
+        <div className="fixed bottom-0 left-0 right-0 lg:left-[var(--sidebar-width,18.25rem)] z-30 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] py-3 sm:py-3.5 transition-[left] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]">
+          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-10">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4">
               {/* Cụm trái: Chi tiết tiền hàng & chiết khấu */}
               <div className="space-y-1 text-xs text-slate-600 w-full md:w-auto">
