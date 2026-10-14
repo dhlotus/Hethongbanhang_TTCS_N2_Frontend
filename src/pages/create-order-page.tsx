@@ -548,7 +548,7 @@ export const CreateOrderPage: React.FC = () => {
     };
   }, [selectedCustomer]);
 
-  // ── Định giá lại dòng hàng ──
+  // ── Định giá lại dòng hàng (So sánh chọn chính sách chiết khấu ưu đãi tốt nhất) ──
   const quoteOrderLine = useCallback(async (line: OrderLine, priceList: PriceList): Promise<OrderLine> => {
     const item = getPriceListItem(priceList, line, line.listPrice || line.unitPrice || 25000);
     const itemPrice = item ? item.price : (line.listPrice || line.unitPrice || 25000);
@@ -558,26 +558,42 @@ export const CreateOrderPage: React.FC = () => {
     const listPrice = Math.round(itemPrice * conversionRate);
     const minPrice = Math.round(itemMinPrice * conversionRate);
     try {
-      const discountPercent = await orderPricingService.calculateDiscount(
+      const pricingResult = await orderPricingService.calculatePricing(
         {
           id: line.productId,
           sku: line.productSku,
+          name: line.productName,
           categoryId: line.categoryId || line.category,
         },
         Math.round(line.quantity * conversionRate),
+        listPrice,
+        selectedCustomer?.id,
       );
-      const automaticPrice = Math.round(listPrice * (1 - discountPercent / 100));
+
+      const automaticPrice = pricingResult.unitPrice;
       const unitPrice = line.isPriceManuallyEdited
         ? Number(line.manualPrice || line.unitPrice)
         : automaticPrice;
+
+      // Giữ đúng % chiết khấu từ chính sách (VD: mua 10 thì đúng 2%, mua nhiều đúng 4%),
+      // tránh lệch do làm tròn số tiền VNĐ. Chỉ tính ngược % khi người dùng tự sửa giá thủ công.
+      const discountPercent = line.isPriceManuallyEdited
+        ? (listPrice > 0 ? Number((((listPrice - unitPrice) / listPrice) * 100).toFixed(2)) : 0)
+        : pricingResult.discountPercent;
+
+      const discountAmountPerUnit = line.isPriceManuallyEdited
+        ? Math.max(0, listPrice - unitPrice)
+        : pricingResult.discountAmountPerUnit;
+
       return {
         ...line,
         baseListPrice: item.price,
         listPrice,
         minPrice,
-        discountPercent: listPrice > 0
-          ? Number((((listPrice - unitPrice) / listPrice) * 100).toFixed(2))
-          : 0,
+        discountType: pricingResult.discountType,
+        discountAmountPerUnit,
+        discountDisplayText: pricingResult.displayText,
+        discountPercent,
         unitPrice,
         lineTotal: line.quantity * unitPrice,
         requiresApproval: unitPrice < minPrice,
@@ -593,7 +609,7 @@ export const CreateOrderPage: React.FC = () => {
         pricingError: error instanceof Error ? error.message : 'Không thể tính chiết khấu',
       };
     }
-  }, []);
+  }, [selectedCustomer?.id]);
 
   const refreshLinePricing = useCallback((line: OrderLine, priceList: PriceList) => {
     setLines((current) => current.map((item) =>
@@ -1554,7 +1570,11 @@ export const CreateOrderPage: React.FC = () => {
                             {formatCurrency(l.unitPrice)}
                           </td>
                           <td className="px-3 py-3 text-right text-emerald-700 font-bold">
-                            {l.discountPercent > 0 ? `-${l.discountPercent}%` : '0%'}
+                            {l.discountType === 'FIXED_AMOUNT'
+                              ? `-${(l.discountAmountPerUnit || 0).toLocaleString('vi-VN')} đ`
+                              : l.discountPercent > 0
+                              ? `${l.discountPercent}%`
+                              : '0%'}
                           </td>
                           <td className="px-4 py-3 text-right font-extrabold text-slate-900 text-sm">
                             {formatCurrency(l.lineTotal)}

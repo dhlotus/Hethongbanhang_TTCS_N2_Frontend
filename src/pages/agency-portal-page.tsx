@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ShoppingCart,
   Package,
@@ -18,10 +19,8 @@ import {
   X,
   Sparkles,
   Receipt,
-  Truck,
   ArrowRight,
   ArrowLeft,
-  ShoppingBag,
   Info,
   Check,
   CreditCard,
@@ -55,6 +54,12 @@ const formatVND = (value: number): string => {
     currency: 'VND',
     maximumFractionDigits: 0,
   }).format(value);
+};
+
+/** Loại bỏ hậu tố đơn vị trong ngoặc (Lon, Chai, Hộp...) để tránh lặp với dòng hiển thị đơn vị bên dưới */
+const cleanProductName = (name?: string): string => {
+  if (!name) return '';
+  return name.replace(/\s*\((lon|chai|hộp|gói|thùng|lốc|lon\s*\d*|chai\s*\d*)\)\s*$/i, '').trim();
 };
 
 /** Nhãn hiển thị cho Nhóm/Cấp đại lý */
@@ -215,10 +220,8 @@ export const AgencyPortalPage: React.FC = () => {
   // Modal xác nhận sau khi gửi đơn thành công
   const [submittedOrder, setSubmittedOrder] = useState<Order | null>(null);
 
-  // Quản lý Tab: Đặt hàng / Lịch sử đơn
-  const [activeTab, setActiveTab] = useState<'CATALOG' | 'MY_ORDERS'>('CATALOG');
-  const [myOrders, setMyOrders] = useState<Order[]>([]);
-  const [isLoadingOrders, setIsLoadingOrders] = useState<boolean>(false);
+  // Điều hướng sang trang Theo dõi đơn hàng (Sidebar)
+  const navigate = useNavigate();
 
   // Modal xem chi tiết đơn hàng
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
@@ -433,7 +436,6 @@ export const AgencyPortalPage: React.FC = () => {
 
     const handleOrdersUpdated = () => {
       void loadCatalogAndPricing(true);
-      void loadMyOrders();
       if (currentCustomer?.id) {
         void fetchCustomerDebt(currentCustomer.id);
       }
@@ -463,28 +465,6 @@ export const AgencyPortalPage: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // TẢI LỊCH SỬ ĐƠN HÀNG CỦA ĐẠI LÝ
-  // ──────────────────────────────────────────────────────────────────────────
-  const loadMyOrders = useCallback(async () => {
-    if (!currentCustomer) return;
-    setIsLoadingOrders(true);
-    try {
-      const res = await ordersService.getOrders({ customerId: currentCustomer.id });
-      setMyOrders(res.data || []);
-    } catch {
-      setMyOrders([]);
-    } finally {
-      setIsLoadingOrders(false);
-    }
-  }, [currentCustomer]);
-
-  useEffect(() => {
-    if (activeTab === 'MY_ORDERS' && currentCustomer) {
-      void loadMyOrders();
-    }
-  }, [activeTab, currentCustomer, loadMyOrders]);
-
   // Hủy đơn hàng đang chờ duyệt
   const handleCancelOrder = async () => {
     if (!cancellingOrder?.id) return;
@@ -493,7 +473,6 @@ export const AgencyPortalPage: React.FC = () => {
       await ordersService.cancelOrder(cancellingOrder.id, 'Đại lý chủ động hủy đơn trên Portal');
       showToast('success', `Đã hủy đơn hàng ${cancellingOrder.orderCode || cancellingOrder.id}`);
       setCancellingOrder(null);
-      void loadMyOrders();
       void loadCatalogAndPricing(true);
       if (currentCustomer) void fetchCustomerDebt(currentCustomer.id);
     } catch (err: unknown) {
@@ -1097,7 +1076,6 @@ export const AgencyPortalPage: React.FC = () => {
 
       void fetchCustomerDebt(currentCustomer.id);
       void loadCatalogAndPricing(true);
-      void loadMyOrders();
     } catch (err: unknown) {
       showToast('error', err instanceof Error ? err.message : 'Có lỗi xảy ra khi gửi đơn hàng. Vui lòng thử lại!');
     } finally {
@@ -1112,62 +1090,10 @@ export const AgencyPortalPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5">
         
         {/* ===================================================================== */}
-        {/* 1. HEADER BANNER THIẾT KẾ SÁNG & SẠCH (THEO UI_GUIDELINES.MD)           */}
+        {/* 1. THẺ THÔNG TIN HẠN MỨC & CÔNG NỢ ĐẠI LÝ REAL-TIME                  */}
         {/* ===================================================================== */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 sm:p-6 mb-6">
-          {/* Hàng 1: Tiêu đề Portal + Switcher Test */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
-            <div>
-              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
-                  Cổng Đặt Hàng Đại Lý B2B
-                </span>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${groupBadge.className}`}>
-                  {groupBadge.label}
-                </span>
-              </div>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-                <Building2 className="w-6 h-6 text-indigo-600 shrink-0" />
-                {currentCustomer?.name || 'Đang tải thông tin đại lý...'}
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
-                <span>Mã đại lý: <strong className="text-slate-800 font-mono">{currentCustomer?.code || '---'}</strong></span>
-                <span>•</span>
-                <span>NVKD phụ trách: <strong className="text-slate-800">{currentCustomer?.salesRepName || currentCustomer?.salesRep?.name || 'Trần Văn Nam'}</strong></span>
-                {effectivePriceList && (
-                  <>
-                    <span>•</span>
-                    <span className="text-indigo-600 font-medium flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      Áp dụng: {effectivePriceList.name}
-                    </span>
-                  </>
-                )}
-              </p>
-            </div>
-
-            {/* Nút Làm mới dữ liệu cho Đại lý */}
-            <div className="flex items-center gap-2.5 self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  void loadCurrentAgencyProfile(true);
-                  if (currentCustomer?.id) void fetchCustomerDebt(currentCustomer.id);
-                  void loadMyOrders();
-                }}
-                disabled={isLoadingProfile}
-                title="Làm mới dữ liệu hồ sơ & công nợ đại lý"
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200/80 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200/80 shadow-2xs disabled:opacity-60"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingProfile ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
-                <span className="hidden sm:inline">Làm mới</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Hàng 2: Thẻ thông tin công nợ 3 chỉ số Real-time (Sáng sủa, sạch sẽ, chuẩn UI_GUIDELINES) */}
-          <div className="pt-5 grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 sm:p-5 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
             {/* Card 1: Hạn mức tín dụng */}
             <div className="bg-slate-50/80 rounded-xl p-4 border border-slate-200/60 transition-all hover:bg-slate-50">
               <div className="flex items-center justify-between text-slate-500 text-xs mb-1.5">
@@ -1181,9 +1107,6 @@ export const AgencyPortalPage: React.FC = () => {
               </div>
               <div className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
                 {formatVND(cartTotals.creditLimit)}
-              </div>
-              <div className="mt-2 text-[11px] text-slate-500">
-                Chính sách tín dụng theo hợp đồng phân phối
               </div>
             </div>
 
@@ -1245,56 +1168,25 @@ export const AgencyPortalPage: React.FC = () => {
               }`}>
                 {formatVND(cartTotals.availableCredit)}
               </div>
-              <div className="mt-2 text-[11px] text-slate-500">
-                {cartTotals.isExceeded ? (
-                  <span className="text-amber-700 font-medium flex items-center gap-1">
-                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                    Đơn hàng vượt hạn mức, sẽ chuyển phê duyệt
-                  </span>
-                ) : (
-                  'Tự động duyệt nhanh khi trong hạn mức'
-                )}
-              </div>
             </div>
           </div>
         </div>
 
         {/* ===================================================================== */}
-        {/* 2. THANH TAB & TÌM KIẾM                                               */}
+        {/* 2. THANH TIÊU ĐỀ & TÌM KIẾM                                           */}
         {/* ===================================================================== */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-5">
-          {/* Tabs */}
-          <div className="flex items-center bg-white p-1 rounded-2xl shadow-sm border border-slate-200/80 self-start">
-            <button
-              onClick={() => setActiveTab('CATALOG')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                activeTab === 'CATALOG'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <Package className="w-4 h-4" />
-              Danh mục đặt hàng
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-white font-mono">
-                {availableCatalog.length}
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab('MY_ORDERS')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                activeTab === 'MY_ORDERS'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <Truck className="w-4 h-4" />
-              Đơn hàng của tôi
-            </button>
+          {/* Tiêu đề Danh mục đặt hàng */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-indigo-600 text-white shadow-sm text-xs sm:text-sm font-semibold self-start select-none">
+            <Package className="w-4 h-4" />
+            <span>Danh mục đặt hàng</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-white font-mono">
+              {availableCatalog.length}
+            </span>
           </div>
 
           {/* Ô tìm kiếm có gợi ý thông minh */}
-          {activeTab === 'CATALOG' && (
-            <div ref={searchContainerRef} className="relative flex-1 sm:max-w-md">
+          <div ref={searchContainerRef} className="relative flex-1 sm:max-w-md">
               <div className="relative">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -1378,7 +1270,7 @@ export const AgencyPortalPage: React.FC = () => {
                               </div>
                               <div className="min-w-0">
                                 <div className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 truncate">
-                                  {item.name}
+                                  {cleanProductName(item.name)}
                                 </div>
                                 <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
                                   <span className="font-mono text-slate-600">{item.sku}</span>
@@ -1443,18 +1335,12 @@ export const AgencyPortalPage: React.FC = () => {
                 </div>
               )}
             </div>
-          )}
         </div>
 
         {/* ===================================================================== */}
-        {/* 3. TAB DANH MỤC ĐẶT HÀNG (CATALOG)                                    */}
+        {/* 3. DANH MỤC ĐẶT HÀNG (CATALOG)                                        */}
         {/* ===================================================================== */}
-        {activeTab === 'CATALOG' && (
-          <>
-            {/* ─────────────────────────────────────────────────────────────────── */}
-            {/* THANH NHÓM HÀNG THU GỌN & NÚT MỞ KHUNG NHÓM HÀNG                   */}
-            {/* ─────────────────────────────────────────────────────────────────── */}
-            <div className="mb-4">
+        <div className="mb-4">
               <div className="flex flex-wrap items-center justify-between gap-2.5 bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200/80 shadow-sm">
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* Nút bấm Mở / Thu gọn Khung nhóm hàng */}
@@ -1512,18 +1398,28 @@ export const AgencyPortalPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* Phía phải: Số lượng hiển thị & Nút Đồng bộ danh mục */}
-                <div className="flex items-center gap-2 text-xs text-slate-500">
+                {/* Phía phải: Số lượng hiển thị & Nút Làm mới */}
+                <div className="flex items-center gap-2.5 text-xs text-slate-500">
                   <span>
                     Hiển thị <strong className="text-slate-800">{availableCatalog.length}</strong> / {products.length} sản phẩm
                   </span>
                   <button
                     type="button"
-                    onClick={() => void loadCatalogAndPricing(true)}
-                    title="Đồng bộ danh mục sản phẩm từ hệ thống"
-                    className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-200 cursor-pointer"
+                    onClick={() => {
+                      void loadCatalogAndPricing(true);
+                      void loadCurrentAgencyProfile(true);
+                      if (currentCustomer?.id) void fetchCustomerDebt(currentCustomer.id);
+                    }}
+                    disabled={isLoadingCatalog || isLoadingProfile}
+                    title="Làm mới danh mục sản phẩm & hạn mức nợ"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200/80 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200/80 shadow-2xs disabled:opacity-60"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingCatalog ? 'animate-spin text-indigo-600' : ''}`} />
+                    <RefreshCw
+                      className={`w-3.5 h-3.5 ${
+                        isLoadingCatalog || isLoadingProfile ? 'animate-spin text-indigo-600' : 'text-slate-500'
+                      }`}
+                    />
+                    <span>Làm mới</span>
                   </button>
                 </div>
               </div>
@@ -1839,7 +1735,7 @@ export const AgencyPortalPage: React.FC = () => {
                             className="text-xs sm:text-sm font-semibold text-slate-900 line-clamp-2 leading-snug mb-2 group-hover:text-indigo-600 transition-colors"
                             title={product.name}
                           >
-                            {product.name} <span className="text-indigo-600 font-bold ml-0.5">({product.baseUnit || (product as unknown as { unit?: string }).unit || 'Chai'})</span>
+                            {cleanProductName(product.name)}
                           </h3>
                         </div>
 
@@ -1898,139 +1794,7 @@ export const AgencyPortalPage: React.FC = () => {
                 })}
               </div>
             )}
-          </>
-        )}
-
-        {/* ===================================================================== */}
-        {/* 4. TAB ĐƠN HÀNG CỦA TÔI (MY ORDERS)                                   */}
-        {/* ===================================================================== */}
-        {activeTab === 'MY_ORDERS' && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden p-5 sm:p-6">
-            <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-100">
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900">Lịch sử đơn hàng Đại lý đã gửi</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Theo dõi trạng thái phê duyệt và tiến độ xử lý các đơn hàng</p>
-              </div>
-              <button
-                onClick={() => void loadMyOrders()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 rounded-xl transition-colors cursor-pointer"
-                title="Tải lại danh sách"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingOrders ? 'animate-spin' : ''}`} />
-                <span>Làm mới</span>
-              </button>
-            </div>
-
-            {isLoadingOrders ? (
-              <div className="py-16 text-center text-slate-500 text-sm">
-                <RefreshCw className="w-7 h-7 animate-spin mx-auto mb-3 text-indigo-600" />
-                <p className="font-medium text-slate-700">Đang tải danh sách đơn hàng...</p>
-              </div>
-            ) : myOrders.length === 0 ? (
-              <div className="py-16 text-center text-slate-500">
-                <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-slate-700">Bạn chưa có đơn hàng nào</p>
-                <p className="text-xs text-slate-400 mt-1">Các đơn hàng bạn đặt trên Cổng tự phục vụ sẽ xuất hiện tại đây.</p>
-                <button
-                  onClick={() => setActiveTab('CATALOG')}
-                  className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors cursor-pointer shadow-sm"
-                >
-                  Khám phá danh mục & Đặt hàng ngay →
-                </button>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {myOrders.map((ord) => {
-                  const isPendingApproval = ord.status === 'PENDING_APPROVAL';
-                  const isApproved = ord.status === 'APPROVED' || ord.status === 'PROCESSING' || ord.status === 'DELIVERED';
-                  const isCancelled = ord.status === 'CANCELLED';
-                  const isPending = ord.status === 'PENDING';
-                  const canCancel = isPending || isPendingApproval || ord.status === 'DRAFT';
-
-                  return (
-                    <div key={ord.id || ord.orderCode} className="py-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                          <span className="font-mono font-bold text-sm text-slate-900">
-                            {ord.orderCode || ord.id}
-                          </span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                            isPendingApproval
-                              ? 'bg-amber-50 text-amber-700 border-amber-200'
-                              : isApproved
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : isCancelled
-                              ? 'bg-slate-100 text-slate-600 border-slate-200'
-                              : 'bg-blue-50 text-blue-700 border-blue-200'
-                          }`}>
-                            {isPendingApproval
-                              ? 'Chờ duyệt hạn mức'
-                              : ord.status === 'PENDING'
-                              ? 'Chờ duyệt'
-                              : ord.status === 'APPROVED'
-                              ? 'Đã duyệt'
-                              : ord.status === 'PROCESSING'
-                              ? 'Đang chuẩn bị hàng'
-                              : ord.status === 'SHIPPED'
-                              ? 'Đang giao hàng'
-                              : ord.status === 'DELIVERED'
-                              ? 'Giao thành công'
-                              : ord.status === 'CANCELLED'
-                              ? 'Đã hủy'
-                              : ord.status}
-                          </span>
-                          {ord.createdSource === 'AGENCY_PORTAL' && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-medium">
-                              Cổng đại lý
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500">
-                          {ord.lines?.length || 0} sản phẩm • Ngày giao dự kiến: {ord.deliveryDate || 'Tiêu chuẩn'} • Điểm nhận: {ord.deliveryPoint?.name || ord.deliveryPoint?.address || 'Kho mặc định'}
-                        </p>
-                        {ord.note && (
-                          <p className="text-[11px] text-slate-400 mt-1 italic">
-                            Ghi chú: {ord.note}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                        <div className="text-right sm:mr-2">
-                          <span className="text-[11px] text-slate-400 block">Tổng thanh toán:</span>
-                          <span className="text-sm sm:text-base font-bold text-indigo-600 font-mono">
-                            {formatVND(ord.grandTotal || 0)}
-                          </span>
-                        </div>
-
-                        {/* Nút Xem chi tiết */}
-                        <button
-                          type="button"
-                          onClick={() => setViewingOrder(ord)}
-                          className="px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors cursor-pointer"
-                        >
-                          Chi tiết
-                        </button>
-
-                        {/* Nút Hủy đơn nếu còn Chờ duyệt */}
-                        {canCancel && (
-                          <button
-                            type="button"
-                            onClick={() => setCancellingOrder(ord)}
-                            className="px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors cursor-pointer"
-                          >
-                            Hủy đơn
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+        </div>
 
       {/* ===================================================================== */}
       {/* 5. BOTTOM STICKY BAR - GIỎ HÀNG (MOBILE-FIRST)                         */}
@@ -2349,7 +2113,7 @@ export const AgencyPortalPage: React.FC = () => {
                                 )}
                               </div>
                               <h4 className="text-xs sm:text-sm font-semibold text-slate-900 flex items-center gap-1.5 flex-wrap" title={item.product.name}>
-                                <span>{item.product.name}</span>
+                                <span>{cleanProductName(item.product.name)}</span>
                                 <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/80">
                                   ({item.unit})
                                 </span>
@@ -2703,7 +2467,7 @@ export const AgencyPortalPage: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setSubmittedOrder(null);
-                  setActiveTab('MY_ORDERS');
+                  navigate('/portal/tracking');
                 }}
                 className="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
               >
