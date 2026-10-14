@@ -248,8 +248,60 @@ export const CreateOrderPage: React.FC = () => {
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState(getDefaultDeliveryDate());
   const [note, setNote] = useState('');
+  // Xử lý ghi chú: Tối đa 100 ký tự, cho phép xóa tự do và chặn phím gõ thêm khi đã đầy
+  const handleNoteKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // 1. Phím xóa (Backspace, Delete) luôn luôn được phép
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      return;
+    }
 
-  
+    // 2. Bộ gõ tiếng Việt (Windows Telex VIE TL / Unikey / IME composition):
+    // Tuyệt đối không chặn sự kiện Process/229 hoặc isComposing để tránh làm bộ gõ bị hủy và nhảy lùi ký tự
+    if (e.nativeEvent.isComposing || e.key === 'Process' || e.keyCode === 229) {
+      return;
+    }
+
+    // 3. Phím điều hướng & phím chức năng (Ctrl+A, Ctrl+C, Ctrl+Z,...) luôn được phép
+    const navKeys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Tab', 'Escape'];
+    if (navKeys.includes(e.key) || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+
+    // 4. Nếu đã đạt 100 ký tự và không bôi đen ký tự nào để thay thế -> chặn gõ thêm phím cứng
+    const textarea = e.currentTarget;
+    const hasSelection = textarea.selectionStart !== textarea.selectionEnd;
+    if (note.length >= 100 && !hasSelection) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, [note.length]);
+
+  const handleNoteChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    let val = e.target.value;
+
+    // Luôn khống chế tối đa 100 ký tự
+    if (val.length > 100) {
+      val = val.slice(0, 100);
+      e.target.value = val;
+    }
+
+    setNote(val);
+  }, []);
+
+  const handleNotePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pastedText = e.clipboardData.getData('text') || '';
+    const textarea = e.currentTarget;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const currentVal = textarea.value;
+
+    // Cắt vừa vặn 100 ký tự khi dán
+    const newVal = (currentVal.slice(0, start) + pastedText + currentVal.slice(end)).slice(0, 100);
+    e.preventDefault();
+    textarea.value = newVal;
+    setNote(newVal);
+  }, []);
+
   // Bảng giá hiệu lực & Kho phục vụ
   const [servingWarehouse, setServingWarehouse] = useState<AgencyWarehouseDetail | null>(null);
   const [effectivePriceList, setEffectivePriceList] = useState<PriceList | null>(null);
@@ -1559,14 +1611,40 @@ export const CreateOrderPage: React.FC = () => {
 
             {/* Cột C: Ghi chú đơn hàng */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Ghi chú đơn hàng (tuỳ chọn)</label>
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-slate-700">Ghi chú đơn hàng (tuỳ chọn)</label>
+                <span
+                  className={`text-[11px] px-1.5 py-0.5 rounded transition-colors ${
+                    note.length >= 100
+                      ? 'text-rose-700 bg-rose-100/90 border border-rose-300 font-bold'
+                      : note.length >= 80
+                      ? 'text-amber-700 bg-amber-50 border border-amber-200 font-medium'
+                      : 'text-slate-400 font-medium'
+                  }`}
+                >
+                  {note.length}/100 ký tự
+                </span>
+              </div>
               <textarea
                 value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Ghi chú đóng gói hoặc hướng dẫn giao hàng..."
+                maxLength={100}
+                onKeyDown={handleNoteKeyDown}
+                onChange={handleNoteChange}
+                onPaste={handleNotePaste}
+                placeholder="Ghi chú đóng gói hoặc hướng dẫn giao hàng (tối đa 100 ký tự)..."
                 rows={2}
-                className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-slate-50/60 focus:bg-white focus:outline-none resize-none"
+                className={`w-full px-3 py-1.5 text-xs border rounded-xl focus:outline-none resize-none transition-colors ${
+                  note.length >= 100
+                    ? 'border-rose-400 bg-rose-50/25 focus:border-rose-500 focus:ring-1 focus:ring-rose-400'
+                    : 'border-slate-200 bg-slate-50/60 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-400'
+                }`}
               />
+              {note.length >= 100 && (
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold text-rose-600">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
+                  <span>Đã đạt tối đa 100 ký tự, không thể nhập thêm!</span>
+                </p>
+              )}
             </div>
           </div>
         </div>
