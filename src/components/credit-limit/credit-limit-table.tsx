@@ -72,7 +72,7 @@ export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
               <th className="py-3.5 px-4 text-right">Hạn Mức Cấp</th>
               <th className="py-3.5 px-4 text-right">Dư Nợ Hiện Hành</th>
               <th className="py-3.5 px-4 w-52">Tỷ Lệ & Khả Dụng</th>
-              <th className="py-3.5 px-4 text-center">Thời Hạn Nợ</th>
+              <th className="py-3.5 px-4 text-center">Số Ngày Nợ</th>
               <th className="py-3.5 px-4 text-center">Trạng Thái</th>
               <th className="py-3.5 px-4 text-right">Thao Tác</th>
             </tr>
@@ -175,12 +175,9 @@ export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
                     </div>
                   </td>
 
-                  {/* Cột 6: Thời hạn nợ */}
+                  {/* Cột 6: Số ngày nợ */}
                   <td className="py-3.5 px-4 text-center">
-                    <div className="font-semibold text-slate-800">{item.maxDebtDays} ngày</div>
-                    <span className="text-[10px] text-slate-400 uppercase font-mono">
-                      {item.paymentTerms}
-                    </span>
+                    <div className="font-semibold text-slate-800 text-center">{item.maxDebtDays} ngày</div>
                   </td>
 
                   {/* Cột 7: Trạng thái */}

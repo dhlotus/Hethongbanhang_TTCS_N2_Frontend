@@ -82,21 +82,51 @@ export const CreditLimitPage: React.FC = () => {
     }
   }, []);
 
-  // Tải danh sách hạn mức công nợ
-  const fetchCreditLimits = useCallback(async () => {
+  // Helper trích xuất thông báo lỗi thân thiện (SN-34)
+  const getFriendlyCreditLimitErrorMessage = (err: unknown): string => {
+    const defaultMsg = 'Lý do chưa rõ ràng. Vui lòng mô tả cụ thể hơn (tối thiểu 10 ký tự).';
+    if (!err) return defaultMsg;
+    const anyErr = err as any;
+    const status = anyErr?.response?.status || anyErr?.statusCode;
+
+    // Khi API cập nhật trả về HTTP Status 400, KHÔNG hiển thị chuỗi kỹ thuật "Request failed with status code 400"
+    if (
+      status === 400 ||
+      (typeof anyErr?.message === 'string' &&
+        (anyErr.message.includes('400') || anyErr.message.includes('status code 400')))
+    ) {
+      return defaultMsg;
+    }
+
+    const serverMsg = anyErr?.response?.data?.message;
+    if (typeof serverMsg === 'string' && serverMsg.trim() && !serverMsg.includes('status code')) {
+      return serverMsg;
+    }
+    if (err instanceof Error && err.message && !err.message.includes('status code')) {
+      return err.message;
+    }
+    return defaultMsg;
+  };
+
+  // Tải danh sách hạn mức công nợ (Hỗ trợ giữ nguyên trang hiện tại)
+  const fetchCreditLimits = useCallback(async (targetPage?: number) => {
     try {
       setLoading(true);
+      const currentPageToFetch = typeof targetPage === 'number' ? targetPage : page;
       const res = await creditLimitService.getCreditLimits({
         search: search.trim() || undefined,
         status: statusFilter || undefined,
         customerGroup: customerGroupFilter || undefined,
-        page,
+        page: currentPageToFetch,
         limit,
       });
 
       setItems(res.data);
       setTotalPages(res.totalPages);
       setTotalItems(res.total);
+      if (res.totalPages > 0 && currentPageToFetch > res.totalPages) {
+        setPage(res.totalPages);
+      }
     } catch (err: unknown) {
       showToast(
         'error',
@@ -115,7 +145,7 @@ export const CreditLimitPage: React.FC = () => {
     fetchCreditLimits();
   }, [fetchCreditLimits]);
 
-  // Xử lý Cập nhật Hạn mức (Bọc trong try-catch và hiển thị thông báo)
+  // Xử lý Cập nhật Hạn mức (Giữ nguyên trang hiện tại, thông báo lỗi thân thiện)
   const handleUpdateLimit = async (
     agencyId: string,
     payload: UpdateCreditLimitPayload
@@ -125,9 +155,10 @@ export const CreditLimitPage: React.FC = () => {
       await creditLimitService.updateCreditLimit(agencyId, payload);
       showToast('success', 'Đã cập nhật hạn mức công nợ đại lý thành công!');
       setSelectedItemForEdit(null);
-      await Promise.all([fetchCreditLimits(), fetchStats()]);
+      // Giữ nguyên trang hiện tại (page), KHÔNG reset về Trang 1
+      await Promise.all([fetchCreditLimits(page), fetchStats()]);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Lỗi khi cập nhật hạn mức công nợ.';
+      const msg = getFriendlyCreditLimitErrorMessage(err);
       showToast('error', msg);
       throw err;
     } finally {
@@ -135,7 +166,7 @@ export const CreditLimitPage: React.FC = () => {
     }
   };
 
-  // Xử lý Khóa / Mở khóa Hạn mức (Bọc trong try-catch và hiển thị thông báo)
+  // Xử lý Khóa / Mở khóa Hạn mức (Giữ nguyên trang hiện tại)
   const handleUpdateStatus = async (
     agencyId: string,
     payload: UpdateCreditStatusPayload
@@ -150,9 +181,10 @@ export const CreditLimitPage: React.FC = () => {
           : 'Đã mở khóa hạn mức tín dụng của đại lý thành công!'
       );
       setSelectedItemForStatus(null);
-      await Promise.all([fetchCreditLimits(), fetchStats()]);
+      // Giữ nguyên trang hiện tại (page), KHÔNG reset về Trang 1
+      await Promise.all([fetchCreditLimits(page), fetchStats()]);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Lỗi khi cập nhật trạng thái hạn mức.';
+      const msg = getFriendlyCreditLimitErrorMessage(err);
       showToast('error', msg);
       throw err;
     } finally {
@@ -178,7 +210,7 @@ export const CreditLimitPage: React.FC = () => {
         <button
           type="button"
           onClick={() => {
-            fetchCreditLimits();
+            fetchCreditLimits(page);
             fetchStats();
           }}
           disabled={loading}

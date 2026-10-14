@@ -9,6 +9,41 @@ interface CreditLimitHistoryModalProps {
   onClose: () => void;
 }
 
+const ROLE_DISPLAY_MAP: Record<string, string> = {
+  CREDIT_ACCOUNTANT: 'Kế toán công nợ',
+  ACCOUNTANT: 'Kế toán công nợ',
+  ACCOUNTANT_DEBT: 'Kế toán công nợ',
+  CHIEF_ACCOUNTANT: 'Kế toán trưởng',
+  SALES_MANAGER: 'Quản lý kinh doanh',
+  BUSINESS_MANAGER: 'Quản lý kinh doanh',
+  SALES_ADMIN: 'Admin kinh doanh',
+  ADMIN: 'Quản trị hệ thống',
+  SYSTEM: 'Hệ thống tự động',
+};
+
+const USERNAME_NAME_MAP: Record<string, string> = {
+  accountant: 'Vũ Mai Hoa',
+  salesmanager: 'Lê Hoàng',
+  admin: 'Nguyễn Văn Admin',
+  system: 'Hệ thống tự động',
+};
+
+const formatUserInfo = (rawName?: string, rawRole?: string): string => {
+  const cleanNameKey = (rawName || '').trim().toLowerCase();
+  const cleanRoleKey = (rawRole || '').trim().toUpperCase();
+
+  const formattedName =
+    USERNAME_NAME_MAP[cleanNameKey] || rawName || 'Vũ Mai Hoa';
+  const formattedRole =
+    ROLE_DISPLAY_MAP[cleanRoleKey] || rawRole || 'Kế toán công nợ';
+
+  if (cleanNameKey === 'system' || cleanNameKey === 'hệ thống') {
+    return 'Hệ thống tự động';
+  }
+
+  return `${formattedName} (${formattedRole})`;
+};
+
 const formatVND = (val: number): string => {
   return new Intl.NumberFormat('vi-VN').format(val || 0);
 };
@@ -16,13 +51,13 @@ const formatVND = (val: number): string => {
 const formatDate = (iso: string): string => {
   if (!iso) return '-';
   const d = new Date(iso);
-  return d.toLocaleDateString('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+  if (isNaN(d.getTime())) return iso;
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${hours}:${minutes} ${day}/${month}/${year}`;
 };
 
 export const CreditLimitHistoryModal: React.FC<CreditLimitHistoryModalProps> = ({
@@ -104,20 +139,15 @@ export const CreditLimitHistoryModal: React.FC<CreditLimitHistoryModalProps> = (
                     key={h.id || idx}
                     className="p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-colors space-y-3"
                   >
-                    {/* Hàng 1: Thời gian & Người thực hiện */}
+                    {/* Hàng 1: Thời gian & Người thực hiện chuẩn định dạng */}
                     <div className="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 font-medium text-slate-600">
                         <Clock className="h-3.5 w-3.5 text-slate-400" />
                         <span>{formatDate(timeString)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 font-medium text-slate-700">
                         <User className="h-3.5 w-3.5 text-slate-400" />
-                        <span>
-                          {actorName}{' '}
-                          <span className="text-[11px] text-slate-400 font-normal">
-                            ({actorRole})
-                          </span>
-                        </span>
+                        <span>{formatUserInfo(actorName, actorRole)}</span>
                       </div>
                     </div>
 
@@ -125,37 +155,34 @@ export const CreditLimitHistoryModal: React.FC<CreditLimitHistoryModalProps> = (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
                         <div className="text-slate-500 mb-1">Hạn mức công nợ</div>
-                        <div className="flex items-center gap-2 font-bold text-sm">
+                        <div className="flex flex-wrap items-center gap-2 font-bold text-sm">
                           <span className="text-slate-500 line-through">
                             {formatVND(h.oldCreditLimit)} đ
                           </span>
-                          <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
+                          <ArrowRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                           <span className="text-[var(--color-primary)]">
                             {formatVND(h.newCreditLimit)} đ
                           </span>
                           <span
-                            className={`text-xs px-1.5 py-0.5 rounded font-semibold ${
+                            className={`text-xs ml-1 px-2 py-0.5 rounded-full font-semibold border inline-flex items-center ${
                               diff > 0
-                                ? 'bg-emerald-50 text-emerald-700'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 : diff < 0
-                                  ? 'bg-rose-50 text-rose-700'
-                                  : 'bg-slate-100 text-slate-700'
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                  : 'bg-slate-100 text-slate-700 border-slate-200'
                             }`}
                           >
-                            {diff > 0 ? `+${formatVND(diff)}` : formatVND(diff)} đ
+                            (Chênh lệch: {diff > 0 ? `+${formatVND(diff)}` : formatVND(diff)} đ)
                           </span>
                         </div>
                       </div>
 
                       <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                        <div className="text-slate-500 mb-1">Thời hạn nợ & Điều khoản</div>
+                        <div className="text-slate-500 mb-1">Thời hạn nợ</div>
                         <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                           <span>{h.oldMaxDebtDays} ngày</span>
                           <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
                           <span className="text-slate-900">{h.newMaxDebtDays} ngày</span>
-                          <span className="text-xs font-normal text-slate-500">
-                            ({h.newPaymentTerms})
-                          </span>
                         </div>
                       </div>
                     </div>
