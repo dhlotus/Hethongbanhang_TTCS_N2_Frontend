@@ -308,7 +308,7 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
                     onChange={(e) => handleSelectAll(e.target.checked)}
                     className="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                   />
-                  <span>Chọn tất cả ({assignedCustomers.length})</span>
+                  <span>Chọn tất cả</span>
                 </label>
               )}
             </div>
