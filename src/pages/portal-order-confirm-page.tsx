@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useNavigate, Link, Navigate } from 'react-router-dom';
 import {
   ArrowLeft,
-  ShoppingCart,
   Building2,
   CreditCard,
   MapPin,
@@ -11,17 +10,13 @@ import {
   Plus,
   Minus,
   Trash2,
-  Tag,
   AlertTriangle,
   CheckCircle2,
   Check,
   Package,
-  Truck,
-  RotateCcw,
   Loader2,
   ChevronDown,
   Search,
-  X,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ordersService } from '../services/orders.service';
@@ -51,28 +46,6 @@ const cleanProductName = (name?: string): string => {
   return name.replace(/\s*\((lon|chai|hộp|gói|thùng|lốc|lon\s*\d*|chai\s*\d*)\)\s*$/i, '').trim();
 };
 
-/** Nhãn hiển thị cho Nhóm/Cấp đại lý */
-const getGroupBadgeMeta = (group?: string) => {
-  switch (group) {
-    case 'AGENT_LEVEL_1':
-      return {
-        label: 'Đại lý Cấp 1',
-        className: 'bg-indigo-50 text-indigo-700 border-indigo-200 ring-1 ring-indigo-500/10',
-      };
-    case 'AGENT_LEVEL_2':
-      return {
-        label: 'Đại lý Cấp 2',
-        className: 'bg-sky-50 text-sky-700 border-sky-200 ring-1 ring-sky-500/10',
-      };
-    case 'RETAIL':
-    default:
-      return {
-        label: 'Đại lý Bán lẻ',
-        className: 'bg-emerald-50 text-emerald-700 border-emerald-200 ring-1 ring-emerald-500/10',
-      };
-  }
-};
-
 /** Cấu trúc một món trong Giỏ hàng của Đại lý */
 export interface CartItem {
   product: Product;
@@ -86,7 +59,6 @@ export interface CartItem {
 
 export const PortalOrderConfirmPage: React.FC = () => {
   const navigate = useNavigate();
-  const [currentUser] = useState(() => getStoredUser() || tokenStorage.getUser());
 
   // 1. Tải giỏ hàng từ sessionStorage (đồng bộ từ trang Cổng đặt hàng)
   const [cart, setCart] = useState<Record<string, CartItem>>(() => {
@@ -635,8 +607,6 @@ export const PortalOrderConfirmPage: React.FC = () => {
       setIsSubmittingOrder(false);
     }
   };
-
-  const groupBadge = getGroupBadgeMeta(currentCustomer?.customerGroup || (currentCustomer as unknown as { group?: string })?.group);
 
   // ──────────────────────────────────────────────────────────────────────────
   // NẾU GIỎ HÀNG TRỐNG: TỰ ĐỘNG CHUYỂN VỀ CỔNG ĐẶT HÀNG (TRÁNH MÀN HÌNH TRUNG GIAN DƯ THỪA)
@@ -1277,7 +1247,7 @@ export const PortalOrderConfirmPage: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Tổng thanh toán:</span>
-                <span className="font-mono font-bold text-slate-900">{formatVND(submittedOrder.totalAmount || 0)}</span>
+                <span className="font-mono font-bold text-slate-900">{formatVND(submittedOrder.grandTotal ?? (submittedOrder as any).totalAmount ?? 0)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Trạng thái:</span>
