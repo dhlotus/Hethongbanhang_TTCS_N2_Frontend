@@ -245,9 +245,11 @@ export const InventoryAuditsPage: React.FC = () => {
     e.preventDefault();
     try {
       setIsCreating(true);
+      const targetWarehouseName = user?.assignedWarehouse || 'Kho Tổng Miền Nam - LOHA WH01';
+      const targetWarehouseId = user?.warehouseId || user?.warehouseCode || createWarehouseId;
       const payload: CreateInventoryAuditPayload = {
-        warehouseId: createWarehouseId,
-        warehouseName: 'Kho Tổng Miền Nam - LOHA WH01',
+        warehouseId: targetWarehouseId,
+        warehouseName: targetWarehouseName,
         scope: createScope,
         categoryName: createScope === 'CATEGORY' ? createCategory : undefined,
         note: createNote.trim() || undefined,
@@ -852,7 +854,11 @@ export const InventoryAuditsPage: React.FC = () => {
         >
           <ShieldCheck className="w-4 h-4" />
           <span>
-            {isWarehouseManager ? 'Vai trò: Quản lý kho (Toàn quyền)' : 'Vai trò: Thủ kho (Chỉ nhập số đếm)'}
+            {isWarehouseManager
+              ? user?.assignedWarehouse
+                ? `Vai trò: Quản lý kho (${user.assignedWarehouse})`
+                : 'Vai trò: Quản lý kho (Toàn quyền điều chỉnh)'
+              : 'Vai trò: Thủ kho (Chỉ nhập số đếm)'}
           </span>
         </div>
       </div>
@@ -1184,8 +1190,8 @@ export const InventoryAuditsPage: React.FC = () => {
                 <input
                   type="text"
                   disabled
-                  value="Kho Tổng Miền Nam - LOHA WH01"
-                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-700"
+                  value={user?.assignedWarehouse || 'Kho Tổng Miền Nam - LOHA WH01'}
+                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium"
                 />
               </div>
 
