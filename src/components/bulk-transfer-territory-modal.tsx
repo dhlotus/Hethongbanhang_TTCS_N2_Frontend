@@ -294,13 +294,6 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
                     <span className="uppercase tracking-wider text-2xs font-bold text-slate-600">
                       Danh sách đại lý ({assignedCustomers.length})
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectAll(!isAllSelected)}
-                      className="text-2xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline ml-1"
-                    >
-                      {isAllSelected ? 'Bỏ chọn' : 'Chọn tất cả'}
-                    </button>
                   </div>
                   <div className="shrink-0 text-right uppercase tracking-wider text-2xs font-bold text-slate-600 min-w-[120px]">
                     Công nợ
