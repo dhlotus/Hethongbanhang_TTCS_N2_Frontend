@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ClipboardCheck,
   Plus,
@@ -47,14 +48,51 @@ export const InventoryAuditsPage: React.FC = () => {
     );
   }, [userRoles]);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Helper đồng bộ query parameters với URL
+  const updateQueryParam = useCallback(
+    (paramsToUpdate: Record<string, string | null | undefined>) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          Object.entries(paramsToUpdate).forEach(([key, val]) => {
+            if (
+              val === null ||
+              val === undefined ||
+              val === '' ||
+              (key === 'status' && val === 'ALL') ||
+              (key === 'page' && val === '1') ||
+              (key === 'limit' && val === '10')
+            ) {
+              next.delete(key);
+            } else {
+              next.set(key, val);
+            }
+          });
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  // Đọc giá trị Query Parameters ban đầu từ URL
+  const initialStatus = searchParams.get('status') || 'ALL';
+  const initialSearch = searchParams.get('search') || searchParams.get('q') || '';
+  const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const initialLimit = Math.max(1, parseInt(searchParams.get('limit') || searchParams.get('pageSize') || '10', 10) || 10);
+  const initialCreate = searchParams.get('create') === 'true' || searchParams.get('action') === 'create';
+
   // State
   const [audits, setAudits] = useState<InventoryAudit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
 
   // Modal State
-  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(initialCreate);
   const [selectedAudit, setSelectedAudit] = useState<InventoryAudit | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
@@ -83,8 +121,8 @@ export const InventoryAuditsPage: React.FC = () => {
   const [isCancelling, setIsCancelling] = useState(false);
 
   // Pagination & Action Menu State
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialLimit);
   const [actionMenuAuditId, setActionMenuAuditId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -92,6 +130,30 @@ export const InventoryAuditsPage: React.FC = () => {
     window.addEventListener('click', handleCloseMenu);
     return () => window.removeEventListener('click', handleCloseMenu);
   }, []);
+
+  // Đồng bộ từ URL khi người dùng bấm nút Back / Forward của trình duyệt
+  useEffect(() => {
+    const q = searchParams.get('search') || searchParams.get('q') || '';
+    if (q !== searchTerm) {
+      setSearchTerm(q);
+    }
+    const s = searchParams.get('status') || 'ALL';
+    if (s !== statusFilter) {
+      setStatusFilter(s);
+    }
+    const p = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    if (p !== page) {
+      setPage(p);
+    }
+    const l = Math.max(1, parseInt(searchParams.get('limit') || searchParams.get('pageSize') || '10', 10) || 10);
+    if (l !== pageSize) {
+      setPageSize(l);
+    }
+    const shouldOpenCreate = searchParams.get('create') === 'true' || searchParams.get('action') === 'create';
+    if (shouldOpenCreate !== createModalOpen) {
+      setCreateModalOpen(shouldOpenCreate);
+    }
+  }, [searchParams]);
 
   // Load danh sách phiếu
   const loadAudits = useCallback(async () => {
@@ -115,7 +177,7 @@ export const InventoryAuditsPage: React.FC = () => {
   }, [loadAudits]);
 
   // Mở màn hình chi tiết / đếm
-  const handleOpenDetail = (audit: InventoryAudit) => {
+  const handleOpenDetail = useCallback((audit: InventoryAudit, updateUrl = true) => {
     setSelectedAudit(audit);
     // Khởi tạo state đếm từ items hiện tại
     const countsMap: { [productId: string]: { actualQuantity: number | ''; note: string } } = {};
@@ -127,7 +189,56 @@ export const InventoryAuditsPage: React.FC = () => {
     }
     setEditingCounts(countsMap);
     setDetailModalOpen(true);
-  };
+    if (updateUrl) {
+      updateQueryParam({ auditId: audit.auditCode || audit.id });
+    }
+  }, [updateQueryParam]);
+
+  // Đóng màn hình chi tiết và xóa query param
+  const handleCloseDetail = useCallback(() => {
+    setDetailModalOpen(false);
+    setSelectedAudit(null);
+    updateQueryParam({ auditId: null });
+  }, [updateQueryParam]);
+
+  // Quản lý Query Param khi mở/đóng Modal Tạo phiếu
+  const handleOpenCreateModal = useCallback(() => {
+    setCreateModalOpen(true);
+    updateQueryParam({ create: 'true' });
+  }, [updateQueryParam]);
+
+  const handleCloseCreateModal = useCallback(() => {
+    setCreateModalOpen(false);
+    updateQueryParam({ create: null });
+  }, [updateQueryParam]);
+
+  // Tự động khôi phục / mở màn hình chi tiết khi URL có query param ?auditId=... (F5 không mất)
+  const auditIdParam = searchParams.get('auditId') || searchParams.get('id') || '';
+  useEffect(() => {
+    if (!auditIdParam) {
+      if (detailModalOpen) {
+        setDetailModalOpen(false);
+        setSelectedAudit(null);
+      }
+      return;
+    }
+    if (selectedAudit && (selectedAudit.id === auditIdParam || selectedAudit.auditCode === auditIdParam)) {
+      return;
+    }
+    const found = audits.find((a) => a.id === auditIdParam || a.auditCode === auditIdParam);
+    if (found) {
+      handleOpenDetail(found, false);
+      return;
+    }
+    inventoryAuditsService
+      .getAuditById(auditIdParam)
+      .then((item) => {
+        if (item) {
+          handleOpenDetail(item, false);
+        }
+      })
+      .catch(() => {});
+  }, [auditIdParam, audits, selectedAudit, detailModalOpen, handleOpenDetail]);
 
   // Tạo phiếu kiểm kê mới (AC1: chốt bookQuantity)
   const handleCreateAudit = async (e: React.FormEvent) => {
@@ -151,6 +262,7 @@ export const InventoryAuditsPage: React.FC = () => {
       await loadAudits();
       // Mở ngay màn hình kiểm đếm cho phiếu vừa tạo
       handleOpenDetail(newAudit);
+      updateQueryParam({ create: null, auditId: newAudit.auditCode || newAudit.id });
     } catch (err: any) {
       toast.error(err.message || 'Lỗi tạo phiếu kiểm kê');
     } finally {
@@ -429,10 +541,7 @@ export const InventoryAuditsPage: React.FC = () => {
         <div className="flex items-center justify-between">
           <button
             type="button"
-            onClick={() => {
-              setDetailModalOpen(false);
-              setSelectedAudit(null);
-            }}
+            onClick={handleCloseDetail}
             className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-blue-600 transition-all shadow-2xs cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 text-slate-500" />
@@ -702,10 +811,7 @@ export const InventoryAuditsPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => {
-                  setDetailModalOpen(false);
-                  setSelectedAudit(null);
-                }}
+                onClick={handleCloseDetail}
                 className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
               >
                 Quay lại danh sách
@@ -760,8 +866,10 @@ export const InventoryAuditsPage: React.FC = () => {
             placeholder="Tìm theo mã phiếu, người tạo, ghi chú..."
             value={searchTerm}
             onChange={(e) => {
-              setSearchTerm(e.target.value);
+              const val = e.target.value;
+              setSearchTerm(val);
               setPage(1);
+              updateQueryParam({ search: val, page: '1' });
             }}
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
           />
@@ -773,8 +881,10 @@ export const InventoryAuditsPage: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => {
-                setStatusFilter(e.target.value);
+                const val = e.target.value;
+                setStatusFilter(val);
                 setPage(1);
+                updateQueryParam({ status: val, page: '1' });
               }}
               className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white cursor-pointer"
             >
@@ -796,7 +906,7 @@ export const InventoryAuditsPage: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setCreateModalOpen(true)}
+            onClick={handleOpenCreateModal}
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-xs transition-all whitespace-nowrap cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
@@ -1040,10 +1150,14 @@ export const InventoryAuditsPage: React.FC = () => {
             itemLabel="phiếu"
             showRecordRange={false}
             showFirstLast={false}
-            onPageChange={(p) => setPage(p)}
+            onPageChange={(p) => {
+              setPage(p);
+              updateQueryParam({ page: String(p) });
+            }}
             onPageSizeChange={(sz) => {
               setPageSize(sz);
               setPage(1);
+              updateQueryParam({ limit: String(sz), page: '1' });
             }}
           />
         )}
@@ -1060,12 +1174,6 @@ export const InventoryAuditsPage: React.FC = () => {
                 <Warehouse className="w-5 h-5 text-blue-600" />
                 <h3 className="font-bold text-slate-900 text-base">Tạo Phiếu Kiểm Kê Kho</h3>
               </div>
-              <button
-                onClick={() => setCreateModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
-              >
-                ✕
-              </button>
             </div>
 
             <form onSubmit={handleCreateAudit} className="p-6 space-y-4">
@@ -1148,8 +1256,8 @@ export const InventoryAuditsPage: React.FC = () => {
               <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setCreateModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-sm font-medium"
+                  onClick={handleCloseCreateModal}
+                  className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-sm font-medium cursor-pointer"
                 >
                   Hủy
                 </button>
