@@ -596,7 +596,7 @@ export const CustomerOrderDetailModal: React.FC<CustomerOrderDetailModalProps> =
               {/* Điểm nhận hàng */}
               <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs space-y-2.5">
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  <MapPin className="w-4 h-4 text-[var(--color-primary)]" />
+                  <MapPin className="w-4 h-4 text-indigo-600" />
                   Điểm giao hàng & Người nhận
                 </div>
                 <div className="text-sm space-y-1">

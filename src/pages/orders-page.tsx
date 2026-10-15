@@ -1346,7 +1346,7 @@ export const OrdersPage: React.FC = () => {
                         type="button"
                         onClick={() => void handleCloneOrder(order)}
                         disabled={isCloning === order.id}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer min-h-[36px]"
+                        className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer"
                         title="Sao chép đơn thành đơn mới (SN-48)"
                       >
                         {isCloning === order.id ? (
@@ -1642,7 +1642,7 @@ export const OrdersPage: React.FC = () => {
                     setViewOrder(null);
                     setSelectedOrderForReorder(ord);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition-colors cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3.5 text-xs font-semibold rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition-colors cursor-pointer"
                   title="Đặt lại đơn hàng này theo bảng giá hiện hành (SN-174)"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -1653,7 +1653,7 @@ export const OrdersPage: React.FC = () => {
                   type="button"
                   onClick={() => void handleCloneOrder(viewOrder)}
                   disabled={isCloning === viewOrder.id}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3.5 text-xs font-semibold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer"
                   title="Sao chép đơn cũ thành đơn mới ở trạng thái Nháp (SN-48)"
                 >
                   {isCloning === viewOrder.id ? (
@@ -1667,7 +1667,7 @@ export const OrdersPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleOpenPrint(viewOrder)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3.5 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
                   title="In hoặc xuất PDF đơn hàng cho đại lý xem tại chỗ (SN-47)"
                 >
                   <Printer className="w-3.5 h-3.5" />
@@ -1684,7 +1684,7 @@ export const OrdersPage: React.FC = () => {
                       setViewOrder(null);
                       navigate(`/sales/orders/edit/${ordId}`);
                     }}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors cursor-pointer"
                     title="Chỉnh sửa hoặc tiếp tục gõ đơn hàng nháp này"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
@@ -1698,7 +1698,7 @@ export const OrdersPage: React.FC = () => {
                       type="button"
                       onClick={() => handleApproveOrder(viewOrder)}
                       disabled={approvingOrder}
-                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                      className="inline-flex items-center justify-center gap-2 h-[38px] rounded-lg bg-emerald-600 px-3.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer shadow-xs"
                     >
                       <CheckCircle2 className="h-4 w-4" />
                       {approvingOrder ? 'Đang lưu...' : 'Duyệt'}
@@ -1707,7 +1707,7 @@ export const OrdersPage: React.FC = () => {
                       type="button"
                       onClick={() => { setDecisionComment(''); setDecisionAction('REJECT'); }}
                       disabled={approvingOrder}
-                      className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60 cursor-pointer"
+                      className="inline-flex items-center justify-center gap-2 h-[38px] rounded-lg border border-rose-200 bg-rose-50 px-3.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60 cursor-pointer"
                     >
                       <XCircle className="h-4 w-4" /> Từ chối
                     </button>
@@ -1715,7 +1715,7 @@ export const OrdersPage: React.FC = () => {
                       type="button"
                       onClick={() => { setDecisionComment(''); setDecisionAction('RETURN_FOR_UPDATE'); }}
                       disabled={approvingOrder}
-                      className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60 cursor-pointer"
+                      className="inline-flex items-center justify-center gap-2 h-[38px] rounded-lg border border-amber-200 bg-amber-50 px-3.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60 cursor-pointer"
                     >
                       <CornerUpLeft className="h-4 w-4" /> Trả lại sửa
                     </button>
