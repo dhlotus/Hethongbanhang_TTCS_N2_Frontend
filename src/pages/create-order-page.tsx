@@ -1416,8 +1416,8 @@ export const CreateOrderPage: React.FC = () => {
                       setCustomerSearchTerm(e.target.value);
                       if (!isCustomerDropdownOpen) setIsCustomerDropdownOpen(true);
                     }}
-                    onFocus={() => {
-                      if (!isCustomerDropdownOpen) setIsCustomerDropdownOpen(true);
+                    onClick={() => {
+                      setIsCustomerDropdownOpen((prev) => !prev);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
@@ -1428,12 +1428,13 @@ export const CreateOrderPage: React.FC = () => {
                       }
                     }}
                     placeholder={selectedCustomer ? `Đang chọn: ${selectedCustomer.code} - ${selectedCustomer.name} (Nhập để tìm đại lý khác...)` : 'Nhập mã đại lý (VD: DL-0001) hoặc tên công ty để tìm kiếm...'}
-                    className="w-full h-11 pl-10 pr-10 text-xs sm:text-sm border border-slate-200 rounded-xl bg-white hover:border-slate-300 focus:bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all shadow-2xs font-medium"
+                    className="w-full h-10 pl-10 pr-10 text-xs sm:text-sm border border-slate-200 rounded-xl bg-white hover:border-slate-300 focus:bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all shadow-2xs font-medium cursor-text"
                   />
                   {customerSearchTerm && (
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setCustomerSearchTerm('');
                         searchInputRef.current?.focus();
                       }}
@@ -1445,7 +1446,7 @@ export const CreateOrderPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* Nút bấm Tìm kiếm / Mở danh sách đại lý */}
+                {/* Nút bấm Tìm kiếm / Mở danh sách đại lý (Nhỏ gọn, thanh thoát) */}
                 <button
                   type="button"
                   id="customer-search-button"
@@ -1455,16 +1456,16 @@ export const CreateOrderPage: React.FC = () => {
                       searchInputRef.current?.focus();
                     }
                   }}
-                  className={`h-11 px-4 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-xs shrink-0 ${
+                  className={`h-10 px-3.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs shrink-0 ${
                     isCustomerDropdownOpen
                       ? 'bg-indigo-700 text-white shadow-indigo-600/20'
                       : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20'
                   }`}
                   title="Bấm để tìm kiếm và sổ danh sách đại lý"
                 >
-                  <Search className="w-4 h-4" />
+                  <Search className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Tìm kiếm</span>
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isCustomerDropdownOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isCustomerDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
               </div>
 
@@ -1472,7 +1473,7 @@ export const CreateOrderPage: React.FC = () => {
               {isCustomerDropdownOpen && (
                 <div className="absolute left-0 right-0 top-full mt-2 z-50 bg-white border border-slate-200/90 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
                   {/* Header danh sách kết quả */}
-                  <div className="px-4 py-2.5 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between text-xs">
+                  <div className="px-4 py-2 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between text-xs">
                     <span className="font-semibold text-slate-600">
                       {customerSearchTerm ? (
                         <>Kết quả tìm kiếm &quot;<strong className="text-indigo-600">{customerSearchTerm}</strong>&quot; ({filteredCustomers.length})</>
@@ -1480,7 +1481,6 @@ export const CreateOrderPage: React.FC = () => {
                         <>Danh sách đại lý khả dụng ({customers.length})</>
                       )}
                     </span>
-                    <span className="text-[11px] text-slate-400 hidden sm:inline">Nhấp vào dòng để chọn • Nhấn Esc để đóng</span>
                   </div>
 
                   {/* Danh sách các Option đại lý được thiết kế tối ưu, thoáng và dễ nhìn */}
