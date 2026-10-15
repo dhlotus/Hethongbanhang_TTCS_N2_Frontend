@@ -294,9 +294,6 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
                     <span className="uppercase tracking-wider text-2xs font-bold text-slate-600">
                       Danh sách đại lý ({assignedCustomers.length})
                     </span>
-                    <span className="px-1.5 py-0.5 rounded-full text-2xs bg-indigo-50 text-indigo-700 border border-indigo-100 font-medium">
-                      {selectedCustomerIds.length}/{assignedCustomers.length}
-                    </span>
                     <button
                       type="button"
                       onClick={() => handleSelectAll(!isAllSelected)}
@@ -333,9 +330,8 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
                           />
                           <div className="text-xs text-slate-800 truncate">
                             <span className="font-semibold">{cust.name}</span>
-                            <span className="text-slate-500 ml-1.5">({cust.code})</span>
                             {cust.region && (
-                              <span className="text-slate-400 ml-1.5">• {cust.region}</span>
+                              <span className="text-slate-400 ml-2">• {cust.region}</span>
                             )}
                           </div>
                         </div>
@@ -381,15 +377,7 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
             <div className="text-xs text-slate-500">
               Chuyển giao: <strong className="text-indigo-600">{selectedCustomerIds.length}</strong> đại lý
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isSubmitting}
-                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 focus:outline-none transition-colors"
-              >
-                Hủy bỏ
-              </button>
+            <div>
               <button
                 type="submit"
                 disabled={isSubmitting || selectedCustomerIds.length === 0}
