@@ -336,11 +336,6 @@ export const StockListPage: React.FC = () => {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               Sổ Tồn Kho & Giữ Chỗ Hàng Hóa
             </h1>
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-700/10">
-              <span>SN-180</span>
-              <span>•</span>
-              <span className="text-rose-700 font-bold">SN-183</span>
-            </span>
           </div>
           <p className="mt-1 text-sm text-slate-500">
             Theo dõi tồn thực tế, số lượng giữ chỗ cho các đơn hàng đã duyệt, tồn khả dụng sẵn sàng bán và ngưỡng cảnh báo đặt hàng.
@@ -501,7 +496,7 @@ export const StockListPage: React.FC = () => {
             <span className={`text-xs font-semibold uppercase tracking-wider ${
               stats.belowMinStockCount > 0 ? 'text-rose-700' : 'text-slate-500'
             }`}>
-              Cảnh báo dưới tồn (SN-183)
+              Cảnh báo dưới tồn
             </span>
             <div className={`rounded-lg p-2 ${
               stats.belowMinStockCount > 0 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'

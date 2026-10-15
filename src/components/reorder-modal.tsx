@@ -20,6 +20,13 @@ import type {
 } from '../types/order';
 
 
+/**
+ * [SN-174]: Đại lý đặt lại một đơn đã mua trước đây (1-Click Reorder)
+ * - Tự động nạp toàn bộ dòng hàng từ đơn cũ
+ * - Loại bỏ và cảnh báo các mặt hàng đã ngừng kinh doanh (Discontinued Items)
+ * - Tái áp giá niêm yết và chiết khấu theo bảng giá hiện hành của đại lý
+ * - Cho phép chọn/bỏ chọn từng dòng hàng bằng checkbox trước khi xác nhận tạo đơn mới
+ */
 interface ReorderModalProps {
   order: Order | null;
   isOpen: boolean;

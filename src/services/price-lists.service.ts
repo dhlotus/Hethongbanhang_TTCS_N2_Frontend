@@ -15,7 +15,7 @@ import type {
 const FALLBACK_PRICE_LISTS: PriceList[] = [
   {
     id: 'pl-001',
-    code: 'DL-0001',
+    code: 'BG-C3-0001',
     name: 'Bảng giá Bán lẻ Niêm yết 2026',
     customerGroup: 'RETAIL',
     startDate: '2026-01-01',
@@ -77,7 +77,7 @@ const FALLBACK_PRICE_LISTS: PriceList[] = [
   },
   {
     id: 'pl-002',
-    code: 'DL-0002',
+    code: 'BG-C1-0001',
     name: 'Bảng giá Đại lý Cấp 1 - Q4/2026',
     customerGroup: 'AGENT_LEVEL_1',
     startDate: '2026-10-01',
@@ -139,7 +139,7 @@ const FALLBACK_PRICE_LISTS: PriceList[] = [
   },
   {
     id: 'pl-003',
-    code: 'DL-0003',
+    code: 'BG-C2-0001',
     name: 'Bảng giá Đại lý Cấp 2 - Mùa Tết',
     customerGroup: 'AGENT_LEVEL_2',
     startDate: '2026-11-01',
@@ -201,7 +201,7 @@ const FALLBACK_PRICE_LISTS: PriceList[] = [
   },
   {
     id: 'pl-004',
-    code: 'DL-0002-v2',
+    code: 'BG-C1-0001-V2',
     name: 'Bảng giá Đại lý Cấp 1 - v2.0',
     customerGroup: 'AGENT_LEVEL_1',
     startDate: '2026-10-01',
@@ -210,7 +210,7 @@ const FALLBACK_PRICE_LISTS: PriceList[] = [
     version: 2,
     parentVersionId: 'pl-002',
     hasOrders: false,
-    description: 'Bản nháp phiên bản 2.0 nhân bản từ DL-0002, chuẩn bị cập nhật mức giá mới',
+    description: 'Bản nháp phiên bản 2.0 nhân bản từ BG-C1-0001, chuẩn bị cập nhật mức giá mới',
     createdAt: '2026-10-02T14:15:00.000Z',
     updatedAt: '2026-10-02T14:15:00.000Z',
     items: [
@@ -263,7 +263,7 @@ const FALLBACK_PRICE_LISTS: PriceList[] = [
   },
   {
     id: 'pl-005',
-    code: 'DL-0005',
+    code: 'BG-C3-0002',
     name: 'Khuyến mãi Mùa Hè 2026',
     customerGroup: 'RETAIL',
     startDate: '2026-06-01',

@@ -62,38 +62,11 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
   isDirty = false,
   dirtyPromptMessage = 'Biểu mẫu đang có dữ liệu thay đổi chưa lưu. Bạn có chắc chắn muốn thoát mà không lưu?',
 }) => {
-  const [isRendered, setIsRendered] = useState(isOpen);
-  const [isClosing, setIsClosing] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   // Mặc định không đóng khi click ngoài backdrop đối với modal form để chống mất dữ liệu
   const shouldCloseOnOverlay =
     closeOnOverlayClick !== undefined ? closeOnOverlayClick : bodyAs !== 'form';
-
-  // Đồng bộ trạng thái mở/đóng và xử lý animation mượt mà
-  useEffect(() => {
-    if (isOpen) {
-      setIsRendered(true);
-      setIsClosing(false);
-    } else if (isRendered && !isClosing) {
-      setIsClosing(true);
-      const timer = setTimeout(() => {
-        setIsClosing(false);
-        setIsRendered(false);
-      }, 220);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, isRendered, isClosing]);
-
-  const handleClose = useCallback(() => {
-    if (isClosing) return;
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsClosing(false);
-      setIsRendered(false);
-      onClose();
-    }, 220);
-  }, [isClosing, onClose]);
 
   // Kiểm tra isDirty trước khi cho phép đóng
   const requestClose = useCallback(() => {
@@ -101,23 +74,23 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
       setShowDiscardConfirm(true);
       return;
     }
-    handleClose();
-  }, [isDirty, handleClose]);
+    onClose();
+  }, [isDirty, onClose]);
 
   // Khóa cuộn body trình duyệt để tránh cuộn kép
   useEffect(() => {
-    if (isRendered) {
+    if (isOpen) {
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
       return () => {
         document.body.style.overflow = originalOverflow;
       };
     }
-  }, [isRendered]);
+  }, [isOpen]);
 
   // Phím tắt Escape để đóng
   useEffect(() => {
-    if (!isRendered || isClosing || !closeOnEsc) return;
+    if (!isOpen || !closeOnEsc) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -126,11 +99,9 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isRendered, isClosing, closeOnEsc, requestClose]);
+  }, [isOpen, closeOnEsc, requestClose]);
 
-  if (!isRendered || typeof document === 'undefined') return null;
-
-  const BodyComponent = bodyAs === 'form' ? 'form' : 'div';
+  if (!isOpen || typeof document === 'undefined') return null;
 
   return createPortal(
     <div
@@ -146,24 +117,16 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
         fullScreenOnMobile
           ? 'items-end md:items-center justify-center p-0 md:p-4'
           : 'items-center justify-center p-3 sm:p-4'
-      } bg-slate-900/40 backdrop-blur-xs transition-all ${
-        isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
-      }`}
+      } bg-slate-900/40 backdrop-blur-xs transition-all animate-modal-backdrop-in`}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative w-full ${maxWidth} bg-white ${
+        className={`relative w-full ${maxWidth} bg-white overflow-hidden ${
           fullScreenOnMobile
             ? 'h-[100dvh] md:h-auto max-h-[100dvh] md:max-h-[calc(100dvh-3.5rem)] rounded-none md:rounded-xl border-0 md:border border-slate-200/90 shadow-lg flex flex-col'
             : 'rounded-xl border border-slate-200/90 shadow-lg flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3.5rem)]'
         } ${
-          fullScreenOnMobile
-            ? isClosing
-              ? 'animate-sheet-out md:animate-modal-out'
-              : 'animate-sheet-in md:animate-modal-in'
-            : isClosing
-              ? 'animate-modal-out'
-              : 'animate-modal-in'
+          fullScreenOnMobile ? 'animate-sheet-in md:animate-modal-in' : 'animate-modal-in'
         } ${containerClassName}`}
       >
         {/* 1. Header cố định */}
@@ -210,20 +173,39 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
         {banner && <div className="shrink-0">{banner}</div>}
 
         {/* 3. Body cuộn nội dung độc lập - Tự động co giãn theo viewport bàn phím ảo */}
-        <BodyComponent
-          {...(bodyAs === 'form' && onFormSubmit ? { onSubmit: onFormSubmit } : {})}
-          className={`flex-1 min-h-0 overflow-y-auto overscroll-contain ${
-            bodyClassName || 'p-4 sm:p-6 space-y-4 sm:space-y-5 text-slate-700 text-xs'
-          }`}
-        >
-          {children}
-        </BodyComponent>
-
-        {/* 4. Footer Action bar ghim cố định ở đáy với safe-area-inset-bottom */}
-        {footer && (
-          <div className="sticky bottom-0 z-20 flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-b-none md:rounded-b-xl pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-4">
-            {footer}
-          </div>
+        {bodyAs === 'form' ? (
+          <form
+            onSubmit={onFormSubmit}
+            className="flex-1 min-h-0 flex flex-col overflow-hidden"
+          >
+            <div
+              className={`flex-1 min-h-0 overflow-y-auto overscroll-contain ${
+                bodyClassName || 'p-4 sm:p-6 space-y-4 sm:space-y-5 text-slate-700 text-xs'
+              }`}
+            >
+              {children}
+            </div>
+            {footer && (
+              <div className="sticky bottom-0 z-20 flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-b-none md:rounded-b-xl pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-4">
+                {footer}
+              </div>
+            )}
+          </form>
+        ) : (
+          <>
+            <div
+              className={`flex-1 min-h-0 overflow-y-auto overscroll-contain ${
+                bodyClassName || 'p-4 sm:p-6 space-y-4 sm:space-y-5 text-slate-700 text-xs'
+              }`}
+            >
+              {children}
+            </div>
+            {footer && (
+              <div className="sticky bottom-0 z-20 flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-b-none md:rounded-b-xl pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-4">
+                {footer}
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -232,7 +214,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
         onCancel={() => setShowDiscardConfirm(false)}
         onConfirm={() => {
           setShowDiscardConfirm(false);
-          handleClose();
+          onClose();
         }}
         title="Bỏ thay đổi chưa lưu?"
         message={dirtyPromptMessage}

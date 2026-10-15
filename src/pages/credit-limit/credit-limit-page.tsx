@@ -8,18 +8,15 @@ import {
 import { creditLimitService } from '../../services/credit-limit.service';
 import type {
   CreditLimit,
-  CreditLimitStats,
   UpdateCreditLimitPayload,
   UpdateCreditStatusPayload,
 } from '../../types/credit-limit.type';
 import { CreditStatus } from '../../types/credit-limit.type';
 import { Role } from '../../types/auth';
-import { CreditLimitStatsCards } from '../../components/credit-limit/credit-limit-stats-cards';
 import { CreditLimitTable } from '../../components/credit-limit/credit-limit-table';
 import { UpdateLimitModal } from '../../components/credit-limit/update-limit-modal';
 import { CreditLimitStatusModal } from '../../components/credit-limit/credit-limit-status-modal';
 import { CreditLimitHistoryModal } from '../../components/credit-limit/credit-limit-history-modal';
-import { Pagination } from '../../components/pagination';
 import { showToast } from '../../components/toast';
 import { getStoredUser } from '../../utils/navigation';
 
@@ -29,9 +26,7 @@ import { getStoredUser } from '../../utils/navigation';
  */
 export const CreditLimitPage: React.FC = () => {
   const [items, setItems] = useState<CreditLimit[]>([]);
-  const [stats, setStats] = useState<CreditLimitStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [statsLoading, setStatsLoading] = useState<boolean>(true);
 
   // Bộ lọc & Phân trang
   const [search, setSearch] = useState<string>('');
@@ -66,37 +61,51 @@ export const CreditLimitPage: React.FC = () => {
     );
   }, []);
 
-  // Tải thống kê
-  const fetchStats = useCallback(async () => {
-    try {
-      setStatsLoading(true);
-      const data = await creditLimitService.getCreditLimitStats();
-      setStats(data);
-    } catch (err: unknown) {
-      showToast(
-        'error',
-        err instanceof Error ? err.message : 'Không thể tải số liệu thống kê hạn mức.'
-      );
-    } finally {
-      setStatsLoading(false);
-    }
-  }, []);
+  // Helper trích xuất thông báo lỗi thân thiện (SN-34)
+  const getFriendlyCreditLimitErrorMessage = (err: unknown): string => {
+    const defaultMsg = 'Lý do chưa rõ ràng. Vui lòng mô tả cụ thể hơn (tối thiểu 10 ký tự).';
+    if (!err) return defaultMsg;
+    const anyErr = err as any;
+    const status = anyErr?.response?.status || anyErr?.statusCode;
 
-  // Tải danh sách hạn mức công nợ
-  const fetchCreditLimits = useCallback(async () => {
+    // Khi API cập nhật trả về HTTP Status 400, KHÔNG hiển thị chuỗi kỹ thuật "Request failed with status code 400"
+    if (
+      status === 400 ||
+      (typeof anyErr?.message === 'string' &&
+        (anyErr.message.includes('400') || anyErr.message.includes('status code 400')))
+    ) {
+      return defaultMsg;
+    }
+
+    const serverMsg = anyErr?.response?.data?.message;
+    if (typeof serverMsg === 'string' && serverMsg.trim() && !serverMsg.includes('status code')) {
+      return serverMsg;
+    }
+    if (err instanceof Error && err.message && !err.message.includes('status code')) {
+      return err.message;
+    }
+    return defaultMsg;
+  };
+
+  // Tải danh sách hạn mức công nợ (Hỗ trợ giữ nguyên trang hiện tại)
+  const fetchCreditLimits = useCallback(async (targetPage?: number) => {
     try {
       setLoading(true);
+      const currentPageToFetch = typeof targetPage === 'number' ? targetPage : page;
       const res = await creditLimitService.getCreditLimits({
         search: search.trim() || undefined,
         status: statusFilter || undefined,
         customerGroup: customerGroupFilter || undefined,
-        page,
+        page: currentPageToFetch,
         limit,
       });
 
       setItems(res.data);
       setTotalPages(res.totalPages);
       setTotalItems(res.total);
+      if (res.totalPages > 0 && currentPageToFetch > res.totalPages) {
+        setPage(res.totalPages);
+      }
     } catch (err: unknown) {
       showToast(
         'error',
@@ -108,14 +117,10 @@ export const CreditLimitPage: React.FC = () => {
   }, [search, statusFilter, customerGroupFilter, page, limit]);
 
   useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
-
-  useEffect(() => {
     fetchCreditLimits();
   }, [fetchCreditLimits]);
 
-  // Xử lý Cập nhật Hạn mức (Bọc trong try-catch và hiển thị thông báo)
+  // Xử lý Cập nhật Hạn mức (Giữ nguyên trang hiện tại, thông báo lỗi thân thiện)
   const handleUpdateLimit = async (
     agencyId: string,
     payload: UpdateCreditLimitPayload
@@ -125,9 +130,10 @@ export const CreditLimitPage: React.FC = () => {
       await creditLimitService.updateCreditLimit(agencyId, payload);
       showToast('success', 'Đã cập nhật hạn mức công nợ đại lý thành công!');
       setSelectedItemForEdit(null);
-      await Promise.all([fetchCreditLimits(), fetchStats()]);
+      // Giữ nguyên trang hiện tại (page), KHÔNG reset về Trang 1
+      await fetchCreditLimits(page);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Lỗi khi cập nhật hạn mức công nợ.';
+      const msg = getFriendlyCreditLimitErrorMessage(err);
       showToast('error', msg);
       throw err;
     } finally {
@@ -135,7 +141,7 @@ export const CreditLimitPage: React.FC = () => {
     }
   };
 
-  // Xử lý Khóa / Mở khóa Hạn mức (Bọc trong try-catch và hiển thị thông báo)
+  // Xử lý Khóa / Mở khóa Hạn mức (Giữ nguyên trang hiện tại)
   const handleUpdateStatus = async (
     agencyId: string,
     payload: UpdateCreditStatusPayload
@@ -150,9 +156,10 @@ export const CreditLimitPage: React.FC = () => {
           : 'Đã mở khóa hạn mức tín dụng của đại lý thành công!'
       );
       setSelectedItemForStatus(null);
-      await Promise.all([fetchCreditLimits(), fetchStats()]);
+      // Giữ nguyên trang hiện tại (page), KHÔNG reset về Trang 1
+      await fetchCreditLimits(page);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Lỗi khi cập nhật trạng thái hạn mức.';
+      const msg = getFriendlyCreditLimitErrorMessage(err);
       showToast('error', msg);
       throw err;
     } finally {
@@ -163,43 +170,11 @@ export const CreditLimitPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* ===================================================================== */}
-      {/* 1. Header Trang                                                       */}
+      {/* 1. Thanh Công Cụ: Tìm Kiếm, Bộ Lọc & Làm Mới (Nằm gọn trong 1 dòng)   */}
       {/* ===================================================================== */}
-      <div className="flex items-center justify-end gap-2.5 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
-        {!canEditCreditLimit && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-            <ShieldAlert className="h-4 w-4 text-amber-600" />
-            <span>
-              Chế độ chỉ xem (Chỉ Kế toán công nợ / Quản lý kinh doanh mới có quyền chỉnh sửa)
-            </span>
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={() => {
-            fetchCreditLimits();
-            fetchStats();
-          }}
-          disabled={loading}
-          className="px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>Làm mới</span>
-        </button>
-      </div>
-
-      {/* ===================================================================== */}
-      {/* 2. Thẻ Thống Kê Tổng Quan                                             */}
-      {/* ===================================================================== */}
-      <CreditLimitStatsCards stats={stats} loading={statsLoading} />
-
-      {/* ===================================================================== */}
-      {/* 3. Thanh Tìm Kiếm & Bộ Lọc                                            */}
-      {/* ===================================================================== */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+      <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col lg:flex-row gap-3 items-center justify-between">
         {/* Ô tìm kiếm */}
-        <div className="relative w-full md:w-80">
+        <div className="relative w-full lg:w-80">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           <input
             type="text"
@@ -213,8 +188,15 @@ export const CreditLimitPage: React.FC = () => {
           />
         </div>
 
-        {/* Các bộ lọc dropdown */}
-        <div className="flex items-center gap-2 w-full md:w-auto">
+        {/* Các bộ lọc dropdown & Nút Làm Mới ở ngoài cùng bên phải */}
+        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
+          {!canEditCreditLimit && (
+            <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-medium">
+              <ShieldAlert className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+              <span>Chế độ chỉ xem</span>
+            </div>
+          )}
+
           <div className="flex items-center gap-1.5 text-xs text-slate-500 shrink-0">
             <Filter className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Lọc theo:</span>
@@ -250,11 +232,25 @@ export const CreditLimitPage: React.FC = () => {
             <option value="AGENT_LEVEL_2">Đại lý cấp 2</option>
             <option value="RETAIL">Bán lẻ / Siêu thị mini</option>
           </select>
+
+          {/* Nút Làm mới ở góc bên phải ngoài cùng */}
+          <button
+            type="button"
+            onClick={() => {
+              fetchCreditLimits(page);
+            }}
+            disabled={loading}
+            className="px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+            title="Tải lại danh sách"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-[var(--color-primary)]' : 'text-slate-500'}`} />
+            <span>Làm mới</span>
+          </button>
         </div>
       </div>
 
       {/* ===================================================================== */}
-      {/* 4. Bảng Danh Sách Hạn Mức Công Nợ (Ẩn/Disable nút Sửa nếu thiếu quyền) */}
+      {/* 3. Bảng Danh Sách Hạn Mức Công Nợ & Footer Phân Trang Tích Hợp       */}
       {/* ===================================================================== */}
       <CreditLimitTable
         items={items}
@@ -263,28 +259,16 @@ export const CreditLimitPage: React.FC = () => {
         onEdit={(item) => setSelectedItemForEdit(item)}
         onToggleStatus={(item) => setSelectedItemForStatus(item)}
         onViewHistory={(item) => setSelectedItemForHistory(item)}
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        pageSize={limit}
+        onPageChange={(newPage) => setPage(newPage)}
+        onPageSizeChange={(newSize) => {
+          setLimit(newSize);
+          setPage(1);
+        }}
       />
-
-      {/* ===================================================================== */}
-      {/* 5. Phân Trang (Pagination)                                            */}
-      {/* ===================================================================== */}
-      {totalItems > 0 && (
-        <Pagination
-          variant="default"
-          currentPage={page}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          pageSize={limit}
-          pageSizeOptions={[10, 20, 50]}
-          itemLabel="đại lý"
-          showFirstLast={true}
-          onPageChange={(newPage) => setPage(newPage)}
-          onPageSizeChange={(newSize) => {
-            setLimit(newSize);
-            setPage(1);
-          }}
-        />
-      )}
 
       {/* ===================================================================== */}
       {/* 6. Form Modal Cập Nhật Hạn Mức (UpdateLimitModal - SN-34)               */}

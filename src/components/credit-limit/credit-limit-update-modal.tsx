@@ -333,7 +333,7 @@ export const CreditLimitUpdateModal: React.FC<CreditLimitUpdateModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 text-xs font-semibold text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5 disabled:opacity-50"
+              className="px-5 py-2 text-xs font-semibold text-white bg-[var(--color-primary)] rounded-lg shadow-sm transition-all flex items-center gap-1.5 enabled:hover:bg-[var(--color-primary-hover)] enabled:hover:shadow enabled:active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[var(--color-primary)] disabled:hover:shadow-none"
             >
               {loading ? (
                 <>

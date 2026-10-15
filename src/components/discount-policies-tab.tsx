@@ -12,6 +12,9 @@ import type {
   CreateDiscountPolicyPayload,
 } from '../services/discount-policies.service';
 import { DiscountPolicyFormModal } from './discount-policy-form-modal';
+import { Pagination } from './pagination';
+import { getStoredUser } from '../utils/navigation';
+import { tokenStorage } from '../utils/token-storage';
 
 /**
  * Trích xuất thông báo lỗi an toàn không dùng `any` theo CODE_CONVENTION.md
@@ -25,8 +28,30 @@ const getErrorMessage = (err: unknown, fallback: string): string => {
   return fallback;
 };
 
-export const DiscountPoliciesTab: React.FC = () => {
+export interface DiscountPoliciesTabProps {
+  canManage?: boolean;
+}
+
+export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
+  canManage: canManageProp,
+}) => {
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Phân quyền người dùng: Nhân viên kinh doanh (SALES_REP) không có quyền tạo/quản lý chính sách
+  // Chỉ ADMIN và SALES_MANAGER có quyền tạo mới, chỉnh sửa, xóa chính sách chiết khấu
+  const currentUser = tokenStorage.getUser() || getStoredUser();
+  const userRoles = useMemo(() => {
+    const roles = currentUser?.roles || [];
+    if (currentUser?.role && !roles.includes(currentUser.role)) {
+      return [...roles, currentUser.role];
+    }
+    return roles;
+  }, [currentUser]);
+
+  const isAdminOrSalesManager =
+    userRoles.includes('ADMIN') || userRoles.includes('SALES_MANAGER');
+
+  const canManage = canManageProp !== undefined ? canManageProp : isAdminOrSalesManager;
 
   // Dữ liệu & Tải trang
   const [policies, setPolicies] = useState<DiscountPolicy[]>([]);
@@ -51,11 +76,21 @@ export const DiscountPoliciesTab: React.FC = () => {
   const [searchInput, setSearchInput] = useState<string>(urlSearchParam);
   const [searchTerm, setSearchTerm] = useState<string>(urlSearchParam);
 
+  // Phân trang từ URL Search Params (Hỗ trợ tùy chọn 5 - 10 - 20 bản ghi/trang)
+  const urlPageParam = parseInt(searchParams.get('page') || '1', 10);
+  const validPage = Number.isInteger(urlPageParam) && urlPageParam > 0 ? urlPageParam : 1;
+
+  const urlLimitParam = parseInt(searchParams.get('limit') || '10', 10);
+  const validLimit = [5, 10, 20].includes(urlLimitParam) ? urlLimitParam : 10;
+
+  const [currentPage, setCurrentPage] = useState<number>(validPage);
+  const [pageSize, setPageSize] = useState<number>(validLimit);
+
   const isInitialSearchMount = useRef(true);
 
   // Cập nhật an toàn các Query Params lên URL (không reload trang)
   const updateUrlParams = useCallback(
-    (updates: { status?: string; search?: string }) => {
+    (updates: { status?: string; search?: string; page?: number; limit?: number }) => {
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -79,12 +114,28 @@ export const DiscountPoliciesTab: React.FC = () => {
             next.delete('search');
           }
 
+          // Phân trang: ?page=...
+          const targetPage = updates.page !== undefined ? updates.page : currentPage;
+          if (targetPage > 1) {
+            next.set('page', String(targetPage));
+          } else {
+            next.delete('page');
+          }
+
+          // Kích thước trang: ?limit=... (nếu khác 10 thì đồng bộ URL)
+          const targetLimit = updates.limit !== undefined ? updates.limit : pageSize;
+          if (targetLimit !== 10) {
+            next.set('limit', String(targetLimit));
+          } else {
+            next.delete('limit');
+          }
+
           return next;
         },
         { replace: true }
       );
     },
-    [setSearchParams, selectedStatus, searchTerm]
+    [setSearchParams, selectedStatus, searchTerm, currentPage, pageSize]
   );
 
   // Debounce tìm kiếm (400ms)
@@ -98,7 +149,8 @@ export const DiscountPoliciesTab: React.FC = () => {
       const trimmed = searchInput.trim();
       if (trimmed !== searchTerm) {
         setSearchTerm(trimmed);
-        updateUrlParams({ search: trimmed });
+        setCurrentPage(1);
+        updateUrlParams({ search: trimmed, page: 1 });
       }
     }, 400);
 
@@ -121,7 +173,19 @@ export const DiscountPoliciesTab: React.FC = () => {
       setSearchTerm(newSearch);
       setSearchInput(newSearch);
     }
-  }, [searchParams, selectedStatus, searchTerm]);
+
+    const rawPage = parseInt(searchParams.get('page') || '1', 10);
+    const newPage = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+    if (newPage !== currentPage) {
+      setCurrentPage(newPage);
+    }
+
+    const rawLimit = parseInt(searchParams.get('limit') || '10', 10);
+    const newLimit = [5, 10, 20].includes(rawLimit) ? rawLimit : 10;
+    if (newLimit !== pageSize) {
+      setPageSize(newLimit);
+    }
+  }, [searchParams, selectedStatus, searchTerm, currentPage, pageSize]);
 
   // Nạp danh sách chính sách chiết khấu
   const loadPolicies = useCallback(async () => {
@@ -171,6 +235,40 @@ export const DiscountPoliciesTab: React.FC = () => {
     });
   }, [policies, selectedStatus, searchTerm]);
 
+  // Phân trang danh sách chính sách chiết khấu (5 - 10 - 20)
+  const totalPages = filteredPolicies.length > 0 ? Math.ceil(filteredPolicies.length / pageSize) : 0;
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, filteredPolicies.length);
+
+  const paginatedPolicies = useMemo(() => {
+    return filteredPolicies.slice(startIndex, endIndex);
+  }, [filteredPolicies, startIndex, endIndex]);
+
+  // Điều chỉnh safe page khi lọc danh sách bị giảm số trang
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+      updateUrlParams({ page: totalPages });
+    }
+  }, [totalPages, currentPage, updateUrlParams]);
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      setCurrentPage(page);
+      updateUrlParams({ page });
+    },
+    [updateUrlParams]
+  );
+
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      setPageSize(size);
+      setCurrentPage(1);
+      updateUrlParams({ limit: size, page: 1 });
+    },
+    [updateUrlParams]
+  );
+
   const handleOpenCreateModal = () => {
     setEditingPolicy(null);
     setIsModalOpen(true);
@@ -196,6 +294,7 @@ export const DiscountPoliciesTab: React.FC = () => {
       }
       setIsModalOpen(false);
       await loadPolicies();
+      window.dispatchEvent(new Event('loha_discount_policies_updated'));
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Lỗi khi lưu chính sách');
       showToast('error', msg);
@@ -205,14 +304,16 @@ export const DiscountPoliciesTab: React.FC = () => {
 
   const handleStatusFilterChange = (status: string) => {
     setSelectedStatus(status);
-    updateUrlParams({ status });
+    setCurrentPage(1);
+    updateUrlParams({ status, page: 1 });
   };
 
   const handleClearFilters = () => {
     setSearchInput('');
     setSearchTerm('');
     setSelectedStatus('ALL');
-    updateUrlParams({ search: '', status: 'ALL' });
+    setCurrentPage(1);
+    updateUrlParams({ search: '', status: 'ALL', page: 1 });
   };
 
   return (
@@ -228,15 +329,18 @@ export const DiscountPoliciesTab: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          size="sm"
-          fullWidth={false}
-          leftIcon={<Plus className="h-4 w-4" />}
-          onClick={handleOpenCreateModal}
-        >
-          Thêm chính sách
-        </Button>
+        {/* Ẩn nút Thêm chính sách đối với tài khoản Nhân viên kinh doanh (chỉ ADMIN / SALES_MANAGER được tạo) */}
+        {canManage && (
+          <Button
+            variant="primary"
+            size="sm"
+            fullWidth={false}
+            leftIcon={<Plus className="h-4 w-4" />}
+            onClick={handleOpenCreateModal}
+          >
+            Thêm chính sách
+          </Button>
+        )}
       </div>
 
       {/* 2. Filter Bar (Đồng bộ URL searchParams) */}
@@ -310,8 +414,11 @@ export const DiscountPoliciesTab: React.FC = () => {
         <div className="mt-2.5 flex items-center justify-between text-xs text-slate-500 font-medium pt-2 border-t border-slate-100">
           <div>
             Hiển thị{' '}
-            <strong className="text-slate-900 font-semibold">{filteredPolicies.length}</strong> /{' '}
-            {policies.length} chính sách
+            <strong className="text-slate-900 font-semibold">
+              {filteredPolicies.length > 0 ? `${startIndex + 1} - ${endIndex}` : 0}
+            </strong>{' '}
+            / <strong className="text-slate-900 font-semibold">{filteredPolicies.length}</strong>{' '}
+            chính sách {filteredPolicies.length !== policies.length && `(Tổng ${policies.length})`}
           </div>
           {(searchTerm || selectedStatus !== 'ALL') && (
             <div className="text-[11px] text-blue-600 font-medium">
@@ -352,15 +459,17 @@ export const DiscountPoliciesTab: React.FC = () => {
                 <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36 text-center">
                   Trạng thái
                 </th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-28 text-center">
-                  Thao tác
-                </th>
+                {canManage && (
+                  <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-28 text-center">
+                    Thao tác
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-500 font-medium">
+                  <td colSpan={canManage ? 8 : 7} className="py-8 text-center text-slate-500 font-medium">
                     <div className="flex items-center justify-center gap-2">
                       <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
                       <span>Đang nạp danh sách chính sách chiết khấu...</span>
@@ -369,7 +478,7 @@ export const DiscountPoliciesTab: React.FC = () => {
                 </tr>
               ) : filteredPolicies.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-500">
+                  <td colSpan={canManage ? 8 : 7} className="py-12 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <p className="font-semibold text-slate-700">Không tìm thấy chính sách phù hợp</p>
                       <p className="text-xs text-slate-400">
@@ -381,10 +490,10 @@ export const DiscountPoliciesTab: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filteredPolicies.map((p, i) => (
+                paginatedPolicies.map((p, i) => (
                   <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-3.5 px-4 text-center text-slate-400 font-mono text-[11px] w-12">
-                      {i + 1}
+                      {startIndex + i + 1}
                     </td>
                     <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{p.code}</td>
                     <td className="py-3.5 px-4 font-semibold text-slate-900">{p.name}</td>
@@ -425,30 +534,44 @@ export const DiscountPoliciesTab: React.FC = () => {
                         </Badge>
                       )}
                     </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <div className="flex justify-center items-center gap-1">
-                        <IconButton
-                          icon={<Edit2 className="w-3.5 h-3.5" />}
-                          size="sm"
-                          variant="default"
-                          tooltip="Chỉnh sửa chính sách"
-                          onClick={() => handleOpenEditModal(p)}
-                        />
-                        <IconButton
-                          icon={<Trash2 className="w-3.5 h-3.5" />}
-                          size="sm"
-                          variant="danger"
-                          tooltip="Xóa chính sách"
-                          onClick={() => handleDelete(p)}
-                        />
-                      </div>
-                    </td>
+                    {canManage && (
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="flex justify-center items-center gap-1">
+                          <IconButton
+                            icon={<Edit2 className="w-3.5 h-3.5" />}
+                            size="sm"
+                            variant="default"
+                            tooltip="Chỉnh sửa chính sách"
+                            onClick={() => handleOpenEditModal(p)}
+                          />
+                          <IconButton
+                            icon={<Trash2 className="w-3.5 h-3.5" />}
+                            size="sm"
+                            variant="danger"
+                            tooltip="Xóa chính sách"
+                            onClick={() => handleDelete(p)}
+                          />
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
+
+        {/* 4. Phân trang (Pagination) chuẩn với tùy chọn 5 - 10 - 20 dòng/trang */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredPolicies.length}
+          pageSize={pageSize}
+          pageSizeOptions={[5, 10, 20]}
+          itemLabel="chính sách"
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+        />
       </div>
 
       <DiscountPolicyFormModal
@@ -469,6 +592,7 @@ export const DiscountPoliciesTab: React.FC = () => {
             showToast('success', 'Xóa chính sách thành công');
             setPolicyToDelete(null);
             await loadPolicies();
+            window.dispatchEvent(new Event('loha_discount_policies_updated'));
           } catch (err: unknown) {
             showToast('error', getErrorMessage(err, 'Lỗi khi xóa chính sách'));
           } finally {

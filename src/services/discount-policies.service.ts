@@ -38,7 +38,7 @@ export const DEFAULT_DISCOUNT_POLICIES: DiscountPolicy[] = [
     discountType: 'PERCENTAGE',
     startDate: '2026-01-01',
     endDate: '2026-12-31',
-    status: 'ACTIVE',
+    status: 'INACTIVE',
     tiers: [
       { id: 'tier-1', minQuantity: 10, maxQuantity: 49, discountValue: 2 },
       { id: 'tier-2', minQuantity: 50, maxQuantity: 99, discountValue: 5 },
@@ -57,11 +57,30 @@ export const DEFAULT_DISCOUNT_POLICIES: DiscountPolicy[] = [
     discountType: 'PERCENTAGE',
     startDate: '2026-10-08',
     endDate: '2027-10-08',
-    status: 'ACTIVE',
+    status: 'INACTIVE',
     tiers: [
       { id: 'tier-nut-1', minQuantity: 1, maxQuantity: 10, discountValue: 0 },
       { id: 'tier-nut-2', minQuantity: 11, maxQuantity: 100, discountValue: 2 },
       { id: 'tier-nut-3', minQuantity: 101, maxQuantity: 500, discountValue: 5 },
+    ],
+  },
+  {
+    id: 'dp-1791796552805-kd5az',
+    code: 'DP-450101',
+    name: 'Chiết khấu tháng 11',
+    targetType: 'SKU',
+    targetId: 'BEVERAGE, CEREAL, NEST, MILK, SUPP, SUPP_COLLAGEN, SUPP_HERB, CEREAL_NUTS, CEREAL_SPROUT, CARBONATED',
+    targetIds: ['BEVERAGE', 'CEREAL', 'NEST', 'MILK', 'SUPP', 'SUPP_COLLAGEN', 'SUPP_HERB', 'CEREAL_NUTS', 'CEREAL_SPROUT', 'CARBONATED'],
+    appliedProductSkus: ['BEVERAGE', 'CEREAL', 'NEST', 'MILK', 'SUPP', 'SUPP_COLLAGEN', 'SUPP_HERB', 'CEREAL_NUTS', 'CEREAL_SPROUT', 'CARBONATED'],
+    discountType: 'PERCENTAGE',
+    startDate: '2026-10-12',
+    endDate: '2027-10-12',
+    status: 'ACTIVE',
+    tiers: [
+      { id: 'tier-1791796552805-0awco', minQuantity: 10, maxQuantity: 50, discountValue: 2 },
+      { id: 'tier-1791796552805-racu4', minQuantity: 51, maxQuantity: 299, discountValue: 4 },
+      { id: 'tier-1791796552805-24d2s', minQuantity: 300, maxQuantity: 999, discountValue: 6 },
+      { id: 'tier-1791796552805-17u41', minQuantity: 1000, maxQuantity: null, discountValue: 7 },
     ],
   },
 ];
@@ -69,167 +88,271 @@ export const DEFAULT_DISCOUNT_POLICIES: DiscountPolicy[] = [
 export const discountPoliciesService = {
   async getPolicies(): Promise<DiscountPolicy[]> {
     try {
-      const res = await apiClient.get<DiscountPolicy[]>('/api/v1/discount-policies');
+      const res = await apiClient.get<DiscountPolicy[]>('/discount-policies');
       if (res.data && Array.isArray(res.data) && res.data.length > 0) {
         return res.data;
       }
     } catch {
-      // Fallback cục bộ
+      try {
+        const res2 = await apiClient.get<DiscountPolicy[]>('/api/v1/discount-policies');
+        if (res2.data && Array.isArray(res2.data) && res2.data.length > 0) {
+          return res2.data;
+        }
+      } catch {
+        // Fallback cục bộ
+      }
     }
     return DEFAULT_DISCOUNT_POLICIES;
   },
 
   async createPolicy(payload: CreateDiscountPolicyPayload): Promise<DiscountPolicy> {
-    const res = await apiClient.post<DiscountPolicy>('/api/v1/discount-policies', payload);
-    return res.data;
+    try {
+      const res = await apiClient.post<DiscountPolicy>('/discount-policies', payload);
+      return res.data;
+    } catch {
+      const res2 = await apiClient.post<DiscountPolicy>('/api/v1/discount-policies', payload);
+      return res2.data;
+    }
   },
 
   async updatePolicy(id: string, payload: UpdateDiscountPolicyPayload): Promise<DiscountPolicy> {
-    const res = await apiClient.patch<DiscountPolicy>(`/api/v1/discount-policies/${id}`, payload);
-    return res.data;
+    try {
+      const res = await apiClient.patch<DiscountPolicy>(`/discount-policies/${id}`, payload);
+      return res.data;
+    } catch {
+      const res2 = await apiClient.patch<DiscountPolicy>(`/api/v1/discount-policies/${id}`, payload);
+      return res2.data;
+    }
   },
 
   async deletePolicy(id: string): Promise<void> {
-    await apiClient.delete(`/api/v1/discount-policies/${id}`);
+    try {
+      await apiClient.delete(`/discount-policies/${id}`);
+    } catch {
+      await apiClient.delete(`/api/v1/discount-policies/${id}`);
+    }
   },
 
   async calculateDiscount(
     productId: string,
     categoryId: string,
-    quantity: number
+    quantity: number,
+    productSku?: string
   ): Promise<number> {
     try {
       const res = await apiClient.post<{ discount: number }>(
-        '/api/v1/discount-policies/calculate',
+        '/discount-policies/calculate',
         {
           productId,
+          productSku: productSku || productId,
           categoryId,
           quantity,
         }
       );
       return res.data.discount;
     } catch {
-      // Fallback cục bộ nếu endpoint calculate chưa sẵn sàng
-      return calculateDiscount(DEFAULT_DISCOUNT_POLICIES, productId, categoryId, quantity);
+      try {
+        const res2 = await apiClient.post<{ discount: number }>(
+          '/api/v1/discount-policies/calculate',
+          {
+            productId,
+            productSku: productSku || productId,
+            categoryId,
+            quantity,
+          }
+        );
+        return res2.data.discount;
+      } catch {
+        // Fallback: Tải danh sách chính sách từ API (hoặc mặc định) và tính toán cục bộ
+        const policies = await this.getPolicies();
+        return calculateDiscount(policies, productSku || productId, categoryId, quantity);
+      }
     }
   },
 };
 
 /**
+ * Kiểm tra xem sản phẩm có khớp với phạm vi áp dụng của chính sách hay không
+ */
+export function isProductMatchingPolicy(
+  policy: DiscountPolicy,
+  productId: string,
+  categoryId?: string,
+  productSku?: string,
+  productName?: string
+): boolean {
+  const targets = new Set<string>();
+  (policy.targetIds || []).forEach((t) => targets.add(t.trim().toUpperCase()));
+  if (policy.targetId) {
+    policy.targetId.split(',').forEach((t) => targets.add(t.trim().toUpperCase()));
+  }
+  (policy.appliedCategoryIds || []).forEach((t) => targets.add(t.trim().toUpperCase()));
+  (policy.appliedProductSkus || []).forEach((t) => targets.add(t.trim().toUpperCase()));
+
+  if (targets.has('ALL') || targets.size === 0) {
+    return true;
+  }
+
+  const productKeys = new Set<string>();
+  if (productId) productKeys.add(productId.trim().toUpperCase());
+  if (productSku) productKeys.add(productSku.trim().toUpperCase());
+  if (categoryId) productKeys.add(categoryId.trim().toUpperCase());
+  if (productName) productKeys.add(productName.trim().toUpperCase());
+
+  // Chuỗi nhận diện đa chiều: SKU + ID + Category + Name
+  const searchStr = `${productSku || ''} ${productId || ''} ${categoryId || ''} ${productName || ''}`.toUpperCase();
+
+  if (searchStr.includes('MILK') || searchStr.includes('SỮA')) {
+    productKeys.add('MILK');
+    productKeys.add('MILK_POWDER');
+    productKeys.add('CAT-MILK-POWDER');
+    productKeys.add('MILK_READY');
+    productKeys.add('MILK_NUT');
+    productKeys.add('CAT-MILK-NUT');
+  }
+  if (
+    searchStr.includes('NUT') ||
+    searchStr.includes('HẠT') ||
+    searchStr.includes('ÓC CHÓ') ||
+    searchStr.includes('HẠNH NHÂN') ||
+    searchStr.includes('MACCA') ||
+    searchStr.includes('ĐẬU')
+  ) {
+    productKeys.add('MILK_NUT');
+    productKeys.add('MILK');
+    productKeys.add('CEREAL_NUTS');
+    productKeys.add('CEREAL');
+    productKeys.add('CAT-MILK-NUT');
+    productKeys.add('CAT-CEREAL-NUTS');
+  }
+  if (searchStr.includes('NEST') || searchStr.includes('YẾN')) {
+    productKeys.add('NEST');
+    productKeys.add('NEST_READY');
+    productKeys.add('NEST_PURE');
+    productKeys.add('CAT-NEST-READY');
+    productKeys.add('CAT-NEST-PURE');
+  }
+  if (searchStr.includes('CEREAL') || searchStr.includes('NGŨ CỐC')) {
+    productKeys.add('CEREAL');
+    productKeys.add('CEREAL_SPROUT');
+    productKeys.add('CEREAL_NUTS');
+    productKeys.add('CAT-CEREAL-SPROUT');
+    productKeys.add('CAT-CEREAL-NUTS');
+  }
+  if (
+    searchStr.includes('COLLAGEN') ||
+    searchStr.includes('SUPP') ||
+    searchStr.includes('ĐÔNG TRÙNG') ||
+    searchStr.includes('THỰC PHẨM CHỨC NĂNG')
+  ) {
+    productKeys.add('SUPP');
+    productKeys.add('SUPP_COLLAGEN');
+    productKeys.add('SUPP_HERB');
+    productKeys.add('CAT-SUPP-COLLAGEN');
+  }
+  if (
+    searchStr.includes('TEA') ||
+    searchStr.includes('WATER') ||
+    searchStr.includes('COLA') ||
+    searchStr.includes('ORANGE') ||
+    searchStr.includes('BEVERAGE') ||
+    searchStr.includes('COFFEE') ||
+    searchStr.includes('TRÀ') ||
+    searchStr.includes('KHOÁNG') ||
+    searchStr.includes('NƯỚC') ||
+    searchStr.includes('NƯỚC GIẢI KHÁT')
+  ) {
+    productKeys.add('BEVERAGE');
+    productKeys.add('CARBONATED');
+    productKeys.add('WATER');
+    productKeys.add('TEA_JUICE');
+    productKeys.add('COLA_CAN');
+    productKeys.add('ORANGE_CAN');
+    productKeys.add('PURE_BOTTLE');
+    productKeys.add('GREEN_TEA');
+  }
+
+  for (const key of productKeys) {
+    if (targets.has(key)) return true;
+  }
+
+  // Khớp từng từ khóa trong targets nếu xuất hiện trong searchStr (đặc biệt hữu ích với mã ngành)
+  for (const target of targets) {
+    if (target && target.length >= 3 && searchStr.includes(target)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Tính mức chiết khấu % tối đa dựa trên danh sách chính sách chiết khấu và sản lượng mua (SN-28 / SN-38)
- * - Sắp xếp các nấc theo Q_min tăng dần
- * - Tìm nấc thỏa mãn Quantity >= Q_min và (Quantity <= Q_max HOẶC Q_max là rỗng/0/null/undefined/Infinity)
- * - Lấy nấc có Q_min cao nhất
- * - Hỗ trợ đầy đủ các mức chiết khấu > 20% (ví dụ 25%, 30%...)
+ * - CHỈ XÉT các chính sách ĐANG HIỆU LỰC (status === 'ACTIVE') và trong thời gian hiệu lực
+ * - Bỏ qua hoàn toàn các mã không hiệu lực (INACTIVE)
+ * - Nếu nhiều chính sách cùng thỏa mãn sản phẩm, so sánh và chọn chính sách có mức ưu đãi cao nhất (max)
  */
 export function calculateDiscount(
   policies: DiscountPolicy[],
   productId: string,
   categoryId: string = '',
-  quantity: number
+  quantity: number,
+  productSku?: string,
+  productName?: string,
+  listPrice?: number
 ): number {
-  if (quantity <= 0) return 0;
-
-  const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
-
-  const activePolicies = (policies || []).filter((p) => {
-    if (p.status !== 'ACTIVE') return false;
-    if (p.startDate && p.startDate.split('T')[0] > todayStr) return false;
-    if (p.endDate && p.endDate.split('T')[0] < todayStr) return false;
-
-    const matchesProduct =
-      (p.appliedProductSkus &&
-        (p.appliedProductSkus.includes(productId) || p.appliedProductSkus.includes('all'))) ||
-      (p.targetType === 'SKU' && (p.targetIds?.includes(productId) || p.targetId === productId)) ||
-      (!p.targetId &&
-        (!p.targetIds || p.targetIds.length === 0) &&
-        (!p.appliedProductSkus || p.appliedProductSkus.length === 0));
-
-    const matchesCategory =
-      (p.appliedCategoryIds &&
-        (p.appliedCategoryIds.includes(categoryId) || p.appliedCategoryIds.includes('all'))) ||
-      (p.targetType === 'CATEGORY' &&
-        (p.targetIds?.includes(categoryId) || p.targetId === categoryId));
-
-    const matchesHybrid = p.targetType === 'HYBRID' && (matchesProduct || matchesCategory);
-
-    return matchesProduct || matchesCategory || matchesHybrid;
-  });
-
-  let maxDiscountPercent = 0;
-
-  for (const policy of activePolicies) {
-    if (!policy.tiers || policy.tiers.length === 0) continue;
-
-    // 1. Sắp xếp các nấc theo Q_min tăng dần
-    const sortedTiers = [...policy.tiers].sort(
-      (a, b) => (Number(a.minQuantity) || 0) - (Number(b.minQuantity) || 0)
-    );
-
-    // 2. Tìm tất cả các nấc thỏa mãn: Quantity >= Q_min VÀ (Quantity <= Q_max HOẶC Q_max là rỗng/0/null/undefined/Infinity)
-    const matchedTiers = sortedTiers.filter((t) => {
-      const min = Number(t.minQuantity) || 0;
-      const rawMax = t.maxQuantity;
-      const max =
-        rawMax !== null && rawMax !== undefined && String(rawMax).trim() !== ''
-          ? Number(rawMax)
-          : null;
-
-      if (quantity < min) return false;
-      if (max === null || isNaN(max) || max <= 0 || max === Infinity) return true;
-      return quantity <= max;
-    });
-
-    // 3. Lấy nấc thỏa mãn có Q_min cao nhất (nấc cuối cùng sau khi sort tăng dần)
-    const applicableTier = matchedTiers.length > 0 ? matchedTiers[matchedTiers.length - 1] : null;
-
-    if (applicableTier) {
-      const val = Number(applicableTier.discountValue) || 0;
-      if (policy.discountType === 'PERCENTAGE' || !policy.discountType) {
-        if (val > maxDiscountPercent) {
-          maxDiscountPercent = val;
-        }
-      }
-    }
-  }
-
-  // Fallback chuẩn hệ thống:
-  // >= 2001: 25% | >= 100: 10% | >= 50: 5% | >= 10: 2%
-  if (maxDiscountPercent === 0) {
-    if (quantity >= 2001) maxDiscountPercent = 25;
-    else if (quantity >= 100) maxDiscountPercent = 10;
-    else if (quantity >= 50) maxDiscountPercent = 5;
-    else if (quantity >= 10) maxDiscountPercent = 2;
-  }
-
-  return maxDiscountPercent;
+  const info = getApplicablePolicyInfo(
+    policies,
+    productId,
+    categoryId,
+    quantity,
+    productSku,
+    productName,
+    listPrice
+  );
+  return info.discountPercent;
 }
 
 export interface ApplicablePolicyInfo {
   policy: DiscountPolicy | null;
   currentTier: DiscountTier | null;
-  discountPercent: number;
+  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'NONE';
+  discountRawValue: number;
+  discountPercent: number; // Chuẩn hóa từ 0 đến 100%
+  discountAmountPerUnit: number; // Tiền giảm trên 1 đơn vị, tối đa bằng listPrice
   nextTier: DiscountTier | null;
   quantityNeededForNext: number;
+  displayText: string;
 }
 
 /**
  * Tìm chính sách chiết khấu và nấc chiết khấu tương ứng với số lượng mua, kèm thông tin nấc tiếp theo để gợi ý
+ * - Lọc chỉ các chính sách ACTIVE
+ * - Xử lý dứt điểm 2 loại chiết khấu: FIXED_AMOUNT (Tiền mặt) và PERCENTAGE (Phần trăm)
+ * - Chống âm giá và chuẩn hóa % không vượt quá 100%
  */
 export function getApplicablePolicyInfo(
   policies: DiscountPolicy[],
   productId: string,
   categoryId: string = '',
-  quantity: number
+  quantity: number,
+  productSku?: string,
+  productName?: string,
+  listPrice?: number
 ): ApplicablePolicyInfo {
+  const safeListPrice = Math.max(0, Number(listPrice) || 0);
+
   if (quantity <= 0) {
     return {
       policy: null,
       currentTier: null,
+      discountType: 'NONE',
+      discountRawValue: 0,
       discountPercent: 0,
+      discountAmountPerUnit: 0,
       nextTier: null,
       quantityNeededForNext: 0,
+      displayText: '0%',
     };
   }
 
@@ -241,26 +364,20 @@ export function getApplicablePolicyInfo(
     if (p.startDate && p.startDate.split('T')[0] > todayStr) return false;
     if (p.endDate && p.endDate.split('T')[0] < todayStr) return false;
 
-    const matchesProduct =
-      (p.appliedProductSkus &&
-        (p.appliedProductSkus.includes(productId) ||
-          p.appliedProductSkus.includes(productId.toUpperCase()) ||
-          p.appliedProductSkus.includes('all'))) ||
-      (p.targetType === 'SKU' && (p.targetIds?.includes(productId) || p.targetId === productId)) ||
-      (!p.targetId &&
-        (!p.targetIds || p.targetIds.length === 0) &&
-        (!p.appliedProductSkus || p.appliedProductSkus.length === 0));
-
-    const matchesCategory =
-      (p.appliedCategoryIds &&
-        (p.appliedCategoryIds.includes(categoryId) || p.appliedCategoryIds.includes('all'))) ||
-      (p.targetType === 'CATEGORY' &&
-        (p.targetIds?.includes(categoryId) || p.targetId === categoryId));
-
-    const matchesHybrid = p.targetType === 'HYBRID' && (matchesProduct || matchesCategory);
-
-    return matchesProduct || matchesCategory || matchesHybrid;
+    return isProductMatchingPolicy(p, productId, categoryId, productSku, productName);
   });
+
+  let bestResult: ApplicablePolicyInfo = {
+    policy: null,
+    currentTier: null,
+    discountType: 'NONE',
+    discountRawValue: 0,
+    discountPercent: 0,
+    discountAmountPerUnit: 0,
+    nextTier: null,
+    quantityNeededForNext: 0,
+    displayText: '0%',
+  };
 
   for (const policy of activePolicies) {
     if (!policy.tiers || policy.tiers.length === 0) continue;
@@ -292,36 +409,68 @@ export function getApplicablePolicyInfo(
       }
     }
 
-    if (!matchedTier && sortedTiers.length > 0 && quantity < Number(sortedTiers[0].minQuantity)) {
-      return {
-        policy,
-        currentTier: null,
-        discountPercent: 0,
-        nextTier: sortedTiers[0],
-        quantityNeededForNext: Math.max(0, Number(sortedTiers[0].minQuantity) - quantity),
-      };
-    }
-
     if (matchedTier) {
-      const val = Number(matchedTier.discountValue) || 0;
+      const rawVal = Math.max(0, Number(matchedTier.discountValue) || 0);
+      const isFixed = policy.discountType === 'FIXED_AMOUNT';
       const needed = nextTier ? Math.max(0, Number(nextTier.minQuantity) - quantity) : 0;
-      return {
-        policy,
-        currentTier: matchedTier,
-        discountPercent: val,
-        nextTier,
-        quantityNeededForNext: needed,
-      };
+
+      let discountAmount = 0;
+      let percent = 0;
+      let display = '';
+
+      if (isFixed) {
+        // FIXED_AMOUNT: Số tiền giảm tối đa là Giá gốc của sản phẩm
+        discountAmount = safeListPrice > 0 ? Math.min(safeListPrice, rawVal) : rawVal;
+        percent = safeListPrice > 0 ? Math.min(100, Math.round((discountAmount / safeListPrice) * 100)) : 0;
+        display = `Giảm ${rawVal.toLocaleString('vi-VN')} đ`;
+      } else {
+        // PERCENTAGE: Tối đa 100%
+        percent = Math.min(100, rawVal);
+        discountAmount = safeListPrice > 0 ? Math.round((safeListPrice * percent) / 100) : 0;
+        display = `Giảm ${percent}%`;
+      }
+
+      // So sánh chọn chính sách có mức giảm tiền mặt lớn nhất
+      const currentComparison = safeListPrice > 0 ? discountAmount : (isFixed ? rawVal : (percent / 100) * 100000);
+      const bestComparison =
+        safeListPrice > 0
+          ? bestResult.discountAmountPerUnit
+          : bestResult.discountType === 'FIXED_AMOUNT'
+          ? bestResult.discountRawValue
+          : (bestResult.discountPercent / 100) * 100000;
+
+      if (currentComparison > bestComparison || !bestResult.policy) {
+        bestResult = {
+          policy,
+          currentTier: matchedTier,
+          discountType: isFixed ? 'FIXED_AMOUNT' : 'PERCENTAGE',
+          discountRawValue: rawVal,
+          discountPercent: percent,
+          discountAmountPerUnit: discountAmount,
+          nextTier,
+          quantityNeededForNext: needed,
+          displayText: display,
+        };
+      }
+    } else if (sortedTiers.length > 0 && quantity < Number(sortedTiers[0].minQuantity)) {
+      if (!bestResult.policy && !bestResult.nextTier) {
+        const firstTier = sortedTiers[0];
+        const isFixed = policy.discountType === 'FIXED_AMOUNT';
+        const rawVal = Number(firstTier.discountValue) || 0;
+        bestResult = {
+          policy,
+          currentTier: null,
+          discountType: isFixed ? 'FIXED_AMOUNT' : 'PERCENTAGE',
+          discountRawValue: 0,
+          discountPercent: 0,
+          discountAmountPerUnit: 0,
+          nextTier: firstTier,
+          quantityNeededForNext: Math.max(0, Number(firstTier.minQuantity) - quantity),
+          displayText: isFixed ? `Giảm ${rawVal.toLocaleString('vi-VN')} đ` : `Giảm ${rawVal}%`,
+        };
+      }
     }
   }
 
-  // Fallback nếu không có policy cụ thể nhưng có bậc sản lượng chuẩn
-  const fallbackPercent = calculateDiscount(policies, productId, categoryId, quantity);
-  return {
-    policy: activePolicies[0] || null,
-    currentTier: null,
-    discountPercent: fallbackPercent,
-    nextTier: null,
-    quantityNeededForNext: 0,
-  };
+  return bestResult;
 }

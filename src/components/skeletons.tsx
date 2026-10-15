@@ -7,84 +7,61 @@ import React from 'react';
 export const ProductsTableSkeleton: React.FC<{
   count?: number;
   canViewCostPrice?: boolean;
-}> = ({ count = 6, canViewCostPrice = false }) => {
+}> = ({ count = 6 }) => {
   return (
     <>
       {Array.from({ length: count }).map((_, idx) => (
         <tr key={idx} className="animate-pulse">
-          {/* Cột 1: Ảnh Thumbnail (Sticky Left) */}
-          <td className="sticky left-0 z-10 bg-white border-b border-slate-100 px-3 py-3 text-center w-12 min-w-12">
-            <div className="h-9 w-9 mx-auto rounded-xl bg-slate-200/80 shadow-2xs" />
+          {/* Cột 1: Mã SKU */}
+          <td className="border-b border-slate-100 px-4 py-3.5 whitespace-nowrap w-36">
+            <div className="h-4 w-20 bg-slate-200 rounded-md" />
           </td>
 
-          {/* Cột 2: Mã SKU (Sticky Left với shadow) */}
-          <td className="sticky left-12 z-10 bg-white border-b border-slate-100 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] px-3 py-3 whitespace-nowrap">
-            <div className="h-4 w-16 bg-slate-200 rounded-md" />
+          {/* Cột 2: Sản phẩm (Ảnh + Tên) */}
+          <td className="border-b border-slate-100 px-4 py-3.5">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-slate-200/80 shrink-0 shadow-2xs" />
+              <div className="space-y-1.5 flex-1 max-w-[240px]">
+                <div
+                  className="h-4 bg-slate-200 rounded-md"
+                  style={{ width: `${75 + (idx % 3) * 10}%` }}
+                />
+                <div className="h-3 w-28 bg-slate-100 rounded-md" />
+              </div>
+            </div>
           </td>
 
-          {/* Cột 3: Tên sản phẩm */}
-          <td className="border-b border-slate-100 px-3 py-3">
-            <div className="space-y-1.5 max-w-[240px]">
-              <div
-                className="h-4 bg-slate-200 rounded-md"
-                style={{ width: `${75 + (idx % 3) * 10}%` }}
-              />
+          {/* Cột 3: Nhóm hàng */}
+          <td className="border-b border-slate-100 px-4 py-3.5 w-48">
+            <div className="space-y-1 max-w-[180px]">
+              <div className="h-5 w-24 bg-purple-100/70 rounded-md" />
               <div className="h-3 w-28 bg-slate-100 rounded-md" />
             </div>
           </td>
 
-          {/* Cột 4: Nhóm hàng */}
-          <td className="border-b border-slate-100 px-3 py-3">
-            <div className="space-y-1 max-w-[200px]">
-              <div className="h-5 w-24 bg-purple-100/70 rounded-md" />
-              <div className="h-3 w-32 bg-slate-100 rounded-md" />
-            </div>
+          {/* Cột 4: ĐVT */}
+          <td className="border-b border-slate-100 px-4 py-3.5 text-center whitespace-nowrap w-24">
+            <div className="h-4 w-12 mx-auto bg-blue-100/60 rounded-md" />
           </td>
 
-          {/* Cột 5: ĐVT */}
-          <td className="border-b border-slate-100 px-3 py-3 text-center whitespace-nowrap">
-            <div className="h-4 w-10 mx-auto bg-blue-100/60 rounded-md" />
+          {/* Cột 5: Giá niêm yết */}
+          <td className="border-b border-slate-100 px-4 py-3.5 text-right whitespace-nowrap w-36">
+            <div className="h-4 w-20 ml-auto bg-slate-200 rounded-md" />
           </td>
 
-          {/* Cột 6: Quy cách */}
-          <td className="border-b border-slate-100 px-3 py-3 whitespace-nowrap">
-            <div className="h-4 w-20 bg-slate-100 rounded-md" />
+          {/* Cột 6: Tồn kho */}
+          <td className="border-b border-slate-100 px-4 py-3.5 text-center whitespace-nowrap w-32">
+            <div className="h-6 w-16 mx-auto bg-slate-100 rounded-md" />
           </td>
 
-          {/* Cột 7: Giá niêm yết */}
-          <td className="border-b border-slate-100 px-3 py-3 text-right whitespace-nowrap">
-            <div className="h-4 w-24 ml-auto bg-slate-200 rounded-md" />
-          </td>
-
-          {/* Cột 8: Tồn kho */}
-          <td className="border-b border-slate-100 px-3 py-3 text-right whitespace-nowrap">
-            <div className="h-4 w-16 ml-auto bg-slate-200 rounded-md" />
-          </td>
-
-          {/* Cột Giá vốn & Biên LN (Chỉ hiển thị khi có quyền) */}
-          {canViewCostPrice && (
-            <>
-              <td className="border-b border-slate-100 px-3 py-3 text-right bg-emerald-50/20 whitespace-nowrap">
-                <div className="h-4 w-20 ml-auto bg-emerald-100/70 rounded-md" />
-              </td>
-              <td className="border-b border-slate-100 px-3 py-3 text-right bg-emerald-50/20 whitespace-nowrap">
-                <div className="h-4 w-12 ml-auto bg-emerald-100/70 rounded-md" />
-              </td>
-            </>
-          )}
-
-          {/* Cột Trạng thái */}
-          <td className="border-b border-slate-100 px-3 py-3 text-center whitespace-nowrap">
+          {/* Cột 7: Trạng thái */}
+          <td className="border-b border-slate-100 px-4 py-3.5 text-center whitespace-nowrap w-36">
             <div className="h-6 w-24 mx-auto bg-slate-100 rounded-full" />
           </td>
 
-          {/* Cột Thao tác (Sticky Right với shadow) */}
-          <td className="sticky right-0 z-10 bg-white border-b border-slate-100 shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] px-3 py-3 text-center whitespace-nowrap w-24 min-w-24">
-            <div className="inline-flex items-center gap-1 justify-center">
-              <div className="h-7 w-7 rounded-lg bg-slate-100" />
-              <div className="h-7 w-7 rounded-lg bg-slate-100" />
-              <div className="h-7 w-7 rounded-lg bg-slate-100" />
-            </div>
+          {/* Cột 8: Thao tác */}
+          <td className="border-b border-slate-100 px-4 py-3.5 text-center whitespace-nowrap w-32">
+            <div className="h-8 w-24 mx-auto bg-slate-100 rounded-lg" />
           </td>
         </tr>
       ))}
@@ -178,21 +155,13 @@ export const UsersTableSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) 
                   className="h-4 bg-slate-200 rounded-md"
                   style={{ width: `${120 + (idx % 3) * 20}px` }}
                 />
-                <div className="h-3 w-28 bg-slate-100 rounded-md" />
               </div>
             </div>
           </td>
 
-          {/* Số điện thoại */}
-          <td className="px-5 py-3.5 whitespace-nowrap">
-            <div className="h-4 w-24 bg-slate-100 rounded-md" />
-          </td>
-
           {/* Vai trò */}
-          <td className="px-5 py-3.5">
-            <div className="flex gap-1">
-              <div className="h-5 w-24 bg-slate-100 rounded-lg" />
-            </div>
+          <td className="px-5 py-3.5 whitespace-nowrap">
+            <div className="h-5 w-24 bg-slate-100 rounded-lg" />
           </td>
 
           {/* Trạng thái */}
@@ -202,11 +171,7 @@ export const UsersTableSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) 
 
           {/* Thao tác */}
           <td className="px-5 py-3.5 text-center whitespace-nowrap">
-            <div className="inline-flex items-center gap-1 justify-center">
-              <div className="h-7 w-7 rounded-lg bg-slate-100" />
-              <div className="h-7 w-7 rounded-lg bg-slate-100" />
-              <div className="h-7 w-7 rounded-lg bg-slate-100" />
-            </div>
+            <div className="h-7 w-16 mx-auto bg-slate-100 rounded-lg" />
           </td>
         </tr>
       ))}
@@ -219,34 +184,27 @@ export const UsersTableSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) 
  */
 export const UsersMobileCardSkeleton: React.FC<{ count?: number }> = ({ count = 4 }) => {
   return (
-    <>
+    <div className="space-y-2.5">
       {Array.from({ length: count }).map((_, idx) => (
-        <div key={idx} className="p-4 space-y-3 animate-pulse">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="h-10 w-10 rounded-xl bg-purple-100 shrink-0" />
-              <div className="space-y-1.5 min-w-0">
-                <div
-                  className="h-4 bg-slate-200 rounded-md"
-                  style={{ width: `${110 + (idx % 2) * 25}px` }}
-                />
-                <div className="h-3 w-24 bg-slate-100 rounded-md" />
-              </div>
+        <div
+          key={idx}
+          className="rounded-xl bg-white border border-slate-200/80 p-3.5 shadow-2xs space-y-2.5 animate-pulse"
+        >
+          <div className="flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="h-10.5 w-10.5 rounded-full bg-purple-100 shrink-0" />
+              <div className="h-4 bg-slate-200 rounded-md w-36" />
             </div>
-            <div className="h-5 w-20 bg-slate-100 rounded-full shrink-0" />
+            <div className="h-6 w-20 bg-slate-100 rounded-full shrink-0" />
           </div>
 
-          <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-50">
-            <div className="h-5 w-24 bg-slate-100 rounded-lg" />
-            <div className="flex items-center gap-1 shrink-0">
-              <div className="h-7 w-7 bg-slate-100 rounded-lg" />
-              <div className="h-7 w-7 bg-slate-100 rounded-lg" />
-              <div className="h-7 w-7 bg-slate-100 rounded-lg" />
-            </div>
+          <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100">
+            <div className="h-3.5 w-28 bg-slate-100 rounded-md" />
+            <div className="h-7.5 w-18 bg-slate-100 rounded-lg shrink-0" />
           </div>
         </div>
       ))}
-    </>
+    </div>
   );
 };
 
@@ -308,13 +266,13 @@ export const PriceListsTableSkeleton: React.FC<{ count?: number }> = ({ count = 
     <>
       {Array.from({ length: count }).map((_, idx) => (
         <tr key={idx} className="animate-pulse">
-          {/* STT (Sticky Left) */}
-          <td className="sticky left-0 z-10 bg-white border-b border-slate-100 py-3.5 px-4 text-center w-12 min-w-12">
+          {/* STT */}
+          <td className="border-b border-slate-100 py-3.5 px-4 text-center w-14">
             <div className="h-4 w-5 mx-auto bg-slate-100 rounded" />
           </td>
 
-          {/* Mã bảng giá (Sticky Left với shadow) */}
-          <td className="sticky left-12 z-10 bg-white border-b border-slate-100 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3.5 px-4 whitespace-nowrap">
+          {/* Mã bảng giá */}
+          <td className="border-b border-slate-100 py-3.5 px-4 w-44">
             <div className="space-y-1">
               <div className="h-4 w-24 bg-slate-200 rounded-md" />
               <div className="h-4 w-12 bg-blue-100/60 rounded" />
@@ -330,32 +288,28 @@ export const PriceListsTableSkeleton: React.FC<{ count?: number }> = ({ count = 
           </td>
 
           {/* Nhóm khách hàng */}
-          <td className="border-b border-slate-100 py-3.5 px-4 whitespace-nowrap">
+          <td className="border-b border-slate-100 py-3.5 px-4 w-36">
             <div className="h-6 w-24 bg-purple-50 rounded-lg" />
           </td>
 
           {/* Thời gian hiệu lực */}
-          <td className="border-b border-slate-100 py-3.5 px-4 whitespace-nowrap">
+          <td className="border-b border-slate-100 py-3.5 px-4 w-48">
             <div className="h-4 w-32 bg-slate-100 rounded-md" />
           </td>
 
           {/* Trạng thái */}
-          <td className="border-b border-slate-100 py-3.5 px-4 whitespace-nowrap">
+          <td className="border-b border-slate-100 py-3.5 px-4 w-36">
             <div className="h-6 w-24 bg-slate-100 rounded-full" />
           </td>
 
           {/* Ràng buộc đơn hàng */}
-          <td className="border-b border-slate-100 py-3.5 px-4 text-center whitespace-nowrap">
+          <td className="border-b border-slate-100 py-3.5 px-4 text-center w-44">
             <div className="h-6 w-24 mx-auto bg-slate-100 rounded-lg" />
           </td>
 
-          {/* Thao tác (Sticky Right với shadow) */}
-          <td className="sticky right-0 z-10 bg-white border-b border-slate-100 shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3.5 px-4 text-center whitespace-nowrap w-36 min-w-36">
-            <div className="inline-flex items-center gap-1 justify-center">
-              <div className="h-7 w-7 rounded-lg bg-slate-100" />
-              <div className="h-7 w-7 rounded-lg bg-slate-100" />
-              <div className="h-7 w-7 rounded-lg bg-slate-100" />
-            </div>
+          {/* Thao tác */}
+          <td className="border-b border-slate-100 py-3.5 px-4 text-center w-32">
+            <div className="h-8 w-24 mx-auto bg-slate-100 rounded-lg" />
           </td>
         </tr>
       ))}

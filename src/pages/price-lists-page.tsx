@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { useSearchParams } from 'react-router-dom';
 import {
   Plus,
@@ -15,7 +16,7 @@ import {
   Unlock,
   ChevronLeft,
   ChevronRight,
-  MoreVertical,
+  ChevronDown,
   X,
   FileSpreadsheet,
   Calendar,
@@ -161,13 +162,13 @@ export const PriceListsPage: React.FC = () => {
   const [priceListToDelete, setPriceListToDelete] = useState<PriceList | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Phân quyền người dùng
+  // Phân quyền người dùng: Chỉ ADMIN và SALES_MANAGER có quyền quản trị/tạo mới
+  // Nhân viên kinh doanh (SALES_REP) chỉ có quyền xem
   const user = getStoredUser();
-  const userRoles = user?.roles || [];
+  const userRoles = user?.roles || (user?.role ? [user.role] : []);
   const canManage =
     userRoles.includes('ADMIN') ||
-    userRoles.includes('SALES_MANAGER') ||
-    userRoles.includes('SALES_REP');
+    userRoles.includes('SALES_MANAGER');
 
   // Đóng dropdown thao tác khi click ra ngoài
   useEffect(() => {
@@ -352,6 +353,21 @@ export const PriceListsPage: React.FC = () => {
     }
   }, [loadPriceLists, activeTab]);
 
+  // Lắng nghe sự kiện tạo đơn hoặc cập nhật bảng giá thời gian thực để cập nhật Ràng buộc đơn hàng
+  useEffect(() => {
+    const handleSync = () => {
+      if (activeTab === 'BASE') {
+        void loadPriceLists();
+      }
+    };
+    window.addEventListener('loha_order_created', handleSync);
+    window.addEventListener('loha_price_lists_updated', handleSync);
+    return () => {
+      window.removeEventListener('loha_order_created', handleSync);
+      window.removeEventListener('loha_price_lists_updated', handleSync);
+    };
+  }, [loadPriceLists, activeTab]);
+
   // Thống kê Metrics Header
   const metrics = useMemo(() => {
     const all = priceLists;
@@ -460,43 +476,84 @@ export const PriceListsPage: React.FC = () => {
     }
   };
 
-  // Xuất chi tiết một bảng giá ra tệp CSV (Excel UTF-8 BOM)
+  // Helper hiển thị tên tiếng Việt nhóm khách hàng
+  const getCustomerGroupName = (group: CustomerGroupType) => {
+    switch (group) {
+      case 'AGENT_LEVEL_1':
+        return 'Đại lý Cấp 1';
+      case 'AGENT_LEVEL_2':
+        return 'Đại lý Cấp 2';
+      case 'RETAIL':
+      default:
+        return 'Bán lẻ Niêm yết';
+    }
+  };
+
+  // Helper hiển thị tên tiếng Việt trạng thái
+  const getStatusName = (status: PriceListStatusType) => {
+    switch (status) {
+      case 'ACTIVE':
+        return 'Đang hiệu lực';
+      case 'DRAFT':
+        return 'Bản nháp';
+      case 'INACTIVE':
+        return 'Tạm dừng';
+      case 'EXPIRED':
+        return 'Đã hết hạn';
+      default:
+        return status;
+    }
+  };
+
+  // Xuất chi tiết một bảng giá ra tệp Excel (.xlsx)
   const handleExportPriceList = (pl: PriceList) => {
     try {
-      const headers = ['STT', 'Mã SKU', 'Tên sản phẩm', 'ĐVT', 'Giá sàn (VNĐ)', 'Giá bán áp dụng (VNĐ)'];
-      const rows = (pl.items || []).map((it, idx) => [
-        idx + 1,
-        `"${it.productCode}"`,
-        `"${(it.productName || '').replace(/"/g, '""')}"`,
-        `"${it.baseUnit || 'Cái'}"`,
-        it.minPrice ?? 0,
-        it.price ?? 0,
-      ]);
+      const items = pl.items || [];
+      const aoaData: (string | number)[][] = [
+        ['CHI TIẾT BẢNG GIÁ B2B - LOHA SALES'],
+        [`Tên bảng giá: ${pl.name} | Mã: ${pl.code} | Phiên bản: v${pl.version}.0`],
+        [
+          `Nhóm áp dụng: ${getCustomerGroupName(pl.customerGroup)} | Trạng thái: ${getStatusName(
+            pl.status
+          )} | Thời gian: ${formatDate(pl.startDate)} – ${formatDate(pl.endDate)} | Tổng số mặt hàng: ${items.length}`,
+        ],
+        [],
+        ['STT', 'Mã SKU', 'Tên sản phẩm', 'ĐVT', 'Giá sàn (VNĐ)', 'Giá bán áp dụng (VNĐ)'],
+        ...items.map((it, idx) => [
+          idx + 1,
+          it.productCode || '',
+          it.productName || '',
+          it.baseUnit || 'Cái',
+          it.minPrice ?? 0,
+          it.price ?? 0,
+        ]),
+      ];
 
-      const csvContent =
-        '\uFEFF' +
-        `BẢNG GIÁ: ${pl.name}\r\n` +
-        `Mã bảng giá: ${pl.code} | Phiên bản: v${pl.version}.0 | Nhóm khách hàng: ${pl.customerGroup}\r\n` +
-        `Thời gian áp dụng: ${pl.startDate} đến ${pl.endDate} | Trạng thái: ${pl.status}\r\n\r\n` +
-        [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+      const ws = XLSX.utils.aoa_to_sheet(aoaData);
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `Bang_Gia_${pl.code}_v${pl.version}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // Cấu hình độ rộng ô cho các cột rõ ràng, chuẩn lưới bảng Excel
+      ws['!cols'] = [
+        { wch: 8 },  // STT
+        { wch: 18 }, // Mã SKU
+        { wch: 40 }, // Tên sản phẩm
+        { wch: 12 }, // ĐVT
+        { wch: 20 }, // Giá sàn (VNĐ)
+        { wch: 24 }, // Giá bán áp dụng (VNĐ)
+      ];
 
-      showToast('success', `Đã xuất bảng giá "${pl.name}" thành công`);
-    } catch {
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Bang_Gia_${pl.code}`.slice(0, 31));
+
+      XLSX.writeFile(wb, `Bang_Gia_${pl.code}_v${pl.version}.xlsx`);
+
+      showToast('success', `Đã xuất bảng giá "${pl.name}" ra tệp Excel thành công`);
+    } catch (err) {
+      console.error(err);
       showToast('error', 'Không thể xuất dữ liệu bảng giá');
     }
   };
 
-  // Xuất toàn bộ danh sách bảng giá ra CSV
+  // Xuất toàn bộ danh sách bảng giá ra tệp Excel (.xlsx)
   const handleExportAllPriceLists = () => {
     try {
       if (priceLists.length === 0) {
@@ -504,38 +561,63 @@ export const PriceListsPage: React.FC = () => {
         return;
       }
 
-      const headers = ['STT', 'Mã bảng giá', 'Tên bảng giá', 'Nhóm khách hàng', 'Phiên bản', 'Số mặt hàng', 'Từ ngày', 'Đến ngày', 'Trạng thái', 'Đã có đơn'];
-      const rows = priceLists.map((p, idx) => [
-        idx + 1,
-        `"${p.code}"`,
-        `"${(p.name || '').replace(/"/g, '""')}"`,
-        `"${p.customerGroup}"`,
-        `"v${p.version}.0"`,
-        p.items?.length || 0,
-        `"${p.startDate}"`,
-        `"${p.endDate}"`,
-        `"${p.status}"`,
-        p.hasOrders ? 'Có' : 'Chưa',
-      ]);
+      const aoaData: (string | number)[][] = [
+        ['DANH SÁCH BẢNG GIÁ B2B - LOHA SALES'],
+        [`Ngày xuất: ${new Date().toLocaleDateString('vi-VN')} | Tổng số: ${priceLists.length} bảng giá`],
+        [],
+        [
+          'STT',
+          'Mã bảng giá',
+          'Tên bảng giá',
+          'Nhóm áp dụng',
+          'Phiên bản',
+          'Số mặt hàng',
+          'Từ ngày',
+          'Đến ngày',
+          'Trạng thái',
+          'Ràng buộc đơn hàng',
+        ],
+        ...priceLists.map((p, idx) => [
+          idx + 1,
+          p.code || '',
+          p.name || '',
+          getCustomerGroupName(p.customerGroup),
+          `v${p.version}.0`,
+          p.items?.length || 0,
+          formatDate(p.startDate),
+          formatDate(p.endDate),
+          getStatusName(p.status),
+          p.hasOrders ? 'Đã có đơn hàng' : 'Chưa có đơn',
+        ]),
+      ];
 
-      const csvContent =
-        '\uFEFF' +
-        'DANH SÁCH BẢNG GIÁ B2B\r\n' +
-        `Ngày xuất: ${new Date().toLocaleDateString('vi-VN')} | Tổng số: ${priceLists.length} bảng giá\r\n\r\n` +
-        [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+      const ws = XLSX.utils.aoa_to_sheet(aoaData);
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `Danh_Sach_Bang_Gia_${new Date().toISOString().slice(0, 10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // Cấu hình độ rộng ô cho các cột rõ ràng, chuẩn lưới bảng Excel
+      ws['!cols'] = [
+        { wch: 8 },  // STT
+        { wch: 18 }, // Mã bảng giá
+        { wch: 40 }, // Tên bảng giá
+        { wch: 22 }, // Nhóm áp dụng
+        { wch: 14 }, // Phiên bản
+        { wch: 16 }, // Số mặt hàng
+        { wch: 16 }, // Từ ngày
+        { wch: 16 }, // Đến ngày
+        { wch: 20 }, // Trạng thái
+        { wch: 22 }, // Ràng buộc đơn hàng
+      ];
 
-      showToast('success', 'Đã xuất danh sách bảng giá thành công');
-    } catch {
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Danh_Sach_Bang_Gia');
+
+      XLSX.writeFile(
+        wb,
+        `Danh_Sach_Bang_Gia_${new Date().toISOString().slice(0, 10)}.xlsx`
+      );
+
+      showToast('success', 'Đã xuất danh sách bảng giá ra tệp Excel thành công');
+    } catch (err) {
+      console.error(err);
       showToast('error', 'Không thể xuất danh sách bảng giá');
     }
   };
@@ -804,13 +886,13 @@ export const PriceListsPage: React.FC = () => {
                 </button>
               )}
 
-              {/* Nút Xuất danh sách bảng giá ra CSV / Excel */}
+              {/* Nút Xuất danh sách bảng giá ra Excel */}
               <button
                 type="button"
                 onClick={handleExportAllPriceLists}
                 disabled={priceLists.length === 0}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer shrink-0 disabled:opacity-50"
-                title="Xuất danh sách bảng giá ra tệp CSV/Excel"
+                title="Xuất danh sách bảng giá ra tệp Excel (.xlsx)"
               >
                 <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
                 <span className="hidden sm:inline">Xuất danh sách</span>
@@ -847,35 +929,32 @@ export const PriceListsPage: React.FC = () => {
 
           {/* 4. Table: Danh sách Bảng giá */}
           <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
-            <div
-              className="overflow-auto max-h-[calc(100vh-270px)] relative [scrollbar-width:thin] [scrollbar-color:#E5E7EB_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#E5E7EB] hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full"
-              style={{ scrollbarWidth: 'thin', scrollbarColor: '#E5E7EB transparent' }}
-            >
-              <table className="w-full text-left text-xs border-separate border-spacing-0">
+            <div className="overflow-x-auto min-h-[360px]">
+              <table className="w-full text-left text-xs sm:text-sm text-slate-600">
                 <thead>
-                  <tr className="text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
-                    <th className="sticky top-0 left-0 z-30 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-12 min-w-12 text-center">
+                  <tr className="border-b border-slate-100 bg-slate-50/70">
+                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide w-14">
                       STT
                     </th>
-                    <th className="sticky top-0 left-12 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 min-w-[180px]">
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-44">
                       Mã & Phiên bản
                     </th>
-                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 min-w-[220px]">
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                       Tên Bảng giá
                     </th>
-                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36">
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-36">
                       Nhóm áp dụng
                     </th>
-                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-44">
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-48">
                       Thời gian hiệu lực
                     </th>
-                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-32">
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-36">
                       Trạng thái
                     </th>
-                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-40 text-center">
+                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide w-44">
                       Ràng buộc Đơn hàng
                     </th>
-                    <th className="sticky top-0 right-0 z-30 bg-slate-50 border-b border-slate-200/80 shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] py-3 px-4 w-20 min-w-20 text-center">
+                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide w-32">
                       Thao tác
                     </th>
                   </tr>
@@ -915,16 +994,19 @@ export const PriceListsPage: React.FC = () => {
                   ) : (
                     priceLists.map((pl, idx) => {
                       const isLocked = pl.hasOrders;
+                      const isDropUp =
+                        idx >= Math.max(1, priceLists.length - 2) ||
+                        (priceLists.length > 3 && idx >= Math.floor(priceLists.length / 2));
 
                       return (
                         <tr key={pl.id} className="hover:bg-slate-50/70 transition-colors group">
                           {/* STT */}
-                          <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors border-b border-slate-100 py-3.5 px-4 text-center text-slate-400 font-mono text-[11px] w-12 min-w-12">
+                          <td className="px-4 py-3.5 text-center text-slate-400 font-mono text-xs">
                             {(page - 1) * limit + idx + 1}
                           </td>
 
                           {/* 1. Mã bảng giá & Badge Version (Chỉ hiện badge từ v2 trở đi) */}
-                          <td className="sticky left-12 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 py-3.5 px-4">
+                          <td className="px-4 py-3.5 whitespace-nowrap">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-mono font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
                                 {pl.code}
@@ -940,53 +1022,61 @@ export const PriceListsPage: React.FC = () => {
                             </div>
                           </td>
 
-                          {/* 2. Tên bảng giá (Chỉ hiển thị duy nhất tên bảng giá) */}
-                          <td className="border-b border-slate-100 py-3.5 px-4">
+                          {/* 2. Tên bảng giá */}
+                          <td className="px-4 py-3.5">
                             <div className="font-semibold text-slate-900 leading-snug">
                               {pl.name}
                             </div>
+                            {pl.description && (
+                              <div
+                                className="text-xs text-slate-400 truncate max-w-sm mt-0.5"
+                                title={pl.description}
+                              >
+                                {pl.description}
+                              </div>
+                            )}
                           </td>
 
                           {/* 3. Nhóm áp dụng */}
-                          <td className="border-b border-slate-100 py-3.5 px-4">
+                          <td className="px-4 py-3.5 whitespace-nowrap">
                             {renderCustomerGroupBadge(pl.customerGroup)}
                           </td>
 
                           {/* 4. Thời gian hiệu lực: DD/MM/YYYY - DD/MM/YYYY */}
-                          <td className="border-b border-slate-100 py-3.5 px-4 text-slate-600 font-medium">
-                            <div className="flex items-center gap-1">
+                          <td className="px-4 py-3.5 text-slate-600 font-medium whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
                               <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                               <span>
-                                {formatDate(pl.startDate)} - {formatDate(pl.endDate)}
+                                {formatDate(pl.startDate)} – {formatDate(pl.endDate)}
                               </span>
                             </div>
                           </td>
 
                           {/* Trạng thái */}
-                          <td className="border-b border-slate-100 py-3.5 px-4">
+                          <td className="px-4 py-3.5 whitespace-nowrap">
                             {renderStatusBadge(pl.status)}
                           </td>
 
                           {/* Ràng buộc đơn hàng */}
-                          <td className="border-b border-slate-100 py-3.5 px-4 text-center">
+                          <td className="px-4 py-3.5 text-center whitespace-nowrap">
                             {isLocked ? (
                               <div
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 text-[11px] font-semibold ring-1 ring-inset ring-amber-600/30"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 text-[11px] font-semibold ring-1 ring-inset ring-amber-600/30"
                                 title="Bảng giá này đã có đơn hàng. Khóa sửa trực tiếp, hỗ trợ Clone Version."
                               >
                                 <Lock className="w-3.5 h-3.5 text-amber-600" />
                                 <span>Đã có đơn hàng</span>
                               </div>
                             ) : (
-                              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-50 text-slate-600 text-[11px] font-medium ring-1 ring-inset ring-slate-300/40">
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 text-slate-600 text-[11px] font-medium ring-1 ring-inset ring-slate-300/40">
                                 <Unlock className="w-3.5 h-3.5 text-slate-400" />
                                 <span>Chưa có đơn</span>
                               </div>
                             )}
                           </td>
 
-                          {/* 5. Cột Thao tác: Nút 3 chấm ⋮ duy nhất với Smart Dropdown Menu (Dropup) */}
-                          <td className="sticky right-0 z-10 bg-white group-hover:bg-slate-50/95 transition-colors shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.08)] border-b border-slate-100 py-3.5 px-4 text-center w-20 min-w-20">
+                          {/* 5. Cột Thao tác: Nút Thao tác dropdown chuẩn giao diện */}
+                          <td className="px-4 py-3.5 text-center whitespace-nowrap">
                             <div className="relative inline-block text-left action-menu-dropdown-container">
                               <button
                                 type="button"
@@ -994,121 +1084,134 @@ export const PriceListsPage: React.FC = () => {
                                   e.stopPropagation();
                                   setOpenActionMenuId(openActionMenuId === pl.id ? null : pl.id);
                                 }}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none ${
+                                  openActionMenuId === pl.id
+                                    ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-xs'
+                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-slate-300'
+                                }`}
                                 title="Thao tác"
                               >
-                                <MoreVertical className="w-4 h-4" />
+                                <span>Thao tác</span>
+                                <ChevronDown
+                                  className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${
+                                    openActionMenuId === pl.id ? 'rotate-180 text-blue-600' : ''
+                                  }`}
+                                />
                               </button>
 
-                              {openActionMenuId === pl.id &&
-                                (() => {
-                                  // Smart Placement: Mở ngược lên trên nếu dòng ở nửa dưới bảng hoặc 2 dòng cuối
-                                  const isDropUp =
-                                    idx >= Math.max(1, priceLists.length - 2) ||
-                                    (priceLists.length > 3 &&
-                                      idx >= Math.floor(priceLists.length / 2));
-                                  return (
-                                    <div
-                                      className={`absolute right-0 ${
-                                        isDropUp
-                                          ? 'bottom-full mb-1 origin-bottom-right'
-                                          : 'top-full mt-1 origin-top-right'
-                                      } w-44 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 text-left`}
+                              {openActionMenuId === pl.id && (
+                                <div
+                                  className={`absolute right-0 ${
+                                    isDropUp
+                                      ? 'bottom-full mb-1 origin-bottom-right'
+                                      : 'top-full mt-1 origin-top-right'
+                                  } w-48 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100`}
+                                >
+                                  <div className="py-1">
+                                    {/* 1. Xem chi tiết */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenuId(null);
+                                        handleOpenViewModal(pl);
+                                      }}
+                                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer"
                                     >
-                                      {/* 1. Xem chi tiết */}
+                                      <Eye className="w-4 h-4 text-slate-400" />
+                                      <span>Xem chi tiết</span>
+                                    </button>
+
+                                    {/* 2. Chỉnh sửa */}
+                                    {canManage && (
                                       <button
                                         type="button"
                                         onClick={() => {
                                           setOpenActionMenuId(null);
-                                          handleOpenViewModal(pl);
+                                          handleOpenEditModal(pl);
                                         }}
-                                        className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                        disabled={isLocked}
+                                        className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
+                                          isLocked
+                                            ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
+                                            : 'text-slate-700 hover:bg-slate-50 hover:text-amber-600 cursor-pointer'
+                                        }`}
+                                        title={
+                                          isLocked
+                                            ? 'Bảng giá đã có đơn hàng - Không thể sửa trực tiếp (Vui lòng nhân bản)'
+                                            : 'Chỉnh sửa bảng giá'
+                                        }
                                       >
-                                        <Eye className="w-4 h-4 text-slate-500" />
-                                        <span>Xem chi tiết</span>
-                                      </button>
-
-                                      {/* 2. Chỉnh sửa */}
-                                      {canManage && (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setOpenActionMenuId(null);
-                                            handleOpenEditModal(pl);
-                                          }}
-                                          disabled={isLocked}
-                                          className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
-                                            isLocked
-                                              ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
-                                              : 'text-slate-700 hover:bg-slate-50 cursor-pointer'
+                                        <Edit2
+                                          className={`w-4 h-4 ${
+                                            isLocked ? 'text-slate-300' : 'text-amber-500'
                                           }`}
-                                          title={
-                                            isLocked
-                                              ? 'Bảng giá đã có đơn hàng - Không thể sửa trực tiếp (Vui lòng nhân bản)'
-                                              : 'Chỉnh sửa bảng giá'
-                                          }
-                                        >
-                                          <Edit2 className="w-4 h-4 text-amber-500" />
-                                          <span>Chỉnh sửa</span>
-                                        </button>
-                                      )}
+                                        />
+                                        <span>Chỉnh sửa</span>
+                                      </button>
+                                    )}
 
-                                      {/* 3. Nhân bản */}
-                                      {canManage && (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setOpenActionMenuId(null);
-                                            handleOpenCloneModal(pl);
-                                          }}
-                                          className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                        >
-                                          <Copy className="w-4 h-4 text-blue-500" />
-                                          <span>Nhân bản (Copy)</span>
-                                        </button>
-                                      )}
-
-                                      {/* 4. Xuất bảng giá (Excel / CSV) */}
+                                    {/* 3. Nhân bản */}
+                                    {canManage && (
                                       <button
                                         type="button"
                                         onClick={() => {
                                           setOpenActionMenuId(null);
-                                          handleExportPriceList(pl);
+                                          handleOpenCloneModal(pl);
                                         }}
-                                        className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                        title="Xuất chi tiết các mặt hàng của bảng giá ra tệp CSV"
+                                        className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
                                       >
-                                        <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                                        <span>Xuất bảng giá</span>
+                                        <Copy className="w-4 h-4 text-indigo-500" />
+                                        <span>Nhân bản (Copy)</span>
                                       </button>
+                                    )}
 
-                                      {/* 5. Xóa */}
-                                      {canManage && (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setOpenActionMenuId(null);
-                                            handlePromptDelete(pl);
-                                          }}
-                                          disabled={isLocked}
-                                          className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
-                                            isLocked
-                                              ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
-                                              : 'text-rose-600 hover:bg-rose-50 cursor-pointer'
+                                    {/* 4. Xuất bảng giá (Excel) */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenuId(null);
+                                        handleExportPriceList(pl);
+                                      }}
+                                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-emerald-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                                      title="Xuất chi tiết các mặt hàng của bảng giá ra tệp Excel (.xlsx)"
+                                    >
+                                      <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                                      <span>Xuất bảng giá</span>
+                                    </button>
+                                  </div>
+
+                                  {/* 5. Xóa */}
+                                  {canManage && (
+                                    <div className="py-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOpenActionMenuId(null);
+                                          handlePromptDelete(pl);
+                                        }}
+                                        disabled={isLocked}
+                                        className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
+                                          isLocked
+                                            ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
+                                            : 'text-rose-600 hover:bg-rose-50 cursor-pointer font-medium'
+                                        }`}
+                                        title={
+                                          isLocked
+                                            ? 'Bảng giá đã có đơn hàng - Không thể xóa để bảo toàn dữ liệu'
+                                            : 'Xóa bảng giá'
+                                        }
+                                      >
+                                        <Trash2
+                                          className={`w-4 h-4 ${
+                                            isLocked ? 'text-slate-300' : 'text-rose-500'
                                           }`}
-                                          title={
-                                            isLocked
-                                              ? 'Bảng giá đã có đơn hàng - Không thể xóa để bảo toàn dữ liệu'
-                                              : 'Xóa bảng giá'
-                                          }
-                                        >
-                                          <Trash2 className="w-4 h-4 text-rose-500" />
-                                          <span>Xóa</span>
-                                        </button>
-                                      )}
+                                        />
+                                        <span>Xóa bảng giá</span>
+                                      </button>
                                     </div>
-                                  );
-                                })()}
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1221,7 +1324,7 @@ export const PriceListsPage: React.FC = () => {
           />
         </>
       ) : (
-        <DiscountPoliciesTab />
+        <DiscountPoliciesTab canManage={canManage} />
       )}
     </div>
   );

@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Lock, Eye, EyeOff, User, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
 import logoImg from '../assets/logo.png';
-import { Input } from '../components/input';
-import { Button } from '../components/button';
+import loginBg from '../assets/login-bg.jpg';
 import { showToast } from '../components/toast';
 import { AccountLockedModal } from '../components/account-locked-modal';
+import { LoginSplashTransition } from '../components/login-splash-transition';
+import type { AuthUser } from '../types/auth';
 import { loginSchema, type LoginFormData } from '../utils/validation';
 import { authService, AccountLockedError } from '../services/auth.service';
 import { getRedirectPathByUser } from '../utils/navigation';
@@ -17,7 +18,6 @@ import {
   SESSION_TIMEOUT_STORAGE_KEY,
   DEFAULT_SESSION_TIMEOUT_MESSAGE,
 } from '../utils/session-timeout';
-import loginPoster from '../assets/login-poster.jpg';
 
 interface LockedModalState {
   isOpen: boolean;
@@ -79,6 +79,8 @@ const getInitialLockedModal = (): LockedModalState | null => {
 export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [lockedModal, setLockedModal] = useState<LockedModalState | null>(getInitialLockedModal);
+  const [transitionUser, setTransitionUser] = useState<AuthUser | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const navigate = useNavigate();
 
@@ -113,15 +115,15 @@ export const LoginPage: React.FC = () => {
       // Bỏ qua lỗi trình duyệt
     }
 
-    // Nếu không có thông báo phiên hết hạn và người dùng đã đăng nhập hợp lệ
-    if (!lockedModal?.isOpen) {
+    // Nếu không có thông báo phiên hết hạn và người dùng đã đăng nhập hợp lệ (bỏ qua nếu đang chạy animation chuyển cảnh)
+    if (!lockedModal?.isOpen && !isTransitioning) {
       const token = tokenStorage.getAccessToken();
       const storedUser = tokenStorage.getUser();
       if (token && storedUser) {
         navigate(getRedirectPathByUser(storedUser), { replace: true });
       }
     }
-  }, [navigate, lockedModal]);
+  }, [navigate, lockedModal, isTransitioning]);
 
   // Lắng nghe sự kiện session-timeout phát ra từ Axios Interceptor khi đang ở trang Login
   useEffect(() => {
@@ -155,6 +157,7 @@ export const LoginPage: React.FC = () => {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -165,6 +168,56 @@ export const LoginPage: React.FC = () => {
     mode: 'onTouched',
   });
 
+  const [hasPassword, setHasPassword] = useState(false);
+  const [isNavigatingAway, setIsNavigatingAway] = useState(false);
+  const passwordInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleNavigateToForgot = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsNavigatingAway(true);
+    setTimeout(() => {
+      navigate('/auth/forgot-password');
+    }, 280);
+  };
+
+  const passwordValue = watch('password');
+
+  // Theo dõi giá trị mật khẩu (hỗ trợ nhập tay, copy/paste, và cả autofill từ trình duyệt)
+  useEffect(() => {
+    const el = passwordInputRef.current;
+    const checkValue = () => {
+      const val = el?.value || passwordValue || '';
+      setHasPassword(Boolean(val && val.length > 0));
+    };
+
+    checkValue();
+
+    if (el) {
+      el.addEventListener('input', checkValue);
+      el.addEventListener('change', checkValue);
+      el.addEventListener('focus', checkValue);
+      el.addEventListener('blur', checkValue);
+    }
+
+    const t1 = setTimeout(checkValue, 100);
+    const t2 = setTimeout(checkValue, 300);
+    const t3 = setTimeout(checkValue, 800);
+    const t4 = setTimeout(checkValue, 1500);
+
+    return () => {
+      if (el) {
+        el.removeEventListener('input', checkValue);
+        el.removeEventListener('change', checkValue);
+        el.removeEventListener('focus', checkValue);
+        el.removeEventListener('blur', checkValue);
+      }
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+    };
+  }, [passwordValue]);
+
   const onSubmit = async (data: LoginFormData) => {
     try {
       const response = await authService.login(data);
@@ -173,9 +226,9 @@ export const LoginPage: React.FC = () => {
       tokenStorage.setTokens(response.accessToken, response.refreshToken);
       tokenStorage.setUser(response.user);
 
-      // Chuyển hướng mượt mà về đúng route ứng với vai trò của user
-      const targetPath = getRedirectPathByUser(response.user);
-      navigate(targetPath, { replace: true });
+      // Kích hoạt hiệu ứng chuyển cảnh đăng nhập mượt mà (Login Success Transition & Splash Screen)
+      setTransitionUser(response.user);
+      setIsTransitioning(true);
     } catch (error: unknown) {
       const err = error as Error & {
         isLocked?: boolean;
@@ -232,8 +285,56 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+  const handleTransitionFinish = () => {
+    if (transitionUser) {
+      const targetPath = getRedirectPathByUser(transitionUser);
+      navigate(targetPath, { replace: true });
+    }
+  };
+
   return (
-    <div className="w-full min-h-screen lg:h-screen flex items-center justify-center p-3 sm:p-4 lg:p-6 bg-slate-50 text-slate-800 antialiased overflow-hidden">
+    <div className="login-glass-container relative w-full min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-slate-950 text-white antialiased overflow-hidden select-none">
+      {/* ===================================================================== */}
+      {/* 1. BACKGROUND WALLPAPER: Kho hàng thông minh & Cực quang ban đêm      */}
+      {/* ===================================================================== */}
+      {/* Ảnh nền Fullscreen Smart Warehouse & Logistics Center ban đêm */}
+      <img
+        src={loginBg}
+        alt="Smart Warehouse & Logistics Hub"
+        className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none transition-transform duration-1000 scale-105"
+      />
+
+      {/* Lớp overlay màu tím - xanh đêm dịu nhẹ tôn vinh hình nền */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-gradient-to-b from-[#1e1b4b]/35 via-[#0f172a]/45 to-[#020617]/65 backdrop-blur-[0.5px] pointer-events-none"
+      />
+
+      {/* Quầng sáng cực quang phát sáng dịu nhẹ phía sau tấm kính */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] lg:w-[700px] lg:h-[700px] rounded-full bg-[#371cdb]/20 blur-[150px] pointer-events-none animate-glass-pulse" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[460px] h-[460px] lg:w-[540px] lg:h-[540px] rounded-full bg-cyan-400/12 blur-[140px] pointer-events-none" />
+
+      {/* Thương hiệu LOHA SALES cố định góc trên trái khung nhìn */}
+      <div className="absolute top-5 left-5 sm:top-7 sm:left-8 flex items-center gap-2.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-white/[0.06] backdrop-blur-xl border border-white/15 shadow-[0_8px_20px_rgba(0,0,0,0.3)] z-20 pointer-events-none">
+        <img
+          src={logoImg}
+          alt="LOHA SALES"
+          className="h-6 sm:h-7 w-auto object-contain drop-shadow-[0_2px_8px_rgba(255,255,255,0.4)]"
+        />
+        <span className="text-xs sm:text-sm font-black tracking-[0.2em] text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+          LOHA SALES
+        </span>
+      </div>
+
+      {/* Hiệu ứng chuyển cảnh đăng nhập thành công & Splash Screen chuyển trang */}
+      {isTransitioning && transitionUser && (
+        <LoginSplashTransition
+          userName={transitionUser.fullName || transitionUser.username}
+          userRole={transitionUser.roles}
+          onFinish={handleTransitionFinish}
+        />
+      )}
+
       {/* Modal popup cảnh báo tài khoản bị khóa */}
       {lockedModal?.isOpen && (
         <AccountLockedModal
@@ -245,136 +346,160 @@ export const LoginPage: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* CONTAINER CHÍNH: Dùng đơn vị tương đối (82vh, max 560px) luôn vừa khít     */}
+      {/* 2. THẺ KÍNH CHÍNH (Siêu Trong Suốt Pha Lê - Bố Cục Cân Đối Hoàn Mỹ)       */}
       {/* ========================================================================= */}
-      <div className="w-full max-w-md lg:max-w-4xl xl:max-w-5xl lg:h-[82vh] lg:max-h-[560px] bg-white rounded-xl border border-slate-200/80 shadow-[0_10px_40px_rgba(0,0,0,0.04)] overflow-hidden grid grid-cols-1 lg:grid-cols-2 my-auto">
-        {/* ===================================================================== */}
-        {/* CỘT TRÁI: Poster (Chiếm chính xác 50% chiều rộng & 100% chiều cao)     */}
-        {/* ===================================================================== */}
-        <div className="relative hidden lg:block w-full h-full bg-slate-100 select-none overflow-hidden">
-          <img
-            src={loginPoster}
-            alt="LOHA SALES - Hệ thống Quản lý Bán hàng & Kho B2B"
-            className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
-          />
-
-          {/* Lớp phủ gradient mờ nhẹ để tôn logo và chữ */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-transparent to-slate-900/35 pointer-events-none"
-          />
-
-          {/* Badge thương hiệu góc trên */}
-          <div className="relative z-10 p-5 xl:p-6 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md flex items-center justify-center shrink-0">
-              <img src={logoImg} alt="LOHA SALES" className="w-full h-full object-cover" />
-            </div>
-            <div>
-              <span className="text-base font-bold text-white block leading-tight tracking-tight drop-shadow-xs">
-                LOHA SALES
-              </span>
-              <span className="text-[10px] text-purple-100 font-medium block drop-shadow-xs">
-                Hệ thống Quản lý Bán hàng & Kho B2B
-              </span>
-            </div>
+      {/* ========================================================================= */}
+      {/* 2. THẺ KÍNH CHÍNH (Siêu Trong Suốt Pha Lê - Chiều Cao Thoáng Đãng Cân Đối)  */}
+      {/* ========================================================================= */}
+      <div className={`relative z-10 w-full max-w-[92vw] sm:max-w-[450px] md:max-w-[470px] lg:max-w-[480px] bg-white/[0.06] backdrop-blur-xl rounded-[36px] sm:rounded-[42px] border border-white/15 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.18)] py-11 sm:py-14 md:py-16 px-6 sm:px-10 md:px-12 text-center my-auto transition-all duration-300 ${isNavigatingAway ? 'animate-glass-card-exit' : 'animate-glass-card-enter'}`}>
+        {/* Header: Logo & Title - Khoảng cách thoáng đãng */}
+        <div className="flex flex-col items-center justify-center mb-8 sm:mb-10 md:mb-12">
+          <div className="p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl bg-white/[0.08] backdrop-blur-xl border border-white/20 shadow-[0_8px_25px_rgba(0,0,0,0.25)] mb-4 sm:mb-5">
+            <img
+              src={logoImg}
+              alt="LOHA SALES"
+              className="h-11 sm:h-13 w-auto object-contain drop-shadow-[0_4px_12px_rgba(255,255,255,0.4)]"
+            />
           </div>
 
-          {/* Tagline góc dưới */}
-          <div className="absolute bottom-0 inset-x-0 p-5 xl:p-6 text-[11px] text-white/90 font-medium drop-shadow-xs z-10">
-            Vận hành phân phối & kho vận thông minh
-          </div>
+          <h1 className="text-2xl sm:text-3xl md:text-[32px] font-extrabold text-white tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
+            Đăng nhập
+          </h1>
         </div>
 
-        {/* ===================================================================== */}
-        {/* CỘT PHẢI: Form Đăng Nhập (Cân xứng tuyệt đối với cột Poster)           */}
-        {/* ===================================================================== */}
-        <div className="w-full h-full flex flex-col justify-center p-6 sm:p-8 lg:p-8 xl:p-10 bg-white overflow-y-auto">
-          {/* Header Card */}
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl overflow-hidden shadow-xs mb-2">
-              <img src={logoImg} alt="LOHA SALES" className="w-full h-full object-cover" />
+        {/* Form đăng nhập - Các phần tử giãn cách rộng rãi, không bị dồn ép */}
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5 sm:space-y-6 md:space-y-7">
+          {/* Input Username / Email dạng Capsule Kính Mờ */}
+          <div className="space-y-1.5 text-left">
+            <div className="relative flex items-center">
+              <input
+                id="login-email"
+                type="text"
+                placeholder="Tên đăng nhập hoặc Email"
+                autoComplete="username"
+                disabled={isSubmitting}
+                className={`glass-input w-full h-13 sm:h-14 md:h-[58px] pl-6 sm:pl-7 pr-12 sm:pr-14 rounded-full text-sm sm:text-base bg-white/10 hover:bg-white/15 focus:bg-white/20 border text-white placeholder-white/50 transition-all outline-none backdrop-blur-md ${
+                  errors.email
+                    ? 'border-rose-400 focus:border-rose-300 focus:ring-2 focus:ring-rose-400/25'
+                    : 'border-white/20 hover:border-white/35 focus:border-white/70 focus:ring-2 focus:ring-white/20'
+                }`}
+                {...register('email')}
+              />
+              <div className="absolute inset-y-0 right-0 pr-4.5 sm:pr-5.5 flex items-center pointer-events-none text-white/70">
+                <User className="w-4.5 sm:w-5 h-4.5 sm:h-5" />
+              </div>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              Đăng nhập
-            </h1>
-            <p className="text-slate-500 text-xs mt-2">
-              Nhập email và mật khẩu của bạn để tiếp tục
-            </p>
+            {errors.email && (
+              <p className="ml-3 sm:ml-4 text-xs sm:text-sm text-rose-300 flex items-center gap-1.5 font-medium pt-1">
+                <AlertCircle className="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0" />
+                <span>{errors.email.message}</span>
+              </p>
+            )}
           </div>
 
-          {/* Form đăng nhập */}
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-            {/* Input Tên đăng nhập / Email */}
-            <Input
-              label="Tên đăng nhập / Email"
-              type="text"
-              placeholder="admin hoặc email@loha.vn"
-              autoComplete="username"
-              required
-              disabled={isSubmitting}
-              leftIcon={<Mail className="w-4 h-4" />}
-              error={errors.email?.message}
-              {...register('email')}
-            />
-
-            {/* Input Mật khẩu */}
-            <Input
-              label="Mật khẩu"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Nhập mật khẩu"
-              autoComplete="current-password"
-              required
-              disabled={isSubmitting}
-              leftIcon={<Lock className="w-4 h-4" />}
-              error={errors.password?.message}
-              rightElement={
+          {/* Input Password dạng Capsule Kính Mờ - 3 Trạng thái Icon (1: Chưa nhập -> Ổ khóa, 2: Đã nhập -> Con mắt mở xem, 3: Đang xem -> Con mắt đóng/gạch) */}
+          <div className="space-y-1.5 text-left">
+            <div className="relative flex items-center">
+              <input
+                id="login-password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Mật khẩu"
+                autoComplete="current-password"
+                disabled={isSubmitting}
+                className={`glass-input w-full h-13 sm:h-14 md:h-[58px] pl-6 sm:pl-7 pr-12 sm:pr-14 rounded-full text-sm sm:text-base bg-white/10 hover:bg-white/15 focus:bg-white/20 border text-white placeholder-white/50 transition-all outline-none backdrop-blur-md ${
+                  errors.password
+                    ? 'border-rose-400 focus:border-rose-300 focus:ring-2 focus:ring-rose-400/25'
+                    : 'border-white/20 hover:border-white/35 focus:border-white/70 focus:ring-2 focus:ring-white/20'
+                }`}
+                {...register('password')}
+                ref={(el) => {
+                  register('password').ref(el);
+                  passwordInputRef.current = el;
+                }}
+                onInput={(e) => {
+                  setHasPassword(e.currentTarget.value.length > 0);
+                }}
+                onChange={(e) => {
+                  register('password').onChange(e);
+                  setHasPassword(e.target.value.length > 0);
+                }}
+              />
+              {!hasPassword ? (
+                /* Icon 1: Khi chưa nhập gì -> Hiện ổ khóa */
+                <div
+                  className="absolute inset-y-0 right-0 pr-4.5 sm:pr-5.5 flex items-center pointer-events-none text-white/70"
+                  title="Chưa nhập mật khẩu"
+                >
+                  <Lock className="w-4.5 sm:w-5 h-4.5 sm:h-5" />
+                </div>
+              ) : (
+                /* Khi đã nhập mật khẩu -> Nút chuyển đổi xem / ẩn */
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Mở xem mật khẩu'}
+                  title={showPassword ? 'Ẩn mật khẩu' : 'Mở xem mật khẩu'}
                   disabled={isSubmitting}
-                  className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
+                  className="absolute inset-y-0 right-0 pr-4.5 sm:pr-5.5 flex items-center text-white/70 hover:text-white transition-colors focus:outline-none cursor-pointer"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? (
+                    /* Icon 3: Khi đang xem mật khẩu -> Hiện con mắt gạch để ẩn đi */
+                    <EyeOff className="w-4.5 sm:w-5 h-4.5 sm:h-5" />
+                  ) : (
+                    /* Icon 2: Khi đã nhập nhưng đang ẩn -> Hiện con mắt mở để bấm xem */
+                    <Eye className="w-4.5 sm:w-5 h-4.5 sm:h-5" />
+                  )}
                 </button>
-              }
-              {...register('password')}
-            />
-
-            {/* Tùy chọn Ghi nhớ & Quên mật khẩu */}
-            <div className="flex items-center justify-between text-xs sm:text-sm pt-0.5">
-              <label className="flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 select-none">
-                <input
-                  type="checkbox"
-                  defaultChecked
-                  disabled={isSubmitting}
-                  className="w-4 h-4 rounded border-slate-300 text-[var(--color-primary)] focus:ring-[var(--color-primary-ring)] cursor-pointer"
-                />
-                <span>Ghi nhớ đăng nhập</span>
-              </label>
-
-              <Link
-                to="/auth/forgot-password"
-                className="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] font-medium hover:underline focus:outline-none transition-colors cursor-pointer"
-              >
-                Quên mật khẩu?
-              </Link>
+              )}
             </div>
+            {errors.password && (
+              <p className="ml-3 sm:ml-4 text-xs sm:text-sm text-rose-300 flex items-center gap-1.5 font-medium pt-1">
+                <AlertCircle className="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0" />
+                <span>{errors.password.message}</span>
+              </p>
+            )}
+          </div>
 
-            {/* Nút Submit */}
-            <Button
-              type="submit"
-              isLoading={isSubmitting}
-              loadingText="Đang xác thực..."
-              rightIcon={
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-              }
-              className="mt-1 group shadow-2xs hover:shadow-xs active:scale-[0.99] transition-all"
+          {/* Tùy chọn Ghi nhớ đăng nhập & Quên mật khẩu? */}
+          <div className="flex items-center justify-between text-xs sm:text-sm pt-2.5 sm:pt-3.5 px-1 sm:px-2">
+            <label className="flex items-center gap-2 cursor-pointer text-white/80 hover:text-white select-none transition-colors">
+              <input
+                type="checkbox"
+                defaultChecked
+                disabled={isSubmitting}
+                className="w-4 h-4 sm:w-4.5 sm:h-4.5 rounded border-white/40 bg-white/10 text-indigo-600 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-indigo-500"
+              />
+              <span>Ghi nhớ đăng nhập</span>
+            </label>
+
+            <button
+              type="button"
+              onClick={handleNavigateToForgot}
+              className="text-white/80 hover:text-white hover:underline focus:outline-none transition-colors cursor-pointer"
             >
-              Đăng nhập
-            </Button>
-          </form>
-        </div>
+              Quên mật khẩu?
+            </button>
+          </div>
+
+          {/* Nút Submit Trắng Nguyên Khối Bo Tròn (Solid White Pill Button) - Khoảng cách thoáng đãng */}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full h-13 sm:h-14 md:h-[58px] mt-7 sm:mt-9 md:mt-10 rounded-full bg-white hover:bg-white/95 active:scale-[0.98] text-[#1e1b4b] font-bold text-sm sm:text-base tracking-wide shadow-[0_12px_28px_rgba(0,0,0,0.35)] transition-all cursor-pointer flex items-center justify-center gap-2.5 disabled:opacity-60 disabled:cursor-not-allowed group"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4.5 sm:w-5 h-4.5 sm:h-5 animate-spin text-[#1e1b4b]" />
+                <span>Đang xác thực...</span>
+              </>
+            ) : (
+              <>
+                <span>Đăng nhập</span>
+                <ArrowRight className="w-4.5 sm:w-5 h-4.5 sm:h-5 transition-transform group-hover:translate-x-1" />
+              </>
+            )}
+          </button>
+        </form>
       </div>
     </div>
   );

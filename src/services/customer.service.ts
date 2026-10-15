@@ -438,6 +438,49 @@ export function saveStoredHistory(history: CustomerAssignmentHistory[]): void {
   }
 }
 
+/**
+ * Cập nhật biến động dư nợ thời gian thực cho đại lý và phát sự kiện đồng bộ toàn hệ thống
+ */
+export function updateStoredCustomerDebt(customerId: string, deltaAmount: number): Customer | null {
+  const customers = getStoredCustomers();
+  const targetId = String(customerId).toLowerCase().trim();
+  const idx = customers.findIndex(
+    (c) =>
+      c.id.toLowerCase() === targetId ||
+      c.code.toLowerCase() === targetId ||
+      (c.phone && targetId.includes(c.phone))
+  );
+
+  if (idx === -1) return null;
+
+  const current = typeof customers[idx].currentDebt === 'number' ? customers[idx].currentDebt : 0;
+  const newDebt = Math.max(0, current + deltaAmount);
+  customers[idx] = {
+    ...customers[idx],
+    currentDebt: newDebt,
+  };
+
+  saveStoredCustomers(customers);
+
+  try {
+    window.dispatchEvent(
+      new CustomEvent('loha_debt_updated', {
+        detail: {
+          customerId: customers[idx].id,
+          customerCode: customers[idx].code,
+          newDebt,
+          creditLimit: customers[idx].creditLimit,
+          availableLimit: Math.max(0, (customers[idx].creditLimit || 0) - newDebt),
+        },
+      })
+    );
+  } catch {
+    // ignore
+  }
+
+  return customers[idx];
+}
+
 export function filterDemoCustomers(params: CustomerFilterParams = {}): PaginatedCustomersResponse {
   let list = getStoredCustomers();
 
@@ -653,6 +696,14 @@ export const customerService = {
       if (found) return found;
       throw new Error(`Không tìm thấy đại lý có ID: ${id}`);
     }
+  },
+
+  /**
+   * Lấy hồ sơ của chính Đại lý B2B đang đăng nhập (Cổng B2B - Cách ly dữ liệu)
+   */
+  async getPortalProfile(): Promise<Customer> {
+    const res = await apiClient.get<Customer>('/customers/portal/profile');
+    return res.data;
   },
 
   async getDeliveryPoints(customerId: string): Promise<DeliveryPoint[]> {
@@ -1121,6 +1172,53 @@ export const customerService = {
         );
       }
       return { data: list, total: list.length };
+    }
+  },
+
+  /**
+   * Cập nhật hạn mức công nợ & số ngày nợ tối đa cho đại lý (SN-34)
+   * Kèm lý do phục vụ kiểm toán hệ thống (Audit Log)
+   */
+  async updateCreditLimit(
+    customerId: string,
+    payload: {
+      creditLimit: number;
+      maxDebtDays: number;
+      reason: string;
+      paymentTerms?: string;
+      temporaryCreditLimit?: number;
+      temporaryLimitExpiry?: string;
+      allowOverLimitOrder?: boolean;
+    },
+  ): Promise<Customer> {
+    try {
+      const res = await apiClient.put<Customer>(`/credit-limit/${customerId}`, payload);
+      const list = getStoredCustomers();
+      const custIndex = list.findIndex((c) => c.id === customerId || c.code === customerId);
+      if (custIndex >= 0) {
+        list[custIndex] = {
+          ...list[custIndex],
+          creditLimit: payload.creditLimit,
+          maxDebtDays: payload.maxDebtDays,
+          updatedAt: new Date().toISOString(),
+        };
+        saveStoredCustomers(list);
+      }
+      return res.data;
+    } catch {
+      const list = getStoredCustomers();
+      const custIndex = list.findIndex((c) => c.id === customerId || c.code === customerId);
+      if (custIndex >= 0) {
+        list[custIndex] = {
+          ...list[custIndex],
+          creditLimit: payload.creditLimit,
+          maxDebtDays: payload.maxDebtDays,
+          updatedAt: new Date().toISOString(),
+        };
+        saveStoredCustomers(list);
+        return list[custIndex];
+      }
+      throw new Error('Không tìm thấy đại lý để cập nhật hạn mức');
     }
   },
 

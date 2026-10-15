@@ -15,6 +15,7 @@ export interface DropdownMenuProps {
   items: DropdownMenuItem[];
   placement?: 'bottom-start' | 'bottom-end';
   className?: string;
+  menuClassName?: string;
 }
 
 /**
@@ -28,6 +29,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   items,
   placement = 'bottom-end',
   className = '',
+  menuClassName = '',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -56,8 +58,8 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
   }, [isOpen]);
 
   const placementStyles = {
-    'bottom-start': 'top-full left-0 mt-1.5',
-    'bottom-end': 'top-full right-0 mt-1.5',
+    'bottom-start': 'top-full left-0 mt-2',
+    'bottom-end': 'top-full right-0 mt-2',
   }[placement];
 
   return (
@@ -69,12 +71,12 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
       {isOpen && (
         <div
           role="menu"
-          className={`absolute z-50 min-w-[180px] rounded-xl border border-slate-200/90 bg-white py-1 shadow-lg animate-in fade-in zoom-in-95 select-none ${placementStyles}`}
+          className={`absolute z-50 min-w-[220px] rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 select-none ${placementStyles} ${menuClassName}`}
         >
           {items.map((item) => {
             if (item.divider) {
               return (
-                <div key={item.key} className="my-1 border-t border-slate-100" role="separator" />
+                <div key={item.key} className="my-1.5 border-t border-slate-100" role="separator" />
               );
             }
 
@@ -92,7 +94,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
                     setIsOpen(false);
                   }
                 }}
-                className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold transition-colors cursor-pointer text-left ${
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
                   item.disabled
                     ? 'opacity-50 cursor-not-allowed'
                     : isDanger
@@ -101,7 +103,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
                 }`}
               >
                 {item.icon && <span className="shrink-0">{item.icon}</span>}
-                <span className="flex-1 truncate">{item.label}</span>
+                <span className="flex-1 min-w-0">{item.label}</span>
               </button>
             );
           })}

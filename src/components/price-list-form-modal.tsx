@@ -523,7 +523,13 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
                   value={code}
                   readOnly
                   disabled
-                  placeholder="Mã tự động sinh bởi hệ thống"
+                  placeholder={
+                    customerGroup === 'AGENT_LEVEL_1'
+                      ? 'Tự động sinh (VD: BG-C1-0001)'
+                      : customerGroup === 'AGENT_LEVEL_2'
+                        ? 'Tự động sinh (VD: BG-C2-0001)'
+                        : 'Tự động sinh (VD: BG-C3-0001)'
+                  }
                   className="w-full px-3 py-2 text-xs font-mono font-medium rounded-xl border border-slate-200 bg-slate-100 text-slate-500 placeholder-slate-400 cursor-not-allowed select-none focus:outline-none"
                 />
               </div>

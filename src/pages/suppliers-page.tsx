@@ -6,11 +6,8 @@ import {
   Search,
   CheckCircle2,
   Power,
-  Trash2,
   X,
   Receipt,
-  AlertCircle,
-  ShieldAlert,
   Eye,
 } from "lucide-react";
 import { showToast } from "../components/toast";
@@ -18,8 +15,6 @@ import { SuppliersTableSkeleton } from "../components/skeletons";
 import { Pagination } from "../components/pagination";
 import { SupplierFormModal } from "../components/supplier-form-modal";
 import { SupplierDetailModal } from "../components/supplier-detail-modal";
-import { ModalLayout } from "../components/modal-layout";
-import { ConfirmDeleteModal } from "../components/confirm-delete-modal";
 import { suppliersService } from "../services/suppliers.service";
 import type {
   Supplier,
@@ -49,9 +44,6 @@ export const SuppliersPage: React.FC = () => {
   const [selectedSupplierForDetail, setSelectedSupplierForDetail] = useState<Supplier | null>(null);
   const [returnToDetailSupplier, setReturnToDetailSupplier] = useState<Supplier | null>(null);
 
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // User Permissions
   const user = getStoredUser();
@@ -173,45 +165,6 @@ export const SuppliersPage: React.FC = () => {
     }
   };
 
-  // Delete flow
-  const handleDeleteClick = (supplier: Supplier) => {
-    setSupplierToDelete(supplier);
-    setDeleteModalOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!supplierToDelete) return;
-
-    setIsDeleting(true);
-    try {
-      await suppliersService.deleteSupplier(supplierToDelete.id);
-      showToast("success", "Xóa nhà cung cấp thành công");
-      setDeleteModalOpen(false);
-      setSupplierToDelete(null);
-      fetchSuppliers();
-    } catch {
-      showToast("error", "Không thể xóa nhà cung cấp do ràng buộc dữ liệu");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  // Convert to Inactive instead of delete when constrained
-  const handleSwitchToInactive = async () => {
-    if (!supplierToDelete) return;
-    try {
-      await suppliersService.toggleSupplierStatus(
-        supplierToDelete.id,
-        "INACTIVE"
-      );
-      showToast("success", "Đã chuyển nhà cung cấp sang ngừng hoạt động");
-      setDeleteModalOpen(false);
-      setSupplierToDelete(null);
-      fetchSuppliers();
-    } catch {
-      showToast("error", "Chuyển trạng thái thất bại");
-    }
-  };
 
   const handleViewDetail = (supplier: Supplier) => {
     setSelectedSupplierForDetail(supplier);
@@ -470,17 +423,6 @@ export const SuppliersPage: React.FC = () => {
                           >
                             <Eye className="h-4.5 w-4.5" />
                           </button>
-
-                          {canManageSuppliers && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteClick(supplier)}
-                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                              title="Xóa nhà cung cấp"
-                            >
-                              <Trash2 className="h-4.5 w-4.5" />
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -539,90 +481,6 @@ export const SuppliersPage: React.FC = () => {
         canEdit={canManageSuppliers}
       />
 
-      {/* 6A. Modal Cảnh báo ràng buộc chứng từ (Không cho phép xóa vật lý khi đã có phiếu nhập) */}
-      {deleteModalOpen &&
-        supplierToDelete &&
-        Boolean(supplierToDelete.hasReceipts ?? supplierToDelete.has_receipts) && (
-          <ModalLayout
-            isOpen={deleteModalOpen}
-            onClose={() => {
-              setDeleteModalOpen(false);
-              setSupplierToDelete(null);
-            }}
-            title="Không thể xóa nhà cung cấp"
-            subtitle={`Mã đối tác: ${supplierToDelete.code}`}
-            icon={<ShieldAlert className="h-5 w-5 text-amber-600" />}
-            maxWidth="max-w-md"
-            footer={
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDeleteModalOpen(false);
-                    setSupplierToDelete(null);
-                  }}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
-                >
-                  Đóng lại
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSwitchToInactive}
-                  className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-xs font-semibold text-white shadow-xs transition-all cursor-pointer"
-                >
-                  Chuyển sang Inactive
-                </button>
-              </>
-            }
-          >
-            <div className="space-y-3 text-xs">
-              <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80 text-amber-800 space-y-1.5">
-                <p className="font-semibold flex items-center gap-1.5">
-                  <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
-                  Vi phạm ràng buộc dữ liệu (Import Receipt Constraint):
-                </p>
-                <p>
-                  Nhà cung cấp <strong>{supplierToDelete.name}</strong> ({supplierToDelete.code}) đã từng phát sinh chứng từ trong <strong>Phiếu nhập kho</strong>.
-                </p>
-                <p className="text-[11px] text-amber-700">
-                  Quy tắc hệ thống ngăn chặn xóa vĩnh viễn nhằm đảm bảo tính toàn vẹn của thẻ kho và lịch sử giao dịch kế toán.
-                </p>
-              </div>
-              <p className="text-slate-600">
-                Bạn có thể chuyển trạng thái của đối tác sang <strong>Ngừng hoạt động (Inactive)</strong> để ẩn khỏi các giao dịch nhập mới.
-              </p>
-            </div>
-          </ModalLayout>
-        )}
-
-      {/* 6B. Modal Xác nhận xóa nhà cung cấp chuẩn hóa (Chưa phát sinh phiếu nhập) */}
-      <ConfirmDeleteModal
-        isOpen={
-          deleteModalOpen &&
-          Boolean(supplierToDelete) &&
-          !(supplierToDelete?.hasReceipts ?? supplierToDelete?.has_receipts)
-        }
-        onCancel={() => {
-          setDeleteModalOpen(false);
-          setSupplierToDelete(null);
-        }}
-        onConfirm={handleConfirmDelete}
-        title="Xác nhận xóa nhà cung cấp"
-        itemName={supplierToDelete?.name}
-        itemCode={supplierToDelete?.code}
-        message={
-          supplierToDelete ? (
-            <p>
-              Bạn có chắc chắn muốn xóa đối tác{" "}
-              <strong className="text-slate-900 font-bold">&quot;{supplierToDelete.name}&quot;</strong> ({supplierToDelete.code}) không? Thao tác này sẽ gỡ bỏ hoàn toàn khỏi danh mục.
-            </p>
-          ) : undefined
-        }
-        warningText="Thao tác này mang tính vĩnh viễn và không thể hoàn tác sau khi thực hiện."
-        confirmText="Xác nhận xóa"
-        cancelText="Hủy bỏ"
-        isDeleting={isDeleting}
-      />
     </div>
   );
 };

@@ -38,6 +38,8 @@ export interface OrderLine {
   productId: string;
   productSku: string;
   productName: string;
+  categoryId?: string;
+  category?: string;
   unit: string; // Đơn vị gọi hàng (Thùng, Lốc, Lon...)
   baseUnit: string; // Đơn vị cơ sở
   conversionRate: number; // Hệ số quy đổi sang đơn vị cơ sở
@@ -46,6 +48,9 @@ export interface OrderLine {
   unitPrice: number; // Đơn giá theo unit (sau chiết khấu)
   listPrice: number; // Giá niêm yết gốc
   discountPercent: number; // Chiết khấu % theo bảng giá
+  discountType?: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'NONE';
+  discountAmountPerUnit?: number;
+  discountDisplayText?: string;
   lineTotal: number; // Thành tiền = quantity × unitPrice
   stockAvailable?: number; // Tồn khả dụng tham khảo (hiển thị UI)
   minPrice?: number;
@@ -114,6 +119,7 @@ export interface Order {
   creditLimitExceededAmount?: number; // Số tiền vượt hạn mức (VND)
   cancelReason?: string; // Lý do hủy đơn (SN-180, SN-45)
   approverId?: string; // ID người duyệt đơn (SN-180)
+  approverName?: string; // Tên người duyệt đơn (SN-180)
   approvedAt?: string; // Thời gian duyệt đơn (SN-180)
   reservedUntil?: string; // Hạn giữ chỗ tồn kho (24h sau duyệt) (SN-180)
   isShortDelivery?: boolean; // Cờ đơn hàng bị giao thiếu (SN-170)
@@ -151,6 +157,10 @@ export interface CreateOrderPayload {
   status?: OrderStatus;
   isCreditLimitExceeded?: boolean;
   creditLimitExceededAmount?: number;
+  warehouseId?: string;
+  warehouse_id?: string;
+  warehouseName?: string;
+  warehouseCode?: string;
 }
 
 /** Payload cập nhật đơn hàng */
@@ -180,6 +190,7 @@ export interface OrderQueryParams {
   region?: string;
   fromDate?: string;
   toDate?: string;
+  dateType?: 'CREATED' | 'DELIVERY';
 }
 
 /** Thông tin khách hàng đại lý (dùng trong form tạo đơn) */
@@ -200,6 +211,9 @@ export interface CustomerOption {
   overdueAmount?: number;
   overdueDays?: number;
   deliveryPoints?: DeliveryPoint[];
+  salesRepId?: string;
+  salesRepName?: string;
+  salesRep?: { id: string; name: string };
 }
 
 /** Trạng thái công nợ thời gian thực của đại lý (Task SN-41) */

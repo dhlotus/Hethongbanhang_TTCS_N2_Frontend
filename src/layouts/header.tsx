@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Menu, User, Lock, Power, ChevronDown, ChevronRight, LogOut, Loader2 } from 'lucide-react';
+import { Menu, User, Lock, Power, ChevronDown, ChevronRight, LogOut, Loader2, ShieldCheck } from 'lucide-react';
 import { getStoredUser } from '../utils/navigation';
 import {
   getNavigationItems,
@@ -12,19 +12,58 @@ import {
 import { tokenStorage } from '../utils/token-storage';
 import { resolveAvatarUrl } from '../utils/avatar';
 import { authService } from '../services/auth.service';
+import { NotificationBell } from '../components/notification-bell';
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
 }
 
+interface PageHeaderInfo {
+  title: string;
+  category: string;
+  breadcrumbs?: Array<{ label: string; path?: string }>;
+}
+
 /**
  * Lấy tiêu đề trang dựa theo danh mục điều hướng của người dùng hiện tại và URL
- * Đảm bảo 100% tên tab trên Navbar và tiêu đề trên Header luôn đồng nhất tuyệt đối
+ * Hỗ trợ breadcrumbs phân cấp khi vào các trang con (ví dụ: Quản lý đơn hàng > Tạo đơn hàng mới)
  */
 const getPageHeaderInfo = (
   pathname: string,
   userMenuItems: MenuItem[] = []
-): { title: string; category: string } => {
+): PageHeaderInfo => {
+  // 0. Trang con phân cấp (Breadcrumbs)
+  if (pathname === '/sales/orders/create' || pathname === '/orders/create') {
+    return {
+      title: 'Tạo đơn hàng mới',
+      category: 'Bán hàng',
+      breadcrumbs: [
+        { label: 'Quản lý đơn hàng', path: '/sales/orders' },
+        { label: 'Tạo đơn hàng mới' },
+      ],
+    };
+  }
+  if (pathname === '/portal/orders/confirm' || pathname === '/portal/orders/create') {
+    return {
+      title: 'Xác nhận đơn hàng',
+      category: 'Mua hàng & Giao nhận',
+      breadcrumbs: [
+        { label: 'Cổng đặt hàng', path: '/portal/orders' },
+        { label: 'Xác nhận đơn hàng' },
+      ],
+    };
+  }
+  if (pathname.startsWith('/sales/orders/edit')) {
+    return {
+      title: 'Chỉnh sửa đơn hàng',
+      category: 'Bán hàng',
+      breadcrumbs: [
+        { label: 'Quản lý đơn hàng', path: '/sales/orders' },
+        { label: 'Chỉnh sửa đơn hàng' },
+      ],
+    };
+  }
+
   // 1. Ưu tiên khớp chính xác theo menu item của người dùng hiện tại trên Navbar
   const sortedUserItems = [...userMenuItems].sort((a, b) => b.path.length - a.path.length);
   const matchedUserItem = sortedUserItems.find(
@@ -81,7 +120,25 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const [currentUser, setCurrentUser] = useState(getStoredUser());
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(tokenStorage.getUser()?.avatarUrl);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isCreditCollapsedMobile, setIsCreditCollapsedMobile] = useState<boolean>(false);
+  const isPortalOrders = location.pathname.startsWith('/portal');
+  const isOrderConfirm = location.pathname === '/portal/orders/confirm' || location.pathname === '/portal/orders/create';
+
+  // Lắng nghe trạng thái thu gọn hạn mức từ Agency Portal trên Mobile
+  useEffect(() => {
+    const handleCreditState = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      if (typeof detail?.isCollapsed === 'boolean') {
+        setIsCreditCollapsedMobile(detail.isCollapsed);
+      }
+    };
+    window.addEventListener('loha_portal_credit_state', handleCreditState);
+    return () => window.removeEventListener('loha_portal_credit_state', handleCreditState);
+  }, []);
+
+  const handleExpandCreditMobile = () => {
+    window.dispatchEvent(new CustomEvent('loha_portal_expand_credit'));
+  };
 
   // Trạng thái modal xác nhận đăng xuất
   const [showLogoutModal, setShowLogoutModal] = useState<boolean>(false);
@@ -90,42 +147,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Đóng dropdown an toàn và hủy timer đang chờ
+  // Đóng dropdown hồ sơ
   const handleCloseDropdown = () => {
-    if (dropdownTimeoutRef.current) {
-      clearTimeout(dropdownTimeoutRef.current);
-      dropdownTimeoutRef.current = null;
-    }
     setIsDropdownOpen(false);
   };
-
-  // Hover vào: Hủy timer đóng nếu có và mở dropdown ngay
-  const handleMouseEnter = () => {
-    if (dropdownTimeoutRef.current) {
-      clearTimeout(dropdownTimeoutRef.current);
-      dropdownTimeoutRef.current = null;
-    }
-    setIsDropdownOpen(true);
-  };
-
-  // Rời chuột ra: Đợi 150ms để người dùng di chuột mượt mà sang menu con trước khi đóng
-  const handleMouseLeave = () => {
-    if (dropdownTimeoutRef.current) {
-      clearTimeout(dropdownTimeoutRef.current);
-    }
-    dropdownTimeoutRef.current = setTimeout(() => {
-      setIsDropdownOpen(false);
-    }, 150);
-  };
-
-  // Dọn dẹp timer khi unmount
-  useEffect(() => {
-    return () => {
-      if (dropdownTimeoutRef.current) {
-        clearTimeout(dropdownTimeoutRef.current);
-      }
-    };
-  }, []);
 
   // Đồng bộ thông tin người dùng realtime
   useEffect(() => {
@@ -197,7 +222,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   };
 
   const menuItems = getNavigationItems(currentUser?.roles || currentUser?.role);
-  const { title } = getPageHeaderInfo(location.pathname, menuItems);
+  const { title, breadcrumbs } = getPageHeaderInfo(location.pathname, menuItems);
   const context = getUserContext(currentUser);
   const cleanFullName =
     (context.fullName || '').replace(/\s*\([^)]*\)/g, '').trim() ||
@@ -205,7 +230,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     'Người dùng';
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 backdrop-blur-xs px-4 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-xs px-4 sm:px-6 lg:px-8 shadow-2xs">
       {/* =================================================================== */}
       {/* 1. BÊN TRÁI: NÚT ĐÓNG MỞ NAVBAR & TIÊU ĐỀ TRANG                     */}
       {/* =================================================================== */}
@@ -214,33 +239,83 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         <button
           type="button"
           onClick={onToggleMobileMenu}
-          className="inline-flex lg:hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:outline-none transition-colors cursor-pointer"
+          className="inline-flex lg:hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:outline-none transition-colors cursor-pointer"
           aria-label="Mở menu điều hướng"
         >
           <Menu className="h-5 w-5" />
         </button>
 
-        {/* Tiêu đề trang với animation chuyển đổi siêu mượt mà */}
+        {/* Tiêu đề trang hoặc breadcrumb phân cấp */}
         <div className="overflow-hidden min-w-0">
-          <h1
-            key={location.pathname}
-            className="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate animate-header-title"
-          >
-            {title}
-          </h1>
+          {breadcrumbs && breadcrumbs.length > 1 ? (
+            <nav
+              aria-label="Breadcrumb"
+              key={location.pathname}
+              className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base tracking-tight animate-header-title min-w-0"
+            >
+              {breadcrumbs.map((crumb, idx) => {
+                const isLast = idx === breadcrumbs.length - 1;
+                return (
+                  <React.Fragment key={crumb.label}>
+                    {idx > 0 && (
+                      <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 shrink-0" />
+                    )}
+                    {isLast ? (
+                      <span className="text-slate-900 font-bold truncate">
+                        {crumb.label}
+                      </span>
+                    ) : crumb.path ? (
+                      <Link
+                        to={crumb.path}
+                        className="text-slate-500 hover:text-indigo-600 transition-colors truncate font-semibold"
+                      >
+                        {crumb.label}
+                      </Link>
+                    ) : (
+                      <span className="text-slate-500 truncate font-semibold">
+                        {crumb.label}
+                      </span>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </nav>
+          ) : (
+            <h1
+              key={location.pathname}
+              className="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate animate-header-title"
+            >
+              {title}
+            </h1>
+          )}
         </div>
       </div>
 
       {/* =================================================================== */}
-      {/* 2. BÊN PHẢI: NÚT HỒ SƠ CÁ NHÂN KÈM DROPDOWN MENU XỔ XUỐNG           */}
+      {/* 2. BÊN PHẢI: CHUÔNG THÔNG BÁO & NÚT HỒ SƠ CÁ NHÂN                   */}
       {/* =================================================================== */}
-      <div
-        className="relative shrink-0"
-        ref={dropdownRef}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
-        {/* Nút bấm mở Dropdown Profile (Hỗ trợ cả Hover & Click) */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Chuông thông báo hiển thị cho tất cả vai trò trên hệ thống (ẩn trên mobile khi ở trang Xác nhận đơn hàng) */}
+        <div className={isOrderConfirm ? 'hidden sm:block' : 'block'}>
+          <NotificationBell />
+        </div>
+
+        {/* Nút Hạn mức nhanh cho Mobile khi đang ở Cổng đặt hàng và bảng hạn mức đang thu gọn (Không hiển thị khi đang ở Xác nhận đơn hàng) */}
+        {isPortalOrders && !isOrderConfirm && isCreditCollapsedMobile && (
+          <button
+            type="button"
+            onClick={handleExpandCreditMobile}
+            className="flex sm:hidden items-center gap-1 px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 text-indigo-700 text-xs font-bold transition-all shadow-2xs animate-in fade-in zoom-in-90 duration-200 active:scale-95 cursor-pointer"
+            title="Bấm để mở bảng hạn mức & dư nợ"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <span className="text-[11px] font-bold">Hạn mức</span>
+          </button>
+        )}
+
+        {/* Khung bảng tên người dùng & Dropdown Profile */}
+        <div className="relative shrink-0" ref={dropdownRef}>
+        {/* Nút bấm mở Dropdown Profile (Chỉ mở khi click) */}
         <button
           type="button"
           onClick={() => setIsDropdownOpen((prev) => !prev)}
@@ -269,13 +344,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           {/* Tên & Tag vai trò (Ẩn trên mobile siêu nhỏ, hiện từ sm trở lên) */}
           <div className="hidden sm:flex flex-col text-left min-w-0">
             <span
-              className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors truncate max-w-[140px] leading-tight"
+              className="text-sm font-bold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors truncate max-w-[150px] leading-tight"
               title={context.fullName}
             >
               {cleanFullName}
             </span>
             <span
-              className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-0.2 text-[10px] font-semibold mt-0.5 w-fit max-w-[140px] truncate ${context.badgeClass}`}
+              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold mt-0.5 w-fit max-w-[150px] truncate ${context.badgeClass}`}
               title={context.roleLabel}
             >
               <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${context.dotClass}`} />
@@ -390,6 +465,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* =================================================================== */}
@@ -439,14 +515,14 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                     <button
                       type="button"
                       onClick={() => setShowLogoutModal(false)}
-                      className="w-full rounded-md border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                      className="w-full rounded-lg border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
                     >
                       Hủy
                     </button>
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full rounded-md bg-rose-600 hover:bg-rose-700 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-600/20 transition-all cursor-pointer active:scale-98"
+                      className="w-full rounded-lg bg-rose-600 hover:bg-rose-700 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-600/20 transition-all cursor-pointer active:scale-98"
                     >
                       Đăng xuất
                     </button>

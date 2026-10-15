@@ -62,6 +62,8 @@ export interface Product {
   availableQuantity?: number;
   physicalStock?: number;
   reservedStock?: number;
+  isBatchManaged?: boolean; // Quản lý lô và hạn sử dụng (FEFO) (EP-05, SN-178)
+  is_batch_managed?: boolean;
   status: ProductStatus;
   imageUrl?: string;
   barcode?: string;
@@ -109,7 +111,24 @@ export interface CreateProductPayload {
   description?: string;
 }
 
-export interface UpdateProductPayload extends Partial<CreateProductPayload> {}
+export type UpdateProductPayload = Partial<CreateProductPayload>;
+
+import type { StockBalance, StockUnit } from './inventory.types';
+
+export type StockStatusType = 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | 'BELOW_MIN_STOCK';
+
+export interface StockOverviewItem extends StockBalance {
+  id: string;
+  category: string;
+  parentCategory: string;
+  subCategory?: string;
+  physicalStock: number;   // 1. Tồn thực tế
+  reservedStock: number;   // 2. Tồn tạm giữ
+  availableStock: number;  // 3. Tồn khả thi (Có thể bán = Tồn thực tế - Tồn tạm giữ)
+  units: StockUnit[];
+  status: StockStatusType;
+  imageUrl?: string;
+}
 
 export interface AdjustStockPayload {
   productSku: string;
@@ -118,6 +137,8 @@ export interface AdjustStockPayload {
   reason: string;
   referenceCode?: string; // Mã phiếu kho / chứng từ tham chiếu
   warehouseLocation?: string;
+  warehouseId?: string;
+  warehouse_id?: string;
 }
 
 export interface StockAdjustmentResponse {
