@@ -7,7 +7,7 @@ import {
   Filter,
 } from 'lucide-react';
 import {
-  AgingDebtGroup,
+  AgingDebtGroupEnum,
   AGING_DEBT_GROUP_LABELS,
   type QueryDebtReportParams,
 } from '../../types/debt-report.type';
@@ -41,9 +41,9 @@ export const DebtReportFilter: React.FC<DebtReportFilterProps> = ({
   };
 
   const handleAgingGroupChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
+    const val = e.target.value as AgingDebtGroupEnum;
     onFilterChange({
-      agingGroup: val ? (val as AgingDebtGroup) : undefined,
+      agingGroup: val,
     });
   };
 
@@ -55,7 +55,7 @@ export const DebtReportFilter: React.FC<DebtReportFilterProps> = ({
   };
 
   return (
-    <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs mb-6">
+    <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         {/* Nhóm tìm kiếm và lọc */}
         <div className="flex flex-wrap items-center gap-3 flex-1">
@@ -75,22 +75,22 @@ export const DebtReportFilter: React.FC<DebtReportFilterProps> = ({
           <div className="flex items-center gap-1.5 text-sm">
             <Filter className="w-4 h-4 text-slate-400 shrink-0" />
             <select
-              value={params.agingGroup || ''}
+              value={params.agingGroup || AgingDebtGroupEnum.ALL}
               onChange={handleAgingGroupChange}
               className="py-2 px-3 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
             >
-              <option value="">Tất cả nhóm tuổi nợ</option>
-              <option value={AgingDebtGroup.AGE_0_30}>
-                {AGING_DEBT_GROUP_LABELS[AgingDebtGroup.AGE_0_30]}
+              <option value={AgingDebtGroupEnum.ALL}>Tất cả nhóm tuổi nợ</option>
+              <option value={AgingDebtGroupEnum.AGE_0_30}>
+                {AGING_DEBT_GROUP_LABELS[AgingDebtGroupEnum.AGE_0_30]}
               </option>
-              <option value={AgingDebtGroup.AGE_31_60}>
-                {AGING_DEBT_GROUP_LABELS[AgingDebtGroup.AGE_31_60]}
+              <option value={AgingDebtGroupEnum.AGE_31_60}>
+                {AGING_DEBT_GROUP_LABELS[AgingDebtGroupEnum.AGE_31_60]}
               </option>
-              <option value={AgingDebtGroup.AGE_61_90}>
-                {AGING_DEBT_GROUP_LABELS[AgingDebtGroup.AGE_61_90]}
+              <option value={AgingDebtGroupEnum.AGE_61_90}>
+                {AGING_DEBT_GROUP_LABELS[AgingDebtGroupEnum.AGE_61_90]}
               </option>
-              <option value={AgingDebtGroup.AGE_OVER_90}>
-                {AGING_DEBT_GROUP_LABELS[AgingDebtGroup.AGE_OVER_90]}
+              <option value={AgingDebtGroupEnum.AGE_OVER_90}>
+                {AGING_DEBT_GROUP_LABELS[AgingDebtGroupEnum.AGE_OVER_90]}
               </option>
             </select>
           </div>

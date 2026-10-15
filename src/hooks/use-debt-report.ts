@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import { debtReportService } from '../services/debt-report.service';
 import { toast } from '../components/toast';
-import type {
-  AgentDebtReport,
-  DebtReportSummary,
-  QueryDebtReportParams,
+import {
+  AgingDebtGroupEnum,
+  type AgentDebtReport,
+  type DebtReportSummary,
+  type QueryDebtReportParams,
 } from '../types/debt-report.type';
 
 const INITIAL_SUMMARY: DebtReportSummary = {
@@ -21,7 +22,7 @@ const INITIAL_SUMMARY: DebtReportSummary = {
 };
 
 /**
- * Custom hook quản lý trạng thái, dữ liệu và tải báo cáo sổ công nợ (SN-203)
+ * Custom hook quản lý trạng thái, dữ liệu và dải tuổi nợ lọc sổ công nợ (SN-203)
  */
 export const useDebtReport = () => {
   const [data, setData] = useState<AgentDebtReport[]>([]);
@@ -30,18 +31,29 @@ export const useDebtReport = () => {
   const [exporting, setExporting] = useState<boolean>(false);
   const [total, setTotal] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [selectedAgingGroup, setSelectedAgingGroup] = useState<AgingDebtGroupEnum>(
+    AgingDebtGroupEnum.ALL,
+  );
   const [params, setParams] = useState<QueryDebtReportParams>({
     page: 1,
     limit: 20,
     search: '',
     isOverdueOnly: false,
+    agingGroup: AgingDebtGroupEnum.ALL,
   });
 
   const fetchDebtReport = useCallback(
     async (queryOverride?: QueryDebtReportParams) => {
       setLoading(true);
       try {
-        const query = queryOverride || params;
+        const query: QueryDebtReportParams = {
+          ...params,
+          ...queryOverride,
+          agingGroup:
+            selectedAgingGroup !== AgingDebtGroupEnum.ALL
+              ? selectedAgingGroup
+              : undefined,
+        };
         const res = await debtReportService.getDebtReport(query);
         setData(res.data);
         setSummary(res.summary);
@@ -55,18 +67,33 @@ export const useDebtReport = () => {
         setLoading(false);
       }
     },
-    [params],
+    [params, selectedAgingGroup],
   );
 
   useEffect(() => {
     fetchDebtReport();
   }, [fetchDebtReport]);
 
-  const updateFilters = useCallback((newParams: Partial<QueryDebtReportParams>) => {
+  const updateFilters = useCallback(
+    (newParams: Partial<QueryDebtReportParams>) => {
+      if (newParams.agingGroup !== undefined) {
+        setSelectedAgingGroup(newParams.agingGroup);
+      }
+      setParams((prev) => ({
+        ...prev,
+        ...newParams,
+        page: 1, // Reset về trang 1 khi đổi bộ lọc
+      }));
+    },
+    [],
+  );
+
+  const changeAgingGroup = useCallback((group: AgingDebtGroupEnum) => {
+    setSelectedAgingGroup(group);
     setParams((prev) => ({
       ...prev,
-      ...newParams,
-      page: 1, // Reset về trang 1 khi đổi bộ lọc
+      agingGroup: group,
+      page: 1,
     }));
   }, []);
 
@@ -80,7 +107,14 @@ export const useDebtReport = () => {
   const exportExcel = useCallback(async () => {
     setExporting(true);
     try {
-      const blob = await debtReportService.exportDebtReportToExcel(params);
+      const exportParams: QueryDebtReportParams = {
+        ...params,
+        agingGroup:
+          selectedAgingGroup !== AgingDebtGroupEnum.ALL
+            ? selectedAgingGroup
+            : undefined,
+      };
+      const blob = await debtReportService.exportDebtReportToExcel(exportParams);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -102,7 +136,7 @@ export const useDebtReport = () => {
     } finally {
       setExporting(false);
     }
-  }, [params]);
+  }, [params, selectedAgingGroup]);
 
   return {
     data,
@@ -112,6 +146,8 @@ export const useDebtReport = () => {
     total,
     totalPages,
     params,
+    selectedAgingGroup,
+    setSelectedAgingGroup: changeAgingGroup,
     fetchDebtReport,
     updateFilters,
     changePage,
