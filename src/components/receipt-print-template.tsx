@@ -456,45 +456,6 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
                 </div>
               </div>
             </div>
-
-            {/* Khung chữ ký 4 bên chuẩn mực kế toán */}
-            <div className="pt-4 grid grid-cols-3 gap-2 text-center text-xs">
-              <div className="space-y-1">
-                <div className="font-bold text-slate-900 uppercase text-[11px]">
-                  Người nộp tiền
-                </div>
-                <div className="text-[10px] text-slate-400 italic">(Ký, ghi rõ họ tên)</div>
-                <div className="h-16 flex items-end justify-center font-semibold text-slate-800 text-[11px]">
-                  {customerName}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="font-bold text-slate-900 uppercase text-[11px]">
-                  Người thu tiền
-                </div>
-                <div className="text-[10px] text-slate-400 italic">(Ký, ghi rõ họ tên)</div>
-                <div className="h-16 flex items-end justify-center font-semibold text-slate-800 text-[11px]">
-                  {collectorName}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <div className="font-bold text-slate-900 uppercase text-[11px]">
-                  Kế toán trưởng / Thủ quỹ
-                </div>
-                <div className="text-[10px] text-slate-400 italic">(Ký, đóng dấu)</div>
-                <div className="h-16 flex items-end justify-center font-semibold text-slate-400 text-[10px] italic">
-                  (Đã ký điện tử)
-                </div>
-              </div>
-            </div>
-
-            {/* Chân trang chứng thực hệ thống */}
-            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-400 gap-1">
-              <div>Hệ Thống Bán Hàng & Kho LOHA SALES (Mã chứng từ: {receiptCode})</div>
-              <div>Thời gian in: {new Date().toLocaleString('vi-VN')}</div>
-            </div>
           </div>
         </div>
       </div>
