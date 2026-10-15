@@ -25,6 +25,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { getStoredUser } from '../utils/navigation';
+import { STANDARD_WAREHOUSES } from '../constants/warehouse.constants';
 import { productsService, PRODUCT_CATEGORIES } from '../services/products.service';
 import { categoriesService } from '../services/categories.service';
 import { inventoryService } from '../services/inventory.service';
@@ -307,6 +308,61 @@ export const ProductsPage: React.FC = () => {
     userRoles.includes('WAREHOUSE_MANAGER') ||
     userRoles.includes('WAREHOUSE') ||
     userRoles.includes('WH_MANAGER');
+
+  const isAdmin = userRoles.includes('ADMIN');
+  const isKeeper =
+    (userRoles.includes('WAREHOUSE_KEEPER') ||
+      userRoles.includes('WAREHOUSE')) &&
+    !isAdmin;
+  const isManager =
+    (userRoles.includes('WAREHOUSE_MANAGER') ||
+      userRoles.includes('WH_MANAGER')) &&
+    !isAdmin;
+
+  // Thủ kho (1 - 1): Xác định duy nhất kho công tác thực tế của thủ kho
+  const keeperWarehouseId = useMemo(() => {
+    if (!user) return STANDARD_WAREHOUSES[2].id;
+    if (user.warehouseId) {
+      const match = STANDARD_WAREHOUSES.find((w) => w.id === user.warehouseId);
+      if (match) return match.id;
+    }
+    if (user.assignedWarehouseId) {
+      const match = STANDARD_WAREHOUSES.find((w) => w.id === user.assignedWarehouseId);
+      if (match) return match.id;
+    }
+    const rawWh = (user.warehouseCode || user.assignedWarehouseCode || user.assignedWarehouse || '').toUpperCase();
+    const match = STANDARD_WAREHOUSES.find(
+      (w) =>
+        w.code.toUpperCase() === rawWh ||
+        w.id.toUpperCase() === rawWh ||
+        w.name.toUpperCase().includes(rawWh) ||
+        rawWh.includes(w.name.toUpperCase()),
+    );
+    return match ? match.id : STANDARD_WAREHOUSES[2].id;
+  }, [user]);
+
+  const [adjustWarehouseId, setAdjustWarehouseId] = useState<string>('');
+
+  const adjustWarehouseOptions = useMemo(() => {
+    if (isKeeper) {
+      const match = STANDARD_WAREHOUSES.find((w) => w.id === keeperWarehouseId);
+      return match ? [match] : [STANDARD_WAREHOUSES[2]];
+    }
+    if (isManager) {
+      const allowedIds =
+        user?.warehouseIds && user.warehouseIds.length > 0
+          ? user.warehouseIds
+          : user?.warehouses && user.warehouses.length > 0
+          ? user.warehouses.map((w) => w.id)
+          : null;
+      if (allowedIds && allowedIds.length > 0) {
+        const filtered = STANDARD_WAREHOUSES.filter((w) => allowedIds.includes(w.id));
+        if (filtered.length > 0) return filtered;
+      }
+      return STANDARD_WAREHOUSES;
+    }
+    return STANDARD_WAREHOUSES;
+  }, [isKeeper, isManager, keeperWarehouseId, user]);
 
   // Tải danh mục phân cấp từ Backend khi mount
   useEffect(() => {
@@ -688,6 +744,7 @@ export const ProductsPage: React.FC = () => {
     setQuantityChange(1);
     setReferenceCode(`PK-${Date.now().toString().slice(-6)}`);
     setAdjustReason('Kiểm kê thực tế tại kho');
+    setAdjustWarehouseId(isKeeper ? keeperWarehouseId : adjustWarehouseOptions[0]?.id || STANDARD_WAREHOUSES[0].id);
     setAdjustModalOpen(true);
   };
 
@@ -711,10 +768,19 @@ export const ProductsPage: React.FC = () => {
     e.preventDefault();
     if (!selectedProductForAdjust) return;
 
+    if (!adjustWarehouseId) {
+      showToast('warning', 'Vui lòng chọn kho áp dụng điều chỉnh');
+      return;
+    }
+
     try {
       setAdjusting(true);
+      const targetWarehouse = STANDARD_WAREHOUSES.find((w) => w.id === adjustWarehouseId);
       const payload: AdjustStockPayload = {
         productSku: selectedProductForAdjust.sku,
+        warehouseId: adjustWarehouseId,
+        warehouse_id: adjustWarehouseId,
+        warehouseLocation: targetWarehouse ? targetWarehouse.name : undefined,
         quantityChange: Number(quantityChange),
         unit: adjustUnit,
         reason: adjustReason,
@@ -1920,6 +1986,39 @@ export const ProductsPage: React.FC = () => {
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Kho áp dụng điều chỉnh (Bắt buộc theo chuẩn 4 kho) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-slate-700">
+                      Kho áp dụng <span className="text-rose-500">*</span>
+                    </label>
+                    {isKeeper && (
+                      <span className="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md font-medium border border-amber-200">
+                        Cố định theo quyền thủ kho (1 - 1)
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Warehouse className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <select
+                      value={adjustWarehouseId}
+                      onChange={(e) => setAdjustWarehouseId(e.target.value)}
+                      disabled={isKeeper}
+                      className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-semibold text-slate-800 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed cursor-pointer"
+                      required
+                    >
+                      {adjustWarehouseOptions.map((wh) => (
+                        <option key={wh.id} value={wh.id}>
+                          {wh.displayName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Biến động số lượng sẽ được ghi nhận trực tiếp vào số dư tồn kho của kho này.
+                  </p>
                 </div>
 
                 {/* Hàng chọn Đơn vị tính và Số lượng */}

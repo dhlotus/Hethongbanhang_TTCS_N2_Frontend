@@ -669,38 +669,24 @@ export function WarehousesPage(): React.ReactElement {
     }
   };
 
-  // ASSIGN AGENCY (Mỗi kho chỉ gán tối đa 1 đại lý)
+  // ASSIGN AGENCY (Kho 1-n Đại lý)
   const handleAssignAgency = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     if (selectedAgenciesToAssign.length === 0 || !selectedId) return;
-    const targetAgencyId = selectedAgenciesToAssign[0];
     setBusy(true);
     try {
-      // Hủy gán đại lý cũ nếu kho này từng có đại lý
-      const oldAgencies = agencies.filter(
-        (agency) => agencyDefaults[agency.id] === selectedId && agency.id !== targetAgencyId
-      );
-      if (oldAgencies.length > 0) {
-        await Promise.all(
-          oldAgencies.map((old) =>
-            warehouseService.setAgencyDefaultWarehouse(old.id, null)
-          )
-        );
-      }
-
-      await warehouseService.setAgencyDefaultWarehouse(targetAgencyId, selectedId);
+      await warehouseService.assignAgencies(selectedId, selectedAgenciesToAssign);
       setAgencyDefaults((current) => {
         const next = { ...current };
-        oldAgencies.forEach((old) => {
-          delete next[old.id];
+        selectedAgenciesToAssign.forEach((targetAgencyId) => {
+          next[targetAgencyId] = selectedId;
         });
-        next[targetAgencyId] = selectedId;
         return next;
       });
       setIsAssignAgencyModalOpen(false);
-      const agencyName = agencies.find((a) => a.id === targetAgencyId)?.name || '';
+      const count = selectedAgenciesToAssign.length;
       setSelectedAgenciesToAssign([]);
-      showToast('success', `Đã gán đại lý ${agencyName} vào kho ${selectedWarehouse?.name || ''}`);
+      showToast('success', `Đã gán thành công ${count} đại lý vào kho ${selectedWarehouse?.name || ''}`);
     } catch (error: unknown) {
       showToast('error', getFriendlyErrorMessage(error, 'Không thể gán kho cho đại lý'));
     } finally {
@@ -1782,7 +1768,7 @@ export function WarehousesPage(): React.ReactElement {
         isOpen={isAssignAgencyModalOpen}
         onClose={() => setIsAssignAgencyModalOpen(false)}
         title={`Gán đại lý cho ${selectedWarehouse?.name || ''}`}
-        subtitle="Chỉ định 1 đại lý phục vụ mặc định cho kho này (Mỗi kho tối đa 1 đại lý)"
+        subtitle="Chỉ định các đại lý phục vụ bởi kho này (1 kho phục vụ nhiều đại lý)"
         icon={<Building2 size={20} className="text-[#371cdb]" />}
         maxWidth="max-w-2xl"
         bodyAs="form"
@@ -1794,7 +1780,7 @@ export function WarehousesPage(): React.ReactElement {
                 <span>
                   Đang chọn:{' '}
                   <strong className="text-[#371cdb] font-bold">
-                    {agencies.find((a) => a.id === selectedAgenciesToAssign[0])?.name || '1 đại lý'}
+                    {selectedAgenciesToAssign.length} đại lý
                   </strong>
                 </span>
               ) : (
@@ -1815,40 +1801,53 @@ export function WarehousesPage(): React.ReactElement {
                 onClick={(e) => void handleAssignAgency(e)}
                 className="inline-flex items-center gap-2 rounded-xl bg-[#371cdb] hover:bg-[#2d14b8] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
               >
-                <Check size={16} /> Xác nhận gán đại lý
+                <Check size={16} /> Xác nhận gán ({selectedAgenciesToAssign.length}) đại lý
               </button>
             </div>
           </div>
         }
       >
         <div className="space-y-4">
-          {/* Thông tin đại lý đang được gán cho kho */}
-          {assignedAgencies.length > 0 && (
-            <div className="flex items-center justify-between p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 text-xs">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-[#eff2fe] text-[#371cdb] flex items-center justify-center shrink-0">
-                  <Building2 size={15} />
-                </div>
-                <div className="min-w-0">
-                  <span className="text-slate-500 text-[11px] block">Đại lý đang phục vụ kho này:</span>
-                  <span className="font-bold text-slate-800 text-xs truncate block">
-                    {assignedAgencies[0].name}{' '}
-                    <span className="font-mono text-slate-500 font-normal">({assignedAgencies[0].code})</span>
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void handleUnassignAgency(assignedAgencies[0])}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-semibold text-[11px] shadow-2xs transition-colors cursor-pointer shrink-0"
-                title="Hủy gán đại lý khỏi kho này"
-              >
-                <Trash2 size={12} />
-                Hủy gán
-              </button>
+          {/* Thông tin các đại lý đang được gán cho kho này */}
+          <div className="rounded-xl bg-blue-50/70 border border-blue-200/80 p-3 text-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-bold text-slate-800 flex items-center gap-2">
+                <Building2 size={16} className="text-[#371cdb]" />
+                Đại lý đang phục vụ bởi kho này ({assignedAgencies.length} đại lý):
+              </span>
             </div>
-          )}
+            {assignedAgencies.length > 0 ? (
+              <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                {assignedAgencies.map((agency) => (
+                  <div
+                    key={agency.id}
+                    className="flex items-center justify-between p-2 rounded-lg bg-white border border-blue-100 shadow-2xs"
+                  >
+                    <div className="min-w-0 pr-2">
+                      <div className="font-bold text-slate-800 truncate">
+                        {agency.name}{' '}
+                        <span className="font-mono text-slate-500 font-normal">({agency.code})</span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 truncate">
+                        {agency.address || agency.phone || 'Chưa có thông tin địa chỉ'}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void handleUnassignAgency(agency)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 font-semibold text-[11px] transition-colors cursor-pointer shrink-0"
+                      title="Hủy gán đại lý khỏi kho này"
+                    >
+                      <Trash2 size={12} /> Hủy gán
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-400 italic text-[11px]">Chưa có đại lý nào được gán cho kho này.</p>
+            )}
+          </div>
 
           {/* Ô tìm kiếm đại lý */}
           <div className="relative">
@@ -1876,24 +1875,44 @@ export function WarehousesPage(): React.ReactElement {
 
           {/* Hướng dẫn chọn đại lý */}
           {(() => {
-            const availableCount = selectableAgencies.filter(
-              (a) => !agencyDefaults[a.id]
-            ).length;
+            const unassignedAgencies = selectableAgencies.filter((a) => !agencyDefaults[a.id]);
+            const availableCount = unassignedAgencies.length;
+            const allSelected = availableCount > 0 && unassignedAgencies.every((a) => selectedAgenciesToAssign.includes(a.id));
 
             return (
               <div className="flex items-center justify-between px-1 text-xs text-slate-600">
                 <span>
                   Danh sách đại lý ({availableCount} đại lý chưa gán kho có thể chọn):
                 </span>
-                {selectedAgenciesToAssign.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedAgenciesToAssign([])}
-                    className="text-[#371cdb] hover:underline font-semibold cursor-pointer"
-                  >
-                    Bỏ chọn
-                  </button>
-                )}
+                <div className="flex items-center gap-3">
+                  {availableCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (allSelected) {
+                          setSelectedAgenciesToAssign((prev) =>
+                            prev.filter((id) => !unassignedAgencies.some((a) => a.id === id))
+                          );
+                        } else {
+                          const unassignedIds = unassignedAgencies.map((a) => a.id);
+                          setSelectedAgenciesToAssign((prev) => Array.from(new Set([...prev, ...unassignedIds])));
+                        }
+                      }}
+                      className="text-[#371cdb] hover:underline font-semibold cursor-pointer"
+                    >
+                      {allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                    </button>
+                  )}
+                  {selectedAgenciesToAssign.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAgenciesToAssign([])}
+                      className="text-rose-600 hover:underline font-semibold cursor-pointer"
+                    >
+                      Xóa lựa chọn ({selectedAgenciesToAssign.length})
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })()}
@@ -1916,7 +1935,11 @@ export function WarehousesPage(): React.ReactElement {
                     key={agency.id}
                     onClick={() => {
                       if (isUnassignable) return;
-                      setSelectedAgenciesToAssign([agency.id]);
+                      setSelectedAgenciesToAssign((prev) =>
+                        prev.includes(agency.id)
+                          ? prev.filter((id) => id !== agency.id)
+                          : [...prev, agency.id]
+                      );
                     }}
                     className={`flex items-center justify-between p-3 text-xs transition-colors ${
                       isUnassignable
@@ -1928,15 +1951,18 @@ export function WarehousesPage(): React.ReactElement {
                   >
                     <div className="flex items-center gap-3 min-w-0 pr-2">
                       <input
-                        type="radio"
-                        name="assignAgencyRadio"
+                        type="checkbox"
                         disabled={isUnassignable}
                         checked={isSelected}
                         onChange={() => {
                           if (isUnassignable) return;
-                          setSelectedAgenciesToAssign([agency.id]);
+                          setSelectedAgenciesToAssign((prev) =>
+                            prev.includes(agency.id)
+                              ? prev.filter((id) => id !== agency.id)
+                              : [...prev, agency.id]
+                          );
                         }}
-                        className={`w-4 h-4 text-[#371cdb] focus:ring-[#371cdb] ${
+                        className={`w-4 h-4 rounded text-[#371cdb] focus:ring-[#371cdb] ${
                           isUnassignable ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
                         }`}
                       />

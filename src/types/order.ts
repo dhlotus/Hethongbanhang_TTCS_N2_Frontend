@@ -157,6 +157,10 @@ export interface CreateOrderPayload {
   status?: OrderStatus;
   isCreditLimitExceeded?: boolean;
   creditLimitExceededAmount?: number;
+  warehouseId?: string;
+  warehouse_id?: string;
+  warehouseName?: string;
+  warehouseCode?: string;
 }
 
 /** Payload cập nhật đơn hàng */
