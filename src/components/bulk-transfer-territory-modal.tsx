@@ -273,12 +273,10 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
                 <Building className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Danh sách đại lý cần chuyển ({assignedCustomers.length})</span>
-                {selectedCustomerIds.length > 0 && (
-                  <span className="ml-1 px-1.5 py-0.2 rounded-full text-2xs bg-indigo-50 text-indigo-700 border border-indigo-100 font-medium">
-                    Đã chọn {selectedCustomerIds.length}
-                  </span>
-                )}
+                <span>Danh sách đại lý cần chuyển</span>
+                <span className="ml-1 px-1.5 py-0.2 rounded-full text-2xs bg-indigo-50 text-indigo-700 border border-indigo-100 font-medium">
+                  {selectedCustomerIds.length}/{assignedCustomers.length}
+                </span>
               </label>
               {!loadingCustomers && assignedCustomers.length > 0 && (
                 <label className="flex items-center gap-1.5 text-xs text-indigo-600 cursor-pointer font-medium hover:underline">
