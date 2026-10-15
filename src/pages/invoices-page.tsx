@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   Search,
@@ -8,13 +8,11 @@ import {
   FileSpreadsheet,
   Calendar,
   Printer,
-  Download,
   CreditCard,
   Banknote,
 } from 'lucide-react';
 import { receiptsService } from '../services/receipts.service';
 import { ReceiptPrintTemplate } from '../components/receipt-print-template';
-import { showToast } from '../components/toast';
 import type { Receipt as ReceiptType, PaymentMethod } from '../types/receipt';
 
 const formatCurrency = (val?: number): string => {
@@ -110,7 +108,7 @@ const INITIAL_DEMO_RECEIPTS: ReceiptType[] = [
 ];
 
 /**
- * Trang Quản lý Hóa đơn, Công nợ & Phiếu thu tiền (SN-209 / Sprint 7)
+ * Trang Quản lý Hóa đơn, Công nợ & Phiếu thu tiền
  */
 export const InvoicesPage: React.FC = () => {
   const location = useLocation();
@@ -122,10 +120,12 @@ export const InvoicesPage: React.FC = () => {
   );
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('ALL');
+  const [periodFilter, setPeriodFilter] = useState('ALL_TIME');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [loading, setLoading] = useState(false);
 
-  // Dữ liệu phiếu thu tiền (SN-209)
+  // Dữ liệu phiếu thu tiền
   const [receipts, setReceipts] = useState<ReceiptType[]>(INITIAL_DEMO_RECEIPTS);
   const [selectedReceiptForPrint, setSelectedReceiptForPrint] = useState<ReceiptType | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
@@ -161,6 +161,54 @@ export const InvoicesPage: React.FC = () => {
     };
   }, [activeTab, searchTerm]);
 
+  // Bộ lọc dữ liệu phiếu thu phù hợp với bảng thực tế
+  const filteredReceipts = useMemo(() => {
+    return receipts.filter((r) => {
+      // 1. Lọc theo hình thức thanh toán (Tiền mặt / Chuyển khoản)
+      if (paymentMethodFilter !== 'ALL' && r.paymentMethod !== paymentMethodFilter) {
+        return false;
+      }
+
+      // 2. Lọc theo từ khóa tìm kiếm
+      if (searchTerm.trim()) {
+        const q = searchTerm.trim().toLowerCase();
+        const matchCode = r.code?.toLowerCase().includes(q);
+        const matchCustomer =
+          r.customerName?.toLowerCase().includes(q) ||
+          r.customerCode?.toLowerCase().includes(q);
+        const matchCollector = r.collectorName?.toLowerCase().includes(q);
+        const matchRef = r.referenceCode?.toLowerCase().includes(q);
+        if (!matchCode && !matchCustomer && !matchCollector && !matchRef) {
+          return false;
+        }
+      }
+
+      // 3. Lọc theo kỳ hạn thời gian
+      if (periodFilter !== 'ALL_TIME' && r.paymentDate) {
+        const date = new Date(r.paymentDate);
+        const now = new Date();
+        if (periodFilter === 'THIS_MONTH') {
+          const isThisMonth =
+            date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+          if (!isThisMonth) return false;
+        } else if (periodFilter === 'LAST_MONTH') {
+          const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+          const lastYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+          const isLastMonth = date.getMonth() === lastMonth && date.getFullYear() === lastYear;
+          if (!isLastMonth) return false;
+        } else if (periodFilter === 'THIS_QUARTER') {
+          const currentQuarter = Math.floor(now.getMonth() / 3);
+          const itemQuarter = Math.floor(date.getMonth() / 3);
+          const isThisQuarter =
+            currentQuarter === itemQuarter && date.getFullYear() === now.getFullYear();
+          if (!isThisQuarter) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [receipts, paymentMethodFilter, searchTerm, periodFilter]);
+
   const handleRefresh = () => {
     if (activeTab === 'RECEIPTS') {
       void reloadReceipts();
@@ -175,17 +223,6 @@ export const InvoicesPage: React.FC = () => {
     setIsPrintModalOpen(true);
   };
 
-  const handleDirectDownloadPdf = async (receipt: ReceiptType) => {
-    try {
-      showToast('info', `Đang tải file PDF phiếu thu ${receipt.code}...`);
-      await receiptsService.downloadReceiptPdf(receipt.id || receipt.code, `phieu-thu-${receipt.code}.pdf`);
-      showToast('success', `Đã tải xuống thành công: phieu-thu-${receipt.code}.pdf`);
-    } catch {
-      // Mở modal in để dùng cơ chế in sang PDF của trình duyệt
-      handleOpenPrint(receipt);
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Tiêu đề trang & Nút chức năng */}
@@ -194,9 +231,6 @@ export const InvoicesPage: React.FC = () => {
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
             Quản Lý Hóa Đơn & Thu Chi Công Nợ
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Theo dõi hóa đơn bán hàng, phiếu thu tiền đối trừ công nợ đại lý và in chứng từ tại chỗ
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -217,7 +251,7 @@ export const InvoicesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs chuyển đổi giữa Hóa đơn và Phiếu thu (SN-209) */}
+      {/* Tabs chuyển đổi giữa Hóa đơn và Phiếu thu */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
         <button
           type="button"
@@ -240,9 +274,9 @@ export const InvoicesPage: React.FC = () => {
           }`}
         >
           <Receipt className="w-3.5 h-3.5" />
-          <span>Phiếu thu tiền & Đối trừ (SN-209)</span>
+          <span>Phiếu thu tiền & Đối trừ</span>
           <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-current">
-            {receipts.length}
+            {filteredReceipts.length}
           </span>
         </button>
       </div>
@@ -265,22 +299,40 @@ export const InvoicesPage: React.FC = () => {
           />
         </div>
 
-        {/* Lọc trạng thái */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium whitespace-nowrap">
-            <Filter className="h-3.5 w-3.5" />
-            <span>Trạng thái:</span>
+        {/* Lọc phù hợp với từng tab */}
+        {activeTab === 'RECEIPTS' ? (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium whitespace-nowrap">
+              <Filter className="h-3.5 w-3.5" />
+              <span>Hình thức:</span>
+            </div>
+            <select
+              value={paymentMethodFilter}
+              onChange={(e) => setPaymentMethodFilter(e.target.value)}
+              className="px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
+            >
+              <option value="ALL">Tất cả hình thức</option>
+              <option value="CASH">Tiền mặt</option>
+              <option value="BANK_TRANSFER">Chuyển khoản</option>
+            </select>
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
-          >
-            <option value="ALL">Tất cả trạng thái</option>
-            <option value="CONFIRMED">Đã xác nhận</option>
-            <option value="PENDING">Chờ đối soát</option>
-          </select>
-        </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium whitespace-nowrap">
+              <Filter className="h-3.5 w-3.5" />
+              <span>Trạng thái:</span>
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
+            >
+              <option value="ALL">Tất cả trạng thái</option>
+              <option value="CONFIRMED">Đã xác nhận</option>
+              <option value="PENDING">Chờ đối soát</option>
+            </select>
+          </div>
+        )}
 
         {/* Lọc thời gian */}
         <div className="flex items-center gap-2">
@@ -289,7 +341,8 @@ export const InvoicesPage: React.FC = () => {
             <span>Kỳ hạn:</span>
           </div>
           <select
-            defaultValue="ALL_TIME"
+            value={periodFilter}
+            onChange={(e) => setPeriodFilter(e.target.value)}
             className="px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
           >
             <option value="ALL_TIME">Toàn bộ thời gian</option>
@@ -301,7 +354,7 @@ export const InvoicesPage: React.FC = () => {
       </div>
 
       {/* ===================================================================== */}
-      {/* NỘI DUNG TAB: PHIẾU THU TIỀN (SN-209)                                  */}
+      {/* NỘI DUNG TAB: PHIẾU THU TIỀN                                          */}
       {/* ===================================================================== */}
       {activeTab === 'RECEIPTS' ? (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
@@ -310,7 +363,7 @@ export const InvoicesPage: React.FC = () => {
               <RefreshCw className="w-7 h-7 animate-spin mx-auto mb-2 text-indigo-600" />
               <p className="text-sm font-medium">Đang tải danh sách phiếu thu...</p>
             </div>
-          ) : receipts.length === 0 ? (
+          ) : filteredReceipts.length === 0 ? (
             <div className="py-16 text-center text-slate-400 space-y-3">
               <Receipt className="w-10 h-10 mx-auto text-slate-300" />
               <p className="text-sm font-medium">Không tìm thấy phiếu thu phù hợp</p>
@@ -321,11 +374,11 @@ export const InvoicesPage: React.FC = () => {
                 <thead>
                   <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     <th className="px-4 py-3 text-left w-[16%]">Mã phiếu thu</th>
-                    <th className="px-4 py-3 text-left w-[34%]">Đại lý</th>
-                    <th className="px-4 py-3 text-right w-[16%]">Số tiền</th>
+                    <th className="px-4 py-3 text-left w-[36%]">Đại lý</th>
+                    <th className="px-4 py-3 text-right w-[18%]">Số tiền</th>
                     <th className="px-4 py-3 text-center w-[12%]">Hình thức</th>
                     <th className="px-4 py-3 text-left w-[12%]">Người thu</th>
-                    <th className="px-4 py-3 text-right w-[10%] min-w-[170px]">Thao tác</th>
+                    <th className="px-4 py-3 text-right w-[6%] min-w-[90px]">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody
@@ -333,7 +386,7 @@ export const InvoicesPage: React.FC = () => {
                     loading ? 'opacity-60 pointer-events-none' : 'opacity-100'
                   }`}
                 >
-                  {receipts.map((r) => (
+                  {filteredReceipts.map((r) => (
                     <tr key={r.id} className="hover:bg-indigo-50/25 transition-colors group">
                       {/* 1. Mã phiếu thu duy nhất: Interactive monospace button badge */}
                       <td className="px-4 py-3.5 whitespace-nowrap">
@@ -383,28 +436,17 @@ export const InvoicesPage: React.FC = () => {
                         </span>
                       </td>
 
-                      {/* 6. Thao tác in / PDF */}
+                      {/* 6. Thao tác: Gộp thành 1 nút In phiếu duy nhất */}
                       <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenPrint(r)}
-                            className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-lg transition-colors cursor-pointer shadow-2xs"
-                            title="Mở xem & In phiếu thu"
-                          >
-                            <Printer className="w-3.5 h-3.5 text-indigo-600" />
-                            <span>In phiếu</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleDirectDownloadPdf(r)}
-                            className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shadow-2xs cursor-pointer"
-                            title="Tải trực tiếp file PDF"
-                          >
-                            <Download className="w-3.5 h-3.5 text-slate-500" />
-                            <span>Tải PDF</span>
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPrint(r)}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                          title="In phiếu thu"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>In phiếu</span>
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -455,7 +497,7 @@ export const InvoicesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal In & Tải PDF Phiếu Thu (SN-209) */}
+      {/* Modal In Phiếu Thu */}
       <ReceiptPrintTemplate
         receipt={selectedReceiptForPrint}
         isOpen={isPrintModalOpen}
