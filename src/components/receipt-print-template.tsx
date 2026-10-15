@@ -9,7 +9,6 @@ import {
   Receipt as ReceiptIcon,
   CheckCircle2,
 } from 'lucide-react';
-import { BarcodeSvg } from './barcode-svg';
 import { numberToVietnameseWords } from '../utils/number-to-words';
 import { receiptsService } from '../services/receipts.service';
 import { showToast } from './toast';
@@ -331,36 +330,6 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
             ref={printContentRef}
             className="w-full max-w-[680px] bg-white rounded-lg border border-slate-200/90 shadow-sm p-6 sm:p-8 space-y-5 text-slate-800"
           >
-            {/* Header Doanh nghiệp & Mẫu số chứng từ */}
-            <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
-              <div className="space-y-1">
-                <div className="text-[11px] font-bold text-indigo-700 uppercase tracking-wide">
-                  LOHA GOLD B2B SALES & DISTRIBUTION
-                </div>
-                <h1 className="text-xs sm:text-sm font-extrabold text-slate-900 uppercase">
-                  CÔNG TY CỔ PHẦN THỰC PHẨM DINH DƯỠNG LOHA GOLD
-                </h1>
-                <p className="text-[11px] text-slate-500">
-                  Địa chỉ: Lô C2-4, KCN Tân Bình, P. Tây Thạnh, Q. Tân Phú, TP. Hồ Chí Minh
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  Mã số thuế: <strong className="text-slate-700">0316889988</strong> · Hotline: <strong className="text-slate-700">1900 6868</strong>
-                </p>
-              </div>
-
-              <div className="text-right shrink-0">
-                <div className="text-[10px] font-bold text-slate-700 uppercase">
-                  Mẫu số: 01 - TT
-                </div>
-                <div className="text-[9px] text-slate-400 italic">
-                  (Ban hành theo TT 200/2014/TT-BTC)
-                </div>
-                <div className="mt-1 flex justify-end">
-                  <BarcodeSvg value={receiptCode} height={28} showText={false} />
-                </div>
-              </div>
-            </div>
-
             {/* Tiêu đề Phiếu thu */}
             <div className="text-center space-y-1 py-1">
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase">
