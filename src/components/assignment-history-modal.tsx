@@ -9,7 +9,7 @@ import {
   RefreshCw,
   FileText,
 } from 'lucide-react';
-import { customersService } from '../services/customer.service';
+import { customersService, getStoredHistory } from '../services/customer.service';
 import type { CustomerAssignmentHistory, SalesRepOption } from '../types/customer.types';
 
 interface AssignmentHistoryModalProps {
@@ -36,10 +36,38 @@ export const AssignmentHistoryModal: React.FC<AssignmentHistoryModalProps> = ({
   const loadHistory = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await customersService.getAssignmentHistory();
-      setHistories(res.data || []);
+      const res = await customersService.getAssignmentHistory({ limit: 100 });
+      let combined = res.data || [];
+
+      try {
+        const local = getStoredHistory();
+        if (local && local.length > 0) {
+          const map = new Map<string, CustomerAssignmentHistory>();
+          for (const item of combined) {
+            map.set(item.id, item);
+          }
+          for (const item of local) {
+            if (!map.has(item.id)) {
+              map.set(item.id, item);
+            }
+          }
+          combined = Array.from(map.values()).sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          );
+        }
+      } catch {
+        // ignore
+      }
+
+      setHistories(combined);
     } catch (err: unknown) {
       console.error('Lỗi khi tải lịch sử chuyển giao:', err);
+      try {
+        const local = getStoredHistory();
+        setHistories(local || []);
+      } catch {
+        setHistories([]);
+      }
     } finally {
       setLoading(false);
     }

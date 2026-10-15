@@ -969,7 +969,7 @@ export const CustomersPage: React.FC = () => {
     showToast(
       'success',
       'Chuyển giao địa bàn thành công',
-      `Đã chuyển giao ${result.transferredCount} đại lý sang cho ${result.toSalesRep.fullName}.`
+      `Đã chuyển giao ${result.transferredCount} đại lý sang cho ${result.toSalesRep.fullName || result.toSalesRep.name || 'nhân sự tiếp nhận'}.`
     );
     void loadCustomers();
     void customerService.getAvailableSalesReps().then(setAvailableSalesReps);

@@ -96,6 +96,7 @@ export interface CustomerFilterParams {
   region?: string;
   customerGroup?: string;
   salesRepId?: string;
+  unassignedOnly?: boolean;
   status?: CustomerStatus | string;
   page?: number;
   limit?: number;
@@ -110,6 +111,7 @@ export interface PaginatedCustomersResponse {
   page: number;
   limit: number;
   totalPages: number;
+  unassignedCount?: number;
   activeCount?: number;
   totalCreditLimit?: number;
   totalCurrentDebt?: number;

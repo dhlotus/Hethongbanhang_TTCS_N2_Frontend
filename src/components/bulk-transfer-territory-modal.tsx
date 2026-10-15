@@ -43,6 +43,9 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const [assignedCustomers, setAssignedCustomers] = useState<Customer[]>([]);
+  const [loadingCustomers, setLoadingCustomers] = useState<boolean>(false);
+
   // Khởi tạo nhân sự ban đầu
   useEffect(() => {
     if (isOpen) {
@@ -57,13 +60,52 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
     }
   }, [isOpen, preselectedFromRepId, salesReps]);
 
-  // Danh sách đại lý thuộc nhân sự chuyển giao
-  const assignedCustomers = useMemo(() => {
-    if (!fromSalesRepId) return [];
-    return allCustomers.filter((c) => c.salesRepId === fromSalesRepId);
-  }, [allCustomers, fromSalesRepId]);
+  // Tải toàn bộ danh sách đại lý của nhân sự chuyển giao (không bị giới hạn phân trang 10 dòng)
+  useEffect(() => {
+    let isMounted = true;
+    if (!fromSalesRepId) {
+      setAssignedCustomers([]);
+      return;
+    }
 
-  // Mặc định chọn tất cả đại lý của nhân sự chuyển giao khi thay đổi nhân sự
+    const fetchAssigned = async () => {
+      try {
+        setLoadingCustomers(true);
+        const res = await customersService.getCustomers({
+          salesRepId: fromSalesRepId,
+          limit: 100,
+        });
+        if (isMounted) {
+          if (res.data && res.data.length > 0) {
+            setAssignedCustomers(res.data);
+          } else {
+            const fallback = allCustomers.filter((c) => c.salesRepId === fromSalesRepId);
+            setAssignedCustomers(fallback);
+          }
+        }
+      } catch (err: unknown) {
+        console.error('Lỗi khi tải danh sách đại lý của nhân viên:', err);
+        if (isMounted) {
+          const fallback = allCustomers.filter((c) => c.salesRepId === fromSalesRepId);
+          setAssignedCustomers(fallback);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingCustomers(false);
+        }
+      }
+    };
+
+    if (isOpen) {
+      void fetchAssigned();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, fromSalesRepId, allCustomers]);
+
+  // Mặc định chọn tất cả đại lý của nhân sự chuyển giao khi danh sách đại lý thay đổi
   useEffect(() => {
     setSelectedCustomerIds(assignedCustomers.map((c) => c.id));
   }, [assignedCustomers]);
@@ -203,7 +245,7 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
                 <option value="">-- Chọn nhân viên chuyển giao --</option>
                 {salesReps.map((rep) => (
                   <option key={rep.id} value={rep.id}>
-                    {rep.fullName} ({rep.email})
+                    {rep.fullName} ({rep.assignedCustomerCount !== undefined ? `${rep.assignedCustomerCount} đại lý` : rep.email})
                   </option>
                 ))}
               </select>
@@ -211,7 +253,7 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
                 <div className="mt-1.5 text-xs text-slate-500 flex items-center justify-between">
                   <span>Đang phụ trách:</span>
                   <span className="font-semibold text-indigo-600">
-                    {assignedCustomers.length} đại lý
+                    {loadingCustomers ? 'Đang tải...' : `${assignedCustomers.length} đại lý`}
                   </span>
                 </div>
               )}
@@ -233,7 +275,7 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
                   .filter((rep) => rep.id !== fromSalesRepId)
                   .map((rep) => (
                     <option key={rep.id} value={rep.id}>
-                      {rep.fullName} ({rep.email})
+                      {rep.fullName} ({rep.assignedCustomerCount !== undefined ? `${rep.assignedCustomerCount} đại lý` : rep.email})
                     </option>
                   ))}
               </select>
@@ -258,7 +300,7 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
                   {selectedCustomerIds.length} / {assignedCustomers.length}
                 </span>
               </label>
-              {assignedCustomers.length > 0 && (
+              {!loadingCustomers && assignedCustomers.length > 0 && (
                 <label className="flex items-center gap-1.5 text-xs text-indigo-600 cursor-pointer font-medium hover:underline">
                   <input
                     type="checkbox"
@@ -271,7 +313,12 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
               )}
             </div>
 
-            {assignedCustomers.length === 0 ? (
+            {loadingCustomers ? (
+              <div className="p-8 flex flex-col items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-xs gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
+                <span>Đang tải danh sách đại lý của nhân viên kinh doanh...</span>
+              </div>
+            ) : assignedCustomers.length === 0 ? (
               <div className="p-6 text-center rounded-xl bg-slate-50 border border-dashed border-slate-200 text-slate-400 text-xs">
                 Nhân viên này hiện chưa được phân công phụ trách đại lý nào.
               </div>

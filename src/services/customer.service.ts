@@ -1031,6 +1031,10 @@ export const customerService = {
   async getAssignmentHistory(params?: {
     fromSalesRepId?: string;
     toSalesRepId?: string;
+    customerId?: string;
+    transferBatchId?: string;
+    startDate?: string;
+    endDate?: string;
     search?: string;
     page?: number;
     limit?: number;
@@ -1043,11 +1047,29 @@ export const customerService = {
       return res.data;
     } catch {
       let list = getStoredHistory();
+      if (params?.customerId) {
+        list = list.filter((h) => h.customerId === params.customerId);
+      }
+      if (params?.transferBatchId) {
+        list = list.filter((h) => h.transferBatchId === params.transferBatchId);
+      }
       if (params?.fromSalesRepId) {
         list = list.filter((h) => h.fromSalesRepId === params.fromSalesRepId);
       }
       if (params?.toSalesRepId) {
         list = list.filter((h) => h.toSalesRepId === params.toSalesRepId);
+      }
+      if (params?.startDate) {
+        const fromTime = new Date(params.startDate).getTime();
+        if (!isNaN(fromTime)) {
+          list = list.filter((h) => new Date(h.createdAt).getTime() >= fromTime);
+        }
+      }
+      if (params?.endDate) {
+        const toTime = new Date(params.endDate).getTime();
+        if (!isNaN(toTime)) {
+          list = list.filter((h) => new Date(h.createdAt).getTime() <= toTime);
+        }
       }
       if (params?.search && params.search.trim()) {
         const s = params.search.trim().toLowerCase();
@@ -1057,7 +1079,9 @@ export const customerService = {
             h.customerCode?.toLowerCase().includes(s) ||
             h.reason?.toLowerCase().includes(s) ||
             h.fromSalesRepName?.toLowerCase().includes(s) ||
-            h.toSalesRepName?.toLowerCase().includes(s),
+            h.toSalesRepName?.toLowerCase().includes(s) ||
+            (h.transferBatchId && h.transferBatchId.toLowerCase().includes(s)) ||
+            (h.performedByName && h.performedByName.toLowerCase().includes(s)),
         );
       }
       return { data: list, total: list.length };
