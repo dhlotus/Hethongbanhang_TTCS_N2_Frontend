@@ -3,7 +3,6 @@ import {
   CheckCircle2,
   Building2,
   ArrowRight,
-  Info,
   Calendar,
   User,
 } from 'lucide-react';
@@ -32,7 +31,6 @@ export const ConfirmTransferReceiptModal: React.FC<ConfirmTransferReceiptModalPr
 }) => {
   const [inspections, setInspections] = useState<ItemInspectionState[]>([]);
   const [generalDiscrepancyReason, setGeneralDiscrepancyReason] = useState<string>('');
-  const [notes, setNotes] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
 
   const [prevTransferId, setPrevTransferId] = useState<string | null>(null);
@@ -55,7 +53,6 @@ export const ConfirmTransferReceiptModal: React.FC<ConfirmTransferReceiptModalPr
       })),
     );
     setGeneralDiscrepancyReason(transfer.discrepancyReason || '');
-    setNotes(transfer.notes || '');
   }
 
   if (!isOpen && prevTransferId !== null) {
@@ -145,7 +142,6 @@ export const ConfirmTransferReceiptModal: React.FC<ConfirmTransferReceiptModalPr
           discrepancyReason: i.discrepancyReason.trim(),
         })),
         generalDiscrepancyReason: generalDiscrepancyReason.trim(),
-        notes: notes.trim(),
       };
 
       const updated = await internalTransfersService.confirmReceipt(transfer.id, payload);
@@ -172,17 +168,8 @@ export const ConfirmTransferReceiptModal: React.FC<ConfirmTransferReceiptModalPr
       isOpen={isOpen}
       onClose={onClose}
       title={`Xác Nhận Nhận Hàng Chuyển Kho #${transfer.code}`}
-      subtitle={`Thủ kho nhận hàng kiểm đếm thực tế đối chiếu với số lượng xuất chuyển`}
       icon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />}
       maxWidth="max-w-4xl"
-      banner={
-        <div className="bg-emerald-50/80 border-b border-emerald-200/70 px-6 py-2.5 flex items-start gap-3 text-xs text-emerald-900">
-          <Info className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
-          <div className="leading-relaxed">
-            <span className="font-semibold text-emerald-950">Quy tắc nhập tồn:</span> Chỉ số lượng <strong>thực tế nhận được</strong> mới được cộng vào tồn kho của <strong>{transfer.toWarehouseName}</strong>. Mọi chênh lệch thiếu/thừa/hỏng hóc sẽ được lưu vết vào biên bản điều chuyển.
-          </div>
-        </div>
-      }
       footer={
         <div className="flex items-center justify-between w-full">
           <div className="text-xs text-slate-500">
@@ -279,34 +266,21 @@ export const ConfirmTransferReceiptModal: React.FC<ConfirmTransferReceiptModalPr
           onReasonChange={handleReasonChange}
         />
 
-        {/* KHỐI 3: LÝ DO CHÊNH LỆCH CHUNG & GHI CHÚ */}
+        {/* KHỐI 3: LÝ DO CHÊNH LỆCH CHUNG */}
         {summary.hasDiscrepancy && (
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Lý do chênh lệch chung của cả biên bản (nếu áp dụng chung)
             </label>
-            <input
-              type="text"
+            <textarea
+              rows={2}
               value={generalDiscrepancyReason}
               onChange={(e) => setGeneralDiscrepancyReason(e.target.value)}
               placeholder="Ví dụ: Sự cố xe tải giao hàng trong chuyến chở hàng ngày 11/10..."
-              className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none transition-all placeholder:text-slate-400"
+              className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none transition-all placeholder:text-slate-400 resize-none"
             />
           </div>
         )}
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Ghi chú nhận hàng / Biên bản kiểm nghiệm
-          </label>
-          <textarea
-            rows={2}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Thông tin bàn giao, người vận chuyển hoặc lưu ý lưu kho..."
-            className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none transition-all placeholder:text-slate-400"
-          />
-        </div>
       </div>
     </ModalLayout>
   );

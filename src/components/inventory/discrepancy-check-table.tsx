@@ -2,7 +2,6 @@ import React from 'react';
 import {
   CheckCircle2,
   AlertTriangle,
-  AlertCircle,
 } from 'lucide-react';
 
 export interface ItemInspectionState {
@@ -17,14 +16,6 @@ export interface ItemInspectionState {
   discrepancyReason: string;
 }
 
-const COMMON_REASONS = [
-  'Vỡ hỏng khi vận chuyển',
-  'Giao thiếu so với phiếu',
-  'Giao thừa so với phiếu',
-  'Rách bao bì / Biến dạng hộp',
-  'Hàng cận date không đạt chuẩn',
-  'Hao hụt tự nhiên trong chuyên chở',
-];
 
 interface DiscrepancyCheckTableProps {
   inspections: ItemInspectionState[];
@@ -101,9 +92,6 @@ export const DiscrepancyCheckTable: React.FC<DiscrepancyCheckTableProps> = ({
                       </td>
                       <td className="py-3 px-3 text-center text-slate-600 font-medium">
                         {item.unit}
-                        <div className="text-[10px] text-slate-400">
-                          (x{item.conversionRate} {item.baseUnit})
-                        </div>
                       </td>
                       <td className="py-3 px-3 text-right font-bold text-slate-700">
                         {item.transferQuantity}
@@ -118,7 +106,7 @@ export const DiscrepancyCheckTable: React.FC<DiscrepancyCheckTableProps> = ({
                           }
                           className={`w-28 text-right text-xs font-bold px-2.5 py-1.5 border rounded-lg outline-none transition-all ${
                             hasDiff
-                              ? 'border-rose-400 bg-white text-rose-700 focus:ring-2 focus:ring-rose-400'
+                              ? 'border-amber-400 bg-white text-amber-800 focus:ring-2 focus:ring-amber-400'
                               : 'border-slate-300 bg-white text-slate-800 focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]'
                           }`}
                         />
@@ -129,7 +117,7 @@ export const DiscrepancyCheckTable: React.FC<DiscrepancyCheckTableProps> = ({
                             <CheckCircle2 className="w-3 h-3" /> Nhận đủ
                           </span>
                         ) : diff > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                             <AlertTriangle className="w-3 h-3" /> Thiếu {diff} {item.unit}
                           </span>
                         ) : (
@@ -142,48 +130,27 @@ export const DiscrepancyCheckTable: React.FC<DiscrepancyCheckTableProps> = ({
 
                     {/* HÀNG NHẬP LÝ DO CHÊNH LỆCH KHI CÓ SAI LỆCH */}
                     {hasDiff && (
-                      <tr className="bg-rose-50/50 border-b border-rose-100">
+                      <tr className="bg-amber-50/50 border-b border-amber-200/70">
                         <td colSpan={6} className="py-2.5 px-4">
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
-                              <label className="text-[11px] font-bold text-rose-800 flex items-center gap-1">
-                                <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                                Lý do chênh lệch cho sản phẩm "{item.productName}"{' '}
-                                <span className="text-rose-600">*</span>:
+                              <label className="text-[11px] font-bold text-amber-900 flex items-center gap-1">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Lý do</span>
+                                <span className="text-rose-600 font-bold">*</span>:
                               </label>
-                              {isMissingReason && (
-                                <span className="text-[11px] text-rose-600 font-semibold animate-pulse">
-                                  Bắt buộc phải nhập lý do!
-                                </span>
-                              )}
                             </div>
-                            <input
-                              type="text"
+                            <textarea
+                              rows={2}
                               value={item.discrepancyReason}
                               onChange={(e) => onReasonChange(index, e.target.value)}
                               placeholder="Ví dụ: Vỡ hỏng 2 chai khi xe chở rung lắc, Giao thiếu 1 thùng từ kho xuất..."
-                              className={`w-full text-xs px-3 py-1.5 bg-white border rounded-lg outline-none transition-all placeholder:text-slate-400 ${
+                              className={`w-full text-xs px-3 py-2 bg-white border rounded-lg outline-none transition-all placeholder:text-slate-400 resize-none ${
                                 isMissingReason
-                                  ? 'border-rose-400 focus:ring-2 focus:ring-rose-400'
+                                  ? 'border-amber-400 focus:ring-2 focus:ring-amber-400'
                                   : 'border-slate-300 focus:border-[var(--color-primary)]'
                               }`}
                             />
-                            {/* Gợi ý lý do nhanh */}
-                            <div className="flex flex-wrap gap-1.5 pt-0.5">
-                              <span className="text-[10px] text-slate-500 font-semibold self-center">
-                                Gợi ý nhanh:
-                              </span>
-                              {COMMON_REASONS.map((reason) => (
-                                <button
-                                  key={reason}
-                                  type="button"
-                                  onClick={() => onReasonChange(index, reason)}
-                                  className="text-[10px] font-medium px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-md transition-colors cursor-pointer"
-                                >
-                                  {reason}
-                                </button>
-                              ))}
-                            </div>
                           </div>
                         </td>
                       </tr>

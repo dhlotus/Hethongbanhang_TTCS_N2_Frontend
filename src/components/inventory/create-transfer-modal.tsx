@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   ArrowRight,
-  AlertCircle,
   Warehouse,
-  Info,
   Layers,
   Send,
   FileEdit,
   Boxes,
+  Package,
+  Plus,
+  FileText,
 } from 'lucide-react';
 import { ModalLayout } from '../modal-layout';
 import { showToast } from '../toast';
@@ -295,18 +296,9 @@ export const CreateTransferModal: React.FC<CreateTransferModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Lập Phiếu Chuyển Kho Nội Bộ"
-      subtitle="Điều chuyển hàng hóa từ kho thừa sang kho thiếu — Số liệu kiểm soát chặt chẽ hai đầu"
       icon={<Warehouse className="w-5 h-5 text-[var(--color-primary)]" />}
       maxWidth="max-w-4xl"
       bodyClassName="p-4 sm:p-6 space-y-5 text-slate-700 text-xs"
-      banner={
-        <div className="bg-amber-50/80 border-b border-amber-200/70 px-6 py-2.5 flex items-start gap-3 text-xs text-amber-800">
-          <Info className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-          <div className="leading-relaxed">
-            <span className="font-semibold text-amber-900">Quy tắc điều chuyển:</span> Khi bấm xuất chuyển, hàng sẽ được trừ ngay tại <strong>Kho đi</strong> và chuyển sang trạng thái <strong>Đang trên đường</strong>. <strong>Kho đến</strong> chỉ được cộng tồn khi thủ kho nơi nhận kiểm đếm và bấm xác nhận nhận hàng.
-          </div>
-        </div>
-      }
       footer={
         <div className="flex items-center justify-between w-full">
           <div className="text-xs text-slate-500">
@@ -343,29 +335,14 @@ export const CreateTransferModal: React.FC<CreateTransferModalProps> = ({
         </div>
       }
     >
-      {/* KHỐI CẢNH BÁO LỖI NỔI BẬT Ở TRÊN CÙNG */}
-      {validationErrors.length > 0 && (
-        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-1.5 shadow-2xs animate-in fade-in duration-200">
-          <div className="font-bold flex items-center gap-1.5 text-rose-700">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-            <span>Cảnh báo điều chuyển ({validationErrors.length} lưu ý cần xử lý):</span>
-          </div>
-          <ul className="list-disc list-inside text-[11px] space-y-1 pl-1 text-rose-700 font-medium">
-            {validationErrors.map((err, i) => (
-              <li key={i}>{err}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       {/* KHỐI 1: CHỌN KHO ĐI VÀ KHO ĐẾN */}
-      <div className={`p-4 rounded-xl border transition-colors ${
+      <div className={`p-4 sm:p-5 rounded-xl border transition-colors shadow-xs ${
         isDuplicateWarehouse
           ? 'bg-rose-50/40 border-rose-200'
-          : 'bg-slate-50/70 border-slate-200/80'
+          : 'bg-white border-slate-200/90'
       }`}>
-          <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5 text-slate-400" />
+          <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5 border-b border-slate-100 pb-2.5">
+            <Layers className="w-3.5 h-3.5 text-indigo-600" />
             Tuyến điều chuyển kho
           </div>
           <div className="grid grid-cols-1 md:grid-cols-11 gap-3 items-center">
@@ -395,7 +372,7 @@ export const CreateTransferModal: React.FC<CreateTransferModalProps> = ({
 
             {/* Mũi tên chuyển */}
             <div className="md:col-span-1 flex justify-center py-1 md:py-0">
-              <div className="w-8 h-8 rounded-full bg-slate-200/70 text-slate-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
                 <ArrowRight className="w-4 h-4" />
               </div>
             </div>
@@ -431,23 +408,30 @@ export const CreateTransferModal: React.FC<CreateTransferModalProps> = ({
         </div>
 
         {/* KHỐI 2: BẢNG DANH SÁCH MẶT HÀNG CẦN CHUYỂN */}
-        <div>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2.5">
-            <div>
-              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Danh sách hàng hóa điều chuyển
+        <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3.5">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-indigo-600" />
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                Danh sách hàng hóa điều chuyển ({items.length} mặt hàng)
               </h4>
-              <p className="text-[11px] text-slate-500">
-                Tìm kiếm sản phẩm, đơn vị đóng gói và số lượng chuyển từ kho xuất
-              </p>
             </div>
-            <div>
+            <div className="flex items-center gap-2.5">
+              {items.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setItems([])}
+                  className="text-xs text-rose-600 hover:underline cursor-pointer font-semibold"
+                >
+                  Xóa tất cả
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setProductModalOpen(true)}
-                className="px-3.5 py-2 text-xs font-bold text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] rounded-xl shadow-xs transition-all inline-flex items-center gap-2 cursor-pointer active:scale-95"
+                className="px-3 py-1.5 text-xs font-bold text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] rounded-lg shadow-xs transition-all inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
               >
-                <Boxes className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
                 <span>+ Chọn sản phẩm chuyển kho</span>
               </button>
             </div>
@@ -464,16 +448,17 @@ export const CreateTransferModal: React.FC<CreateTransferModalProps> = ({
         </div>
 
         {/* KHỐI 3: GHI CHÚ ĐIỀU CHUYỂN */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Ghi chú / Mục đích chuyển kho
+        <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-2">
+          <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5 text-slate-500" />
+            <span>Ghi chú / Mục đích chuyển kho</span>
           </label>
           <textarea
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Ví dụ: Cấp bù tồn kho chi nhánh phục vụ tuần lễ khuyến mãi..."
-            className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none transition-all placeholder:text-slate-400"
+            className="w-full text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none transition-all placeholder:text-slate-400 resize-none"
           />
         </div>
 

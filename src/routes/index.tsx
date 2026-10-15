@@ -290,6 +290,10 @@ export const AppRoutes: React.FC = () => {
                 path="/inventory/transfers"
                 element={<InternalTransfersPage />}
               />
+              <Route
+                path="/inventory/internal-transfers"
+                element={<InternalTransfersPage />}
+              />
             </Route>
 
             <Route
