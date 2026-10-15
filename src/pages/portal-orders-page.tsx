@@ -442,7 +442,7 @@ export const PortalOrdersPage: React.FC = () => {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setActionMenuOrderId((prev) => (prev === order.id ? null : order.id));
+                                setActionMenuOrderId((prev) => (prev === order.id ? null : (order.id ?? null)));
                               }}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all cursor-pointer shadow-2xs"
                             >

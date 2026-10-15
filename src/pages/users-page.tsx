@@ -14,8 +14,6 @@ import {
   Warehouse,
   Mail,
   Phone,
-  ChevronLeft,
-  ChevronRight,
   ShieldAlert,
   Shield,
   Info,
@@ -29,6 +27,7 @@ import {
   FileSpreadsheet,
   RotateCcw,
 } from 'lucide-react';
+import { Pagination } from '../components/pagination';
 import { UsersTableSkeleton, UsersMobileCardSkeleton } from '../components/skeletons';
 import { ExcelImportModal } from '../components/excel-import-modal';
 import { showToast } from '../components/toast';
@@ -1333,80 +1332,22 @@ export const UsersPage: React.FC = () => {
           )}
         </div>
 
-        {/* Phân trang (Mặc định 20 dòng / trang theo chuẩn SN-13) */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-5 py-3.5 border-t border-slate-100 text-xs text-slate-500 bg-slate-50/30">
-          <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-start">
-            <div>
-              Hiển thị{' '}
-              <strong>
-                {total === 0 ? 0 : (page - 1) * limit + 1} - {Math.min(page * limit, total)}
-              </strong>{' '}
-              trong tổng số <strong>{total}</strong> nhân sự
-            </div>
-
-            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
-              <span className="text-slate-400">Số dòng/trang:</span>
-              <select
-                value={limit}
-                onChange={(e) => handleLimitChange(Number(e.target.value))}
-                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] focus:border-[var(--color-primary)] cursor-pointer"
-              >
-                <option value={10}>10 dòng</option>
-                <option value={20}>20 dòng (Chuẩn)</option>
-                <option value={50}>50 dòng</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 flex-wrap justify-center">
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => handlePageChange(Math.max(1, page - 1))}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span>Trước</span>
-            </button>
-
-            {/* Các nút bấm số trang */}
-            <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-                .map((p, idx, arr) => {
-                  const showEllipsisBefore = idx > 0 && p - arr[idx - 1] > 1;
-                  return (
-                    <React.Fragment key={p}>
-                      {showEllipsisBefore && (
-                        <span className="px-1 text-slate-400 font-bold">...</span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handlePageChange(p)}
-                        className={`h-7 min-w-7 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                          page === p
-                            ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                            : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    </React.Fragment>
-                  );
-                })}
-            </div>
-
-            <button
-              type="button"
-              disabled={page >= totalPages}
-              onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
-            >
-              <span>Sau</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+        {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN BẢNG (CHUẨN HỆ THỐNG LOHA SALES) ── */}
+        {total > 0 && (
+          <Pagination
+            variant="default"
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={total}
+            pageSize={limit}
+            pageSizeOptions={[10, 20, 50]}
+            itemLabel="nhân sự"
+            showRecordRange={false}
+            showFirstLast={false}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handleLimitChange}
+          />
+        )}
       </div>
 
       {/* ========================================================================= */}
