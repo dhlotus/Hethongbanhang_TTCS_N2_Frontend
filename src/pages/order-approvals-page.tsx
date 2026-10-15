@@ -657,37 +657,34 @@ export const OrderApprovalsPage: React.FC = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left">
-              <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
+              <thead className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <tr>
-                  <th className="px-4 py-3.5">Mã đơn</th>
-                  <th className="px-4 py-3.5">Đại lý</th>
-                  <th className="px-3 py-3.5">NVKD</th>
-                  <th className="px-3 py-3.5">Ngày giao</th>
-                  <th className="px-4 py-3.5 text-right">Tổng phải thu</th>
-                  <th className="px-3 py-3.5 text-center">Trạng thái</th>
-                  <th className="px-4 py-3.5 text-center min-w-[13.5rem]">Thao tác</th>
+                  <th className="px-4 py-3 text-left">Mã đơn</th>
+                  <th className="px-4 py-3 text-left">Đại lý</th>
+                  <th className="px-3 py-3 text-left">NVKD</th>
+                  <th className="px-3 py-3 text-left">Ngày tạo đơn</th>
+                  <th className="px-4 py-3 text-right">Tổng phải thu</th>
+                  <th className="px-3 py-3 text-center">Trạng thái</th>
+                  <th className="px-4 py-3 text-center min-w-[13.5rem]">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100/90">
                 {pagedOrders.map((order) => {
                   const isPending = isOrderPendingApproval(order);
                   const stockCheck = checkOrderStock(order);
 
                   return (
-                    <tr key={order.id} className="hover:bg-indigo-50/30 transition-colors">
-                      {/* Mã đơn & Ngày đặt */}
-                      <td className="px-4 py-3.5">
-                        <span className="font-extrabold text-indigo-700 font-mono text-xs block">
+                    <tr key={order.id} className="hover:bg-indigo-50/25 transition-colors group">
+                      {/* Mã đơn: Badge monospace chuyên nghiệp chuẩn Quản lý đại lý */}
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span className="inline-flex items-center font-mono text-xs font-bold text-indigo-700 bg-indigo-50/80 border border-indigo-200/60 px-2.5 py-1 rounded-md">
                           {order.orderCode}
-                        </span>
-                        <span className="text-[11px] text-slate-400">
-                          {formatDate(order.createdAt || order.deliveryDate)}
                         </span>
                       </td>
 
                       {/* Đại lý */}
                       <td className="px-4 py-3.5">
-                        <p className="font-bold text-slate-900 line-clamp-1" title={order.customerName}>
+                        <p className="font-semibold text-slate-800 line-clamp-1 text-sm" title={order.customerName}>
                           {order.customerName}
                         </p>
                         <p className="text-[11px] text-slate-500 font-mono mt-0.5">
@@ -696,19 +693,19 @@ export const OrderApprovalsPage: React.FC = () => {
                       </td>
 
                       {/* NVKD */}
-                      <td className="px-3 py-3.5">
-                        <p className="font-semibold text-slate-800">
+                      <td className="px-3 py-3.5 whitespace-nowrap">
+                        <p className="font-medium text-slate-700 text-xs">
                           {order.salesRepName || 'Trần Văn Long'}
                         </p>
                       </td>
 
-                      {/* Ngày giao */}
-                      <td className="px-3 py-3.5 font-medium text-slate-700">
-                        {formatDate(order.deliveryDate)}
+                      {/* Ngày tạo đơn */}
+                      <td className="px-3 py-3.5 font-medium text-slate-700 whitespace-nowrap text-xs">
+                        {formatDate(order.createdAt)}
                       </td>
 
                       {/* Tổng phải thu */}
-                      <td className="px-4 py-3.5 text-right font-mono">
+                      <td className="px-4 py-3.5 text-right font-mono whitespace-nowrap">
                         <span className="font-extrabold text-slate-900 text-sm">
                           {formatCurrency(order.grandTotal)}
                         </span>
@@ -720,9 +717,9 @@ export const OrderApprovalsPage: React.FC = () => {
                       </td>
 
                       {/* Trạng thái & Cảnh báo tồn kho trước khi duyệt */}
-                      <td className="px-3 py-3.5 text-center">
+                      <td className="px-3 py-3.5 text-center whitespace-nowrap">
                         {isPending ? (
-                          <div className="flex flex-col items-center gap-1">
+                          <div className="inline-flex flex-col items-center gap-1">
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
                               <Clock className="w-3 h-3" /> Chờ duyệt
                             </span>
@@ -743,22 +740,22 @@ export const OrderApprovalsPage: React.FC = () => {
                             )}
                           </div>
                         ) : order.status === 'APPROVED' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
                             <CheckCircle2 className="w-3 h-3" /> Đã duyệt
                           </span>
                         ) : order.status === 'REJECTED' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200/60">
                             <XCircle className="w-3 h-3" /> Từ chối
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200/60">
                             {order.status === 'RETURNED_FOR_UPDATE' ? 'Trả lại sửa' : order.status}
                           </span>
                         )}
                       </td>
 
-                      {/* Thao tác */}
-                      <td className="px-4 py-3.5 text-center">
+                      {/* Thao tác (Kích thước nút đồng bộ w-[5.75rem] h-8 không bao giờ bị lệch) */}
+                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-2">
                           <button
                             type="button"
@@ -767,7 +764,7 @@ export const OrderApprovalsPage: React.FC = () => {
                               setDecisionComment('');
                               setModalValidationError(null);
                             }}
-                            className="min-w-[5.75rem] inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer shrink-0"
+                            className="w-[5.75rem] h-8 inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer shrink-0"
                             title="Xem chi tiết đơn hàng"
                           >
                             <Eye className="w-3.5 h-3.5 shrink-0" />
@@ -779,7 +776,7 @@ export const OrderApprovalsPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => void handleQuickApprove(order)}
-                                className="min-w-[5.25rem] inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors cursor-pointer shadow-2xs shrink-0"
+                                className="w-[5.75rem] h-8 inline-flex items-center justify-center gap-1 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-600 transition-colors cursor-pointer shadow-2xs shrink-0"
                                 title="Duyệt đơn hàng ngay (kho đủ hàng)"
                               >
                                 <Check className="w-3.5 h-3.5 shrink-0" />
@@ -789,7 +786,7 @@ export const OrderApprovalsPage: React.FC = () => {
                               <button
                                 type="button"
                                 disabled={true}
-                                className="min-w-[5.25rem] inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed opacity-80 shrink-0"
+                                className="w-[5.75rem] h-8 inline-flex items-center justify-center gap-1 rounded-lg text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed opacity-80 shrink-0"
                                 title={`Không thể duyệt: Đơn có ${stockCheck.outOfStockLines.length} mặt hàng thiếu tồn (${stockCheck.outOfStockLines.map((l) => l.productName).join(', ')}). Bấm Chi tiết để xem hoặc Trả lại sửa.`}
                               >
                                 <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
