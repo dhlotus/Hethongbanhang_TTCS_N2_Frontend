@@ -661,6 +661,7 @@ export const PortalOrderConfirmPage: React.FC = () => {
             </span>
           </div>
 
+<<<<<<< HEAD
           {/* ── GIAO DIỆN DESKTOP / LAPTOP / PC (GIỮ NGUYÊN 100% CẤU TRÚC & KÍCH THƯỚC BAN ĐẦU) ── */}
           <div className="hidden sm:block space-y-4">
             {/* Chi tiết đại lý */}
@@ -682,6 +683,19 @@ export const PortalOrderConfirmPage: React.FC = () => {
                 <strong className="text-slate-900 text-sm sm:text-base font-semibold block">
                   {currentCustomer?.phone || 'Chưa cập nhật'}
                 </strong>
+=======
+          {/* Chi tiết đại lý */}
+          <div className="p-4 sm:p-5 rounded-xl bg-slate-50/80 border border-slate-200/70 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+            <div>
+              <span className="text-slate-500 font-medium block mb-1">Tên doanh nghiệp:</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <strong className="text-slate-900 text-sm sm:text-base font-semibold">
+                  {currentCustomer?.name}
+                </strong>
+                <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${groupBadge.className}`}>
+                  {groupBadge.label}
+                </span>
+>>>>>>> 1b0ff80 (fix(portal): toi uu giao dien portal orders va order confirm)
               </div>
             </div>
 
@@ -1247,7 +1261,7 @@ export const PortalOrderConfirmPage: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Tổng thanh toán:</span>
-                <span className="font-mono font-bold text-slate-900">{formatVND(submittedOrder.grandTotal ?? (submittedOrder as any).totalAmount ?? 0)}</span>
+                <span className="font-mono font-bold text-slate-900">{formatVND(submittedOrder.grandTotal ?? submittedOrder.totalAmount ?? submittedOrder.subtotal ?? 0)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Trạng thái:</span>
