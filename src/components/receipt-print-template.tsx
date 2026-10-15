@@ -10,6 +10,8 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { numberToVietnameseWords } from '../utils/number-to-words';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { receiptsService } from '../services/receipts.service';
 import { showToast } from './toast';
 import type { Receipt, ReceiptPrintData, PaymentMethod } from '../types/receipt';
@@ -248,22 +250,57 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
   };
 
   /**
-   * Tải trực tiếp file PDF chính thức từ Backend
+   * Tải file PDF chính thức: Kết xuất trực tiếp từ DOM phiếu in để đảm bảo
+   * GIỐNG HỆT 100% mẫu in trên giao diện (màu sắc, icon, font chữ, đường viền, thẻ badge).
    */
   const handleDownloadPdf = async () => {
+    const element = printContentRef.current;
+    if (!element) {
+      handlePrint();
+      return;
+    }
+
     try {
       setIsDownloading(true);
-      await receiptsService.downloadReceiptPdf(
-        receipt.id || receiptCode,
-        `phieu-thu-${receiptCode}.pdf`,
-      );
+      showToast('info', `Đang kết xuất PDF phiếu thu ${receiptCode}...`);
+
+      const canvas = await html2canvas(element, {
+        scale: 2.5, // Độ phân giải cao cho bản in siêu nét
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      // Kích thước chuẩn A4: 210mm x 297mm
+      const contentWidth = 190;
+      const contentHeight = (canvas.height * contentWidth) / canvas.width;
+      const marginX = 10;
+      const marginY = 15;
+
+      pdf.addImage(imgData, 'PNG', marginX, marginY, contentWidth, contentHeight);
+      pdf.save(`phieu-thu-${receiptCode}.pdf`);
+
       showToast('success', `Đã tải xuống file PDF: phieu-thu-${receiptCode}.pdf`);
-    } catch {
-      showToast(
-        'info',
-        'Đang mở hộp thoại xuất file PDF từ trình duyệt (chọn "Lưu dưới dạng PDF")...',
-      );
-      handlePrint();
+    } catch (err) {
+      console.error('Lỗi khi xuất PDF trực tiếp từ giao diện:', err);
+      // Phương án dự phòng: Tải từ backend API
+      try {
+        await receiptsService.downloadReceiptPdf(
+          receipt.id || receiptCode,
+          `phieu-thu-${receiptCode}.pdf`,
+        );
+        showToast('success', `Đã tải xuống file PDF: phieu-thu-${receiptCode}.pdf`);
+      } catch {
+        showToast('error', 'Không thể tạo file PDF, đang chuyển sang in trực tiếp...');
+        handlePrint();
+      }
     } finally {
       setIsDownloading(false);
     }
