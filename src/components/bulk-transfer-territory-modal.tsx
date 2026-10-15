@@ -227,7 +227,7 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
             {/* Nhân sự chuyển giao */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                Nhân viên chuyển giao (Nghỉ việc/Rời vị trí) <span className="text-rose-500">*</span>
+                Nhân viên chuyển giao <span className="text-rose-500">*</span>
               </label>
               <select
                 value={fromSalesRepId}
@@ -262,7 +262,7 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
             {/* Nhân sự tiếp nhận */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                Nhân viên tiếp nhận (Người mới phụ trách) <span className="text-rose-500">*</span>
+                Nhân viên tiếp nhận <span className="text-rose-500">*</span>
               </label>
               <select
                 value={toSalesRepId}
