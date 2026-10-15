@@ -75,9 +75,14 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
     return map;
   }, [sourceStocks]);
 
-  // Lọc sản phẩm theo từ khóa, danh mục và tồn kho
+  // Lọc sản phẩm theo từ khóa, danh mục, tồn kho và ẩn sản phẩm đã chọn vào phiếu
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
+      // 0. Ẩn sản phẩm đã có trong phiếu chuyển kho
+      if (alreadySelectedProductIds.includes(p.id)) {
+        return false;
+      }
+
       // 1. Lọc theo danh mục
       if (selectedCategory !== 'ALL' && p.category !== selectedCategory) {
         return false;
@@ -99,7 +104,7 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
         matchesSearchTerm(p.packagingSpec || '', term)
       );
     });
-  }, [products, selectedCategory, onlyInStock, searchTerm, stockMap]);
+  }, [products, alreadySelectedProductIds, selectedCategory, onlyInStock, searchTerm, stockMap]);
 
   const [prevIsOpen, setPrevIsOpen] = React.useState(isOpen);
   if (isOpen !== prevIsOpen) {
@@ -127,20 +132,16 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
 
   // Toggle chọn tất cả sản phẩm đang lọc
   const handleToggleSelectAll = () => {
-    const selectableProducts = filteredProducts.filter(
-      (p) => !alreadySelectedProductIds.includes(p.id),
-    );
-
-    const allChecked = selectableProducts.length > 0 && selectableProducts.every((p) =>
+    const allChecked = filteredProducts.length > 0 && filteredProducts.every((p) =>
       checkedProductIds.has(p.id),
     );
 
     setCheckedProductIds((prev) => {
       const next = new Set(prev);
       if (allChecked) {
-        selectableProducts.forEach((p) => next.delete(p.id));
+        filteredProducts.forEach((p) => next.delete(p.id));
       } else {
-        selectableProducts.forEach((p) => next.add(p.id));
+        filteredProducts.forEach((p) => next.add(p.id));
       }
       return next;
     });
@@ -155,15 +156,10 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
     }
   };
 
-  const selectableCount = filteredProducts.filter(
-    (p) => !alreadySelectedProductIds.includes(p.id),
-  ).length;
+  const selectableCount = filteredProducts.length;
 
   const isAllSelected =
-    selectableCount > 0 &&
-    filteredProducts
-      .filter((p) => !alreadySelectedProductIds.includes(p.id))
-      .every((p) => checkedProductIds.has(p.id));
+    selectableCount > 0 && filteredProducts.every((p) => checkedProductIds.has(p.id));
 
   return (
     <ModalLayout
@@ -296,31 +292,25 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
                 </tr>
               ) : (
                 filteredProducts.map((p, index) => {
-                  const isAlreadyIn = alreadySelectedProductIds.includes(p.id);
                   const isChecked = checkedProductIds.has(p.id);
                   const availStock = stockMap.get(p.sku.toUpperCase()) ?? 0;
 
                   return (
                     <tr
                       key={p.id}
-                      onClick={() => {
-                        if (!isAlreadyIn) handleToggleProduct(p.id);
-                      }}
-                      className={`transition-colors select-none ${
-                        isAlreadyIn
-                          ? 'bg-slate-50/80 opacity-60 cursor-not-allowed'
-                          : isChecked
-                          ? 'bg-purple-50/60 hover:bg-purple-50/90 cursor-pointer'
-                          : 'hover:bg-slate-50 cursor-pointer'
+                      onClick={() => handleToggleProduct(p.id)}
+                      className={`transition-colors select-none cursor-pointer ${
+                        isChecked
+                          ? 'bg-purple-50/60 hover:bg-purple-50/90'
+                          : 'hover:bg-slate-50'
                       }`}
                     >
                       <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
-                          checked={isChecked || isAlreadyIn}
-                          disabled={isAlreadyIn}
+                          checked={isChecked}
                           onChange={() => handleToggleProduct(p.id)}
-                          className="w-4 h-4 rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)]/20 cursor-pointer disabled:opacity-50"
+                          className="w-4 h-4 rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)]/20 cursor-pointer"
                         />
                       </td>
                       <td className="py-2.5 px-3 text-center text-slate-400 font-mono text-[11px]">
@@ -354,11 +344,7 @@ export const ProductSelectionModal: React.FC<ProductSelectionModalProps> = ({
                         )}
                       </td>
                       <td className="py-2.5 px-3 text-center">
-                        {isAlreadyIn ? (
-                          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold text-slate-500 bg-slate-200/80">
-                            Đã trong phiếu
-                          </span>
-                        ) : isChecked ? (
+                        {isChecked ? (
                           <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-[var(--color-primary)]">
                             Đang chọn
                           </span>

@@ -38,7 +38,7 @@ export const TransferDetailModal: React.FC<TransferDetailModalProps> = ({
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
             <Truck className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-            Đang trên đường (Chưa cộng kho đến)
+            Đang vận chuyển (Chưa cộng kho đến)
           </span>
         );
       case 'COMPLETED':
