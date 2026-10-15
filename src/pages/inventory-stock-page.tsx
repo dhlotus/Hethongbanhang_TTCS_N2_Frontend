@@ -23,6 +23,7 @@ import { showToast } from '../components/toast';
 import { ModalLayout } from '../components/modal-layout';
 import { MinStockModal } from '../components/inventory/min-stock-modal';
 import { inventoryService } from '../services/inventory.service';
+import { warehouseService } from '../services/warehouse.service';
 import { getStoredUser } from '../utils/navigation';
 import type {
   StockOverviewItem,
@@ -50,13 +51,39 @@ export const InventoryStockPage: React.FC = () => {
   const [stockItems, setStockItems] = useState<StockOverviewItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
+  const user = getStoredUser();
+  const userRoles = user?.roles || [];
+  const isWarehouseStaff =
+    (userRoles.includes('WAREHOUSE_MANAGER') ||
+      userRoles.includes('WAREHOUSE_KEEPER') ||
+      userRoles.includes('WAREHOUSE') ||
+      userRoles.includes('WH_MANAGER')) &&
+    !userRoles.includes('ADMIN');
+
+  const defaultWarehouse =
+    isWarehouseStaff && user?.assignedWarehouse ? user.assignedWarehouse : 'ALL';
+
   // Bộ lọc & Tìm kiếm (Đồng bộ query filter từ Dashboard kho: /inventory/stock?filter=BELOW_MIN_STOCK)
   const initialFilter = (searchParams.get('filter') as StockStatusType) || 'ALL';
   const [searchInput, setSearchInput] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [selectedWarehouse, setSelectedWarehouse] = useState<string>('ALL');
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>(defaultWarehouse);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<StockStatusType | 'ALL'>(initialFilter);
+  const [allWarehouses, setAllWarehouses] = useState<
+    Array<{ id: string; name: string; code: string }>
+  >([]);
+
+  useEffect(() => {
+    warehouseService
+      .getWarehouses()
+      .then((res) => {
+        if (Array.isArray(res)) {
+          setAllWarehouses(res);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Lắng nghe thay đổi searchParams từ URL (khi click từ Dashboard chuyển sang)
   useEffect(() => {
@@ -120,8 +147,6 @@ export const InventoryStockPage: React.FC = () => {
   // Phân quyền người dùng:
   // - Tất cả vai trò đều có quyền XEM tồn tối thiểu & cảnh báo đứt hàng SN-183
   // - Quản lý kho, Thủ kho, Admin, Sales Manager có quyền CHỈNH SỬA / KHAI BÁO mức tồn tối thiểu
-  const user = getStoredUser();
-  const userRoles = user?.roles || [];
   const canAdjustStock =
     userRoles.includes('ADMIN') ||
     userRoles.includes('WAREHOUSE_MANAGER') ||
@@ -178,12 +203,18 @@ export const InventoryStockPage: React.FC = () => {
 
   // Danh sách các kho hàng duy nhất để hiển thị dropdown
   const warehouseOptions = useMemo(() => {
+    if (isWarehouseStaff && user?.assignedWarehouse) {
+      return [user.assignedWarehouse];
+    }
     const set = new Set<string>();
+    allWarehouses.forEach((w) => {
+      if (w.name) set.add(w.name);
+    });
     stockItems.forEach((item) => {
       if (item.warehouse) set.add(item.warehouse);
     });
     return Array.from(set);
-  }, [stockItems]);
+  }, [allWarehouses, stockItems, isWarehouseStaff, user?.assignedWarehouse]);
 
   // Danh sách nhóm hàng duy nhất để hiển thị dropdown
   const categoryOptions = useMemo(() => {
@@ -454,9 +485,10 @@ export const InventoryStockPage: React.FC = () => {
               <select
                 value={selectedWarehouse}
                 onChange={(e) => setSelectedWarehouse(e.target.value)}
-                className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer truncate"
+                disabled={isWarehouseStaff && Boolean(user?.assignedWarehouse)}
+                className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer truncate disabled:bg-slate-100 disabled:text-slate-700 disabled:cursor-not-allowed"
               >
-                <option value="ALL">Tất cả kho hàng</option>
+                {!isWarehouseStaff && <option value="ALL">Tất cả kho hàng</option>}
                 {warehouseOptions.map((wh) => (
                   <option key={wh} value={wh}>
                     {wh}

@@ -98,4 +98,11 @@ export const warehouseService = {
     );
     return response.data;
   },
+  async deleteWarehouse(id: string): Promise<{ success: boolean; message?: string }> {
+    const response = await apiClient.delete<{ success: boolean; message?: string }>(
+      `/warehouses/${encodeURIComponent(id)}`
+    );
+    return response.data;
+  },
 };
+
