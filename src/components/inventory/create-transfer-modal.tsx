@@ -5,7 +5,6 @@ import {
   Layers,
   Send,
   FileEdit,
-  Boxes,
   Package,
   Plus,
   FileText,

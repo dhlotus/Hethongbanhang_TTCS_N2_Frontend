@@ -344,13 +344,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           {/* Tên & Tag vai trò (Ẩn trên mobile siêu nhỏ, hiện từ sm trở lên) */}
           <div className="hidden sm:flex flex-col text-left min-w-0">
             <span
-              className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors truncate max-w-[140px] leading-tight"
+              className="text-sm font-bold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors truncate max-w-[150px] leading-tight"
               title={context.fullName}
             >
               {cleanFullName}
             </span>
             <span
-              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold mt-0.5 w-fit max-w-[140px] truncate ${context.badgeClass}`}
+              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold mt-0.5 w-fit max-w-[150px] truncate ${context.badgeClass}`}
               title={context.roleLabel}
             >
               <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${context.dotClass}`} />

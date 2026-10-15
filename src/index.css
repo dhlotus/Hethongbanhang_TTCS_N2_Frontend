@@ -2,7 +2,7 @@
 
 @theme {
   --font-sans:
-    'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
     sans-serif;
 
   /* ========================================================================= */
@@ -59,7 +59,7 @@
   /* TYPOGRAPHY SYSTEM TOKENS - HỆ THỐNG FONT CHỮ CHUẨN LOHA SALES            */
   /* ========================================================================= */
   --font-family:
-    'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
     sans-serif;
 
   /* 3.5. Thang cỡ chữ Tokens (UI_GUIDELINES) */
@@ -188,7 +188,7 @@
 
   /* 3.5 Cỡ chữ & Cấp độ chữ Tokens */
   --font-family:
-    'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
     sans-serif;
   --font-size-xs: 12px;
   --font-size-sm: 14px;
@@ -257,8 +257,8 @@
 /* FLUID & RESPONSIVE TYPOGRAPHY (CHỐNG MỎI MẮT TRÊN MÀN HÌNH ĐỘ PHÂN GIẢI CAO) */
 /* ========================================================================= */
 html {
-  font-size: 15px;
-  /* Mobile / Small screens: 15px rõ nét, không bị co quá nhỏ */
+  font-size: 16px;
+  /* Mobile & Desktop tiêu chuẩn 16px (1rem = 16px) giúp chữ rõ nét, không bị co quá nhỏ */
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -266,7 +266,7 @@ html {
 
 @media (min-width: 768px) {
   html {
-    font-size: 15.5px;
+    font-size: 16px;
     /* Tablet & Laptop tiêu chuẩn */
   }
 }

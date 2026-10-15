@@ -33,7 +33,6 @@ export const TransferItemsTable: React.FC<TransferItemsTableProps> = ({
   items,
   products,
   sourceStocks = [],
-  onOpenProductSelector,
   onRemoveItem,
   onItemChange,
 }) => {
