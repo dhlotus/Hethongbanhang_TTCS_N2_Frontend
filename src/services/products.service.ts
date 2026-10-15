@@ -1,5 +1,6 @@
 import { apiClient } from './api';
 import { tokenStorage } from '../utils/token-storage';
+import { normalizeProductIdToUuid } from '../utils/uuid-utils';
 import type {
   Product,
   ProductCategory,
@@ -500,8 +501,12 @@ const checkCanViewCost = (): boolean => {
  * Lọc bỏ trường nhạy cảm costPrice và margin nếu không đủ quyền hạn (SN-10)
  */
 const sanitizeProduct = (p: Product, canViewCost: boolean): Product => {
-  if (canViewCost) return p;
-  const { costPrice: _, margin: __, ...rest } = p;
+  const enriched: Product = {
+    ...p,
+    uuid: p.uuid || normalizeProductIdToUuid(p.id, p.sku),
+  };
+  if (canViewCost) return enriched;
+  const { costPrice: _, margin: __, ...rest } = enriched;
   return rest as Product;
 };
 

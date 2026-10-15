@@ -36,6 +36,7 @@ export interface ProductUnit {
  */
 export interface Product {
   id: string;
+  uuid?: string;
   sku: string;
   name: string;
   category: string;
