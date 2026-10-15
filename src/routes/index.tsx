@@ -18,6 +18,7 @@ import { CreateOrderPage } from '../pages/create-order-page';
 import { OrderApprovalsPage } from '../pages/order-approvals-page';
 import { StockListPage } from '../pages/inventory/stock-list-page';
 import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
+import { DebtReportPage } from '../pages/debt-report';
 import { CustomersPage } from '../pages/customers-page';
 import { InventoryStockPage } from '../pages/inventory-stock-page';
 import { InventoryAuditsPage } from '../pages/inventory-audits-page';
@@ -393,13 +394,11 @@ export const AppRoutes: React.FC = () => {
             >
               <Route
                 path="/accounting/debt"
-                element={
-                  <RoleModulePage
-                    title="Sổ Chi tiết Công nợ & Tuổi nợ"
-                    subtitle="Báo cáo công nợ phải thu, phân loại tuổi nợ quá hạn (Aging Schedule) và tính lãi phạt"
-                    requiredRole="Kế toán công nợ / Kinh doanh"
-                  />
-                }
+                element={<DebtReportPage />}
+              />
+              <Route
+                path="/reports/debt"
+                element={<DebtReportPage />}
               />
             </Route>
 
