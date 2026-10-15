@@ -890,29 +890,6 @@ export const OrderApprovalsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Alert cảnh báo tồn kho nếu có sản phẩm không đủ hàng (Bỏ icon bóng đèn và icon thừa) */}
-              {stockCheckResults.outOfStockItems.length > 0 ? (
-                <div className="p-3.5 bg-rose-50/90 border border-rose-200 rounded-2xl space-y-1 text-xs text-rose-900 animate-in fade-in">
-                  <p className="font-bold text-rose-800">
-                    Phát hiện {stockCheckResults.outOfStockItems.length} sản phẩm không đủ tồn khả dụng để duyệt đơn:
-                  </p>
-                  <ul className="list-disc list-inside space-y-0.5 text-slate-700">
-                    {stockCheckResults.outOfStockItems.map((item) => (
-                      <li key={item.sku}>
-                        <strong>{item.line.productName}</strong>: Tồn khả dụng còn <strong>{item.availableStock.toLocaleString('vi-VN')} {item.baseUnit}</strong> (Tồn kho thực tế: {item.physicalStock.toLocaleString('vi-VN')}, Đã giữ cho đơn khác: {item.reservedStock.toLocaleString('vi-VN')}), nhưng đơn này yêu cầu <strong>{item.requiredBase.toLocaleString('vi-VN')} {item.baseUnit}</strong>.
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="text-[11px] text-rose-700 pt-0.5">
-                    Bạn có thể bấm <strong>Trả lại sửa</strong> để NVKD chỉnh sửa lại số lượng hoặc liên hệ Thủ kho nhập thêm hàng.
-                  </p>
-                </div>
-              ) : isOrderPendingApproval(reviewOrder) && !isLoadingStock ? (
-                <div className="p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-xl text-xs text-emerald-800">
-                  <span>Tồn kho khả dụng đầy đủ cho toàn bộ {reviewOrder.lines?.length || 0} sản phẩm trong đơn. Sẵn sàng phê duyệt!</span>
-                </div>
-              ) : null}
-
               {/* Bảng danh sách dòng hàng */}
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <table className="w-full text-xs text-left">
@@ -939,25 +916,20 @@ export const OrderApprovalsPage: React.FC = () => {
                           </td>
                           <td className="px-2.5 py-2.5 text-center font-medium text-slate-600">{line.unit}</td>
                           <td className="px-2.5 py-2.5 text-center font-bold text-slate-900">{line.quantity}</td>
-                          {/* Cột Tồn khả dụng (Bỏ icon thừa) */}
+                          {/* Cột Tồn khả dụng (Gọn gàng, bỏ text thừa Kho/Đã giữ) */}
                           <td className="px-3 py-2.5 text-center">
                             {isLoadingStock ? (
                               <span className="text-[10px] text-slate-400">Đang đối soát...</span>
                             ) : itemStock ? (
-                              <div>
-                                <span
-                                  className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-bold ${
-                                    itemStock.isSufficient
-                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                      : 'bg-rose-50 text-rose-700 border border-rose-200'
-                                  }`}
-                                >
-                                  {itemStock.availableStock.toLocaleString('vi-VN')} {itemStock.baseUnit}
-                                </span>
-                                <span className="block text-[10px] text-slate-400 mt-0.5">
-                                  Kho: {itemStock.physicalStock.toLocaleString('vi-VN')} · Đã giữ: {itemStock.reservedStock.toLocaleString('vi-VN')}
-                                </span>
-                              </div>
+                              <span
+                                className={`inline-block px-2.5 py-1 rounded-md text-[11px] font-bold ${
+                                  itemStock.isSufficient
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                }`}
+                              >
+                                {itemStock.availableStock.toLocaleString('vi-VN')} {itemStock.baseUnit}
+                              </span>
                             ) : (
                               <span className="text-[10px] text-slate-400">---</span>
                             )}
@@ -998,7 +970,7 @@ export const OrderApprovalsPage: React.FC = () => {
               {isOrderPendingApproval(reviewOrder) ? (
                 <div className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
                   <label className="text-xs font-bold text-slate-800 block">
-                    Ý kiến chỉ đạo / Lý do phê duyệt (Bắt buộc khi Từ chối hoặc Trả lại):
+                    Ý kiến chỉ đạo / Lý do (Bắt buộc khi Trả lại sửa):
                   </label>
 
                   {/* Thông báo lỗi validation hiển thị ngay trên modal */}
@@ -1014,7 +986,7 @@ export const OrderApprovalsPage: React.FC = () => {
                       setDecisionComment(e.target.value);
                       if (modalValidationError) setModalValidationError(null);
                     }}
-                    placeholder="Nhập ghi chú phê duyệt hoặc lý do yêu cầu sửa đổi..."
+                    placeholder="Nhập ghi chú hoặc lý do yêu cầu sửa đổi..."
                     rows={2}
                     className={`w-full px-3 py-2 text-xs border rounded-xl bg-white focus:outline-none focus:ring-2 resize-none transition-all ${
                       modalValidationError
@@ -1024,17 +996,7 @@ export const OrderApprovalsPage: React.FC = () => {
                   />
 
                   <div className="flex items-center justify-end gap-2 pt-1">
-                    {/* Nút Từ chối (Bỏ icon thừa) */}
-                    <button
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => void handleDecisionSubmit('REJECT')}
-                      className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      <span>Từ chối</span>
-                    </button>
-
-                    {/* Nút Trả lại yêu cầu sửa (Bỏ icon thừa) */}
+                    {/* Chỉ giữ lại 1 nút: Trả lại sửa */}
                     <button
                       type="button"
                       disabled={isSubmitting}
