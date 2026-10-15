@@ -19,6 +19,7 @@ import {
   ChevronDown,
   Check,
   X,
+  Tag,
 } from 'lucide-react';
 import { matchesSearchTerm } from '../utils/vietnamese';
 import { showToast } from '../components/toast';
@@ -253,6 +254,7 @@ export const CreateOrderPage: React.FC = () => {
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
   const customerDropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Lắng nghe click bên ngoài và phím Escape để đóng dropdown đại lý
   useEffect(() => {
@@ -1386,97 +1388,110 @@ export const CreateOrderPage: React.FC = () => {
             )}
           </div>
 
-          {/* Phần 1.1: Chọn đại lý đặt hàng dạng Select Option */}
+          {/* Phần 1.1: Tìm kiếm & Chọn đại lý đặt hàng (Thiết kế lại tối ưu, đẹp và dễ nhìn) */}
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-              <label htmlFor="customer-select" className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <label htmlFor="customer-search-input" className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <Building2 className="w-4 h-4 text-indigo-600" />
                 <span>Chọn đại lý đặt hàng</span>
                 <span className="text-rose-500">*</span>
               </label>
               <span className="text-[11px] text-slate-400 font-medium">
-                {isLoadingCustomers ? 'Đang tải danh sách...' : `${customers.length} đại lý khả dụng`}
+                {isLoadingCustomers ? 'Đang nạp dữ liệu...' : `${customers.length} đại lý khả dụng`}
               </span>
             </div>
 
-            {/* Searchable Select Combobox */}
+            {/* Khung tìm kiếm tích hợp nút bấm sổ danh sách option */}
             <div ref={customerDropdownRef} className="relative">
-              {/* Trigger Button */}
-              <button
-                type="button"
-                id="customer-combobox-button"
-                onClick={() => {
-                  if (!isLoadingCustomers) {
+              <div className="flex items-center gap-2">
+                {/* Ô nhập từ khóa tìm kiếm */}
+                <div className="relative flex-1">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500 pointer-events-none" />
+                  <input
+                    ref={searchInputRef}
+                    id="customer-search-input"
+                    type="text"
+                    value={customerSearchTerm}
+                    onChange={(e) => {
+                      setCustomerSearchTerm(e.target.value);
+                      if (!isCustomerDropdownOpen) setIsCustomerDropdownOpen(true);
+                    }}
+                    onFocus={() => {
+                      if (!isCustomerDropdownOpen) setIsCustomerDropdownOpen(true);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        setIsCustomerDropdownOpen(true);
+                      } else if (e.key === 'Escape') {
+                        setIsCustomerDropdownOpen(false);
+                      }
+                    }}
+                    placeholder={selectedCustomer ? `Đang chọn: ${selectedCustomer.code} - ${selectedCustomer.name} (Nhập để tìm đại lý khác...)` : 'Nhập mã đại lý (VD: DL-0001) hoặc tên công ty để tìm kiếm...'}
+                    className="w-full h-11 pl-10 pr-10 text-xs sm:text-sm border border-slate-200 rounded-xl bg-white hover:border-slate-300 focus:bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all shadow-2xs font-medium"
+                  />
+                  {customerSearchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerSearchTerm('');
+                        searchInputRef.current?.focus();
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                      title="Xóa từ khóa tìm kiếm"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Nút bấm Tìm kiếm / Mở danh sách đại lý */}
+                <button
+                  type="button"
+                  id="customer-search-button"
+                  onClick={() => {
                     setIsCustomerDropdownOpen((prev) => !prev);
-                    setCustomerSearchTerm('');
-                  }
-                }}
-                disabled={isLoadingCustomers}
-                className={`w-full h-11 px-3.5 text-left text-xs sm:text-sm border rounded-xl bg-slate-50/60 hover:bg-white focus:bg-white flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs ${
-                  isCustomerDropdownOpen
-                    ? 'border-indigo-500 ring-2 ring-indigo-100 bg-white'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <Building2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                  {selectedCustomer ? (
-                    <span className="font-semibold text-slate-800 truncate">
-                      <span className="font-mono text-indigo-700 mr-1.5">{selectedCustomer.code}</span>
-                      - {selectedCustomer.name}
-                    </span>
-                  ) : (
-                    <span className="text-slate-400">
-                      {isLoadingCustomers ? 'Đang tải danh sách đại lý...' : '-- Chọn đại lý đặt hàng (có thể tìm kiếm nhanh) --'}
-                    </span>
-                  )}
-                </div>
+                    if (!isCustomerDropdownOpen) {
+                      searchInputRef.current?.focus();
+                    }
+                  }}
+                  className={`h-11 px-4 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-xs shrink-0 ${
+                    isCustomerDropdownOpen
+                      ? 'bg-indigo-700 text-white shadow-indigo-600/20'
+                      : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20'
+                  }`}
+                  title="Bấm để tìm kiếm và sổ danh sách đại lý"
+                >
+                  <Search className="w-4 h-4" />
+                  <span className="hidden sm:inline">Tìm kiếm</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isCustomerDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  {selectedCustomer && (
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getCustomerGroupBadge(selectedCustomer.group).badgeClass}`}>
-                      {getCustomerGroupBadge(selectedCustomer.group).label}
-                    </span>
-                  )}
-                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isCustomerDropdownOpen ? 'rotate-180 text-indigo-600' : ''}`} />
-                </div>
-              </button>
-
-              {/* Menu Dropdown tích hợp thanh tìm kiếm trực tiếp */}
+              {/* Menu Dropdown Select Option (Chỉ xuất hiện khi ấn tìm kiếm hoặc focus) */}
               {isCustomerDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                  {/* Ô tìm kiếm nhanh */}
-                  <div className="p-2.5 border-b border-slate-100 bg-slate-50/70 flex items-center gap-2">
-                    <Search className="w-4 h-4 text-indigo-500 shrink-0 ml-1" />
-                    <input
-                      autoFocus
-                      type="text"
-                      value={customerSearchTerm}
-                      onChange={(e) => setCustomerSearchTerm(e.target.value)}
-                      placeholder="Tìm nhanh theo mã hoặc tên đại lý..."
-                      className="w-full text-xs sm:text-sm bg-transparent outline-none text-slate-800 placeholder:text-slate-400"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    {customerSearchTerm && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCustomerSearchTerm('');
-                        }}
-                        className="p-1 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-                        title="Xóa tìm kiếm"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                <div className="absolute left-0 right-0 top-full mt-2 z-50 bg-white border border-slate-200/90 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                  {/* Header danh sách kết quả */}
+                  <div className="px-4 py-2.5 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-600">
+                      {customerSearchTerm ? (
+                        <>Kết quả tìm kiếm &quot;<strong className="text-indigo-600">{customerSearchTerm}</strong>&quot; ({filteredCustomers.length})</>
+                      ) : (
+                        <>Danh sách đại lý khả dụng ({customers.length})</>
+                      )}
+                    </span>
+                    <span className="text-[11px] text-slate-400 hidden sm:inline">Nhấp vào dòng để chọn • Nhấn Esc để đóng</span>
                   </div>
 
-                  {/* Danh sách đại lý đã lọc */}
-                  <div className="max-h-60 overflow-y-auto divide-y divide-slate-100/80">
+                  {/* Danh sách các Option đại lý được thiết kế tối ưu, thoáng và dễ nhìn */}
+                  <div className="max-h-72 overflow-y-auto divide-y divide-slate-100/90 scrollbar-thin">
                     {filteredCustomers.length === 0 ? (
-                      <div className="py-8 px-4 text-center text-xs text-slate-400">
-                        Không tìm thấy đại lý nào phù hợp với &quot;<strong className="text-slate-600">{customerSearchTerm}</strong>&quot;
+                      <div className="py-10 px-4 text-center">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-2 text-slate-400">
+                          <Search className="w-5 h-5" />
+                        </div>
+                        <p className="text-xs font-bold text-slate-700">Không tìm thấy đại lý phù hợp</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Vui lòng kiểm tra lại mã hoặc tên đại lý cần tìm</p>
                       </div>
                     ) : (
                       filteredCustomers.map((c) => {
@@ -1491,102 +1506,134 @@ export const CreateOrderPage: React.FC = () => {
                               setIsCustomerDropdownOpen(false);
                               setCustomerSearchTerm('');
                             }}
-                            className={`px-3.5 py-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                            className={`px-4 py-3 flex items-start sm:items-center justify-between gap-3 cursor-pointer transition-all ${
                               isSelected
-                                ? 'bg-indigo-50/90 text-indigo-900 font-medium'
-                                : 'hover:bg-slate-50 text-slate-700'
+                                ? 'bg-indigo-50/90 border-l-4 border-l-indigo-600 text-indigo-950 font-medium'
+                                : 'hover:bg-slate-50/90 hover:border-l-4 hover:border-l-indigo-400 text-slate-700'
                             }`}
                           >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs font-bold text-indigo-700 shrink-0 bg-indigo-50 px-1.5 py-0.5 rounded">
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/70 shrink-0">
                                   {c.code}
                                 </span>
-                                <span className="text-xs sm:text-sm font-semibold truncate" title={c.name}>
+                                <span className="text-xs sm:text-sm font-bold text-slate-900 truncate" title={c.name}>
                                   {c.name}
                                 </span>
                               </div>
                               {c.address && (
-                                <p className="text-[11px] text-slate-400 truncate mt-0.5 ml-0.5">{c.address}</p>
+                                <div className="flex items-center gap-1.5 text-[11px] text-slate-500 truncate">
+                                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                  <span className="truncate">{c.address}</span>
+                                </div>
                               )}
                             </div>
 
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${groupBadge.badgeClass}`}>
+                            <div className="flex items-center gap-2 shrink-0 pt-0.5 sm:pt-0">
+                              <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold shadow-2xs ${groupBadge.badgeClass}`}>
                                 {groupBadge.label}
                               </span>
-                              {isSelected && <Check className="w-4 h-4 text-indigo-600" />}
+                              {isSelected && (
+                                <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                  <Check className="w-3.5 h-3.5" />
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
                       })
                     )}
                   </div>
-
-                  {/* Footer nhỏ */}
-                  <div className="px-3.5 py-1.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>{filteredCustomers.length} đại lý phù hợp</span>
-                    <span className="hidden sm:inline">Nhấn Esc để đóng</span>
-                  </div>
                 </div>
               )}
             </div>
 
-            {/* Bảng tóm tắt Chính sách giá & Công nợ của Đại lý đã chọn */}
+            {/* Bảng tóm tắt Chính sách giá & Công nợ của Đại lý đã chọn (Được thiết kế lại sang trọng, tối ưu và dễ nhìn) */}
             {selectedCustomer ? (
-              <div className="p-3.5 bg-slate-50/80 border border-slate-200/90 rounded-xl text-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1 min-w-0 w-full">
-                  <div className="space-y-0.5 min-w-0">
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Đại lý đặt hàng</div>
-                    <div className="font-bold text-slate-900 text-sm truncate" title={selectedCustomer.name}>{selectedCustomer.name}</div>
-                    <div className="text-slate-500 font-mono text-xs">{selectedCustomer.code}</div>
-                  </div>
-
-                  <div className="space-y-0.5 min-w-0">
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Chính sách áp dụng</div>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className="font-bold text-slate-900 truncate">
-                        {isLoadingPriceList ? 'Đang tải...' : effectivePriceList ? effectivePriceList.name : (priceListError || 'Bảng giá chuẩn')}
-                      </span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${getCustomerGroupBadge(selectedCustomer.group).badgeClass}`}>
-                        {getCustomerGroupBadge(selectedCustomer.group).label}
-                      </span>
+              <div className="p-4 bg-gradient-to-br from-white via-indigo-50/20 to-slate-50/60 border border-indigo-100 rounded-2xl shadow-xs transition-all text-xs">
+                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                  {/* Lưới 3 cột thông tin chính */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1 min-w-0 w-full">
+                    {/* Cột 1: Đại lý */}
+                    <div className="space-y-1 min-w-0">
+                      <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5" />
+                        Đại lý đặt hàng
+                      </div>
+                      <div className="font-extrabold text-slate-900 text-sm truncate" title={selectedCustomer.name}>
+                        {selectedCustomer.name}
+                      </div>
+                      <div className="text-slate-500 font-mono text-xs flex items-center gap-2">
+                        <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-semibold">{selectedCustomer.code}</span>
+                        {selectedCustomer.phone && <span className="text-[11px] text-slate-400">• {selectedCustomer.phone}</span>}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-0.5 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                        <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
-                        Hạn mức công nợ
-                      </span>
-                      {debtStatus && (
-                        <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full ${debtStatus.canCreateOrder ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                          {debtStatus.canCreateOrder ? 'Hợp lệ' : 'Bị khóa nợ'}
+                    {/* Cột 2: Chính sách giá */}
+                    <div className="space-y-1 min-w-0">
+                      <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5" />
+                        Chính sách áp dụng
+                      </div>
+                      <div className="font-bold text-slate-900 text-sm truncate mt-0.5" title={effectivePriceList?.name || 'Bảng giá chuẩn'}>
+                        {isLoadingPriceList ? 'Đang tải...' : effectivePriceList ? effectivePriceList.name : (priceListError || 'Bảng giá chuẩn')}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold ${getCustomerGroupBadge(selectedCustomer.group).badgeClass}`}>
+                          {getCustomerGroupBadge(selectedCustomer.group).label}
                         </span>
+                      </div>
+                    </div>
+
+                    {/* Cột 3: Công nợ */}
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
+                          <CreditCard className="w-3.5 h-3.5" />
+                          Hạn mức công nợ
+                        </span>
+                        {debtStatus && (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${debtStatus.canCreateOrder ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                            {debtStatus.canCreateOrder ? 'Hợp lệ' : 'Bị khóa nợ'}
+                          </span>
+                        )}
+                      </div>
+                      {debtStatus ? (
+                        <div className="flex items-center gap-4 text-xs pt-1 flex-wrap">
+                          <div>
+                            <span className="text-slate-500 text-[11px]">Dư nợ: </span>
+                            <span className="font-bold text-slate-900">{formatCurrency(debtStatus.currentDebt)}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 text-[11px]">Khả dụng: </span>
+                            <span className="font-extrabold text-emerald-700">{formatCurrency(debtStatus.availableLimit)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-slate-400 text-xs py-1">Đang tải trạng thái công nợ...</div>
                       )}
                     </div>
-                    {debtStatus ? (
-                      <div className="flex items-center gap-3 text-xs pt-1 flex-wrap">
-                        <div>
-                          <span className="text-slate-500 text-[11px]">Dư nợ: </span>
-                          <span className="font-bold text-slate-900">{formatCurrency(debtStatus.currentDebt)}</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500 text-[11px]">Khả dụng: </span>
-                          <span className="font-bold text-emerald-700">{formatCurrency(debtStatus.availableLimit)}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-slate-400 text-xs py-1">Đang tải trạng thái công nợ...</div>
-                    )}
                   </div>
+
+                  {/* Nút Đổi đại lý nhanh */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomerDropdownOpen(true);
+                      searchInputRef.current?.focus();
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200/90 rounded-xl transition-all cursor-pointer shrink-0 shadow-2xs hover:shadow-xs"
+                    title="Chọn đại lý khác"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Đổi đại lý</span>
+                  </button>
                 </div>
               </div>
             ) : (
-              <div className="py-2.5 px-3 text-slate-500 text-xs bg-slate-50/60 border border-dashed border-slate-200 rounded-lg flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
-                <span>Vui lòng chọn đại lý từ danh sách để áp dụng bảng giá và kiểm tra hạn mức công nợ.</span>
+              <div className="py-3 px-4 text-slate-500 text-xs bg-slate-50/70 border border-dashed border-slate-200 rounded-xl flex items-center gap-2.5">
+                <Building2 className="w-4 h-4 text-indigo-400 shrink-0" />
+                <span>Vui lòng nhập tên hoặc mã đại lý ở trên và nhấn <strong>Tìm kiếm</strong> để chọn đại lý đặt hàng.</span>
               </div>
             )}
           </div>
