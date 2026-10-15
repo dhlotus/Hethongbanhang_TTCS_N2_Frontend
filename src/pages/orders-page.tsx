@@ -120,14 +120,26 @@ const ORDER_STATUS_CONFIG: Record<
     textClass: 'text-purple-700',
     icon: <Package className="w-3 h-3" />,
   },
-  SHIPPED: {
+  DISPATCHED: {
     label: 'Đã xuất kho',
     bgClass: 'bg-cyan-50 border border-cyan-200/70',
     textClass: 'text-cyan-700',
+    icon: <Package className="w-3 h-3" />,
+  },
+  SHIPPED: {
+    label: 'Đang giao',
+    bgClass: 'bg-indigo-50 border border-indigo-200/70',
+    textClass: 'text-indigo-700',
     icon: <Truck className="w-3 h-3" />,
   },
   DELIVERED: {
     label: 'Giao thành công',
+    bgClass: 'bg-emerald-50 border border-emerald-200/70',
+    textClass: 'text-emerald-700',
+    icon: <CheckCircle2 className="w-3 h-3" />,
+  },
+  COMPLETED: {
+    label: 'Hoàn tất',
     bgClass: 'bg-emerald-50 border border-emerald-200/70',
     textClass: 'text-emerald-700',
     icon: <CheckCircle2 className="w-3 h-3" />,

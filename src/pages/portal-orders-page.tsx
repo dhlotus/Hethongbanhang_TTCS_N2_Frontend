@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   ShoppingCart,
@@ -80,6 +80,12 @@ const STATUS_CONFIG: Record<
     textClass: 'text-purple-800',
     icon: <Package className="w-3 h-3" />,
   },
+  DISPATCHED: {
+    label: 'Đã xuất kho',
+    bgClass: 'bg-cyan-50 ring-1 ring-cyan-300',
+    textClass: 'text-cyan-800',
+    icon: <Package className="w-3 h-3" />,
+  },
   SHIPPED: {
     label: 'Đang giao',
     bgClass: 'bg-indigo-50 ring-1 ring-indigo-300',
@@ -88,6 +94,12 @@ const STATUS_CONFIG: Record<
   },
   DELIVERED: {
     label: 'Giao thành công',
+    bgClass: 'bg-emerald-50 ring-1 ring-emerald-300',
+    textClass: 'text-emerald-800',
+    icon: <CheckCircle2 className="w-3 h-3" />,
+  },
+  COMPLETED: {
+    label: 'Hoàn tất đơn hàng',
     bgClass: 'bg-emerald-50 ring-1 ring-emerald-300',
     textClass: 'text-emerald-800',
     icon: <CheckCircle2 className="w-3 h-3" />,
@@ -136,6 +148,41 @@ export const PortalOrdersPage: React.FC = () => {
     return () => window.removeEventListener('click', handleGlobalClick);
   }, []);
 
+  // State lưu số lượng tổng quát của từng trạng thái để KPI cards và tabs luôn đồng bộ
+  const [statusCounts, setStatusCounts] = useState<{
+    ALL: number;
+    APPROVED: number;
+    PROCESSING: number;
+    DISPATCHED: number;
+    SHIPPED: number;
+    DELIVERED: number;
+  }>({
+    ALL: 0,
+    APPROVED: 0,
+    PROCESSING: 0,
+    DISPATCHED: 0,
+    SHIPPED: 0,
+    DELIVERED: 0,
+  });
+
+  // Tải thống kê số lượng toàn bộ đơn hàng của đại lý
+  const loadStatusCounts = useCallback(async () => {
+    try {
+      const res = await ordersService.getMyOrders({ limit: 500 });
+      const allOrders = res.data || [];
+      setStatusCounts({
+        ALL: res.total ?? allOrders.length,
+        APPROVED: allOrders.filter((o) => o.status === 'APPROVED').length,
+        PROCESSING: allOrders.filter((o) => o.status === 'PROCESSING').length,
+        DISPATCHED: allOrders.filter((o) => o.status === 'DISPATCHED').length,
+        SHIPPED: allOrders.filter((o) => o.status === 'SHIPPED').length,
+        DELIVERED: allOrders.filter((o) => o.status === 'DELIVERED' || o.status === 'COMPLETED').length,
+      });
+    } catch (e) {
+      console.warn('Lỗi tải thống kê trạng thái:', e);
+    }
+  }, []);
+
   // Tải danh sách đơn hàng của đại lý (SN-170: Chỉ thấy đơn của chính mình)
   const loadOrders = useCallback(async () => {
     setIsLoading(true);
@@ -167,128 +214,207 @@ export const PortalOrdersPage: React.FC = () => {
       ? 'Theo dõi đơn hàng & Giao vận | Cổng Đại Lý LOHA SALES'
       : 'Cổng Đơn hàng Đại lý | LOHA SALES';
     void loadOrders();
-  }, [loadOrders, isTrackingRoute]);
-
-  // Thống kê nhanh theo trạng thái
-  const summaryMetrics = useMemo(() => {
-    const totalCount = orders.length;
-    const shippingCount = orders.filter((o) => o.status === 'SHIPPED').length;
-    const deliveredCount = orders.filter((o) => o.status === 'DELIVERED').length;
-    const shortDeliveryCount = orders.filter(
-      (o) =>
-        o.isShortDelivery ||
-        o.lines.some((l) => l.deliveredQuantity !== undefined && l.deliveredQuantity < l.quantity),
-    ).length;
-
-    const nearestDelivery = orders
-      .filter((o) => o.status === 'SHIPPED' && o.deliveryDate)
-      .sort(
-        (a, b) =>
-          new Date(a.deliveryDate || '').getTime() - new Date(b.deliveryDate || '').getTime(),
-      )[0]?.deliveryDate;
-
-    return {
-      totalCount,
-      shippingCount,
-      deliveredCount,
-      shortDeliveryCount,
-      nearestDelivery,
-    };
-  }, [orders]);
+    void loadStatusCounts();
+  }, [loadOrders, loadStatusCounts, isTrackingRoute]);
 
   // Handler khi reorder thành công
   const handleReorderSuccess = (_newOrder: Order) => {
     void loadOrders();
+    void loadStatusCounts();
   };
 
   return (
     <div className="space-y-6 pb-12">
 
       {/* =================================================================== */}
-      {/* 2. Thống kê nhanh các chỉ số (KPI Cards)                             */}
+      {/* 2. Thống kê nhanh các chỉ số (KPI Cards - Đồng bộ 6 trạng thái)     */}
       {/* =================================================================== */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        {/* Tổng đơn hàng */}
-        <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs hover:shadow-xs transition-shadow">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+        {/* 1. Tất cả đơn hàng */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('ALL');
+            setPage(1);
+          }}
+          className={`text-left rounded-xl border p-4 shadow-2xs hover:shadow-xs transition-all cursor-pointer ${
+            activeTab === 'ALL'
+              ? 'border-indigo-600 ring-2 ring-indigo-500/20 bg-indigo-50/40 shadow-xs'
+              : 'border-slate-200/90 bg-white hover:border-slate-300'
+          }`}
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Tổng số đơn
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Tất cả đơn
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-              <ShoppingCart className="w-4 h-4" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+              <ShoppingCart className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="mt-2 text-2xl font-extrabold text-slate-900">{total}</div>
-        </div>
+          <div className="mt-2 text-2xl font-extrabold text-slate-900">{statusCounts.ALL}</div>
+        </button>
 
-        {/* Đang vận chuyển */}
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 shadow-2xs hover:shadow-xs transition-shadow">
+        {/* 2. Đã duyệt */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('APPROVED');
+            setPage(1);
+          }}
+          className={`text-left rounded-xl border p-4 shadow-2xs hover:shadow-xs transition-all cursor-pointer ${
+            activeTab === 'APPROVED'
+              ? 'border-blue-600 ring-2 ring-blue-500/20 bg-blue-50/50 shadow-xs'
+              : 'border-blue-200/80 bg-blue-50/20 hover:border-blue-300'
+          }`}
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">
+              Đã duyệt
+            </span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-extrabold text-blue-900">{statusCounts.APPROVED}</div>
+        </button>
+
+        {/* 3. Đang soạn hàng */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('PROCESSING');
+            setPage(1);
+          }}
+          className={`text-left rounded-xl border p-4 shadow-2xs hover:shadow-xs transition-all cursor-pointer ${
+            activeTab === 'PROCESSING'
+              ? 'border-purple-600 ring-2 ring-purple-500/20 bg-purple-50/50 shadow-xs'
+              : 'border-purple-200/80 bg-purple-50/20 hover:border-purple-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wider">
+              Đang soạn
+            </span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-100 text-purple-700">
+              <Package className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-extrabold text-purple-900">{statusCounts.PROCESSING}</div>
+        </button>
+
+        {/* 4. Đã xuất kho */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('DISPATCHED');
+            setPage(1);
+          }}
+          className={`text-left rounded-xl border p-4 shadow-2xs hover:shadow-xs transition-all cursor-pointer ${
+            activeTab === 'DISPATCHED'
+              ? 'border-cyan-600 ring-2 ring-cyan-500/20 bg-cyan-50/50 shadow-xs'
+              : 'border-cyan-200/80 bg-cyan-50/20 hover:border-cyan-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-cyan-700 uppercase tracking-wider">
+              Đã xuất kho
+            </span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-100 text-cyan-700">
+              <Package className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-extrabold text-cyan-900">{statusCounts.DISPATCHED}</div>
+        </button>
+
+        {/* 5. Đang vận chuyển */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('SHIPPED');
+            setPage(1);
+          }}
+          className={`text-left rounded-xl border p-4 shadow-2xs hover:shadow-xs transition-all cursor-pointer ${
+            activeTab === 'SHIPPED'
+              ? 'border-indigo-600 ring-2 ring-indigo-500/20 bg-indigo-50/50 shadow-xs'
+              : 'border-indigo-200/80 bg-indigo-50/20 hover:border-indigo-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">
               Đang giao tới
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
-              <Truck className="w-4 h-4" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
+              <Truck className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="mt-2 text-2xl font-extrabold text-indigo-900">
-            {summaryMetrics.shippingCount}
-          </div>
-        </div>
+          <div className="mt-2 text-2xl font-extrabold text-indigo-900">{statusCounts.SHIPPED}</div>
+        </button>
 
-        {/* Đã giao thành công */}
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 shadow-2xs hover:shadow-xs transition-shadow">
+        {/* 6. Giao thành công */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('DELIVERED');
+            setPage(1);
+          }}
+          className={`text-left rounded-xl border p-4 shadow-2xs hover:shadow-xs transition-all cursor-pointer ${
+            activeTab === 'DELIVERED'
+              ? 'border-emerald-600 ring-2 ring-emerald-500/20 bg-emerald-50/50 shadow-xs'
+              : 'border-emerald-200/80 bg-emerald-50/20 hover:border-emerald-300'
+          }`}
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
-              Giao hoàn tất
+            <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">
+              Giao thành công
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
-              <CheckCircle2 className="w-4 h-4" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+              <CheckCircle2 className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="mt-2 text-2xl font-extrabold text-emerald-900">
-            {summaryMetrics.deliveredCount}
-          </div>
-        </div>
+          <div className="mt-2 text-2xl font-extrabold text-emerald-900">{statusCounts.DELIVERED}</div>
+        </button>
       </div>
 
       {/* =================================================================== */}
       {/* 3. Thanh tìm kiếm & Tabs lọc trạng thái                              */}
       {/* =================================================================== */}
-      <div className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-xs space-y-4">
+      <div className="rounded-xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Ô tìm kiếm */}
+          {/* Ô tìm kiếm chuẩn UI_GUIDELINES */}
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Tìm theo mã đơn (DH...), tên sản phẩm, người nhận..."
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm text-slate-800 bg-white placeholder-slate-400 focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all"
+              className="w-full h-[38px] pl-9 pr-12 text-xs border border-slate-200 rounded-lg bg-slate-50/60 hover:bg-white focus:bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400 shadow-2xs"
             />
             {searchTerm && (
               <button
                 type="button"
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-medium cursor-pointer"
               >
                 Xóa
               </button>
             )}
           </div>
 
-          {/* Counter & Nút Làm mới */}
+          {/* Counter & Nút Làm mới chuẩn UI_GUIDELINES */}
           <div className="flex items-center gap-2.5 text-xs text-slate-500 justify-between sm:justify-end">
             <span>
               Hiển thị <strong className="font-bold text-slate-800">{orders.length}</strong> đơn hàng
             </span>
             <button
               type="button"
-              onClick={() => void loadOrders()}
+              onClick={() => {
+                void loadOrders();
+                void loadStatusCounts();
+              }}
               disabled={isLoading}
               title="Làm mới danh sách đơn hàng"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200/80 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200/80 shadow-2xs disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-all shadow-2xs cursor-pointer disabled:opacity-50"
             >
               <RefreshCw
                 className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`}
@@ -298,14 +424,15 @@ export const PortalOrdersPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Tabs lọc nhanh */}
+        {/* Tabs lọc nhanh chuẩn UI_GUIDELINES */}
         <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
           {[
-            { id: 'ALL', label: 'Tất cả đơn hàng' },
-            { id: 'PENDING', label: 'Chờ xét duyệt' },
-            { id: 'PROCESSING', label: 'Đang soạn hàng' },
-            { id: 'SHIPPED', label: 'Đang vận chuyển' },
-            { id: 'DELIVERED', label: 'Giao thành công' },
+            { id: 'ALL', label: 'Tất cả đơn hàng', count: statusCounts.ALL },
+            { id: 'APPROVED', label: 'Đã duyệt', count: statusCounts.APPROVED },
+            { id: 'PROCESSING', label: 'Đang soạn hàng', count: statusCounts.PROCESSING },
+            { id: 'DISPATCHED', label: 'Đã xuất kho', count: statusCounts.DISPATCHED },
+            { id: 'SHIPPED', label: 'Đang vận chuyển', count: statusCounts.SHIPPED },
+            { id: 'DELIVERED', label: 'Giao thành công', count: statusCounts.DELIVERED },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -314,13 +441,22 @@ export const PortalOrdersPage: React.FC = () => {
                 setActiveTab(tab.id);
                 setPage(1);
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 h-[34px] px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === tab.id
-                  ? 'bg-[var(--color-primary)] text-white shadow-2xs'
-                  : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                  ? 'bg-indigo-600 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900'
               }`}
             >
-              {tab.label}
+              <span>{tab.label}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  activeTab === tab.id
+                    ? 'bg-white/20 text-white'
+                    : 'bg-slate-200 text-slate-600'
+                }`}
+              >
+                {tab.count}
+              </span>
             </button>
           ))}
         </div>
@@ -329,16 +465,16 @@ export const PortalOrdersPage: React.FC = () => {
       {/* =================================================================== */}
       {/* 4. Danh sách đơn hàng: Responsive Table & Mobile Cards              */}
       {/* =================================================================== */}
-      <div className="rounded-2xl border border-slate-200/90 bg-white overflow-hidden shadow-xs">
+      <div className="rounded-xl border border-slate-200/90 bg-white overflow-hidden shadow-xs">
         {isLoading ? (
           <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-3">
-            <RefreshCw className="w-8 h-8 animate-spin text-[var(--color-primary)]" />
+            <RefreshCw className="w-8 h-8 animate-spin text-indigo-600" />
             <p className="text-sm font-medium">Đang tải danh sách đơn hàng của bạn...</p>
           </div>
         ) : orders.length === 0 ? (
           <div className="py-16 text-center space-y-3">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 mx-auto">
-              <ShoppingCart className="w-7 h-7" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400 mx-auto">
+              <ShoppingCart className="w-6 h-6" />
             </div>
             <h3 className="text-base font-bold text-slate-800">Không tìm thấy đơn hàng nào</h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
@@ -385,8 +521,8 @@ export const PortalOrdersPage: React.FC = () => {
                         className="hover:bg-slate-50/70 transition-colors group cursor-pointer"
                         onClick={() => setSelectedOrderForDetail(order)}
                       >
-                        <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
-                          <span className="text-[var(--color-primary)] group-hover:underline">
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span className="font-mono text-xs font-semibold text-indigo-700 bg-indigo-50/80 px-2.5 py-1 rounded-md border border-indigo-200/60 group-hover:bg-indigo-100/80 transition-colors">
                             {order.orderCode || order.id}
                           </span>
                         </td>
@@ -415,18 +551,51 @@ export const PortalOrdersPage: React.FC = () => {
                         </td>
                         <td className="py-3.5 px-4 text-center">
                           {isShort ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                              <AlertTriangle className="w-3 h-3" />
-                              Giao thiếu hàng
-                            </span>
-                          ) : order.status === 'DELIVERED' ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700">
-                              <CheckCircle2 className="w-3 h-3" />
-                              Đủ 100%
+                            <div className="inline-flex flex-col items-center gap-0.5">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                                <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                Giao thiếu hàng
+                              </span>
+                              <span className="text-[10px] text-rose-700 font-mono">
+                                Thực giao: {order.lines.reduce((s, l) => s + (l.deliveredQuantity ?? 0), 0)} / {order.lines.reduce((s, l) => s + l.quantity, 0)}
+                              </span>
+                            </div>
+                          ) : order.status === 'DELIVERED' || order.status === 'COMPLETED' ? (
+                            <div className="inline-flex flex-col items-center gap-0.5">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                Đủ 100%
+                              </span>
+                              <span className="text-[10px] text-slate-500 font-mono">
+                                {order.lines.reduce((s, l) => s + l.quantity, 0)} sản phẩm
+                              </span>
+                            </div>
+                          ) : order.status === 'SHIPPED' ? (
+                            <div className="inline-flex flex-col items-center gap-0.5">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                <Truck className="w-3 h-3 text-indigo-600 animate-pulse" />
+                                Đang giao xe
+                              </span>
+                              <span className="text-[10px] text-indigo-600 font-medium">
+                                Xe tới: {order.estimatedDeliveryWindow || (order.deliveryDate ? formatDate(order.deliveryDate) : 'Hôm nay')}
+                              </span>
+                            </div>
+                          ) : order.status === 'DISPATCHED' ? (
+                            <div className="inline-flex flex-col items-center gap-0.5">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200">
+                                <Package className="w-3 h-3 text-cyan-600" />
+                                Đã xuất kho
+                              </span>
+                              <span className="text-[10px] text-cyan-600">Bàn giao xe tải</span>
+                            </div>
+                          ) : order.status === 'PROCESSING' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                              <Package className="w-3 h-3 text-purple-600" />
+                              Đang soạn hàng
                             </span>
                           ) : (
                             <span className="text-slate-400 text-xs italic">
-                              {order.status === 'SHIPPED' ? 'Đang vận chuyển' : 'Chờ xuất kho'}
+                              {order.status === 'APPROVED' ? 'Đã duyệt đơn' : 'Chờ xét duyệt'}
                             </span>
                           )}
                         </td>
@@ -573,7 +742,7 @@ export const PortalOrdersPage: React.FC = () => {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/50">
             <span className="text-xs text-slate-500">
-              Trang {page} / {totalPages}
+              Trang {page} / {totalPages} (Tổng số {total} đơn)
             </span>
             <div className="flex items-center gap-1.5">
               <Button
