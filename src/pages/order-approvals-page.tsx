@@ -413,32 +413,15 @@ export const OrderApprovalsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* ── TIÊU ĐỀ TRANG & NÚT LÀM MỚI ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
-              <ClipboardCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                Phê duyệt đơn hàng
-              </h1>
-            </div>
-          </div>
+      {/* ── TIÊU ĐỀ TRANG (BỎ NÚT LÀM MỚI) ── */}
+      <div className="flex items-center gap-2.5">
+        <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
+          <ClipboardCheck className="w-5 h-5" />
         </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setRefreshKey((k) => k + 1)}
-            disabled={loading}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-            title="Làm mới danh sách chờ duyệt"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
-            <span>Làm mới</span>
-          </button>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+            Phê duyệt đơn hàng
+          </h1>
         </div>
       </div>
 
@@ -723,40 +706,46 @@ export const OrderApprovalsPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Trạng thái & Cảnh báo tồn kho trước khi duyệt */}
+                      {/* Trạng thái & Cảnh báo tồn kho trước khi duyệt (Kích thước badge đồng bộ w-[5.75rem] h-6 rounded-full thẳng hàng tuyệt đối) */}
                       <td className="px-3 py-3.5 text-center whitespace-nowrap">
                         {isPending ? (
-                          <div className="inline-flex flex-col items-center gap-1">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                              <Clock className="w-3 h-3" /> Chờ duyệt
+                          <div className="inline-flex flex-col items-center gap-1.5">
+                            <span className="w-[5.75rem] h-6 inline-flex items-center justify-center gap-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80 shadow-2xs">
+                              <Clock className="w-3 h-3 shrink-0" />
+                              <span>Chờ duyệt</span>
                             </span>
                             {stockCheck.isSufficient ? (
                               <span
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                className="w-[5.75rem] h-6 inline-flex items-center justify-center gap-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs"
                                 title="Kho đủ hàng khả dụng để đáp ứng toàn bộ đơn này"
                               >
-                                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" /> Đủ tồn kho
+                                <CheckCircle2 className="w-3 h-3 shrink-0 text-emerald-600" />
+                                <span>Đủ tồn kho</span>
                               </span>
                             ) : (
                               <span
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
+                                className="w-[5.75rem] h-6 inline-flex items-center justify-center gap-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs"
                                 title={`Không đủ tồn khả dụng: ${stockCheck.outOfStockLines.map((l) => `${l.productName} (còn ${l.available}, cần ${l.required})`).join(', ')}`}
                               >
-                                <AlertCircle className="w-2.5 h-2.5 text-rose-600" /> Thiếu tồn
+                                <AlertCircle className="w-3 h-3 shrink-0 text-rose-600" />
+                                <span>Thiếu tồn</span>
                               </span>
                             )}
                           </div>
                         ) : order.status === 'APPROVED' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                            <CheckCircle2 className="w-3 h-3" /> Đã duyệt
+                          <span className="w-[5.75rem] h-6 inline-flex items-center justify-center gap-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
+                            <CheckCircle2 className="w-3 h-3 shrink-0 text-emerald-600" />
+                            <span>Đã duyệt</span>
                           </span>
                         ) : order.status === 'REJECTED' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200/60">
-                            <XCircle className="w-3 h-3" /> Từ chối
+                          <span className="w-[5.75rem] h-6 inline-flex items-center justify-center gap-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs">
+                            <XCircle className="w-3 h-3 shrink-0 text-rose-600" />
+                            <span>Từ chối</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200/60">
-                            {order.status === 'RETURNED_FOR_UPDATE' ? 'Trả lại sửa' : order.status}
+                          <span className="w-[5.75rem] h-6 inline-flex items-center justify-center gap-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80 shadow-2xs">
+                            <CornerUpLeft className="w-3 h-3 shrink-0 text-amber-600" />
+                            <span>Trả lại sửa</span>
                           </span>
                         )}
                       </td>
@@ -1036,13 +1025,13 @@ export const OrderApprovalsPage: React.FC = () => {
                     )}
                   </div>
                 </div>
-              ) : (
-                /* Với đơn trong Lịch sử đã xét duyệt: chỉ hiển thị thông tin trạng thái, đóng modal bằng nút X góc trên */
-                <div className="flex items-center gap-2 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-700">
-                  <span className="font-semibold text-slate-500">Trạng thái xét duyệt:</span>
-                  {renderStatusBadge(reviewOrder.status, false)}
+              ) : (reviewOrder.status === 'REJECTED' || reviewOrder.status === 'RETURNED_FOR_UPDATE') && (reviewOrder.note || reviewOrder.warningNote) ? (
+                /* Với đơn bị từ chối / trả lại: chỉ hiển thị lý do nếu có ghi chú, không lặp lại chữ đã duyệt */
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900">
+                  <span className="font-semibold">Lý do yêu cầu sửa đổi: </span>
+                  <span>{reviewOrder.note || reviewOrder.warningNote}</span>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         </div>,
