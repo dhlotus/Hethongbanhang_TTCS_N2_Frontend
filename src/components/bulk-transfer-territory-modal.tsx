@@ -4,7 +4,6 @@ import {
   ArrowRightLeft,
   AlertTriangle,
   Loader2,
-  Building,
 } from 'lucide-react';
 import { customersService } from '../services/customers.service';
 import { toast } from './toast';

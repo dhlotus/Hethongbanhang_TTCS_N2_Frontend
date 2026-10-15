@@ -6,7 +6,7 @@ import {
   ArrowRight,
   Calendar,
   User,
-  RefreshCw,
+  Loader2,
   FileText,
 } from 'lucide-react';
 import { customersService, getStoredHistory } from '../services/customer.service';
@@ -138,20 +138,11 @@ export const AssignmentHistoryModal: React.FC<AssignmentHistoryModalProps> = ({
                 Lịch sử Chuyển giao & Phân công Địa bàn
               </h2>
               <p className="text-xs text-slate-500">
-                Toàn bộ dữ liệu bàn giao khách hàng đại lý và phân công NVKD phụ trách (SN-35)
+                Toàn bộ dữ liệu bàn giao khách hàng đại lý và phân công NVKD phụ trách
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={loadHistory}
-              disabled={loading}
-              className="flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-              title="Tải lại lịch sử"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-600' : ''}`} />
-            </button>
             <button
               type="button"
               onClick={onClose}
@@ -215,7 +206,7 @@ export const AssignmentHistoryModal: React.FC<AssignmentHistoryModalProps> = ({
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/50">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-              <RefreshCw className="w-8 h-8 animate-spin text-indigo-600 mb-3" />
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-3" />
               <p className="text-sm">Đang tải dữ liệu lịch sử...</p>
             </div>
           ) : filteredHistories.length === 0 ? (
