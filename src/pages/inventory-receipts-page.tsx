@@ -28,7 +28,7 @@ export const InventoryReceiptsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
   const [searchInput, setSearchInput] = useState("");
@@ -53,20 +53,22 @@ export const InventoryReceiptsPage: React.FC = () => {
       setLoading(true);
       const res = await inventoryReceiptsService.findAll({
         page,
-        limit,
+        limit: pageSize,
         search: searchTerm || undefined,
         status: selectedStatus !== "ALL" ? selectedStatus : undefined,
       });
       setReceipts(res.data || []);
-      setTotal(res.total || 0);
-      setTotalPages(res.totalPages || 1);
+      const totalCount = res.total || 0;
+      setTotal(totalCount);
+      const computedTotalPages = Math.ceil(totalCount / pageSize) || res.totalPages || 1;
+      setTotalPages(computedTotalPages);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       showToast("error", err.response?.data?.message || "Lỗi khi tải danh sách phiếu nhập");
     } finally {
       setLoading(false);
     }
-  }, [page, limit, searchTerm, selectedStatus]);
+  }, [page, pageSize, searchTerm, selectedStatus]);
 
   useEffect(() => {
     fetchReceipts();
@@ -124,7 +126,7 @@ export const InventoryReceiptsPage: React.FC = () => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       {/* Tiêu đề & Nút tạo mới */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -133,7 +135,7 @@ export const InventoryReceiptsPage: React.FC = () => {
             Nhập kho từ Nhà cung cấp
           </h1>
           <p className="text-slate-500 text-sm mt-1">
-            Ghi nhận hàng về đúng lô và số lượng ngay khi xe dỡ hàng tại kho (SN-178)
+            Ghi nhận hàng về đúng lô và số lượng ngay khi xe dỡ hàng tại kho
           </p>
         </div>
         <button
@@ -295,17 +297,6 @@ export const InventoryReceiptsPage: React.FC = () => {
                               </button>
                             </>
                           )}
-
-                          {/* Phiếu đã xác nhận: Không sửa được, chỉ lập phiếu điều chỉnh */}
-                          {isConfirmed && (
-                            <button
-                              onClick={() => handleNavigateToAdjustment(r)}
-                              className="p-1.5 text-[#371cdb] hover:bg-[#eff2fe] rounded-lg transition-colors cursor-pointer flex items-center gap-1"
-                              title="Phiếu đã xác nhận - Bấm để lập phiếu điều chỉnh tồn kho"
-                            >
-                              <SlidersHorizontal className="w-4.5 h-4.5" />
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -321,11 +312,12 @@ export const InventoryReceiptsPage: React.FC = () => {
           currentPage={page}
           totalPages={totalPages}
           totalItems={total}
-          pageSize={limit}
+          pageSize={pageSize}
+          pageSizeOptions={[10, 20, 50]}
           itemLabel="phiếu nhập"
           onPageChange={setPage}
-          onPageSizeChange={(newLimit) => {
-            setLimit(newLimit);
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
             setPage(1);
           }}
         />
@@ -344,7 +336,7 @@ export const InventoryReceiptsPage: React.FC = () => {
       <ModalLayout
         isOpen={confirmModalOpen}
         onClose={() => setConfirmModalOpen(false)}
-        title="Xác nhận phiếu nhập kho (SN-178)"
+        title="Xác nhận phiếu nhập kho"
       >
         <div className="p-6 text-center space-y-4">
           <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
@@ -423,23 +415,11 @@ export const InventoryReceiptsPage: React.FC = () => {
                 <>
                   {/* Băng thông báo theo trạng thái */}
                   {selectedReceipt.status === 'CONFIRMED' ? (
-                    <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl flex items-center justify-between text-xs text-emerald-800">
-                      <div className="flex items-center gap-2">
-                        <Lock className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>
-                          <strong>Phiếu đã xác nhận:</strong> Không thể chỉnh sửa hoặc xóa. Để điều chỉnh số lượng tồn kho do thừa/thiếu, vui lòng lập <em>Phiếu điều chỉnh</em>.
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setDetailModalOpen(false);
-                          handleNavigateToAdjustment(selectedReceipt);
-                        }}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#371cdb] hover:bg-[#2d14b8] text-white font-medium rounded-lg text-xs transition-colors shrink-0 cursor-pointer shadow-2xs"
-                      >
-                        <SlidersHorizontal className="w-3.5 h-3.5" />
-                        Lập phiếu điều chỉnh
-                      </button>
+                    <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl flex items-center gap-2 text-xs text-emerald-800">
+                      <Lock className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>
+                        <strong>Phiếu đã xác nhận:</strong> Không thể chỉnh sửa hoặc xóa. Để điều chỉnh số lượng tồn kho do thừa/thiếu, vui lòng lập <em>Phiếu điều chỉnh</em>.
+                      </span>
                     </div>
                   ) : (
                     <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-center gap-2 text-xs text-amber-800">
