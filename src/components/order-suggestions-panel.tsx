@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Sparkles,
   RotateCcw,
   Plus,
   Check,
@@ -151,7 +150,6 @@ export const OrderSuggestionsPanel: React.FC<OrderSuggestionsPanelProps> = ({
       {/* Tiêu đề & Thu phóng */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-indigo-600" />
           <h4 className="text-sm font-bold text-slate-900">
             Gợi ý mặt hàng thường mua
           </h4>
@@ -242,9 +240,6 @@ export const OrderSuggestionsPanel: React.FC<OrderSuggestionsPanelProps> = ({
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-slate-800">
                         Mặt hàng khách lấy đều đặn ({data.suggestions.length} sản phẩm):
-                      </span>
-                      <span className="text-[11px] text-slate-400 hidden sm:inline">
-                        (Tự động gợi ý theo số lượng bình quân)
                       </span>
                     </div>
 

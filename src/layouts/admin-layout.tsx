@@ -71,7 +71,12 @@ export const AdminLayout: React.FC = () => {
   }, []);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-50/70 font-sans antialiased text-slate-900">
+    <div
+      style={{
+        '--sidebar-width': isSidebarCollapsed ? '5rem' : '18.25rem',
+      } as React.CSSProperties}
+      className="flex h-screen w-full overflow-hidden bg-slate-50/70 font-sans antialiased text-slate-900"
+    >
       {/* 1. Sidebar điều hướng liền mạch chuẩn Enterprise B2B */}
       <Sidebar
         isOpen={isMobileMenuOpen}

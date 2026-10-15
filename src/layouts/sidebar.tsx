@@ -329,7 +329,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* 1. Desktop Sidebar: Liền mạch chuẩn Enterprise B2B */}
       <aside
-        className={`hidden shrink-0 lg:flex lg:flex-col h-full border-r border-slate-200/80 bg-white shadow-2xs overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-20 ${
+        className={`hidden shrink-0 lg:flex lg:flex-col h-full border-r border-slate-200/80 bg-white shadow-2xs overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-40 ${
           isCollapsed ? 'w-20' : 'w-[18.25rem]'
         }`}
       >
