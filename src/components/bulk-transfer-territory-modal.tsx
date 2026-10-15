@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   ArrowRightLeft,
   AlertTriangle,
-  MapPin,
   Loader2,
   Building,
 } from 'lucide-react';
@@ -39,7 +38,6 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
   const [toSalesRepId, setToSalesRepId] = useState<string>('');
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
   const [reason, setReason] = useState<string>('');
-  const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -55,7 +53,6 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
       const initialTo = salesReps.find((r) => r.id !== initialFrom)?.id || '';
       setToSalesRepId(initialTo);
       setReason('');
-      setNotes('');
       setErrorMessage(null);
     }
   }, [isOpen, preselectedFromRepId, salesReps]);
@@ -159,7 +156,6 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
         toSalesRepId,
         customerIds: selectedCustomerIds,
         reason: reason.trim(),
-        notes: notes.trim() || undefined,
       });
 
       const toName = result.toSalesRep.fullName || result.toSalesRep.name || 'nhân sự tiếp nhận';
@@ -177,8 +173,6 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
     }
   };
 
-  const fromRep = salesReps.find((r) => r.id === fromSalesRepId);
-  const toRep = salesReps.find((r) => r.id === toSalesRepId);
   const isAllSelected =
     assignedCustomers.length > 0 && selectedCustomerIds.length === assignedCustomers.length;
 
@@ -197,7 +191,7 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
             </div>
             <div>
               <h3 className="text-base font-semibold text-slate-900">
-                Chuyển Giao Địa Bàn Hàng Loạt (SN-35)
+                Chuyển giao địa bàn hàng loạt
               </h3>
               <p className="text-xs text-slate-500">
                 Bàn giao quyền quản lý đại lý khi nhân sự nghỉ việc hoặc điều chuyển khu vực
@@ -227,7 +221,7 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
             {/* Nhân sự chuyển giao */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                Nhân viên chuyển giao <span className="text-rose-500">*</span>
+                Từ nhân viên <span className="text-rose-500">*</span>
               </label>
               <select
                 value={fromSalesRepId}
@@ -249,20 +243,12 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
                   </option>
                 ))}
               </select>
-              {fromRep && (
-                <div className="mt-1.5 text-xs text-slate-500 flex items-center justify-between">
-                  <span>Đang phụ trách:</span>
-                  <span className="font-semibold text-indigo-600">
-                    {loadingCustomers ? 'Đang tải...' : `${assignedCustomers.length} đại lý`}
-                  </span>
-                </div>
-              )}
             </div>
 
             {/* Nhân sự tiếp nhận */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                Nhân viên tiếp nhận <span className="text-rose-500">*</span>
+                Đến nhân viên <span className="text-rose-500">*</span>
               </label>
               <select
                 value={toSalesRepId}
@@ -279,14 +265,6 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
                     </option>
                   ))}
               </select>
-              {toRep && (
-                <div className="mt-1.5 text-xs text-slate-500 flex items-center justify-between">
-                  <span>Số điện thoại:</span>
-                  <span className="font-semibold text-slate-700">
-                    {toRep.phone || 'Chưa cập nhật'}
-                  </span>
-                </div>
-              )}
             </div>
           </div>
 
@@ -295,10 +273,12 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
                 <Building className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Danh sách đại lý bàn giao</span>
-                <span className="ml-1 px-1.5 py-0.2 rounded-full text-2xs bg-indigo-50 text-indigo-700 border border-indigo-100">
-                  {selectedCustomerIds.length} / {assignedCustomers.length}
-                </span>
+                <span>Danh sách đại lý cần chuyển ({assignedCustomers.length})</span>
+                {selectedCustomerIds.length > 0 && (
+                  <span className="ml-1 px-1.5 py-0.2 rounded-full text-2xs bg-indigo-50 text-indigo-700 border border-indigo-100 font-medium">
+                    Đã chọn {selectedCustomerIds.length}
+                  </span>
+                )}
               </label>
               {!loadingCustomers && assignedCustomers.length > 0 && (
                 <label className="flex items-center gap-1.5 text-xs text-indigo-600 cursor-pointer font-medium hover:underline">
@@ -323,7 +303,7 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
                 Nhân viên này hiện chưa được phân công phụ trách đại lý nào.
               </div>
             ) : (
-              <div className="max-h-52 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100 bg-white shadow-2xs">
+              <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100 bg-white shadow-2xs">
                 {assignedCustomers.map((cust) => {
                   const isChecked = selectedCustomerIds.includes(cust.id);
                   return (
@@ -334,41 +314,36 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
                         isChecked ? 'bg-indigo-50/30' : ''
                       }`}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
+                      {/* Bên trái: [Checkbox] Tên Đại lý (DL-0005) • Miền Nam */}
+                      <div className="flex items-center gap-2.5 min-w-0 pr-4">
                         <input
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => handleToggleCustomer(cust.id)}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
                         />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-slate-800 truncate">
-                              {cust.name}
-                            </span>
-                            <span className="inline-flex items-center px-1.5 py-0.2 text-2xs font-medium rounded bg-slate-100 text-slate-600 border border-slate-200/60">
-                              {cust.code}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 text-2xs text-slate-400 mt-0.5">
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-slate-400" />
-                              {cust.region}
-                            </span>
-                            <span>SĐT: {cust.phone}</span>
-                          </div>
+                        <div className="text-xs text-slate-800 truncate">
+                          <span className="font-semibold">{cust.name}</span>
+                          <span className="text-slate-500 ml-1.5">({cust.code})</span>
+                          {cust.region && (
+                            <span className="text-slate-400 ml-1.5">• {cust.region}</span>
+                          )}
                         </div>
                       </div>
 
-                      <div className="text-right shrink-0 text-xs">
-                        <div className="text-2xs text-slate-400">Dư nợ hiện tại</div>
-                        <div className="font-semibold text-slate-700">
+                      {/* Bên phải: Số tiền nợ in đậm (đỏ nhẹ nếu nợ) */}
+                      <div className="shrink-0 text-right">
+                        <span
+                          className={`text-xs font-semibold ${
+                            cust.currentDebt > 0 ? 'text-rose-600' : 'text-slate-700'
+                          }`}
+                        >
                           {new Intl.NumberFormat('vi-VN', {
                             style: 'currency',
                             currency: 'VND',
                           }).format(cust.currentDebt)}
-                        </div>
+                        </span>
                       </div>
                     </div>
                   );
@@ -377,35 +352,18 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
             )}
           </div>
 
-          {/* Lý do chuyển giao (Bắt buộc) */}
+          {/* Lý do & Ghi chú bàn giao (Bắt buộc) */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              Lý do chuyển giao địa bàn <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Ví dụ: Nhân sự Trần Văn Nam nghỉ việc theo quyết định số 45/QĐ-NS..."
-              className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors"
-              required
-            />
-            <p className="mt-1 text-2xs text-slate-400">
-              Lý do này sẽ được ghi nhận vào Sổ Lịch sử chuyển giao địa bàn để phục vụ kiểm toán nội bộ.
-            </p>
-          </div>
-
-          {/* Ghi chú bàn giao */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              Ghi chú công việc / Biên bản bàn giao đính kèm
+              Lý do & Ghi chú bàn giao <span className="text-rose-500">*</span>
             </label>
             <textarea
-              rows={2}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Đã bàn giao danh bạ khách hàng, biên bản đối soát công nợ và lịch thăm đại lý tuần..."
-              className="w-full px-3.5 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors resize-none"
+              rows={3}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Nhập lý do chuyển giao (Ví dụ: Nhân viên nghỉ việc, điều chuyển phụ trách địa bàn...)"
+              className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors resize-none"
+              required
             />
           </div>
 
