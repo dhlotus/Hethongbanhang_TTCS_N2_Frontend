@@ -2,14 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Building2,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Inbox,
   Eye,
   Copy,
   Check,
 } from 'lucide-react';
 import { Tooltip } from '../tooltip';
+import { Pagination } from '../pagination';
 import { DebtDetailModal } from './debt-detail-modal';
 import {
   AgingDebtGroupEnum,
@@ -26,10 +25,12 @@ interface DebtReportTableProps {
   total: number;
   limit: number;
   selectedAgingGroup?: AgingDebtGroupEnum;
+  debtStatus?: 'IN_TERM' | 'OVERDUE' | 'ALL';
   sortBy?: 'oldestDebtDays' | 'remainingDebt' | 'overdueAmount' | 'agencyName' | 'code';
   sortOrder?: 'asc' | 'desc';
   onSort?: (column: 'oldestDebtDays' | 'remainingDebt' | 'overdueAmount' | 'agencyName' | 'code') => void;
   onPageChange: (newPage: number) => void;
+  onPageSizeChange?: (newPageSize: number) => void;
 }
 
 const formatCurrency = (val: number): string => {
@@ -59,10 +60,12 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
   totalPages,
   total,
   limit,
+  debtStatus = 'ALL',
   sortBy,
   sortOrder,
   onSort,
   onPageChange,
+  onPageSizeChange,
 }) => {
   const [selectedAgency, setSelectedAgency] = useState<AgentDebtReport | null>(null);
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
@@ -107,40 +110,51 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
    * - Bo tròn dạng Pill (rounded-full), căn giữa ô
    * - Tooltip chi tiết phân bổ 4 dải tuổi nợ + Dòng tổng cộng khớp [Tổng dư nợ]
    */
-  const renderAgingAndStatusCell = (item: AgentDebtReport) => {
+  const renderAgingAndStatusCell = (item: AgentDebtReport, rowIndex?: number) => {
     if (item.remainingDebt === 0) {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-50 text-slate-500 border border-slate-200 shadow-2xs">
-          Đã tất toán
-        </span>
+        <div className="flex items-center justify-center text-center">
+          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[11px] font-sans antialiased tracking-tight font-medium bg-slate-50 text-slate-500 border border-slate-200 shadow-2xs">
+            Đã tất toán
+          </span>
+        </div>
       );
     }
 
-    // Logic xác định dải tuổi nợ cũ nhất / xấu nhất
+    // Logic xác định dải tuổi nợ: phân biệt rõ ràng Trong hạn vs Quá hạn theo item.isOverdue
+    const debtDays = item.oldestDebtDays ?? 0;
     let pillBadge = {
-      label: 'Trong hạn (0–30d)',
+      label: debtDays > 0 ? `Trong hạn (${debtDays}d)` : 'Trong hạn',
       className: 'bg-emerald-50 text-emerald-700 border-emerald-200/80 font-medium',
     };
 
-    if (item.ageOver90 > 0) {
+    if (item.isOverdue) {
+      if (item.ageOver90 > 0) {
+        pillBadge = {
+          label: `Quá hạn >90d (${debtDays}d)`,
+          className: 'bg-rose-50 text-rose-700 border-rose-200/80 font-medium',
+        };
+      } else if (item.age61To90 > 0) {
+        pillBadge = {
+          label: `Quá hạn 61-90d (${debtDays}d)`,
+          className: 'bg-amber-50 text-amber-800 border-amber-200/80 font-medium',
+        };
+      } else if (item.age31To60 > 0) {
+        pillBadge = {
+          label: `Quá hạn 31-60d (${debtDays}d)`,
+          className: 'bg-amber-50 text-amber-800 border-amber-200/80 font-medium',
+        };
+      } else {
+        pillBadge = {
+          label: `Quá hạn (${debtDays}d)`,
+          className: 'bg-amber-50 text-amber-800 border-amber-200/80 font-medium',
+        };
+      }
+    } else {
+      // Trong hạn (vẫn nằm trong hạn mức ngày nợ tối đa của đại lý)
       pillBadge = {
-        label: `Quá hạn >90d (${item.oldestDebtDays}d)`,
-        className: 'bg-rose-50 text-rose-700 border-rose-200 font-semibold',
-      };
-    } else if (item.age61To90 > 0) {
-      pillBadge = {
-        label: `Quá hạn 61–90d (${item.oldestDebtDays}d)`,
-        className: 'bg-amber-50 text-amber-700 border-amber-200 font-semibold',
-      };
-    } else if (item.age31To60 > 0) {
-      pillBadge = {
-        label: `Quá hạn 31–60d (${item.oldestDebtDays}d)`,
-        className: 'bg-blue-50 text-blue-700 border-blue-200 font-semibold',
-      };
-    } else if (item.age0To30 > 0) {
-      pillBadge = {
-        label: 'Trong hạn (0–30d)',
-        className: 'bg-emerald-50 text-emerald-700 border-emerald-200 font-medium',
+        label: debtDays > 0 ? `Trong hạn (${debtDays}d)` : 'Trong hạn',
+        className: 'bg-emerald-50 text-emerald-700 border-emerald-200/80 font-medium',
       };
     }
 
@@ -158,7 +172,7 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
             <span className="font-mono">{formatCurrency(item.age0To30)} đ</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-blue-400">31–60 ngày:</span>
+            <span className="text-amber-300">31–60 ngày:</span>
             <span className="font-mono">{formatCurrency(item.age31To60)} đ</span>
           </div>
           <div className="flex justify-between items-center">
@@ -188,61 +202,26 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
       </div>
     );
 
-    const totalBuckets =
-      (item.age0To30 || 0) +
-      (item.age31To60 || 0) +
-      (item.age61To90 || 0) +
-      (item.ageOver90 || 0);
-    const p0 = totalBuckets > 0 ? (item.age0To30 / totalBuckets) * 100 : 0;
-    const p30 = totalBuckets > 0 ? (item.age31To60 / totalBuckets) * 100 : 0;
-    const p60 = totalBuckets > 0 ? (item.age61To90 / totalBuckets) * 100 : 0;
-    const p90 = totalBuckets > 0 ? (item.ageOver90 / totalBuckets) * 100 : 0;
+    // Cấu hình vị trí thông minh cho Tooltip:
+    // Mặc định: side="top".
+    // Khi ở dòng đầu tiên của bảng (khoảng trống phía trên hẹp): tự động quay đầu hướng xuống dưới (side="bottom")
+    const preferredPosition = rowIndex === 0 ? 'bottom' : 'top';
 
     return (
-      <div className="flex flex-col items-center justify-center gap-1 w-full max-w-[135px] mx-auto">
-        <Tooltip content={tooltipContent} position="top">
+      <div className="flex items-center justify-center w-full text-center">
+        <Tooltip
+          content={tooltipContent}
+          position={preferredPosition}
+          side={preferredPosition}
+          sideOffset={6}
+          usePortal={true}
+        >
           <span
-            className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] cursor-help transition-all shadow-2xs hover:shadow-xs hover:scale-102 select-none whitespace-nowrap ${pillBadge.className}`}
+            className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full border text-[11px] font-sans antialiased tracking-tight cursor-help transition-all shadow-2xs hover:shadow-xs hover:scale-102 select-none whitespace-nowrap ${pillBadge.className}`}
           >
             {pillBadge.label}
           </span>
         </Tooltip>
-
-        {/* Mini Distribution Bar: Trực quan hóa tỷ lệ phân bổ các dải tuổi nợ */}
-        {totalBuckets > 0 && (
-          <Tooltip content={tooltipContent} position="bottom">
-            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden flex cursor-help border border-slate-200/60 shadow-2xs">
-              {p0 > 0 && (
-                <div
-                  style={{ width: `${p0}%` }}
-                  className="bg-emerald-500 h-full transition-all"
-                  title={`0-30 ngày: ${formatCurrency(item.age0To30)} đ (${p0.toFixed(0)}%)`}
-                />
-              )}
-              {p30 > 0 && (
-                <div
-                  style={{ width: `${p30}%` }}
-                  className="bg-blue-500 h-full transition-all"
-                  title={`31-60 ngày: ${formatCurrency(item.age31To60)} đ (${p30.toFixed(0)}%)`}
-                />
-              )}
-              {p60 > 0 && (
-                <div
-                  style={{ width: `${p60}%` }}
-                  className="bg-amber-500 h-full transition-all"
-                  title={`61-90 ngày: ${formatCurrency(item.age61To90)} đ (${p60.toFixed(0)}%)`}
-                />
-              )}
-              {p90 > 0 && (
-                <div
-                  style={{ width: `${p90}%` }}
-                  className="bg-rose-500 h-full transition-all"
-                  title={`>90 ngày: ${formatCurrency(item.ageOver90)} đ (${p90.toFixed(0)}%)`}
-                />
-              )}
-            </div>
-          </Tooltip>
-        )}
       </div>
     );
   };
@@ -287,9 +266,6 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
     );
   }
 
-  const startIndex = (page - 1) * limit + 1;
-  const endIndex = Math.min(page * limit, total);
-
   return (
     <>
       {/* Wrapper theo đúng style Quản lý đơn hàng */}
@@ -333,15 +309,8 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
                     {renderSortIndicator('remainingDebt')}
                   </span>
                 </th>
-                <th
-                  onClick={() => onSort?.('oldestDebtDays')}
-                  className="px-2 py-3 text-center w-[16%] cursor-pointer hover:bg-slate-100/80 transition-colors group/th"
-                  title="Nhấn để sắp xếp theo Tuổi nợ lâu nhất"
-                >
-                  <span className="inline-flex items-center justify-center">
-                    Tuổi nợ & Trạng thái
-                    {renderSortIndicator('oldestDebtDays')}
-                  </span>
+                <th className="px-2 py-3 text-center w-[16%]">
+                  Tuổi nợ & Trạng thái
                 </th>
                 <th className="px-3 py-3 text-center w-[11%]">
                   Thao tác
@@ -351,15 +320,13 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
 
             {/* Dữ liệu từng dòng đại lý: Chiều cao chuẩn h-14, dữ liệu phẳng trên 1 hàng */}
             <tbody className="divide-y divide-slate-100/90">
-              {data.map((item) => {
+              {data.map((item, index) => {
                 const isMenuOpen = openActionMenuId === item.agencyId;
 
                 return (
                   <tr
                     key={item.agencyId}
-                    className={`hover:bg-indigo-50/25 transition-colors group h-14 ${
-                      item.isOverdue ? 'bg-rose-50/15' : ''
-                    }`}
+                    className="hover:bg-slate-50/80 transition-colors group h-14 bg-white"
                   >
                     {/* CỘT 1 (11%): [MÃ ĐẠI LÝ] - Căn giữa, Interactive monospace badge */}
                     <td className="px-3 py-2 text-center align-middle whitespace-nowrap">
@@ -393,28 +360,22 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
                       </div>
                     </td>
 
-                    {/* CỘT 3 (21%): [ĐÃ THU / PHẢI THU] - 1 DÒNG DUY NHẤT, tabular-nums, không đè lấn */}
+                    {/* CỘT 3 (21%): [ĐÃ THU / PHẢI THU] - 1 DÒNG DUY NHẤT, đồng bộ 100% typography đậm nét như Cột 4 */}
                     <td className="px-3 py-2 text-right align-middle whitespace-nowrap">
-                      <span className="text-xs font-medium tabular-nums">
-                        <span className="text-emerald-600 font-semibold" title="Đã thu">
-                          {formatCurrency(item.totalPaid)}
-                        </span>
-                        <span className="text-slate-300 mx-1">/</span>
-                        <span className="text-slate-600" title="Tổng phải thu">
-                          {formatCurrency(item.totalReceivable)}
-                        </span>
+                      <span className="tabular-nums text-sm font-bold text-slate-900">
+                        <span title="Đã thu">{formatCurrency(item.totalPaid)}</span>
+                        <span className="text-slate-400 font-normal mx-1">/</span>
+                        <span title="Tổng phải thu">{formatCurrency(item.totalReceivable)}</span>
                       </span>
                     </td>
 
                     {/* CỘT 4 (14%): [TỔNG DƯ NỢ] - Duy nhất 1 con số in đậm, căn phải, có khoảng cách rõ ràng */}
                     <td className="px-3 py-2 text-right align-middle whitespace-nowrap">
                       <span
-                        className={`font-bold tabular-nums text-sm ${
-                          item.isOverdue
-                            ? 'text-rose-600'
-                            : item.remainingDebt > 0
-                              ? 'text-slate-900'
-                              : 'text-slate-400'
+                        className={`tabular-nums text-sm ${
+                          item.remainingDebt > 0
+                            ? 'font-bold text-slate-900'
+                            : 'font-normal text-slate-400'
                         }`}
                       >
                         {formatCurrency(item.remainingDebt)} đ
@@ -423,7 +384,7 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
 
                     {/* CỘT 5 (16%): [TUỔI NỢ & TRẠNG THÁI] - Căn giữa, Pill badge gọn */}
                     <td className="px-2 py-2 text-center align-middle whitespace-nowrap">
-                      {renderAgingAndStatusCell(item)}
+                      {renderAgingAndStatusCell(item, index)}
                     </td>
 
                     {/* CỘT 6 (11%): [THAO TÁC] - Căn giữa, cách mép phải an toàn */}
@@ -500,18 +461,34 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
                 >
                   Tổng cộng ({summary.totalAgencies} đại lý):
                 </td>
-                <td className="px-3 py-2 text-right font-medium text-slate-700 text-xs whitespace-nowrap">
-                  <span className="text-emerald-700 font-semibold">{formatCurrency(summary.totalPaid)}</span>
-                  <span className="text-slate-300 mx-1">/</span>
-                  <span className="text-slate-600">{formatCurrency(summary.totalReceivable)}</span>
+                <td className="px-3 py-2 text-right text-sm whitespace-nowrap">
+                  <span className="tabular-nums text-sm font-bold text-slate-900">
+                    <span title="Tổng đã thu">{formatCurrency(summary.totalPaid)}</span>
+                    <span className="text-slate-400 font-normal mx-1">/</span>
+                    <span title="Tổng phải thu">{formatCurrency(summary.totalReceivable)}</span>
+                  </span>
                 </td>
-                <td className="px-3 py-2 text-right font-bold text-amber-800 text-sm whitespace-nowrap">
+                <td className="px-3 py-2 text-right font-bold text-slate-900 text-sm whitespace-nowrap">
                   {formatCurrency(summary.remainingDebt)} đ
                 </td>
-                <td className="px-2 py-2 text-center font-semibold text-rose-600 text-xs whitespace-nowrap">
-                  {summary.overdueAgenciesCount > 0
-                    ? `${summary.overdueAgenciesCount} đại lý quá hạn`
-                    : '0 quá hạn'}
+                <td className="px-2 py-2 text-center font-semibold text-xs whitespace-nowrap">
+                  {debtStatus === 'IN_TERM' ? (
+                    <span className="text-emerald-700">
+                      {summary.inTermAgenciesCount ?? summary.totalAgencies} đại lý trong hạn
+                    </span>
+                  ) : debtStatus === 'OVERDUE' ? (
+                    <span className="text-rose-600">
+                      {summary.overdueAgenciesCount || summary.totalAgencies} đại lý quá hạn
+                    </span>
+                  ) : summary.overdueAgenciesCount > 0 ? (
+                    <span className="text-rose-600">
+                      {summary.overdueAgenciesCount} đại lý quá hạn
+                    </span>
+                  ) : (
+                    <span className="text-emerald-700">
+                      {summary.totalAgencies} đại lý trong hạn
+                    </span>
+                  )}
                 </td>
                 <td className="px-3 py-2 text-center text-slate-400 text-xs">
                   —
@@ -521,45 +498,22 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
           </table>
         </div>
 
-        {/* Phân trang (Pagination) */}
-        <div className="py-3 px-4 bg-slate-50/70 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <div>
-            Hiển thị{' '}
-            <span className="font-semibold text-slate-700">
-              {total > 0 ? startIndex : 0}
-            </span>{' '}
-            –{' '}
-            <span className="font-semibold text-slate-700">{endIndex}</span>{' '}
-            trong tổng số{' '}
-            <span className="font-semibold text-slate-700">{total}</span> đại lý
-          </div>
-
-          {totalPages > 1 && (
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => onPageChange(page - 1)}
-                disabled={page <= 1}
-                className="p-1.5 rounded-md border border-slate-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                title="Trang trước"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="px-2 py-1 font-medium text-slate-700">
-                Trang {page} / {totalPages}
-              </span>
-              <button
-                type="button"
-                onClick={() => onPageChange(page + 1)}
-                disabled={page >= totalPages}
-                className="p-1.5 rounded-md border border-slate-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                title="Trang tiếp"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Thanh phân trang gắn liền chân bảng chuẩn Quản lý đại lý (SN-203) */}
+        {total > 0 && (
+          <Pagination
+            variant="default"
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={total}
+            pageSize={limit}
+            pageSizeOptions={[10, 20, 50]}
+            itemLabel="đại lý"
+            showRecordRange={false}
+            showFirstLast={false}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
+        )}
       </div>
 
       {/* Modal Chi tiết Sổ Công Nợ Đại Lý (Ticket SN-203) */}

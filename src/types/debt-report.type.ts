@@ -64,6 +64,7 @@ export interface DebtReportSummary {
   totalAgeOver90: number;
   totalOverdueAmount: number;
   overdueAgenciesCount: number;
+  inTermAgenciesCount?: number;
 }
 
 /**
@@ -72,6 +73,8 @@ export interface DebtReportSummary {
 export interface QueryDebtReportParams {
   search?: string;
   isOverdueOnly?: boolean;
+  isOverdue?: boolean;
+  debtStatus?: 'IN_TERM' | 'OVERDUE' | 'ALL';
   agingGroup?: AgingDebtGroupEnum;
   customerGroup?: string;
   region?: string;

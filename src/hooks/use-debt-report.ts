@@ -38,6 +38,7 @@ export const useDebtReport = () => {
     page: 1,
     limit: 20,
     search: '',
+    debtStatus: 'ALL',
     isOverdueOnly: false,
     agingGroup: AgingDebtGroupEnum.ALL,
     sortBy: 'oldestDebtDays',
@@ -48,12 +49,24 @@ export const useDebtReport = () => {
     async (queryOverride?: QueryDebtReportParams) => {
       setLoading(true);
       try {
-        const query: QueryDebtReportParams = {
+        const mergedParams = {
           ...params,
           ...queryOverride,
+        };
+        const effectiveAging =
+          mergedParams.agingGroup !== undefined
+            ? mergedParams.agingGroup
+            : selectedAgingGroup;
+
+        const query: QueryDebtReportParams = {
+          ...mergedParams,
           agingGroup:
-            selectedAgingGroup !== AgingDebtGroupEnum.ALL
-              ? selectedAgingGroup
+            effectiveAging !== AgingDebtGroupEnum.ALL
+              ? effectiveAging
+              : undefined,
+          debtStatus:
+            mergedParams.debtStatus && mergedParams.debtStatus !== 'ALL'
+              ? mergedParams.debtStatus
               : undefined,
         };
         const res = await debtReportService.getDebtReport(query);
@@ -122,6 +135,14 @@ export const useDebtReport = () => {
     }));
   }, []);
 
+  const changePageSize = useCallback((newPageSize: number) => {
+    setParams((prev) => ({
+      ...prev,
+      limit: newPageSize,
+      page: 1,
+    }));
+  }, []);
+
   const exportExcel = useCallback(async () => {
     setExporting(true);
     try {
@@ -170,6 +191,7 @@ export const useDebtReport = () => {
     updateFilters,
     toggleSort,
     changePage,
+    changePageSize,
     exportExcel,
   };
 };
