@@ -25,12 +25,15 @@ import {
   EyeOff,
   FileSpreadsheet,
   RotateCcw,
+  Trash2,
 } from 'lucide-react';
 import { Pagination } from '../components/pagination';
 import { UsersTableSkeleton, UsersMobileCardSkeleton } from '../components/skeletons';
 import { ExcelImportModal } from '../components/excel-import-modal';
 import { showToast } from '../components/toast';
 import { usersService } from '../services/users.service';
+import { warehouseService } from '../services/warehouse.service';
+import type { Warehouse as WarehouseType } from '../types/warehouse.types';
 import type {
   AssignedCustomerItem,
   CreateUserPayload,
@@ -97,10 +100,7 @@ const ROLE_CONFIG: Record<
   },
 };
 
-const WAREHOUSE_OPTIONS = [
-  'Kho Tổng Miền Nam - LOHA WH01',
-  'Kho Trung Chuyển Miền Bắc - LOHA WH02',
-  'Kho Vận Miền Trung - LOHA WH03',
+const TERRITORY_OPTIONS = [
   'Địa bàn TP. Hồ Chí Minh',
   'Địa bàn Hà Nội & Phía Bắc',
   'Địa bàn Miền Tây',
@@ -428,6 +428,49 @@ export const UsersPage: React.FC = () => {
   const [detailCustomers, setDetailCustomers] = useState<AssignedCustomerItem[]>([]);
   const [loadingDetailCustomers, setLoadingDetailCustomers] = useState(false);
 
+
+
+  // Quản lý modal xác nhận xóa vĩnh viễn tài khoản khỏi hệ thống & DB
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserManagementItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Danh sách kho hàng thời gian thực từ API (phục vụ phân quyền & phân kho)
+  const [warehouseList, setWarehouseList] = useState<WarehouseType[]>([]);
+  const [loadingWarehouses, setLoadingWarehouses] = useState(false);
+
+  // Tải danh sách kho hàng thời gian thực từ API
+  const fetchWarehousesRealtime = useCallback(async () => {
+    try {
+      setLoadingWarehouses(true);
+      const data = await warehouseService.getWarehouses();
+      if (Array.isArray(data)) {
+        setWarehouseList(data);
+      }
+    } catch (err) {
+      console.warn('[USERS_PAGE] Lỗi tải danh sách kho thời gian thực:', err);
+    } finally {
+      setLoadingWarehouses(false);
+    }
+  }, []);
+
+  // Tải kho khi component mount và khi mở modal tạo/sửa nhân sự
+  useEffect(() => {
+    void fetchWarehousesRealtime();
+  }, [fetchWarehousesRealtime]);
+
+  useEffect(() => {
+    if (modalOpen) {
+      void fetchWarehousesRealtime();
+    }
+  }, [modalOpen, fetchWarehousesRealtime]);
+
+  // Mở modal xác nhận xóa tài khoản
+  const handleOpenDeleteModal = (user: UserManagementItem) => {
+    setUserToDelete(user);
+    setDeleteModalOpen(true);
+  };
+
   // Mở modal xem chi tiết nhân sự
   const handleOpenDetailModal = async (user: UserManagementItem) => {
     setSelectedUserForDetail(user);
@@ -516,6 +559,7 @@ export const UsersPage: React.FC = () => {
 
   // Mở Modal tạo mới
   const handleOpenCreateModal = () => {
+    void fetchWarehousesRealtime();
     setEditingUser(null);
     setFormErrors({});
     setShowPassword(false);
@@ -534,6 +578,7 @@ export const UsersPage: React.FC = () => {
 
   // Mở Modal chỉnh sửa
   const handleOpenEditModal = (user: UserManagementItem) => {
+    void fetchWarehousesRealtime();
     setEditingUser(user);
     setFormErrors({});
     setShowPassword(false);
@@ -760,6 +805,28 @@ export const UsersPage: React.FC = () => {
     }
   };
 
+  // Xác nhận thực hiện xóa vĩnh viễn tài khoản khỏi hệ thống & cơ sở dữ liệu
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await usersService.deleteUser(userToDelete.id);
+      showToast('success', res.message || `Đã xóa vĩnh viễn tài khoản ${userToDelete.fullName}`);
+      setDeleteModalOpen(false);
+      if (selectedUserForDetail?.id === userToDelete.id) {
+        setDetailModalOpen(false);
+      }
+      setUserToDelete(null);
+      await fetchUsers();
+      await fetchSummary();
+    } catch (err: unknown) {
+      const serverMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      showToast('error', typeof serverMsg === 'string' ? serverMsg : 'Xóa tài khoản thất bại');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* ========================================================================= */}
@@ -848,6 +915,7 @@ export const UsersPage: React.FC = () => {
               onClick={() => {
                 fetchUsers();
                 fetchSummary();
+                void fetchWarehousesRealtime();
               }}
               disabled={loading}
               title="Làm mới danh sách"
@@ -1503,14 +1571,30 @@ export const UsersPage: React.FC = () => {
                     return (
                       <>
                         <div className="flex items-center justify-between mb-1.5">
-                          <label className="block text-sm font-semibold text-slate-700">
-                            Kho hoặc Địa bàn phụ trách{' '}
-                            {hasWarehouseRole ? (
-                              <span className="text-rose-500 font-bold">*</span>
-                            ) : (
-                              <span className="text-slate-400 font-normal">(Tùy chọn)</span>
-                            )}
-                          </label>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <label className="block text-sm font-semibold text-slate-700">
+                              Kho hoặc Địa bàn phụ trách{' '}
+                              {hasWarehouseRole ? (
+                                <span className="text-rose-500 font-bold">*</span>
+                              ) : (
+                                <span className="text-slate-400 font-normal">(Tùy chọn)</span>
+                              )}
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => void fetchWarehousesRealtime()}
+                              className="text-slate-400 hover:text-indigo-600 p-0.5 rounded cursor-pointer transition-colors"
+                              title="Cập nhật danh sách kho mới nhất từ hệ thống (Thời gian thực)"
+                            >
+                              <RotateCcw
+                                className={`w-3.5 h-3.5 ${loadingWarehouses ? 'animate-spin text-indigo-600' : ''}`}
+                              />
+                            </button>
+                            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/80 font-medium">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              Thời gian thực
+                            </span>
+                          </div>
                           {hasWarehouseRole && (
                             <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200">
                               Bắt buộc cho vai trò Kho
@@ -1534,11 +1618,57 @@ export const UsersPage: React.FC = () => {
                           }`}
                         >
                           <option value="">-- Chưa chọn kho / địa bàn --</option>
-                          {WAREHOUSE_OPTIONS.map((wh) => (
-                            <option key={wh} value={wh}>
-                              {wh}
-                            </option>
-                          ))}
+
+                          {/* Nhóm kho hàng thực tế từ hệ thống (API Thời gian thực) */}
+                          <optgroup label="🏢 Kho hàng trên hệ thống (Thời gian thực)">
+                            {warehouseList.length > 0 ? (
+                              warehouseList.map((wh) => {
+                                const label = wh.name.includes(wh.code)
+                                  ? wh.name
+                                  : `${wh.name} - ${wh.code}`;
+                                return (
+                                  <option key={wh.id} value={label}>
+                                    {label} {wh.status === 'INACTIVE' ? '(Ngưng hoạt động)' : ''}
+                                  </option>
+                                );
+                              })
+                            ) : (
+                              <option disabled value="">
+                                {loadingWarehouses
+                                  ? 'Đang tải danh sách kho từ hệ thống...'
+                                  : 'Chưa có kho nào trên hệ thống'}
+                              </option>
+                            )}
+                          </optgroup>
+
+                          {/* Nhóm địa bàn kinh doanh (Dành cho Sales / Đại lý) */}
+                          {!hasWarehouseRole && (
+                            <optgroup label="📍 Địa bàn kinh doanh phụ trách (Tùy chọn)">
+                              {TERRITORY_OPTIONS.map((ter) => (
+                                <option key={ter} value={ter}>
+                                  {ter}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+
+                          {/* Fallback cho giá trị kho cũ đang gán nếu chưa khớp danh sách */}
+                          {formData.assignedWarehouse &&
+                            !warehouseList.some((wh) => {
+                              const label = wh.name.includes(wh.code)
+                                ? wh.name
+                                : `${wh.name} - ${wh.code}`;
+                              return (
+                                label === formData.assignedWarehouse ||
+                                wh.name === formData.assignedWarehouse ||
+                                wh.code === formData.assignedWarehouse
+                              );
+                            }) &&
+                            !TERRITORY_OPTIONS.includes(formData.assignedWarehouse) && (
+                              <option value={formData.assignedWarehouse}>
+                                {formData.assignedWarehouse} (Đang gán)
+                              </option>
+                            )}
                         </select>
 
                         {formErrors.assignedWarehouse ? (
@@ -2088,6 +2218,22 @@ export const UsersPage: React.FC = () => {
                       )}
                     </button>
                   )}
+
+                  {/* Xóa vĩnh viễn tài khoản khỏi hệ thống & DB */}
+                  {canManageUsers && currentAdmin?.id !== selectedUserForDetail.id && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDetailModalOpen(false);
+                        handleOpenDeleteModal(selectedUserForDetail);
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/80 hover:bg-rose-100 text-rose-700 px-3.5 py-2 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                      title="Xóa vĩnh viễn tài khoản khỏi hệ thống và cơ sở dữ liệu"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                      <span>Xóa tài khoản</span>
+                    </button>
+                  )}
                 </div>
 
                 <button
@@ -2114,6 +2260,90 @@ export const UsersPage: React.FC = () => {
             fetchSummary();
           }}
         />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 8. MODAL XÁC NHẬN XÓA TÀI KHOẢN KHỎI HỆ THỐNG & CƠ SỞ DỮ LIỆU                */}
+      {/* ========================================================================= */}
+      {deleteModalOpen && userToDelete && createPortal(
+        <div
+          onClick={() => !isDeleting && setDeleteModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-modal-backdrop-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden flex flex-col animate-modal-in"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-rose-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shadow-2xs">
+                  <Trash2 className="w-5 h-5 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Xóa tài khoản vĩnh viễn</h3>
+                  <p className="text-[11px] text-slate-500">Xóa khỏi hệ thống và cơ sở dữ liệu</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeleteModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4 text-xs text-slate-600">
+              <p className="leading-relaxed">
+                Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản của nhân sự{' '}
+                <strong className="text-slate-900 font-bold">{formatCleanName(userToDelete.fullName)}</strong>{' '}
+                (Tên đăng nhập: <span className="font-mono font-bold text-slate-800">{userToDelete.username}</span>)?
+              </p>
+
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200/80 text-rose-900 flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div className="text-[11px] leading-relaxed">
+                  <strong className="font-bold block text-rose-800 mb-0.5">Cảnh báo hệ thống:</strong>
+                  Thao tác này sẽ xóa hoàn toàn thông tin tài khoản, phân quyền và lịch sử phiên đăng nhập khỏi cơ sở dữ liệu. Thao tác này mang tính vĩnh viễn và <strong className="underline">không thể hoàn tác</strong>.
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2.5 px-6 py-3.5 border-t border-slate-100 bg-slate-50/60">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeleteModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer shadow-2xs"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => void handleConfirmDelete()}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md shadow-rose-600/30 cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Đang xóa...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Xác nhận xóa</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

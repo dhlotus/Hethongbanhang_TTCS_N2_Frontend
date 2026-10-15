@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Building2,
   Check,
@@ -722,6 +723,83 @@ export function WarehousesPage(): React.ReactElement {
     }
   };
 
+  // Quản lý dropdown Thao tác (Hình 2)
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+  const [actionMenuAnchor, setActionMenuAnchor] = useState<{
+    top: number;
+    right: number;
+    isDropUp: boolean;
+  } | null>(null);
+
+  // Quản lý modal xác nhận xóa kho vĩnh viễn khỏi hệ thống & CSDL
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [warehouseToDelete, setWarehouseToDelete] = useState<Warehouse | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Đóng dropdown thao tác khi click ra ngoài, cuộn trang hoặc nhấn ESC
+  useEffect(() => {
+    const handleDocClick = (e: MouseEvent) => {
+      if (
+        !(e.target as HTMLElement).closest('.warehouse-action-dropdown-container') &&
+        !(e.target as HTMLElement).closest('.warehouse-action-portal-menu')
+      ) {
+        setOpenActionMenuId(null);
+        setActionMenuAnchor(null);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpenActionMenuId(null);
+        setActionMenuAnchor(null);
+      }
+    };
+    const handleScrollOrResize = () => {
+      setOpenActionMenuId(null);
+      setActionMenuAnchor(null);
+    };
+
+    document.addEventListener('click', handleDocClick);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+
+    return () => {
+      document.removeEventListener('click', handleDocClick);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, []);
+
+  // XÓA KHO VĨNH VIỄN KHỎI HỆ THỐNG & CSDL
+  const handleConfirmDelete = async (): Promise<void> => {
+    if (!warehouseToDelete) return;
+    setIsDeleting(true);
+    try {
+      await warehouseService.deleteWarehouse(warehouseToDelete.id);
+      showToast(
+        'success',
+        `Đã xóa sạch sẽ kho hàng "${warehouseToDelete.name}" (${warehouseToDelete.code}) và toàn bộ dữ liệu liên quan khỏi hệ thống`
+      );
+
+      // Nếu đang chọn kho bị xóa thì bỏ chọn
+      if (selectedId === warehouseToDelete.id) {
+        setSelectedId('');
+        sessionStorage.removeItem(SELECTED_WAREHOUSE_STORAGE_KEY);
+      }
+
+      setDeleteModalOpen(false);
+      setWarehouseToDelete(null);
+
+      // Tải lại dữ liệu hệ thống
+      await reload();
+    } catch (error: unknown) {
+      showToast('error', getFriendlyErrorMessage(error, 'Không thể xóa kho hàng'));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <main className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
       {/* 1. PAGE HEADER */}
@@ -956,32 +1034,40 @@ export function WarehousesPage(): React.ReactElement {
                         </span>
                       </td>
 
-                      {/* Thao tác */}
-                      <td className="px-5 py-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
+                      {/* Thao tác: Nút bấm Dropdown chuẩn (Hình 2) */}
+                      <td className="px-5 py-4 text-center whitespace-nowrap">
+                        <div className="warehouse-action-dropdown-container inline-block">
                           <button
                             type="button"
-                            onClick={() => handleOpenWarehouseDetail(item)}
-                            className="inline-flex items-center justify-center h-8 w-8 rounded-xl border border-slate-200 bg-white hover:bg-[#eff2fe] hover:border-[#371cdb]/40 text-slate-600 hover:text-[#371cdb] transition-all cursor-pointer shadow-2xs active:scale-95"
-                            title="Xem chi tiết kho hàng"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (openActionMenuId === item.id) {
+                                setOpenActionMenuId(null);
+                                setActionMenuAnchor(null);
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const isDropUp = window.innerHeight - rect.bottom < 240;
+                                setActionMenuAnchor({
+                                  top: isDropUp ? rect.top : rect.bottom + 6,
+                                  right: window.innerWidth - rect.right,
+                                  isDropUp,
+                                });
+                                setOpenActionMenuId(item.id);
+                              }
+                            }}
+                            className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none whitespace-nowrap ${
+                              openActionMenuId === item.id
+                                ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs ring-2 ring-indigo-500/10'
+                                : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300'
+                            }`}
+                            title="Thao tác"
                           >
-                            <Eye size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenLocationModal(item)}
-                            className="inline-flex items-center justify-center h-8 w-8 rounded-xl border border-slate-200 bg-white hover:bg-[#eff2fe] hover:border-[#371cdb]/40 text-slate-600 hover:text-[#371cdb] transition-all cursor-pointer shadow-2xs active:scale-95"
-                            title="Thêm vị trí mới / Quản lý vị trí"
-                          >
-                            <MapPin size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenAssignAgencyModal(item)}
-                            className="inline-flex items-center justify-center h-8 w-8 rounded-xl border border-slate-200 bg-white hover:bg-[#eff2fe] hover:border-[#371cdb]/40 text-slate-600 hover:text-[#371cdb] transition-all cursor-pointer shadow-2xs active:scale-95"
-                            title="Chọn đại lý / Gán đại lý"
-                          >
-                            <Building2 size={15} />
+                            <span className="whitespace-nowrap">Thao tác</span>
+                            <ChevronDown
+                              className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${
+                                openActionMenuId === item.id ? 'rotate-180 text-indigo-600' : ''
+                              }`}
+                            />
                           </button>
                         </div>
                       </td>
@@ -992,6 +1078,99 @@ export function WarehousesPage(): React.ReactElement {
             </tbody>
           </table>
         </div>
+
+        {/* Dropdown Menu Portal Thao tác */}
+        {openActionMenuId && actionMenuAnchor && typeof document !== 'undefined' && (() => {
+          const warehouse = warehouses.find((item) => item.id === openActionMenuId);
+          if (!warehouse) return null;
+
+          return createPortal(
+            <div
+              className="warehouse-action-portal-menu fixed w-52 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-[9999] animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100"
+              style={{
+                top: actionMenuAnchor.isDropUp ? undefined : `${actionMenuAnchor.top}px`,
+                bottom: actionMenuAnchor.isDropUp ? `${window.innerHeight - actionMenuAnchor.top}px` : undefined,
+                right: `${actionMenuAnchor.right}px`,
+              }}
+            >
+              <div className="py-1">
+                {/* 1. Xem chi tiết kho */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenActionMenuId(null);
+                    setActionMenuAnchor(null);
+                    handleOpenWarehouseDetail(warehouse);
+                  }}
+                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                >
+                  <Eye className="w-4 h-4 text-slate-400" />
+                  <span>Xem chi tiết kho</span>
+                </button>
+
+                {/* 2. Quản lý vị trí lưu trữ */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenActionMenuId(null);
+                    setActionMenuAnchor(null);
+                    handleOpenLocationModal(warehouse);
+                  }}
+                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                >
+                  <MapPin className="w-4 h-4 text-slate-400" />
+                  <span>Quản lý vị trí lưu trữ</span>
+                </button>
+
+                {/* 3. Gán đại lý phục vụ */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenActionMenuId(null);
+                    setActionMenuAnchor(null);
+                    handleOpenAssignAgencyModal(warehouse);
+                  }}
+                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                >
+                  <Building2 className="w-4 h-4 text-slate-400" />
+                  <span>Gán đại lý phục vụ</span>
+                </button>
+
+                {/* 4. Chỉnh sửa thông tin kho */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenActionMenuId(null);
+                    setActionMenuAnchor(null);
+                    handleOpenEditModal(warehouse);
+                  }}
+                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-amber-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                >
+                  <Edit3 className="w-4 h-4 text-amber-500" />
+                  <span>Chỉnh sửa thông tin kho</span>
+                </button>
+              </div>
+
+              {/* 5. Xóa kho hàng */}
+              <div className="py-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenActionMenuId(null);
+                    setActionMenuAnchor(null);
+                    setWarehouseToDelete(warehouse);
+                    setDeleteModalOpen(true);
+                  }}
+                  className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                >
+                  <Trash2 className="w-4 h-4 text-rose-500" />
+                  <span>Xóa kho</span>
+                </button>
+              </div>
+            </div>,
+            document.body
+          );
+        })()}
 
         {/* THANH PHÂN TRANG (PAGINATION BAR CHUẨN HÌNH 2) */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/70 text-xs sm:text-sm text-slate-500">
@@ -1061,26 +1240,42 @@ export function WarehousesPage(): React.ReactElement {
         maxWidth="max-w-lg"
         bodyClassName="p-5 sm:p-6 space-y-4 bg-slate-50/60"
         footer={
-          <div className="flex items-center justify-end gap-2.5 w-full">
+          <div className="flex items-center justify-between gap-2.5 w-full">
             <button
               type="button"
               onClick={() => {
                 if (selectedWarehouse) {
+                  const target = selectedWarehouse;
                   setIsDetailModalOpen(false);
-                  handleOpenEditModal(selectedWarehouse);
+                  setWarehouseToDelete(target);
+                  setDeleteModalOpen(true);
                 }
               }}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/50 px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-100/70 transition-colors cursor-pointer"
             >
-              <Edit3 size={14} /> Sửa thông tin
+              <Trash2 size={14} /> Xóa kho
             </button>
-            <button
-              type="button"
-              onClick={() => setIsDetailModalOpen(false)}
-              className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-xs font-semibold text-white transition-colors cursor-pointer"
-            >
-              Đóng
-            </button>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedWarehouse) {
+                    setIsDetailModalOpen(false);
+                    handleOpenEditModal(selectedWarehouse);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                <Edit3 size={14} /> Sửa thông tin
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDetailModalOpen(false)}
+                className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-xs font-semibold text-white transition-colors cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
           </div>
         }
       >
@@ -1839,6 +2034,92 @@ export function WarehousesPage(): React.ReactElement {
           )}
         </div>
       </ModalLayout>
+
+      {/* ========================================================================= */}
+      {/* MODAL XÁC NHẬN XÓA KHO VĨNH VIỄN KHỎI HỆ THỐNG & CƠ SỞ DỮ LIỆU            */}
+      {/* ========================================================================= */}
+      {deleteModalOpen && warehouseToDelete && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header cảnh báo */}
+            <div className="p-6 pb-4 flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+                <Trash2 size={24} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-slate-900">
+                  Xác nhận xóa kho hàng
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Hành động này sẽ xóa sạch sẽ toàn bộ thông tin kho và dữ liệu liên quan khỏi hệ thống và cơ sở dữ liệu.
+                </p>
+              </div>
+            </div>
+
+            {/* Thông tin kho cần xóa */}
+            <div className="px-6 py-3 bg-slate-50/80 border-y border-slate-100 text-xs space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Mã kho:</span>
+                <span className="font-mono font-bold text-slate-800">{warehouseToDelete.code}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Tên kho:</span>
+                <span className="font-semibold text-slate-800">{warehouseToDelete.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Địa chỉ:</span>
+                <span className="text-slate-700 truncate max-w-[220px]">{warehouseToDelete.address}</span>
+              </div>
+            </div>
+
+            {/* Cảnh báo chi tiết */}
+            <div className="p-6 pt-4 space-y-4">
+              <div className="p-3 bg-rose-50/70 border border-rose-200/80 rounded-xl text-xs text-rose-800 space-y-1">
+                <p className="font-bold flex items-center gap-1.5">
+                  ⚠️ Lưu ý quan trọng:
+                </p>
+                <p className="text-[11px] leading-relaxed text-rose-700">
+                  Thao tác này sẽ xóa sạch sẽ các vị trí lưu trữ, liên kết đại lý mặc định, phân công quản lý kho và các bản ghi tồn kho liên quan đến kho này. Thao tác mang tính vĩnh viễn và <strong className="underline">không thể hoàn tác</strong>.
+                </p>
+              </div>
+
+              {/* Nút hành động */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => {
+                    setDeleteModalOpen(false);
+                    setWarehouseToDelete(null);
+                  }}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => void handleConfirmDelete()}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Đang xóa...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={14} />
+                      <span>Xóa kho vĩnh viễn</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
+
