@@ -1548,86 +1548,70 @@ export const CreateOrderPage: React.FC = () => {
               )}
             </div>
 
-            {/* Bảng tóm tắt Chính sách giá & Công nợ của Đại lý đã chọn (Được thiết kế lại sang trọng, tối ưu và dễ nhìn) */}
+            {/* Bảng tóm tắt Chính sách giá & Công nợ của Đại lý đã chọn (Tối ưu dàn đều 3 cột, không có nút thừa) */}
             {selectedCustomer ? (
               <div className="p-4 bg-gradient-to-br from-white via-indigo-50/20 to-slate-50/60 border border-indigo-100 rounded-2xl shadow-xs transition-all text-xs">
-                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-                  {/* Lưới 3 cột thông tin chính */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1 min-w-0 w-full">
-                    {/* Cột 1: Đại lý */}
-                    <div className="space-y-1 min-w-0">
-                      <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
-                        <Building2 className="w-3.5 h-3.5" />
-                        Đại lý đặt hàng
-                      </div>
-                      <div className="font-extrabold text-slate-900 text-sm truncate" title={selectedCustomer.name}>
-                        {selectedCustomer.name}
-                      </div>
-                      <div className="text-slate-500 font-mono text-xs flex items-center gap-2">
-                        <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-semibold">{selectedCustomer.code}</span>
-                        {selectedCustomer.phone && <span className="text-[11px] text-slate-400">• {selectedCustomer.phone}</span>}
-                      </div>
+                {/* Lưới 3 cột thông tin chính dàn đều trọn vẹn */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 w-full">
+                  {/* Cột 1: Đại lý */}
+                  <div className="space-y-1 min-w-0">
+                    <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5" />
+                      Đại lý đặt hàng
                     </div>
-
-                    {/* Cột 2: Chính sách giá */}
-                    <div className="space-y-1 min-w-0">
-                      <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
-                        <Tag className="w-3.5 h-3.5" />
-                        Chính sách áp dụng
-                      </div>
-                      <div className="font-bold text-slate-900 text-sm truncate mt-0.5" title={effectivePriceList?.name || 'Bảng giá chuẩn'}>
-                        {isLoadingPriceList ? 'Đang tải...' : effectivePriceList ? effectivePriceList.name : (priceListError || 'Bảng giá chuẩn')}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold ${getCustomerGroupBadge(selectedCustomer.group).badgeClass}`}>
-                          {getCustomerGroupBadge(selectedCustomer.group).label}
-                        </span>
-                      </div>
+                    <div className="font-extrabold text-slate-900 text-sm truncate" title={selectedCustomer.name}>
+                      {selectedCustomer.name}
                     </div>
-
-                    {/* Cột 3: Công nợ */}
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
-                          <CreditCard className="w-3.5 h-3.5" />
-                          Hạn mức công nợ
-                        </span>
-                        {debtStatus && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${debtStatus.canCreateOrder ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                            {debtStatus.canCreateOrder ? 'Hợp lệ' : 'Bị khóa nợ'}
-                          </span>
-                        )}
-                      </div>
-                      {debtStatus ? (
-                        <div className="flex items-center gap-4 text-xs pt-1 flex-wrap">
-                          <div>
-                            <span className="text-slate-500 text-[11px]">Dư nợ: </span>
-                            <span className="font-bold text-slate-900">{formatCurrency(debtStatus.currentDebt)}</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-500 text-[11px]">Khả dụng: </span>
-                            <span className="font-extrabold text-emerald-700">{formatCurrency(debtStatus.availableLimit)}</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-slate-400 text-xs py-1">Đang tải trạng thái công nợ...</div>
-                      )}
+                    <div className="text-slate-500 font-mono text-xs flex items-center gap-2">
+                      <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-semibold">{selectedCustomer.code}</span>
+                      {selectedCustomer.phone && <span className="text-[11px] text-slate-400">• {selectedCustomer.phone}</span>}
                     </div>
                   </div>
 
-                  {/* Nút Đổi đại lý nhanh */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsCustomerDropdownOpen(true);
-                      searchInputRef.current?.focus();
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200/90 rounded-xl transition-all cursor-pointer shrink-0 shadow-2xs hover:shadow-xs"
-                    title="Chọn đại lý khác"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Đổi đại lý</span>
-                  </button>
+                  {/* Cột 2: Chính sách giá */}
+                  <div className="space-y-1 min-w-0">
+                    <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5" />
+                      Chính sách áp dụng
+                    </div>
+                    <div className="font-bold text-slate-900 text-sm truncate mt-0.5" title={effectivePriceList?.name || 'Bảng giá chuẩn'}>
+                      {isLoadingPriceList ? 'Đang tải...' : effectivePriceList ? effectivePriceList.name : (priceListError || 'Bảng giá chuẩn')}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold ${getCustomerGroupBadge(selectedCustomer.group).badgeClass}`}>
+                        {getCustomerGroupBadge(selectedCustomer.group).label}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Cột 3: Công nợ */}
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
+                        <CreditCard className="w-3.5 h-3.5" />
+                        Hạn mức công nợ
+                      </span>
+                      {debtStatus && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${debtStatus.canCreateOrder ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                          {debtStatus.canCreateOrder ? 'Hợp lệ' : 'Bị khóa nợ'}
+                        </span>
+                      )}
+                    </div>
+                    {debtStatus ? (
+                      <div className="flex items-center gap-4 text-xs pt-1 flex-wrap">
+                        <div>
+                          <span className="text-slate-500 text-[11px]">Dư nợ: </span>
+                          <span className="font-bold text-slate-900">{formatCurrency(debtStatus.currentDebt)}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 text-[11px]">Khả dụng: </span>
+                          <span className="font-extrabold text-emerald-700">{formatCurrency(debtStatus.availableLimit)}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-slate-400 text-xs py-1">Đang tải trạng thái công nợ...</div>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (
