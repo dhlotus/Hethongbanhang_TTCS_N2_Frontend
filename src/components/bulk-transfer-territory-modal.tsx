@@ -268,29 +268,8 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
             </div>
           </div>
 
-          {/* Danh sách đại lý cần chuyển giao */}
+          {/* Danh sách đại lý cần chuyển giao (Cấu trúc Bảng phẳng Table/Header Layout) */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-                <Building className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Danh sách đại lý cần chuyển</span>
-                <span className="ml-1 px-1.5 py-0.2 rounded-full text-2xs bg-indigo-50 text-indigo-700 border border-indigo-100 font-medium">
-                  {selectedCustomerIds.length}/{assignedCustomers.length}
-                </span>
-              </label>
-              {!loadingCustomers && assignedCustomers.length > 0 && (
-                <label className="flex items-center gap-1.5 text-xs text-indigo-600 cursor-pointer font-medium hover:underline">
-                  <input
-                    type="checkbox"
-                    checked={isAllSelected}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                  />
-                  <span>Chọn tất cả</span>
-                </label>
-              )}
-            </div>
-
             {loadingCustomers ? (
               <div className="p-8 flex flex-col items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-xs gap-2">
                 <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
@@ -301,51 +280,83 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
                 Nhân viên này hiện chưa được phân công phụ trách đại lý nào.
               </div>
             ) : (
-              <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100 bg-white shadow-2xs">
-                {assignedCustomers.map((cust) => {
-                  const isChecked = selectedCustomerIds.includes(cust.id);
-                  return (
-                    <div
-                      key={cust.id}
-                      onClick={() => handleToggleCustomer(cust.id)}
-                      className={`flex items-center justify-between px-3.5 py-2.5 hover:bg-slate-50/80 cursor-pointer transition-colors ${
-                        isChecked ? 'bg-indigo-50/30' : ''
-                      }`}
+              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
+                {/* Table Header Bar */}
+                <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                      title="Chọn tất cả"
+                    />
+                    <span className="uppercase tracking-wider text-2xs font-bold text-slate-600">
+                      Danh sách đại lý ({assignedCustomers.length})
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded-full text-2xs bg-indigo-50 text-indigo-700 border border-indigo-100 font-medium">
+                      {selectedCustomerIds.length}/{assignedCustomers.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectAll(!isAllSelected)}
+                      className="text-2xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline ml-1"
                     >
-                      {/* Bên trái: [Checkbox] Tên Đại lý (DL-0005) • Miền Nam */}
-                      <div className="flex items-center gap-2.5 min-w-0 pr-4">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleToggleCustomer(cust.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
-                        />
-                        <div className="text-xs text-slate-800 truncate">
-                          <span className="font-semibold">{cust.name}</span>
-                          <span className="text-slate-500 ml-1.5">({cust.code})</span>
-                          {cust.region && (
-                            <span className="text-slate-400 ml-1.5">• {cust.region}</span>
-                          )}
+                      {isAllSelected ? 'Bỏ chọn' : 'Chọn tất cả'}
+                    </button>
+                  </div>
+                  <div className="shrink-0 text-right uppercase tracking-wider text-2xs font-bold text-slate-600 min-w-[120px]">
+                    Công nợ
+                  </div>
+                </div>
+
+                {/* Table Body */}
+                <div className="max-h-56 overflow-y-auto divide-y divide-slate-100">
+                  {assignedCustomers.map((cust) => {
+                    const isChecked = selectedCustomerIds.includes(cust.id);
+                    return (
+                      <div
+                        key={cust.id}
+                        onClick={() => handleToggleCustomer(cust.id)}
+                        className={`flex items-center justify-between px-3.5 py-2.5 hover:bg-slate-50/80 cursor-pointer transition-colors ${
+                          isChecked ? 'bg-indigo-50/30' : ''
+                        }`}
+                      >
+                        {/* Bên trái: [Checkbox] Tên Đại lý (Mã) • Miền Nam */}
+                        <div className="flex items-center gap-2.5 min-w-0 pr-4">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleCustomer(cust.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                          />
+                          <div className="text-xs text-slate-800 truncate">
+                            <span className="font-semibold">{cust.name}</span>
+                            <span className="text-slate-500 ml-1.5">({cust.code})</span>
+                            {cust.region && (
+                              <span className="text-slate-400 ml-1.5">• {cust.region}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Bên phải: Số tiền nợ in đậm (đỏ nhẹ nếu nợ), thẳng hàng cột Công nợ */}
+                        <div className="shrink-0 text-right min-w-[120px]">
+                          <span
+                            className={`text-xs font-semibold ${
+                              cust.currentDebt > 0 ? 'text-rose-600' : 'text-slate-700'
+                            }`}
+                          >
+                            {new Intl.NumberFormat('vi-VN', {
+                              style: 'currency',
+                              currency: 'VND',
+                            }).format(cust.currentDebt)}
+                          </span>
                         </div>
                       </div>
-
-                      {/* Bên phải: Số tiền nợ in đậm (đỏ nhẹ nếu nợ) */}
-                      <div className="shrink-0 text-right">
-                        <span
-                          className={`text-xs font-semibold ${
-                            cust.currentDebt > 0 ? 'text-rose-600' : 'text-slate-700'
-                          }`}
-                        >
-                          {new Intl.NumberFormat('vi-VN', {
-                            style: 'currency',
-                            currency: 'VND',
-                          }).format(cust.currentDebt)}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
