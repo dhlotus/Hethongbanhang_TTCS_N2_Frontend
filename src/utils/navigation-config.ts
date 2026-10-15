@@ -300,6 +300,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
   // 4. Nhân viên kho / Thủ kho (WAREHOUSE_KEEPER)
   [USER_ROLES.WAREHOUSE_KEEPER]: [
     {
+      id: 'dashboard',
+      name: 'Bảng điều khiển',
+      path: '/dashboard',
+      icon: LayoutDashboard,
+      category: 'Kiểm soát Kho',
+    },
+    {
       id: 'sales-orders',
       name: 'Đơn hàng chuẩn bị xuất',
       path: '/warehouse/orders',

@@ -3,7 +3,7 @@ import { inventoryService } from './inventory.service';
 import { warehouseService } from './warehouse.service';
 import { tokenStorage } from '../utils/token-storage';
 import { MOCK_PRODUCTS } from './products.service';
-import { customerService, getStoredCustomers } from './customer.service';
+import { customerService, getStoredCustomers, updateStoredCustomerDebt } from './customer.service';
 import { orderPricingService } from './order-pricing.service';
 import { matchesSearchTerm } from '../utils/vietnamese';
 import { INITIAL_DEMO_ORDERS } from './demo-orders.data';
@@ -646,6 +646,11 @@ export const ordersService = {
           all[idx] = { ...all[idx], ...updated, status: 'CANCELLED', cancelReason: finalReason };
           saveStoredDemoOrders(all);
         }
+        // Rollback công nợ khi hủy đơn
+        const orderTotal = updated.grandTotal || (updated as any).totalAmount || 0;
+        if (orderTotal > 0 && updated.customerId) {
+          updateStoredCustomerDebt(updated.customerId, -orderTotal);
+        }
         return updated;
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'response' in err) {
@@ -671,6 +676,12 @@ export const ordersService = {
 
     all[idx] = existing;
     saveStoredDemoOrders(all);
+
+    // Rollback công nợ khi hủy đơn
+    const orderTotal = existing.grandTotal || (existing as any).totalAmount || 0;
+    if (orderTotal > 0 && existing.customerId) {
+      updateStoredCustomerDebt(existing.customerId, -orderTotal);
+    }
 
     try {
       window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: existing }));
@@ -719,6 +730,12 @@ export const ordersService = {
         const all = getStoredDemoOrders();
         all.unshift(res.data);
         saveStoredDemoOrders(all);
+
+        // Cập nhật công nợ thực tế sau khi tạo đơn
+        const orderTotal = res.data.grandTotal || (res.data as any).totalAmount || 0;
+        if (orderTotal > 0 && res.data.customerId) {
+          updateStoredCustomerDebt(res.data.customerId, orderTotal);
+        }
 
         try {
           window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: res.data }));
@@ -799,6 +816,11 @@ export const ordersService = {
     allStoredOrders.unshift(newOrder);
     saveStoredDemoOrders(allStoredOrders);
 
+    // Cập nhật công nợ thực tế sau khi tạo đơn (nếu không phải DRAFT)
+    if (newOrder.status !== 'DRAFT' && newOrder.grandTotal > 0 && newOrder.customerId) {
+      updateStoredCustomerDebt(newOrder.customerId, newOrder.grandTotal);
+    }
+
     try {
       window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: newOrder }));
       window.dispatchEvent(new CustomEvent('loha_inventory_updated', { detail: newOrder }));
@@ -856,8 +878,45 @@ export const ordersService = {
   async updateOrderStatus(id: string, status: OrderStatus, reason?: string): Promise<Order> {
     const payload: any = { status };
     if (reason) payload.reason = reason;
-    const res = await apiClient.patch<Order>(`/orders/${id}/status`, payload);
-    return res.data;
+    try {
+      const res = await apiClient.patch<Order>(`/orders/${id}/status`, payload);
+      const all = getStoredDemoOrders();
+      const idx = all.findIndex((order) => order.id === id || order.orderCode === id);
+      if (idx !== -1) {
+        const prevStatus = all[idx].status;
+        all[idx] = { ...all[idx], ...res.data, status };
+        saveStoredDemoOrders(all);
+        if (status === 'CANCELLED' && prevStatus !== 'CANCELLED') {
+          const rollbackAmt = all[idx].grandTotal || (all[idx] as any).totalAmount || 0;
+          if (rollbackAmt > 0 && all[idx].customerId) {
+            updateStoredCustomerDebt(all[idx].customerId, -rollbackAmt);
+          }
+        }
+      }
+      return res.data;
+    } catch (err) {
+      // Local demo fallback
+      const all = getStoredDemoOrders();
+      const idx = all.findIndex((order) => order.id === id || order.orderCode === id);
+      if (idx !== -1) {
+        const prevStatus = all[idx].status;
+        all[idx].status = status;
+        if (reason) (all[idx] as any).cancelReason = reason;
+        all[idx].updatedAt = new Date().toISOString();
+        saveStoredDemoOrders(all);
+        if (status === 'CANCELLED' && prevStatus !== 'CANCELLED') {
+          const rollbackAmt = all[idx].grandTotal || (all[idx] as any).totalAmount || 0;
+          if (rollbackAmt > 0 && all[idx].customerId) {
+            updateStoredCustomerDebt(all[idx].customerId, -rollbackAmt);
+          }
+        }
+        try {
+          window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: all[idx] }));
+        } catch {}
+        return all[idx];
+      }
+      throw err;
+    }
   },
 
   /** Submit an approval decision through the dedicated review endpoint. */
@@ -874,6 +933,12 @@ export const ordersService = {
         if (idx !== -1) {
           all[idx] = res.data;
           saveStoredDemoOrders(all);
+        }
+        if (action === 'REJECT') {
+          const orderTotal = res.data.grandTotal || (res.data as any).totalAmount || 0;
+          if (orderTotal > 0 && res.data.customerId) {
+            updateStoredCustomerDebt(res.data.customerId, -orderTotal);
+          }
         }
         try {
           window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: res.data }));
@@ -899,6 +964,12 @@ export const ordersService = {
           const createdAt = new Date().toISOString();
           all[idx] = { ...all[idx], status: nextStatus[action], updatedAt: createdAt };
           saveStoredDemoOrders(all);
+          if (action === 'REJECT') {
+            const orderTotal = all[idx].grandTotal || (all[idx] as any).totalAmount || 0;
+            if (orderTotal > 0 && all[idx].customerId) {
+              updateStoredCustomerDebt(all[idx].customerId, -orderTotal);
+            }
+          }
           try {
             window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: all[idx] }));
           } catch { }

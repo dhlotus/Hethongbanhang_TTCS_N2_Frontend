@@ -208,6 +208,27 @@ export const PortalOrderConfirmPage: React.FC = () => {
     });
   }, [currentCustomer]);
 
+  useEffect(() => {
+    const handleDebtUpdate = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      if (!currentCustomer?.id) return;
+      if (
+        !detail ||
+        detail.customerId === currentCustomer.id ||
+        detail.customerCode === currentCustomer.code ||
+        (detail.customerId && currentCustomer.code && String(detail.customerId).toLowerCase() === currentCustomer.code.toLowerCase())
+      ) {
+        ordersService.getDebtStatus(currentCustomer.id).then((debt) => {
+          if (debt) setDebtStatus(debt);
+        }).catch(() => {});
+      }
+    };
+    window.addEventListener('loha_debt_updated', handleDebtUpdate);
+    return () => {
+      window.removeEventListener('loha_debt_updated', handleDebtUpdate);
+    };
+  }, [currentCustomer]);
+
   // 5. Thông tin giao hàng & Ghi chú
   const [selectedDeliveryPoint, setSelectedDeliveryPoint] = useState<CustomerDeliveryPoint | null>(() => {
     return currentCustomer?.deliveryPoints?.[0] || null;
@@ -631,7 +652,7 @@ export const PortalOrderConfirmPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Link
             to="/portal/orders"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-indigo-600 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all shrink-0 shadow-2xs bg-white cursor-pointer"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-indigo-600 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all shrink-0 shadow-2xs bg-white cursor-pointer"
             title="Quay lại Cổng đặt hàng"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -670,73 +691,135 @@ export const PortalOrderConfirmPage: React.FC = () => {
             </span>
           </div>
 
-          {/* Chi tiết đại lý */}
-          <div className="p-4 sm:p-5 rounded-xl bg-slate-50/80 border border-slate-200/70 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-            <div>
-              <span className="text-slate-500 font-medium block mb-1">Tên doanh nghiệp:</span>
-              <strong className="text-slate-900 text-sm sm:text-base font-semibold block">
-                {currentCustomer?.name}
-              </strong>
+          {/* ── GIAO DIỆN DESKTOP / LAPTOP / PC (GIỮ NGUYÊN 100% CẤU TRÚC & KÍCH THƯỚC BAN ĐẦU) ── */}
+          <div className="hidden sm:block space-y-4">
+            {/* Chi tiết đại lý */}
+            <div className="p-4 sm:p-5 rounded-xl bg-slate-50/80 border border-slate-200/70 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+              <div>
+                <span className="text-slate-500 font-medium block mb-1">Tên doanh nghiệp:</span>
+                <strong className="text-slate-900 text-sm sm:text-base font-semibold block">
+                  {currentCustomer?.name}
+                </strong>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium block mb-1">Mã đại lý:</span>
+                <strong className="text-slate-900 font-mono text-sm sm:text-base font-semibold block">
+                  {currentCustomer?.code}
+                </strong>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium block mb-1">Số điện thoại:</span>
+                <strong className="text-slate-900 text-sm sm:text-base font-semibold block">
+                  {currentCustomer?.phone || 'Chưa cập nhật'}
+                </strong>
+              </div>
             </div>
-            <div>
-              <span className="text-slate-500 font-medium block mb-1">Mã đại lý:</span>
-              <strong className="text-slate-900 font-mono text-sm sm:text-base font-semibold block">
-                {currentCustomer?.code}
-              </strong>
+
+            {/* 3 Thẻ thống kê hạn mức */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
+                <div className="text-xs text-slate-500 font-medium">Hạn mức được cấp</div>
+                <div className="text-sm sm:text-base font-bold text-slate-900 font-mono mt-1">
+                  {formatVND(cartTotals.creditLimit)}
+                </div>
+              </div>
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
+                <div className="text-xs text-slate-500 font-medium">Công nợ hiện tại</div>
+                <div className="text-sm sm:text-base font-bold text-slate-900 font-mono mt-1">
+                  {formatVND(cartTotals.currentDebt)}
+                </div>
+              </div>
+              <div className={`p-3.5 rounded-xl border ${
+                cartTotals.availableCredit < cartTotals.creditLimit * 0.2
+                  ? 'bg-amber-50/70 border-amber-200 text-amber-900'
+                  : 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+              }`}>
+                <div className="text-xs font-semibold text-slate-600">Hạn mức khả dụng còn lại</div>
+                <div className="text-sm sm:text-base font-bold font-mono mt-1">
+                  {formatVND(cartTotals.availableCredit)}
+                </div>
+              </div>
             </div>
-            <div>
-              <span className="text-slate-500 font-medium block mb-1">Số điện thoại:</span>
-              <strong className="text-slate-900 text-sm sm:text-base font-semibold block">
-                {currentCustomer?.phone || 'Chưa cập nhật'}
-              </strong>
-            </div>
+
+            {/* Thanh tiến trình tỷ lệ sử dụng hạn mức */}
+            {cartTotals.creditLimit > 0 && (
+              <div className="space-y-1.5 pt-1">
+                <div className="flex justify-between text-xs text-slate-500">
+                  <span>Tỷ lệ sử dụng hạn mức trước đơn:</span>
+                  <span className="font-bold text-slate-800">
+                    {Math.round((cartTotals.currentDebt / cartTotals.creditLimit) * 100)}%
+                  </span>
+                </div>
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      cartTotals.currentDebt >= cartTotals.creditLimit ? 'bg-rose-500' : 'bg-indigo-600'
+                    }`}
+                    style={{ width: `${Math.min(100, Math.round((cartTotals.currentDebt / cartTotals.creditLimit) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* 3 Thẻ thống kê hạn mức */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
-              <div className="text-xs text-slate-500 font-medium">Hạn mức được cấp</div>
-              <div className="text-sm sm:text-base font-bold text-slate-900 font-mono mt-1">
-                {formatVND(cartTotals.creditLimit)}
+          {/* ── GIAO DIỆN MOBILE: 1 KHUNG CHIA 6 Ô (2 CỘT X 3 HÀNG), GÓC BO TRÒN, KHÔNG CÓ THANH TIẾN TRÌNH ── */}
+          <div className="block sm:hidden">
+            <div className="p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80 grid grid-cols-2 gap-2">
+              {/* Cột 1 - Hàng 1 (Trái): Tên doanh nghiệp */}
+              <div className="p-2.5 rounded-lg bg-white border border-slate-200/70 shadow-2xs flex flex-col justify-between">
+                <span className="text-[11px] text-slate-500 font-medium block">Tên doanh nghiệp:</span>
+                <strong className="text-slate-900 text-xs font-semibold block leading-tight mt-1 line-clamp-2" title={currentCustomer?.name}>
+                  {currentCustomer?.name}
+                </strong>
               </div>
-            </div>
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70">
-              <div className="text-xs text-slate-500 font-medium">Công nợ hiện tại</div>
-              <div className="text-sm sm:text-base font-bold text-slate-900 font-mono mt-1">
-                {formatVND(cartTotals.currentDebt)}
+
+              {/* Cột 2 - Hàng 1 (Phải): Hạn mức được cấp */}
+              <div className="p-2.5 rounded-lg bg-white border border-slate-200/70 shadow-2xs flex flex-col justify-between">
+                <span className="text-[11px] text-slate-500 font-medium block">Hạn mức được cấp</span>
+                <strong className="text-slate-900 font-mono text-xs font-bold block mt-1">
+                  {formatVND(cartTotals.creditLimit)}
+                </strong>
               </div>
-            </div>
-            <div className={`p-3.5 rounded-xl border ${
-              cartTotals.availableCredit < cartTotals.creditLimit * 0.2
-                ? 'bg-amber-50/70 border-amber-200 text-amber-900'
-                : 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
-            }`}>
-              <div className="text-xs font-semibold text-slate-600">Hạn mức khả dụng còn lại</div>
-              <div className="text-sm sm:text-base font-bold font-mono mt-1">
-                {formatVND(cartTotals.availableCredit)}
+
+              {/* Cột 1 - Hàng 2 (Trái): Mã đại lý */}
+              <div className="p-2.5 rounded-lg bg-white border border-slate-200/70 shadow-2xs flex flex-col justify-between">
+                <span className="text-[11px] text-slate-500 font-medium block">Mã đại lý:</span>
+                <strong className="text-slate-900 font-mono text-xs font-semibold block mt-1">
+                  {currentCustomer?.code}
+                </strong>
+              </div>
+
+              {/* Cột 2 - Hàng 2 (Phải): Công nợ hiện tại */}
+              <div className="p-2.5 rounded-lg bg-white border border-slate-200/70 shadow-2xs flex flex-col justify-between">
+                <span className="text-[11px] text-slate-500 font-medium block">Công nợ hiện tại</span>
+                <strong className="text-slate-900 font-mono text-xs font-bold block mt-1">
+                  {formatVND(cartTotals.currentDebt)}
+                </strong>
+              </div>
+
+              {/* Cột 1 - Hàng 3 (Trái): Số điện thoại */}
+              <div className="p-2.5 rounded-lg bg-white border border-slate-200/70 shadow-2xs flex flex-col justify-between">
+                <span className="text-[11px] text-slate-500 font-medium block">Số điện thoại:</span>
+                <strong className="text-slate-900 text-xs font-semibold block mt-1">
+                  {currentCustomer?.phone || 'Chưa cập nhật'}
+                </strong>
+              </div>
+
+              {/* Cột 2 - Hàng 3 (Phải): Hạn mức khả dụng (Bỏ chữ 'còn lại') */}
+              <div className={`p-2.5 rounded-lg border shadow-2xs flex flex-col justify-between ${
+                cartTotals.availableCredit < cartTotals.creditLimit * 0.2
+                  ? 'bg-amber-50/70 border-amber-200 text-amber-900'
+                  : 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+              }`}>
+                <span className="text-[11px] font-semibold text-slate-600 block">Hạn mức khả dụng</span>
+                <strong className={`font-mono text-xs font-bold block mt-1 ${
+                  cartTotals.availableCredit < cartTotals.creditLimit * 0.2 ? 'text-amber-800' : 'text-emerald-700'
+                }`}>
+                  {formatVND(cartTotals.availableCredit)}
+                </strong>
               </div>
             </div>
           </div>
-
-          {/* Thanh tiến trình tỷ lệ sử dụng hạn mức */}
-          {cartTotals.creditLimit > 0 && (
-            <div className="space-y-1.5 pt-1">
-              <div className="flex justify-between text-xs text-slate-500">
-                <span>Tỷ lệ sử dụng hạn mức trước đơn:</span>
-                <span className="font-bold text-slate-800">
-                  {Math.round((cartTotals.currentDebt / cartTotals.creditLimit) * 100)}%
-                </span>
-              </div>
-              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${
-                    cartTotals.currentDebt >= cartTotals.creditLimit ? 'bg-rose-500' : 'bg-indigo-600'
-                  }`}
-                  style={{ width: `${Math.min(100, Math.round((cartTotals.currentDebt / cartTotals.creditLimit) * 100))}%` }}
-                />
-              </div>
-            </div>
-          )}
         </div>
 
         {/* ================================================================= */}
@@ -834,25 +917,25 @@ export const PortalOrderConfirmPage: React.FC = () => {
         {/* KHỐI 3: DANH SÁCH SẢN PHẨM & BẢNG GIỎ HÀNG                        */}
         {/* ================================================================= */}
         <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <Package className="w-4 h-4 text-indigo-600" />
-              <h3 className="text-base font-bold text-slate-900">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <Package className="w-4 h-4 text-indigo-600 shrink-0" />
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 truncate">
                 Chi tiết sản phẩm đặt hàng
               </h3>
             </div>
-            <div className="relative" ref={addProductDropdownRef}>
+            <div className="relative shrink-0" ref={addProductDropdownRef}>
               <button
                 type="button"
                 onClick={() => setIsAddProductDropdownOpen(!isAddProductDropdownOpen)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border transition-all cursor-pointer shadow-2xs ${
+                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 sm:gap-2 border transition-all cursor-pointer shadow-2xs whitespace-nowrap shrink-0 ${
                   isAddProductDropdownOpen
                     ? 'border-blue-600 ring-2 ring-blue-500/20 bg-blue-50/40 text-blue-700'
                     : 'border-slate-300 hover:border-blue-500 bg-white text-slate-700'
                 }`}
                 title="Chọn sản phẩm thêm vào đơn"
               >
-                <Plus className="w-3.5 h-3.5 text-blue-600" />
+                <Plus className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                 <span>Thêm sản phẩm</span>
                 <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${isAddProductDropdownOpen ? 'rotate-180 text-blue-600' : ''}`} />
               </button>
@@ -914,9 +997,9 @@ export const PortalOrderConfirmPage: React.FC = () => {
                               <div className="flex items-center gap-1.5 mb-0.5">
                                 <span className="font-mono text-[10px] text-slate-400 uppercase">{p.sku}</span>
                                 {inCart && (
-                                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-700">
-                                    Đã có: {cart[p.id].quantity}
-                                  </span>
+                                   <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-700">
+                                     Đã có: {cart[p.id].quantity}
+                                   </span>
                                 )}
                               </div>
                               <div className="font-semibold text-slate-900 truncate" title={p.name}>
@@ -959,14 +1042,14 @@ export const PortalOrderConfirmPage: React.FC = () => {
             <table className="w-full text-left text-xs sm:text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-xs font-semibold text-slate-600 bg-slate-50">
-                  <th className="py-3 px-3 text-left">Mã SKU & Sản phẩm</th>
-                  <th className="py-3 px-2 text-center">ĐVT</th>
-                  <th className="py-3 px-2 text-right">Đơn giá niêm yết</th>
-                  <th className="py-3 px-2 text-center">Chiết khấu</th>
-                  <th className="py-3 px-2 text-right">Đơn giá sau CK</th>
-                  <th className="py-3 px-2 text-center w-36">Số lượng</th>
-                  <th className="py-3 px-3 text-right">Thành tiền</th>
-                  <th className="py-3 px-2 text-center w-12">Xóa</th>
+                  <th className="py-3 px-3 text-left min-w-[150px] sm:min-w-0 whitespace-nowrap">Mã SKU & Sản phẩm</th>
+                  <th className="hidden sm:table-cell py-3 px-2 text-center whitespace-nowrap">ĐVT</th>
+                  <th className="py-3 px-2 text-right whitespace-nowrap">Đơn giá niêm yết</th>
+                  <th className="py-3 px-2 text-center whitespace-nowrap">Chiết khấu</th>
+                  <th className="py-3 px-2 text-right whitespace-nowrap">Đơn giá sau CK</th>
+                  <th className="py-3 px-2 text-center w-36 whitespace-nowrap">Số lượng</th>
+                  <th className="py-3 px-3 text-right whitespace-nowrap">Thành tiền</th>
+                  <th className="py-3 px-2 text-center w-12 whitespace-nowrap">Xóa</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -981,22 +1064,22 @@ export const PortalOrderConfirmPage: React.FC = () => {
                         <div className="font-bold text-slate-900 text-xs sm:text-sm" title={item.product.name}>
                           {cleanProductName(item.product.name)}
                         </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
+                        <div className="hidden sm:block text-[11px] text-slate-500 mt-0.5">
                           Tồn khả dụng: <span className="font-semibold text-emerald-600">{item.availableStock}</span> {item.unit}
                         </div>
                       </td>
 
-                      <td className="py-3 px-2 text-center">
+                      <td className="hidden sm:table-cell py-3 px-2 text-center">
                         <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/70">
                           {item.unit}
                         </span>
                       </td>
 
-                      <td className="py-3 px-2 text-right font-mono text-xs text-slate-600">
+                      <td className="py-3 px-2 text-right font-mono text-xs text-slate-600 whitespace-nowrap">
                         {formatVND(basePrice)}
                       </td>
 
-                      <td className="py-3 px-2 text-center">
+                      <td className="py-3 px-2 text-center whitespace-nowrap">
                         {calc.isFixed ? (
                           <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
                             -{formatVND(calc.discountAmountPerUnit)}
@@ -1012,7 +1095,7 @@ export const PortalOrderConfirmPage: React.FC = () => {
                         )}
                       </td>
 
-                      <td className="py-3 px-2 text-right font-mono text-xs font-bold text-indigo-600">
+                      <td className="py-3 px-2 text-right font-mono text-xs font-bold text-indigo-600 whitespace-nowrap">
                         {formatVND(effectiveUnitPrice)}
                       </td>
 
@@ -1061,7 +1144,7 @@ export const PortalOrderConfirmPage: React.FC = () => {
                         </div>
                       </td>
 
-                      <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 text-sm">
+                      <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 text-sm whitespace-nowrap">
                         {formatVND(itemGrandTotal)}
                       </td>
 

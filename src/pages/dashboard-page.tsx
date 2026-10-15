@@ -597,13 +597,13 @@ export const DashboardPage: React.FC = () => {
                 </div>
                 <div className="ml-4 w-0 flex-1 min-w-0">
                   <dt className="truncate text-xs sm:text-sm font-medium text-slate-500">
-                    Cảnh báo tồn tối thiểu
+                    Cảnh báo đứt hàng
                   </dt>
                   <dd className="mt-1 flex items-baseline gap-2">
                     <span className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate tabular-nums">
-                      {lowStockCount > 0 ? lowStockCount : metrics.lowStockAlertCount}
+                      {lowStockCount}
                     </span>
-                    {(lowStockCount > 0 || metrics.lowStockAlertCount > 0) && (
+                    {lowStockCount > 0 && (
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/50">
                         Cần nhập
                       </span>
@@ -770,7 +770,7 @@ export const DashboardPage: React.FC = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-              Cảnh báo đứt hàng & Tồn kho tối thiểu
+              Cảnh báo đứt hàng
             </h3>
             <Link
               to="/inventory/stock?filter=BELOW_MIN_STOCK"

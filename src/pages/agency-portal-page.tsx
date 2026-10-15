@@ -25,9 +25,12 @@ import {
   Check,
   CreditCard,
   Eye,
+  EyeOff,
   XCircle,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   LayoutGrid,
   Tag,
   Layers,
@@ -160,13 +163,49 @@ export const AgencyPortalPage: React.FC = () => {
     parentName?: string;
     count: number;
   } | null>(null);
-  const [categoryLevelTab, setCategoryLevelTab] = useState<'ALL' | 1 | 2 | 3>('ALL');
+  const [categoryLevelTab, setCategoryLevelTab] = useState<'ALL' | 1 | 2 | 3>(1);
+  const [selectedL1Category, setSelectedL1Category] = useState<string | null>(null);
+  const [selectedL2Category, setSelectedL2Category] = useState<string | null>(null);
+  const [selectedL3Category, setSelectedL3Category] = useState<string | null>(null);
   const [categorySearchQuery, setCategorySearchQuery] = useState<string>('');
   const [isCategoryPickerOpen, setIsCategoryPickerOpen] = useState<boolean>(false);
+  const [categoryPage, setCategoryPage] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const lastCatalogGroupRef = useRef<string>('');
+
+  // Trạng thái thu gọn bảng hạn mức trên Mobile
+  const [isCreditCollapsedMobile, setIsCreditCollapsedMobile] = useState<boolean>(false);
+
+  // Đồng bộ trạng thái thu gọn hạn mức với Header (để hiện nút nhỏ giữa Thông báo và Hồ sơ)
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('loha_portal_credit_state', {
+        detail: { isCollapsed: isCreditCollapsedMobile },
+      })
+    );
+  }, [isCreditCollapsedMobile]);
+
+  // Lắng nghe sự kiện người dùng bấm vào nút nhỏ trên Header để mở lại bảng hạn mức
+  useEffect(() => {
+    const handleExpand = () => {
+      setIsCreditCollapsedMobile(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.addEventListener('loha_portal_expand_credit', handleExpand);
+    return () => window.removeEventListener('loha_portal_expand_credit', handleExpand);
+  }, []);
+
+  // Tự động reset về trang 1 khi chuyển đổi cấp nhóm hàng hoặc tìm kiếm nhóm hàng
+  useEffect(() => {
+    setCategoryPage(1);
+  }, [categoryLevelTab, selectedL1Category, selectedL2Category, selectedL3Category, categorySearchQuery]);
+
+  // Phân trang danh mục sản phẩm (10 - 20 - 50 - 100 dòng, mỗi dòng = 4 sản phẩm)
+  const [catalogPage, setCatalogPage] = useState<number>(1);
+  const [catalogRows, setCatalogRows] = useState<number>(10);
+  const catalogPageSize = catalogRows * 4;
 
   // ──────────────────────────────────────────────────────────────────────────
   // 3. STATE CÔNG NỢ THỜI GIAN THỰC (SN-41 & SN-49)
@@ -361,6 +400,30 @@ export const AgencyPortalPage: React.FC = () => {
     }
   }, [currentCustomer?.id, fetchCustomerDebt]);
 
+  // Lắng nghe sự kiện biến động công nợ thực tế để đồng bộ tức thì trên giao diện
+  useEffect(() => {
+    const handleDebtUpdated = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      if (!currentCustomer?.id) return;
+      if (
+        !detail ||
+        detail.customerId === currentCustomer.id ||
+        detail.customerCode === currentCustomer.code ||
+        (detail.customerId && currentCustomer.code && String(detail.customerId).toLowerCase() === currentCustomer.code.toLowerCase())
+      ) {
+        void fetchCustomerDebt(currentCustomer.id);
+        void loadCurrentAgencyProfile(false);
+      }
+    };
+
+    window.addEventListener('loha_debt_updated', handleDebtUpdated);
+    window.addEventListener('storage', handleDebtUpdated);
+    return () => {
+      window.removeEventListener('loha_debt_updated', handleDebtUpdated);
+      window.removeEventListener('storage', handleDebtUpdated);
+    };
+  }, [currentCustomer?.id, currentCustomer?.code, fetchCustomerDebt, loadCurrentAgencyProfile]);
+
   // ──────────────────────────────────────────────────────────────────────────
   // TẢI BẢNG GIÁ & SẢN PHẨM KHÔNG CHỚP NHÁY (BACKGROUND SYNC)
   // ──────────────────────────────────────────────────────────────────────────
@@ -536,6 +599,8 @@ export const AgencyPortalPage: React.FC = () => {
       name: string;
       level: 1 | 2 | 3;
       parentName?: string;
+      parentL1?: string;
+      parentL2?: string;
       count: number;
     }> = [];
 
@@ -574,6 +639,7 @@ export const AgencyPortalPage: React.FC = () => {
           name: catL2.name,
           level: 2,
           parentName: catL1.name,
+          parentL1: catL1.name,
           count: c2Count,
         });
 
@@ -584,6 +650,8 @@ export const AgencyPortalPage: React.FC = () => {
             name: catL3.name,
             level: 3,
             parentName: `${catL1.name} / ${catL2.name}`,
+            parentL1: catL1.name,
+            parentL2: catL2.name,
             count: c3Count,
           });
         }
@@ -606,6 +674,7 @@ export const AgencyPortalPage: React.FC = () => {
           name: p.subCategory,
           level: 2,
           parentName: p.parentCategory,
+          parentL1: p.parentCategory,
           count: getCount(p.subCategory, 2),
         });
       }
@@ -617,9 +686,25 @@ export const AgencyPortalPage: React.FC = () => {
   // Lọc danh mục hiển thị trong khung chọn theo Cấp độ và Từ khóa tìm kiếm
   const displayedCategories = useMemo(() => {
     return hierarchicalCategories.filter((cat) => {
-      if (categoryLevelTab !== 'ALL' && cat.level !== categoryLevelTab) {
-        return false;
+      // Khi đang xem Cấp 3 và đã chọn 1 Cấp 2 cha, chỉ hiện các nhóm con Cấp 3 của Cấp 2 đó:
+      if (selectedL2Category && categoryLevelTab === 3) {
+        if (cat.level !== 3) return false;
+        if (cat.parentL2 && cat.parentL2 !== selectedL2Category) return false;
+        if (!cat.parentL2 && cat.parentName && !cat.parentName.includes(selectedL2Category)) return false;
       }
+      // Khi đang xem Cấp 2 và đã chọn 1 Cấp 1 cha, chỉ hiện các nhóm con Cấp 2 của Cấp 1 đó:
+      else if (selectedL1Category && categoryLevelTab === 2) {
+        if (cat.level !== 2) return false;
+        if (cat.parentL1 && cat.parentL1 !== selectedL1Category) return false;
+        if (!cat.parentL1 && cat.parentName && cat.parentName !== selectedL1Category) return false;
+      }
+      // Trường hợp thông thường:
+      else {
+        if (categoryLevelTab !== 'ALL' && cat.level !== categoryLevelTab) {
+          return false;
+        }
+      }
+
       if (categorySearchQuery.trim()) {
         const q = categorySearchQuery.trim().toLowerCase();
         const matchName = cat.name.toLowerCase().includes(q);
@@ -628,7 +713,69 @@ export const AgencyPortalPage: React.FC = () => {
       }
       return true;
     });
-  }, [hierarchicalCategories, categoryLevelTab, categorySearchQuery]);
+  }, [hierarchicalCategories, categoryLevelTab, selectedL1Category, selectedL2Category, categorySearchQuery]);
+
+  // Cố định mỗi trang tối đa 20 nhóm hàng (chia trang thông minh khi > 20 nhóm)
+  const CATEGORY_ITEMS_PER_PAGE = 20;
+  const totalCategoryPages = Math.ceil(displayedCategories.length / CATEGORY_ITEMS_PER_PAGE);
+  const currentCategoryPage = totalCategoryPages > 0 ? Math.min(Math.max(1, categoryPage), totalCategoryPages) : 1;
+
+  // Danh sách nhóm hàng hiển thị trên trang hiện tại (tối đa 20 nhóm / 1 trang)
+  const pagedCategories = useMemo(() => {
+    if (displayedCategories.length <= CATEGORY_ITEMS_PER_PAGE) {
+      return displayedCategories;
+    }
+    const start = (currentCategoryPage - 1) * CATEGORY_ITEMS_PER_PAGE;
+    return displayedCategories.slice(start, start + CATEGORY_ITEMS_PER_PAGE);
+  }, [displayedCategories, currentCategoryPage]);
+
+  // Phân bố các nhóm hàng thành 2 dòng (trên - dưới), cuộn ngang nếu nhiều hơn 10
+  const interleavedCategories = useMemo(() => {
+    if (pagedCategories.length === 0) return { list: [], colsCount: 0 };
+    const cols = Math.max(1, Math.ceil(pagedCategories.length / 2));
+    const row1 = pagedCategories.slice(0, cols);
+    const row2 = pagedCategories.slice(cols, cols * 2);
+    const result: Array<(typeof pagedCategories)[0] | null> = [];
+    for (let i = 0; i < cols; i++) {
+      result.push(row1[i] || null);
+      result.push(row2[i] || null);
+    }
+    return { list: result, colsCount: cols };
+  }, [pagedCategories]);
+
+  // Điều hướng breadcrumb phân cấp nhóm hàng
+  const handleBackToAllL1 = useCallback(() => {
+    setSelectedL1Category(null);
+    setSelectedL2Category(null);
+    setSelectedL3Category(null);
+    setCategoryLevelTab(1);
+    setSelectedHierarchyCategory(null);
+    setSelectedCategory('ALL');
+    setCatalogPage(1);
+  }, []);
+
+  const handleBackToL2OfL1 = useCallback(() => {
+    setSelectedL2Category(null);
+    setSelectedL3Category(null);
+    setCategoryLevelTab(2);
+    const l1Cat = hierarchicalCategories.find((c) => c.level === 1 && c.name === selectedL1Category);
+    if (l1Cat) {
+      setSelectedHierarchyCategory(l1Cat);
+      setSelectedCategory(l1Cat.name);
+    }
+    setCatalogPage(1);
+  }, [hierarchicalCategories, selectedL1Category]);
+
+  const handleBackToL3OfL2 = useCallback(() => {
+    setSelectedL3Category(null);
+    setCategoryLevelTab(3);
+    const l2Cat = hierarchicalCategories.find((c) => c.level === 2 && c.name === selectedL2Category);
+    if (l2Cat) {
+      setSelectedHierarchyCategory(l2Cat);
+      setSelectedCategory(l2Cat.name);
+    }
+    setCatalogPage(1);
+  }, [hierarchicalCategories, selectedL2Category]);
 
   // Danh mục sản phẩm khả dụng cho đại lý
   const availableCatalog = useMemo(() => {
@@ -695,6 +842,18 @@ export const AgencyPortalPage: React.FC = () => {
         };
       });
   }, [products, pricingMap, selectedHierarchyCategory, selectedCategory, searchQuery]);
+
+  // Reset trang về 1 khi người dùng lọc hoặc tìm kiếm
+  useEffect(() => {
+    setCatalogPage(1);
+  }, [searchQuery, selectedCategory, selectedHierarchyCategory, categoryLevelTab]);
+
+  // Phân trang danh mục sản phẩm (20 - 50 - 100 - 200 dòng)
+  const totalCatalogPages = Math.max(1, Math.ceil(availableCatalog.length / catalogPageSize));
+  const paginatedCatalog = useMemo(() => {
+    const start = (catalogPage - 1) * catalogPageSize;
+    return availableCatalog.slice(start, start + catalogPageSize);
+  }, [availableCatalog, catalogPage, catalogPageSize]);
 
   // Gợi ý thông minh cho ô tìm kiếm
   const smartSuggestions = useMemo(() => {
@@ -1125,78 +1284,82 @@ export const AgencyPortalPage: React.FC = () => {
         {/* ===================================================================== */}
         {/* 1. THẺ THÔNG TIN HẠN MỨC & CÔNG NỢ ĐẠI LÝ REAL-TIME                  */}
         {/* ===================================================================== */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 sm:p-5 mb-5">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
-            {/* Card 1: Hạn mức tín dụng */}
-            <div className="bg-slate-50/80 rounded-xl p-4 border border-slate-200/60 transition-all hover:bg-slate-50">
-              <div className="flex items-center justify-between text-slate-500 text-xs mb-1.5">
+        <div
+          className={`bg-white rounded-2xl border border-slate-200/80 shadow-sm transition-all duration-300 ease-in-out ${
+            isCreditCollapsedMobile
+              ? 'max-sm:max-h-0 max-sm:opacity-0 max-sm:mb-0 max-sm:p-0 max-sm:border-0 max-sm:overflow-hidden p-4 sm:p-5 mb-5'
+              : 'p-3 sm:p-5 mb-3 sm:mb-5 max-sm:overflow-hidden'
+          }`}
+        >
+          {/* Header phụ chỉ hiển thị trên Mobile: Nút Ẩn / Thu gọn hạn mức */}
+          <div className="flex sm:hidden items-center justify-between pb-2 mb-2 border-b border-slate-100">
+            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-indigo-600" />
+              Hạn mức & Dư nợ
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsCreditCollapsedMobile(true)}
+              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-indigo-600 text-[11px] font-semibold transition-colors cursor-pointer"
+              title="Ẩn bảng hạn mức (thu gọn thành nút trên thanh tiêu đề)"
+            >
+              <span>Ẩn hạn mức</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+            {/* Card 1: Hạn mức tín dụng - Mobile thu nhỏ 2/3 (p-2.5 thay vì p-4, text-base thay vì text-2xl) */}
+            <div className="bg-slate-50/80 rounded-xl p-2.5 sm:p-4 border border-slate-200/60 transition-all hover:bg-slate-50">
+              <div className="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs mb-1 sm:mb-1.5">
                 <span className="flex items-center gap-1.5 font-medium text-slate-700">
-                  <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                  <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
                   Hạn mức tín dụng cấp
                 </span>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-700">
+                <span className="text-[9px] sm:text-[10px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-700">
                   {currentCustomer?.maxDebtDays ? `Hạn ${currentCustomer.maxDebtDays} ngày` : '30 ngày'}
                 </span>
               </div>
-              <div className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+              <div className="text-base sm:text-2xl font-bold tracking-tight text-slate-900">
                 {formatVND(cartTotals.creditLimit)}
               </div>
             </div>
 
-            {/* Card 2: Dư nợ hiện tại */}
-            <div className="bg-slate-50/80 rounded-xl p-4 border border-slate-200/60 transition-all hover:bg-slate-50">
-              <div className="flex items-center justify-between text-slate-500 text-xs mb-1.5">
+            {/* Card 2: Dư nợ hiện tại - Mobile thu nhỏ 2/3 */}
+            <div className="bg-slate-50/80 rounded-xl p-2.5 sm:p-4 border border-slate-200/60 transition-all hover:bg-slate-50">
+              <div className="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs mb-1 sm:mb-1.5">
                 <span className="flex items-center gap-1.5 font-medium text-slate-700">
-                  <Receipt className="w-4 h-4 text-amber-600" />
+                  <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600" />
                   Dư nợ hiện tại
                 </span>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                <span className="text-[9px] sm:text-[10px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
                   {cartTotals.creditLimit > 0
                     ? `Đã dùng ${Math.min(100, Math.round((cartTotals.currentDebt / cartTotals.creditLimit) * 100))}%`
                     : '---'}
                 </span>
               </div>
-              <div className="text-xl sm:text-2xl font-bold tracking-tight text-amber-600">
+              <div className="text-base sm:text-2xl font-bold tracking-tight text-amber-600">
                 {formatVND(cartTotals.currentDebt)}
-              </div>
-              {/* Progress bar */}
-              <div className="mt-2.5 w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    cartTotals.creditLimit > 0 && cartTotals.currentDebt / cartTotals.creditLimit > 0.8
-                      ? 'bg-rose-500'
-                      : cartTotals.creditLimit > 0 && cartTotals.currentDebt / cartTotals.creditLimit > 0.5
-                      ? 'bg-amber-500'
-                      : 'bg-emerald-500'
-                  }`}
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      cartTotals.creditLimit > 0 ? (cartTotals.currentDebt / cartTotals.creditLimit) * 100 : 0
-                    )}%`,
-                  }}
-                />
               </div>
             </div>
 
-            {/* Card 3: Hạn mức còn lại khả dụng */}
-            <div className={`rounded-xl p-4 border transition-all ${
+            {/* Card 3: Hạn mức còn lại khả dụng - Mobile thu nhỏ 2/3 */}
+            <div className={`rounded-xl p-2.5 sm:p-4 border transition-all ${
               cartTotals.availableCredit <= 0
                 ? 'bg-rose-50/50 border-rose-200'
                 : 'bg-emerald-50/40 border-emerald-200/70 hover:bg-emerald-50/60'
             }`}>
-              <div className="flex items-center justify-between text-slate-500 text-xs mb-1.5">
+              <div className="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs mb-1 sm:mb-1.5">
                 <span className="flex items-center gap-1.5 font-medium text-slate-700">
-                  <CreditCard className={`w-4 h-4 ${cartTotals.availableCredit <= 0 ? 'text-rose-600' : 'text-emerald-600'}`} />
+                  <CreditCard className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${cartTotals.availableCredit <= 0 ? 'text-rose-600' : 'text-emerald-600'}`} />
                   Hạn mức còn lại khả dụng
                 </span>
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                <span className={`text-[9px] sm:text-[10px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full ${
                   cartTotals.availableCredit <= 0 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
                 }`}>
                   {cartTotals.availableCredit > 0 ? 'Khả dụng đặt hàng' : 'Hết hạn mức'}
                 </span>
               </div>
-              <div className={`text-xl sm:text-2xl font-bold tracking-tight ${
+              <div className={`text-base sm:text-2xl font-bold tracking-tight ${
                 cartTotals.availableCredit <= 0 ? 'text-rose-600' : 'text-emerald-600'
               }`}>
                 {formatVND(cartTotals.availableCredit)}
@@ -1206,280 +1369,278 @@ export const AgencyPortalPage: React.FC = () => {
         </div>
 
         {/* ===================================================================== */}
-        {/* 2. THANH TIÊU ĐỀ & TÌM KIẾM                                           */}
+        {/* 2. TIÊU ĐỀ DANH MỤC SẢN PHẨM & BẢNG GIÁ ĐẠI LÝ                        */}
         {/* ===================================================================== */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-5">
-          {/* Tiêu đề Danh mục đặt hàng */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-indigo-600 text-white shadow-sm text-xs sm:text-sm font-semibold self-start select-none">
-            <Package className="w-4 h-4" />
-            <span>Danh mục đặt hàng</span>
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+            <Package className="w-5 h-5" />
           </div>
-
-          {/* Ô tìm kiếm có gợi ý thông minh */}
-          <div ref={searchContainerRef} className="relative flex-1 sm:max-w-md">
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onFocus={() => setIsSearchFocused(true)}
-                  placeholder="Tìm tên sản phẩm, mã SKU, nhóm hàng..."
-                  className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              {/* FLOATING DROPDOWN GỢI Ý THÔNG MINH */}
-              {isSearchFocused && (
-                <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-200/90 z-50 overflow-hidden max-h-[380px] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
-                  {/* Nhóm ngành hàng liên quan */}
-                  {smartSuggestions.categories.length > 0 && (
-                    <div className="p-3 border-b border-slate-100 bg-slate-50/60">
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
-                        <Tag className="w-3 h-3 text-indigo-600" />
-                        Gợi ý nhóm ngành hàng
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {smartSuggestions.categories.slice(0, 4).map((c) => (
-                          <button
-                            key={c.id || c.name}
-                            type="button"
-                            onClick={() => {
-                              setSelectedHierarchyCategory(c);
-                              setSelectedCategory(c.name);
-                              setIsSearchFocused(false);
-                              setSearchQuery('');
-                            }}
-                            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/50 text-slate-700 transition-all cursor-pointer"
-                          >
-                            {c.name} ({c.count})
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Danh sách sản phẩm gợi ý */}
-                  <div className="p-2">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-2 py-1.5 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <Sparkles className="w-3 h-3 text-amber-500" />
-                        {smartSuggestions.isTrending ? 'Sản phẩm gợi ý nổi bật' : `Sản phẩm khớp (${smartSuggestions.products.length})`}
-                      </span>
-                      {smartSuggestions.isTrending && (
-                        <span className="text-[10px] text-slate-400 font-normal">Sẵn hàng trong kho</span>
-                      )}
-                    </div>
-
-                    {smartSuggestions.products.length > 0 ? (
-                      <div className="space-y-1">
-                        {smartSuggestions.products.map((item) => (
-                          <div
-                            key={item.id}
-                            className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group cursor-pointer"
-                            onClick={() => {
-                              setSearchQuery(item.name);
-                              setIsSearchFocused(false);
-                            }}
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 font-bold text-xs overflow-hidden">
-                                {item.imageUrl ? (
-                                  <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                                ) : (
-                                  <Package className="w-4 h-4" />
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 truncate">
-                                  {cleanProductName(item.name)}
-                                </div>
-                                <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
-                                  <span className="font-mono text-slate-600">{item.sku}</span>
-                                  <span>•</span>
-                                  <span className="text-emerald-600 font-medium">Còn {item.availableStock} {item.baseUnit || 'cái'}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
-                              <div className="text-right">
-                                <div className="text-xs font-bold text-indigo-700">
-                                  {formatVND(item.agencyPrice)}
-                                </div>
-                                {item.retailPrice > item.agencyPrice && (
-                                  <div className="text-[10px] text-slate-400 line-through">
-                                    {formatVND(item.retailPrice)}
-                                  </div>
-                                )}
-                              </div>
-                              {cart[item.id] ? (
-                                <div className="flex items-center gap-1">
-                                  <span className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold flex items-center gap-1">
-                                    <Check className="w-3 h-3 text-emerald-600" />
-                                    <span>Đã chọn</span>
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCancelSelect(item.id, item.name);
-                                    }}
-                                    className="p-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-colors cursor-pointer"
-                                    title="Hủy chọn"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAddToCart(item);
-                                  }}
-                                  className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white transition-colors border border-indigo-100 cursor-pointer"
-                                  title="Thêm vào giỏ"
-                                >
-                                  <Plus className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-4 text-center text-xs text-slate-500">
-                        Không tìm thấy sản phẩm nào khớp với "{searchQuery}"
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+          <div className="flex items-center flex-wrap gap-2">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+              Danh mục sản phẩm
+            </h2>
+            <span className="text-slate-400 font-normal">-</span>
+            <span className="text-xs sm:text-sm font-semibold text-indigo-600">
+              Bảng giá đại lý tháng 11/2026
+            </span>
+          </div>
         </div>
 
         {/* ===================================================================== */}
-        {/* 3. DANH MỤC ĐẶT HÀNG (CATALOG)                                        */}
+        {/* 3. DANH MỤC SẢN PHẨM (CATALOG)                                        */}
         {/* ===================================================================== */}
         <div className="mb-4">
-              <div className="flex flex-wrap items-center justify-between gap-2.5 bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200/80 shadow-sm">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Nút bấm Mở / Thu gọn Khung nhóm hàng */}
+              <div className="flex items-center justify-between gap-1.5 sm:gap-2.5 bg-white p-2 sm:p-3 rounded-2xl border border-slate-200/80 shadow-sm">
+                {/* Nhóm bên trái: Tìm kiếm + Bộ lọc nhóm hàng liền kề nhau */}
+                <div className="flex items-center gap-1.5 sm:gap-2.5 flex-1 min-w-0">
+                  {/* Ô tìm kiếm có gợi ý thông minh nằm trước bộ lọc nhóm hàng */}
+                  <div ref={searchContainerRef} className="relative flex-1 min-w-0 sm:max-w-xs">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => setIsSearchFocused(true)}
+                      placeholder="Tìm SP, SKU, nhóm hàng..."
+                      className="w-full pl-7 sm:pl-9 pr-6 sm:pr-8 py-1.5 sm:py-2 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-2xs"
+                    />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* FLOATING DROPDOWN GỢI Ý THÔNG MINH */}
+                    {isSearchFocused && (
+                      <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-200/90 z-50 overflow-hidden max-h-[380px] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+                        {/* Nhóm ngành hàng liên quan */}
+                        {smartSuggestions.categories.length > 0 && (
+                          <div className="p-3 border-b border-slate-100 bg-slate-50/60">
+                            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+                              <Tag className="w-3 h-3 text-indigo-600" />
+                              Gợi ý nhóm ngành hàng
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {smartSuggestions.categories.slice(0, 4).map((c) => (
+                                <button
+                                  key={c.id || c.name}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedHierarchyCategory(c);
+                                    setSelectedCategory(c.name);
+                                    setIsSearchFocused(false);
+                                    setSearchQuery('');
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/50 text-slate-700 transition-all cursor-pointer"
+                                >
+                                  {c.name} ({c.count})
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Danh sách sản phẩm gợi ý */}
+                        <div className="p-2">
+                          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-2 py-1.5 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                              <Sparkles className="w-3 h-3 text-amber-500" />
+                              {smartSuggestions.isTrending ? 'Sản phẩm gợi ý nổi bật' : `Sản phẩm khớp (${smartSuggestions.products.length})`}
+                            </span>
+                            {smartSuggestions.isTrending && (
+                              <span className="text-[10px] text-slate-400 font-normal">Sẵn hàng trong kho</span>
+                            )}
+                          </div>
+
+                          {smartSuggestions.products.length > 0 ? (
+                            <div className="space-y-1">
+                              {smartSuggestions.products.map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group cursor-pointer"
+                                  onClick={() => {
+                                    setSearchQuery(item.name);
+                                    setIsSearchFocused(false);
+                                  }}
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 font-bold text-xs overflow-hidden">
+                                      {item.imageUrl ? (
+                                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <Package className="w-4 h-4" />
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 truncate">
+                                        {cleanProductName(item.name)}
+                                      </div>
+                                      <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                        <span className="font-mono text-slate-600">{item.sku}</span>
+                                        <span>•</span>
+                                        <span className="text-emerald-600 font-medium">Còn {item.availableStock} {item.baseUnit || 'cái'}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <div className="text-right">
+                                      <div className="text-xs font-bold text-indigo-700">
+                                        {formatVND(item.agencyPrice)}
+                                      </div>
+                                      {item.retailPrice > item.agencyPrice && (
+                                        <div className="text-[10px] text-slate-400 line-through">
+                                          {formatVND(item.retailPrice)}
+                                        </div>
+                                      )}
+                                    </div>
+                                    {cart[item.id] ? (
+                                      <div className="flex items-center gap-1">
+                                        <span className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold flex items-center gap-1">
+                                          <Check className="w-3 h-3 text-emerald-600" />
+                                          <span>Đã chọn</span>
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCancelSelect(item.id, item.name);
+                                          }}
+                                          className="p-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-colors cursor-pointer"
+                                          title="Hủy chọn"
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleAddToCart(item);
+                                        }}
+                                        className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white transition-colors border border-indigo-100 cursor-pointer"
+                                        title="Thêm vào giỏ"
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="p-4 text-center text-xs text-slate-500">
+                              Không tìm thấy sản phẩm nào khớp với "{searchQuery}"
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nút bấm Mở / Thu gọn Khung nhóm hàng (Cùng 1 hàng trên mobile) */}
                   <button
                     type="button"
-                    onClick={() => setIsCategoryPickerOpen(!isCategoryPickerOpen)}
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
+                    onClick={() => {
+                      setIsCategoryPickerOpen((prev) => {
+                        const next = !prev;
+                        if (next && !selectedHierarchyCategory) {
+                          setCategoryLevelTab(1);
+                          setSelectedL1Category(null);
+                          setSelectedL2Category(null);
+                          setSelectedL3Category(null);
+                        }
+                        return next;
+                      });
+                    }}
+                    className={`shrink-0 flex items-center gap-1 sm:gap-2 px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer border ${
                       isCategoryPickerOpen || selectedHierarchyCategory !== null
                         ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm'
                         : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
                     }`}
+                    title="Bộ lọc nhóm hàng"
                   >
-                    <LayoutGrid className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span>
-                      {!selectedHierarchyCategory
-                        ? `Tất cả nhóm hàng (${products.length})`
-                        : `[Cấp ${selectedHierarchyCategory.level}] ${selectedHierarchyCategory.name} (${selectedHierarchyCategory.count} SP)`}
+                    <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 shrink-0" />
+                    <span className="truncate max-w-[85px] sm:max-w-none">
+                      {selectedHierarchyCategory ? selectedHierarchyCategory.name : 'Tất cả nhóm hàng'}
                     </span>
                     {isCategoryPickerOpen ? (
-                      <ChevronUp className="w-4 h-4 text-slate-500" />
+                      <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 shrink-0" />
                     ) : (
-                      <ChevronDown className="w-4 h-4 text-slate-500" />
+                      <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 shrink-0" />
                     )}
                   </button>
-
-                  {/* Tag trạng thái khi đang lọc nhóm phân cấp cụ thể */}
-                  {selectedHierarchyCategory && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                      <span
-                        className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                          selectedHierarchyCategory.level === 1
-                            ? 'bg-indigo-100 text-indigo-700'
-                            : selectedHierarchyCategory.level === 2
-                            ? 'bg-sky-100 text-sky-700'
-                            : 'bg-emerald-100 text-emerald-700'
-                        }`}
-                      >
-                        Cấp {selectedHierarchyCategory.level}
-                      </span>
-                      <span className="truncate max-w-[220px] font-semibold">
-                        {selectedHierarchyCategory.name}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedHierarchyCategory(null);
-                          setSelectedCategory('ALL');
-                        }}
-                        title="Xóa lọc nhóm hàng"
-                        className="text-slate-400 hover:text-rose-600 ml-1 p-0.5 rounded-full hover:bg-slate-200 transition-colors cursor-pointer"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
                 </div>
 
-                {/* Phía phải: Số lượng hiển thị & Nút Làm mới */}
-                <div className="flex items-center gap-2.5 text-xs text-slate-500">
-                  <span>
-                    <strong className="text-slate-800">{availableCatalog.length}</strong> sản phẩm
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void loadCatalogAndPricing(true);
-                      void loadCurrentAgencyProfile(true);
-                      if (currentCustomer?.id) void fetchCustomerDebt(currentCustomer.id);
-                    }}
-                    disabled={isLoadingCatalog || isLoadingProfile}
-                    title="Làm mới danh mục sản phẩm & hạn mức nợ"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200/80 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200/80 shadow-2xs disabled:opacity-60"
-                  >
-                    <RefreshCw
-                      className={`w-3.5 h-3.5 ${
-                        isLoadingCatalog || isLoadingProfile ? 'animate-spin text-indigo-600' : 'text-slate-500'
-                      }`}
-                    />
-                    <span>Làm mới</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* KHUNG CÁC NHÓM HÀNG ĐỂ CHỌN (PHÂN CẤP CẤP 1 - CẤP 2 - CẤP 3) */}
-              {isCategoryPickerOpen && (
-                <div className="mt-2.5 bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200">
-                  {/* Header của Khung Nhóm Hàng */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3.5 border-b border-slate-100">
-                    <div className="flex items-center gap-2">
-                      <LayoutGrid className="w-4 h-4 text-indigo-600" />
-                      <h3 className="text-xs sm:text-sm font-bold text-slate-900">
-                        Khung Nhóm Hàng & Ngành Hàng Sản Phẩm
-                      </h3>
-                      <span className="text-[11px] text-slate-500 hidden sm:inline">
-                        (Phân biệt trực quan Cấp 1 - Cấp 2 - Cấp 3 • Bấm chọn để lọc sản phẩm)
-                      </span>
-                    </div>
+                {/* Phía phải: Nút Làm mới (Cùng 1 hàng trên mobile) */}
+                  <div className="shrink-0 flex items-center text-xs text-slate-500">
                     <button
                       type="button"
-                      onClick={() => setIsCategoryPickerOpen(false)}
-                      className="text-xs text-slate-500 hover:text-indigo-600 font-medium flex items-center gap-1 cursor-pointer"
+                      onClick={() => {
+                        void loadCatalogAndPricing(true);
+                        void loadCurrentAgencyProfile(true);
+                        if (currentCustomer?.id) void fetchCustomerDebt(currentCustomer.id);
+                      }}
+                      disabled={isLoadingCatalog || isLoadingProfile}
+                      title="Làm mới danh mục sản phẩm & hạn mức nợ"
+                      className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200/80 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200/80 shadow-2xs disabled:opacity-60"
                     >
-                      <ChevronUp className="w-3.5 h-3.5" />
-                      Thu gọn
+                      <RefreshCw
+                        className={`w-3.5 h-3.5 ${
+                          isLoadingCatalog || isLoadingProfile ? 'animate-spin text-indigo-600' : 'text-slate-500'
+                        }`}
+                      />
+                      <span className="hidden sm:inline">Làm mới</span>
                     </button>
                   </div>
+                </div>
 
-                  {/* TOOLBAR: Ô TÌM NHANH NHÓM HÀNG & CÁC TAB LỌC CẤP ĐỘ */}
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 mb-4">
+                {/* Tag trạng thái khi đang lọc nhóm phân cấp cụ thể */}
+                {selectedHierarchyCategory && (
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                    <span
+                      className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                        selectedHierarchyCategory.level === 1
+                          ? 'bg-indigo-100 text-indigo-700'
+                          : selectedHierarchyCategory.level === 2
+                          ? 'bg-sky-100 text-sky-700'
+                          : 'bg-emerald-100 text-emerald-700'
+                      }`}
+                    >
+                      Cấp {selectedHierarchyCategory.level}
+                    </span>
+                    <span className="truncate max-w-[220px] font-semibold">
+                      {selectedHierarchyCategory.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedHierarchyCategory(null);
+                        setSelectedCategory('ALL');
+                        setSelectedL1Category(null);
+                        setSelectedL2Category(null);
+                        setSelectedL3Category(null);
+                        setCategoryLevelTab(1);
+                      }}
+                      title="Xóa lọc nhóm hàng"
+                      className="text-slate-400 hover:text-rose-600 ml-1 p-0.5 rounded-full hover:bg-slate-200 transition-colors cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+
+              {/* KHUNG CÁC NHÓM HÀNG ĐỂ CHỌN (TỐI ƯU 2 DÒNG TRÊN DƯỚI, CUỘN NGANG) */}
+              {isCategoryPickerOpen && (
+                <div className="mt-2.5 bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200">
+                  {/* TOOLBAR: Ô TÌM NHANH NHÓM HÀNG & CÁC TAB LỌC CẤP ĐỘ, NÚT THU GỌN */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 mb-3.5">
                     {/* Ô tìm nhóm hàng nhanh */}
                     <div className="relative flex-1 max-w-sm">
                       <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -1501,172 +1662,311 @@ export const AgencyPortalPage: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Bộ lọc tab Cấp độ 1, 2, 3 */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                    {/* Bộ lọc tab Cấp độ 1, 2, 3 (đã xóa Tất cả cấp 28) & Nút Thu gọn */}
+                    <div className="flex items-center justify-between sm:justify-end gap-2 overflow-x-auto pb-1 sm:pb-0">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCategoryLevelTab(1);
+                            setSelectedL1Category(null);
+                            setSelectedL2Category(null);
+                            setSelectedL3Category(null);
+                          }}
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                            categoryLevelTab === 1
+                              ? 'bg-indigo-600 text-white shadow-2xs'
+                              : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                          }`}
+                        >
+                          <FolderKanban className="w-3.5 h-3.5" />
+                          Cấp 1 • Ngành hàng
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCategoryLevelTab(2);
+                            setSelectedL2Category(null);
+                            setSelectedL3Category(null);
+                          }}
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                            categoryLevelTab === 2
+                              ? 'bg-sky-600 text-white shadow-2xs'
+                              : 'bg-sky-50 text-sky-700 hover:bg-sky-100'
+                          }`}
+                        >
+                          <Layers className="w-3.5 h-3.5" />
+                          Cấp 2 • Nhóm hàng
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCategoryLevelTab(3);
+                            setSelectedL3Category(null);
+                          }}
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                            categoryLevelTab === 3
+                              ? 'bg-emerald-600 text-white shadow-2xs'
+                              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                          }`}
+                        >
+                          <Tag className="w-3.5 h-3.5" />
+                          Cấp 3 • Chi tiết
+                        </button>
+                      </div>
+
+                      {/* Nút Thu gọn */}
                       <button
                         type="button"
-                        onClick={() => setCategoryLevelTab('ALL')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                          categoryLevelTab === 'ALL'
-                            ? 'bg-slate-900 text-white shadow-2xs'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
+                        onClick={() => setIsCategoryPickerOpen(false)}
+                        className="text-xs text-slate-500 hover:text-indigo-600 font-medium flex items-center gap-1 cursor-pointer ml-1 pl-2 border-l border-slate-200 shrink-0"
                       >
-                        Tất cả cấp ({hierarchicalCategories.length})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCategoryLevelTab(1)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                          categoryLevelTab === 1
-                            ? 'bg-indigo-600 text-white shadow-2xs'
-                            : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
-                        }`}
-                      >
-                        <FolderKanban className="w-3.5 h-3.5" />
-                        Cấp 1 • Ngành hàng
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCategoryLevelTab(2)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                          categoryLevelTab === 2
-                            ? 'bg-sky-600 text-white shadow-2xs'
-                            : 'bg-sky-50 text-sky-700 hover:bg-sky-100'
-                        }`}
-                      >
-                        <Layers className="w-3.5 h-3.5" />
-                        Cấp 2 • Nhóm hàng
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCategoryLevelTab(3)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                          categoryLevelTab === 3
-                            ? 'bg-emerald-600 text-white shadow-2xs'
-                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                        }`}
-                      >
-                        <Tag className="w-3.5 h-3.5" />
-                        Cấp 3 • Chi tiết
+                        <ChevronUp className="w-3.5 h-3.5" />
+                        <span>Thu gọn</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Lưới các khung nhóm hàng */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3 max-h-[380px] overflow-y-auto p-1">
-                    {/* Khung: Tất cả nhóm hàng */}
-                    {(categoryLevelTab === 'ALL' || !categoryLevelTab) && !categorySearchQuery && (
+                  {/* Thanh Breadcrumb điều hướng phân cấp (Cấp 1 / Cấp 2 / Cấp 3) */}
+                  {selectedL1Category && (
+                    <div className="flex items-center gap-1.5 mb-3 px-3 py-2 bg-slate-50/80 border border-slate-200/80 rounded-xl text-xs flex-wrap">
+                      {/* Tên nhóm Cấp 1 */}
                       <button
                         type="button"
-                        onClick={() => {
-                          setSelectedHierarchyCategory(null);
-                          setSelectedCategory('ALL');
-                          setIsCategoryPickerOpen(false);
-                        }}
-                        className={`text-left p-3 rounded-xl border transition-all cursor-pointer relative flex flex-col justify-between ${
-                          selectedHierarchyCategory === null
-                            ? 'border-indigo-600 bg-indigo-50/70 shadow-sm ring-1 ring-indigo-500'
-                            : 'border-slate-200/80 bg-slate-50/60 hover:bg-white hover:border-indigo-300 hover:shadow-sm'
-                        }`}
+                        onClick={handleBackToAllL1}
+                        className="font-bold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer transition-colors"
+                        title="Bấm để quay về toàn bộ ngành hàng Cấp 1"
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
-                            <Package className="w-4 h-4" />
-                          </div>
-                          {selectedHierarchyCategory === null && (
-                            <CheckCircle2 className="w-4 h-4 text-indigo-600" />
-                          )}
-                        </div>
-                        <div>
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-200 text-slate-700 uppercase">
-                            Toàn hệ thống
-                          </span>
-                          <div className="font-bold text-xs sm:text-sm text-slate-900 mt-1 line-clamp-1">
-                            Tất cả nhóm hàng
-                          </div>
-                          <div className="text-[11px] text-slate-500 mt-0.5 font-medium">
-                            {products.length} sản phẩm
-                          </div>
-                        </div>
+                        {selectedL1Category}
                       </button>
-                    )}
 
-                    {/* Danh sách các khung nhóm hàng phân cấp Cấp 1, 2, 3 */}
-                    {displayedCategories.map((cat) => {
-                      const isSelected =
-                        selectedHierarchyCategory?.id === cat.id &&
-                        selectedHierarchyCategory?.level === cat.level;
+                      {/* Nếu chưa chọn Cấp 2: hiển thị / Các nhóm hàng con */}
+                      {!selectedL2Category && (
+                        <span className="text-slate-400 font-normal"> / Các nhóm hàng con</span>
+                      )}
 
-                      let badgeBg = 'bg-indigo-100 text-indigo-700 border-indigo-200';
-                      let badgeText = 'Cấp 1 • Ngành';
-                      let iconElem = <FolderKanban className="w-4 h-4 text-indigo-600" />;
+                      {/* Khi đã chọn Cấp 2 */}
+                      {selectedL2Category && (
+                        <>
+                          <span className="text-slate-400">/</span>
+                          <button
+                            type="button"
+                            onClick={handleBackToL2OfL1}
+                            className="font-bold text-sky-700 hover:text-sky-900 hover:underline cursor-pointer transition-colors"
+                            title="Bấm để quay về danh sách nhóm hàng Cấp 2"
+                          >
+                            {selectedL2Category}
+                          </button>
+                          {!selectedL3Category && displayedCategories.length > 0 && (
+                            <span className="text-slate-400 font-normal"> / Các nhóm hàng con</span>
+                          )}
+                        </>
+                      )}
 
-                      if (cat.level === 2) {
-                        badgeBg = 'bg-sky-100 text-sky-700 border-sky-200';
-                        badgeText = 'Cấp 2 • Nhóm';
-                        iconElem = <Layers className="w-4 h-4 text-sky-600" />;
-                      } else if (cat.level === 3) {
-                        badgeBg = 'bg-emerald-100 text-emerald-700 border-emerald-200';
-                        badgeText = 'Cấp 3 • Chi tiết';
-                        iconElem = <Tag className="w-4 h-4 text-emerald-600" />;
-                      }
+                      {/* Khi đã chọn Cấp 3 */}
+                      {selectedL3Category && (
+                        <>
+                          <span className="text-slate-400">/</span>
+                          <button
+                            type="button"
+                            onClick={handleBackToL3OfL2}
+                            className="font-bold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer transition-colors"
+                            title="Bấm để quay về danh sách nhóm hàng Cấp 3"
+                          >
+                            {selectedL3Category}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
 
-                      return (
-                        <button
-                          key={`${cat.level}-${cat.id}`}
-                          type="button"
-                          onClick={() => {
-                            setSelectedHierarchyCategory(cat);
-                            setSelectedCategory(cat.name);
-                            setIsCategoryPickerOpen(false);
-                          }}
-                          className={`text-left p-3 rounded-xl border transition-all cursor-pointer relative flex flex-col justify-between ${
-                            isSelected
-                              ? 'border-indigo-600 bg-indigo-50/80 shadow-sm ring-1 ring-indigo-500'
-                              : 'border-slate-200/80 bg-white hover:bg-slate-50/80 hover:border-indigo-300 hover:shadow-sm'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-200/80 flex items-center justify-center shadow-2xs">
-                              {iconElem}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${badgeBg}`}>
-                                {badgeText}
-                              </span>
-                              {isSelected && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
-                            </div>
-                          </div>
+                  {/* NỘI DUNG KHUNG NHÓM HÀNG */}
+                  {selectedL3Category ? (
+                    /* Khi đã chọn Cấp 3: Không có nhóm cấp 4 -> Khung thu bé 1 tí vừa với dòng chữ */
+                    <div className="py-4 px-4 text-center text-xs sm:text-sm text-slate-700 bg-emerald-50/60 rounded-xl border border-emerald-200/80 flex items-center justify-center gap-1.5">
+                      <span className="font-medium text-slate-600">Bạn đang ở nhóm hàng</span>
+                      <button
+                        type="button"
+                        onClick={handleBackToL3OfL2}
+                        className="font-bold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer"
+                        title="Bấm để quay lại danh mục nhóm hàng Cấp 3"
+                      >
+                        {selectedL3Category}
+                      </button>
+                    </div>
+                  ) : selectedL2Category && displayedCategories.length === 0 ? (
+                    /* Khi chọn Cấp 2 nhưng KHÔNG có nhóm hàng con Cấp 3 */
+                    <div className="py-6 px-4 text-center text-xs text-slate-600 bg-slate-50/80 rounded-xl border border-dashed border-slate-200">
+                      <span>Không có nhóm hàng cấp 3 cho </span>
+                      <button
+                        type="button"
+                        onClick={handleBackToL2OfL1}
+                        className="font-bold text-sky-600 hover:text-sky-800 hover:underline cursor-pointer"
+                        title="Bấm để trở về danh sách nhóm hàng Cấp 2"
+                      >
+                        {selectedL2Category}
+                      </button>
+                    </div>
+                  ) : displayedCategories.length === 0 ? (
+                    /* Khi không tìm thấy nhóm hàng nào theo từ khóa tìm kiếm */
+                    <div className="py-8 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                      Không tìm thấy nhóm hàng nào phù hợp
+                    </div>
+                  ) : (
+                    <>
+                      {/* Lưới các nhóm hàng: Tối đa 2 dòng (trên - dưới), cuộn ngang chỉ khi có nhiều hơn 5 cột */}
+                    <div
+                      className={`grid grid-rows-2 grid-flow-col gap-2 sm:gap-3 pb-2 pt-1 px-0.5 custom-category-scrollbar overflow-x-auto auto-cols-[145px] sm:auto-cols-[175px] lg:auto-cols-[200px] ${
+                        interleavedCategories.colsCount === 5 ? 'lg:grid-cols-5 lg:auto-cols-auto' : ''
+                      }`}
+                    >
+                      {interleavedCategories.list.map((cat, idx) => {
+                        if (!cat) {
+                          return (
+                            <div
+                              key={`empty-${idx}`}
+                              className="invisible pointer-events-none p-2.5 sm:p-3 h-[88px] sm:h-[96px]"
+                              aria-hidden="true"
+                            />
+                          );
+                        }
 
-                          <div>
-                            <div className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-2 leading-snug" title={cat.name}>
-                              {cat.name}
-                            </div>
-                            {cat.parentName && (
-                              <div className="text-[10px] text-slate-400 truncate mt-0.5" title={cat.parentName}>
-                                {cat.level === 2
-                                  ? `Thuộc: ${cat.parentName}`
-                                  : `Nhánh: ${cat.parentName.split('/').pop()?.trim()}`}
+                        const isSelected =
+                          selectedHierarchyCategory?.id === cat.id &&
+                          selectedHierarchyCategory?.level === cat.level;
+
+                        let badgeBg = 'bg-indigo-100 text-indigo-700 border-indigo-200';
+                        let badgeText = 'Cấp 1 • Ngành';
+                        let iconElem = <FolderKanban className="w-4 h-4 text-indigo-600" />;
+
+                        if (cat.level === 2) {
+                          badgeBg = 'bg-sky-100 text-sky-700 border-sky-200';
+                          badgeText = 'Cấp 2 • Nhóm';
+                          iconElem = <Layers className="w-4 h-4 text-sky-600" />;
+                        } else if (cat.level === 3) {
+                          badgeBg = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                          badgeText = 'Cấp 3 • Chi tiết';
+                          iconElem = <Tag className="w-4 h-4 text-emerald-600" />;
+                        }
+
+                        return (
+                          <button
+                            key={`${cat.level}-${cat.id}`}
+                            type="button"
+                            onClick={() => {
+                              if (cat.level === 1) {
+                                setSelectedHierarchyCategory(cat);
+                                setSelectedCategory(cat.name);
+                                setSelectedL1Category(cat.name);
+                                setSelectedL2Category(null);
+                                setSelectedL3Category(null);
+                                setCategoryLevelTab(2);
+                                setIsCategoryPickerOpen(true);
+                                setCatalogPage(1);
+                              } else if (cat.level === 2) {
+                                setSelectedHierarchyCategory(cat);
+                                setSelectedCategory(cat.name);
+                                setSelectedL2Category(cat.name);
+                                setSelectedL3Category(null);
+                                setCategoryLevelTab(3);
+                                setIsCategoryPickerOpen(true);
+                                setCatalogPage(1);
+                              } else if (cat.level === 3) {
+                                setSelectedHierarchyCategory(cat);
+                                setSelectedCategory(cat.name);
+                                setSelectedL3Category(cat.name);
+                                setIsCategoryPickerOpen(true);
+                                setCatalogPage(1);
+                              }
+                            }}
+                            className={`text-left p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer relative flex flex-col justify-between h-[88px] sm:h-[96px] ${
+                              isSelected
+                                ? 'border-indigo-600 bg-indigo-50/80 shadow-sm ring-1 ring-indigo-500'
+                                : 'border-slate-200/80 bg-white hover:bg-slate-50/80 hover:border-indigo-300 hover:shadow-sm'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-50 border border-slate-200/80 flex items-center justify-center shadow-2xs shrink-0">
+                                {iconElem}
                               </div>
-                            )}
-                            <div className="text-[11px] text-slate-500 mt-1 font-medium flex items-center gap-1">
-                              <span className="font-bold text-indigo-600">{cat.count}</span> sản phẩm
+                              <div className="flex items-center gap-1">
+                                <span className={`px-1.5 py-0.5 rounded text-[8.5px] sm:text-[9px] font-bold border shrink-0 ${badgeBg}`}>
+                                  {badgeText}
+                                </span>
+                                {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />}
+                              </div>
                             </div>
+
+                            <div>
+                              <div
+                                className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-1 leading-snug"
+                                title={cat.name}
+                              >
+                                {cat.name}
+                              </div>
+                              <div className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 font-medium flex items-center gap-1">
+                                <span className="font-bold text-indigo-600">{cat.count}</span> sản phẩm
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                      </div>
+
+                      {/* Phân trang nhóm hàng thông minh: Chỉ xuất hiện khi có > 20 nhóm hàng (Cố định 20 nhóm / trang) */}
+                      {displayedCategories.length > CATEGORY_ITEMS_PER_PAGE && (
+                        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-3 mt-1 border-t border-slate-100 text-xs text-slate-600">
+                          <div className="text-[11px] sm:text-xs text-slate-500 font-medium">
+                            Hiển thị <span className="font-bold text-slate-800">{(currentCategoryPage - 1) * CATEGORY_ITEMS_PER_PAGE + 1} - {Math.min(currentCategoryPage * CATEGORY_ITEMS_PER_PAGE, displayedCategories.length)}</span> trong tổng số <span className="font-bold text-slate-800">{displayedCategories.length}</span> nhóm hàng
                           </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              disabled={currentCategoryPage <= 1}
+                              onClick={() => setCategoryPage((p) => Math.max(1, p - 1))}
+                              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium flex items-center gap-1 transition-all cursor-pointer shadow-2xs text-[11px] sm:text-xs text-slate-700"
+                              title="Trang trước"
+                            >
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Trước</span>
+                            </button>
+
+                            <div className="flex items-center gap-1">
+                              {Array.from({ length: totalCategoryPages }, (_, i) => i + 1).map((p) => (
+                                <button
+                                  key={p}
+                                  type="button"
+                                  onClick={() => setCategoryPage(p)}
+                                  className={`min-w-[26px] h-6 sm:min-w-[28px] sm:h-7 px-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                                    p === currentCategoryPage
+                                      ? 'bg-indigo-600 text-white shadow-2xs'
+                                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  {p}
+                                </button>
+                              ))}
+                            </div>
+
+                            <button
+                              type="button"
+                              disabled={currentCategoryPage >= totalCategoryPages}
+                              onClick={() => setCategoryPage((p) => Math.min(totalCategoryPages, p + 1))}
+                              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium flex items-center gap-1 transition-all cursor-pointer shadow-2xs text-[11px] sm:text-xs text-slate-700"
+                              title="Trang sau"
+                            >
+                              <span className="hidden sm:inline">Sau</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Thông báo chính sách giá */}
-            <div className="mb-4 bg-indigo-50/70 border border-indigo-100 rounded-xl px-3.5 py-2.5 flex items-center gap-2 text-xs text-indigo-900 font-medium">
-              <Info className="w-4 h-4 text-indigo-600 shrink-0" />
-              <span>Bảng giá đại lý tháng 11/2026</span>
-            </div>
 
             {/* Loading (chỉ hiện khi chưa có sản phẩm nào) */}
             {isLoadingCatalog && products.length === 0 && (
@@ -1686,19 +1986,16 @@ export const AgencyPortalPage: React.FC = () => {
 
             {/* Empty */}
             {!isLoadingCatalog && !catalogError && availableCatalog.length === 0 && (
-              <div className="bg-white rounded-2xl p-12 text-center border border-slate-200/80 shadow-sm">
-                <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <h3 className="text-base font-semibold text-slate-800 mb-1">Không tìm thấy sản phẩm phù hợp</h3>
-                <p className="text-xs sm:text-sm text-slate-500">
-                  {searchQuery ? 'Thử tìm kiếm với từ khóa khác hoặc xóa bộ lọc.' : 'Chưa có sản phẩm nào được cấu hình giá cho nhóm đại lý này.'}
-                </p>
+              <div className="bg-white rounded-2xl p-10 text-center border border-slate-200/80 shadow-sm">
+                <Package className="w-10 h-10 text-slate-300 mx-auto mb-2.5" />
+                <h3 className="text-sm sm:text-base font-semibold text-slate-700">Không tìm thấy sản phẩm phù hợp</h3>
               </div>
             )}
 
             {/* GRID SẢN PHẨM 2 CỘT MOBILE-FIRST */}
             {!isLoadingCatalog && !catalogError && availableCatalog.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                {availableCatalog.map((product) => {
+                {paginatedCatalog.map((product) => {
                   const inCart = cart[product.id];
                   const isOutOfStock = product.availableStock <= 0;
 
@@ -1818,6 +2115,80 @@ export const AgencyPortalPage: React.FC = () => {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Thanh Phân Trang 10-20-50-100 Dòng cho Cổng đặt hàng */}
+            {availableCatalog.length > 0 && (
+              <div className="mt-5 p-2.5 sm:p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-sm flex flex-row items-center justify-between gap-2 sm:gap-3 text-xs text-slate-600">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  <span className="font-medium text-slate-600 text-[11px] sm:text-xs">Số dòng:</span>
+                  <select
+                    value={catalogRows}
+                    onChange={(e) => {
+                      setCatalogRows(Number(e.target.value));
+                      setCatalogPage(1);
+                    }}
+                    className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-2xs"
+                  >
+                    <option value={10}>10 dòng</option>
+                    <option value={20}>20 dòng</option>
+                    <option value={50}>50 dòng</option>
+                    <option value={100}>100 dòng</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setCatalogPage((p) => Math.max(1, p - 1))}
+                    disabled={catalogPage <= 1}
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center shadow-2xs cursor-pointer"
+                    title="Trang trước"
+                    aria-label="Trang trước"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+
+                  <div className="flex items-center gap-1 sm:gap-1.5">
+                    {Array.from({ length: totalCatalogPages }, (_, i) => i + 1)
+                      .filter((p) => {
+                        if (totalCatalogPages <= 7) return true;
+                        if (p === 1 || p === totalCatalogPages) return true;
+                        return Math.abs(p - catalogPage) <= 1;
+                      })
+                      .map((p, idx, arr) => {
+                        const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
+                        return (
+                          <React.Fragment key={p}>
+                            {showEllipsis && <span className="px-1 text-slate-400">...</span>}
+                            <button
+                              type="button"
+                              onClick={() => setCatalogPage(p)}
+                              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${
+                                catalogPage === p
+                                  ? 'bg-indigo-600 text-white font-bold shadow-2xs'
+                                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          </React.Fragment>
+                        );
+                      })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setCatalogPage((p) => Math.min(totalCatalogPages, p + 1))}
+                    disabled={catalogPage >= totalCatalogPages}
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center shadow-2xs cursor-pointer"
+                    title="Trang sau"
+                    aria-label="Trang sau"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                </div>
               </div>
             )}
         </div>

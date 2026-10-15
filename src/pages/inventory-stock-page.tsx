@@ -13,8 +13,9 @@ import {
   X,
   Filter,
   Layers,
-  Sparkles,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   SlidersHorizontal,
   PackagePlus,
 } from 'lucide-react';
@@ -166,6 +167,15 @@ export const InventoryStockPage: React.FC = () => {
     fetchStockData();
   }, [fetchStockData]);
 
+  // Phân trang danh sách tồn kho (10 - 20 - 50 - 100)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+
+  // Reset về trang 1 khi thay đổi bộ lọc tìm kiếm
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedWarehouse, selectedCategory, selectedStatus]);
+
   // Danh sách các kho hàng duy nhất để hiển thị dropdown
   const warehouseOptions = useMemo(() => {
     const set = new Set<string>();
@@ -184,14 +194,14 @@ export const InventoryStockPage: React.FC = () => {
     return Array.from(set);
   }, [stockItems]);
 
-  // Thống kê tổng hợp 3 cột tồn kho + Cảnh báo tồn tối thiểu SN-183
+  // Thống kê tổng hợp 3 cột tồn kho + Cảnh báo đứt hàng (chỉ đếm hàng sắp đứt, không lấy hàng 0 tồn)
   const summaryStats = useMemo(() => {
     let totalPhysical = 0;
     let totalReserved = 0;
     let totalAvailable = 0;
     let lowStockCount = 0;
     let outOfStockCount = 0;
-    let belowMinStockCount = 0;
+    let nearOutOfStockCount = 0;
 
     stockItems.forEach((item) => {
       totalPhysical += item.physicalStock;
@@ -199,10 +209,15 @@ export const InventoryStockPage: React.FC = () => {
       totalAvailable += item.availableStock;
       if (item.status === 'LOW_STOCK') lowStockCount++;
       if (item.status === 'OUT_OF_STOCK') outOfStockCount++;
-      const isBelowMin =
-        Boolean(item.isBelowMinStock) ||
-        ((item.minStockLevel || 0) > 0 && item.availableStock <= (item.minStockLevel || 0));
-      if (isBelowMin) belowMinStockCount++;
+
+      // Hàng SẮP ĐỨT: tồn khả dụng còn > 0 nhưng chạm hoặc dưới ngưỡng cảnh báo
+      const isNearOutOfStock =
+        item.availableStock > 0 &&
+        (item.status === 'LOW_STOCK' ||
+          Boolean(item.isBelowMinStock) ||
+          ((item.minStockLevel || 0) > 0 && item.availableStock <= (item.minStockLevel || 0)));
+
+      if (isNearOutOfStock) nearOutOfStockCount++;
     });
 
     return {
@@ -211,10 +226,23 @@ export const InventoryStockPage: React.FC = () => {
       totalAvailable,
       lowStockCount,
       outOfStockCount,
-      belowMinStockCount,
+      nearOutOfStockCount,
       totalSku: stockItems.length,
     };
   }, [stockItems]);
+
+  const totalPages = Math.max(1, Math.ceil(stockItems.length / pageSize));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return stockItems.slice(start, start + pageSize);
+  }, [stockItems, currentPage, pageSize]);
 
   // Mở modal cấu hình tồn tối thiểu (SN-183)
   const handleOpenMinStockModal = (item: StockOverviewItem) => {
@@ -379,120 +407,108 @@ export const InventoryStockPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Thẻ 4: Cảnh báo tồn kho */}
+        {/* Thẻ 4: Cảnh báo đứt hàng */}
         <div className="rounded-xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs hover:shadow-xs transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Cảnh Báo Tồn Kho
+              Cảnh Báo Đứt Hàng
             </span>
             <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
               <AlertTriangle className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-2 text-2xl font-extrabold text-rose-600 tabular-nums">
-            {summaryStats.belowMinStockCount > 0
-              ? summaryStats.belowMinStockCount
-              : summaryStats.lowStockCount + summaryStats.outOfStockCount}
+            {summaryStats.nearOutOfStockCount}
           </div>
         </div>
       </div>
 
-      {/* Thanh Bộ Lọc & Tìm Kiếm */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Ô Tìm nhanh theo Mã SKU hoặc Tên sản phẩm */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Tìm nhanh mã SKU hoặc tên sản phẩm..."
-              className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-            />
-            {searchInput && (
-              <button
-                onClick={() => setSearchInput('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+      {/* Thanh Bộ Lọc, Tìm Kiếm & Làm Mới (Gọn gàng trên 1 hàng) */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 sm:gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 flex-1 min-w-0">
+            {/* Ô Tìm nhanh theo Mã SKU hoặc Tên sản phẩm */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Tìm nhanh mã SKU hoặc tên sản phẩm..."
+                className="w-full pl-9 pr-7 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => setSearchInput('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Lọc theo Kho hàng */}
+            <div className="relative">
+              <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <select
+                value={selectedWarehouse}
+                onChange={(e) => setSelectedWarehouse(e.target.value)}
+                className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer truncate"
               >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+                <option value="ALL">Tất cả kho hàng</option>
+                {warehouseOptions.map((wh) => (
+                  <option key={wh} value={wh}>
+                    {wh}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Lọc theo Nhóm hàng */}
+            <div className="relative">
+              <Layers className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer truncate"
+              >
+                <option value="ALL">Tất cả nhóm hàng</option>
+                {categoryOptions.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Lọc theo Trạng thái tồn kho */}
+            <div className="relative">
+              <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value as StockStatusType | 'ALL')}
+                className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer truncate"
+              >
+                <option value="ALL">Tất cả trạng thái tồn</option>
+                <option value="BELOW_MIN_STOCK">⚠️ Dưới tồn tối thiểu</option>
+                <option value="IN_STOCK">Còn hàng (Dồi dào)</option>
+                <option value="OUT_OF_STOCK">Hết hàng (Tồn khả thi = 0)</option>
+              </select>
+            </div>
           </div>
 
-          {/* Lọc theo Kho hàng */}
-          <div className="relative">
-            <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <select
-              value={selectedWarehouse}
-              onChange={(e) => setSelectedWarehouse(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
-            >
-              <option value="ALL">Tất cả kho hàng</option>
-              {warehouseOptions.map((wh) => (
-                <option key={wh} value={wh}>
-                  {wh}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Lọc theo Nhóm hàng */}
-          <div className="relative">
-            <Layers className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
-            >
-              <option value="ALL">Tất cả nhóm hàng</option>
-              {categoryOptions.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Lọc theo Trạng thái tồn kho */}
-          <div className="relative">
-            <Filter className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value as StockStatusType | 'ALL')}
-              className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
-            >
-              <option value="ALL">Tất cả trạng thái tồn</option>
-              <option value="BELOW_MIN_STOCK">⚠️ Dưới tồn tối thiểu</option>
-              <option value="IN_STOCK">Còn hàng (Dồi dào)</option>
-              <option value="OUT_OF_STOCK">Hết hàng (Tồn khả thi = 0)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Gợi ý / Ghi chú cho Nhân viên kho & Nút Làm mới dữ liệu */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 pt-3 border-t border-slate-100">
-          <div className="flex items-center gap-2 text-indigo-700 font-medium">
-            <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
-            <span>
-              Mẹo cho Quản lý &amp; Nhân viên kho: Hệ thống tự động cảnh báo khi tồn khả thi chạm hoặc dưới ngưỡng tồn tối thiểu cần đặt hàng.
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <span>
-              Hiển thị <strong className="text-slate-800 font-semibold">{stockItems.length}</strong> sản phẩm
-            </span>
-            <button
-              onClick={fetchStockData}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 border border-slate-200/90 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-2xs"
-              title="Làm mới dữ liệu tồn kho"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-600' : ''}`} />
-              <span>Làm mới dữ liệu</span>
-            </button>
-          </div>
+          {/* Nút Làm mới (cùng hàng, bỏ chữ "dữ liệu") */}
+          <button
+            type="button"
+            onClick={fetchStockData}
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 border border-slate-200/90 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-2xs shrink-0 self-end lg:self-auto"
+            title="Làm mới tồn kho"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
+            <span>Làm mới</span>
+          </button>
         </div>
       </div>
 
@@ -559,7 +575,7 @@ export const InventoryStockPage: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                stockItems.map((item) => {
+                paginatedItems.map((item) => {
                   const baseUnit = item.baseUnit;
                   const itemKey = `${item.sku}-${item.warehouseId || item.warehouse}`;
 
@@ -667,6 +683,82 @@ export const InventoryStockPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Thanh Phân Trang 10-20-50-100 Dòng */}
+        {stockItems.length > 0 && (
+          <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+            {/* Hình 2: Bỏ "mỗi trang " -> Chỉ còn "Số dòng:", bỏ "Hiển thị 1 - 15..." */}
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-slate-600">Số dòng:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-2xs"
+              >
+                <option value={10}>10 dòng</option>
+                <option value={20}>20 dòng</option>
+                <option value={50}>50 dòng</option>
+                <option value={100}>100 dòng</option>
+              </select>
+            </div>
+
+            {/* Hình 4: Các nút phân trang vuông bo nhẹ [<] [1] [2] [3] [4] [>] */}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center shadow-2xs cursor-pointer"
+                title="Trang trước"
+                aria-label="Trang trước"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-1.5">
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => {
+                    if (totalPages <= 7) return true;
+                    if (p === 1 || p === totalPages) return true;
+                    return Math.abs(p - currentPage) <= 1;
+                  })
+                  .map((p, idx, arr) => {
+                    const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
+                    return (
+                      <React.Fragment key={p}>
+                        {showEllipsis && <span className="px-1 text-slate-400">...</span>}
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage(p)}
+                          className={`w-8 h-8 rounded-lg text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${
+                            currentPage === p
+                              ? 'bg-indigo-600 text-white font-bold shadow-2xs'
+                              : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center shadow-2xs cursor-pointer"
+                title="Trang sau"
+                aria-label="Trang sau"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Dropdown Menu Portal Thao tác */}

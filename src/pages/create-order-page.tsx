@@ -678,6 +678,28 @@ export const CreateOrderPage: React.FC = () => {
     };
   }, [selectedCustomer]);
 
+  // Lắng nghe biến động công nợ để tự động cập nhật hạn mức khách hàng
+  useEffect(() => {
+    const handleDebtUpdate = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      if (!selectedCustomer) return;
+      if (
+        !detail ||
+        detail.customerId === selectedCustomer.id ||
+        detail.customerCode === selectedCustomer.code ||
+        (detail.customerId && selectedCustomer.code && String(detail.customerId).toLowerCase() === selectedCustomer.code.toLowerCase())
+      ) {
+        ordersService.getDebtStatus(selectedCustomer.id).then((res) => {
+          setDebtStatus(res);
+        }).catch(() => {});
+      }
+    };
+    window.addEventListener('loha_debt_updated', handleDebtUpdate);
+    return () => {
+      window.removeEventListener('loha_debt_updated', handleDebtUpdate);
+    };
+  }, [selectedCustomer]);
+
   // ── Tìm kiếm sản phẩm theo Từ khóa (debounce 300ms) ──
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);

@@ -330,6 +330,49 @@ export function saveStoredCustomers(customers: Customer[]): void {
   }
 }
 
+/**
+ * Cập nhật biến động dư nợ thời gian thực cho đại lý và phát sự kiện đồng bộ toàn hệ thống
+ */
+export function updateStoredCustomerDebt(customerId: string, deltaAmount: number): Customer | null {
+  const customers = getStoredCustomers();
+  const targetId = String(customerId).toLowerCase().trim();
+  const idx = customers.findIndex(
+    (c) =>
+      c.id.toLowerCase() === targetId ||
+      c.code.toLowerCase() === targetId ||
+      (c.phone && targetId.includes(c.phone))
+  );
+
+  if (idx === -1) return null;
+
+  const current = typeof customers[idx].currentDebt === 'number' ? customers[idx].currentDebt : 0;
+  const newDebt = Math.max(0, current + deltaAmount);
+  customers[idx] = {
+    ...customers[idx],
+    currentDebt: newDebt,
+  };
+
+  saveStoredCustomers(customers);
+
+  try {
+    window.dispatchEvent(
+      new CustomEvent('loha_debt_updated', {
+        detail: {
+          customerId: customers[idx].id,
+          customerCode: customers[idx].code,
+          newDebt,
+          creditLimit: customers[idx].creditLimit,
+          availableLimit: Math.max(0, (customers[idx].creditLimit || 0) - newDebt),
+        },
+      })
+    );
+  } catch {
+    // ignore
+  }
+
+  return customers[idx];
+}
+
 export function filterDemoCustomers(params: CustomerFilterParams = {}): PaginatedCustomersResponse {
   let list = getStoredCustomers();
 

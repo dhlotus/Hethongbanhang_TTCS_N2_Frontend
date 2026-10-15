@@ -1238,4 +1238,38 @@ input.glass-input:-webkit-autofill:active {
     box-shadow: none !important;
   }
 }
+
+/* Thanh cuộn ngang siêu mỏng bo tròn hiện đại cho khung nhóm hàng (Chuẩn Hình 2) */
+.custom-category-scrollbar::-webkit-scrollbar {
+  height: 4px;
+  width: 4px;
+}
+
+.custom-category-scrollbar::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.custom-category-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+  border-radius: 9999px;
+}
+
+.custom-category-scrollbar::-webkit-scrollbar-thumb {
+  background: #94a3b8 !important;
+  border-radius: 9999px;
+}
+
+.custom-category-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
+}
+
+@supports (-moz-appearance: none) {
+  .custom-category-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 transparent;
+  }
+}
+
 

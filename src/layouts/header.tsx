@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Menu, User, Lock, Power, ChevronDown, ChevronRight, LogOut, Loader2 } from 'lucide-react';
+import { Menu, User, Lock, Power, ChevronDown, ChevronRight, LogOut, Loader2, ShieldCheck } from 'lucide-react';
 import { getStoredUser } from '../utils/navigation';
 import {
   getNavigationItems,
@@ -12,6 +12,7 @@ import {
 import { tokenStorage } from '../utils/token-storage';
 import { resolveAvatarUrl } from '../utils/avatar';
 import { authService } from '../services/auth.service';
+import { NotificationBell } from '../components/notification-bell';
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
@@ -119,6 +120,25 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const [currentUser, setCurrentUser] = useState(getStoredUser());
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(tokenStorage.getUser()?.avatarUrl);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const [isCreditCollapsedMobile, setIsCreditCollapsedMobile] = useState<boolean>(false);
+  const isPortalOrders = location.pathname.startsWith('/portal');
+  const isOrderConfirm = location.pathname === '/portal/orders/confirm' || location.pathname === '/portal/orders/create';
+
+  // Lắng nghe trạng thái thu gọn hạn mức từ Agency Portal trên Mobile
+  useEffect(() => {
+    const handleCreditState = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      if (typeof detail?.isCollapsed === 'boolean') {
+        setIsCreditCollapsedMobile(detail.isCollapsed);
+      }
+    };
+    window.addEventListener('loha_portal_credit_state', handleCreditState);
+    return () => window.removeEventListener('loha_portal_credit_state', handleCreditState);
+  }, []);
+
+  const handleExpandCreditMobile = () => {
+    window.dispatchEvent(new CustomEvent('loha_portal_expand_credit'));
+  };
 
   // Trạng thái modal xác nhận đăng xuất
   const [showLogoutModal, setShowLogoutModal] = useState<boolean>(false);
@@ -272,9 +292,29 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       </div>
 
       {/* =================================================================== */}
-      {/* 2. BÊN PHẢI: NÚT HỒ SƠ CÁ NHÂN KÈM DROPDOWN MENU XỔ XUỐNG           */}
+      {/* 2. BÊN PHẢI: CHUÔNG THÔNG BÁO & NÚT HỒ SƠ CÁ NHÂN                   */}
       {/* =================================================================== */}
-      <div className="relative shrink-0" ref={dropdownRef}>
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Chuông thông báo hiển thị cho tất cả vai trò trên hệ thống (ẩn trên mobile khi ở trang Xác nhận đơn hàng) */}
+        <div className={isOrderConfirm ? 'hidden sm:block' : 'block'}>
+          <NotificationBell />
+        </div>
+
+        {/* Nút Hạn mức nhanh cho Mobile khi đang ở Cổng đặt hàng và bảng hạn mức đang thu gọn (Không hiển thị khi đang ở Xác nhận đơn hàng) */}
+        {isPortalOrders && !isOrderConfirm && isCreditCollapsedMobile && (
+          <button
+            type="button"
+            onClick={handleExpandCreditMobile}
+            className="flex sm:hidden items-center gap-1 px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 text-indigo-700 text-xs font-bold transition-all shadow-2xs animate-in fade-in zoom-in-90 duration-200 active:scale-95 cursor-pointer"
+            title="Bấm để mở bảng hạn mức & dư nợ"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <span className="text-[11px] font-bold">Hạn mức</span>
+          </button>
+        )}
+
+        {/* Khung bảng tên người dùng & Dropdown Profile */}
+        <div className="relative shrink-0" ref={dropdownRef}>
         {/* Nút bấm mở Dropdown Profile (Chỉ mở khi click) */}
         <button
           type="button"
@@ -425,6 +465,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* =================================================================== */}

@@ -426,7 +426,7 @@ export const AppRoutes: React.FC = () => {
             {/* ------------------------------------------------------------- */}
             {/* PHÂN HỆ MỞ CHO MỌI NHÂN SỰ ĐÃ ĐĂNG NHẬP                       */}
             {/* ------------------------------------------------------------- */}
-            {/* Dashboard Điều hành Doanh nghiệp (Chặn Customer và Thủ kho theo Module 9) */}
+            {/* Dashboard Điều hành Doanh nghiệp (Chặn Customer) */}
             <Route
               element={
                 <RoleGuard
@@ -439,6 +439,8 @@ export const AppRoutes: React.FC = () => {
                     'ACCOUNTANT_DEBT',
                     'WAREHOUSE_MANAGER',
                     'WH_MANAGER',
+                    'WAREHOUSE',
+                    'WAREHOUSE_KEEPER',
                   ]}
                   moduleName="Dashboard Tổng quan Điều hành"
                 />
