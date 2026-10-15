@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, UserCheck, Shield, AlertCircle, Loader2 } from 'lucide-react';
+import { X, UserCheck, AlertCircle, Loader2 } from 'lucide-react';
 import { customersService } from '../services/customers.service';
 import { toast } from './toast';
 import type { Customer, SalesRepOption } from '../types/customer';
@@ -27,7 +27,6 @@ export const AssignSalesRepModal: React.FC<AssignSalesRepModalProps> = ({
   onSuccess,
 }) => {
   const [selectedSalesRepId, setSelectedSalesRepId] = useState<string>('');
-  const [reason, setReason] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -35,7 +34,6 @@ export const AssignSalesRepModal: React.FC<AssignSalesRepModalProps> = ({
   useEffect(() => {
     if (customer) {
       setSelectedSalesRepId(customer.salesRepId || '');
-      setReason('');
       setNotes('');
       setErrorMessage(null);
     }
@@ -54,10 +52,11 @@ export const AssignSalesRepModal: React.FC<AssignSalesRepModalProps> = ({
       setIsSubmitting(true);
       setErrorMessage(null);
 
+      const noteText = notes.trim() || undefined;
       const updated = await customersService.assignSalesRep(customer.id, {
         salesRepId: selectedSalesRepId,
-        reason: reason.trim() || undefined,
-        notes: notes.trim() || undefined,
+        reason: noteText,
+        notes: noteText,
       });
 
       toast.success(
@@ -74,7 +73,12 @@ export const AssignSalesRepModal: React.FC<AssignSalesRepModalProps> = ({
     }
   };
 
-  const selectedRep = salesReps.find((r) => r.id === selectedSalesRepId);
+  const formatRepOption = (rep: SalesRepOption) => {
+    // Lọc bỏ email dài ngoặc đơn nếu có
+    const cleanName = rep.fullName.replace(/\s*\([^)]*@[^)]*\)/g, '').trim();
+    const count = rep.assignedCustomerCount !== undefined ? ` (${rep.assignedCustomerCount} đại lý)` : '';
+    return `${cleanName}${count}`;
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs transition-opacity animate-fade-in">
@@ -94,14 +98,14 @@ export const AssignSalesRepModal: React.FC<AssignSalesRepModalProps> = ({
                 Phân công Nhân viên Phụ trách
               </h3>
               <p className="text-xs text-slate-500">
-                Gán nhân viên kinh doanh chịu trách nhiệm chăm sóc đại lý (SN-35)
+                Chỉ định nhân viên kinh doanh phụ trách đại lý
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <X className="w-4.5 h-4.5" />
           </button>
@@ -116,31 +120,20 @@ export const AssignSalesRepModal: React.FC<AssignSalesRepModalProps> = ({
             </div>
           )}
 
-          {/* Thông tin đại lý */}
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Đại lý
+          {/* Thông tin đại lý (Thẻ tinh tế 2 dòng, bỏ badge mã DL) */}
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60">
+            <p className="text-sm font-bold text-slate-900">{customer.name}</p>
+            <p className="text-xs text-slate-500 mt-1">
+              {customer.region || 'Miền Nam'} • Đang phụ trách:{' '}
+              <span className={customer.salesRepName ? 'font-semibold text-slate-800' : 'font-medium text-amber-600'}>
+                {customer.salesRepName || 'Chưa có người phụ trách'}
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
-                {customer.code}
-              </span>
-            </div>
-            <p className="text-sm font-semibold text-slate-800">{customer.name}</p>
-            <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-200/50">
-              <span>Khu vực: <strong className="text-slate-700">{customer.region}</strong></span>
-              <span>
-                Hiện tại:{' '}
-                <strong className={customer.salesRepName ? 'text-indigo-600' : 'text-amber-600'}>
-                  {customer.salesRepName || 'Chưa có người phụ trách'}
-                </strong>
-              </span>
-            </div>
+            </p>
           </div>
 
-          {/* Chọn nhân viên phụ trách mới */}
+          {/* Chọn nhân viên phụ trách mới (Định dạng ngắn gọn, không tràn email) */}
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
               Nhân viên kinh doanh phụ trách chính <span className="text-rose-500">*</span>
             </label>
             <select
@@ -152,62 +145,32 @@ export const AssignSalesRepModal: React.FC<AssignSalesRepModalProps> = ({
               <option value="">-- Chọn nhân viên kinh doanh --</option>
               {salesReps.map((rep) => (
                 <option key={rep.id} value={rep.id}>
-                  {rep.fullName} ({rep.email}) — Đang phụ trách {rep.assignedCustomerCount} đại lý
+                  {formatRepOption(rep)}
                 </option>
               ))}
             </select>
-            {selectedRep && (
-              <p className="mt-1 text-xs text-slate-500 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-emerald-600" />
-                Số điện thoại liên hệ: <strong className="text-slate-700">{selectedRep.phone || 'Chưa cập nhật'}</strong>
-              </p>
-            )}
           </div>
 
-          {/* Lý do phân công */}
+          {/* Ghi chú / Lý do điều chuyển (Gộp 2 ô thành 1 ô duy nhất) */}
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              Lý do phân công / Điều chuyển
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Ví dụ: Phân công địa bàn mới theo kế hoạch Q4/2026..."
-                className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors"
-              />
-            </div>
-          </div>
-
-          {/* Ghi chú thêm */}
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              Ghi chú công việc / Hướng dẫn chăm sóc
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Ghi chú / Lý do điều chuyển <span className="text-slate-400 font-normal lowercase">(không bắt buộc)</span>
             </label>
             <textarea
-              rows={2}
+              rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Ghi chú đặc thù công nợ hoặc tuyến đường giao hàng..."
-              className="w-full px-3.5 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors resize-none"
+              placeholder="Nhập ghi chú bàn giao hoặc lý do điều chuyển phụ trách đại lý..."
+              className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors resize-none"
             />
           </div>
 
-          {/* Modal Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 focus:outline-none transition-colors"
-            >
-              Hủy bỏ
-            </button>
+          {/* Modal Actions (Bỏ nút Hủy bỏ, chỉ giữ Xác nhận) */}
+          <div className="flex items-center justify-end pt-3 border-t border-slate-100">
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 active:bg-indigo-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all disabled:opacity-50"
+              disabled={isSubmitting || !selectedSalesRepId}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 active:bg-indigo-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? (
                 <>
