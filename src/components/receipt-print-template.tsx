@@ -7,7 +7,6 @@ import {
   CreditCard,
   Banknote,
   Receipt as ReceiptIcon,
-  CheckCircle2,
 } from 'lucide-react';
 import { numberToVietnameseWords } from '../utils/number-to-words';
 import html2canvas from 'html2canvas';
@@ -408,23 +407,16 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
               {/* [Trường 4] Hình thức thu tiền */}
               <div className="p-3 grid grid-cols-1 sm:grid-cols-4 gap-2 items-center">
                 <span className="font-semibold text-slate-600">Hình thức thu:</span>
-                <div className="sm:col-span-3 flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-white border border-slate-200 text-slate-800 shadow-2xs">
-                    {paymentMeta.icon}
-                    <span>{paymentMeta.label}</span>
-                  </span>
+                <div className="sm:col-span-3 font-semibold text-slate-800">
+                  {paymentMeta.label}
                 </div>
               </div>
 
               {/* [Trường 5] Người thu tiền */}
               <div className="p-3 grid grid-cols-1 sm:grid-cols-4 gap-2 items-center">
                 <span className="font-semibold text-slate-600">Người thu tiền:</span>
-                <div className="sm:col-span-3 flex items-center gap-2">
-                  <span className="font-bold text-slate-900">{collectorName}</span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                    <CheckCircle2 className="w-2.5 h-2.5" />
-                    <span>Kế toán công nợ</span>
-                  </span>
+                <div className="sm:col-span-3 font-bold text-slate-900">
+                  {collectorName}
                 </div>
               </div>
 
