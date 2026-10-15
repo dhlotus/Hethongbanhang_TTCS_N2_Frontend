@@ -44,6 +44,7 @@ const SALES_REPS = [
   { id: 'usr-sale-01', name: 'Trần Văn Long (Kinh doanh Miền Nam)', shortName: 'Trần Văn Long' },
   { id: 'usr-sale-02', name: 'Nguyễn Thị Hằng (Kinh doanh Miền Nam)', shortName: 'Nguyễn Thị Hằng' },
   { id: 'usr-sale-03', name: 'Phạm Minh Tuấn (Kinh doanh Miền Bắc)', shortName: 'Phạm Minh Tuấn' },
+  { id: 'usr-salesmgr-003', name: 'Lê Hoàng (Quản lý Kinh doanh)', shortName: 'Lê Hoàng' },
 ];
 
 // ──────────────────────────────────────────────────────────────────────────

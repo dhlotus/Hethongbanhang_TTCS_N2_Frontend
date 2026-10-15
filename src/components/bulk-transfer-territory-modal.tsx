@@ -237,11 +237,15 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
                 required
               >
                 <option value="">-- Chọn nhân viên chuyển giao --</option>
-                {salesReps.map((rep) => (
-                  <option key={rep.id} value={rep.id}>
-                    {rep.fullName} ({rep.assignedCustomerCount !== undefined ? `${rep.assignedCustomerCount} đại lý` : rep.email})
-                  </option>
-                ))}
+                {salesReps.map((rep) => {
+                  const cleanName = rep.fullName.split('(')[0].trim();
+                  const count = rep.assignedCustomerCount ?? 0;
+                  return (
+                    <option key={rep.id} value={rep.id}>
+                      {cleanName} — phụ trách {count} đại lý
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -259,11 +263,15 @@ export const BulkTransferTerritoryModal: React.FC<BulkTransferTerritoryModalProp
                 <option value="">-- Chọn nhân viên tiếp nhận --</option>
                 {salesReps
                   .filter((rep) => rep.id !== fromSalesRepId)
-                  .map((rep) => (
-                    <option key={rep.id} value={rep.id}>
-                      {rep.fullName} ({rep.assignedCustomerCount !== undefined ? `${rep.assignedCustomerCount} đại lý` : rep.email})
-                    </option>
-                  ))}
+                  .map((rep) => {
+                    const cleanName = rep.fullName.split('(')[0].trim();
+                    const count = rep.assignedCustomerCount ?? 0;
+                    return (
+                      <option key={rep.id} value={rep.id}>
+                        {cleanName} — phụ trách {count} đại lý
+                      </option>
+                    );
+                  })}
               </select>
             </div>
           </div>

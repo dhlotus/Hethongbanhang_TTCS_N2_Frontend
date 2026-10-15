@@ -350,6 +350,16 @@ export const INITIAL_DEMO_SALES_REPS: SalesRepOption[] = [
     assignedCustomerCount: 4,
   },
   {
+    id: 'usr-sale-01',
+    fullName: 'Trần Văn Long (NVKD Miền Nam)',
+    username: 'long_tran',
+    email: 'long.tran@loha.vn',
+    phone: '0907000001',
+    role: 'SALES_REP',
+    status: 'ACTIVE',
+    assignedCustomerCount: 6,
+  },
+  {
     id: 'usr-salesmgr-003',
     fullName: 'Lê Hoàng Trưởng Phòng (Quản Lý Kinh Doanh)',
     username: 'salesmanager',
@@ -386,7 +396,33 @@ export function getStoredHistory(): CustomerAssignmentHistory[] {
     const raw = localStorage.getItem(CUSTOMER_HISTORY_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed as CustomerAssignmentHistory[];
+      if (Array.isArray(parsed)) {
+        let changed = false;
+        const cleaned = parsed.map((item: CustomerAssignmentHistory) => {
+          const updated = { ...item };
+          if (updated.toSalesRepId === 'usr-sale-02' && (updated.toSalesRepName === 'Lê Thị Thu Thảo' || !updated.toSalesRepName)) {
+            updated.toSalesRepName = 'Nguyễn Thị Hằng';
+            changed = true;
+          }
+          if (updated.fromSalesRepId === 'usr-sale-02' && (updated.fromSalesRepName === 'Lê Thị Thu Thảo' || !updated.fromSalesRepName)) {
+            updated.fromSalesRepName = 'Nguyễn Thị Hằng';
+            changed = true;
+          }
+          if (updated.toSalesRepId === 'usr-salesmgr-003' && updated.toSalesRepName?.includes('Lê Quản Lý')) {
+            updated.toSalesRepName = 'Lê Hoàng';
+            changed = true;
+          }
+          if (updated.fromSalesRepId === 'usr-salesmgr-003' && updated.fromSalesRepName?.includes('Lê Quản Lý')) {
+            updated.fromSalesRepName = 'Lê Hoàng';
+            changed = true;
+          }
+          return updated;
+        });
+        if (changed) {
+          saveStoredHistory(cleaned);
+        }
+        return cleaned;
+      }
     }
   } catch {
     // ignore
