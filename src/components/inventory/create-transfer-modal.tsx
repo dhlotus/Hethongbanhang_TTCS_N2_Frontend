@@ -307,14 +307,6 @@ export const CreateTransferModal: React.FC<CreateTransferModalProps> = ({
           <div className="flex items-center gap-2.5">
             <button
               type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-            >
-              Hủy bỏ
-            </button>
-            <button
-              type="button"
               onClick={() => handleSubmit(true)}
               disabled={submitting || items.length === 0}
               className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"

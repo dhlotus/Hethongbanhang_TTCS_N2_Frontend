@@ -42,15 +42,6 @@ export const TransferItemsTable: React.FC<TransferItemsTableProps> = ({
       <div className="min-h-[180px] py-12 px-6 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center space-y-2.5 bg-slate-50/30">
         <Package className="w-10 h-10 text-slate-300 mx-auto" />
         <span className="font-medium text-slate-600">Chưa có sản phẩm nào trong phiếu chuyển kho</span>
-        {onOpenProductSelector && (
-          <button
-            type="button"
-            onClick={onOpenProductSelector}
-            className="text-xs font-semibold text-[var(--color-primary)] hover:underline inline-flex items-center gap-1 cursor-pointer mt-0.5"
-          >
-            + Bấm vào đây để chọn sản phẩm
-          </button>
-        )}
       </div>
     );
   }
