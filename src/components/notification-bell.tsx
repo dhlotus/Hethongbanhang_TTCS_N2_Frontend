@@ -9,7 +9,6 @@ import {
   Tag,
   CreditCard,
   Clock,
-  ChevronRight,
   Sparkles,
 } from 'lucide-react';
 
