@@ -154,7 +154,7 @@ export const AssignSalesRepModal: React.FC<AssignSalesRepModalProps> = ({
           {/* Ghi chú / Lý do điều chuyển (Gộp 2 ô thành 1 ô duy nhất) */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-              Ghi chú / Lý do điều chuyển <span className="text-slate-400 font-normal lowercase">(không bắt buộc)</span>
+              Ghi chú / Lý do điều chuyển
             </label>
             <textarea
               rows={3}
