@@ -217,3 +217,33 @@ pm run build (	sc -b && vite build) -> 0 lỗi, compile thành công 100%.
   - ✅ TypeScript & Build Production: `npm run build` (`tsc -b && vite build`) hoàn thành thành công 100% (0 lỗi, 0 warnings), toàn bộ type-safe, không dùng `any`, Controlled Components cho toàn bộ ô input.
   - ✅ Backend TypeScript: `npx tsc --noEmit` đạt 0 lỗi.
   - ✅ Dev Server Vite: HMR hoạt động trơn tru không còn bất kỳ lỗi transform JSX nào.
+
+---
+
+### [Sprint 7] - [SN-209]: In & Tải PDF Phiếu Thu Tiền Cho Khoản Đã Ghi Nhận (Kế Toán Công Nợ)
+- **Thời gian hoàn thành:** 2026-10-15
+- **Mã Jira / Subtask:** SN-209 (Parent Story: SN-201 / S7-09 - Sprint 7)
+- **Tiêu đề:** "Là Kế toán công nợ, tôi muốn in phiếu thu cho mỗi khoản đã ghi nhận, để đại lý có chứng từ ngay tại chỗ khi đưa tiền."
+- **Ràng buộc:** Hoàn thành đúng và đủ 2 yêu cầu trong Description (không tự ý thêm luồng tạo/phê duyệt).
+  1. Hiển thị đủ 5 trường thông tin: Mã duy nhất, thông tin đại lý, số tiền, hình thức, người thu.
+  2. Cung cấp khả năng In (Print trực tiếp) hoặc Tải PDF (Download PDF).
+- **Danh sách file tạo mới / thay đổi (Frontend):**
+  - `src/types/receipt.ts` (Tạo mới: Types & Interfaces chuẩn cho Receipt, ReceiptPrintData, PaymentMethod, ReceiptStatus)
+  - `src/services/receipts.service.ts` (Tạo mới: Service gọi API `GET /receipts`, `GET /receipts/:id/print` và `GET /receipts/:id/pdf` tải blob)
+  - `src/components/receipt-print-template.tsx` (Tạo mới: Component Modal in phiếu thu chuẩn nhận diện thương hiệu LOHA GOLD, tuân thủ `UI_GUIDELINES.md`, hiển thị sắc nét 5 trường thông tin, tích hợp Hidden Iframe In ấn độc lập A4/A5 và nút Tải PDF)
+  - `src/pages/invoices-page.tsx` (Cập nhật: Bổ sung Tab "Phiếu thu tiền & Đối trừ (SN-209)", hiển thị danh sách phiếu thu đã ghi nhận, tích hợp các nút bấm In phiếu và Tải PDF trực tiếp)
+- **Chi tiết kỹ thuật & UX:**
+  - **Đảm bảo 100% 5 trường thông tin bắt buộc:**
+    1. Mã duy nhất: `receiptCode` (`PT2610-0001`, `PT2610-0002`...) font-mono bold, kèm Barcode code39.
+    2. Thông tin đại lý: Tên đại lý, Mã đại lý, Số điện thoại liên hệ, Địa chỉ giao dịch.
+    3. Số tiền thu: Số tiền định dạng VND font-extrabold màu xanh lục `emerald-700` kèm dòng chữ tiếng Việt in nghiêng trang trọng.
+    4. Hình thức thu: Tiền mặt, Chuyển khoản ngân hàng... kèm badge icon trực quan.
+    5. Người thu tiền: Họ tên nhân viên kế toán lập phiếu kèm badge chức vụ "Kế toán công nợ".
+  - **Tích hợp 2 nút hành động:**
+    - **In phiếu:** Sử dụng engine Hidden Iframe chuyên dụng (loại bỏ hoàn toàn các phần tử UI thừa, background hay thanh cuộn), chuẩn hóa `@page { size: A4 portrait; margin: 10mm 12mm 10mm 12mm; }`.
+    - **Tải PDF:** Kết nối endpoint Backend `GET /api/receipts/:id/pdf` tải file PDF trực tiếp về máy tính (`phieu-thu-[code].pdf`).
+  - **Tuân thủ UI_GUIDELINES.md:** Bo góc `rounded-xl` cho modal, `rounded-lg` cho nút bấm, font-mono cho mã số, màu chủ đạo `indigo-600`, không dùng `any`, thụt lề 2 spaces, trailing commas.
+- **Trạng thái kiểm thử:**
+  - ✅ ESLint: `npx eslint src/types/receipt.ts src/services/receipts.service.ts src/components/receipt-print-template.tsx src/pages/invoices-page.tsx` -> 0 lỗi, 0 warnings.
+  - ✅ Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
+

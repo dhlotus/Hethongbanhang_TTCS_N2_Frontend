@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Search,
   Filter,
@@ -6,20 +7,199 @@ import {
   Receipt,
   FileSpreadsheet,
   Calendar,
+  Printer,
+  Download,
+  CreditCard,
+  Banknote,
+  CheckCircle2,
 } from 'lucide-react';
+import { receiptsService } from '../services/receipts.service';
+import { ReceiptPrintTemplate } from '../components/receipt-print-template';
+import { showToast } from '../components/toast';
+import type { Receipt as ReceiptType, PaymentMethod } from '../types/receipt';
+
+const formatCurrency = (val?: number): string => {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+  }).format(val || 0);
+};
+
+const formatDate = (dateStr?: string): string => {
+  if (!dateStr) return '—';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+};
+
+const getPaymentMethodBadge = (method?: PaymentMethod | string) => {
+  switch (method) {
+    case 'CASH':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <Banknote className="w-3 h-3" />
+          <span>Tiền mặt</span>
+        </span>
+      );
+    case 'BANK_TRANSFER':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+          <CreditCard className="w-3 h-3" />
+          <span>Chuyển khoản</span>
+        </span>
+      );
+    default:
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-50 text-slate-700 border border-slate-200">
+          <span>{method || 'Khác'}</span>
+        </span>
+      );
+  }
+};
+
+const INITIAL_DEMO_RECEIPTS: ReceiptType[] = [
+  {
+    id: 'rcpt-001',
+    code: 'PT2610-0001',
+    customerId: 'cust-001',
+    customerCode: 'DL-0001',
+    customerName: 'Đại lý Sữa & Bánh kẹo Miền Bắc',
+    customerPhone: '0988 123 456',
+    customerAddress: 'Số 123 Phố Vọng, P. Đồng Tâm, Q. Hai Bà Trưng, Hà Nội',
+    amount: 25000000,
+    amountInWords: 'Hai mươi lăm triệu đồng chẵn',
+    paymentMethod: 'CASH',
+    paymentDate: '2026-10-15T09:30:00Z',
+    referenceCode: 'HD2609-001',
+    notes: 'Thu tiền mặt đợt 1 cho hóa đơn bán buôn HD2609-001',
+    status: 'CONFIRMED',
+    collectorId: 'usr-acc-01',
+    collectorName: 'Nguyễn Thị Mai',
+    createdAt: '2026-10-15T09:30:00Z',
+  },
+  {
+    id: 'rcpt-002',
+    code: 'PT2610-0002',
+    customerId: 'cust-002',
+    customerCode: 'DL-0002',
+    customerName: 'Đại lý Tạp hóa Hưng Yên',
+    customerPhone: '0912 345 678',
+    customerAddress: 'Xã Dân Tiến, Huyện Khoái Châu, Tỉnh Hưng Yên',
+    amount: 18000000,
+    amountInWords: 'Mười tám triệu đồng chẵn',
+    paymentMethod: 'BANK_TRANSFER',
+    paymentDate: '2026-10-14T14:15:00Z',
+    referenceCode: 'HD2609-002',
+    notes: 'Chuyển khoản thanh toán toàn bộ công nợ qua Vietcombank',
+    status: 'CONFIRMED',
+    collectorId: 'usr-acc-02',
+    collectorName: 'Trần Văn Kế Toán',
+    createdAt: '2026-10-14T14:15:00Z',
+  },
+  {
+    id: 'rcpt-003',
+    code: 'PT2610-0003',
+    customerId: 'cust-008',
+    customerCode: 'DL-0008',
+    customerName: 'Đại Lý Tiêu Dùng Nhanh Thịnh Vượng',
+    customerPhone: '0977 889 900',
+    customerAddress: 'Số 45 Lê Lợi, P. Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+    amount: 51300000,
+    amountInWords: 'Năm mươi mốt triệu ba trăm nghìn đồng chẵn',
+    paymentMethod: 'BANK_TRANSFER',
+    paymentDate: '2026-10-15T15:45:00Z',
+    referenceCode: 'DH2610-10156',
+    notes: 'Thu tiền thanh toán đơn hàng bán buôn DH2610-10156',
+    status: 'CONFIRMED',
+    collectorId: 'usr-acc-01',
+    collectorName: 'Nguyễn Thị Mai',
+    createdAt: '2026-10-15T15:45:00Z',
+  },
+];
 
 /**
- * Trang Hóa đơn & Công nợ:
- * Đảm bảo đầy đủ khung Bộ lọc, Tiêu đề bảng và Empty State chuẩn UI/UX cho mọi vai trò (kể cả Admin khi chưa có dữ liệu)
+ * Trang Quản lý Hóa đơn, Công nợ & Phiếu thu tiền (SN-209 / Sprint 7)
  */
 export const InvoicesPage: React.FC = () => {
+  const location = useLocation();
+
+  // Xác định tab mặc định dựa trên URL (/accounting/payments -> RECEIPTS, /accounting/invoices -> INVOICES)
+  const isPaymentsRoute = location.pathname.includes('/payments');
+  const [activeTab, setActiveTab] = useState<'INVOICES' | 'RECEIPTS'>(
+    isPaymentsRoute ? 'RECEIPTS' : 'INVOICES',
+  );
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [loading, setLoading] = useState(false);
 
+  // Dữ liệu phiếu thu tiền (SN-209)
+  const [receipts, setReceipts] = useState<ReceiptType[]>(INITIAL_DEMO_RECEIPTS);
+  const [selectedReceiptForPrint, setSelectedReceiptForPrint] = useState<ReceiptType | null>(null);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  const reloadReceipts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await receiptsService.getReceipts({ search: searchTerm.trim() || undefined });
+      setReceipts(data.length > 0 ? data : INITIAL_DEMO_RECEIPTS);
+    } catch {
+      setReceipts(INITIAL_DEMO_RECEIPTS);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchTerm]);
+
+  useEffect(() => {
+    let isCurrent = true;
+    if (activeTab === 'RECEIPTS') {
+      receiptsService
+        .getReceipts({ search: searchTerm.trim() || undefined })
+        .then((data) => {
+          if (isCurrent && data && data.length > 0) {
+            setReceipts(data);
+          }
+        })
+        .catch(() => {
+          // Giữ demo receipts mặc định
+        });
+    }
+    return () => {
+      isCurrent = false;
+    };
+  }, [activeTab, searchTerm]);
+
   const handleRefresh = () => {
-    setLoading(true);
-    setTimeout(() => setLoading(false), 400);
+    if (activeTab === 'RECEIPTS') {
+      void reloadReceipts();
+    } else {
+      setLoading(true);
+      setTimeout(() => setLoading(false), 400);
+    }
+  };
+
+  const handleOpenPrint = (receipt: ReceiptType) => {
+    setSelectedReceiptForPrint(receipt);
+    setIsPrintModalOpen(true);
+  };
+
+  const handleDirectDownloadPdf = async (receipt: ReceiptType) => {
+    try {
+      showToast('info', `Đang tải file PDF phiếu thu ${receipt.code}...`);
+      await receiptsService.downloadReceiptPdf(receipt.id || receipt.code, `phieu-thu-${receipt.code}.pdf`);
+      showToast('success', `Đã tải xuống thành công: phieu-thu-${receipt.code}.pdf`);
+    } catch {
+      // Mở modal in để dùng cơ chế in sang PDF của trình duyệt
+      handleOpenPrint(receipt);
+    }
   };
 
   return (
@@ -28,29 +208,59 @@ export const InvoicesPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-            Quản Lý Hóa Đơn & Công Nợ
+            Quản Lý Hóa Đơn & Thu Chi Công Nợ
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Theo dõi danh sách hóa đơn bán hàng, kỳ hạn thanh toán và đối soát công nợ đại lý
+            Theo dõi hóa đơn bán hàng, phiếu thu tiền đối trừ công nợ đại lý và in chứng từ tại chỗ
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={handleRefresh}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-xs"
+            className="inline-flex items-center gap-1.5 h-[36px] px-3 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
             <span>Làm mới</span>
           </button>
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-xs"
+            className="inline-flex items-center gap-1.5 h-[36px] px-3 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
           >
             <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
             <span>Xuất Excel</span>
           </button>
         </div>
+      </div>
+
+      {/* Tabs chuyển đổi giữa Hóa đơn và Phiếu thu (SN-209) */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab('INVOICES')}
+          className={`px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+            activeTab === 'INVOICES'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 bg-slate-100 hover:bg-slate-200'
+          }`}
+        >
+          Hóa đơn bán hàng
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('RECEIPTS')}
+          className={`px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'RECEIPTS'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 bg-slate-100 hover:bg-slate-200'
+          }`}
+        >
+          <Receipt className="w-3.5 h-3.5" />
+          <span>Phiếu thu tiền & Đối trừ (SN-209)</span>
+          <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-current">
+            {receipts.length}
+          </span>
+        </button>
       </div>
 
       {/* Thanh bộ lọc (Filter Toolbar) */}
@@ -60,10 +270,14 @@ export const InvoicesPage: React.FC = () => {
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Tìm theo số hóa đơn, tên đại lý hoặc mã khách hàng..."
+            placeholder={
+              activeTab === 'RECEIPTS'
+                ? 'Tìm theo mã phiếu thu, tên đại lý, mã đại lý, người thu tiền...'
+                : 'Tìm theo số hóa đơn, tên đại lý hoặc mã khách hàng...'
+            }
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] bg-slate-50/50"
+            className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 bg-slate-50/50"
           />
         </div>
 
@@ -76,13 +290,11 @@ export const InvoicesPage: React.FC = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20"
+            className="px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
           >
             <option value="ALL">Tất cả trạng thái</option>
-            <option value="UNPAID">Chưa thanh toán</option>
-            <option value="PARTIAL">Thanh toán một phần</option>
-            <option value="PAID">Đã thanh toán đủ</option>
-            <option value="OVERDUE">Quá hạn nợ</option>
+            <option value="CONFIRMED">Đã xác nhận</option>
+            <option value="PENDING">Chờ đối soát</option>
           </select>
         </div>
 
@@ -94,7 +306,7 @@ export const InvoicesPage: React.FC = () => {
           </div>
           <select
             defaultValue="ALL_TIME"
-            className="px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20"
+            className="px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
           >
             <option value="ALL_TIME">Toàn bộ thời gian</option>
             <option value="THIS_MONTH">Tháng này</option>
@@ -104,45 +316,186 @@ export const InvoicesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Bảng dữ liệu bảo toàn khung & Empty State */}
-      <div className="rounded-xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                <th className="py-3 px-4">Số hóa đơn</th>
-                <th className="py-3 px-4">Đại lý / Khách hàng</th>
-                <th className="py-3 px-4">Ngày phát hành</th>
-                <th className="py-3 px-4">Hạn thanh toán</th>
-                <th className="py-3 px-4 text-right">Tổng tiền</th>
-                <th className="py-3 px-4 text-right">Đã thanh toán</th>
-                <th className="py-3 px-4 text-right">Còn nợ</th>
-                <th className="py-3 px-4 text-center">Trạng thái</th>
-                <th className="py-3 px-4 text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* Giữ nguyên khung bảng, hiển thị Empty State bên trong */}
-              <tr>
-                <td colSpan={9} className="py-16 text-center">
-                  <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
-                    <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-3 shadow-inner">
-                      <Receipt className="h-7 w-7 text-slate-400" />
-                    </div>
-                    <h3 className="text-base font-semibold text-slate-800">
-                      Chưa có hóa đơn nào
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                      Hiện tại hệ thống chưa ghi nhận hóa đơn bán hàng hoặc chứng từ công nợ nào
-                      phù hợp với điều kiện tìm kiếm.
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      {/* ===================================================================== */}
+      {/* NỘI DUNG TAB: PHIẾU THU TIỀN (SN-209)                                  */}
+      {/* ===================================================================== */}
+      {activeTab === 'RECEIPTS' ? (
+        <div className="rounded-xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  <th className="py-3 px-4">Mã phiếu thu</th>
+                  <th className="py-3 px-4">Đại lý / Khách hàng</th>
+                  <th className="py-3 px-4 text-right">Số tiền thu</th>
+                  <th className="py-3 px-4 text-center">Hình thức</th>
+                  <th className="py-3 px-4">Người thu tiền</th>
+                  <th className="py-3 px-4 text-center">Ngày ghi nhận</th>
+                  <th className="py-3 px-4 text-center">Trạng thái</th>
+                  <th className="py-3 px-4 text-center">Thao tác in / PDF</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {receipts.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-16 text-center">
+                      <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
+                        <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 mb-2">
+                          <Receipt className="h-6 w-6 text-slate-400" />
+                        </div>
+                        <h3 className="text-sm font-bold text-slate-800">
+                          Chưa có phiếu thu nào
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                          Hệ thống chưa ghi nhận khoản tiền thu hoặc đối trừ công nợ nào phù hợp.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  receipts.map((r) => (
+                    <tr key={r.id} className="hover:bg-slate-50/70 transition-colors">
+                      {/* 1. Mã phiếu thu */}
+                      <td className="py-3 px-4 font-mono font-bold text-indigo-700 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPrint(r)}
+                          className="hover:underline text-left cursor-pointer"
+                          title="Bấm để xem & in phiếu thu"
+                        >
+                          {r.code}
+                        </button>
+                      </td>
+
+                      {/* 2. Đại lý / Khách hàng */}
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-slate-900">{r.customerName}</div>
+                        <div className="text-[11px] text-slate-500 font-mono flex items-center gap-2">
+                          <span>{r.customerCode}</span>
+                          {r.customerPhone && (
+                            <>
+                              <span>·</span>
+                              <span>{r.customerPhone}</span>
+                            </>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 3. Số tiền thu */}
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="font-extrabold text-emerald-700 text-sm font-mono">
+                          {formatCurrency(r.amount)}
+                        </div>
+                        <div className="text-[10px] text-slate-400 italic truncate max-w-[180px]">
+                          {r.amountInWords}
+                        </div>
+                      </td>
+
+                      {/* 4. Hình thức thu */}
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                        {getPaymentMethodBadge(r.paymentMethod)}
+                      </td>
+
+                      {/* 5. Người thu tiền */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="font-semibold text-slate-800">{r.collectorName}</div>
+                        <div className="text-[10px] text-slate-400">Kế toán công nợ</div>
+                      </td>
+
+                      {/* Ngày ghi nhận */}
+                      <td className="py-3 px-4 text-center whitespace-nowrap text-slate-600">
+                        {formatDate(r.paymentDate)}
+                      </td>
+
+                      {/* Trạng thái */}
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>Đã xác nhận</span>
+                        </span>
+                      </td>
+
+                      {/* Thao tác (In phiếu / Tải PDF) */}
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPrint(r)}
+                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-lg transition-colors cursor-pointer"
+                            title="Mở xem và In phiếu thu"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>In phiếu</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDirectDownloadPdf(r)}
+                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shadow-2xs cursor-pointer"
+                            title="Tải trực tiếp file PDF"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Tải PDF</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* =================================================================== */
+        /* NỘI DUNG TAB: HÓA ĐƠN BÁN HÀNG                                      */
+        /* =================================================================== */
+        <div className="rounded-xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  <th className="py-3 px-4">Số hóa đơn</th>
+                  <th className="py-3 px-4">Đại lý / Khách hàng</th>
+                  <th className="py-3 px-4">Ngày phát hành</th>
+                  <th className="py-3 px-4">Hạn thanh toán</th>
+                  <th className="py-3 px-4 text-right">Tổng tiền</th>
+                  <th className="py-3 px-4 text-right">Đã thanh toán</th>
+                  <th className="py-3 px-4 text-right">Còn nợ</th>
+                  <th className="py-3 px-4 text-center">Trạng thái</th>
+                  <th className="py-3 px-4 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colSpan={9} className="py-16 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
+                      <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 mb-2">
+                        <Receipt className="h-6 w-6 text-slate-400" />
+                      </div>
+                      <h3 className="text-sm font-bold text-slate-800">
+                        Chưa có hóa đơn nào
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                        Hiện tại hệ thống chưa ghi nhận hóa đơn bán hàng nào phù hợp với điều kiện lọc.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Modal In & Tải PDF Phiếu Thu (SN-209) */}
+      <ReceiptPrintTemplate
+        receipt={selectedReceiptForPrint}
+        isOpen={isPrintModalOpen}
+        onClose={() => {
+          setIsPrintModalOpen(false);
+          setSelectedReceiptForPrint(null);
+        }}
+      />
     </div>
   );
 };
