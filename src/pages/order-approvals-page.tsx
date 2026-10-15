@@ -238,26 +238,17 @@ export const OrderApprovalsPage: React.FC = () => {
     );
   };
 
-  // Lọc tập đơn theo tab và điều kiện tìm kiếm
-  const filteredOrders = useMemo(() => {
+  // 1. Lọc tập đơn cơ sở theo NVKD và Từ khóa tìm kiếm
+  const baseOrders = useMemo(() => {
     return orders.filter((order) => {
-      // 1. Phân loại theo tab
-      if (activeTab === 'HISTORY') {
-        const isHistory = ['APPROVED', 'REJECTED', 'RETURNED_FOR_UPDATE'].includes(order.status);
-        if (!isHistory) return false;
-      } else {
-        // Tab Chờ duyệt: hiển thị toàn bộ đơn chờ duyệt
-        if (!isOrderPendingApproval(order)) return false;
-      }
-
-      // 2. Lọc theo nhân viên kinh doanh
+      // Lọc theo nhân viên kinh doanh
       if (selectedSalesRep !== 'ALL') {
         if (order.salesRepId !== selectedSalesRep && order.salesRepName !== selectedSalesRep) {
           return false;
         }
       }
 
-      // 3. Lọc theo từ khóa tìm kiếm
+      // Lọc theo từ khóa tìm kiếm
       if (searchTerm) {
         const q = searchTerm.toLowerCase();
         const matchCode = order.orderCode?.toLowerCase().includes(q);
@@ -266,29 +257,22 @@ export const OrderApprovalsPage: React.FC = () => {
         if (!matchCode && !matchCust && !matchRep) return false;
       }
 
-      // 4. Lọc theo tình trạng tồn kho khi ở tab Chờ duyệt
-      if (activeTab === 'PENDING' && stockFilter !== 'ALL') {
-        const stockStatus = checkOrderStock(order);
-        if (stockFilter === 'SUFFICIENT' && !stockStatus.isSufficient) return false;
-        if (stockFilter === 'INSUFFICIENT' && stockStatus.isSufficient) return false;
-      }
-
       return true;
     });
-  }, [orders, activeTab, selectedSalesRep, searchTerm, stockFilter, productsMap]);
+  }, [orders, selectedSalesRep, searchTerm]);
 
-  // Thống kê số lượng
+  // 2. Thống kê số lượng chuẩn xác theo đúng bộ lọc đang chọn (NVKD, Từ khóa)
   const stats = useMemo(() => {
-    const pendingList = orders.filter(isOrderPendingApproval);
+    const pendingList = baseOrders.filter(isOrderPendingApproval);
     const pendingCount = pendingList.length;
     const pendingAmount = pendingList.reduce((acc, o) => acc + (o.grandTotal || 0), 0);
-    const approvedCount = orders.filter((o) => o.status === 'APPROVED').length;
-    const rejectedCount = orders.filter((o) => ['REJECTED', 'RETURNED_FOR_UPDATE'].includes(o.status)).length;
-    const totalProcessed = orders.filter((o) =>
+    const approvedCount = baseOrders.filter((o) => o.status === 'APPROVED').length;
+    const rejectedCount = baseOrders.filter((o) => ['REJECTED', 'RETURNED_FOR_UPDATE'].includes(o.status)).length;
+    const totalProcessed = baseOrders.filter((o) =>
       ['APPROVED', 'REJECTED', 'RETURNED_FOR_UPDATE'].includes(o.status)
     ).length;
 
-    // Đếm số đơn chờ duyệt đủ tồn và thiếu tồn
+    // Đếm số đơn chờ duyệt đủ tồn và thiếu tồn theo đúng bộ lọc
     const pendingStockStatuses = pendingList.map((o) => checkOrderStock(o));
     const pendingSufficientCount = pendingStockStatuses.filter((s) => s.isSufficient).length;
     const pendingInsufficientCount = pendingStockStatuses.filter((s) => !s.isSufficient).length;
@@ -302,7 +286,30 @@ export const OrderApprovalsPage: React.FC = () => {
       pendingSufficientCount,
       pendingInsufficientCount,
     };
-  }, [orders, productsMap]);
+  }, [baseOrders, productsMap]);
+
+  // 3. Lọc tập đơn hiển thị theo Tab và Tình trạng tồn kho
+  const filteredOrders = useMemo(() => {
+    return baseOrders.filter((order) => {
+      // 1. Phân loại theo tab
+      if (activeTab === 'HISTORY') {
+        const isHistory = ['APPROVED', 'REJECTED', 'RETURNED_FOR_UPDATE'].includes(order.status);
+        if (!isHistory) return false;
+      } else {
+        // Tab Chờ duyệt: hiển thị đơn chờ duyệt
+        if (!isOrderPendingApproval(order)) return false;
+
+        // 2. Lọc theo tình trạng tồn kho khi ở tab Chờ duyệt
+        if (stockFilter !== 'ALL') {
+          const stockStatus = checkOrderStock(order);
+          if (stockFilter === 'SUFFICIENT' && !stockStatus.isSufficient) return false;
+          if (stockFilter === 'INSUFFICIENT' && stockStatus.isSufficient) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [baseOrders, activeTab, stockFilter, productsMap]);
 
   // Danh sách nhân viên kinh doanh
   const salesRepOptions = useMemo(() => {
@@ -657,15 +664,15 @@ export const OrderApprovalsPage: React.FC = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left">
-              <thead className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <thead className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                 <tr>
-                  <th className="px-4 py-3 text-left">Mã đơn</th>
+                  <th className="px-4 py-3 text-left whitespace-nowrap">Mã đơn</th>
                   <th className="px-4 py-3 text-left">Đại lý</th>
-                  <th className="px-3 py-3 text-left">NVKD</th>
-                  <th className="px-3 py-3 text-left">Ngày tạo đơn</th>
-                  <th className="px-4 py-3 text-right">Tổng phải thu</th>
-                  <th className="px-3 py-3 text-center">Trạng thái</th>
-                  <th className="px-4 py-3 text-center min-w-[13.5rem]">Thao tác</th>
+                  <th className="px-3 py-3 text-left whitespace-nowrap">NVKD</th>
+                  <th className="px-3 py-3 text-left whitespace-nowrap">Ngày tạo đơn</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap">Tổng phải thu</th>
+                  <th className="px-3 py-3 text-center whitespace-nowrap">Trạng thái</th>
+                  <th className="px-4 py-3 text-center min-w-[13.5rem] whitespace-nowrap">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/90">
@@ -735,7 +742,7 @@ export const OrderApprovalsPage: React.FC = () => {
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
                                 title={`Không đủ tồn khả dụng: ${stockCheck.outOfStockLines.map((l) => `${l.productName} (còn ${l.available}, cần ${l.required})`).join(', ')}`}
                               >
-                                <AlertCircle className="w-2.5 h-2.5 text-rose-600" /> Thiếu tồn ({stockCheck.outOfStockLines.length})
+                                <AlertCircle className="w-2.5 h-2.5 text-rose-600" /> Thiếu tồn
                               </span>
                             )}
                           </div>
