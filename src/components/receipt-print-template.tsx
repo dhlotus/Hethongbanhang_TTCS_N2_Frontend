@@ -285,9 +285,6 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
               <h2 className="text-sm sm:text-base font-bold text-slate-900 truncate">
                 In Phiếu Thu Tiền (Biên Lai)
               </h2>
-              <p className="text-[11px] text-slate-500 truncate">
-                Mã phiếu: <span className="font-mono font-bold text-indigo-700">{receiptCode}</span> · Khách hàng: {customerName}
-              </p>
             </div>
           </div>
 
@@ -372,13 +369,10 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
               <p className="text-xs text-slate-500 italic">
                 Ngày {dayStr} tháng {monthStr} năm {yearStr}
               </p>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-200/80 text-[11px] font-mono font-bold text-indigo-700">
-                <span>Số phiếu: {receiptCode}</span>
-              </div>
             </div>
 
             {/* =============================================================== */}
-            {/* 3. KHỐI HIỂN THỊ ĐỦ 5 TRƯỜNG BẮT BUỘC (SN-209)                   */}
+            {/* 3. KHỐI HIỂN THỊ ĐỦ 5 TRƯỜNG BẮT BUỘC                            */}
             {/* 1. Mã duy nhất, 2. Thông tin đại lý, 3. Số tiền,                  */}
             {/* 4. Hình thức, 5. Người thu                                      */}
             {/* =============================================================== */}
@@ -432,9 +426,6 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-white border border-slate-200 text-slate-800 shadow-2xs">
                     {paymentMeta.icon}
                     <span>{paymentMeta.label}</span>
-                  </span>
-                  <span className="font-mono text-[10px] text-slate-400">
-                    ({paymentMethod})
                   </span>
                 </div>
               </div>

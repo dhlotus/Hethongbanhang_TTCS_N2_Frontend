@@ -6,7 +6,6 @@ import {
   RefreshCw,
   Receipt,
   FileSpreadsheet,
-  Calendar,
   Printer,
   CreditCard,
   Banknote,
@@ -121,7 +120,6 @@ export const InvoicesPage: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('ALL');
-  const [periodFilter, setPeriodFilter] = useState('ALL_TIME');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [loading, setLoading] = useState(false);
 
@@ -183,31 +181,9 @@ export const InvoicesPage: React.FC = () => {
         }
       }
 
-      // 3. Lọc theo kỳ hạn thời gian
-      if (periodFilter !== 'ALL_TIME' && r.paymentDate) {
-        const date = new Date(r.paymentDate);
-        const now = new Date();
-        if (periodFilter === 'THIS_MONTH') {
-          const isThisMonth =
-            date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-          if (!isThisMonth) return false;
-        } else if (periodFilter === 'LAST_MONTH') {
-          const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
-          const lastYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-          const isLastMonth = date.getMonth() === lastMonth && date.getFullYear() === lastYear;
-          if (!isLastMonth) return false;
-        } else if (periodFilter === 'THIS_QUARTER') {
-          const currentQuarter = Math.floor(now.getMonth() / 3);
-          const itemQuarter = Math.floor(date.getMonth() / 3);
-          const isThisQuarter =
-            currentQuarter === itemQuarter && date.getFullYear() === now.getFullYear();
-          if (!isThisQuarter) return false;
-        }
-      }
-
       return true;
     });
-  }, [receipts, paymentMethodFilter, searchTerm, periodFilter]);
+  }, [receipts, paymentMethodFilter, searchTerm]);
 
   const handleRefresh = () => {
     if (activeTab === 'RECEIPTS') {
@@ -333,24 +309,6 @@ export const InvoicesPage: React.FC = () => {
             </select>
           </div>
         )}
-
-        {/* Lọc thời gian */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium whitespace-nowrap">
-            <Calendar className="h-3.5 w-3.5" />
-            <span>Kỳ hạn:</span>
-          </div>
-          <select
-            value={periodFilter}
-            onChange={(e) => setPeriodFilter(e.target.value)}
-            className="px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
-          >
-            <option value="ALL_TIME">Toàn bộ thời gian</option>
-            <option value="THIS_MONTH">Tháng này</option>
-            <option value="LAST_MONTH">Tháng trước</option>
-            <option value="THIS_QUARTER">Quý này</option>
-          </select>
-        </div>
       </div>
 
       {/* ===================================================================== */}
