@@ -1,2168 +1,284 @@
-# UI/UX DESIGN SYSTEM GUIDELINES
+# UI/UX DESIGN SYSTEM GUIDELINES — LOHA SALES
 
-Mỗi khi bạn được yêu cầu thiết kế UI, viết code HTML/CSS, Tailwind hoặc dựng Component React, bạn BẮT BUỘC phải tuân thủ nghiêm ngặt triết lý thiết kế dưới đây. 
+Tài liệu này là **bộ quy chuẩn thiết kế và lập trình giao diện duy nhất** cho toàn bộ hệ thống phần mềm **LOHA SALES**. Mọi thành viên khi thiết kế UI, viết code HTML/Tailwind CSS hoặc dựng React Component **BẮT BUỘC** phải tuân thủ nghiêm ngặt để đảm bảo 100% tính đồng nhất thị giác và trải nghiệm người dùng (UX).
 
-Mục tiêu cốt lõi: "Sáng sủa, sạch sẽ, hiện đại, dễ thao tác và mang hơi hướng mạng xã hội tinh tế."
-
-1. VIBE TỔNG THỂ & MÀU SẮC (Look & Feel)
-- Sáng và Sạch (Clean & Light): Luôn sử dụng nền tổng thể màu sáng (trắng hoặc xám cực nhạt/off-white) để làm nổi bật nội dung.
-- Hơi hướng Social Media: Tránh thiết kế trông quá khô khan, "đóng hộp" như các phần mềm quản lý ERP truyền thống. Hãy làm cho nó thân thiện, hiện đại giống giao diện của X (Twitter), Facebook hoặc Notion nhưng ở mức độ tinh tế, tiết chế.
-- Màu sắc chủ đạo (Primary Color) phải tươi sáng, dịu mắt (ví dụ: Xanh blue, xanh dương nhạt) và chỉ dùng để tạo điểm nhấn ở các Nút bấm chính (Call to action) hoặc Trạng thái quan trọng.
-
-2. HÌNH KHỐI & KHÔNG GIAN (Shape & Spacing)
-- Whitespace (Khoảng trắng): Sử dụng padding và margin thoáng đãng. Không nhồi nhét quá nhiều thông tin vào một khoảng hẹp.
-- Card-based UI: Bao bọc các nhóm thông tin vào trong các "Thẻ" (Card).
-- Bo góc (Rounded Corners): Luôn sử dụng bo góc mềm mại (ví dụ: `rounded-lg`, `rounded-xl` trong Tailwind) cho Button, Input, Modal và Card. Không dùng góc nhọn sắc cạnh.
-- Đổ bóng (Box Shadow): Sử dụng shadow cực kỳ mỏng, nhẹ và mềm (soft shadow) ở các thẻ Card để tạo chiều sâu (3D) mà không làm nặng giao diện.
-
-3. TYPOGRAPHY (Kiểu chữ & Khả năng đọc)
-- Ưu tiên sự dễ nhìn tuyệt đối: Sử dụng font chữ không chân (Sans-serif) hiện đại như Inter, Roboto, hoặc hệ thống font mặc định (system-ui).
-- Kích thước chữ phải đủ lớn, rõ ràng. Line-height (khoảng cách dòng) thoáng để dễ đọc.
-- Phân cấp thông tin rõ ràng bằng độ đậm nhạt (Font-weight) và màu sắc (Chữ tiêu đề màu đen/xám đậm, chữ mô tả màu xám nhạt hơn). Tuyệt đối không dùng chữ xám quá mờ gây khó đọc.
-
-4. TRẢI NGHIỆM THAO TÁC (UX & Interaction)
-- Dễ thao tác (Touch-friendly): Các nút bấm (Button), ô nhập liệu (Input) phải to, rộng rãi, dễ bấm trên cả điện thoại.
-- Phản hồi trực quan: Bắt buộc phải có hiệu ứng rõ ràng khi Hover (chuột lướt qua), Focus (đang nhập liệu) hoặc Active (đang bấm) để người dùng có cảm giác hệ thống đang phản hồi tức thì.
-
-5. THÍCH NGHI ĐA THIẾT BỊ (Responsive Design)
-- Luôn code theo tư duy Mobile-First (Ưu tiên thiết bị di động).
-- Bố cục phải tự động co giãn, ẩn/hiện thông minh để trên màn hình điện thoại vuốt chạm dễ dàng như dùng App, còn trên Desktop thì dàn trang rộng rãi, tối ưu không gian hiển thị.
-
-# ------------- bộ quy tắc UI/UX cho toàn hệ thống ------------------
-
-## 1. Color System — Hệ thống màu sắc
-
-### 1.1. Nguyên tắc thương hiệu
-
-- **Logo là nguồn tham chiếu màu chuẩn của LOHA SALES.**
-- Toàn bộ giao diện phải sử dụng hệ màu được xây dựng dựa trên màu thực tế của Logo.
-- Màu thương hiệu chủ đạo của LOHA SALES là **Blue-Purple / Indigo Purple**.
-- Không sử dụng hệ Tím-Magenta hoặc Lavender làm màu thương hiệu chính.
-- Không để giao diện có sắc xanh hoặc tím khác biệt rõ rệt so với Logo.
-
-> Nguyên tắc cốt lõi:
-> **Logo → Brand Color → UI Components → Toàn bộ giao diện phải đồng nhất.**
-
-### 1.2. Brand Color
-
-**Primary Brand — Blue-Purple / Indigo Purple**
-
-Đây là màu nhận diện chính của LOHA SALES.
-
-Sử dụng cho:
-
-- Primary Button
-- Active Navigation
-- Selected State
-- Link quan trọng
-- Focus State
-- Icon chính
-- Các điểm nhấn thương hiệu
-
-Màu Primary phải giữ được đặc trưng **tím pha xanh / xanh tím đậm** giống Logo.
-
-Không sử dụng màu tím thiên hồng/magenta làm Primary.
-
-### 1.3. Brand Gradient
-
-Logo sử dụng chuyển sắc giữa các vùng **Blue-Purple / Indigo / Purple**.
-
-Gradient thương hiệu chỉ được sử dụng cho:
-
-- Logo
-- Khu vực nhận diện thương hiệu
-- Hero hoặc điểm nhấn đặc biệt
-
-Không sử dụng gradient đại trà cho:
-
-- Button thông thường
-- Input
-- Table
-- Badge
-- Sidebar
-- Card
-- Toast
-
-UI chức năng phải ưu tiên **màu Primary dạng solid** để đảm bảo sự rõ ràng và chuyên nghiệp.
-
-### 1.4. Brand Color Variants
-
-Màu Primary phải có các cấp độ được tạo từ **cùng một màu thương hiệu**, không tạo màu mới tùy ý:
-
-- `Primary`
-- `Primary Hover`
-- `Primary Active`
-- `Primary Light`
-- `Primary Subtle`
-- `Primary Disabled`
-
-Các màu Light/Subtle được dùng làm background nhẹ cho:
-
-- Active Menu
-- Selected Row
-- Selected Item
-- Highlight
-- Focus Background
-
-Các biến thể nhẹ phải vẫn giữ được sắc **Blue-Purple/Indigo**, không chuyển thành Lavender hồng hoặc xanh Lavi thuần.
-
-### 1.5. Semantic Colors
-
-Semantic Color không phụ thuộc vào Brand Color:
-
-- **Success — Green:** thao tác thành công.
-- **Error / Danger — Red:** lỗi, thất bại, xóa hoặc hành động nguy hiểm.
-- **Warning — Yellow/Orange:** cảnh báo.
-- **Info — Blue:** thông tin.
-
-Quy tắc:
-
-- Không dùng Primary Purple để biểu thị Success.
-- Không dùng Primary Purple để biểu thị Error.
-- Không dùng Brand Color thay thế Semantic Color.
-- Cùng một trạng thái phải luôn sử dụng cùng một màu trên toàn hệ thống.
-
-### 1.6. Neutral Colors
-
-Giao diện ưu tiên nền sáng và Neutral Colors:
-
-- Background
-- Surface
-- Card
-- Border
-- Divider
-- Text Primary
-- Text Secondary
-- Text Muted
-- Text Disabled
-
-Neutral Colors phải giúp màu thương hiệu nổi bật nhưng không làm giao diện quá sặc sỡ.
-
-### 1.7. Quy tắc sử dụng màu
-
-- Không tự ý chọn màu tại từng màn hình.
-- Không hard-code màu nếu đã có Design Token tương ứng.
-- Không sử dụng nhiều sắc tím khác nhau cho cùng một mục đích.
-- Không sử dụng màu Lavender/Pastel Purple làm Primary.
-- Không sử dụng màu xanh Lavi làm màu thương hiệu chính.
-- Không dùng màu thương hiệu chỉ để trang trí.
-- Primary Color phải luôn có cùng nhận diện thị giác với Logo.
-- Hover/Active/Focus phải được tạo từ hệ màu Primary.
-- Background của Active/Selected State có thể sử dụng phiên bản Primary Light/Subtle.
-- Các màu trong giao diện phải tạo cảm giác rằng chúng thuộc **cùng một thương hiệu với Logo**.
-
-### 1.8. Design Tokens
-
-Màu phải được quản lý tập trung:
-
-```css
-/* Brand */
---color-primary: ...;
---color-primary-hover: ...;
---color-primary-active: ...;
---color-primary-light: ...;
---color-primary-subtle: ...;
---color-primary-disabled: ...;
-
-/* Brand Gradient */
---color-brand-gradient: ...;
-
-/* Semantic */
---color-success: ...;
---color-warning: ...;
---color-error: ...;
---color-info: ...;
-
-/* Neutral */
---color-background: ...;
---color-surface: ...;
---color-border: ...;
---color-text-primary: ...;
---color-text-secondary: ...;
---color-text-muted: ...;
---color-text-disabled: ...;
-1.9. Quy tắc quan trọng nhất
-
-Không thiết kế màu giao diện độc lập với Logo.
-
-Khi lựa chọn hoặc điều chỉnh một màu mới, phải kiểm tra:
-
-Màu đó có cùng sắc độ và nhận diện với Logo không?
-
-Nếu không → không sử dụng.
-
-LOHA SALES phải tạo cảm giác:
-
-Nhìn Logo và nhìn giao diện → người dùng nhận ra ngay đây là cùng một thương hiệu.
-
-
-**Điểm mình đã sửa quan trọng nhất:** bỏ tư duy **“Tím + Xanh Lavi”** và chuyển thành **“Blue-Purple / Indigo Purple là màu thương hiệu duy nhất”**. Xanh/lavender chỉ là **biến thể phụ**, không được phép lấn át màu logo.
-
-Như ảnh bạn gửi, màu menu **“Quản lý người dùng”** hiện đang hơi **tím hồng**, nên theo luật mới Agent sẽ phải kéo nó về gần **xanh-tím của logo** hơn.
-
-## 2. Typography / Font chữ
-
-### 2.1. Nguyên tắc chung
-
-- Toàn bộ LOHA SALES phải sử dụng hệ thống Typography thống nhất.
-- Chỉ sử dụng **font chữ đã được định nghĩa trong Design System**.
-- Không tự ý thay đổi font giữa các màn hình hoặc component.
-- Ưu tiên font có khả năng hiển thị tiếng Việt tốt, rõ ràng và dễ đọc trên màn hình.
-
-### 2.2. Typography Hierarchy
-
-Font chữ phải được phân cấp rõ ràng theo vai trò:
-
-- **Display / Page Title:** tiêu đề lớn của trang.
-- **Heading:** tiêu đề section/khu vực.
-- **Body:** nội dung thông thường.
-- **Label:** nhãn của input, form và thông tin phụ.
-- **Caption / Helper:** thông tin phụ, mô tả ngắn.
-- **Button:** chữ trên các nút thao tác.
-- **Table:** dữ liệu trong bảng.
-- **Navigation:** Sidebar, Header và các thành phần điều hướng.
-
-Không tạo thêm cấp chữ mới nếu có cấp Typography tương đương.
-
-### 2.3. Font Weight
-
-Chỉ sử dụng các mức font-weight cần thiết:
-
-- **Regular (400):** nội dung thông thường.
-- **Medium (500):** label, navigation, button hoặc nội dung cần nhấn nhẹ.
-- **Semibold (600):** heading, tiêu đề, thông tin quan trọng.
-- **Bold (700):** chỉ sử dụng khi thực sự cần nhấn mạnh.
-
-Không lạm dụng Bold để tạo sự nổi bật.
-
-### 2.4. Font Size & Line Height
-
-- Font size phải được định nghĩa theo Design Tokens.
-- Không đặt font-size tùy ý trực tiếp trong từng component.
-- Line-height phải phù hợp với từng cấp Typography.
-- Nội dung dài phải ưu tiên khả năng đọc, không dùng font quá nhỏ để cố nhồi thông tin.
-
-### 2.5. Màu chữ
-
-- **Primary Text:** nội dung chính.
-- **Secondary Text:** nội dung phụ.
-- **Muted Text:** thông tin ít quan trọng.
-- **Disabled Text:** thành phần không thể thao tác.
-
-Không sử dụng màu thương hiệu Tím/Xanh Lavi cho text chỉ để trang trí.
-
-### 2.6. Design Tokens
-
-Typography phải được định nghĩa tập trung bằng Design Tokens/CSS Variables/Theme.
-
-Ví dụ:
-
-```css
---font-family: ...;
-
---font-size-xs: ...;
---font-size-sm: ...;
---font-size-md: ...;
---font-size-lg: ...;
---font-size-xl: ...;
---font-size-2xl: ...;
-
---font-weight-regular: 400;
---font-weight-medium: 500;
---font-weight-semibold: 600;
---font-weight-bold: 700;
-
---line-height-tight: ...;
---line-height-normal: ...;
---line-height-relaxed: ...;
-
-## 3. Cỡ chữ & Cấp độ chữ
-
-### 3.1. Nguyên tắc chung
-
-- Toàn bộ hệ thống phải sử dụng một thang cỡ chữ thống nhất.
-- Cỡ chữ phải thể hiện rõ **thứ bậc thông tin**.
-- Không tự ý tạo cỡ chữ riêng cho từng màn hình/component.
-- Ưu tiên khả năng đọc và sự cân đối thay vì sử dụng chữ quá lớn hoặc quá nhỏ.
-
-### 3.2. Thang cỡ chữ
-
-Sử dụng các cấp độ sau:
-
-| Cấp độ | Cỡ chữ | Mục đích |
-|---|---:|---|
-| `xs` | 12px | Caption, thông tin phụ |
-| `sm` | 14px | Label, helper text, metadata |
-| `md` | 16px | Nội dung chính, input, table |
-| `lg` | 18px | Nội dung cần nhấn mạnh |
-| `xl` | 20px | Tiêu đề section |
-| `2xl` | 24px | Tiêu đề trang |
-| `3xl` | 30px | Tiêu đề lớn / Dashboard |
-
-> Đây là thang chuẩn cơ sở. Nếu codebase hiện tại đã có Typography Token, ưu tiên chuẩn hóa về thang này thay vì tạo thêm nhiều cấp mới.
-
-### 3.3. Cấp độ sử dụng
-
-- **Page Title:** `2xl` hoặc `3xl`
-- **Section Heading:** `xl`
-- **Sub Heading:** `lg`
-- **Body:** `md`
-- **Label:** `sm`
-- **Caption / Metadata:** `xs` hoặc `sm`
-- **Button:** `sm` hoặc `md`
-- **Input / Select:** `md`
-- **Table:** `sm` hoặc `md`
-
-### 3.4. Quy tắc phân cấp
-
-- Tiêu đề cấp cao phải lớn hơn và nổi bật hơn tiêu đề cấp thấp.
-- Nội dung chính phải dễ đọc hơn metadata/thông tin phụ.
-- Không dùng `3xl` hoặc cỡ chữ lớn cho các nội dung thông thường.
-- Không dùng `xs` cho nội dung người dùng cần đọc hoặc thao tác thường xuyên.
-- Không dùng nhiều cấp độ chữ khác nhau trong cùng một khu vực nếu không có mục đích rõ ràng.
-
-### 3.5. Design Tokens
-
-Cỡ chữ phải được quản lý tập trung:
-
-```css
---font-size-xs: 12px;
---font-size-sm: 14px;
---font-size-md: 16px;
---font-size-lg: 18px;
---font-size-xl: 20px;
---font-size-2xl: 24px;
---font-size-3xl: 30px;
-
-
-## 4. Spacing — Hệ thống khoảng cách
-
-### 4.1. Nguyên tắc chung
-
-- Toàn bộ LOHA SALES phải sử dụng một hệ thống khoảng cách thống nhất.
-- Không tự ý đặt margin/padding tùy ý cho từng component.
-- Khoảng cách phải tạo ra thứ bậc rõ ràng giữa các thành phần.
-- Các thành phần có quan hệ gần nhau phải có khoảng cách nhỏ hơn các nhóm nội dung độc lập.
-- Ưu tiên giao diện thoáng, dễ đọc nhưng không để khoảng trống gây lãng phí diện tích.
-
-### 4.2. Spacing Scale
-
-Sử dụng hệ khoảng cách theo bội số của **4px**:
-
-| Token | Giá trị | Sử dụng |
-|---|---:|---|
-| `space-1` | 4px | Khoảng cách rất nhỏ, icon/text |
-| `space-2` | 8px | Thành phần liên quan trực tiếp |
-| `space-3` | 12px | Nội dung trong component |
-| `space-4` | 16px | Khoảng cách tiêu chuẩn |
-| `space-5` | 20px | Khoảng cách giữa các thành phần |
-| `space-6` | 24px | Khoảng cách giữa các nhóm |
-| `space-8` | 32px | Khoảng cách section |
-| `space-10` | 40px | Khoảng cách lớn |
-| `space-12` | 48px | Khoảng cách giữa các khu vực lớn |
-| `space-16` | 64px | Khoảng cách đặc biệt lớn |
-
-Không tạo thêm giá trị spacing mới nếu có token phù hợp.
-
-### 4.3. Quy tắc khoảng cách
-
-**Trong component:**
-- Icon ↔ Text: `4–8px`
-- Label ↔ Input: `8px`
-- Input ↔ Input: `16px`
-- Nội dung trong Button: `8–12px`
-- Nội dung trong Card: `16–24px`
-
-**Giữa các nhóm:**
-- Các thành phần cùng nhóm: `8–16px`
-- Các nhóm nội dung: `24–32px`
-- Các Section lớn: `32–48px`
-
-**Layout:**
-- Padding của khu vực chính phải được thống nhất.
-- Sidebar, Header và Main Content phải sử dụng hệ spacing chung.
-- Không để một màn hình có khoảng cách lớn/nhỏ bất thường so với các màn hình khác.
-
-### 4.4. Quy tắc phân cấp
-
-> **Khoảng cách nhỏ = có quan hệ gần.**  
-> **Khoảng cách lớn = bắt đầu một nhóm/thông tin mới.**
-
-Ví dụ:
-
-```text
-Tiêu đề
-  ↓ 8px
-Mô tả
-
-  ↓ 24px
-
-Section tiếp theo
-````
-
-Không sử dụng cùng một khoảng cách cho mọi thành phần.
-
-### 4.5. Design Tokens
-
-Spacing phải được quản lý tập trung:
-
-```css
---space-1: 4px;
---space-2: 8px;
---space-3: 12px;
---space-4: 16px;
---space-5: 20px;
---space-6: 24px;
---space-8: 32px;
---space-10: 40px;
---space-12: 48px;
---space-16: 64px;
-```
-
-### 4.6. Nguyên tắc cốt lõi
-
-> **Spacing phải tạo ra cấu trúc, không phải khoảng trống ngẫu nhiên.**
-
-Mọi khoảng cách trong LOHA SALES phải có lý do về **quan hệ, nhóm nội dung hoặc thứ bậc thông tin**.
-
-
-## 5. Grid / Bố cục
-
-### 5.1. Nguyên tắc chung
-
-- Toàn bộ LOHA SALES phải sử dụng một hệ thống bố cục thống nhất.
-- Bố cục phải rõ ràng, cân đối và ưu tiên nội dung chính.
-- Không căn chỉnh từng màn hình theo cách riêng nếu không có lý do UX rõ ràng.
-- Ưu tiên bố cục **đơn giản, thoáng, dễ quét thông tin**.
-- Header, Sidebar và Main Content phải tuân theo cùng một hệ thống layout.
-
-### 5.2. Cấu trúc Layout chính
-
-LOHA SALES sử dụng cấu trúc:
-
-```text
-┌─────────────────────────────────────────────┐
-│                    Header                   │
-├──────────────┬──────────────────────────────┤
-│              │                              │
-│   Sidebar    │        Main Content          │
-│              │                              │
-│              │                              │
-└──────────────┴──────────────────────────────┘
-````
-
-* **Header:** khu vực điều hướng và thông tin hệ thống.
-* **Sidebar:** điều hướng chính.
-* **Main Content:** khu vực hiển thị nội dung/chức năng.
-* Không để nội dung chính bị che bởi Header hoặc Sidebar.
-
-### 5.3. Main Content
-
-* Main Content phải có giới hạn chiều rộng hợp lý để tránh nội dung trải quá rộng.
-* Nội dung phải được căn chỉnh theo một trục thẳng đứng nhất quán.
-* Các Page Title, Filter, Table, Card và Section phải tuân theo cùng một vùng nội dung.
-* Không để các component quan trọng sát mép màn hình.
-* Khoảng cách hai bên phải sử dụng Spacing Token.
-
-### 5.4. Grid
-
-* Sử dụng Grid/Flexbox để xây dựng bố cục.
-* Các cột phải có quy tắc rõ ràng và responsive.
-* Không sử dụng các giá trị width/position tùy ý chỉ để ép giao diện khớp với một màn hình.
-* Các thành phần cùng cấp nên được căn theo cùng một đường Grid.
-* Khi thay đổi kích thước màn hình, bố cục phải tự điều chỉnh thay vì phá vỡ cấu trúc.
-
-### 5.5. Responsive Layout
-
-Bố cục phải thích ứng với:
-
-* Desktop
-* Laptop
-* Tablet
-* Mobile
-
-Quy tắc:
-
-* Desktop: Sidebar đầy đủ, nội dung sử dụng bố cục nhiều cột khi phù hợp.
-* Tablet: giảm số cột và điều chỉnh khoảng cách.
-* Mobile: ưu tiên bố cục một cột, Sidebar có thể chuyển thành dạng thu gọn/menu.
-* Không để xuất hiện horizontal scroll không cần thiết.
-* Không thu nhỏ nội dung đến mức khó đọc chỉ để giữ nguyên số cột.
-
-### 5.6. Quy tắc phân cấp bố cục
-
-Bố cục phải thể hiện rõ:
-
-```text
-Page
- ├── Page Header
- │    ├── Title
- │    └── Actions
- │
- ├── Filter / Search
- │
- ├── Main Content
- │    ├── Section
- │    └── Data / Components
- │
- └── Pagination / Additional Actions
-```
-
-Không đặt quá nhiều nhóm nội dung ngang hàng trong cùng một khu vực nếu chúng có mức độ ưu tiên khác nhau.
-
-### 5.7. Nguyên tắc cốt lõi
-
-> **Grid tạo ra sự nhất quán.
-> Layout tạo ra thứ bậc.
-> Responsive đảm bảo khả năng sử dụng.**
-
-Mọi màn hình của LOHA SALES phải có cảm giác thuộc về **cùng một hệ thống**, thay vì mỗi màn hình có một cách bố cục riêng.
-
-
-## 6. Border — Hệ thống đường viền
-
-### 6.1. Nguyên tắc chung
-
-- Border phải được sử dụng để **phân tách, định hướng và tạo cấu trúc**, không dùng để trang trí.
-- Toàn bộ hệ thống phải sử dụng một quy tắc Border thống nhất.
-- Không tự ý thay đổi màu, độ dày hoặc kiểu Border giữa các màn hình.
-- Ưu tiên Border **mảnh, nhẹ và tinh tế**, phù hợp với phong cách SaaS hiện đại của LOHA SALES.
-
-### 6.2. Border Width
-
-Chỉ sử dụng các độ dày cần thiết:
-
-- **1px:** Border tiêu chuẩn.
-- **2px:** Focus, Active hoặc trạng thái cần nhấn mạnh.
-- Không sử dụng Border quá dày cho các component thông thường.
-
-### 6.3. Border Color
-
-Border tiêu chuẩn phải sử dụng **Neutral Color**:
-
-- Border mặc định → Neutral Border.
-- Hover → Border đậm hơn nhẹ.
-- Focus → Primary Brand Color.
-- Error → Error Color.
-- Disabled → Border Disabled.
-
-Không sử dụng màu thương hiệu cho Border mặc định của mọi component.
-
-### 6.4. Border Radius
-
-Border Radius phải được chuẩn hóa:
-
-- `sm`: Component nhỏ, Input, Button.
-- `md`: Card, Dropdown, Modal.
-- `lg`: Container hoặc khu vực lớn.
-- Không tự ý sử dụng nhiều mức Radius khác nhau.
-
-Các component cùng loại phải có Radius giống nhau trên toàn hệ thống.
-
-### 6.5. Quy tắc sử dụng
-
-**Input / Select:**
-```text
-Default → Neutral Border
-Hover   → Neutral Border đậm hơn
-Focus   → Primary Border
-Error   → Error Border
-Disabled → Disabled Border
-````
-
-**Card:**
-
-* Có thể sử dụng Border 1px rất nhẹ.
-* Không bắt buộc Border nếu Card đã được phân tách rõ bằng Background/Shadow.
-
-**Table:**
-
-* Border/Divider phải nhẹ.
-* Không sử dụng đường viền quá đậm giữa mọi ô nếu không cần thiết.
-
-**Modal / Dropdown:**
-
-* Có thể sử dụng Border nhẹ để xác định ranh giới.
-* Ưu tiên kết hợp Border với Shadow thay vì Border quá đậm.
-
-### 6.6. Design Tokens
-
-```css
---border-width-default: 1px;
---border-width-focus: 2px;
-
---color-border: ...;
---color-border-hover: ...;
---color-border-focus: var(--color-primary);
---color-border-error: var(--color-error);
---color-border-disabled: ...;
-
---radius-sm: ...;
---radius-md: ...;
---radius-lg: ...;
-```
-
-### 6.7. Nguyên tắc cốt lõi
-
-> **Border phải giúp người dùng nhận biết cấu trúc và trạng thái, không làm giao diện nặng nề.**
-
-Ưu tiên:
-
-**Mỏng → Nhẹ → Đồng nhất → Có mục đích.**
-
-
-## 7. Border Radius — Hệ thống độ bo góc
-
-### 7.1. Nguyên tắc chung
-
-- Toàn bộ LOHA SALES phải sử dụng hệ thống Border Radius thống nhất.
-- Không tự ý đặt `border-radius` riêng cho từng component.
-- Độ bo góc phải phù hợp với kích thước và vai trò của component.
-- Ưu tiên phong cách **bo góc vừa phải, hiện đại và chuyên nghiệp**; không bo quá tròn toàn bộ giao diện.
-
-### 7.2. Radius Scale
-
-Sử dụng các mức Radius chuẩn:
-
-| Token | Giá trị | Sử dụng |
-|---|---:|---|
-| `radius-sm` | 4px | Badge, trạng thái nhỏ |
-| `radius-md` | 8px | Input, Button, Select |
-| `radius-lg` | 12px | Card, Dropdown, Modal |
-| `radius-xl` | 16px | Container hoặc khu vực lớn |
-| `radius-full` | 9999px | Avatar, Pill, trạng thái dạng viên |
-
-Không tạo thêm mức Radius mới nếu không có lý do UX rõ ràng.
-
-### 7.3. Quy tắc theo Component
-
-- **Button:** `radius-md`
-- **Input / Select:** `radius-md`
-- **Card:** `radius-lg`
-- **Modal / Dialog:** `radius-lg`
-- **Dropdown / Popover:** `radius-lg`
-- **Badge / Tag:** `radius-sm` hoặc `radius-full`
-- **Avatar:** `radius-full`
-- **Toast:** `radius-md`
-- **Table:** sử dụng Radius ở container, không bo từng ô.
-- **Image:** sử dụng Radius phù hợp với container chứa ảnh.
-
-### 7.4. Quy tắc nhất quán
-
-- Các component cùng loại phải có cùng Border Radius.
-- Không sử dụng nhiều kiểu bo góc khác nhau trong cùng một khu vực nếu không có mục đích.
-- Không dùng `radius-full` cho Button, Card hoặc Container thông thường.
-- Không bo góc quá lớn khiến component có cảm giác như giao diện mobile/game.
-- Các component nằm trong cùng một nhóm phải có Radius và ngôn ngữ hình học tương đồng.
-
-### 7.5. Design Tokens
-
-```css
---radius-sm: 4px;
---radius-md: 8px;
---radius-lg: 12px;
---radius-xl: 16px;
---radius-full: 9999px;
-````
-
-### 7.6. Nguyên tắc cốt lõi
-
-> **Kích thước và vai trò của component quyết định độ bo góc.**
-
-LOHA SALES phải duy trì một ngôn ngữ hình học thống nhất:
-
-**Bo vừa phải → Sạch → Hiện đại → Chuyên nghiệp → Không lạm dụng bo tròn.**
-
-
-## 8. Shadow — Hệ thống đổ bóng
-
-### 8.1. Nguyên tắc chung
-
-- Shadow dùng để tạo **chiều sâu và phân cấp**, không dùng để trang trí.
-- Ưu tiên Shadow nhẹ, mềm và tinh tế theo phong cách SaaS hiện đại.
-- Không sử dụng Shadow đậm hoặc quá lớn cho các component thông thường.
-- Không để mọi component đều có Shadow.
-
-### 8.2. Shadow Scale
-
-Chỉ sử dụng các cấp Shadow được định nghĩa:
-
-| Token | Mức độ | Sử dụng |
-|---|---|---|
-| `shadow-sm` | Rất nhẹ | Card, Input, component nhỏ |
-| `shadow-md` | Nhẹ | Dropdown, Popover |
-| `shadow-lg` | Rõ hơn | Modal, Dialog |
-| `shadow-xl` | Mạnh | Layer đặc biệt / Overlay |
-
-### 8.3. Quy tắc theo Component
-
-- **Card:** ưu tiên Border; chỉ dùng `shadow-sm` khi cần tạo phân lớp.
-- **Button:** không dùng Shadow mặc định.
-- **Input / Select:** không dùng Shadow mặc định; Focus sử dụng Primary Border/Focus Ring.
-- **Dropdown / Popover:** `shadow-md`.
-- **Modal / Dialog:** `shadow-lg`.
-- **Toast:** Shadow nhẹ để tách khỏi nội dung phía sau.
-- **Sidebar / Header:** chỉ sử dụng Shadow khi cần thể hiện sự tách lớp.
-- **Overlay:** có thể sử dụng Shadow kết hợp với nền Overlay.
-
-### 8.4. Trạng thái tương tác
-
-- Không tạo Shadow quá mạnh khi Hover.
-- Focus ưu tiên sử dụng **Primary Color + Focus Ring** thay vì Shadow đậm.
-- Active/Pressed không được tạo cảm giác component đang nổi lên quá mức.
-- Disabled không sử dụng Shadow nổi bật.
-
-### 8.5. Design Tokens
-
-```css
---shadow-sm: ...;
---shadow-md: ...;
---shadow-lg: ...;
---shadow-xl: ...;
-````
-
-Shadow phải được quản lý tập trung và tái sử dụng thông qua Design Tokens.
-
-### 8.6. Nguyên tắc phân lớp
-
-Shadow phải giúp người dùng hiểu thứ tự của các Layer:
-
-```text
-Page
-  ↓
-Card
-  ↓
-Dropdown / Popover
-  ↓
-Modal / Dialog
-  ↓
-Overlay / Critical Layer
-```
-
-Layer càng nổi trên giao diện → Shadow có thể càng rõ.
-
-### 8.7. Nguyên tắc cốt lõi
-
-> **Shadow dùng để thể hiện chiều sâu, không phải để làm component nổi bật một cách tùy tiện.**
-
-LOHA SALES ưu tiên:
-
-**Nhẹ → Mềm → Tinh tế → Có phân cấp → Không lạm dụng.**
- 
-## 9. Icon — Hệ thống biểu tượng
-
-* Dùng **một Icon Library thống nhất** cho toàn hệ thống.
-* Không tự ý trộn nhiều bộ icon có phong cách khác nhau.
-* Icon phải cùng phong cách, cùng độ dày nét và kích thước tương ứng.
-
-### Kích thước chuẩn
-
-| Token     | Size | Sử dụng               |
-| --------- | ---: | --------------------- |
-| `icon-xs` | 14px | phụ, metadata         |
-| `icon-sm` | 16px | Button, Input, Table  |
-| `icon-md` | 20px | Navigation, Action    |
-| `icon-lg` | 24px | Header, Section       |
-| `icon-xl` | 32px | Empty State, đặc biệt |
-
-### Quy tắc sử dụng
-
-* Icon + Text: khoảng cách **4–8px**.
-* Icon trong Button phải căn giữa theo chiều dọc.
-* Icon Button phải có vùng click đủ lớn, tối thiểu khoảng **36–40px**.
-* Icon có chức năng phải có ý nghĩa rõ ràng.
-* Không dùng icon chỉ để trang trí nếu không cần thiết.
-* Các hành động phổ biến phải dùng icon thống nhất:
-
-  * Thêm → `Plus`
-  * Sửa → `Edit`
-  * Xóa → `Trash`
-  * Tìm kiếm → `Search`
-  * Lọc → `Filter`
-  * Đóng → `X`
-  * Xem → `Eye`
-  * Khóa → `Lock`
-  * Mở khóa → `Unlock`
-  * Cài đặt → `Settings`
-* Icon **Danger/Delete** dùng màu Error khi cần thể hiện hành động nguy hiểm.
-* Icon trạng thái phải tuân theo **Semantic Color System**.
-* Không đổi icon tùy ý giữa các màn hình cho cùng một chức năng.
-
-### Nguyên tắc
-
-> **Cùng một chức năng → cùng một icon → cùng một cách hiển thị trong toàn hệ thống.**
-
-## 10. Button — Nút bấm
-
-* Button phải có **phân cấp hành động rõ ràng**:
-
-  * **Primary:** hành động chính → Thêm, Lưu, Xác nhận.
-  * **Secondary:** hành động phụ → Hủy, Quay lại.
-  * **Danger:** hành động nguy hiểm → Xóa, Khóa.
-  * **Ghost / Icon:** hành động phụ hoặc thao tác trên từng dòng.
-* Không biến mọi Button thành Primary.
-* Button cùng loại phải có cùng kích thước, chiều cao, font, radius và khoảng cách.
-* Chuẩn hóa các trạng thái:
-
-  * Default
-  * Hover
-  * Active/Pressed
-  * Focus
-  * Disabled
-  * Loading
-* Loading phải khóa thao tác và thể hiện rõ đang xử lý.
-* Nội dung Button phải ngắn, mô tả đúng hành động: `Lưu`, `Xóa`, `Thêm sản phẩm`.
-* Icon nếu có phải đặt và căn chỉnh thống nhất.
-* Không dùng màu chỉ để trang trí; màu phải phản ánh vai trò hành động.
+> **Mục tiêu cốt lõi:** *"Sáng sủa, sạch sẽ, hiện đại, dễ thao tác và mang hơi hướng B2B SaaS tinh tế (Notion, X, Linear)."*
 
 ---
 
-## 11. Icon Button — Nút chỉ có Icon
+## I. TRIẾT LÝ THIẾT KẾ & VIBE TỔNG THỂ
 
-* Dùng khi chức năng đã **quen thuộc và icon đủ rõ nghĩa**.
-* Các thao tác phổ biến phải dùng icon thống nhất.
-* Phải có `Tooltip` cho Icon Button khi ý nghĩa không rõ ngay.
-* Kích thước vùng click tối thiểu khoảng **36–40px**.
-* Icon luôn căn giữa.
-* Chuẩn hóa trạng thái:
-
-  * Default
-  * Hover
-  * Active
-  * Focus
-  * Disabled
-* Action nguy hiểm như Xóa phải dùng **Danger/Error**.
-* Không dùng Icon Button cho hành động quan trọng nếu người dùng dễ hiểu sai.
+1. **Sáng và Sạch (Clean & Light):** Luôn dùng nền sáng (trắng `bg-white` hoặc xám cực nhạt `bg-slate-50`). Tránh thiết kế "đóng hộp", khô khan, nặng nề như phần mềm quản lý ERP truyền thống.
+2. **Không gian thoáng (Whitespace & Card-based):** Gom nhóm dữ liệu liên quan vào các Thẻ (Card), khoảng đệm (padding) thoáng đãng `16–24px` (`p-4 sm:p-5`), không nhồi nhét thông tin dày đặc.
+3. **Nhận diện thương hiệu (Brand Identity):**
+   - **Logo LOHA SALES là nguồn tham chiếu màu chuẩn:** Màu thương hiệu chủ đạo duy nhất là **Blue-Purple / Indigo Purple** (`indigo-600` / `#4F46E5`).
+   - **CẤM:** Không sử dụng màu tím thiên hồng/magenta hoặc xanh Lavi thuần làm màu thương hiệu chính.
+   - **Brand Gradient:** Chỉ được sử dụng cho Logo, khu vực nhận diện thương hiệu hoặc Hero Banner đặc biệt. **CẤM dùng gradient đại trà** cho Button, Input, Table, Card, Toast hay Badge. Giao diện chức năng phải ưu tiên màu Solid để rõ ràng, chuyên nghiệp.
+4. **Trải nghiệm thao tác (Touch-friendly & Responsive):** Nút bấm, ô nhập to rõ, dễ bấm trên cả điện thoại (Touch target tối thiểu `36–40px`). Phản hồi trực quan tức thì khi Hover, Focus, Active hoặc Loading.
 
 ---
 
-## 12. Input — Ô nhập liệu
-
-* Mỗi Input phải có **Label rõ ràng**.
-* Placeholder chỉ dùng để gợi ý, **không thay thế Label**.
-* Chuẩn hóa:
-
-  * Height
-  * Padding
-  * Font
-  * Border
-  * Radius
-* Trạng thái bắt buộc có:
-
-  * Default
-  * Hover
-  * Focus
-  * Error
-  * Disabled
-  * Read-only nếu cần
-* Focus dùng **Primary Border/Focus Ring**.
-* Error dùng **Error Color** và thông báo lỗi ngắn, rõ nguyên nhân.
-* Required field phải được thể hiện thống nhất.
-* Không dùng quá nhiều kiểu Input khác nhau cho cùng một loại dữ liệu.
-
----
-
-## 13. Textarea — Ô nhập nhiều dòng
-
-* Tuân theo toàn bộ quy tắc của **Input**.
-* Dùng cho nội dung dài: mô tả, ghi chú, nội dung chi tiết.
-* Có chiều cao mặc định phù hợp.
-* Cho phép Resize khi thực sự cần.
-* Không để Textarea quá thấp khiến người dùng khó nhập nội dung.
-* Nếu có giới hạn ký tự, hiển thị số ký tự đã nhập/tối đa.
-* Error phải hiển thị rõ dưới hoặc gần Textarea.
-* Không dùng Textarea cho dữ liệu ngắn có cấu trúc.
-
----
-
-## 14. Select / Dropdown
-
-* Dùng Select khi người dùng chọn **một hoặc một số giá trị có sẵn**.
-* Giao diện phải thống nhất với Input.
-* Có các trạng thái:
-
-  * Default
-  * Hover
-  * Open
-  * Focus
-  * Disabled
-  * Error
-* Dropdown phải hiển thị rõ:
-
-  * Giá trị đang chọn
-  * Các lựa chọn
-  * Trạng thái Selected
-* Danh sách dài nên có Search.
-* Không mở Dropdown ra ngoài viewport nếu có thể tránh.
-* Option phải có vùng click đủ lớn.
-* Không dùng Dropdown cho danh sách quá dài nếu Autocomplete phù hợp hơn.
-
----
-
-## 15. Checkbox
-
-* Dùng cho lựa chọn **độc lập hoặc nhiều lựa chọn đồng thời**.
-* Checkbox phải có Label rõ ràng.
-* Trạng thái:
-
-  * Unchecked
-  * Checked
-  * Indeterminate
-  * Disabled
-  * Error nếu cần
-* Có thể click cả Label để thay đổi trạng thái.
-* Không dùng Checkbox cho lựa chọn chỉ có **một trong nhiều giá trị** → dùng Radio.
-* Không dùng màu tùy ý; trạng thái Checked dùng Primary.
-
----
-
-## 16. Radio
-
-* Dùng khi người dùng chỉ được chọn **một giá trị trong một nhóm**.
-* Các Radio cùng nhóm phải có cùng `name/group`.
-* Phải có Label rõ ràng.
-* Một nhóm nên có giá trị mặc định khi hợp lý.
-* Trạng thái:
-
-  * Unselected
-  * Selected
-  * Disabled
-  * Error nếu cần
-* Có thể click Label để chọn.
-* Không dùng Radio cho danh sách quá dài; cân nhắc Select.
-
----
-
-## 17. Switch / Toggle
-
-* Dùng cho trạng thái **Bật / Tắt** có hiệu lực ngay hoặc có ý nghĩa rõ ràng.
-* Không dùng Switch cho việc chọn dữ liệu hoặc lựa chọn nhiều mục.
-* Phải thể hiện rõ:
-
-  * ON
-  * OFF
-  * Disabled
-* Label phải mô tả **trạng thái/chức năng**, không dùng câu mơ hồ.
-* Nếu thay đổi có hậu quả lớn → yêu cầu Confirm thay vì đổi ngay.
-* Chuyển trạng thái phải có phản hồi trực quan rõ ràng.
-* Không lạm dụng Switch thay cho Checkbox.
-
----
-
-## 18. Date Picker / Time Picker
-
-* Dùng đúng mục đích:
-
-  * Date Picker → ngày
-  * Time Picker → giờ
-  * DateTime Picker → ngày + giờ
-* Format ngày/giờ phải thống nhất toàn hệ thống.
-* Không để mỗi màn hình dùng một format khác nhau.
-* Hỗ trợ nhập trực tiếp nếu phù hợp.
-* Có trạng thái:
-
-  * Default
-  * Focus
-  * Selected
-  * Disabled
-  * Error
-* Không cho chọn ngày không hợp lệ theo nghiệp vụ.
-* Khoảng ngày phải thể hiện rõ khi dùng Date Range.
-* Calendar/Picker phải không bị che hoặc vượt khỏi viewport.
-
----
-
-## 19. Search — Tìm kiếm
-
-* Search phải có Icon Search và Placeholder rõ ràng.
-* Placeholder nên mô tả nội dung có thể tìm: `Tìm sản phẩm...`.
-* Search Input phải có trạng thái:
-
-  * Default
-  * Focus
-  * Loading
-  * Has Result
-  * No Result
-* Nếu tìm kiếm realtime → có debounce để tránh gọi API liên tục.
-* Có nút Clear khi đã nhập dữ liệu.
-* Kết quả tìm kiếm phải phản hồi nhanh và rõ ràng.
-* Không dùng Search thay cho Filter nếu người dùng cần lọc theo điều kiện cụ thể.
-
----
-
-## 20. Autocomplete — Tự động gợi ý
-
-* Dùng khi người dùng **nhập và chọn một giá trị từ danh sách gợi ý**.
-* Gợi ý phải xuất hiện gần Input.
-* Có trạng thái:
-
-  * Loading
-  * Suggestions
-  * No Result
-  * Error
-* Cho phép chọn bằng chuột và bàn phím.
-* Highlight phần text khớp nếu phù hợp.
-* Không hiển thị quá nhiều kết quả cùng lúc.
-* Không tự động chọn giá trị nếu người dùng chưa xác nhận.
-* Với dữ liệu lớn, ưu tiên tìm kiếm từ server thay vì tải toàn bộ dữ liệu.
-
----
-
-## 21. Slider — Thanh kéo
-
-* Chỉ dùng cho dữ liệu có **giá trị liên tục hoặc khoảng giá trị**.
-* Phải hiển thị rõ:
-
-  * Min
-  * Max
-  * Giá trị hiện tại
-* Có thể cho phép nhập số trực tiếp khi cần độ chính xác cao.
-* Slider phải có vùng kéo đủ lớn, dễ thao tác.
-* Hỗ trợ Keyboard khi phù hợp.
-* Không dùng Slider cho dữ liệu có ít lựa chọn cố định → dùng Select/Radio.
-* Range Slider phải phân biệt rõ hai giá trị Min/Max.
-
----
-
-## 22. Upload File / Ảnh
-
-* Phải hiển thị rõ:
-
-  * Loại file được phép
-  * Dung lượng tối đa
-  * Số lượng file tối đa nếu có
-* Hỗ trợ:
-
-  * Click để chọn file
-  * Drag & Drop nếu phù hợp
-* Hiển thị trạng thái:
-
-  * Empty
-  * Uploading
-  * Success
-  * Error
-  * Disabled
-* Trong lúc Upload phải có Progress/Loading.
-* Upload lỗi phải nêu rõ nguyên nhân: sai định dạng, quá dung lượng...
-* Ảnh phải có Preview trước khi xác nhận nếu phù hợp.
-* Có nút Xóa/Thay thế file đã chọn.
-* Không cho Upload file không đúng quy định.
-* Không làm mất file đã chọn khi một file khác Upload thất bại.
-* Khu vực Upload phải có vùng click và Drop Zone đủ lớn, dễ nhận biết.
-
-## 23. Table — Bảng dữ liệu
-
-* Dùng để hiển thị dữ liệu có cấu trúc, cần so sánh hoặc quản lý nhiều bản ghi.
-
-* Header phải rõ ràng, tên cột ngắn gọn, dễ hiểu.
-
-* Căn lề thống nhất: văn bản căn trái, số liệu căn phải, trạng thái và thao tác theo một quy tắc chung.
-
-* Chiều rộng cột phù hợp nội dung; không để chữ tràn hoặc làm vỡ bố cục.
-
-* Chuẩn hóa chiều cao dòng, padding, font, đường phân cách và màu nền.
-
-* Hover dòng chỉ dùng để hỗ trợ theo dõi, không dùng màu quá nổi bật.
-
-* Trạng thái dữ liệu sử dụng Badge theo Semantic Color System.
-
-* Các thao tác trên dòng phải có vị trí và cách hiển thị nhất quán.
-
-* Bảng cần có Loading, Empty State, Error State.
-
-* Có Pagination khi dữ liệu nhiều; Search và Filter khi cần.
-
-* Responsive phải có phương án phù hợp, không để bảng tràn màn hình ngoài ý muốn.
-
-* Chỉ cho phép Sort ở các cột có ý nghĩa sắp xếp.
-
-## 24. Card — Thẻ nội dung
-
-* Dùng để nhóm các thông tin có liên quan thành một khối.
-
-* Card cùng loại phải thống nhất về padding, radius, border, background và shadow.
-
-* Thứ tự nội dung phải rõ ràng: tiêu đề → nội dung → thông tin phụ → hành động.
-
-* Chỉ dùng Shadow khi cần phân biệt lớp; ưu tiên giao diện nhẹ, sạch.
-
-* Không lồng quá nhiều Card khiến giao diện rối.
-
-* Card có thể click phải thể hiện rõ khả năng tương tác.
-
-* Không làm toàn bộ Card clickable nếu bên trong có nhiều hành động độc lập.
-
-## 25. Badge / Tag — Nhãn trạng thái
-
-* Badge dùng để thể hiện trạng thái, số lượng hoặc thông tin ngắn.
-
-* Tag dùng để phân loại hoặc gắn nhãn dữ liệu.
-
-* Màu sắc phải có ý nghĩa nhất quán:
-
-  * Success: xanh lá.
-
-  * Error/Danger: đỏ.
-
-  * Warning: vàng/cam.
-
-  * Info: xanh dương.
-
-  * Neutral: xám.
-
-* Không dùng màu chỉ để trang trí.
-
-* Nội dung ngắn gọn, dễ hiểu; không nhồi nhiều chữ.
-
-* Kích thước, padding, font và radius phải thống nhất.
-
-* Cùng một trạng thái phải dùng cùng màu và cách gọi trên toàn hệ thống.
-
-## 26. Avatar — Ảnh đại diện
-
-* Ưu tiên ảnh thật; nếu không có ảnh, dùng chữ cái đại diện hoặc ảnh mặc định.
-
-* Chuẩn hóa kích thước theo ngữ cảnh: Header, danh sách, bảng, trang hồ sơ.
-
-* Avatar phải giữ tỷ lệ vuông và crop ảnh nhất quán.
-
-* Nếu dùng chữ cái đại diện, căn giữa và đảm bảo dễ đọc.
-
-* Không dùng màu ngẫu nhiên gây mất đồng bộ thương hiệu.
-
-* Nếu Avatar có thể click, phải thể hiện khả năng tương tác và có trạng thái Focus phù hợp.
-
-* Không dùng Avatar thay cho thông tin định danh quan trọng.
-
-## 27. List — Danh sách
-
-* Các mục trong cùng danh sách phải có cấu trúc và khoảng cách nhất quán.
-
-* Thông tin quan trọng đặt trước; thông tin phụ đặt sau.
-
-* Căn chỉnh icon, tiêu đề, mô tả và hành động thống nhất.
-
-* Dùng Divider khi cần phân tách các mục.
-
-* Hover chỉ áp dụng cho mục có tương tác.
-
-* Nếu mục có thể click, phải thể hiện rõ khả năng tương tác.
-
-* Danh sách dài cần có phân trang, cuộn hoặc cơ chế tải thêm phù hợp.
-
-* Phải có Loading, Empty State và Error State khi lấy dữ liệu động.
-
-## 28. Pagination — Phân trang
-
-* Dùng khi dữ liệu được chia thành nhiều trang.
-
-* Hiển thị rõ trang hiện tại và các thao tác Trang trước / Trang sau.
-
-* Trang hiện tại phải được phân biệt rõ bằng Primary Color.
-
-* Vô hiệu hóa nút khi không thể chuyển tiếp hoặc quay lại.
-
-* Kích thước nút và khoảng cách phải thống nhất.
-
-* Nếu phù hợp, hiển thị tổng số bản ghi và lựa chọn số dòng mỗi trang.
-
-* Khi đổi trang, phải giữ Search/Filter hiện tại nếu không có lý do nghiệp vụ để đặt lại.
-
-* Không hiển thị quá nhiều số trang gây rối giao diện.
-
-* Với dữ liệu thay đổi, phải xử lý trường hợp trang hiện tại không còn bản ghi.
-
-## 29. Tabs — Các tab nội dung
-
-* Dùng để chuyển giữa các nhóm nội dung liên quan trong cùng một khu vực.
-
-* Tên tab phải ngắn gọn, phân biệt rõ nội dung.
-
-* Tab đang chọn phải có trạng thái Active rõ ràng, dùng Primary Color theo Design System.
-
-* Chuẩn hóa kiểu tab, chiều cao, padding và khoảng cách.
-
-* Không dùng Tabs thay cho điều hướng chính giữa các phân hệ lớn.
-
-* Giữ trạng thái tab khi phù hợp với luồng công việc.
-
-* Nội dung tab phải thay đổi đúng khi người dùng chuyển tab.
-
-* Nếu có số lượng hoặc trạng thái kèm theo, hiển thị theo một quy tắc thống nhất.
-
-## 30. Accordion — Nội dung thu gọn
-
-* Dùng để thu gọn/mở rộng các nhóm nội dung có liên quan.
-
-* Tiêu đề phải mô tả rõ nội dung bên trong.
-
-* Icon mở/đóng phải thống nhất và thể hiện đúng trạng thái.
-
-* Có vùng click đủ lớn, không chỉ giới hạn ở icon.
-
-* Chuẩn hóa padding, khoảng cách và Divider.
-
-* Nội dung mở rộng không được làm vỡ bố cục.
-
-* Quy định rõ được mở nhiều mục cùng lúc hay chỉ một mục; áp dụng nhất quán theo từng nhóm.
-
-* Không dùng Accordion cho nội dung cần người dùng nhìn thấy liên tục.
-
-## 31. Tooltip — Chú thích khi rê chuột
-
-* Dùng để giải thích ngắn cho Icon Button, biểu tượng hoặc thông tin khó hiểu.
-
-* Nội dung ngắn gọn, đúng trọng tâm.
-
-* Hiển thị khi Hover hoặc Focus bằng bàn phím.
-
-* Đặt gần đối tượng, tránh bị che hoặc vượt khỏi viewport.
-
-* Thời gian xuất hiện và biến mất phải nhất quán.
-
-* Không đưa nội dung dài, biểu mẫu hoặc hành động phức tạp vào Tooltip.
-
-* Không dùng Tooltip thay cho Label hoặc thông báo lỗi quan trọng.
-
-* Trên thiết bị cảm ứng, không phụ thuộc hoàn toàn vào Hover.
-
-## 32. Popover — Bảng thông tin nổi
-
-* Dùng để hiển thị thông tin bổ sung hoặc thao tác nhỏ liên quan đến một đối tượng.
-
-* Phân biệt rõ với Tooltip: Popover có thể chứa nội dung tương tác.
-
-* Mở theo hành động rõ ràng như click hoặc nhấn nút.
-
-* Đặt gần đối tượng kích hoạt, tự điều chỉnh khi gần mép màn hình.
-
-* Có thể đóng bằng cách click ra ngoài hoặc nhấn `Esc` khi phù hợp.
-
-* Chuẩn hóa background, border, radius, shadow và padding.
-
-* Không để Popover che mất nội dung hoặc thao tác quan trọng.
-
-* Nếu nội dung dài hoặc có nhiều bước, dùng Modal hoặc trang riêng thay vì Popover.
-
-## 33. Toast / Notification — Thông báo nhanh
-
-* Dùng để thông báo kết quả của một hành động mà không làm gián đoạn công việc.
-
-* LOHA SALES chỉ dùng 2 màu chính:
-
-  * Success: xanh lá.
-
-  * Error: đỏ.
-
-* Toast chỉ gồm Icon + Tiêu đề một dòng + Nút đóng (X), không có mô tả.
-
-* Toast trượt vào từ bên phải, hiển thị bên dưới Header và không che Avatar Dropdown đang mở.
-
-* Có thanh tiến trình mỏng ở cạnh dưới để thể hiện thời gian tự đóng.
-
-* Người dùng có thể đóng Toast ngay bằng nút X.
-
-* Nhiều Toast phải hiển thị đồng thời, Toast mới ở trên, Toast cũ dịch xuống dưới; không xếp hàng chờ.
-
-* Mỗi Toast có bộ đếm thời gian độc lập. Khi một Toast biến mất, các Toast còn lại dịch chuyển mượt mà, không chồng lấn.
-
-* Chuẩn hóa kích thước, khoảng cách, animation và vị trí trên toàn hệ thống.
-
-## 34. Alert — Cảnh báo trong giao diện
-
-* Dùng để hiển thị thông tin hoặc cảnh báo cần người dùng chú ý ngay trong nội dung trang.
-
-* Các loại: Info, Success, Warning, Error.
-
-* Màu sắc, icon và tiêu đề phải tương ứng với loại thông báo.
-
-* Nội dung ngắn gọn, nêu rõ vấn đề và hướng xử lý nếu cần.
-
-* Có thể có nút hành động hoặc nút đóng nếu phù hợp.
-
-* Alert quan trọng không được tự biến mất khi người dùng chưa đọc.
-
-* Chuẩn hóa padding, border, radius, icon và typography.
-
-## 35. Modal / Dialog — Hộp thoại
-
-* Dùng cho tác vụ cần tập trung hoặc tương tác mà không rời trang hiện tại.
-
-* Cấu trúc chuẩn: Tiêu đề → Nội dung → Khu vực hành động.
-
-* Chuẩn hóa chiều rộng, padding, radius, shadow và khoảng cách.
-
-* Có nút đóng rõ ràng; hỗ trợ `Esc` và click bên ngoài khi phù hợp.
-
-* Không tự đóng khi người dùng đang nhập dữ liệu chưa lưu.
-
-* Khi mở Modal, nền phía sau phải được làm nổi bật vừa đủ và không thể thao tác ngoài Modal nếu đó là hộp thoại chặn.
-
-* Hỗ trợ bàn phím, Focus và quản lý Focus đúng cách.
-
-* Không lồng nhiều Modal nếu không thực sự cần thiết.
-
-## 36. Confirm Dialog — Hộp thoại xác nhận
-
-* Dùng trước hành động quan trọng, khó hoàn tác hoặc có nguy cơ mất dữ liệu.
-
-* Nội dung phải nói rõ hành động nào sẽ xảy ra và đối tượng bị ảnh hưởng.
-
-* Với hành động nguy hiểm như Xóa hoặc Khóa, dùng màu Danger/Error.
-
-* Nút xác nhận phải mô tả hành động cụ thể: `Xóa sản phẩm`, `Khóa tài khoản`; tránh dùng `OK`.
-
-* Nút Hủy phải dễ nhận biết và không nổi bật hơn nút xác nhận nguy hiểm.
-
-* Không yêu cầu xác nhận cho mọi thao tác thông thường.
-
-* Khi đang xử lý, khóa nút xác nhận để tránh gửi yêu cầu lặp.
-
-* Chỉ đóng sau khi xử lý thành công hoặc khi người dùng chủ động Hủy.
-
-## 37. Loading — Trạng thái đang tải
-
-* Dùng để cho biết hệ thống đang xử lý hoặc tải dữ liệu.
-
-* Tác vụ ngắn dùng Spinner; tác vụ dài nên có thông tin tiến trình nếu đo được.
-
-* Loading phải xuất hiện đúng khu vực đang xử lý.
-
-* Không hiển thị nhiều Spinner không cần thiết trên cùng một vùng.
-
-* Khi đang gửi biểu mẫu, khóa thao tác gửi lặp và thể hiện trạng thái đang xử lý.
-
-* Không dùng Loading vô thời hạn nếu có thể phát hiện lỗi hoặc timeout.
-
-* Khi hoàn tất, hiển thị dữ liệu hoặc trạng thái kết quả tương ứng.
-
-## 38. Skeleton Loading — Khung tải dữ liệu
-
-* Dùng khi đã biết cấu trúc nội dung sẽ hiển thị nhưng dữ liệu chưa tải xong.
-
-* Hình dạng Skeleton phải gần với bố cục dữ liệu thật.
-
-* Ưu tiên Skeleton cho Table, Card, List và khu vực nội dung lớn.
-
-* Dùng hiệu ứng chuyển động nhẹ, không gây mất tập trung.
-
-* Giữ bố cục ổn định để hạn chế Layout Shift.
-
-* Khi dữ liệu tải xong, thay Skeleton bằng nội dung thật.
-
-* Nếu tải thất bại, hiển thị Error State thay vì giữ Skeleton mãi.
-
-## 39. Progress Bar — Thanh tiến trình
-
-* Dùng để thể hiện tiến độ của tác vụ đang diễn ra.
-
-* Tiến trình xác định được phải hiển thị phần trăm hoặc giá trị thực tế.
-
-* Tiến trình không xác định được dùng dạng chuyển động liên tục, không hiển thị phần trăm giả.
-
-* Chuẩn hóa chiều cao, màu sắc, radius và animation.
-
-* Success dùng xanh lá; Error dùng đỏ khi tác vụ thất bại.
-
-* Với Upload hoặc xử lý dài, hiển thị thêm tên tác vụ nếu cần.
-
-* Không để Progress Bar đứng yên khi tác vụ đã kết thúc.
-
-## 40. Success State — Trạng thái thành công
-
-* Dùng khi thao tác hoặc quá trình đã hoàn tất thành công.
-
-* Thể hiện rõ kết quả bằng icon và nội dung ngắn gọn.
-
-* Dùng màu Success theo Semantic Color System.
-
-* Nếu cần bước tiếp theo, cung cấp hành động phù hợp.
-
-* Với thao tác ngắn, ưu tiên Toast; với kết quả cần người dùng xem hoặc tiếp tục thao tác, dùng Success State trong nội dung trang.
-
-* Chỉ hiển thị thành công sau khi hệ thống xác nhận thao tác đã thành công.
-
-## 41. Error State — Trạng thái lỗi
-
-* Dùng khi tải dữ liệu hoặc thực hiện thao tác thất bại.
-
-* Nêu rõ điều gì đã xảy ra và hướng xử lý nếu xác định được.
-
-* Dùng màu Error và icon nhất quán.
-
-* Cung cấp nút Thử lại khi có thể thực hiện lại.
-
-* Không chỉ hiển thị mã lỗi kỹ thuật cho người dùng thông thường.
-
-* Không làm mất dữ liệu người dùng đã nhập khi có thể giữ lại an toàn.
-
-* Phân biệt lỗi nhập liệu, lỗi nghiệp vụ, lỗi mạng và lỗi hệ thống khi cần.
-
-* Chỉ hiển thị lỗi sau khi đã xác định thao tác thất bại; không báo lỗi giả do trạng thái trung gian.
-
-## 42. Empty State — Trạng thái chưa có dữ liệu
-
-* Dùng khi khu vực chưa có dữ liệu để hiển thị.
-
-* Phân biệt:
-
-  * Chưa có dữ liệu ban đầu.
-
-  * Không có kết quả tìm kiếm.
-
-  * Không có dữ liệu phù hợp bộ lọc.
-
-* Hiển thị tiêu đề ngắn gọn, giải thích phù hợp và hành động tiếp theo nếu cần.
-
-* Ví dụ: `Chưa có sản phẩm` → `Thêm sản phẩm`.
-
-* Không hiển thị bảng trống mà không có hướng dẫn.
-
-* Không nhầm Empty State với Loading hoặc Error State.
-
-* Hình minh họa nếu có phải đơn giản, phù hợp thương hiệu và không lấn át nội dung.
-
-# 5. 🧭 Điều hướng
-
-## 44. Sidebar — Thanh điều hướng bên
-
-* Hiển thị các phân hệ/chức năng chính theo vai trò và quyền truy cập của người dùng.
-
-* Các mục phải có icon, tên gọi rõ ràng và thống nhất.
-
-* Mục đang chọn phải có trạng thái Active dễ nhận biết, dùng Primary Color.
-
-* Phân nhóm chức năng theo nghiệp vụ, không dồn tất cả vào một danh sách dài.
-
-* Chuẩn hóa chiều rộng, padding, khoảng cách, icon và typography.
-
-* Hỗ trợ thu gọn/mở rộng nếu phù hợp; khi thu gọn, icon phải có Tooltip.
-
-* Sidebar phải giữ cấu trúc nhất quán giữa các trang.
-
-* Không hiển thị chức năng người dùng không có quyền truy cập.
-
-## 45. Header / Topbar — Thanh đầu trang
-
-* Dùng chung cấu trúc trên toàn hệ thống.
-
-* Có thể chứa Logo, tiêu đề/khu vực điều hướng, thông báo và Avatar người dùng tùy nhu cầu.
-
-* Căn chỉnh các thành phần thống nhất, không để nội dung chồng lấn.
-
-* Chuẩn hóa chiều cao, padding, icon, font và khoảng cách.
-
-* Dropdown của Avatar phải hiển thị đúng vị trí, không bị Header hoặc thành phần khác che khuất.
-
-* Toast phải hiển thị bên dưới Header và không che Dropdown đang mở.
-
-* Khi cuộn trang, hành vi cố định của Header phải nhất quán.
-
-* Không đưa quá nhiều chức năng vào Header gây rối.
-
-## 46. Navigation Menu — Menu điều hướng
-
-* Phân biệt rõ mục điều hướng chính, mục con và nhóm chức năng.
-
-* Tên mục ngắn gọn, phản ánh đúng trang đích.
-
-* Trạng thái Active phải thể hiện đúng trang hoặc nhóm đang truy cập.
-
-* Các mục cùng cấp phải có cách hiển thị thống nhất.
-
-* Hỗ trợ điều hướng bằng bàn phím và Focus State.
-
-* Không tạo nhiều mục dẫn đến cùng một nơi nếu không có lý do nghiệp vụ.
-
-* Chỉ hiển thị mục phù hợp với quyền người dùng.
-
-## 47. Breadcrumb — Đường dẫn phân cấp
-
-* Dùng để thể hiện vị trí hiện tại trong cấu trúc hệ thống.
-
-* Hiển thị theo thứ tự từ cấp cao đến trang hiện tại.
-
-* Các cấp trước có thể click để quay lại; cấp hiện tại không cần là liên kết.
-
-* Tên từng cấp phải khớp với tên trang hoặc phân hệ.
-
-* Dùng dấu phân cách và khoảng cách thống nhất.
-
-* Không hiển thị Breadcrumb nếu cấu trúc trang quá đơn giản và không mang lại giá trị.
-
-## 48. Dropdown Menu — Menu thả xuống
-
-* Dùng để hiển thị nhóm hành động hoặc lựa chọn bổ sung từ một thành phần kích hoạt.
-
-* Menu phải mở đúng vị trí, không bị che hoặc vượt khỏi viewport.
-
-* Các mục phải có tên rõ ràng, icon nhất quán nếu có.
-
-* Nhóm hành động nguy hiểm phải được phân biệt bằng màu Danger/Error.
-
-* Hỗ trợ đóng khi click ra ngoài hoặc nhấn `Esc` khi phù hợp.
-
-* Hỗ trợ điều hướng bằng bàn phím.
-
-* Không nhồi quá nhiều mục; nhóm các hành động có liên quan.
-
-* Không nhầm Dropdown Menu chứa hành động với Select dùng để chọn giá trị.
-
-## 49. Context Menu — Menu ngữ cảnh
-
-* Hiển thị các hành động liên quan trực tiếp đến đối tượng được chọn.
-
-* Chỉ chứa hành động phù hợp với đối tượng và quyền của người dùng.
-
-* Các mục như Sửa, Xóa, Sao chép phải có tên rõ ràng.
-
-* Hành động nguy hiểm dùng màu Danger/Error.
-
-* Menu phải nằm trong vùng nhìn thấy, không bị cắt khỏi viewport.
-
-* Hỗ trợ bàn phím và đóng menu bằng `Esc`.
-
-* Nếu hành động đã được hiển thị rõ ràng tại vị trí khác, chỉ thêm vào Context Menu khi thực sự hữu ích.
-
-* Trên thiết bị không có chuột phải, phải có cách khác để truy cập các hành động cần thiết.
-
-## 50. Pagination Navigation — Điều hướng phân trang
-
-* Tuân thủ quy tắc Pagination tại mục 28.
-
-* Nút Trang trước/Trang sau phải hoạt động đúng và có trạng thái Disabled khi không thể chuyển trang.
-
-* Trang hiện tại phải được đánh dấu rõ ràng.
-
-* Khi chuyển trang, giữ nguyên Search, Filter và cách sắp xếp nếu phù hợp.
-
-* Không để người dùng chuyển đến trang không tồn tại khi dữ liệu thay đổi.
-
-* Trên màn hình nhỏ, ưu tiên hiển thị trang hiện tại và các thao tác điều hướng thiết yếu.
-
-# 6. 📝 Form & thao tác
-
-## 51. Form Layout — Bố cục biểu mẫu
-
-* Sắp xếp trường nhập theo thứ tự nghiệp vụ và trình tự người dùng dễ thực hiện.
-
-* Các trường liên quan phải được nhóm thành từng phần rõ ràng.
-
-* Căn chỉnh Label, Input, Select và thông báo lỗi thống nhất.
-
-* Khoảng cách giữa các trường tuân theo Spacing System.
-
-* Biểu mẫu dài nên chia nhóm hoặc chia bước khi thực sự cần.
-
-* Nút hành động đặt ở vị trí dễ tìm và thống nhất giữa các Form tương tự.
-
-* Responsive phải đảm bảo trường nhập không bị tràn hoặc quá hẹp.
-
-* Không dùng quá nhiều cột khiến biểu mẫu khó đọc.
-
-## 52. Label — Nhãn trường nhập
-
-* Mỗi trường nhập phải có Label mô tả rõ dữ liệu cần nhập.
-
-* Label đặt ở vị trí nhất quán, ưu tiên phía trên trường nhập.
-
-* Font, kích thước, màu sắc và khoảng cách phải thống nhất.
-
-* Không dùng Placeholder thay thế Label.
-
-* Trường bắt buộc phải được đánh dấu theo Required Field System.
-
-* Tên Label ngắn gọn, tránh thuật ngữ khó hiểu hoặc mơ hồ.
-
-## 53. Placeholder — Nội dung gợi ý
-
-* Dùng để đưa ra ví dụ hoặc hướng dẫn ngắn cho dữ liệu cần nhập.
-
-* Không dùng Placeholder thay Label.
-
-* Nội dung phải ngắn gọn, đúng ngữ cảnh.
-
-* Ví dụ: `Nhập tên sản phẩm...`, `Nhập số điện thoại...`.
-
-* Dùng màu Text Muted nhưng vẫn đảm bảo độ tương phản dễ đọc.
-
-* Không đặt thông tin quan trọng duy nhất trong Placeholder vì nội dung biến mất khi nhập.
-
-* Không dùng Placeholder cho nội dung mặc định nếu dữ liệu đó sẽ được lưu như giá trị thực.
-
-## 54. Required Field — Trường bắt buộc
-
-* Trường bắt buộc phải được đánh dấu thống nhất, ví dụ dấu `*`.
-
-* Quy ước dấu `*` phải được giải thích rõ khi cần.
-
-* Quy tắc bắt buộc phải khớp với validation phía giao diện và phía server.
-
-* Không đánh dấu bắt buộc nếu nghiệp vụ cho phép bỏ trống.
-
-* Khi thiếu dữ liệu, hiển thị lỗi gần trường tương ứng.
-
-* Không chỉ dựa vào màu sắc để thể hiện trường bắt buộc.
-
-## 55. Validation — Kiểm tra dữ liệu
-
-* Kiểm tra dữ liệu theo quy tắc nghiệp vụ trước khi gửi và tại server.
-
-* Kiểm tra đúng kiểu dữ liệu, định dạng, độ dài, giới hạn và tính hợp lệ.
-
-* Ưu tiên hiển thị lỗi sau khi người dùng rời trường hoặc gửi Form; tránh báo lỗi liên tục khi chưa nhập xong.
-
-* Khi dữ liệu sai, chỉ rõ trường cần sửa và cách sửa.
-
-* Khi sửa đúng, cập nhật trạng thái lỗi phù hợp.
-
-* Không xóa dữ liệu hợp lệ người dùng đã nhập chỉ vì có trường khác bị lỗi.
-
-* Không coi validation phía Frontend là cơ chế bảo mật thay cho Backend.
-
-## 56. Error Message — Thông báo lỗi
-
-* Hiển thị gần trường hoặc thao tác gây ra lỗi.
-
-* Nội dung phải ngắn gọn, dễ hiểu và nêu cách khắc phục nếu có thể.
-
-* Dùng Error Color và icon theo quy chuẩn chung.
-
-* Không chỉ hiển thị mã lỗi kỹ thuật hoặc thông báo chung chung như `Có lỗi xảy ra` nếu có thể giải thích cụ thể hơn.
-
-* Không hiển thị đồng thời nhiều thông báo trùng lặp cho cùng một lỗi.
-
-* Giữ dữ liệu người dùng đã nhập khi có thể.
-
-* Lỗi quan trọng phải dễ nhận biết, không phụ thuộc riêng vào màu sắc.
-
-## 57. Success Message — Thông báo thành công
-
-* Chỉ hiển thị sau khi hệ thống xác nhận thao tác thành công.
-
-* Nội dung ngắn gọn, nêu rõ kết quả: `Cập nhật sản phẩm thành công`.
-
-* Dùng Success Color theo Semantic Color System.
-
-* Với thao tác ngắn, dùng Toast; với quy trình dài hoặc kết quả cần hiển thị tại chỗ, dùng phản hồi phù hợp.
-
-* Không hiển thị thông báo thành công trùng lặp.
-
-* Không dùng thông báo thành công để thay thế việc cập nhật dữ liệu thực tế trên giao diện.
-
-## 58. Disabled State — Trạng thái vô hiệu hóa
-
-* Dùng khi thành phần tạm thời không thể tương tác.
-
-* Phải có kiểu hiển thị Disabled thống nhất, dễ phân biệt với trạng thái bình thường.
-
-* Không chỉ dùng màu sắc để thể hiện Disabled.
-
-* Không cho phép thực hiện hành động khi thành phần đang Disabled.
-
-* Chỉ vô hiệu hóa khi có lý do rõ ràng.
-
-* Nếu lý do không thể thao tác không hiển nhiên, cung cấp hướng dẫn phù hợp.
-
-* Phân biệt Disabled với Loading: Disabled là không thể tương tác; Loading là đang xử lý.
-
-## 59. Read-only State — Trạng thái chỉ đọc
-
-* Dùng khi người dùng được xem dữ liệu nhưng không được chỉnh sửa.
-
-* Phải phân biệt rõ với trường nhập có thể chỉnh sửa và trường Disabled.
-
-* Giá trị phải dễ đọc, có thể sao chép nếu phù hợp.
-
-* Không hiển thị kiểu Read-only khiến dữ liệu trông như bị lỗi hoặc mất khả năng đọc.
-
-* Không cho phép chỉnh sửa qua giao diện; Backend vẫn phải kiểm tra quyền cập nhật.
-
-* Chỉ dùng khi nghiệp vụ yêu cầu xem dữ liệu nhưng không cho sửa.
-
-## 60. Form Submit / Cancel — Gửi / Hủy biểu mẫu
-
-* Nút Submit phải thể hiện rõ hành động: `Lưu`, `Tạo sản phẩm`, `Cập nhật`.
-
-* Nút Cancel phải có kiểu Secondary và không nổi bật hơn hành động chính.
-
-* Khi Submit, phải kiểm tra Validation và ngăn gửi lặp.
-
-* Trong lúc xử lý, hiển thị Loading và khóa thao tác gửi lặp.
-
-* Chỉ thông báo thành công khi server xác nhận thành công.
-
-* Nếu Submit thất bại, giữ dữ liệu đã nhập và hiển thị lỗi phù hợp.
-
-* Nếu Cancel có thể làm mất dữ liệu chưa lưu, yêu cầu xác nhận khi cần.
-* Sau khi thành công, cập nhật giao diện hoặc điều hướng theo đúng luồng nghiệp vụ.
-* Thống nhất vị trí và thứ tự nút trên các Form tương tự.
-
-## 61. Responsive Breakpoints — Điểm chuyển bố cục
-
-* Sử dụng breakpoint thống nhất toàn hệ thống, không tự đặt tùy tiện cho từng component.
-
-* Có thể dùng bộ breakpoint cơ sở:
-
-  * Mobile: `< 768px`
-
-  * Tablet: `768px – 1023px`
-
-  * Desktop: `≥ 1024px`
-
-* Chỉ thay đổi bố cục khi nội dung không còn hiển thị hoặc thao tác thuận tiện.
-
-* Ưu tiên CSS Media Queries, Flexbox và Grid; tránh cố định kích thước gây tràn màn hình.
-
-* Khai báo breakpoint thành token hoặc biến dùng chung.
-
-## 62. Mobile / Tablet / Desktop — Bố cục đa thiết bị
-
-* Thiết kế ưu tiên trải nghiệm Desktop cho hệ thống quản lý LOHA SALES, đồng thời hỗ trợ tốt Tablet và Mobile.
-
-* Desktop: hiển thị đầy đủ Sidebar, bảng dữ liệu và các thao tác chính.
-
-* Tablet: thu gọn Sidebar, điều chỉnh số cột và khoảng cách.
-
-* Mobile: ưu tiên một cột, điều hướng gọn và thao tác thiết yếu.
-
-* Không chỉ thu nhỏ giao diện Desktop; phải điều chỉnh bố cục theo không gian sử dụng.
-
-* Không để nội dung, nút bấm hoặc Form tràn khỏi viewport.
-
-* Bảng dữ liệu trên Mobile phải có phương án phù hợp như cuộn ngang có kiểm soát hoặc hiển thị dạng Card.
-
-* Kiểm tra giao diện ở nhiều độ rộng, không chỉ ở một vài kích thước cố định.
-
-## 63. Touch Target — Vùng thao tác cảm ứng
-
-* Vùng tương tác nên đạt tối thiểu 44 × 44px cho trải nghiệm cảm ứng thuận tiện.
-
-* Nếu không gian hạn chế, mục tiêu tối thiểu tham khảo theo WCAG 2.2 AA là 24 × 24 CSS px, kèm các điều kiện ngoại lệ của tiêu chuẩn.
-
-* Khoảng cách giữa các nút phải tránh bấm nhầm.
-
-* Icon nhỏ vẫn phải có vùng click đủ lớn.
-
-* Không đặt các hành động nguy hiểm sát những nút thường dùng.
-
-* Kiểm tra thao tác cảm ứng trên thiết bị thật khi có thể.
-
-## 64. Keyboard Navigation — Điều hướng bằng bàn phím
-
-* Mọi chức năng tương tác phải có thể sử dụng bằng bàn phím khi phù hợp.
-
-* `Tab` / `Shift + Tab`: di chuyển giữa các thành phần.
-
-* `Enter` / `Space`: kích hoạt thành phần theo đúng loại.
-
-* `Esc`: đóng Modal, Dropdown hoặc Popover khi phù hợp.
-
-* Thứ tự Focus phải logic, theo luồng đọc và thao tác.
-
-* Không tạo Keyboard Trap, ngoại trừ vùng tương tác có chủ đích như Modal; khi đóng phải trả Focus về vị trí phù hợp.
-
-* Các thao tác quan trọng không được yêu cầu bắt buộc dùng chuột.
-
-## 65. Focus State — Trạng thái lấy nét
-
-* Tất cả thành phần tương tác phải có Focus State dễ nhận biết.
-
-* Ưu tiên Focus Ring rõ ràng, sử dụng màu Primary hoặc màu có độ tương phản phù hợp.
-
-* Không xóa `outline` mặc định nếu chưa thay bằng chỉ báo Focus đủ rõ.
-
-* Focus không được bị Header, Modal hoặc thành phần khác che khuất.
-
-* Phân biệt Focus với Hover và Active.
-
-* Duy trì trạng thái Focus nhất quán trên Button, Input, Select, Menu và các thành phần tương tác khác.
-
-## 66. Color Contrast — Độ tương phản màu
-
-* Văn bản thông thường phải đạt tỷ lệ tương phản tối thiểu 4.5:1.
-
-* Văn bản lớn phải đạt tối thiểu 3:1.
-
-* Thành phần giao diện và dấu hiệu trực quan cần thiết để nhận biết trạng thái phải đạt tối thiểu 3:1 với màu liền kề theo tiêu chí WCAG áp dụng.
-
-* Không chỉ dùng màu để truyền đạt Success, Error, Warning hoặc trạng thái khác; cần thêm chữ, icon hoặc dấu hiệu phù hợp.
-
-* Kiểm tra cả trạng thái Default, Hover, Focus, Disabled và Error.
-
-* Không tự ý giảm độ tương phản để giao diện trông nhẹ nhàng hơn.
-
-* Kiểm tra màu chữ trên cả nền sáng, nền tối và nền có màu thương hiệu.
-
-## 67. Screen Reader / Accessibility — Khả năng tiếp cận
-
-* Dùng HTML semantic đúng mục đích: `button`, `nav`, `main`, `form`, `label`...
-
-* Input phải có Label được liên kết đúng với trường nhập.
-
-* Icon Button phải có tên truy cập được, ví dụ `aria-label="Xóa sản phẩm"`.
-
-* Ảnh có ý nghĩa phải có văn bản thay thế phù hợp; ảnh trang trí dùng alt rỗng.
-
-* Trạng thái và thông báo động quan trọng phải được công nghệ hỗ trợ nhận biết.
-
-* Dùng ARIA khi HTML semantic chưa đủ; không dùng ARIA thay thế phần tử HTML phù hợp.
-
-* Các thành phần tùy chỉnh như Modal, Tabs, Dropdown phải hỗ trợ bàn phím và công bố đúng trạng thái.
-
-* Không dùng màu sắc, hình ảnh hoặc icon đơn lẻ làm cách truyền đạt thông tin duy nhất.
-
-## 68. Zoom / Font Scaling — Phóng to giao diện
-
-* Hỗ trợ phóng to văn bản đến 200% mà không mất nội dung hoặc chức năng.
-
-* Với chiều rộng tương đương 320 CSS px, nội dung thông thường phải hiển thị mà không cần cuộn ngang, ngoại trừ nội dung cần bố cục hai chiều như một số bảng dữ liệu.
-
-* Ưu tiên `rem`, `%`, `em`, `minmax()` và kích thước linh hoạt thay vì cố định mọi thứ bằng `px`.
-
-* Không đặt chiều cao cố định cho vùng chứa văn bản nếu có thể khiến chữ bị cắt.
-
-* Khi tăng cỡ chữ, nội dung phải tự xuống dòng và bố cục thích ứng.
-
-* Không vô hiệu hóa tính năng Zoom của trình duyệt.
-
-* Kiểm tra cả Zoom trình duyệt và cài đặt cỡ chữ của hệ điều hành khi phù hợp.
-
-### 69. Hover — Trạng thái rê chuột
-
-* Dùng để báo hiệu thành phần có thể tương tác.
-
-* Thay đổi nhẹ màu nền, màu chữ, border hoặc icon.
-
-* Ưu tiên dùng Primary Color với thành phần tương tác chính.
-
-* Không thay đổi kích thước hoặc làm xê dịch bố cục khi Hover.
-
-* Không phụ thuộc vào Hover để hiển thị thông tin quan trọng vì thiết bị cảm ứng không có Hover.
-
-### 70. Active — Trạng thái đang được chọn
-
-* Dùng để thể hiện mục đang được chọn hoặc đang hoạt động.
-
-* Navigation, Tabs và các mục được chọn phải có Active State rõ ràng.
-
-* Sử dụng màu sắc, nền hoặc dấu hiệu nhận biết thống nhất.
-
-* Phân biệt Active với Hover, Focus và Pressed.
-
-* Trạng thái Active phải phản ánh đúng trạng thái thực tế của hệ thống.
-
-### 71. Focus — Trạng thái lấy nét
-
-* Mọi thành phần tương tác phải có Focus State rõ ràng khi điều hướng bằng bàn phím.
-
-* Ưu tiên Focus Ring có độ tương phản tốt.
-
-* Không xóa `outline` nếu chưa có chỉ báo thay thế phù hợp.
-
-* Focus không được bị thành phần khác che khuất.
-
-* Không nhầm Focus với Hover hoặc Active.
-
-### 72. Pressed — Trạng thái nhấn
-
-* Thể hiện phản hồi tức thời khi người dùng nhấn hoặc kích hoạt thành phần.
-
-* Có thể thay đổi nhẹ màu nền, border hoặc độ sáng.
-
-* Không dùng hiệu ứng quá mạnh, rung lắc hoặc làm dịch chuyển bố cục.
-
-* Phản hồi phải nhanh, nhất quán giữa các thành phần cùng loại.
-
-* Không nhầm trạng thái Pressed với trạng thái Active được duy trì.
-
-### 73. Disabled — Trạng thái vô hiệu hóa
-
-* Thể hiện rõ thành phần hiện không thể tương tác.
-
-* Dùng màu sắc và độ tương phản phù hợp để phân biệt với trạng thái bình thường.
-
-* Không chỉ dựa vào màu sắc để biểu thị Disabled.
-
-* Không thực hiện hành động khi thành phần bị vô hiệu hóa.
-
-* Nếu lý do Disabled không rõ ràng, cung cấp hướng dẫn phù hợp.
-
-* Không dùng Disabled thay cho Loading.
-
-### 74. Loading — Trạng thái đang xử lý
-
-* Hiển thị khi hệ thống đang tải dữ liệu hoặc thực hiện tác vụ.
-
-* Dùng Spinner, Progress Bar hoặc trạng thái Loading phù hợp với ngữ cảnh.
-
-* Với Button đang gửi dữ liệu, hiển thị Loading và ngăn gửi lặp.
-
-* Không để Loading kéo dài vô hạn mà không có xử lý lỗi hoặc timeout phù hợp.
-
-* Không hiển thị Loading nếu tác vụ hoàn tất gần như tức thì và không cần phản hồi trực quan.
-
-* Chỉ kết thúc Loading khi tác vụ hoàn tất hoặc chuyển sang trạng thái lỗi phù hợp.
-
-### 75. Transition — Hiệu ứng chuyển trạng thái
-
-* Dùng để chuyển đổi mượt giữa các trạng thái như Hover, Focus, mở/đóng Dropdown.
-
-* Thời lượng tham khảo: 150–250ms cho tương tác thông thường.
-
-* Ưu tiên `opacity`, `transform` và các thuộc tính dễ tối ưu.
-
-* Không lạm dụng Transition trên mọi thuộc tính.
-
-* Không làm chậm thao tác hoặc cản trở phản hồi của giao diện.
-
-* Tôn trọng thiết lập `prefers-reduced-motion` của người dùng.
-
-### 76. Animation — Hiệu ứng chuyển động
-
-* Chỉ dùng khi giúp người dùng hiểu trạng thái, hướng di chuyển hoặc kết quả thao tác.
-
-* Animation phải ngắn, mượt và nhất quán.
-
-* Tránh hiệu ứng trang trí không cần thiết, nhấp nháy liên tục hoặc chuyển động gây mất tập trung.
-
-* Không dùng Animation để che giấu thời gian xử lý lâu.
-
-* Không làm thay đổi bố cục bất ngờ hoặc cản trở thao tác.
-
-* Hỗ trợ giảm chuyển động theo thiết lập của hệ điều hành.
-
-### 77. Micro-interaction — Phản hồi tương tác nhỏ
-
-* Dùng để xác nhận hành động của người dùng, ví dụ Button được nhấn, Checkbox được chọn hoặc dữ liệu được lưu.
-
-* Phản hồi phải nhanh, dễ nhận biết và đúng với kết quả thực tế.
-
-* Chuẩn hóa cách phản hồi giữa các component cùng loại.
-
-* Có thể dùng thay đổi màu, icon, chuyển động nhẹ hoặc Toast.
-
-* Không tạo phản hồi thành công trước khi hệ thống xác nhận thao tác thành công.
-
-* Không dùng quá nhiều hiệu ứng khiến giao diện rối mắt.
-
-### 78. Page Transition — Chuyển trang
-
-* Chuyển trang phải nhanh, nhất quán và không làm gián đoạn công việc.
-
-* Ưu tiên chuyển đổi nhẹ hoặc không dùng Animation nếu không cần thiết.
-
-* Không để Animation làm chậm thao tác điều hướng.
-
-* Trong lúc tải trang, hiển thị Loading hoặc Skeleton phù hợp.
-
-* Tránh nhấp nháy, hiển thị nội dung cũ không phù hợp hoặc dịch chuyển bố cục mạnh.
-
-* Giữ trạng thái cần thiết khi chuyển trang, như bộ lọc hoặc vị trí cuộn, nếu phù hợp với nghiệp vụ.
-
-* Tôn trọng `prefers-reduced-motion`.
-
-Nguyên tắc chung: Mọi hiệu ứng phải phục vụ khả năng sử dụng, phản hồi nhanh và nhất quán. LOHA SALES ưu tiên giao diện chuyên nghiệp, chuyển động nhẹ; không dùng animation chỉ để trang trí.
-
-
-### 79. Quy tắc đặt tên chức năng
-
-* Dùng tên tiếng Việt ngắn gọn, rõ nghĩa và đúng nghiệp vụ.
-
-* Cùng một chức năng phải dùng cùng tên trên Sidebar, tiêu đề trang, Breadcrumb và các vị trí liên quan.
-
-* Ưu tiên tên cụ thể: `Quản lý sản phẩm`, `Quản lý kho`, `Quản lý đơn hàng`.
-
-* Tránh tên mơ hồ như `Xử lý`, `Thao tác` hoặc `Quản lý` khi có thể gọi tên chính xác hơn.
-
-### 80. Quy tắc đặt tên Button
-
-* Tên Button phải mô tả đúng hành động sẽ thực hiện.
-
-* Ưu tiên động từ + đối tượng: `Thêm sản phẩm`, `Cập nhật đơn hàng`, `Xóa tài khoản`.
-
-* Tránh tên mơ hồ như `OK`, `Xử lý`, `Thực hiện`.
-
-* Cùng một hành động phải dùng cùng cách gọi trên toàn hệ thống.
-
-* Với hành động nguy hiểm, tên Button phải nêu rõ hành động cụ thể.
-
-### 81. Quy tắc thông báo thành công
-
-* Chỉ thông báo thành công sau khi hệ thống xác nhận thao tác hoàn tất.
-
-* Nội dung ngắn gọn, nêu rõ kết quả: `Cập nhật sản phẩm thành công`.
-
-* Dùng Toast Success màu xanh lá theo quy chuẩn LOHA SALES.
-
-* Không hiển thị thông báo trùng lặp.
-
-* Sau thao tác, dữ liệu trên giao diện phải phản ánh đúng kết quả thực tế.
-
-### 82. Quy tắc thông báo lỗi
-
-* Nội dung dễ hiểu, nêu rõ thao tác thất bại và nguyên nhân nếu xác định được.
-
-* Dùng Toast Error màu đỏ theo quy chuẩn LOHA SALES.
-
-* Lỗi nhập liệu phải hiển thị gần trường tương ứng; lỗi tải dữ liệu phải hiển thị tại khu vực nội dung.
-
-* Cung cấp hướng xử lý hoặc nút thử lại khi phù hợp.
-
-* Không hiển thị mã lỗi kỹ thuật hoặc thông tin nhạy cảm cho người dùng thông thường.
-
-### 83. Quy tắc xác nhận hành động nguy hiểm
-
-* Yêu cầu xác nhận trước hành động có nguy cơ mất dữ liệu, khó hoàn tác hoặc ảnh hưởng lớn.
-
-* Nội dung phải nêu rõ hành động và đối tượng bị ảnh hưởng.
-
-* Nút xác nhận phải cụ thể: `Xóa sản phẩm`, `Khóa tài khoản`.
-
-* Dùng màu Danger/Error cho hành động nguy hiểm; nút Hủy dùng Secondary.
-
-* Không yêu cầu xác nhận cho mọi thao tác thông thường.
-
-* Backend vẫn phải kiểm tra quyền và tính hợp lệ trước khi thực hiện.
-
-### 84. Quy tắc trạng thái dữ liệu
-
-* Mỗi loại dữ liệu phải có danh sách trạng thái được xác định theo nghiệp vụ.
-
-* Tên trạng thái phải rõ ràng và thống nhất trên toàn hệ thống.
-
-* Ví dụ: `Hoạt động`, `Đã khóa`, `Chờ xử lý`, `Đã hoàn thành`, `Đã hủy`.
-
-* Chỉ cho phép chuyển trạng thái theo quy tắc nghiệp vụ hợp lệ.
-
-* Sau khi cập nhật, giao diện phải hiển thị đúng trạng thái mới.
-
-* Không tự tạo trạng thái chỉ để phục vụ cách trình bày UI.
-
-### 85. Quy tắc màu theo trạng thái
-
-* Success – Xanh lá: thành công hoặc hoàn thành khi phù hợp nghiệp vụ.
-
-* Error/Danger – Đỏ: lỗi, thất bại hoặc hành động nguy hiểm.
-
-* Warning – Vàng/Cam: cảnh báo, cần chú ý.
-
-* Info – Xanh dương: thông tin bổ sung.
-
-* Neutral – Xám: trạng thái trung tính.
-
-* Cùng một trạng thái phải dùng cùng màu trên Badge, Table, bộ lọc và trang chi tiết.
-
-* Không dùng màu chỉ để trang trí hoặc dùng màu làm dấu hiệu nhận biết duy nhất.
-
-### 86. Quy tắc quyền người dùng
-
-* Mọi chức năng và dữ liệu phải tuân theo quyền được cấp.
-
-* Phân biệt các quyền Xem, Thêm, Sửa, Xóa, Khóa và quyền nghiệp vụ khác nếu có.
-
-* Không mặc định mọi vai trò đều có toàn quyền.
-
-* Backend/API phải kiểm tra quyền độc lập với Frontend.
-
-* Không để người dùng truy cập dữ liệu vượt quá phạm vi được phép.
-
-### 87. Quy tắc hiển thị/ẩn chức năng theo quyền
-
-* Chỉ hiển thị chức năng phù hợp với vai trò và quyền của người dùng.
-
-* Ưu tiên ẩn chức năng không liên quan để giao diện gọn gàng.
-
-* Nếu cần hiển thị chức năng bị hạn chế, phải thể hiện rõ trạng thái và lý do.
-
-* Button, Menu và thao tác phải cập nhật theo quyền thực tế của người dùng.
-
-* Ẩn chức năng trên Frontend không thay thế kiểm tra quyền ở Backend.
-
-### 88. Quy tắc thao tác Xem / Sửa / Xóa / Khóa
-
-* Xem: chỉ hiển thị dữ liệu người dùng được phép truy cập.
-
-* Sửa: chỉ cho phép sửa dữ liệu được quyền cập nhật.
-
-* Xóa: kiểm tra quyền, ràng buộc nghiệp vụ và xác nhận khi cần.
-
-* Khóa: kiểm tra quyền, trạng thái hiện tại và xác nhận khi phù hợp.
-
-* Icon, tên gọi, vị trí và kiểu hiển thị phải thống nhất.
-
-* Chỉ hiển thị hành động hợp lệ với quyền và trạng thái dữ liệu.
-
-* Sau thao tác, cập nhật giao diện và thông báo đúng kết quả thực tế.
-
-### 89. Quy tắc xử lý dữ liệu rỗng
-
-* Phân biệt rõ:
-
-  * Chưa có dữ liệu.
-
-  * Không có kết quả tìm kiếm.
-
-  * Không có dữ liệu phù hợp bộ lọc.
-
-* Hiển thị Empty State với nội dung phù hợp từng trường hợp.
-
-* Cung cấp hành động tiếp theo nếu cần, ví dụ `Thêm sản phẩm`, `Xóa bộ lọc`.
-
-* Không hiển thị bảng trống mà không giải thích.
-
-* Không nhầm dữ liệu rỗng với Loading hoặc Error.
-
-* Không tự tạo dữ liệu giả để lấp đầy giao diện.
-
-### 90. Quy tắc xử lý lỗi hệ thống
-
-* Xử lý lỗi thống nhất trên toàn ứng dụng.
-
-* Phân biệt lỗi nhập liệu, lỗi nghiệp vụ, lỗi mạng, lỗi xác thực/phân quyền và lỗi hệ thống.
-
-* Hiển thị thông báo thân thiện, phù hợp với từng loại lỗi.
-
-* Không hiển thị Stack Trace, thông tin nhạy cảm hoặc cấu hình nội bộ.
-
-* Có cơ chế thử lại khi phù hợp và an toàn.
-
-* Giữ dữ liệu người dùng đã nhập khi có thể.
-
-* Ghi log kỹ thuật để phục vụ kiểm tra và khắc phục sự cố.
-
-* Không tự động lặp lại thao tác có thể gây trùng giao dịch hoặc thay đổi dữ liệu ngoài ý muốn.
-
-Nguyên tắc cốt lõi: UI phải phản ánh đúng nghiệp vụ, trạng thái dữ liệu và quyền người dùng. Mọi hành động hiển thị phải tương ứng với hành vi thực tế của hệ thống.
-
----
-
-### 91. Quy tắc chuẩn hóa Bo góc (Border Radius) & Bảng dữ liệu (Data Tables)
-
-#### A. Chuẩn hóa độ bo góc (Border Radius Standardization):
-Nhằm đảm bảo giao diện phần mềm B2B SaaS chuyên nghiệp, hiện đại, sắc sảo và đồng bộ tuyệt đối trên toàn bộ hệ thống LOHA SALES:
+## II. HỆ THỐNG DESIGN TOKENS NỀN TẢNG (FOUNDATIONS)
+
+### 1. Bảng màu chuẩn (Color System)
+
+- **Primary Brand (Blue-Purple / Indigo Purple):**
+  - `Primary`: `indigo-600` (`#4F46E5`) — Nút chính (CTA), link quan trọng, menu active, focus ring, icon điểm nhấn.
+  - `Primary Hover`: `indigo-700` (`#4338CA`).
+  - `Primary Active`: `indigo-800` (`#3730A3`).
+  - `Primary Light / Subtle`: `indigo-50` — Nền selected item, hover menu, viền `indigo-200` / `indigo-300`.
+- **Semantic Colors (Màu ngữ nghĩa — Bắt buộc cố định toàn hệ thống):**
+  - `Success` (Green/Emerald): `emerald-600`, nền `emerald-50`, viền `emerald-200`, chữ `emerald-800` — Thao tác thành công, đơn đã duyệt, tồn kho khả dụng.
+  - `Warning` (Amber/Yellow): `amber-600`, nền `amber-50`, viền `amber-200`, chữ `amber-800` — Cảnh báo công nợ, giao thiếu hàng, đơn chờ duyệt.
+  - `Danger / Error` (Red/Rose): `rose-600`, nền `rose-50`, viền `rose-200`, chữ `rose-800` — Thất bại, hủy đơn, từ chối, khóa đại lý, hết hàng trong kho.
+  - `Info` (Sky/Blue): `sky-600`, nền `sky-50`, viền `sky-200`, chữ `sky-800` — Hướng dẫn, thông tin phụ trợ.
+  *(Quy tắc: Tuyệt đối không dùng màu tím thương hiệu thay thế cho Semantic Colors).*
+- **Neutral Colors (Slate Scale — Tối ưu độ tương phản):**
+  - Nền trang (Page background): `bg-slate-50/60` hoặc `bg-slate-100/50`.
+  - Nền khối (Surface / Card): `bg-white`.
+  - Đường viền (Border / Divider): `border-slate-200` hoặc `border-slate-200/90`.
+  - Chữ tiêu đề & Số liệu quan trọng: `text-slate-900`.
+  - Chữ nội dung chính: `text-slate-800`.
+  - Chữ phụ & Nhãn mô tả: `text-slate-600` / `text-slate-500`.
+  - Chữ mờ / Placeholder: `text-slate-400`.
+
+### 2. Typography & Kiểu chữ
+
+- **Font Family:** Sử dụng font Sans-serif hiện đại: Inter, Roboto hoặc system-ui. Khả năng hiển thị tiếng Việt rõ ràng, dấu thanh chuẩn xác.
+- **Font Monospace:** Bắt buộc dùng `font-mono font-semibold` cho tất cả các loại Mã định danh (Mã đơn hàng `DH-...`, Mã SKU sản phẩm `SP-...`, Mã đại lý `DL-...`).
+- **Thang cỡ chữ chuẩn (Type Scale):**
+  - `text-2xl` (24px) / `text-xl` (20px): Tiêu đề trang (`h1`), Chỉ số KPI tổng quan lớn.
+  - `text-base` (16px) font-bold: Tiêu đề khối section (`h2`/`h3`), Card Header, Modal Title.
+  - `text-sm` (14px): Dữ liệu bảng chính, giá trị tiền tệ nổi bật, menu điều hướng chính.
+  - `text-xs` (12px): Nhãn trường nhập liệu (Label), nút bấm, nội dung input, mô tả phụ, text bảng phụ.
+  - `text-[11px]` - `text-[10px]`: Metadata, ngày giờ phụ, ghi chú chân trang, sub-badges.
+- **Font Weight:** Chỉ sử dụng 4 mức:
+  - `Regular` (400): Nội dung văn bản thông thường.
+  - `Medium` (500): Nhãn form (Label), dropdown option, navigation.
+  - `Semibold` (600): Nút bấm (Button), badge trạng thái, tiêu đề phụ.
+  - `Bold` (700) / `Extrabold` (800): Tiêu đề lớn, tổng tiền phải thu.
+
+### 3. Chuẩn hóa Bo góc (Border Radius) & Đổ bóng (Shadow) — [QUY TẮC CỐT LÕI]
+
+Nhằm đảm bảo giao diện phần mềm B2B SaaS chuyên nghiệp, hiện đại, sắc sảo và đồng bộ tuyệt đối:
 
 1. **Containers & Thẻ Card lớn (`rounded-xl` — 12px cap):**
-   - Áp dụng cho: Khối thẻ KPI, Card nội dung, Modal Dialog, Popover, Khung bao bọc Bảng (Table wrapper), Khung chứa Bộ lọc (Filter box).
-   - **CẤM:** Không sử dụng bo góc quá lớn (`rounded-2xl` 16px, `rounded-3xl` 24px) cho các container/card trong hệ thống quản trị vì gây cảm giác trẻ con hóa, méo mó cấu trúc B2B và làm lãng phí diện tích hiển thị.
-
+   - Áp dụng cho: Khối thẻ KPI, Thẻ Card nội dung, Hộp thoại Modal Dialog, Popover, Khung bao bọc Bảng (Table wrapper), Khung chứa Bộ lọc (Filter box).
+   - **CẤM:** Không sử dụng bo góc quá lớn (`rounded-2xl` 16px, `rounded-3xl` 24px) cho các container/card trong hệ thống quản trị vì gây cảm giác méo mó, trẻ con hóa cấu trúc B2B và lãng phí diện tích hiển thị.
 2. **Các điều khiển tương tác - Interactive Controls (`rounded-lg` — 8px):**
-   - Áp dụng cho: Nút bấm (Buttons), Ô nhập liệu (Inputs), Dropdown Selects, Date Pickers, Action Menus, Toggle switches, Tooltip popups.
+   - Áp dụng cho: Nút bấm (Buttons), Ô nhập liệu (Inputs), Dropdown Selects, Date Pickers, Action Menus, Toggle switches, Tooltips.
    - Thống nhất toàn bộ control có cùng bán kính cong 8px để đạt tính hài hòa thị giác.
+3. **Tags, Mini Badges & Trạng thái (`rounded-full` hoặc `rounded-md` — 6px):**
+   - Áp dụng `rounded-full` cho các viên thuốc trạng thái (Status pills) và chấm chỉ báo (Status dots). Áp dụng `rounded-md` cho badge phụ trợ bên trong bảng.
+4. **Đổ bóng (Box Shadow):**
+   - Sử dụng soft shadow cực nhẹ: `shadow-xs`, `shadow-2xs` cho button/input; `shadow-xs` hoặc `shadow-sm` cho card; `shadow-xl` / `shadow-2xl` cho Modal Dialog. Tuyệt đối không dùng shadow đen đậm thô kệch.
 
-3. **Tags, Mini Badges & Trạng thái (`rounded-md` — 6px hoặc `rounded-full`):**
-   - Áp dụng `rounded-md` cho các badge phụ trợ hoặc `rounded-full` cho các viên thuốc trạng thái (Status pills) và chấm chỉ báo (Status dots).
+---
 
-#### B. Quy tắc Bảng dữ liệu (Data Tables UX):
+## III. BỘ CODE MẪU TAILWIND CHUẨN (COPY-PASTE CHEAT SHEET)
+
+Mọi thành viên trong dự án **chỉ cần copy chính xác các chuỗi class này** khi dựng component để đảm bảo 100% không bị lệch kiểu dáng:
+
+### 1. Nút bấm (Buttons)
+```tsx
+// Nút hành động chính (Primary CTA)
+<button className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+  <Plus className="w-3.5 h-3.5 shrink-0" />
+  <span>Tạo Đơn hàng</span>
+</button>
+
+// Nút thứ cấp / Outline (Secondary)
+<button className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-all shadow-2xs cursor-pointer">
+  <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+  <span>Làm mới</span>
+</button>
+
+// Nút nguy hiểm / Xóa / Hủy (Danger)
+<button className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-lg transition-all cursor-pointer">
+  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+  <span>Hủy đơn</span>
+</button>
+
+// Nút Icon nhỏ (Icon Button)
+<button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer" title="Xem chi tiết">
+  <Eye className="w-4 h-4" />
+</button>
+```
+
+### 2. Ô nhập liệu & Dropdown (Inputs & Selects)
+```tsx
+// Ô Text Input chuẩn (Chiều cao cố định 38px)
+<div className="space-y-1.5">
+  <label className="text-xs font-bold text-slate-700 flex items-center gap-1 h-5">
+    <span>Tên đại lý</span>
+    <span className="text-rose-500">*</span>
+  </label>
+  <input
+    type="text"
+    placeholder="Nhập tên đại lý..."
+    className="w-full h-[38px] px-3 text-xs border border-slate-200 rounded-lg bg-slate-50/60 hover:bg-white focus:bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
+  />
+</div>
+
+// Dropdown Select chuẩn
+<select className="w-full h-[38px] px-3 text-xs font-medium border border-slate-200 rounded-lg bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer shadow-2xs">
+  <option value="ALL">Tất cả trạng thái</option>
+</select>
+```
+
+### 3. Thẻ chứa nội dung (Card Container)
+```tsx
+<div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
+  {/* Header của Card */}
+  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+    <div className="flex items-center gap-2.5">
+      <Package className="w-5 h-5 text-indigo-600" />
+      <h3 className="text-base font-bold text-slate-900">Danh sách sản phẩm</h3>
+    </div>
+  </div>
+  {/* Nội dung bên trong Card */}
+</div>
+```
+
+### 4. Bảng dữ liệu (Data Table Wrapper & Rows)
+```tsx
+<div className="bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-xs">
+  <div className="overflow-x-auto">
+    <table className="w-full text-sm divide-y divide-slate-100">
+      <thead>
+        <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+          <th className="px-4 py-3 text-left w-[18%]">Mã đơn</th>
+          <th className="px-4 py-3 text-left w-[32%]">Đại lý</th>
+          <th className="px-4 py-3 text-left w-[14%]">Ngày giao</th>
+          <th className="px-4 py-3 text-right w-[16%]">Tổng phải thu</th>
+          <th className="px-4 py-3 text-center w-[10%]">Trạng thái</th>
+          <th className="px-4 py-3 text-right w-[10%] min-w-[105px]">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-100/90 font-medium">
+        <tr className="hover:bg-indigo-50/25 transition-colors group">
+          {/* Cột mã đơn */}
+          <td className="px-4 py-3.5 whitespace-nowrap">
+            <span className="font-mono text-xs font-semibold text-indigo-700 bg-indigo-50/80 px-2.5 py-1 rounded-md border border-indigo-200/60">
+              DH-2026-001
+            </span>
+          </td>
+          {/* Cột tiền tệ (chống rớt dòng, font số đẹp) */}
+          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+            <span className="font-bold text-slate-900 tabular-nums text-sm">
+              {formatCurrency(totalAmount)}
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {/* Gắn liền Pagination ở chân bảng */}
+</div>
+```
+
+---
+
+## IV. QUY CHUẨN KHUNG GIAO DIỆN CHUNG (SHELL LAYOUT)
+
+1. **Breadcrumb phân cấp (Header Navigation):**
+   - Bắt buộc hiển thị ở Header khi vào các trang con: `Quản lý đơn hàng > Tạo đơn hàng mới`.
+   - Trang cha dùng màu `text-slate-500 hover:text-indigo-600 font-medium`, dấu ngăn cách `ChevronRight` hoặc `/` màu `text-slate-300`, trang hiện tại dùng `text-slate-900 font-bold`.
+2. **Sidebar Menu:**
+   - Chiều rộng chuẩn `w-64` (256px), nền trắng `bg-white border-r border-slate-200`.
+   - Menu Active: `bg-indigo-50 text-indigo-700 font-semibold border-r-2 border-indigo-600`.
+   - Menu Hover: `hover:bg-slate-50 hover:text-indigo-600 text-slate-600`.
+3. **Thanh Header / Topbar:**
+   - Chiều cao cố định `h-14 sm:h-16`, nền `bg-white/95 backdrop-blur-xs border-b border-slate-200 px-4 sm:px-6`.
+4. **Page Wrapper (Khoảng đệm nội dung chính):**
+   - Padding tiêu chuẩn: `p-4 sm:p-6 space-y-6`.
+
+---
+
+## V. QUY CHUẨN NGHIỆP VỤ B2B ĐẶC THÙ CỦA LOHA SALES
+
+Mọi module liên quan đến Bán buôn / Đại lý phải tuân thủ đúng các định dạng nghiệp vụ sau:
+
+### 1. Phân cấp Đại lý (Customer Group Badges)
+```tsx
+// Đại lý Cấp 1
+<span className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold text-[10px] px-2 py-0.5 rounded-full">
+  Đại lý Cấp 1
+</span>
+
+// Đại lý Cấp 2
+<span className="bg-sky-100 text-sky-800 border border-sky-300 font-semibold text-[10px] px-2 py-0.5 rounded-full">
+  Đại lý Cấp 2
+</span>
+
+// Khách Bán buôn
+<span className="bg-indigo-100 text-indigo-800 border border-indigo-300 font-semibold text-[10px] px-2 py-0.5 rounded-full">
+  Bán buôn
+</span>
+```
+
+### 2. Kiểm soát Hạn mức Công nợ (Credit Limit Warning)
+- **Hợp lệ (Dư nợ trong hạn):** Dư nợ màu `text-slate-900`, Khả dụng màu `text-emerald-700 font-bold`. Badge: `bg-emerald-100 text-emerald-800` ("Hợp lệ").
+- **Vượt hạn mức (Cần duyệt vượt hạn mức):** Nền `bg-amber-50 border border-amber-300 text-amber-900`. Nút gửi đơn đổi thành màu Amber `bg-amber-600 hover:bg-amber-700` ("Gửi Duyệt Hạn Mức").
+- **Quá hạn / Khóa nợ:** Nền `bg-rose-50 border border-rose-300 text-rose-900`. Khóa hoàn toàn nút đặt hàng với trạng thái `disabled`.
+
+### 3. Cảnh báo Tồn kho khả dụng (Available Stock in Cart)
+- Khi `số lượng đặt > tồn kho khả dụng`:
+  - Dòng sản phẩm trong giỏ hàng đổi sang màu nền `bg-rose-50/60`.
+  - Hiển thị dòng cảnh báo: `<span className="text-rose-600 font-semibold text-[10px]">Vượt tồn khả dụng (Còn lại {avail} {unit})</span>`.
+  - Cung cấp nút điều chỉnh nhanh: `<button className="text-indigo-600 font-bold hover:underline">Đặt {maxOrderQty} {unit}</button>`.
+
+---
+
+## VI. DANH SÁCH COMPONENT DÙNG CHUNG BẮT BUỘC (SHARED REGISTRY)
+
+Tuyệt đối **CẤM tự viết lại** các thành phần đã được chuẩn hóa trong thư mục `src/components/`:
+
+| Component | Đường dẫn file | Mục đích sử dụng |
+| :--- | :--- | :--- |
+| **Pagination** | `src/components/pagination.tsx` | Bắt buộc dùng cho toàn bộ các bảng dữ liệu và danh sách sản phẩm. |
+| **DateInput** | `src/components/date-input.tsx` | Bắt buộc dùng cho mọi ô nhập ngày tháng chuẩn `dd/mm/yyyy`. |
+| **Toast** | `src/components/toast.tsx` | Gọi `showToast('success' \| 'error' \| 'info', msg)`. **CẤM** dùng `alert()`. |
+| **formatCurrency** | Helper dùng chung | Định dạng tiền tệ VND: `formatCurrency(val)` (ví dụ `150.000 ₫`). |
+| **formatDate** | Helper dùng chung | Định dạng ngày tháng hiển thị: `formatDate(dateStr)` (ví dụ `15/10/2026`). |
+
+---
+
+## VII. QUY TẮC BẢNG DỮ LIỆU & PHÂN TRANG (DATA TABLES UX)
+
 1. **Tránh thanh cuộn ngang (No Horizontal Scroll):**
    - Tuyệt đối không hardcode `min-w-[1000px]` hay `min-w-[1200px]` gây thanh cuộn ngang thô kệch trên màn hình laptop tiêu chuẩn.
-   - Thiết lập bảng dạng fluid responsive (`w-full`), tận dụng tỷ lệ % cho các cột chính.
+   - Thiết lập bảng dạng fluid responsive (`w-full`), phân bổ tỷ lệ % hợp lý cho các cột chính.
 2. **Tối ưu hóa số lượng cột (Tối đa 5–6 cột trên danh sách chính):**
-   - Chỉ hiển thị các thông tin cốt lõi nhất cần để nhận diện và ra quyết định.
-   - Các thông tin chi tiết (NVKD, Khu vực, lịch sử, ghi chú...) để trong Drawer/Modal "Xem chi tiết".
+   - Chỉ hiển thị các thông tin cốt lõi nhất: Mã đơn, Đại lý/Khách hàng, Ngày giao, Tổng tiền, Trạng thái, Thao tác.
+   - Các thông tin chi tiết (NVKD, Khu vực, lịch sử, điểm giao, ghi chú...) đưa vào Drawer hoặc Modal "Xem chi tiết".
 3. **Chống gãy chữ (Text Wrapping Prevention):**
-   - Các nút thao tác và chỉ số tiền tệ luôn có `whitespace-nowrap shrink-0` để không bao giờ bị rớt dòng cụt chữ (ví dụ: chữ "Thao tác" không được rớt thành 2 hàng).
-4. **Loại bỏ nhãn rườm rà dưới chân:**
-   - Trong cột Mã: hiển thị duy nhất Mã định danh, không chèn ngày tháng dưới chân.
-   - Trong cột Đối tượng (Đại lý/Khách hàng): hiển thị duy nhất tên đối tượng, không nhồi nhét mã phụ nếu không thật sự cần thiết.
+   - Các nút thao tác, cột ngày và chỉ số tiền tệ luôn có `whitespace-nowrap shrink-0` để không bao giờ bị rớt dòng cụt chữ.
+4. **Thanh phân trang gắn liền chân bảng:**
+   - Component `Pagination` bắt buộc gắn liền đáy card bảng, không để trôi nổi tách rời.
 
+---
+
+## VIII. BẢNG KIỂM TRA CODE REVIEW (PR CHECKLIST — DO'S & DON'TS)
+
+Mỗi khi tạo Pull Request hoặc Review code giao diện, kiểm tra ngay bảng này:
+
+| TIÊU CHÍ | ĐẠT CHUẨN (DO ✅) | LỖI PHẢI SỬA (DON'T ❌) |
+| :--- | :--- | :--- |
+| **Màu thương hiệu** | Dùng `indigo-600` làm điểm nhấn duy nhất | Không dùng màu tím hồng, tím sen, magenta hoặc xanh lavi |
+| **Bo góc Card/Modal** | Bo góc tối đa `rounded-xl` (12px cap) | **CẤM** dùng `rounded-2xl` hoặc `rounded-3xl` |
+| **Bo góc Controls** | Toàn bộ Button, Input, Select dùng `rounded-lg` (8px) | Không dùng nút bo tròn viên thuốc hoặc bo góc nhọn |
+| **Chiều cao Input/Nút** | Chiều cao cố định chuẩn `h-[38px]` trên cùng hàng | Không để ô ngày 36px lệch với ô tìm kiếm 40px |
+| **Bảng dữ liệu** | Tràn màn hình `w-full`, tối đa 5–6 cột chính | **CẤM** hardcode `min-w-[1000px]` tạo thanh cuộn ngang |
+| **Cột Thao tác** | Có `whitespace-nowrap shrink-0` | Không để chữ "Thao tác" bị rớt thành 2 dòng |
+| **Thông báo** | Dùng `showToast('success' \| 'error', ...)` | **CẤM** dùng `window.alert()` hoặc `window.confirm()` |
+| **Xóa / Hủy dữ liệu** | Bắt buộc có Modal xác nhận kèm lý do | Không xóa ngay khi người dùng bấm click |
+| **Tiêu đề & Nút** | Trực diện: `Tạo Đơn hàng`, `Lưu nháp`, `Duyệt` | Không dùng từ ngữ chung chung: `Xử lý`, `Submit`, `OK` |
+
+---
+
+> ### TÓM TẮT 4 QUY TẮC BẤT DI BẤT DỊCH CỦA LOHA SALES:
+> 1. **Màu thương hiệu:** Blue-Purple / Indigo Purple (`indigo-600`) đồng nhất với Logo. Cấm tím hồng/magenta.
+> 2. **Container / Card lớn:** Tối đa **`rounded-xl` (12px)** — CẤM dùng `rounded-2xl`.
+> 3. **Điều khiển tương tác (Button, Input, Select, Date):** Đồng bộ **`rounded-lg` (8px)** và chiều cao **`h-[38px]`**.
+> 4. **Bảng dữ liệu:** Fluid **`w-full`**, không cuộn ngang, tối đa 5–6 cột, chống gãy chữ.
