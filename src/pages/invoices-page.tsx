@@ -11,7 +11,6 @@ import {
   Download,
   CreditCard,
   Banknote,
-  CheckCircle2,
 } from 'lucide-react';
 import { receiptsService } from '../services/receipts.service';
 import { ReceiptPrintTemplate } from '../components/receipt-print-template';
@@ -25,40 +24,25 @@ const formatCurrency = (val?: number): string => {
   }).format(val || 0);
 };
 
-const formatDate = (dateStr?: string): string => {
-  if (!dateStr) return '—';
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  } catch {
-    return dateStr;
-  }
-};
-
 const getPaymentMethodBadge = (method?: PaymentMethod | string) => {
   switch (method) {
     case 'CASH':
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-          <Banknote className="w-3 h-3" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+          <Banknote className="w-3.5 h-3.5 text-emerald-600" />
           <span>Tiền mặt</span>
         </span>
       );
     case 'BANK_TRANSFER':
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-          <CreditCard className="w-3 h-3" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+          <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
           <span>Chuyển khoản</span>
         </span>
       );
     default:
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-50 text-slate-700 border border-slate-200">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200/60">
           <span>{method || 'Khác'}</span>
         </span>
       );
@@ -320,130 +304,114 @@ export const InvoicesPage: React.FC = () => {
       {/* NỘI DUNG TAB: PHIẾU THU TIỀN (SN-209)                                  */}
       {/* ===================================================================== */}
       {activeTab === 'RECEIPTS' ? (
-        <div className="rounded-xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
-                  <th className="py-3 px-4">Mã phiếu thu</th>
-                  <th className="py-3 px-4">Đại lý / Khách hàng</th>
-                  <th className="py-3 px-4 text-right">Số tiền thu</th>
-                  <th className="py-3 px-4 text-center">Hình thức</th>
-                  <th className="py-3 px-4">Người thu tiền</th>
-                  <th className="py-3 px-4 text-center">Ngày ghi nhận</th>
-                  <th className="py-3 px-4 text-center">Trạng thái</th>
-                  <th className="py-3 px-4 text-center">Thao tác in / PDF</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {receipts.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-16 text-center">
-                      <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
-                        <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 mb-2">
-                          <Receipt className="h-6 w-6 text-slate-400" />
-                        </div>
-                        <h3 className="text-sm font-bold text-slate-800">
-                          Chưa có phiếu thu nào
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                          Hệ thống chưa ghi nhận khoản tiền thu hoặc đối trừ công nợ nào phù hợp.
-                        </p>
-                      </div>
-                    </td>
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+          {loading ? (
+            <div className="py-16 text-center text-slate-400">
+              <RefreshCw className="w-7 h-7 animate-spin mx-auto mb-2 text-indigo-600" />
+              <p className="text-sm font-medium">Đang tải danh sách phiếu thu...</p>
+            </div>
+          ) : receipts.length === 0 ? (
+            <div className="py-16 text-center text-slate-400 space-y-3">
+              <Receipt className="w-10 h-10 mx-auto text-slate-300" />
+              <p className="text-sm font-medium">Không tìm thấy phiếu thu phù hợp</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto min-h-[360px]">
+              <table className="w-full text-sm divide-y divide-slate-100">
+                <thead>
+                  <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left w-[16%]">Mã phiếu thu</th>
+                    <th className="px-4 py-3 text-left w-[34%]">Đại lý</th>
+                    <th className="px-4 py-3 text-right w-[16%]">Số tiền</th>
+                    <th className="px-4 py-3 text-center w-[12%]">Hình thức</th>
+                    <th className="px-4 py-3 text-left w-[12%]">Người thu</th>
+                    <th className="px-4 py-3 text-right w-[10%] min-w-[170px]">Thao tác</th>
                   </tr>
-                ) : (
-                  receipts.map((r) => (
-                    <tr key={r.id} className="hover:bg-slate-50/70 transition-colors">
-                      {/* 1. Mã phiếu thu */}
-                      <td className="py-3 px-4 font-mono font-bold text-indigo-700 whitespace-nowrap">
+                </thead>
+                <tbody
+                  className={`divide-y divide-slate-100/90 transition-opacity duration-150 ${
+                    loading ? 'opacity-60 pointer-events-none' : 'opacity-100'
+                  }`}
+                >
+                  {receipts.map((r) => (
+                    <tr key={r.id} className="hover:bg-indigo-50/25 transition-colors group">
+                      {/* 1. Mã phiếu thu duy nhất: Interactive monospace button badge */}
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => handleOpenPrint(r)}
-                          className="hover:underline text-left cursor-pointer"
-                          title="Bấm để xem & in phiếu thu"
+                          className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200/60 px-2.5 py-1 rounded-md transition-all cursor-pointer shadow-2xs group-hover:border-indigo-300"
+                          title={`Xem & In phiếu thu ${r.code}`}
                         >
-                          {r.code}
+                          <Receipt className="w-3 h-3 text-indigo-500 group-hover:text-indigo-700 transition-colors" />
+                          <span>{r.code}</span>
                         </button>
                       </td>
 
-                      {/* 2. Đại lý / Khách hàng */}
-                      <td className="py-3 px-4">
-                        <div className="font-bold text-slate-900">{r.customerName}</div>
-                        <div className="text-[11px] text-slate-500 font-mono flex items-center gap-2">
-                          <span>{r.customerCode}</span>
+                      {/* 2. Thông tin đại lý: Tên đại lý + Mã & SĐT */}
+                      <td className="px-4 py-3.5">
+                        <div className="font-semibold text-slate-800 text-sm line-clamp-1" title={r.customerName}>
+                          {r.customerName}
+                        </div>
+                        <div className="text-[11px] text-slate-500 font-mono mt-0.5 flex items-center gap-2 whitespace-nowrap">
+                          <span className="font-semibold text-slate-600">{r.customerCode}</span>
                           {r.customerPhone && (
                             <>
-                              <span>·</span>
+                              <span className="text-slate-300">·</span>
                               <span>{r.customerPhone}</span>
                             </>
                           )}
                         </div>
                       </td>
 
-                      {/* 3. Số tiền thu */}
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
-                        <div className="font-extrabold text-emerald-700 text-sm font-mono">
+                      {/* 3. Số tiền: Tabular nums rõ ràng, căn phải */}
+                      <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                        <span className="font-bold tabular-nums text-sm text-emerald-700">
                           {formatCurrency(r.amount)}
-                        </div>
-                        <div className="text-[10px] text-slate-400 italic truncate max-w-[180px]">
-                          {r.amountInWords}
-                        </div>
-                      </td>
-
-                      {/* 4. Hình thức thu */}
-                      <td className="py-3 px-4 text-center whitespace-nowrap">
-                        {getPaymentMethodBadge(r.paymentMethod)}
-                      </td>
-
-                      {/* 5. Người thu tiền */}
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="font-semibold text-slate-800">{r.collectorName}</div>
-                        <div className="text-[10px] text-slate-400">Kế toán công nợ</div>
-                      </td>
-
-                      {/* Ngày ghi nhận */}
-                      <td className="py-3 px-4 text-center whitespace-nowrap text-slate-600">
-                        {formatDate(r.paymentDate)}
-                      </td>
-
-                      {/* Trạng thái */}
-                      <td className="py-3 px-4 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Đã xác nhận</span>
                         </span>
                       </td>
 
-                      {/* Thao tác (In phiếu / Tải PDF) */}
-                      <td className="py-3 px-4 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1.5">
+                      {/* 4. Hình thức thu: Pill badge bo tròn */}
+                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                        {getPaymentMethodBadge(r.paymentMethod)}
+                      </td>
+
+                      {/* 5. Người thu: Tên người thu gọn gàng */}
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span className="font-semibold text-slate-800 text-xs">
+                          {r.collectorName}
+                        </span>
+                      </td>
+
+                      {/* 6. Thao tác in / PDF */}
+                      <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
                             onClick={() => handleOpenPrint(r)}
-                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-lg transition-colors cursor-pointer"
-                            title="Mở xem và In phiếu thu"
+                            className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                            title="Mở xem & In phiếu thu"
                           >
-                            <Printer className="w-3.5 h-3.5" />
+                            <Printer className="w-3.5 h-3.5 text-indigo-600" />
                             <span>In phiếu</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => void handleDirectDownloadPdf(r)}
-                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shadow-2xs cursor-pointer"
+                            className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shadow-2xs cursor-pointer"
                             title="Tải trực tiếp file PDF"
                           >
-                            <Download className="w-3.5 h-3.5" />
+                            <Download className="w-3.5 h-3.5 text-slate-500" />
                             <span>Tải PDF</span>
                           </button>
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       ) : (
         /* =================================================================== */
