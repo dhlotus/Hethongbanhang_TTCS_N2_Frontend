@@ -41,15 +41,7 @@ const formatDate = (isoString?: string): string => {
   }
 };
 
-/** Chuyển mã nhóm đại lý sang tiếng Việt */
-const formatCustomerGroup = (group?: string): string => {
-  if (!group) return '';
-  const g = group.toUpperCase();
-  if (g.includes('LEVEL_1') || g === 'AGENT_LEVEL_1') return 'Đại lý Cấp 1';
-  if (g.includes('LEVEL_2') || g === 'AGENT_LEVEL_2') return 'Đại lý Cấp 2';
-  if (g.includes('RETAIL')) return 'Khách lẻ';
-  return group;
-};
+
 
 /** Render huy hiệu trạng thái đơn hàng chuẩn xác */
 const renderStatusBadge = (status: OrderStatus, isPending: boolean) => {
@@ -426,9 +418,6 @@ export const OrderApprovalsPage: React.FC = () => {
               <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
                 Phê duyệt đơn hàng
               </h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                Danh sách các đơn hàng đang chờ Quản lý kinh doanh xem xét và phê duyệt
-              </p>
             </div>
           </div>
         </div>
@@ -447,17 +436,10 @@ export const OrderApprovalsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── 4 THẺ CHỈ SỐ NHANH (KPI SUMMARY THUẦN VIỆT) ── */}
+      {/* ── 4 THẺ CHỈ SỐ NHANH (KPI TĨNH, KHÔNG BẤM ĐƯỢC, BỎ CÁC NOTE NHỎ) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1: Số đơn chờ duyệt */}
-        <div
-          onClick={() => { setActiveTab('PENDING'); setCurrentPage(1); }}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer shadow-xs ${
-            activeTab === 'PENDING'
-              ? 'bg-indigo-50/70 border-indigo-300 ring-2 ring-indigo-200'
-              : 'bg-white border-slate-200/80 hover:border-slate-300'
-          }`}
-        >
+        <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Đơn chờ duyệt</span>
             <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
@@ -468,9 +450,6 @@ export const OrderApprovalsPage: React.FC = () => {
             <span className="text-2xl font-extrabold text-indigo-700">{stats.pendingCount}</span>
             <span className="text-xs text-slate-400 font-medium">đơn</span>
           </div>
-          <p className="mt-1 text-[11px] font-semibold text-slate-600 truncate">
-            Cần xem xét xử lý
-          </p>
         </div>
 
         {/* Card 2: Tổng giá trị chờ duyệt */}
@@ -486,18 +465,10 @@ export const OrderApprovalsPage: React.FC = () => {
               {formatCurrency(stats.pendingAmount)}
             </span>
           </div>
-          <p className="mt-1 text-[11px] text-slate-400 font-medium">Toàn bộ đơn chờ duyệt</p>
         </div>
 
         {/* Card 3: Đã duyệt */}
-        <div
-          onClick={() => { setActiveTab('HISTORY'); setCurrentPage(1); }}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer shadow-xs ${
-            activeTab === 'HISTORY'
-              ? 'bg-slate-50 border-slate-400 ring-2 ring-slate-200'
-              : 'bg-white border-slate-200/80 hover:border-slate-300'
-          }`}
-        >
+        <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Đã phê duyệt</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
@@ -508,14 +479,10 @@ export const OrderApprovalsPage: React.FC = () => {
             <span className="text-2xl font-extrabold text-emerald-700">{stats.approvedCount}</span>
             <span className="text-xs text-slate-400 font-medium">đơn</span>
           </div>
-          <p className="mt-1 text-[11px] text-emerald-700/80 font-medium">Đã chuyển sang giữ hàng</p>
         </div>
 
         {/* Card 4: Đã từ chối / Trả lại */}
-        <div
-          onClick={() => { setActiveTab('HISTORY'); setCurrentPage(1); }}
-          className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs cursor-pointer hover:border-slate-300"
-        >
+        <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Từ chối / Trả lại</span>
             <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
@@ -526,7 +493,6 @@ export const OrderApprovalsPage: React.FC = () => {
             <span className="text-2xl font-extrabold text-rose-700">{stats.rejectedCount}</span>
             <span className="text-xs text-slate-400 font-medium">đơn</span>
           </div>
-          <p className="mt-1 text-[11px] text-rose-700/80 font-medium">Cần chỉnh sửa hoặc hủy</p>
         </div>
       </div>
 
@@ -562,7 +528,6 @@ export const OrderApprovalsPage: React.FC = () => {
           {/* Lọc nhanh theo tình trạng tồn kho khi ở tab Chờ duyệt */}
           {activeTab === 'PENDING' && (
             <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl border border-slate-200/80">
-              <span className="text-[11px] font-semibold text-slate-500 pl-1.5 pr-0.5">Tồn kho:</span>
               <button
                 type="button"
                 onClick={() => { setStockFilter('ALL'); setCurrentPage(1); }}
@@ -697,7 +662,7 @@ export const OrderApprovalsPage: React.FC = () => {
                 <tr>
                   <th className="px-4 py-3.5">Mã đơn</th>
                   <th className="px-4 py-3.5">Đại lý</th>
-                  <th className="px-3 py-3.5">NVKD / Khu vực</th>
+                  <th className="px-3 py-3.5">NVKD</th>
                   <th className="px-3 py-3.5">Ngày giao</th>
                   <th className="px-4 py-3.5 text-right">Tổng phải thu</th>
                   <th className="px-3 py-3.5 text-center">Trạng thái</th>
@@ -727,17 +692,14 @@ export const OrderApprovalsPage: React.FC = () => {
                           {order.customerName}
                         </p>
                         <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                          {order.customerCode || '---'} {order.customerGroup && `· ${formatCustomerGroup(order.customerGroup)}`}
+                          {order.customerCode || '---'}
                         </p>
                       </td>
 
-                      {/* NVKD / Khu vực */}
+                      {/* NVKD */}
                       <td className="px-3 py-3.5">
                         <p className="font-semibold text-slate-800">
                           {order.salesRepName || 'Trần Văn Long'}
-                        </p>
-                        <p className="text-[11px] text-slate-400">
-                          {order.region || 'Miền Nam'}
                         </p>
                       </td>
 
@@ -858,7 +820,8 @@ export const OrderApprovalsPage: React.FC = () => {
             pageSize={pageSize}
             pageSizeOptions={[10, 20, 50]}
             itemLabel="đơn"
-            showFirstLast={true}
+            showRecordRange={false}
+            showFirstLast={false}
             onPageChange={(page) => setCurrentPage(page)}
             onPageSizeChange={(size) => {
               setPageSize(size);
