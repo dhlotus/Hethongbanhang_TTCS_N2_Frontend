@@ -13,7 +13,6 @@ import { numberToVietnameseWords } from '../utils/number-to-words';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { receiptsService } from '../services/receipts.service';
-import { showToast } from './toast';
 import type { Receipt, ReceiptPrintData, PaymentMethod } from '../types/receipt';
 
 interface ReceiptPrintTemplateProps {
@@ -185,8 +184,6 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
       .map((el) => el.outerHTML)
       .join('\n');
 
-    const documentTitle = `Phieu_Thu_${receiptCode}`;
-
     iframeDoc.open();
     iframeDoc.write(`
       <!DOCTYPE html>
@@ -194,12 +191,12 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>${documentTitle}</title>
+        <title></title>
         ${styleTags}
         <style>
           @page {
             size: A4 portrait;
-            margin: 10mm 12mm 10mm 12mm;
+            margin: 0 !important;
           }
           *, *::before, *::after {
             box-sizing: border-box !important;
@@ -209,7 +206,7 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
           }
           html, body {
             margin: 0 !important;
-            padding: 0 !important;
+            padding: 15mm 20mm !important;
             background: #ffffff !important;
             color: #0f172a !important;
             font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
@@ -250,56 +247,39 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
   };
 
   /**
-   * Tải file PDF chính thức: Kết xuất trực tiếp từ DOM phiếu in để đảm bảo
-   * GIỐNG HỆT 100% mẫu in trên giao diện (màu sắc, icon, font chữ, đường viền, thẻ badge).
+   * Tải file PDF chính thức trực tiếp, không hiện thông báo nổ ra màn hình
    */
   const handleDownloadPdf = async () => {
-    const element = printContentRef.current;
-    if (!element) {
-      handlePrint();
-      return;
-    }
-
     try {
       setIsDownloading(true);
-      showToast('info', `Đang kết xuất PDF phiếu thu ${receiptCode}...`);
-
-      const canvas = await html2canvas(element, {
-        scale: 2.5, // Độ phân giải cao cho bản in siêu nét
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
-
-      // Kích thước chuẩn A4: 210mm x 297mm
-      const contentWidth = 190;
-      const contentHeight = (canvas.height * contentWidth) / canvas.width;
-      const marginX = 10;
-      const marginY = 15;
-
-      pdf.addImage(imgData, 'PNG', marginX, marginY, contentWidth, contentHeight);
-      pdf.save(`phieu-thu-${receiptCode}.pdf`);
-
-      showToast('success', `Đã tải xuống file PDF: phieu-thu-${receiptCode}.pdf`);
+      await receiptsService.downloadReceiptPdf(
+        receipt.id || receiptCode,
+        `phieu-thu-${receiptCode}.pdf`,
+      );
     } catch (err) {
-      console.error('Lỗi khi xuất PDF trực tiếp từ giao diện:', err);
-      // Phương án dự phòng: Tải từ backend API
-      try {
-        await receiptsService.downloadReceiptPdf(
-          receipt.id || receiptCode,
-          `phieu-thu-${receiptCode}.pdf`,
-        );
-        showToast('success', `Đã tải xuống file PDF: phieu-thu-${receiptCode}.pdf`);
-      } catch {
-        showToast('error', 'Không thể tạo file PDF, đang chuyển sang in trực tiếp...');
-        handlePrint();
+      console.error('Lỗi khi tải file PDF:', err);
+      const element = printContentRef.current;
+      if (element) {
+        try {
+          const canvas = await html2canvas(element, {
+            scale: 2.5,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff',
+          });
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4',
+          });
+          const contentWidth = 190;
+          const contentHeight = (canvas.height * contentWidth) / canvas.width;
+          pdf.addImage(imgData, 'PNG', 10, 15, contentWidth, contentHeight);
+          pdf.save(`phieu-thu-${receiptCode}.pdf`);
+        } catch {
+          handlePrint();
+        }
       }
     } finally {
       setIsDownloading(false);
