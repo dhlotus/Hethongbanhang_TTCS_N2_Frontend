@@ -77,6 +77,31 @@ export interface QueryDebtReportParams {
   region?: string;
   page?: number;
   limit?: number;
+  sortBy?: 'oldestDebtDays' | 'remainingDebt' | 'overdueAmount' | 'agencyName' | 'code';
+  sortOrder?: 'asc' | 'desc';
+}
+
+/**
+ * Cấu trúc thông tin hóa đơn thực tế của đại lý theo dải tuổi nợ
+ */
+export interface AgencyInvoice {
+  id: string;
+  invoiceCode: string;
+  orderCode: string;
+  customerId: string;
+  customerCode: string;
+  customerName: string;
+  issueDate: string;
+  dueDate: string;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  daysOld: number;
+  overdueDays: number;
+  isOverdue: boolean;
+  agingGroup: AgingDebtGroupEnum;
+  agingLabel: string;
+  status: 'UNPAID' | 'PARTIAL' | 'PAID' | 'OVERDUE';
 }
 
 /**
@@ -90,3 +115,4 @@ export interface DebtReportResponse {
   limit: number;
   totalPages: number;
 }
+

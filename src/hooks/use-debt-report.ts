@@ -40,6 +40,8 @@ export const useDebtReport = () => {
     search: '',
     isOverdueOnly: false,
     agingGroup: AgingDebtGroupEnum.ALL,
+    sortBy: 'oldestDebtDays',
+    sortOrder: 'desc',
   });
 
   const fetchDebtReport = useCallback(
@@ -84,6 +86,22 @@ export const useDebtReport = () => {
         ...newParams,
         page: 1, // Reset về trang 1 khi đổi bộ lọc
       }));
+    },
+    [],
+  );
+
+  const toggleSort = useCallback(
+    (column: 'oldestDebtDays' | 'remainingDebt' | 'overdueAmount' | 'agencyName' | 'code') => {
+      setParams((prev) => {
+        const isSame = prev.sortBy === column;
+        const nextOrder: 'asc' | 'desc' = isSame && prev.sortOrder === 'desc' ? 'asc' : 'desc';
+        return {
+          ...prev,
+          sortBy: column,
+          sortOrder: nextOrder,
+          page: 1,
+        };
+      });
     },
     [],
   );
@@ -150,6 +168,7 @@ export const useDebtReport = () => {
     setSelectedAgingGroup: changeAgingGroup,
     fetchDebtReport,
     updateFilters,
+    toggleSort,
     changePage,
     exportExcel,
   };

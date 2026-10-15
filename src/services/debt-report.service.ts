@@ -30,4 +30,15 @@ export const debtReportService = {
     });
     return res.data as Blob;
   },
+
+  /**
+   * Lấy danh sách hóa đơn thực tế phát sinh của đại lý phân theo tuổi nợ (SN-203)
+   * GET /api/debt-report/:agencyId/invoices
+   */
+  async getAgencyInvoices(agencyId: string): Promise<import('../types/debt-report.type').AgencyInvoice[]> {
+    const res = await apiClient.get<import('../types/debt-report.type').AgencyInvoice[]>(
+      `/debt-report/${agencyId}/invoices`,
+    );
+    return res.data;
+  },
 };

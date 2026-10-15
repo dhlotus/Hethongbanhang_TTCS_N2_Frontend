@@ -20,6 +20,7 @@ export const DebtReportPage: React.FC = () => {
     selectedAgingGroup,
     fetchDebtReport,
     updateFilters,
+    toggleSort,
     changePage,
     exportExcel,
   } = useDebtReport();
@@ -49,6 +50,9 @@ export const DebtReportPage: React.FC = () => {
         total={total}
         totalPages={totalPages}
         selectedAgingGroup={selectedAgingGroup}
+        sortBy={params.sortBy}
+        sortOrder={params.sortOrder}
+        onSort={toggleSort}
         onPageChange={changePage}
       />
     </div>
