@@ -46,6 +46,28 @@ const cleanProductName = (name?: string): string => {
   return name.replace(/\s*\((lon|chai|hộp|gói|thùng|lốc|lon\s*\d*|chai\s*\d*)\)\s*$/i, '').trim();
 };
 
+/** Nhãn hiển thị cho Nhóm/Cấp đại lý */
+const getGroupBadgeMeta = (group?: string) => {
+  switch (group) {
+    case 'AGENT_LEVEL_1':
+      return {
+        label: 'Đại lý Cấp 1',
+        className: 'bg-indigo-50 text-indigo-700 border-indigo-200 ring-1 ring-indigo-500/10',
+      };
+    case 'AGENT_LEVEL_2':
+      return {
+        label: 'Đại lý Cấp 2',
+        className: 'bg-sky-50 text-sky-700 border-sky-200 ring-1 ring-sky-500/10',
+      };
+    case 'RETAIL':
+    default:
+      return {
+        label: 'Đại lý Bán lẻ',
+        className: 'bg-emerald-50 text-emerald-700 border-emerald-200 ring-1 ring-emerald-500/10',
+      };
+  }
+};
+
 /** Cấu trúc một món trong Giỏ hàng của Đại lý */
 export interface CartItem {
   product: Product;
@@ -90,6 +112,8 @@ export const PortalOrderConfirmPage: React.FC = () => {
     );
     return matched || list[0] || null;
   });
+
+  const groupBadge = getGroupBadgeMeta(currentCustomer?.customerGroup || (currentCustomer as unknown as { group?: string })?.group);
 
   // 3. Chính sách chiết khấu & Bảng giá
   const [discountPolicies, setDiscountPolicies] = useState<DiscountPolicy[]>([]);
@@ -661,16 +685,20 @@ export const PortalOrderConfirmPage: React.FC = () => {
             </span>
           </div>
 
-<<<<<<< HEAD
           {/* ── GIAO DIỆN DESKTOP / LAPTOP / PC (GIỮ NGUYÊN 100% CẤU TRÚC & KÍCH THƯỚC BAN ĐẦU) ── */}
           <div className="hidden sm:block space-y-4">
             {/* Chi tiết đại lý */}
             <div className="p-4 sm:p-5 rounded-xl bg-slate-50/80 border border-slate-200/70 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
               <div>
                 <span className="text-slate-500 font-medium block mb-1">Tên doanh nghiệp:</span>
-                <strong className="text-slate-900 text-sm sm:text-base font-semibold block">
-                  {currentCustomer?.name}
-                </strong>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <strong className="text-slate-900 text-sm sm:text-base font-semibold">
+                    {currentCustomer?.name}
+                  </strong>
+                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${groupBadge.className}`}>
+                    {groupBadge.label}
+                  </span>
+                </div>
               </div>
               <div>
                 <span className="text-slate-500 font-medium block mb-1">Mã đại lý:</span>
@@ -683,19 +711,6 @@ export const PortalOrderConfirmPage: React.FC = () => {
                 <strong className="text-slate-900 text-sm sm:text-base font-semibold block">
                   {currentCustomer?.phone || 'Chưa cập nhật'}
                 </strong>
-=======
-          {/* Chi tiết đại lý */}
-          <div className="p-4 sm:p-5 rounded-xl bg-slate-50/80 border border-slate-200/70 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-            <div>
-              <span className="text-slate-500 font-medium block mb-1">Tên doanh nghiệp:</span>
-              <div className="flex items-center gap-2 flex-wrap">
-                <strong className="text-slate-900 text-sm sm:text-base font-semibold">
-                  {currentCustomer?.name}
-                </strong>
-                <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${groupBadge.className}`}>
-                  {groupBadge.label}
-                </span>
->>>>>>> 1b0ff80 (fix(portal): toi uu giao dien portal orders va order confirm)
               </div>
             </div>
 
