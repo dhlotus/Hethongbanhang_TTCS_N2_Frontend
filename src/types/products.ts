@@ -189,7 +189,7 @@ export interface ImportProductItemDto {
   baseUnit: string;
   price: number;
   costPrice: number;
-  stockQuantity: number;
+  stockQuantity?: number;
   barcode?: string;
   description?: string;
   status: 'NEW' | 'UPDATE';

@@ -19,11 +19,13 @@ import {
   ChevronRight,
   SlidersHorizontal,
   PackagePlus,
+  Trash2,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ModalLayout } from '../components/modal-layout';
 import { MinStockModal } from '../components/inventory/min-stock-modal';
 import { inventoryService } from '../services/inventory.service';
+import { productsService } from '../services/products.service';
 import { apiClient } from '../services/api';
 import { STANDARD_WAREHOUSES, type StandardWarehouse } from '../constants/warehouse.constants';
 import { getStoredUser } from '../utils/navigation';
@@ -32,6 +34,7 @@ import type {
   StockStatusType,
   AdjustStockPayload,
   ProductUnit,
+  Product,
 } from '../types/products';
 import type { StockBalance } from '../types/inventory.types';
 
@@ -41,6 +44,19 @@ export const InventoryStockPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [totalAlertsCount, setTotalAlertsCount] = useState<number>(0);
   const [warehousesList, setWarehousesList] = useState<StandardWarehouse[]>(STANDARD_WAREHOUSES);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [selectedProductSkuForAdjust, setSelectedProductSkuForAdjust] = useState<string>('');
+
+  useEffect(() => {
+    productsService
+      .getProducts({ limit: 500, status: 'ACTIVE' })
+      .then((res) => {
+        if (Array.isArray(res.data)) {
+          setAllProducts(res.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     apiClient
@@ -62,36 +78,37 @@ export const InventoryStockPage: React.FC = () => {
   const user = getStoredUser();
   const userRoles = user?.roles || [];
   const isAdmin = userRoles.includes('ADMIN');
-  const isKeeper =
-    (userRoles.includes('WAREHOUSE_KEEPER') ||
-      userRoles.includes('WAREHOUSE')) &&
-    !isAdmin;
   const isManager =
-    (userRoles.includes('WAREHOUSE_MANAGER') ||
-      userRoles.includes('WH_MANAGER')) &&
-    !isAdmin;
+    userRoles.includes('WAREHOUSE_MANAGER') ||
+    userRoles.includes('WH_MANAGER') ||
+    isAdmin;
+  const isKeeper =
+    !isManager &&
+    (userRoles.includes('WAREHOUSE_KEEPER') ||
+      userRoles.includes('WAREHOUSE') ||
+      userRoles.includes('WH_KEEPER'));
 
   // Thủ kho (1 - 1): Xác định duy nhất kho công tác thực tế của thủ kho
   const keeperWarehouseId = useMemo(() => {
     if (!user) return STANDARD_WAREHOUSES[2].id;
     if (user.warehouseId) {
-      const match = STANDARD_WAREHOUSES.find((w) => w.id === user.warehouseId);
-      if (match) return match.id;
+      return user.warehouseId;
     }
     if (user.assignedWarehouseId) {
-      const match = STANDARD_WAREHOUSES.find((w) => w.id === user.assignedWarehouseId);
-      if (match) return match.id;
+      return user.assignedWarehouseId;
     }
     const rawWh = (user.warehouseCode || user.assignedWarehouseCode || user.assignedWarehouse || '').toUpperCase();
-    const match = STANDARD_WAREHOUSES.find(
-      (w) =>
-        w.code.toUpperCase() === rawWh ||
-        w.id.toUpperCase() === rawWh ||
-        w.name.toUpperCase().includes(rawWh) ||
-        rawWh.includes(w.name.toUpperCase()),
-    );
-    return match ? match.id : STANDARD_WAREHOUSES[2].id;
-  }, [user]);
+    const match =
+      warehousesList.find((w) => w.id.toUpperCase() === rawWh || w.code.toUpperCase() === rawWh || w.name.toUpperCase().includes(rawWh)) ||
+      STANDARD_WAREHOUSES.find(
+        (w) =>
+          w.code.toUpperCase() === rawWh ||
+          w.id.toUpperCase() === rawWh ||
+          w.name.toUpperCase().includes(rawWh) ||
+          rawWh.includes(w.name.toUpperCase()),
+      );
+    return match ? match.id : (warehousesList[0]?.id || STANDARD_WAREHOUSES[2].id);
+  }, [user, warehousesList]);
 
   // Bộ lọc kho ban đầu: Thủ kho cố định kho của mình, Quản lý kho / Admin xem Tất cả kho
   const defaultWarehouse = isKeeper ? keeperWarehouseId : 'ALL';
@@ -125,6 +142,68 @@ export const InventoryStockPage: React.FC = () => {
   // Modal Sửa Mức Tồn Tối Thiểu (SN-183)
   const [editingMinStockItem, setEditingMinStockItem] = useState<StockBalance | null>(null);
 
+  // Modal Xóa Sản Phẩm Khỏi Kho (Yêu cầu mới)
+  const [deleteProductModalOpen, setDeleteProductModalOpen] = useState<boolean>(false);
+  const [productToDelete, setProductToDelete] = useState<{
+    item: StockOverviewItem;
+    targetWarehouseId: string;
+    targetWarehouseName: string;
+    hasStock: boolean;
+  } | null>(null);
+  const [isDeletingProduct, setIsDeletingProduct] = useState<boolean>(false);
+
+  const handleOpenDeleteProductModal = (item: StockOverviewItem) => {
+    let targetWhId = selectedWarehouse !== 'ALL' ? selectedWarehouse : (item.warehouseId || '');
+    if (!targetWhId) {
+      const foundWh = warehousesList.find(
+        (w) =>
+          w.id === item.warehouseId ||
+          w.name === item.warehouse ||
+          w.code === (item as any).warehouseCode
+      );
+      targetWhId = foundWh?.id || '';
+    }
+    const whObj = warehousesList.find((w) => w.id === targetWhId);
+    const targetWhName = whObj?.displayName || whObj?.name || item.warehouse || 'Kho hiện tại';
+
+    const hasStock =
+      (item.physicalStock || 0) > 0 ||
+      (item.reservedStock || 0) > 0 ||
+      (item.availableStock || 0) > 0;
+
+    setProductToDelete({
+      item,
+      targetWarehouseId: targetWhId,
+      targetWarehouseName: targetWhName,
+      hasStock,
+    });
+    setDeleteProductModalOpen(true);
+  };
+
+  const handleConfirmDeleteProduct = async () => {
+    if (!productToDelete) return;
+    setIsDeletingProduct(true);
+    try {
+      await inventoryService.removeProductFromWarehouse(
+        productToDelete.targetWarehouseId,
+        productToDelete.item.sku,
+        productToDelete.item.id || (productToDelete.item as any).productId
+      );
+      showToast(
+        'success',
+        `Đã xóa sản phẩm "${productToDelete.item.name || productToDelete.item.sku}" khỏi ${productToDelete.targetWarehouseName} thành công`
+      );
+      setDeleteProductModalOpen(false);
+      setProductToDelete(null);
+      await fetchStockData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Không thể xóa sản phẩm khỏi kho';
+      showToast('error', msg);
+    } finally {
+      setIsDeletingProduct(false);
+    }
+  };
+
   const [adjustModalOpen, setAdjustModalOpen] = useState<boolean>(false);
   const [selectedItemForAdjust, setSelectedItemForAdjust] = useState<StockOverviewItem | null>(null);
   const [adjustWarehouseId, setAdjustWarehouseId] = useState<string>('');
@@ -135,30 +214,41 @@ export const InventoryStockPage: React.FC = () => {
   const [adjustRefCode, setAdjustRefCode] = useState<string>('');
   const [isSubmittingAdjust, setIsSubmittingAdjust] = useState<boolean>(false);
 
+  const currentAdjustProduct = useMemo(() => {
+    if (selectedItemForAdjust) {
+      return {
+        sku: selectedItemForAdjust.sku,
+        name: selectedItemForAdjust.name,
+        baseUnit: selectedItemForAdjust.baseUnit,
+        units: selectedItemForAdjust.units || [],
+        availableStock: selectedItemForAdjust.availableStock,
+        warehouse: selectedItemForAdjust.warehouse,
+      };
+    }
+    const found = allProducts.find((p) => p.sku === selectedProductSkuForAdjust) || allProducts[0];
+    if (found) {
+      return {
+        sku: found.sku,
+        name: found.name,
+        baseUnit: found.baseUnit,
+        units: found.units || [],
+        availableStock: 0,
+        warehouse: '',
+      };
+    }
+    return null;
+  }, [selectedItemForAdjust, selectedProductSkuForAdjust, allProducts]);
+
   // Danh sách kho áp dụng cho popup điều chỉnh kho (SN-23):
-  // - Thủ kho: Cố định duy nhất 1 kho của mình (1-1)
-  // - Quản lý kho: Cho phép chọn trong các kho được phân công (hoặc cả 4) (N-N)
-  // - Admin: Cho phép chọn toàn bộ 4 kho
+  // - Thủ kho (1-1): Cố định duy nhất 1 kho của mình
+  // - Quản lý kho & Admin: Toàn quyền chọn tất cả các kho
   const adjustWarehouseOptions = useMemo(() => {
     if (isKeeper) {
-      const match = STANDARD_WAREHOUSES.find((w) => w.id === keeperWarehouseId);
-      return match ? [match] : [STANDARD_WAREHOUSES[2]];
+      const match = warehousesList.find((w) => w.id === keeperWarehouseId) || STANDARD_WAREHOUSES.find((w) => w.id === keeperWarehouseId);
+      return match ? [match] : [warehousesList[0] || STANDARD_WAREHOUSES[2]];
     }
-    if (isManager) {
-      const allowedIds =
-        user?.warehouseIds && user.warehouseIds.length > 0
-          ? user.warehouseIds
-          : user?.warehouses && user.warehouses.length > 0
-          ? user.warehouses.map((w) => w.id)
-          : null;
-      if (allowedIds && allowedIds.length > 0) {
-        const filtered = STANDARD_WAREHOUSES.filter((w) => allowedIds.includes(w.id));
-        if (filtered.length > 0) return filtered;
-      }
-      return STANDARD_WAREHOUSES;
-    }
-    return STANDARD_WAREHOUSES;
-  }, [isKeeper, isManager, keeperWarehouseId, user]);
+    return warehousesList.length > 0 ? warehousesList : STANDARD_WAREHOUSES;
+  }, [isKeeper, keeperWarehouseId, warehousesList]);
 
   // Dropdown menu Thao tác
   const [openActionMenuKey, setOpenActionMenuKey] = useState<string | null>(null);
@@ -378,13 +468,14 @@ export const InventoryStockPage: React.FC = () => {
     setConversionModalOpen(true);
   };
 
-  // Mở modal điều chỉnh tồn kho
+  // Mở modal điều chỉnh tồn kho cho sản phẩm đã có
   const handleOpenAdjustModal = (item: StockOverviewItem) => {
     setSelectedItemForAdjust(item);
+    setSelectedProductSkuForAdjust(item.sku);
     setAdjustQuantity(10);
     setAdjustUnit(item.baseUnit);
     setAdjustType('IMPORT');
-    setAdjustReason('Nhập bổ sung tồn kho từ nhà máy');
+    setAdjustReason('Nhập bổ sung tồn kho');
     setAdjustRefCode(`PNK-${Date.now().toString().slice(-6)}`);
 
     // Thiết lập kho áp dụng mặc định theo phân quyền
@@ -401,10 +492,41 @@ export const InventoryStockPage: React.FC = () => {
     setAdjustModalOpen(true);
   };
 
+  // Mở modal nhập hàng mới vào kho (cho kho mới tạo chưa có hàng hoặc nhập hàng mới bất kỳ)
+  const handleOpenNewImportModal = () => {
+    const defaultProduct = allProducts[0] || (stockItems[0] ? {
+      sku: stockItems[0].sku,
+      name: stockItems[0].name,
+      baseUnit: stockItems[0].baseUnit,
+    } : null);
+
+    setSelectedItemForAdjust(null);
+    setSelectedProductSkuForAdjust(defaultProduct?.sku || '');
+    setAdjustQuantity(10);
+    setAdjustUnit(defaultProduct?.baseUnit || 'Lon');
+    setAdjustType('IMPORT');
+    setAdjustReason('Nhập hàng mới vào kho');
+    setAdjustRefCode(`PNK-${Date.now().toString().slice(-6)}`);
+
+    if (isKeeper) {
+      setAdjustWarehouseId(keeperWarehouseId);
+    } else if (selectedWarehouse && selectedWarehouse !== 'ALL') {
+      setAdjustWarehouseId(selectedWarehouse);
+    } else {
+      setAdjustWarehouseId(adjustWarehouseOptions[0]?.id || STANDARD_WAREHOUSES[0].id);
+    }
+
+    setAdjustModalOpen(true);
+  };
+
   // Xử lý gửi yêu cầu điều chỉnh tồn kho
   const handleSubmitAdjustment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedItemForAdjust) return;
+    const effectiveSku = selectedItemForAdjust?.sku || selectedProductSkuForAdjust;
+    if (!effectiveSku) {
+      showToast('warning', 'Vui lòng chọn sản phẩm cần nhập/điều chỉnh');
+      return;
+    }
 
     if (!adjustWarehouseId) {
       showToast('warning', 'Vui lòng chọn kho áp dụng điều chỉnh');
@@ -422,17 +544,19 @@ export const InventoryStockPage: React.FC = () => {
     }
 
     const signedChange = adjustType === 'IMPORT' ? Math.abs(adjustQuantity) : -Math.abs(adjustQuantity);
-    const targetWarehouse = STANDARD_WAREHOUSES.find((w) => w.id === adjustWarehouseId);
+    const targetWarehouse =
+      warehousesList.find((w) => w.id === adjustWarehouseId) ||
+      STANDARD_WAREHOUSES.find((w) => w.id === adjustWarehouseId);
 
     const payload: AdjustStockPayload = {
-      productSku: selectedItemForAdjust.sku,
+      productSku: effectiveSku,
       warehouseId: adjustWarehouseId,
       warehouse_id: adjustWarehouseId,
       quantityChange: signedChange,
       unit: adjustUnit,
       reason: adjustReason.trim(),
       referenceCode: adjustRefCode.trim(),
-      warehouseLocation: targetWarehouse ? targetWarehouse.name : selectedItemForAdjust.warehouse,
+      warehouseLocation: targetWarehouse ? targetWarehouse.name : (selectedItemForAdjust?.warehouse || 'Kho hàng'),
     };
 
     setIsSubmittingAdjust(true);
@@ -591,17 +715,31 @@ export const InventoryStockPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Nút Làm mới (cùng hàng, bỏ chữ "dữ liệu") */}
-          <button
-            type="button"
-            onClick={fetchStockData}
-            disabled={loading}
-            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 border border-slate-200/90 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-2xs shrink-0 self-end lg:self-auto"
-            title="Làm mới tồn kho"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
-            <span>Làm mới</span>
-          </button>
+          {/* Nút Nhập hàng vào kho & Làm mới */}
+          <div className="flex items-center gap-2 self-end lg:self-auto shrink-0">
+            {canAdjustStock && (
+              <button
+                type="button"
+                onClick={handleOpenNewImportModal}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all cursor-pointer shadow-2xs"
+                title="Nhập hàng trực tiếp vào kho"
+              >
+                <PackagePlus className="w-4 h-4" />
+                <span>Nhập hàng vào kho</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={fetchStockData}
+              disabled={loading}
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 border border-slate-200/90 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-2xs"
+              title="Làm mới tồn kho"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
+              <span>Làm mới</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -677,10 +815,26 @@ export const InventoryStockPage: React.FC = () => {
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
                     <Boxes className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                    <p className="font-medium text-slate-600">Không tìm thấy sản phẩm tồn kho nào</p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Thử thay đổi từ khóa tìm kiếm hoặc bỏ bớt bộ lọc
+                    <p className="font-semibold text-slate-700 text-base">
+                      {selectedWarehouse !== 'ALL'
+                        ? 'Kho hàng này hiện chưa có sản phẩm nào'
+                        : 'Không tìm thấy sản phẩm tồn kho nào'}
                     </p>
+                    <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                      {selectedWarehouse !== 'ALL'
+                        ? 'Kho mới được tạo hoặc chưa có số dư hàng hóa. Nhấn nút bên dưới để bắt đầu nhập hàng cho kho này.'
+                        : 'Thử thay đổi từ khóa tìm kiếm hoặc bỏ bớt bộ lọc'}
+                    </p>
+                    {canAdjustStock && selectedWarehouse !== 'ALL' && (
+                      <button
+                        type="button"
+                        onClick={handleOpenNewImportModal}
+                        className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+                      >
+                        <PackagePlus className="w-4 h-4" />
+                        Nhập hàng vào kho này
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -984,6 +1138,24 @@ export const InventoryStockPage: React.FC = () => {
                 </button>
               </div>
             )}
+
+            {/* 4. Xóa sản phẩm khỏi kho (Chỉ Admin và Quản lý kho) */}
+            {(isAdmin || isManager) && (
+              <div className="py-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenActionMenuKey(null);
+                    setActionMenuAnchor(null);
+                    handleOpenDeleteProductModal(item);
+                  }}
+                  className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                >
+                  <Trash2 className="w-4 h-4 text-rose-500" />
+                  <span>Xóa sản phẩm khỏi kho</span>
+                </button>
+              </div>
+            )}
           </div>,
           document.body,
         );
@@ -1129,32 +1301,58 @@ export const InventoryStockPage: React.FC = () => {
       <ModalLayout
         isOpen={adjustModalOpen}
         onClose={() => setAdjustModalOpen(false)}
-        title={`Ghi Sổ Kho & Điều Chỉnh Tồn Kho — ${selectedItemForAdjust?.sku || ''}`}
+        title={selectedItemForAdjust ? `Ghi Sổ Kho & Điều Chỉnh — ${selectedItemForAdjust.sku}` : 'Nhập Hàng Vào Kho / Điều Chỉnh Tồn'}
         maxWidth="max-w-lg"
       >
-        {selectedItemForAdjust && (
+        {currentAdjustProduct && (
           <form onSubmit={handleSubmitAdjustment} className="space-y-4 p-1">
-            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
-              <p>
-                Sản phẩm: <strong className="text-slate-900">{selectedItemForAdjust.name}</strong> ({selectedItemForAdjust.sku})
-              </p>
-              <p>
-                Tồn khả thi hiện tại:{' '}
-                <strong className="text-emerald-700">
-                  {selectedItemForAdjust.availableStock} {selectedItemForAdjust.baseUnit}
-                </strong>
-                {selectedWarehouse !== 'ALL' && (
-                  <span className="text-slate-500 ml-1">
-                    (tại {STANDARD_WAREHOUSES.find((w) => w.id === selectedWarehouse)?.displayName || selectedItemForAdjust.warehouse})
-                  </span>
-                )}
-                {selectedWarehouse === 'ALL' && (
-                  <span className="text-slate-500 ml-1">(Tổng toàn bộ 4 kho)</span>
-                )}
-              </p>
-            </div>
+            {/* Lựa chọn sản phẩm nếu mở từ nút Nhập hàng vào kho */}
+            {!selectedItemForAdjust ? (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Chọn sản phẩm nhập kho <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={selectedProductSkuForAdjust || currentAdjustProduct.sku}
+                  onChange={(e) => {
+                    const newSku = e.target.value;
+                    setSelectedProductSkuForAdjust(newSku);
+                    const p = allProducts.find((item) => item.sku === newSku);
+                    if (p) setAdjustUnit(p.baseUnit);
+                  }}
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  required
+                >
+                  {allProducts.map((p) => (
+                    <option key={p.id} value={p.sku}>
+                      [{p.sku}] {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
+                <p>
+                  Sản phẩm: <strong className="text-slate-900">{currentAdjustProduct.name}</strong> ({currentAdjustProduct.sku})
+                </p>
+                <p>
+                  Tồn khả thi hiện tại:{' '}
+                  <strong className="text-emerald-700">
+                    {currentAdjustProduct.availableStock} {currentAdjustProduct.baseUnit}
+                  </strong>
+                  {selectedWarehouse !== 'ALL' && (
+                    <span className="text-slate-500 ml-1">
+                      (tại {warehousesList.find((w) => w.id === selectedWarehouse)?.displayName || currentAdjustProduct.warehouse})
+                    </span>
+                  )}
+                  {selectedWarehouse === 'ALL' && (
+                    <span className="text-slate-500 ml-1">(Tổng toàn bộ các kho)</span>
+                  )}
+                </p>
+              </div>
+            )}
 
-            {/* Kho áp dụng điều chỉnh (Bắt buộc theo chuẩn SN-23) */}
+            {/* Kho áp dụng điều chỉnh */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-semibold text-slate-700">
@@ -1177,7 +1375,7 @@ export const InventoryStockPage: React.FC = () => {
                 >
                   {adjustWarehouseOptions.map((wh) => (
                     <option key={wh.id} value={wh.id}>
-                      {wh.displayName}
+                      {wh.displayName || wh.name}
                     </option>
                   ))}
                 </select>
@@ -1203,18 +1401,18 @@ export const InventoryStockPage: React.FC = () => {
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Đơn vị nhập/xuất</label>
                 <select
-                  value={adjustUnit}
+                  value={adjustUnit || currentAdjustProduct.baseUnit}
                   onChange={(e) => setAdjustUnit(e.target.value)}
                   className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 >
-                  <option value={selectedItemForAdjust.baseUnit}>
-                    {selectedItemForAdjust.baseUnit} (Cơ sở)
+                  <option value={currentAdjustProduct.baseUnit}>
+                    {currentAdjustProduct.baseUnit} (Cơ sở)
                   </option>
-                  {selectedItemForAdjust.units
-                    ?.filter((u) => !u.isBaseUnit)
-                    .map((u) => (
+                  {currentAdjustProduct.units
+                    ?.filter((u: any) => !u.isBaseUnit)
+                    .map((u: any) => (
                       <option key={u.unitName} value={u.unitName}>
-                        {u.unitName} (1 {u.unitName} = {u.conversionRate} {selectedItemForAdjust.baseUnit})
+                        {u.unitName} (1 {u.unitName} = {u.conversionRate} {currentAdjustProduct.baseUnit})
                       </option>
                     ))}
                 </select>
@@ -1261,14 +1459,14 @@ export const InventoryStockPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setAdjustModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
               >
                 Hủy bỏ
               </button>
               <button
                 type="submit"
                 disabled={isSubmittingAdjust}
-                className="px-5 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="px-5 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2 cursor-pointer"
               >
                 {isSubmittingAdjust && <RefreshCw className="w-4 h-4 animate-spin" />}
                 <span>Xác nhận ghi sổ kho</span>
@@ -1285,6 +1483,129 @@ export const InventoryStockPage: React.FC = () => {
           onClose={() => setEditingMinStockItem(null)}
           onSave={handleSaveMinStock}
         />
+      )}
+
+      {/* Modal Xác nhận xóa sản phẩm khỏi kho */}
+      {deleteProductModalOpen && productToDelete && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200 text-left">
+            {/* Header */}
+            <div className="p-6 pb-4 flex items-start gap-4">
+              <div
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${
+                  productToDelete.hasStock
+                    ? 'bg-rose-50 border-rose-200 text-rose-600'
+                    : 'bg-amber-50 border-amber-200 text-amber-600'
+                }`}
+              >
+                <Trash2 size={24} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-slate-900">
+                  {productToDelete.hasStock
+                    ? 'Không thể xóa sản phẩm khỏi kho'
+                    : 'Xác nhận xóa sản phẩm khỏi kho'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Kho áp dụng: <strong className="text-slate-800">{productToDelete.targetWarehouseName}</strong>
+                </p>
+              </div>
+            </div>
+
+            {/* Thông tin sản phẩm */}
+            <div className="px-6 py-3 bg-slate-50/80 border-y border-slate-100 text-xs space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Mã SKU:</span>
+                <span className="font-mono font-bold text-slate-800">{productToDelete.item.sku}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Tên sản phẩm:</span>
+                <span className="font-semibold text-slate-800 text-right truncate max-w-[220px]">
+                  {productToDelete.item.name}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Tồn thực tế:</span>
+                <span className="font-bold text-slate-800">
+                  {productToDelete.item.physicalStock} {productToDelete.item.baseUnit}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Tồn tạm giữ (khách):</span>
+                <span className="font-bold text-amber-600">
+                  {productToDelete.item.reservedStock} {productToDelete.item.baseUnit}
+                </span>
+              </div>
+            </div>
+
+            {/* Cảnh báo chi tiết */}
+            <div className="p-6 pt-4 space-y-4">
+              {productToDelete.hasStock ? (
+                /* TH1: Vẫn còn tồn kho hoặc giữ tồn khách */
+                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 space-y-1.5">
+                  <p className="font-bold flex items-center gap-1.5 text-rose-900">
+                    ❌ Không được phép xóa!
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-rose-700">
+                    Sản phẩm hiện vẫn còn tồn kho tại kho này (Tồn thực tế: {productToDelete.item.physicalStock}, Tạm giữ cho khách: {productToDelete.item.reservedStock}).
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-rose-600">
+                    Ràng buộc hệ thống: Bạn phải xuất kho hoặc điều chuyển hết mọi loại tồn về 0 trước khi có thể xóa sản phẩm khỏi kho này.
+                  </p>
+                </div>
+              ) : (
+                /* TH2: Hết mọi loại tồn = 0 */
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-1.5">
+                  <p className="font-bold flex items-center gap-1.5 text-amber-900">
+                    ⚠️ Xác nhận xóa sản phẩm khỏi kho
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-amber-700">
+                    Sản phẩm đã hết mọi loại tồn (Tồn thực tế = 0, Tồn tạm giữ = 0).
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-amber-800">
+                    Sau khi xóa, sản phẩm này sẽ không còn xuất hiện trong danh mục và sổ kho của <strong>{productToDelete.targetWarehouseName}</strong>.
+                  </p>
+                </div>
+              )}
+
+              {/* Nút hành động */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={isDeletingProduct}
+                  onClick={() => {
+                    setDeleteProductModalOpen(false);
+                    setProductToDelete(null);
+                  }}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {productToDelete.hasStock ? 'Đã hiểu' : 'Hủy bỏ'}
+                </button>
+
+                {!productToDelete.hasStock && (
+                  <button
+                    type="button"
+                    disabled={isDeletingProduct}
+                    onClick={() => void handleConfirmDeleteProduct()}
+                    className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {isDeletingProduct ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Đang xóa...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 size={14} />
+                        <span>Xác nhận xóa khỏi kho</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
