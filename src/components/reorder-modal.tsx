@@ -151,6 +151,18 @@ export const ReorderModal: React.FC<ReorderModalProps> = ({
     }));
   };
 
+  // Tăng/giảm nhanh số lượng bằng nút bấm
+  const handleStepQuantity = (productSku: string, delta: number) => {
+    setQuantities((prev) => {
+      const current = prev[productSku] ?? 1;
+      const next = Math.max(1, current + delta);
+      return {
+        ...prev,
+        [productSku]: next,
+      };
+    });
+  };
+
   // Tính toán tổng tiền theo thời gian thực dựa trên các dòng đã chọn và GIÁ HIỆN HÀNH (SN-174)
   const calculationSummary = useMemo(() => {
     if (!previewData) {
@@ -338,14 +350,14 @@ export const ReorderModal: React.FC<ReorderModalProps> = ({
                   </span>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-700">
+                <div className="overflow-x-auto custom-scrollbar">
+                  <table className="w-full text-left text-xs text-slate-700 min-w-[620px]">
                     <thead className="bg-slate-50/50 text-slate-500 uppercase text-[11px] font-semibold border-b border-slate-100">
                       <tr>
                         <th className="py-2.5 px-3 w-10 text-center">Chọn</th>
                         <th className="py-2.5 px-3">Sản phẩm / SKU</th>
                         <th className="py-2.5 px-3 text-center">ĐVT</th>
-                        <th className="py-2.5 px-3 text-center w-28">SL đặt lại</th>
+                        <th className="py-2.5 px-3 text-center w-32">SL đặt lại</th>
                         <th className="py-2.5 px-3 text-right">Đơn giá cũ</th>
                         <th className="py-2.5 px-3 text-right">Giá hiện hành</th>
                         <th className="py-2.5 px-3 text-right">Thành tiền mới</th>
@@ -382,18 +394,36 @@ export const ReorderModal: React.FC<ReorderModalProps> = ({
                               {item.unit}
                             </td>
                             <td className="py-3 px-3 text-center">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                disabled={!isSelected}
-                                value={currentQty}
-                                onChange={(e) => handleChangeQuantity(item.productSku, e.target.value)}
-                                className={`w-20 text-center font-bold px-2 py-1.5 rounded-lg border text-xs focus:outline-none transition-colors ${
-                                  isSelected
-                                    ? 'border-slate-300 bg-white text-slate-900 focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]'
-                                    : 'border-slate-200 bg-slate-100 text-slate-400'
-                                }`}
-                              />
+                              <div className="inline-flex items-center justify-center border border-slate-300 rounded-lg overflow-hidden bg-white shadow-2xs">
+                                <button
+                                  type="button"
+                                  disabled={!isSelected || currentQty <= 1}
+                                  onClick={() => handleStepQuantity(item.productSku, -1)}
+                                  className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-30 cursor-pointer text-xs font-bold transition-colors select-none"
+                                  title="Giảm 1"
+                                >
+                                  -
+                                </button>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  disabled={!isSelected}
+                                  value={currentQty}
+                                  onChange={(e) => handleChangeQuantity(item.productSku, e.target.value)}
+                                  className={`w-12 h-7 text-center font-bold text-xs border-x border-slate-200 focus:outline-none ${
+                                    isSelected ? 'text-slate-900 bg-white' : 'text-slate-400 bg-slate-50'
+                                  }`}
+                                />
+                                <button
+                                  type="button"
+                                  disabled={!isSelected}
+                                  onClick={() => handleStepQuantity(item.productSku, 1)}
+                                  className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-30 cursor-pointer text-xs font-bold transition-colors select-none"
+                                  title="Tăng 1"
+                                >
+                                  +
+                                </button>
+                              </div>
                             </td>
                             <td className="py-3 px-3 text-right font-mono text-slate-400 line-through">
                               {formatCurrency(item.oldUnitPrice)}

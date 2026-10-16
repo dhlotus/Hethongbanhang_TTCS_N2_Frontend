@@ -1397,12 +1397,14 @@ export const ordersService = {
           p.id === line.productId
       );
 
-      if (foundProduct?.status === 'INACTIVE' || line.productSku === 'LH-OLD-COFFEE-CAN') {
+      if (!foundProduct || foundProduct.status === 'INACTIVE' || line.productSku === 'LH-OLD-COFFEE-CAN') {
         discontinuedItems.push({
           lineId: line.id,
           productSku: line.productSku,
           productName: line.productName,
-          reason: 'Mặt hàng đã ngừng kinh doanh và đã được tự động loại khỏi đơn mới',
+          reason: !foundProduct
+            ? 'Sản phẩm không còn trong danh mục phân phối'
+            : 'Mặt hàng đã ngừng kinh doanh và đã được tự động loại khỏi đơn mới',
         });
         continue;
       }
@@ -1477,19 +1479,43 @@ export const ordersService = {
     orderId: string,
     payload: ReorderPayload
   ): Promise<{ newOrder: Order; discontinuedItems: DiscontinuedProductItem[]; message: string }> {
-    const preview = await this.getReorderPreview(orderId);
+    try {
+      const res = await apiClient.post<{
+        newOrder: Order;
+        discontinuedItems: DiscontinuedProductItem[];
+        message: string;
+      }>(`/orders/${orderId}/reorder`, payload);
 
-    // Lọc các mặt hàng được chọn
-    let targetItems = preview.availableItems;
-    if (payload.selectedLineIds && payload.selectedLineIds.length > 0) {
-      targetItems = targetItems.filter((item: ReorderPreviewItem) =>
-        payload.selectedLineIds?.includes(item.lineId)
-      );
-    }
+      if (res.data?.newOrder) {
+        const allStoredOrders = getStoredDemoOrders();
+        const exists = allStoredOrders.some((o) => o.id === res.data.newOrder.id);
+        if (!exists) {
+          allStoredOrders.unshift(res.data.newOrder);
+          saveStoredDemoOrders(allStoredOrders);
+        }
+        try {
+          window.dispatchEvent(
+            new CustomEvent('loha_orders_updated', { detail: res.data.newOrder })
+          );
+        } catch {}
+      }
 
-    if (targetItems.length === 0) {
-      throw new Error('Vui lòng chọn ít nhất một mặt hàng khả dụng để đặt lại đơn hàng');
-    }
+      return res.data;
+    } catch {
+      // Fallback tính toán cục bộ nếu backend offline hoặc lỗi mạng
+      const preview = await this.getReorderPreview(orderId);
+
+      // Lọc các mặt hàng được chọn
+      let targetItems = preview.availableItems;
+      if (payload.selectedLineIds && payload.selectedLineIds.length > 0) {
+        targetItems = targetItems.filter((item: ReorderPreviewItem) =>
+          payload.selectedLineIds?.includes(item.lineId)
+        );
+      }
+
+      if (targetItems.length === 0) {
+        throw new Error('Vui lòng chọn ít nhất một mặt hàng khả dụng để đặt lại đơn hàng');
+      }
 
     // Cập nhật số lượng điều chỉnh từ modal nếu có
     const qtyMap = new Map<string, number>();
@@ -1531,14 +1557,16 @@ export const ordersService = {
 
     const newOrder = await this.createOrder(createPayload);
 
-    return {
-      newOrder,
-      discontinuedItems: preview.discontinuedItems,
-      message: `Đã đặt lại đơn hàng thành công (Mã đơn: ${newOrder.orderCode}).${preview.discontinuedItems.length > 0
-          ? ` Đã loại bỏ ${preview.discontinuedItems.length} mặt hàng ngừng kinh doanh.`
-          : ''
+      return {
+        newOrder,
+        discontinuedItems: preview.discontinuedItems,
+        message: `Đã đặt lại đơn hàng thành công (Mã đơn: ${newOrder.orderCode}).${
+          preview.discontinuedItems.length > 0
+            ? ` Đã loại bỏ ${preview.discontinuedItems.length} mặt hàng ngừng kinh doanh.`
+            : ''
         }`,
-    };
+      };
+    }
   },
 };
 
