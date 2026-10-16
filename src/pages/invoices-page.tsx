@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
+  UserCheck,
 } from 'lucide-react';
 import type { InvoiceItem } from '../services/invoices.service';
 import { invoicesService } from '../services/invoices.service';
@@ -162,8 +163,8 @@ export const InvoicesPage: React.FC = () => {
 
   // Load danh sách hóa đơn từ API
   const fetchInvoices = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const data = await invoicesService.getInvoices();
       setInvoices(data);
     } catch {
@@ -175,8 +176,8 @@ export const InvoicesPage: React.FC = () => {
 
   // Load danh sách phiếu thu từ API
   const reloadReceipts = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const data = await receiptsService.getReceipts();
       if (Array.isArray(data) && data.length > 0) {
         setReceipts(data);
@@ -191,9 +192,29 @@ export const InvoicesPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    void fetchInvoices();
-    void reloadReceipts();
-  }, [fetchInvoices, reloadReceipts]);
+    let active = true;
+    const loadInitialData = async () => {
+      try {
+        const [invData, recData] = await Promise.allSettled([
+          invoicesService.getInvoices(),
+          receiptsService.getReceipts(),
+        ]);
+        if (!active) return;
+        if (invData.status === 'fulfilled') {
+          setInvoices(invData.value);
+        }
+        if (recData.status === 'fulfilled' && Array.isArray(recData.value) && recData.value.length > 0) {
+          setReceipts(recData.value);
+        }
+      } catch {
+        // demo fallback
+      }
+    };
+    void loadInitialData();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Bộ lọc Hóa đơn
   const filteredInvoices = useMemo(() => {
@@ -412,42 +433,51 @@ export const InvoicesPage: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+            <div className="overflow-x-auto min-h-[360px]">
+              <table className="w-full text-sm divide-y divide-slate-100">
                 <thead>
                   <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3 px-4 w-[16%]">Mã phiếu thu</th>
-                    <th className="py-3 px-4 w-[34%]">Đại lý</th>
-                    <th className="py-3 px-4 text-right w-[16%]">Số tiền</th>
-                    <th className="py-3 px-4 text-center w-[14%]">Hình thức</th>
-                    <th className="py-3 px-4 w-[12%]">Người thu</th>
-                    <th className="py-3 px-4 text-right w-[8%]">Thao tác</th>
+                    <th className="px-4 py-3 text-left w-[15%]">Mã phiếu thu</th>
+                    <th className="px-4 py-3 text-left w-[35%]">Đại lý</th>
+                    <th className="px-4 py-3 text-right w-[15%]">Số tiền</th>
+                    <th className="px-4 py-3 text-center w-[12%]">Hình thức</th>
+                    <th className="px-4 py-3 text-left w-[13%]">Người thu</th>
+                    <th className="px-4 py-3 text-right w-[10%] min-w-[105px]">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
+                <tbody
+                  className={`divide-y divide-slate-100/90 transition-opacity duration-150 ${
+                    loading ? 'opacity-60 pointer-events-none' : 'opacity-100'
+                  }`}
+                >
                   {filteredReceipts.map((r) => (
                     <tr
                       key={r.id}
                       className="hover:bg-indigo-50/25 transition-colors group"
                     >
-                      {/* 1. Mã duy nhất: Interactive Badge */}
+                      {/* 1. Mã duy nhất: Interactive monospace button badge */}
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => handleOpenPrint(r)}
-                          className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200/60 px-2.5 py-1 rounded-md transition-all cursor-pointer shadow-2xs"
-                          title="Bấm để xem & in phiếu thu"
+                          className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200/60 px-2.5 py-1 rounded-md transition-all cursor-pointer shadow-2xs group-hover:border-indigo-300"
+                          title={`Xem & in phiếu thu ${r.code}`}
                         >
-                          <Receipt className="w-3.5 h-3.5 text-indigo-500" />
+                          <Receipt className="w-3.5 h-3.5 text-indigo-500 group-hover:text-indigo-700 transition-colors" />
                           <span>{r.code}</span>
                         </button>
                       </td>
 
-                      {/* 2. Thông tin đại lý */}
+                      {/* 2. Thông tin đại lý: Tên đại lý + Mã & SĐT */}
                       <td className="px-4 py-3.5">
-                        <div className="font-bold text-slate-900 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPrint(r)}
+                          className="text-left font-semibold text-slate-800 hover:text-indigo-600 transition-colors line-clamp-1 text-sm cursor-pointer block max-w-full"
+                          title={r.customerName}
+                        >
                           {r.customerName}
-                        </div>
+                        </button>
                         <div className="text-[11px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
                           <span>{r.customerCode}</span>
                           {r.customerPhone && (
@@ -471,19 +501,20 @@ export const InvoicesPage: React.FC = () => {
                         {getPaymentMethodBadge(r.paymentMethod)}
                       </td>
 
-                      {/* 5. Người thu: Tên người thu gọn gàng */}
+                      {/* 5. Người thu: Tên người thu kèm icon tinh tế */}
                       <td className="px-4 py-3.5 whitespace-nowrap">
-                        <span className="font-semibold text-slate-800 text-xs">
-                          {r.collectorName}
-                        </span>
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
+                          <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span>{r.collectorName || '—'}</span>
+                        </div>
                       </td>
 
-                      {/* 6. Thao tác: Gộp thành 1 nút In phiếu duy nhất */}
+                      {/* 6. Thao tác: Nút In phiếu */}
                       <td className="px-4 py-3.5 text-right whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => handleOpenPrint(r)}
-                          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-lg transition-colors cursor-pointer shadow-2xs hover:border-indigo-300"
                           title="In phiếu thu"
                         >
                           <Printer className="w-3.5 h-3.5 text-indigo-600" />
