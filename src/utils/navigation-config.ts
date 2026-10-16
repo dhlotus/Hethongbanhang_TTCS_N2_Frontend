@@ -357,6 +357,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Quản lý Tồn kho',
     },
     {
+      id: 'inventory-batches',
+      name: 'Lô hàng & Gợi ý FEFO',
+      path: '/warehouse/batches',
+      icon: CalendarClock,
+      category: 'Quản lý Tồn kho',
+    },
+    {
       id: 'inventory-suppliers',
       name: 'Quản lý nhà cung cấp',
       path: '/inventory/suppliers',

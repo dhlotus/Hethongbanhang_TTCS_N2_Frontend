@@ -602,6 +602,52 @@ export const orderPickingService = {
   },
 
   /**
+   * Cập nhật phân bổ lô xuất FEFO cho dòng hàng (SN-187)
+   */
+  async updateLineItemBatches(
+    sheetId: string,
+    itemId: string,
+    selectedBatches: import('../types/fefo-picking.types').SelectedBatchAllocation[],
+    isOverride: boolean,
+    overrideReason?: string,
+    overrideReasonCode?: string,
+  ): Promise<PickingSheet> {
+    const list = getStoredSheets();
+    const sheetIndex = list.findIndex((s) => s.id === sheetId);
+    if (sheetIndex === -1) {
+      throw new Error(`Không tìm thấy phiếu soạn hàng với ID: ${sheetId}`);
+    }
+
+    const targetSheet = list[sheetIndex];
+    const itemIndex = targetSheet.items.findIndex((it) => it.id === itemId);
+    if (itemIndex === -1) {
+      throw new Error(`Không tìm thấy dòng hàng với ID: ${itemId}`);
+    }
+
+    const currentItem = targetSheet.items[itemIndex];
+    const totalBatchQty = selectedBatches.reduce((sum, b) => sum + b.quantity, 0);
+
+    const updatedItem: PickingLineItem = {
+      ...currentItem,
+      totalPickedQuantity: totalBatchQty,
+      status: totalBatchQty >= currentItem.totalRequiredQuantity ? 'PICKED' : totalBatchQty > 0 ? 'SHORT_PICKED' : currentItem.status,
+      selectedBatches,
+      isOverrideBatch: isOverride,
+      batchOverrideReason: overrideReason,
+      batchOverrideReasonCode: overrideReasonCode,
+      orders: allocateQuantityAcrossOrders(currentItem.orders, totalBatchQty),
+      completedAt: totalBatchQty > 0 ? new Date().toISOString() : undefined,
+    };
+
+    targetSheet.items[itemIndex] = updatedItem;
+    const finalSheet = recalculateSheetSummary(targetSheet);
+    list[sheetIndex] = finalSheet;
+    saveStoredSheets(list);
+
+    return finalSheet;
+  },
+
+  /**
    * Xóa một phiếu soạn hàng
    */
   async deletePickingSheet(sheetId: string): Promise<void> {

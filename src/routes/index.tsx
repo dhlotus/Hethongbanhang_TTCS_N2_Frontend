@@ -41,6 +41,7 @@ import { tokenStorage } from '../utils/token-storage';
 import { WarehousesPage } from '../pages/warehouses-page';
 import { InternalTransfersPage } from '../pages/inventory/internal-transfers-page';
 import { OrderPickingPage } from '../pages/order-picking-page';
+import { InventoryBatchesPage } from '../pages/inventory-batches-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -290,6 +291,8 @@ export const AppRoutes: React.FC = () => {
               {/* Route phiếu soạn hàng theo vị trí & đường đi trong kho (Wave Picking) */}
               <Route path="/inventory/picking" element={<OrderPickingPage />} />
               <Route path="/warehouse/picking" element={<OrderPickingPage />} />
+              {/* Route Quản lý Lô & Gợi ý xuất FEFO (SN-187) */}
+              <Route path="/warehouse/batches" element={<InventoryBatchesPage />} />
             </Route>
 
             <Route
@@ -324,13 +327,7 @@ export const AppRoutes: React.FC = () => {
               />
               <Route
                 path="/inventory/batches"
-                element={
-                  <RoleModulePage
-                    title="Quản lý Lô & Hạn sử dụng (FEFO)"
-                    subtitle="Giám sát vòng đời lô hàng, cảnh báo cận hạn sử dụng để kích hoạt xả hàng khuyến mãi"
-                    requiredRole="Quản lý kho"
-                  />
-                }
+                element={<InventoryBatchesPage />}
               />
               <Route
                 path="/reports/inventory"

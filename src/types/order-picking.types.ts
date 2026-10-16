@@ -95,6 +95,11 @@ export interface PickingLineItem {
   notes?: string;
   orders: OrderAllocationItem[];
   completedAt?: string;
+  // Bổ sung quản lý Lô xuất FEFO (SN-187)
+  selectedBatches?: import('./fefo-picking.types').SelectedBatchAllocation[];
+  isOverrideBatch?: boolean;
+  batchOverrideReason?: string;
+  batchOverrideReasonCode?: string;
 }
 
 /** Thực thể Phiếu soạn hàng (Picking Sheet / Wave Picking) */

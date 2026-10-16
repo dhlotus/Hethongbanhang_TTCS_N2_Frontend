@@ -10,6 +10,8 @@ import {
   ChevronUp,
   Layers,
   FileText,
+  Sparkles,
+  AlertTriangle,
 } from 'lucide-react';
 import type { PickingLineItem } from '../../types/order-picking.types';
 
@@ -18,6 +20,7 @@ export interface PickingLineItemCardProps {
   onQuickPickAll: (itemId: string) => void;
   onRequestShortPickReason: (item: PickingLineItem, pickedQty: number) => void;
   onUpdateQuantityDirect: (itemId: string, pickedQty: number) => void;
+  onOpenFefoSelector?: (item: PickingLineItem) => void;
 }
 
 export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
@@ -25,6 +28,7 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
   onQuickPickAll,
   onRequestShortPickReason,
   onUpdateQuantityDirect,
+  onOpenFefoSelector,
 }) => {
   const [showOrderBreakdown, setShowOrderBreakdown] = useState(false);
   const [inputVal, setInputVal] = useState<string>(String(item.totalPickedQuantity));
@@ -146,6 +150,27 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
             <span className="bg-slate-100 px-2 py-0.5 rounded">Tầng: <strong>{item.location.shelf}</strong></span>
             <span className="bg-slate-100 px-2 py-0.5 rounded">Ô: <strong>{item.location.bin}</strong></span>
           </div>
+
+          {/* Hiển thị phân bổ Lô xuất FEFO nếu đã được chọn (SN-187) */}
+          {item.selectedBatches && item.selectedBatches.length > 0 && (
+            <div className="mt-2.5 p-2 rounded-xl bg-indigo-50/70 border border-indigo-200/80 space-y-1">
+              <div className="flex items-center gap-1.5 text-xs text-indigo-950 font-bold">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span>Lô xuất:</span>
+                <span className="font-mono text-indigo-800">
+                  {item.selectedBatches.map((b) => `${b.batchNumber} (${b.quantity} ${item.unit})`).join(', ')}
+                </span>
+              </div>
+              {item.isOverrideBatch && item.batchOverrideReason && (
+                <div className="flex items-start gap-1 text-[11px] text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-md border border-amber-200">
+                  <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Chọn khác FEFO:</strong> {item.batchOverrideReason}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Cảnh báo lý do soạn thiếu nếu có */}
@@ -219,6 +244,19 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
               <Check className="w-4 h-4 stroke-[3]" />
               Soạn đủ
             </button>
+
+            {/* Nút Chọn Lô FEFO (SN-187) */}
+            {onOpenFefoSelector && (
+              <button
+                type="button"
+                onClick={() => onOpenFefoSelector(item)}
+                className="h-10 px-3 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 text-indigo-900 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shadow-2xs"
+                title="Gợi ý và chọn Lô xuất theo nguyên tắc Hạn dùng gần nhất (FEFO)"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                Lô FEFO
+              </button>
+            )}
 
             {/* Nút Báo thiếu */}
             <button
