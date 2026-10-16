@@ -254,7 +254,7 @@ export const ToastContainer: React.FC = () => {
   const content = (
     <div
       aria-live="polite"
-      className="fixed top-5 right-3 sm:right-6 z-[99999] flex flex-col gap-2.5 pointer-events-none w-auto items-end"
+      className="fixed bottom-6 right-6 z-50 flex flex-col-reverse gap-2.5 pointer-events-none w-auto items-end"
     >
       {toasts.map((item) => (
         <ToastItem

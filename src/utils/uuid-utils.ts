@@ -146,3 +146,90 @@ export function normalizeSupplierIdToUuid(supplierId?: string): string | undefin
   }
   return '22222222-0000-0000-0000-000000000001';
 }
+
+/**
+ * Bảng mã Crockford's Base32 chuẩn cho ULID
+ */
+const CROCKFORD_BASE32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+/**
+ * Sinh chuỗi định danh ULID ngẫu nhiên (Universally Unique Lexicographically Sortable Identifier)
+ * Chuẩn 26 ký tự (10 ký tự timestamp + 16 ký tự entropy ngẫu nhiên) theo chuẩn Crockford Base32
+ * @param prefix Tiền tố tùy chọn (VD: "CT-" hoặc để trống lấy thuần ULID 26 ký tự)
+ * @returns Chuỗi ULID chuẩn 26 ký tự (hoặc kèm tiền tố)
+ */
+export function generateUlid(prefix = ''): string {
+  const timestamp = Date.now();
+  let timeStr = '';
+  let time = timestamp;
+  for (let i = 0; i < 10; i++) {
+    const mod = time % 32;
+    timeStr = CROCKFORD_BASE32[mod] + timeStr;
+    time = Math.floor(time / 32);
+  }
+
+  let randStr = '';
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const randomBytes = new Uint8Array(16);
+    crypto.getRandomValues(randomBytes);
+    for (let i = 0; i < 16; i++) {
+      randStr += CROCKFORD_BASE32[randomBytes[i] % 32];
+    }
+  } else {
+    for (let i = 0; i < 16; i++) {
+      const rand = Math.floor(Math.random() * 32);
+      randStr += CROCKFORD_BASE32[rand];
+    }
+  }
+
+  const ulid = timeStr + randStr;
+  return prefix ? `${prefix}${ulid}` : ulid;
+}
+
+/**
+ * Sinh mã chứng từ gốc rút gọn theo chuẩn ERP: REF-YYMMDD-XXXXXX
+ * Tự động đồng bộ theo ngày nhập kho (nếu truyền vào) hoặc ngày thực tế hiện tại (new Date())
+ * - YYMMDD: 6 chữ số định dạng Năm-Tháng-Ngày (VD: ngày 15/10 là 261015, ngày 16/10 là 261016)
+ * - XXXXXX: 6 ký tự ngẫu nhiên chuẩn Crockford Base32
+ * - Tự động thay đổi theo ngày, hoàn toàn không bị cố định/hardcode
+ * @param dateInput Ngày nhập kho tùy chọn (chuỗi YYYY-MM-DD hoặc đối tượng Date)
+ * @returns Chuỗi mã chứng từ gốc rút gọn (VD: REF-261015-K9PN46)
+ */
+export function generateReferenceDocCode(dateInput?: string | Date): string {
+  let targetDate = new Date();
+  if (dateInput) {
+    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+      const [y, m, d] = dateInput.split('-').map(Number);
+      targetDate = new Date(y, m - 1, d);
+    } else {
+      const parsed = new Date(dateInput);
+      if (!isNaN(parsed.getTime())) {
+        targetDate = parsed;
+      }
+    }
+  }
+
+  const yy = String(targetDate.getFullYear()).slice(-2);
+  const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(targetDate.getDate()).padStart(2, '0');
+  const datePart = `${yy}${mm}${dd}`;
+
+  let randPart = '';
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const randomBytes = new Uint8Array(6);
+    crypto.getRandomValues(randomBytes);
+    for (let i = 0; i < 6; i++) {
+      randPart += CROCKFORD_BASE32[randomBytes[i] % 32];
+    }
+  } else {
+    for (let i = 0; i < 6; i++) {
+      const rand = Math.floor(Math.random() * 32);
+      randPart += CROCKFORD_BASE32[rand];
+    }
+  }
+
+  return `REF-${datePart}-${randPart}`;
+}
+
+
+

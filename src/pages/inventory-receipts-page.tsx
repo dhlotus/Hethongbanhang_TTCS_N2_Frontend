@@ -21,12 +21,15 @@ import { showToast } from "../components/toast";
 import { ModalLayout } from "../components/modal-layout";
 import { Pagination } from "../components/pagination";
 import { inventoryReceiptsService } from "../services/inventory-receipts.service";
+import { productsService } from "../services/products.service";
 import type { GoodsReceipt, GoodsReceiptStatus } from "../types/inventory-receipt";
+import type { Product } from "../types/products";
 import { ConfirmDeleteModal } from "../components/confirm-delete-modal";
 
 export const InventoryReceiptsPage: React.FC = () => {
   const navigate = useNavigate();
   const [receipts, setReceipts] = useState<GoodsReceipt[]>([]);
+  const [productsMap, setProductsMap] = useState<Map<string, Product>>(new Map());
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -145,6 +148,128 @@ export const InventoryReceiptsPage: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    productsService
+      .getProducts({ limit: 500 })
+      .then((res) => {
+        const map = new Map<string, Product>();
+        (res.data || []).forEach((p) => {
+          if (p.id) map.set(p.id, p);
+          if (p.uuid) map.set(p.uuid, p);
+          if (p.sku) map.set(p.sku.toUpperCase(), p);
+        });
+        setProductsMap(map);
+      })
+      .catch(() => {
+        // Fallback im lặng nếu offline hoặc có lỗi
+      });
+  }, []);
+
+  /**
+   * Helper kiểm tra chuỗi có phải mã kỹ thuật / ID tạm thời hay không
+   */
+  const isTechnicalId = (val?: string): boolean => {
+    if (!val) return true;
+    const trimmed = val.trim();
+    if (trimmed.startsWith("unit-") || trimmed.startsWith("row-") || trimmed.startsWith("temp-")) return true;
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) return true;
+    return false;
+  };
+
+  /**
+   * Tra cứu sản phẩm từ productsMap
+   */
+  const getProductForItem = (item: { productId?: string; productCode?: string }): Product | undefined => {
+    if (item.productId && productsMap.has(item.productId)) {
+      return productsMap.get(item.productId);
+    }
+    if (item.productCode && productsMap.has(item.productCode.toUpperCase())) {
+      return productsMap.get(item.productCode.toUpperCase());
+    }
+    return undefined;
+  };
+
+  /**
+   * Format tên ĐVT nhập kèm tỷ lệ quy đổi (Ví dụ: "Lốc (x6)" hoặc "Thùng (x24)")
+   */
+  const formatItemUnitName = (item: {
+    productId?: string;
+    productCode?: string;
+    unitId?: string;
+    unitName?: string;
+    conversionFactor?: number | string;
+  }): string => {
+    const factor = Number(item.conversionFactor) || 1;
+    let unitDisplayName = "";
+
+    const product = getProductForItem(item);
+
+    // 1. Thử tìm từ danh sách units của product
+    if (product && product.units && product.units.length > 0) {
+      const matchedUnit = product.units.find(
+        (u) =>
+          (!isTechnicalId(u.id) && u.id === item.unitId) ||
+          (!isTechnicalId(u.unitName) && u.unitName === item.unitName) ||
+          Number(u.conversionRate) === factor
+      );
+      if (matchedUnit && matchedUnit.unitName && !isTechnicalId(matchedUnit.unitName)) {
+        unitDisplayName = matchedUnit.unitName;
+      } else if (factor === 1 && product.baseUnit && !isTechnicalId(product.baseUnit)) {
+        unitDisplayName = product.baseUnit;
+      }
+    }
+
+    // 2. Thử từ item.unitName nếu không phải id kỹ thuật
+    if (!unitDisplayName && item.unitName && !isTechnicalId(item.unitName) && item.unitName !== "ĐVT") {
+      unitDisplayName = item.unitName;
+    }
+
+    // 3. Thử từ item.unitId nếu không phải id kỹ thuật
+    if (!unitDisplayName && item.unitId && !isTechnicalId(item.unitId) && item.unitId !== "ĐVT") {
+      unitDisplayName = item.unitId;
+    }
+
+    // 4. Fallback thông minh dựa trên factor và thông tin sản phẩm
+    if (!unitDisplayName) {
+      if (factor === 1) {
+        unitDisplayName = product?.baseUnit || "Lon";
+      } else if (factor === 6) {
+        unitDisplayName = "Lốc";
+      } else if (factor === 12) {
+        unitDisplayName = "Thùng";
+      } else if (factor >= 20 || factor === 24) {
+        unitDisplayName = "Thùng";
+      } else if (factor > 1) {
+        unitDisplayName = "Thùng";
+      } else {
+        unitDisplayName = product?.baseUnit || "Hộp";
+      }
+    }
+
+    // Hiển thị kèm tỷ lệ: Ví dụ `Lốc (x6)` hoặc `Thùng (x6)`
+    return `${unitDisplayName} (x${factor})`;
+  };
+
+  /**
+   * Lấy tên ĐVT cơ sở cho cột Quy đổi cơ sở (Ví dụ: "Lon", "Chai", "Hộp" hoặc "ĐVT cơ sở")
+   */
+  const getBaseUnitName = (item: { productId?: string; productCode?: string; productName?: string }): string => {
+    const product = getProductForItem(item);
+    if (product?.baseUnit && !isTechnicalId(product.baseUnit)) {
+      return product.baseUnit;
+    }
+
+    // Suy luận theo tên sản phẩm nếu không tìm thấy trong map
+    const name = (item.productName || item.productCode || "").toLowerCase();
+    if (name.includes("sữa bột") || name.includes("powder") || name.includes("900g")) return "Lon";
+    if (name.includes("sữa hạt") || name.includes("cereal") || name.includes("180ml")) return "Hộp";
+    if (name.includes("yến") || name.includes("nest") || name.includes("70ml")) return "Hũ";
+    if (name.includes("collagen") || name.includes("nước") || name.includes("trà") || name.includes("chai") || name.includes("lon")) return "Lon";
+    if (name.includes("hạt") || name.includes("bột")) return "Gói";
+
+    return "ĐVT cơ sở";
+  };
+
   const handleNavigateToAdjustment = (receipt: GoodsReceipt) => {
     navigate(`/inventory/adjustments?referenceCode=${encodeURIComponent(receipt.code)}&warehouseId=${encodeURIComponent(receipt.warehouseId)}`);
   };
@@ -156,7 +281,7 @@ export const InventoryReceiptsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <Package className="w-6 h-6 text-indigo-600" />
-            Nhập kho từ Nhà cung cấp
+            Nhập kho hàng hóa
           </h1>
         </div>
         <button
@@ -174,7 +299,7 @@ export const InventoryReceiptsPage: React.FC = () => {
           <form onSubmit={handleSearch} className="relative w-full sm:w-96">
             <input
               type="text"
-              placeholder="Tìm theo mã phiếu, số chứng từ, NCC..."
+              placeholder="Tìm theo mã phiếu, số chứng từ, kho nhập..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-sm transition-all"
@@ -212,9 +337,9 @@ export const InventoryReceiptsPage: React.FC = () => {
               <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <th className="px-4 py-3.5">Mã phiếu</th>
                 <th className="px-4 py-3.5">Ngày nhập</th>
-                <th className="px-4 py-3.5">Kho nhập / NCC</th>
-                <th className="px-4 py-3.5">Chứng từ gốc</th>
-                <th className="px-4 py-3.5">Tổng tiền</th>
+                <th className="px-4 py-3.5">Kho nhập</th>
+                <th className="px-4 py-3.5 whitespace-nowrap">Chứng từ gốc</th>
+                <th className="px-4 py-3.5 text-right whitespace-nowrap">Tổng tiền</th>
                 <th className="px-4 py-3.5">Trạng thái</th>
                 <th className="px-4 py-3.5 text-right min-w-[105px]">Thao tác</th>
               </tr>
@@ -253,21 +378,18 @@ export const InventoryReceiptsPage: React.FC = () => {
                           : new Date(r.createdAt).toLocaleDateString("vi-VN")}
                       </td>
                       <td className="p-4">
-                        <div className="font-medium text-slate-800 text-xs flex items-center gap-1">
+                        <div className="font-medium text-slate-800 text-xs flex items-center gap-1.5">
                           <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          {r.warehouseName || 'Kho Tổng Miền Nam'}
-                        </div>
-                        <div className="text-xs text-slate-500 mt-0.5">
-                          {r.supplierName || '---'}
+                          <span>{r.warehouseName || 'Kho Tổng Miền Nam'}</span>
                         </div>
                       </td>
                       <td className="p-4">
-                        <div className="flex items-center gap-1.5 text-slate-700 text-xs font-mono">
+                        <div className="flex items-center gap-1.5 text-slate-700 text-xs font-mono whitespace-nowrap">
                           <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          {r.referenceDocument || '---'}
+                          <span className="font-mono whitespace-nowrap">{r.referenceDocument || '---'}</span>
                         </div>
                       </td>
-                      <td className="p-4 font-mono font-medium text-slate-800">
+                      <td className="p-4 font-mono font-medium text-slate-800 text-right whitespace-nowrap">
                         {Number(r.totalCost).toLocaleString("vi-VN")} đ
                       </td>
                       <td className="p-4">
@@ -481,15 +603,6 @@ export const InventoryReceiptsPage: React.FC = () => {
                 <div>
                   <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
                     Chi tiết phiếu nhập: {selectedReceipt?.code}
-                    {selectedReceipt?.status === 'CONFIRMED' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <Lock className="w-3 h-3 text-emerald-600" /> Đã xác nhận (Đã ghi sổ)
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                        Bản nháp
-                      </span>
-                    )}
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
                     Mã chứng từ lưu kho phân hệ Quản lý Kho bãi LOHA SALES
@@ -531,18 +644,17 @@ export const InventoryReceiptsPage: React.FC = () => {
                   )}
 
                   {/* Thông tin chung */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50/70 p-4 rounded-xl border border-slate-100 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/70 p-4 rounded-xl border border-slate-100 text-xs">
                     <div>
                       <span className="text-slate-400 block mb-0.5">Kho nhập hàng:</span>
                       <strong className="text-slate-800">{selectedReceipt.warehouseName || 'Kho Tổng Miền Nam'}</strong>
                     </div>
-                    <div>
-                      <span className="text-slate-400 block mb-0.5">Nhà cung cấp:</span>
-                      <strong className="text-slate-800">{selectedReceipt.supplierName || '---'}</strong>
-                    </div>
-                    <div>
+                    <div className="min-w-0">
                       <span className="text-slate-400 block mb-0.5">Số chứng từ gốc:</span>
-                      <strong className="text-slate-800 font-mono">{selectedReceipt.referenceDocument || '---'}</strong>
+                      <div className="inline-flex items-center gap-1.5 font-mono font-semibold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200/90 shadow-2xs whitespace-nowrap text-xs max-w-full overflow-x-auto">
+                        <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="whitespace-nowrap font-mono">{selectedReceipt.referenceDocument || '---'}</span>
+                      </div>
                     </div>
                     <div>
                       <span className="text-slate-400 block mb-0.5">Ngày nhập kho:</span>
@@ -566,41 +678,40 @@ export const InventoryReceiptsPage: React.FC = () => {
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
                           <tr className="bg-slate-100/60 border-b border-slate-200 text-slate-600">
-                            <th className="p-2.5 w-10 text-center">STT</th>
-                            <th className="p-2.5">Mã SKU / Tên SP</th>
-                            <th className="p-2.5 text-center">ĐVT nhập</th>
-                            <th className="p-2.5 text-right">SL kiện</th>
-                            <th className="p-2.5 text-right">Quy đổi cơ sở</th>
-                            <th className="p-2.5 text-right">Đơn giá</th>
-                            <th className="p-2.5 text-right">Thành tiền</th>
-                            <th className="p-2.5 min-w-[150px]">Lô / Hạn dùng</th>
+                            <th className="p-2.5 w-10 text-center font-semibold">STT</th>
+                            <th className="p-2.5 text-left font-semibold">Mã SKU / Tên SP</th>
+                            <th className="p-2.5 text-center font-semibold">ĐVT nhập</th>
+                            <th className="p-2.5 text-right font-semibold">SL kiện</th>
+                            <th className="p-2.5 text-right font-semibold">Quy đổi cơ sở</th>
+                            <th className="p-2.5 text-right font-semibold">Đơn giá</th>
+                            <th className="p-2.5 text-right font-semibold">Thành tiền</th>
+                            <th className="p-2.5 min-w-[150px] text-left font-semibold">Lô / Hạn dùng</th>
                           </tr>
                         </thead>
                         <tbody>
                           {selectedReceipt.items?.map((item, idx) => (
                             <tr key={item.id || idx} className="border-b border-slate-100 hover:bg-slate-50/50">
                               <td className="p-2.5 text-center text-slate-400 font-mono">{idx + 1}</td>
-                              <td className="p-2.5">
+                              <td className="p-2.5 text-left">
                                 <div className="font-semibold text-slate-800">{item.productName || item.productCode || item.productId}</div>
                                 <div className="text-[11px] text-slate-500 font-mono">{item.productCode}</div>
                               </td>
-                              <td className="p-2.5 text-center font-medium">
-                                {item.unitName || item.unitId}
-                                {Number(item.conversionFactor) > 1 && (
-                                  <span className="text-[10px] text-slate-400 block">(x{item.conversionFactor})</span>
-                                )}
+                              <td className="p-2.5 text-center font-medium whitespace-nowrap">
+                                <span className="font-semibold text-slate-800">{formatItemUnitName(item)}</span>
                               </td>
-                              <td className="p-2.5 text-right font-mono font-medium">{Number(item.packageQuantity).toLocaleString("vi-VN")}</td>
-                              <td className="p-2.5 text-right font-mono text-indigo-600 font-semibold">
-                                {Number(item.baseQuantity).toLocaleString("vi-VN")}
+                              <td className="p-2.5 text-right font-mono font-medium text-slate-800 whitespace-nowrap">
+                                {Number(item.packageQuantity).toLocaleString("vi-VN")}
                               </td>
-                              <td className="p-2.5 text-right font-mono text-slate-600">
+                              <td className="p-2.5 text-right font-mono text-indigo-600 font-semibold whitespace-nowrap">
+                                {Number(item.baseQuantity).toLocaleString("vi-VN")} {getBaseUnitName(item)}
+                              </td>
+                              <td className="p-2.5 text-right font-mono text-slate-600 whitespace-nowrap">
                                 {Number(item.unitCost).toLocaleString("vi-VN")} đ
                               </td>
-                              <td className="p-2.5 text-right font-mono font-bold text-slate-900">
+                              <td className="p-2.5 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
                                 {Number(item.totalCost).toLocaleString("vi-VN")} đ
                               </td>
-                              <td className="p-2.5">
+                              <td className="p-2.5 text-left">
                                 {item.batchNumber ? (
                                   <div>
                                     <span className="font-mono font-semibold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">
@@ -633,10 +744,7 @@ export const InventoryReceiptsPage: React.FC = () => {
             </div>
 
             {/* Footer Modal */}
-            <div className="p-4 border-t border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <span className="text-xs text-slate-500">
-                Người lập: {selectedReceipt?.createdByName || 'Nhân viên kho'}
-              </span>
+            <div className="p-4 border-t border-slate-100 flex justify-end items-center bg-slate-50/50">
               <div className="flex items-center gap-2">
                 {selectedReceipt?.status === 'DRAFT' && (
                   <button
