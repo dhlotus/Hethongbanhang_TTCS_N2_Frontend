@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   FileSpreadsheet,
-  RotateCw,
   AlertCircle,
   CheckCircle2,
   Filter,
@@ -22,7 +21,7 @@ interface DebtReportFilterProps {
   params: QueryDebtReportParams;
   onFilterChange: (newParams: Partial<QueryDebtReportParams>) => void;
   onExportExcel: () => void;
-  onRefresh: () => void;
+  onRefresh?: () => void;
   exporting: boolean;
   loading: boolean;
   criticalOverdueCount?: number;
@@ -62,7 +61,6 @@ export const DebtReportFilter: React.FC<DebtReportFilterProps> = ({
   params,
   onFilterChange,
   onExportExcel,
-  onRefresh,
   exporting,
   loading,
   criticalOverdueCount = 0,
@@ -316,21 +314,10 @@ export const DebtReportFilter: React.FC<DebtReportFilterProps> = ({
           )}
         </div>
 
-        {/* Khoảng giãn tự động đẩy 2 nút thao tác sang phải */}
+        {/* Khoảng giãn tự động đẩy nút xuất Excel sang phải */}
         <div className="flex-1 min-w-2" />
 
-        {/* 5. Nút Làm mới */}
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={loading}
-          title="Làm mới dữ liệu"
-          className="p-2 text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50 shrink-0"
-        >
-          <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-        </button>
-
-        {/* 6. Nút Xuất Excel */}
+        {/* Nút Xuất Excel */}
         <button
           type="button"
           onClick={onExportExcel}
