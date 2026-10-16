@@ -222,7 +222,6 @@ export const ShipmentsPage: React.FC = () => {
 
   // Xác nhận xuất kho modal
   const [confirmingShipment, setConfirmingShipment] = useState<Shipment | null>(null);
-  const [isConfirming, setIsConfirming] = useState(false);
 
   const fetchShipments = useCallback(async () => {
     try {
@@ -323,23 +322,6 @@ export const ShipmentsPage: React.FC = () => {
       showToast('error', msg || 'Lỗi khi cập nhật trạng thái');
     } finally {
       setIsSubmittingStatus(false);
-    }
-  };
-
-  // Xử lý xác nhận xuất kho / hoàn tất giao hàng
-  const handleConfirmShipment = async () => {
-    if (!confirmingShipment) return;
-    try {
-      setIsConfirming(true);
-      await shipmentsService.confirmShipment(confirmingShipment.id);
-      showToast('success', `Xác nhận xuất kho thành công cho phiếu ${confirmingShipment.id}`);
-      setConfirmingShipment(null);
-      fetchShipments();
-    } catch (err) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      showToast('error', msg || 'Lỗi khi xác nhận xuất kho');
-    } finally {
-      setIsConfirming(false);
     }
   };
 
