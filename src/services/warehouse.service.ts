@@ -9,6 +9,8 @@ import type {
   WarehouseManager,
 } from '../types/warehouse.types';
 
+const agencyDefaultCache = new Map<string, { data: AgencyWarehouseDetail; expiresAt: number }>();
+
 export const warehouseService = {
   async getWarehouses(): Promise<Warehouse[]> {
     try {
@@ -91,11 +93,13 @@ export const warehouseService = {
     return response.data;
   },
   async setAgencyDefaultWarehouse(agencyId: string, warehouseId: string | null): Promise<void> {
+    agencyDefaultCache.delete(agencyId);
     await apiClient.put(`/warehouses/agencies/${encodeURIComponent(agencyId)}/default`, {
       warehouseId,
     });
   },
   async assignAgencies(warehouseId: string, agencyIds: string[]): Promise<void> {
+    agencyIds.forEach((id) => agencyDefaultCache.delete(id));
     try {
       await apiClient.post(`/warehouses/${encodeURIComponent(warehouseId)}/agencies`, {
         agencyIds,
@@ -113,9 +117,17 @@ export const warehouseService = {
     return response.data;
   },
   async getAgencyDefault(agencyId: string): Promise<AgencyWarehouseDetail> {
+    const cached = agencyDefaultCache.get(agencyId);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.data;
+    }
     const response = await apiClient.get<AgencyWarehouseDetail>(
       `/warehouses/agencies/${encodeURIComponent(agencyId)}/default`
     );
+    agencyDefaultCache.set(agencyId, {
+      data: response.data,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    });
     return response.data;
   },
   async checkDeleteEligibility(id: string): Promise<{

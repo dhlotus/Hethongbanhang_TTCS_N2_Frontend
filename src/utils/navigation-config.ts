@@ -601,7 +601,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     },
     {
       id: 'sales-customers',
-      name: 'Đại lý & Hạn mức nợ',
+      name: 'Quản lý đại lý',
       path: '/sales/customers',
       icon: Users,
       category: 'Nghiệp vụ Kinh doanh',

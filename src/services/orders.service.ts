@@ -33,6 +33,13 @@ const DRAFT_ORDERS_KEY = 'loha_draft_orders';
 const DEMO_ORDERS_KEY = 'loha_demo_orders';
 const DEMO_APPROVAL_HISTORY_KEY = 'loha_demo_order_approval_history';
 
+interface ProductsCacheEntry {
+  data: Product[];
+  expiresAt: number;
+}
+const productsListCache = new Map<string, ProductsCacheEntry>();
+const stockOverviewCache = new Map<string, { data: Map<string, number>; expiresAt: number }>();
+
 export const authStorage = tokenStorage;
 
 
@@ -577,7 +584,26 @@ export const ordersService = {
         list = list.filter((o) => o.status?.toUpperCase() === st);
       }
       if (params.customerId && params.customerId !== 'ALL') {
-        list = list.filter((o) => o.customerId === params.customerId || o.customerCode === params.customerId);
+        const qCust = String(params.customerId).toLowerCase().trim();
+        const validIds = new Set<string>([qCust]);
+        const m = qCust.match(/^(?:cust-)?(?:dl-)?([a-z]+-)?(\d+)$/i);
+        if (m) {
+          const regionalPrefix = (m[1] || '').toLowerCase();
+          const num = parseInt(m[2], 10);
+          if (!isNaN(num)) {
+            validIds.add(`cust-dl-${regionalPrefix}${String(num).padStart(4, '0')}`);
+            validIds.add(`cust-${regionalPrefix}${String(num).padStart(3, '0')}`);
+            validIds.add(`cust-${regionalPrefix}${String(num).padStart(4, '0')}`);
+            validIds.add(`dl-${regionalPrefix}${String(num).padStart(4, '0')}`);
+            validIds.add(`dl-${regionalPrefix}${String(num).padStart(3, '0')}`);
+          }
+        }
+
+        list = list.filter((o) => {
+          const oCustId = (o.customerId || '').toLowerCase().trim();
+          const oCustCode = (o.customerCode || '').toLowerCase().trim();
+          return validIds.has(oCustId) || validIds.has(oCustCode);
+        });
       }
       if (params.salesRepId && params.salesRepId !== 'ALL') {
         const rep = params.salesRepId.toLowerCase();
@@ -1007,7 +1033,12 @@ export const ordersService = {
   /**
    * Tìm kiếm sản phẩm để thêm vào dòng hàng
    */
-  async searchProducts(query: string = '', limit: number = 100, customerId?: string): Promise<Product[]> {
+  async searchProducts(
+    query: string = '',
+    limit: number = 100,
+    customerId?: string,
+    warehouseIdHint?: string,
+  ): Promise<Product[]> {
     const token = tokenStorage.getAccessToken();
     const isDemo = token?.startsWith('demo-jwt-');
 
@@ -1047,25 +1078,62 @@ export const ordersService = {
     }
 
     try {
-      const res = await apiClient.get<{ data: Product[] }>('/products', {
-        params: { search: query || undefined, limit, status: 'ACTIVE' },
-      });
-      const products = res.data.data ?? [];
-      let warehouseId: string | undefined = undefined;
-      try {
-        if (customerId) {
-          const defaultWh = await warehouseService.getAgencyDefault(customerId);
-          warehouseId = defaultWh.warehouseId;
-        }
-      } catch {}
+      const q = (query || '').trim();
+      const cacheKey = `${q.toLowerCase()}_${limit}`;
+      const cachedProdEntry = productsListCache.get(cacheKey);
+      const isProductCacheValid = cachedProdEntry && Date.now() < cachedProdEntry.expiresAt;
 
-      let availableBySku = new Map<string, number>();
-      try {
-        const stockRows = await inventoryService.getStockOverview(warehouseId);
-        availableBySku = new Map(
-          stockRows.map((stock) => [stock.sku.toUpperCase(), (stock as { availableQuantity?: number; stockQuantity?: number }).availableQuantity ?? stock.stockQuantity]),
-        );
-      } catch {}
+      // 1. Chạy song song: Tải danh mục sản phẩm và xác định kho của đại lý
+      const [productsData, resolvedWarehouseId] = await Promise.all([
+        isProductCacheValid
+          ? Promise.resolve(cachedProdEntry.data)
+          : apiClient
+              .get<{ data: Product[] }>('/products', {
+                params: { search: q || undefined, limit, status: 'ACTIVE' },
+              })
+              .then((res) => {
+                const list = res.data.data ?? [];
+                productsListCache.set(cacheKey, {
+                  data: list,
+                  expiresAt: Date.now() + 30 * 1000,
+                });
+                return list;
+              }),
+        warehouseIdHint
+          ? Promise.resolve(warehouseIdHint)
+          : customerId
+            ? warehouseService
+                .getAgencyDefault(customerId)
+                .then((res) => res.warehouseId)
+                .catch(() => undefined)
+            : Promise.resolve(undefined),
+      ]);
+
+      const products = productsData;
+      const whKey = resolvedWarehouseId || 'ALL';
+      const cachedStock = stockOverviewCache.get(whKey);
+
+      let availableBySku: Map<string, number>;
+      if (cachedStock && Date.now() < cachedStock.expiresAt) {
+        availableBySku = cachedStock.data;
+      } else {
+        try {
+          const stockRows = await inventoryService.getStockOverview(resolvedWarehouseId);
+          availableBySku = new Map(
+            stockRows.map((stock) => [
+              stock.sku.toUpperCase(),
+              (stock as { availableQuantity?: number; stockQuantity?: number }).availableQuantity ??
+                stock.stockQuantity,
+            ]),
+          );
+          stockOverviewCache.set(whKey, {
+            data: availableBySku,
+            expiresAt: Date.now() + 15 * 1000,
+          });
+        } catch {
+          availableBySku = new Map<string, number>();
+        }
+      }
 
       return products.map((product) => {
         const knownProduct = MOCK_PRODUCTS.find(
@@ -1080,11 +1148,12 @@ export const ordersService = {
             ? knownProduct.units
             : product.units;
 
-        const availableStock = availableBySku.get(product.sku.toUpperCase())
-          ?? product.availableStock
-          ?? product.availableQuantity
-          ?? product.stockQuantity
-          ?? 0;
+        const availableStock =
+          availableBySku.get(product.sku.toUpperCase()) ??
+          product.availableStock ??
+          product.availableQuantity ??
+          product.stockQuantity ??
+          0;
         return {
           ...product,
           units,
