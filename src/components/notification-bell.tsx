@@ -9,9 +9,9 @@ import {
   Tag,
   CreditCard,
   Clock,
-  ChevronRight,
   Sparkles,
 } from 'lucide-react';
+import { invoicesService } from '../services/invoices.service';
 
 export interface SystemNotification {
   id: string;
@@ -135,6 +135,38 @@ export const NotificationBell: React.FC = () => {
     };
   }, [isOpen]);
 
+  // Tải thông báo công nợ từ Backend (SN-208 A, B)
+  useEffect(() => {
+    const fetchDebtNotifs = async () => {
+      try {
+        const debtNotifs = await invoicesService.getDebtNotifications();
+        if (debtNotifs && debtNotifs.length > 0) {
+          const savedReadIds = JSON.parse(localStorage.getItem('loha_read_notifications') || '[]');
+          const formatted: SystemNotification[] = debtNotifs.map((dn) => ({
+            id: dn.id,
+            type: 'CREDIT',
+            title: dn.title,
+            message: dn.message,
+            timestamp: 'Mới nhận',
+            link: dn.link || '/portal/debt',
+            isRead: savedReadIds.includes(dn.id) || dn.isRead,
+            priority: dn.priority,
+          }));
+
+          setNotifications((prev) => {
+            const existingIds = new Set(prev.map((n) => n.id));
+            const newItems = formatted.filter((f) => !existingIds.has(f.id));
+            return [...newItems, ...prev];
+          });
+        }
+      } catch {
+        // Backend offline fallback
+      }
+    };
+
+    fetchDebtNotifs();
+  }, []);
+
   // Đánh dấu tất cả là đã đọc
   const handleMarkAllAsRead = () => {
     const updated = notifications.map((n) => ({ ...n, isRead: true }));
@@ -147,6 +179,9 @@ export const NotificationBell: React.FC = () => {
     const updated = notifications.map((n) => (n.id === item.id ? { ...n, isRead: true } : n));
     setNotifications(updated);
     saveReadStatus(updated);
+    if (item.id.startsWith('notif-debt-')) {
+      invoicesService.markNotificationRead(item.id).catch(() => {});
+    }
     setIsOpen(false);
     navigate(item.link);
   };

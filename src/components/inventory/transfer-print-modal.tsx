@@ -2,7 +2,6 @@ import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Printer,
-  Download,
   X,
   FileText,
   CheckCircle2,
@@ -253,22 +252,12 @@ export const TransferPrintModal: React.FC<TransferPrintModalProps> = ({
           </style>
         </head>
         <body>
-          <div class="header-info">
-            <p><strong>Công ty:</strong> CÔNG TY CỔ PHẦN PHÂN PHỐI & THỰC PHẨM DINH DƯỠNG LOHA VIỆT NAM</p>
-            <p><strong>Địa chỉ:</strong> 123 Nguyễn Trọng Tuyển, Phường 8, Quận Phú Nhuận, Thành phố Hồ Chí Minh</p>
-          </div>
-
           <div class="doc-title">
             <h1>PHIẾU XUẤT ĐIỀU CHUYỂN</h1>
             <p class="doc-date">Ngày ${dateParts.day} tháng ${dateParts.month} năm ${dateParts.year}</p>
-            <p class="doc-code">Số chứng từ: <strong>${transfer.code}</strong></p>
           </div>
 
           <div class="meta-section">
-            <div class="meta-row">
-              <div class="meta-label">Người nhận hàng:</div>
-              <div class="meta-value">${transfer.receivedByName || 'Nguyễn Văn A'}</div>
-            </div>
             <div class="meta-row">
               <div class="meta-label">Nội dung điều chuyển:</div>
               <div class="meta-value">${transfer.notes || 'Xuất điều chuyển sang kho chi nhánh'}</div>
@@ -352,10 +341,6 @@ export const TransferPrintModal: React.FC<TransferPrintModalProps> = ({
     }, 200);
   };
 
-  const handleExportPdf = () => {
-    handlePrint();
-  };
-
   const modalElement = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto print:hidden">
       <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200">
@@ -369,44 +354,17 @@ export const TransferPrintModal: React.FC<TransferPrintModalProps> = ({
               <h2 className="text-sm font-bold text-slate-900 tracking-tight">
                 Xem Trước & In Phiếu Xuất Điều Chuyển
               </h2>
-              <p className="text-xs text-slate-500">
-                Mã chứng từ:{' '}
-                <span className="font-mono font-bold text-[var(--color-primary)] bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                  {transfer.code}
-                </span>{' '}
-                · Khổ giấy A4 tiêu chuẩn
-              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] shadow-xs transition-colors cursor-pointer"
-              title="In trực tiếp ra máy in A4"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              In phiếu ngay
-            </button>
-            <button
-              type="button"
-              onClick={handleExportPdf}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 transition-colors cursor-pointer"
-              title="Xuất file PDF để lưu trữ chứng từ"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Xuất PDF
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer ml-1"
-              aria-label="Đóng"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            aria-label="Đóng"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Nội dung Mẫu in chuẩn A4 (Xem trước trực quan trên màn hình) */}
@@ -417,17 +375,7 @@ export const TransferPrintModal: React.FC<TransferPrintModalProps> = ({
             className="bg-white max-w-[210mm] mx-auto p-8 sm:p-12 rounded-sm shadow-xl border border-slate-300 text-black text-xs sm:text-sm"
             style={{ fontFamily: "'Times New Roman', Times, serif" }}
           >
-            {/* 1. Header Công ty */}
-            <div className="text-xs sm:text-sm mb-5 leading-normal pb-3 border-b border-slate-200">
-              <p className="font-bold">
-                Công ty: CÔNG TY CỔ PHẦN PHÂN PHỐI & THỰC PHẨM DINH DƯỠNG LOHA VIỆT NAM
-              </p>
-              <p className="mt-0.5">
-                Địa chỉ: 123 Nguyễn Trọng Tuyển, Phường 8, Quận Phú Nhuận, Thành phố Hồ Chí Minh
-              </p>
-            </div>
-
-            {/* 2. Tiêu đề Phiếu xuất điều chuyển */}
+            {/* 1. Tiêu đề Phiếu xuất điều chuyển */}
             <div className="text-center my-6">
               <h1 className="text-xl sm:text-2xl font-bold uppercase tracking-wide text-slate-950">
                 PHIẾU XUẤT ĐIỀU CHUYỂN
@@ -435,20 +383,10 @@ export const TransferPrintModal: React.FC<TransferPrintModalProps> = ({
               <p className="text-xs sm:text-sm mt-1.5 italic text-slate-700">
                 Ngày {dateParts.day} tháng {dateParts.month} năm {dateParts.year}
               </p>
-              <p className="text-xs sm:text-sm mt-1 text-slate-800">
-                Số chứng từ:{' '}
-                <span className="font-mono font-bold text-sm bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
-                  {transfer.code}
-                </span>
-              </p>
             </div>
 
-            {/* 3. Thông tin người nhận, nội dung, kho xuất, kho nhập */}
+            {/* 3. Thông tin nội dung, kho xuất, kho nhập */}
             <div className="space-y-2 mb-6 text-xs sm:text-sm leading-relaxed">
-              <div className="flex">
-                <span className="w-44 shrink-0 font-semibold text-slate-800">Người nhận hàng:</span>
-                <span className="text-slate-900">{transfer.receivedByName || 'Nguyễn Văn A'}</span>
-              </div>
               <div className="flex">
                 <span className="w-44 shrink-0 font-semibold text-slate-800">Nội dung điều chuyển:</span>
                 <span className="text-slate-900">{transfer.notes || 'Xuất điều chuyển sang kho chi nhánh'}</span>

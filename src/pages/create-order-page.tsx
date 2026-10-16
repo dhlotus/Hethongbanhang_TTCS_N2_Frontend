@@ -1297,6 +1297,9 @@ export const CreateOrderPage: React.FC = () => {
         status: asDraft ? 'DRAFT' : undefined,
         salesRepId: (currentUser as any)?.userId || currentUser?.id,
         salesRepName: currentUser?.fullName || currentUser?.username,
+        warehouseId: servingWarehouse?.warehouseId,
+        warehouse_id: servingWarehouse?.warehouseId,
+        warehouseName: servingWarehouse?.warehouseName,
       } as any);
 
       ordersService.clearDraft(DRAFT_KEY);
@@ -1604,6 +1607,12 @@ export const CreateOrderPage: React.FC = () => {
                         {getCustomerGroupBadge(selectedCustomer.group).label}
                       </span>
                     </div>
+                    {servingWarehouse && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-blue-700 font-medium pt-1">
+                        <Building2 size={12} className="text-blue-600 shrink-0" />
+                        <span className="truncate">Kho xuất: <strong>{servingWarehouse.warehouseName}</strong></span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Cột 3: Công nợ */}

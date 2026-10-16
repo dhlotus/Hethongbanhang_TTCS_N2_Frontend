@@ -21,11 +21,9 @@ import {
   Receipt,
   ArrowRight,
   ArrowLeft,
-  Info,
   Check,
   CreditCard,
   Eye,
-  EyeOff,
   XCircle,
   ChevronDown,
   ChevronUp,
@@ -42,6 +40,7 @@ import { orderPricingService } from '../services/order-pricing.service';
 import { priceListsService } from '../services/price-lists.service';
 import { discountPoliciesService, getApplicablePolicyInfo, type DiscountPolicy } from '../services/discount-policies.service';
 import { customerService } from '../services/customer.service';
+import { warehouseService } from '../services/warehouse.service';
 import { PRODUCT_CATEGORIES } from '../services/products.service';
 import { tokenStorage } from '../utils/token-storage';
 import { getStoredUser } from '../utils/navigation';
@@ -208,8 +207,17 @@ export const AgencyPortalPage: React.FC = () => {
   const catalogPageSize = catalogRows * 4;
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 3. STATE CÔNG NỢ THỜI GIAN THỰC (SN-41 & SN-49)
+  // 3. STATE CÔNG NỢ THỜI GIAN THỰC & KHO PHỤC VỤ (SN-41 & SN-49)
   // ──────────────────────────────────────────────────────────────────────────
+  const [servingWarehouse, setServingWarehouse] = useState<{ warehouseId: string; warehouseName: string; warehouseCode: string } | null>(null);
+
+  useEffect(() => {
+    if (!currentCustomer?.id) return;
+    warehouseService.getAgencyDefault(currentCustomer.id).then((wh) => {
+      if (wh) setServingWarehouse(wh);
+    }).catch(() => {});
+  }, [currentCustomer?.id]);
+
   const [debtStatus, setDebtStatus] = useState<CustomerDebtStatus | null>(() => {
     const initCust = customerService.getStoredCustomers()[0];
     if (!initCust) return null;
@@ -455,8 +463,8 @@ export const AgencyPortalPage: React.FC = () => {
         }
         setEffectivePriceList(priceList);
 
-        // 2. Tải danh sách sản phẩm kèm tồn khả dụng (SN-42) với số lượng đầy đủ
-        const prods = await ordersService.searchProducts('', 100);
+        // 2. Tải danh sách sản phẩm kèm tồn khả dụng (SN-42) với số lượng đầy đủ theo kho đại lý
+        const prods = await ordersService.searchProducts('', 100, currentCustomer?.id);
         if (prods && prods.length > 0) {
           setProducts(prods);
         }
@@ -1256,6 +1264,10 @@ export const AgencyPortalPage: React.FC = () => {
         priceListId: effectivePriceList?.id,
         isCreditLimitExceeded: cartTotals.isExceeded,
         creditLimitExceededAmount: cartTotals.exceededAmount,
+        warehouseId: servingWarehouse?.warehouseId,
+        warehouse_id: servingWarehouse?.warehouseId,
+        warehouseName: servingWarehouse?.warehouseName,
+        warehouseCode: servingWarehouse?.warehouseCode,
       };
 
       const created = await ordersService.createOrder(payload);
@@ -1371,19 +1383,27 @@ export const AgencyPortalPage: React.FC = () => {
         {/* ===================================================================== */}
         {/* 2. TIÊU ĐỀ DANH MỤC SẢN PHẨM & BẢNG GIÁ ĐẠI LÝ                        */}
         {/* ===================================================================== */}
-        <div className="flex items-center gap-2.5 mb-4">
-          <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-            <Package className="w-5 h-5" />
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+              <Package className="w-5 h-5" />
+            </div>
+            <div className="flex items-center flex-wrap gap-2">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                Danh mục sản phẩm
+              </h2>
+              <span className="text-slate-400 font-normal">-</span>
+              <span className="text-xs sm:text-sm font-semibold text-indigo-600">
+                Bảng giá đại lý tháng 11/2026
+              </span>
+            </div>
           </div>
-          <div className="flex items-center flex-wrap gap-2">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-              Danh mục sản phẩm
-            </h2>
-            <span className="text-slate-400 font-normal">-</span>
-            <span className="text-xs sm:text-sm font-semibold text-indigo-600">
-              Bảng giá đại lý tháng 11/2026
-            </span>
-          </div>
+          {servingWarehouse && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-xs font-semibold shadow-2xs">
+              <Building2 className="w-4 h-4 text-blue-600" />
+              <span>Kho xuất hàng: <strong>{servingWarehouse.warehouseName}</strong></span>
+            </div>
+          )}
         </div>
 
         {/* ===================================================================== */}
@@ -2318,8 +2338,11 @@ export const AgencyPortalPage: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 pt-1 border-t border-indigo-100/60">
                       <div>Mã đại lý: <strong className="text-slate-800 font-mono">{currentCustomer?.code}</strong></div>
                       <div>Số điện thoại: <strong className="text-slate-800">{currentCustomer?.phone || 'Chưa cập nhật'}</strong></div>
-                      <div className="sm:col-span-2 text-indigo-700">
-                        Bảng giá áp dụng: <strong>{effectivePriceList?.name || 'Theo nhóm đại lý'}</strong>
+                      <div>
+                        Bảng giá: <strong className="text-indigo-700">{effectivePriceList?.name || 'Theo nhóm đại lý'}</strong>
+                      </div>
+                      <div>
+                        Kho xuất hàng: <strong className="text-blue-700">{servingWarehouse?.warehouseName || 'Kho mặc định'}</strong>
                       </div>
                     </div>
                   </div>

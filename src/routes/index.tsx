@@ -29,6 +29,7 @@ import { ReturnsPage } from '../pages/returns-page';
 import { DashboardPage } from '../pages/dashboard-page';
 import { AgencyPortalPage } from '../pages/agency-portal-page';
 import { PortalOrderConfirmPage } from '../pages/portal-order-confirm-page';
+import { PortalDebtPage } from '../pages/portal-debt-page';
 import { NotFoundPage } from '../pages/not-found-page';
 import { ForbiddenPage } from '../pages/forbidden-page';
 import { ProtectedRoute } from '../components/protected-route';
@@ -89,6 +90,26 @@ export const AppRoutes: React.FC = () => {
               <Route path="/inventory/warehouses" element={<WarehousesPage />} />
             </Route>
 
+            {/* SN-170 & SN-174: Cổng Theo dõi vận chuyển & Danh sách đơn Đại lý */}
+            <Route
+              element={
+                <RoleGuard
+                  allowedRoles={[
+                    'CUSTOMER',
+                    'ADMIN',
+                    'SALES_REP',
+                    'SALES_MANAGER',
+                    'WAREHOUSE_STAFF',
+                    'WAREHOUSE_MANAGER',
+                    'ACCOUNTANT',
+                  ]}
+                  moduleName="Theo dõi đơn hàng & Giao vận"
+                />
+              }
+            >
+              <Route path="/portal/tracking" element={<PortalOrdersPage />} />
+            </Route>
+
             <Route
               element={
                 <RoleGuard
@@ -101,18 +122,7 @@ export const AppRoutes: React.FC = () => {
               <Route path="/portal/orders" element={<AgencyPortalPage />} />
               <Route path="/portal/orders/confirm" element={<PortalOrderConfirmPage />} />
               <Route path="/portal/orders/create" element={<Navigate to="/portal/orders/confirm" replace />} />
-              {/* SN-170 & SN-174: Cổng Theo dõi vận chuyển & Danh sách đơn Đại lý */}
-              <Route path="/portal/tracking" element={<PortalOrdersPage />} />
-              <Route
-                path="/portal/debt"
-                element={
-                  <RoleModulePage
-                    title="Sổ công nợ của tôi"
-                    subtitle="Đối chiếu công nợ phát sinh, lịch sử thanh toán và thời hạn tín dụng mua buôn"
-                    requiredRole="Đại lý B2B"
-                  />
-                }
-              />
+              <Route path="/portal/debt" element={<PortalDebtPage />} />
               <Route
                 path="/portal/profile"
                 element={
@@ -288,6 +298,10 @@ export const AppRoutes: React.FC = () => {
             >
               <Route
                 path="/inventory/transfers"
+                element={<InternalTransfersPage />}
+              />
+              <Route
+                path="/inventory/internal-transfers"
                 element={<InternalTransfersPage />}
               />
             </Route>

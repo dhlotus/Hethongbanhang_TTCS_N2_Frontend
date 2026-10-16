@@ -138,6 +138,8 @@ export interface AdjustStockPayload {
   reason: string;
   referenceCode?: string; // Mã phiếu kho / chứng từ tham chiếu
   warehouseLocation?: string;
+  warehouseId?: string;
+  warehouse_id?: string;
 }
 
 export interface StockAdjustmentResponse {

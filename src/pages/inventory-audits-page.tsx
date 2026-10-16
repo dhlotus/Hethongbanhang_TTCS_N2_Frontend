@@ -7,7 +7,6 @@ import {
   Search,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
   Warehouse,
   ShieldCheck,
   Layers,
@@ -49,18 +48,53 @@ export const InventoryAuditsPage: React.FC = () => {
     );
   }, [userRoles]);
 
+  const [searchParams, setSearchParams] = useSearchParams();
   // Search params từ điều hướng (ví dụ: chuyển từ Phiếu nhập kho đã xác nhận sang lập điều chỉnh)
-  const [searchParams] = useSearchParams();
   const referenceCode = searchParams.get('referenceCode');
+
+  // Helper đồng bộ query parameters với URL
+  const updateQueryParam = useCallback(
+    (paramsToUpdate: Record<string, string | null | undefined>) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          Object.entries(paramsToUpdate).forEach(([key, val]) => {
+            if (
+              val === null ||
+              val === undefined ||
+              val === '' ||
+              (key === 'status' && val === 'ALL') ||
+              (key === 'page' && val === '1') ||
+              (key === 'limit' && val === '10')
+            ) {
+              next.delete(key);
+            } else {
+              next.set(key, val);
+            }
+          });
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  // Đọc giá trị Query Parameters ban đầu từ URL
+  const initialStatus = searchParams.get('status') || 'ALL';
+  const initialSearch = searchParams.get('search') || searchParams.get('q') || '';
+  const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const initialLimit = Math.max(1, parseInt(searchParams.get('limit') || searchParams.get('pageSize') || '10', 10) || 10);
+  const initialCreate = searchParams.get('create') === 'true' || searchParams.get('action') === 'create';
 
   // State
   const [audits, setAudits] = useState<InventoryAudit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState(referenceCode || '');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [searchTerm, setSearchTerm] = useState(referenceCode || initialSearch);
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
 
   // Modal State
-  const [createModalOpen, setCreateModalOpen] = useState(Boolean(referenceCode));
+  const [createModalOpen, setCreateModalOpen] = useState(Boolean(referenceCode) || initialCreate);
   const [selectedAudit, setSelectedAudit] = useState<InventoryAudit | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
@@ -83,7 +117,6 @@ export const InventoryAuditsPage: React.FC = () => {
 
   // Complete Audit State
   const [completeReason, setCompleteReason] = useState('');
-  const [completeNote, setCompleteNote] = useState('');
   const [isCompleting, setIsCompleting] = useState(false);
 
   // Cancel Audit State
@@ -91,8 +124,8 @@ export const InventoryAuditsPage: React.FC = () => {
   const [isCancelling, setIsCancelling] = useState(false);
 
   // Pagination & Action Menu State
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialLimit);
   const [actionMenuAuditId, setActionMenuAuditId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -100,6 +133,30 @@ export const InventoryAuditsPage: React.FC = () => {
     window.addEventListener('click', handleCloseMenu);
     return () => window.removeEventListener('click', handleCloseMenu);
   }, []);
+
+  // Đồng bộ từ URL khi người dùng bấm nút Back / Forward của trình duyệt
+  useEffect(() => {
+    const q = searchParams.get('search') || searchParams.get('q') || '';
+    if (q !== searchTerm) {
+      setSearchTerm(q);
+    }
+    const s = searchParams.get('status') || 'ALL';
+    if (s !== statusFilter) {
+      setStatusFilter(s);
+    }
+    const p = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    if (p !== page) {
+      setPage(p);
+    }
+    const l = Math.max(1, parseInt(searchParams.get('limit') || searchParams.get('pageSize') || '10', 10) || 10);
+    if (l !== pageSize) {
+      setPageSize(l);
+    }
+    const shouldOpenCreate = searchParams.get('create') === 'true' || searchParams.get('action') === 'create';
+    if (shouldOpenCreate !== createModalOpen) {
+      setCreateModalOpen(shouldOpenCreate);
+    }
+  }, [searchParams]);
 
   // Load danh sách phiếu
   const loadAudits = useCallback(async () => {
@@ -123,7 +180,7 @@ export const InventoryAuditsPage: React.FC = () => {
   }, [loadAudits]);
 
   // Mở màn hình chi tiết / đếm
-  const handleOpenDetail = (audit: InventoryAudit) => {
+  const handleOpenDetail = useCallback((audit: InventoryAudit, updateUrl = true) => {
     setSelectedAudit(audit);
     // Khởi tạo state đếm từ items hiện tại
     const countsMap: { [productId: string]: { actualQuantity: number | ''; note: string } } = {};
@@ -135,16 +192,67 @@ export const InventoryAuditsPage: React.FC = () => {
     }
     setEditingCounts(countsMap);
     setDetailModalOpen(true);
-  };
+    if (updateUrl) {
+      updateQueryParam({ auditId: audit.auditCode || audit.id });
+    }
+  }, [updateQueryParam]);
+
+  // Đóng màn hình chi tiết và xóa query param
+  const handleCloseDetail = useCallback(() => {
+    setDetailModalOpen(false);
+    setSelectedAudit(null);
+    updateQueryParam({ auditId: null });
+  }, [updateQueryParam]);
+
+  // Quản lý Query Param khi mở/đóng Modal Tạo phiếu
+  const handleOpenCreateModal = useCallback(() => {
+    setCreateModalOpen(true);
+    updateQueryParam({ create: 'true' });
+  }, [updateQueryParam]);
+
+  const handleCloseCreateModal = useCallback(() => {
+    setCreateModalOpen(false);
+    updateQueryParam({ create: null });
+  }, [updateQueryParam]);
+
+  // Tự động khôi phục / mở màn hình chi tiết khi URL có query param ?auditId=... (F5 không mất)
+  const auditIdParam = searchParams.get('auditId') || searchParams.get('id') || '';
+  useEffect(() => {
+    if (!auditIdParam) {
+      if (detailModalOpen) {
+        setDetailModalOpen(false);
+        setSelectedAudit(null);
+      }
+      return;
+    }
+    if (selectedAudit && (selectedAudit.id === auditIdParam || selectedAudit.auditCode === auditIdParam)) {
+      return;
+    }
+    const found = audits.find((a) => a.id === auditIdParam || a.auditCode === auditIdParam);
+    if (found) {
+      handleOpenDetail(found, false);
+      return;
+    }
+    inventoryAuditsService
+      .getAuditById(auditIdParam)
+      .then((item) => {
+        if (item) {
+          handleOpenDetail(item, false);
+        }
+      })
+      .catch(() => {});
+  }, [auditIdParam, audits, selectedAudit, detailModalOpen, handleOpenDetail]);
 
   // Tạo phiếu kiểm kê mới (AC1: chốt bookQuantity)
   const handleCreateAudit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setIsCreating(true);
+      const targetWarehouseName = user?.assignedWarehouse || 'Kho Tổng Miền Nam - LOHA WH01';
+      const targetWarehouseId = user?.warehouseId || user?.warehouseCode || createWarehouseId;
       const payload: CreateInventoryAuditPayload = {
-        warehouseId: createWarehouseId,
-        warehouseName: 'Kho Tổng Miền Nam - LOHA WH01',
+        warehouseId: targetWarehouseId,
+        warehouseName: targetWarehouseName,
         scope: createScope,
         categoryName: createScope === 'CATEGORY' ? createCategory : undefined,
         note: createNote.trim() || undefined,
@@ -159,6 +267,7 @@ export const InventoryAuditsPage: React.FC = () => {
       await loadAudits();
       // Mở ngay màn hình kiểm đếm cho phiếu vừa tạo
       handleOpenDetail(newAudit);
+      updateQueryParam({ create: null, auditId: newAudit.auditCode || newAudit.id });
     } catch (err: any) {
       toast.error(err.message || 'Lỗi tạo phiếu kiểm kê');
     } finally {
@@ -205,7 +314,6 @@ export const InventoryAuditsPage: React.FC = () => {
     }
     setSelectedAudit(audit);
     setCompleteReason('');
-    setCompleteNote('');
     setCompleteModalOpen(true);
   };
 
@@ -220,14 +328,14 @@ export const InventoryAuditsPage: React.FC = () => {
 
     try {
       setIsCompleting(true);
-      const updated = await inventoryAuditsService.completeAudit(selectedAudit.id, {
+      await inventoryAuditsService.completeAudit(selectedAudit.id, {
         reason: completeReason.trim(),
-        note: completeNote.trim() || undefined,
+        note: completeReason.trim() || undefined,
       });
 
-      toast.success(`Chốt kiểm kê thành công! Tồn kho đã điều chỉnh về số thực đếm.`);
+      toast.success('Chốt kiểm kê thành công! Tồn kho đã điều chỉnh về số thực đếm.');
       setCompleteModalOpen(false);
-      setSelectedAudit(updated);
+      handleCloseDetail(); // Tự động quay lại danh sách phiếu kiểm kê
       await loadAudits();
     } catch (err: any) {
       toast.error(err.message || 'Lỗi khi chốt phiếu kiểm kê');
@@ -294,12 +402,6 @@ export const InventoryAuditsPage: React.FC = () => {
                 Chốt Kiểm Kê & Điều Chỉnh Tồn Kho
               </h3>
             </div>
-            <button
-              onClick={() => setCompleteModalOpen(false)}
-              className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
-            >
-              ✕
-            </button>
           </div>
 
           <form onSubmit={handleCompleteAudit} className="p-6 space-y-4">
@@ -320,27 +422,14 @@ export const InventoryAuditsPage: React.FC = () => {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase mb-1.5">
-                Lý do điều chỉnh tồn kho <span className="text-rose-500">* (Bắt buộc)</span>
+                Lý do & Ghi chú điều chỉnh tồn kho <span className="text-rose-500">* (Bắt buộc)</span>
               </label>
               <textarea
-                rows={3}
+                rows={4}
                 required
-                placeholder="Ví dụ: Bù trừ hao hụt bốc xếp theo biên bản số BB-1026, xuất hủy hàng móp méo..."
+                placeholder="Ví dụ: Bù trừ hao hụt bốc xếp theo biên bản số BB-1026, xuất hủy hàng móp méo; Phê duyệt bởi Ban Giám Đốc và phòng Kế toán..."
                 value={completeReason}
                 onChange={(e) => setCompleteReason(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1.5">
-                Ghi chú bổ sung
-              </label>
-              <input
-                type="text"
-                placeholder="Phê duyệt bởi Ban Giám Đốc, phòng Tài chính..."
-                value={completeNote}
-                onChange={(e) => setCompleteNote(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
@@ -378,12 +467,6 @@ export const InventoryAuditsPage: React.FC = () => {
               <XCircle className="w-5 h-5 text-rose-600" />
               <h3 className="font-bold text-slate-900 text-base">Hủy Phiếu Kiểm Kê</h3>
             </div>
-            <button
-              onClick={() => setCancelModalOpen(false)}
-              className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
-            >
-              ✕
-            </button>
           </div>
 
           <form onSubmit={handleCancelAudit} className="p-6 space-y-4">
@@ -411,7 +494,7 @@ export const InventoryAuditsPage: React.FC = () => {
                 onClick={() => setCancelModalOpen(false)}
                 className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-sm font-medium cursor-pointer"
               >
-                Quay lại
+                Hủy
               </button>
               <button
                 type="submit"
@@ -432,16 +515,13 @@ export const InventoryAuditsPage: React.FC = () => {
   // =========================================================================
   if (selectedAudit && detailModalOpen) {
     return (
-      <div className="p-6 space-y-6 max-w-[1600px] mx-auto min-h-screen bg-slate-50/50">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto min-h-screen bg-slate-50/50">
         {/* Nút quay lại & Breadcrumb */}
         <div className="flex items-center justify-between">
           <button
             type="button"
-            onClick={() => {
-              setDetailModalOpen(false);
-              setSelectedAudit(null);
-            }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-blue-600 transition-all shadow-2xs cursor-pointer"
+            onClick={handleCloseDetail}
+            className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-blue-600 transition-all shadow-2xs cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 text-slate-500" />
             <span>Quay lại danh sách phiếu kiểm kê</span>
@@ -451,7 +531,7 @@ export const InventoryAuditsPage: React.FC = () => {
         {/* Khung nội dung chính */}
         <div className="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
           {/* Header chi tiết phiếu */}
-          <div className="p-6 border-b border-slate-200 bg-slate-50/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="p-4 sm:p-6 border-b border-slate-200 bg-slate-50/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="text-xl font-bold text-slate-900">
@@ -530,7 +610,7 @@ export const InventoryAuditsPage: React.FC = () => {
           </div>
 
           {/* Table Items */}
-          <div className="p-6">
+          <div className="p-3 sm:p-6">
             <div className="mb-4">
               <h4 className="font-bold text-slate-800 text-sm">
                 Danh sách mặt hàng kiểm đếm ({selectedAudit.items.length} SKU)
@@ -540,8 +620,8 @@ export const InventoryAuditsPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
-              <table className="w-full text-left border-collapse text-sm">
+            <div className="border border-slate-200 rounded-xl overflow-x-auto shadow-2xs">
+              <table className="w-full text-left border-collapse text-sm min-w-[720px]">
                 <thead>
                   <tr className="bg-slate-100/80 border-b border-slate-200 text-xs font-semibold text-slate-700 uppercase">
                     <th className="py-3 px-3">#</th>
@@ -651,8 +731,8 @@ export const InventoryAuditsPage: React.FC = () => {
           </div>
 
           {/* Footer Bar */}
-          <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600">
+          <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-slate-600">
               <span>
                 Tổng tồn sổ sách: <strong className="text-slate-800 font-bold">{selectedAudit.totalBookQuantity.toLocaleString()}</strong>
               </span>
@@ -677,7 +757,7 @@ export const InventoryAuditsPage: React.FC = () => {
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end">
               {selectedAudit.status === 'DRAFT' && (
                 <button
                   type="button"
@@ -707,17 +787,6 @@ export const InventoryAuditsPage: React.FC = () => {
                   (Chỉ Quản lý kho mới có quyền chốt phiếu)
                 </div>
               )}
-
-              <button
-                type="button"
-                onClick={() => {
-                  setDetailModalOpen(false);
-                  setSelectedAudit(null);
-                }}
-                className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
-              >
-                Quay lại danh sách
-              </button>
             </div>
           </div>
         </div>
@@ -730,15 +799,15 @@ export const InventoryAuditsPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-5 max-w-[1600px] mx-auto min-h-screen bg-slate-50/50">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-5 max-w-[1600px] mx-auto min-h-screen bg-slate-50/50">
       {/* 1. Tiêu đề trang & Vai trò người dùng */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-5 rounded-2xl shadow-2xs border border-slate-200/90">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl shadow-2xs border border-slate-200/90">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+          <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl shrink-0">
             <ClipboardCheck className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               Kiểm kê Kho hàng
             </h1>
           </div>
@@ -746,21 +815,25 @@ export const InventoryAuditsPage: React.FC = () => {
 
         {/* Badge vai trò */}
         <div
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border self-start sm:self-auto ${
             isWarehouseManager
               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
               : 'bg-amber-50 text-amber-700 border-amber-200'
           }`}
         >
-          <ShieldCheck className="w-4 h-4" />
+          <ShieldCheck className="w-4 h-4 shrink-0" />
           <span>
-            {isWarehouseManager ? 'Vai trò: Quản lý kho (Toàn quyền)' : 'Vai trò: Thủ kho (Chỉ nhập số đếm)'}
+            {isWarehouseManager
+              ? user?.assignedWarehouse
+                ? `Vai trò: Quản lý kho (${user.assignedWarehouse})`
+                : 'Vai trò: Quản lý kho (Toàn quyền điều chỉnh)'
+              : 'Vai trò: Thủ kho (Chỉ nhập số đếm)'}
           </span>
         </div>
       </div>
 
       {/* 2. Thanh tìm kiếm, lọc trạng thái & Nút tạo phiếu kiểm kê (chung hàng) */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col md:flex-row gap-3 items-center justify-between">
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
         <div className="relative w-full md:w-96">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -768,23 +841,27 @@ export const InventoryAuditsPage: React.FC = () => {
             placeholder="Tìm theo mã phiếu, người tạo, ghi chú..."
             value={searchTerm}
             onChange={(e) => {
-              setSearchTerm(e.target.value);
+              const val = e.target.value;
+              setSearchTerm(val);
               setPage(1);
+              updateQueryParam({ search: val, page: '1' });
             }}
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
           />
         </div>
 
         <div className="flex items-center gap-2.5 w-full md:w-auto justify-end flex-wrap sm:flex-nowrap">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1 sm:flex-initial">
             <span className="text-xs font-medium text-slate-500 whitespace-nowrap">Trạng thái:</span>
             <select
               value={statusFilter}
               onChange={(e) => {
-                setStatusFilter(e.target.value);
+                const val = e.target.value;
+                setStatusFilter(val);
                 setPage(1);
+                updateQueryParam({ status: val, page: '1' });
               }}
-              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white cursor-pointer"
+              className="w-full sm:w-auto px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white cursor-pointer"
             >
               <option value="ALL">Tất cả trạng thái</option>
               <option value="DRAFT">Bản nháp (Đang kiểm đếm)</option>
@@ -796,7 +873,7 @@ export const InventoryAuditsPage: React.FC = () => {
           <button
             type="button"
             onClick={loadAudits}
-            className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors cursor-pointer"
+            className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors cursor-pointer shrink-0"
             title="Làm mới danh sách"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -804,8 +881,8 @@ export const InventoryAuditsPage: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-xs transition-all whitespace-nowrap cursor-pointer shrink-0"
+            onClick={handleOpenCreateModal}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-xs transition-all whitespace-nowrap cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Tạo phiếu kiểm kê</span>
@@ -816,7 +893,7 @@ export const InventoryAuditsPage: React.FC = () => {
       {/* 3. Bảng danh sách phiếu kiểm kê (chuẩn Form mẫu Image 3) */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
+          <table className="w-full text-left border-collapse text-sm min-w-[880px]">
             <thead>
               <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <th className="py-3.5 px-4 w-[18%]">Mã phiếu</th>
@@ -1048,10 +1125,14 @@ export const InventoryAuditsPage: React.FC = () => {
             itemLabel="phiếu"
             showRecordRange={false}
             showFirstLast={false}
-            onPageChange={(p) => setPage(p)}
+            onPageChange={(p) => {
+              setPage(p);
+              updateQueryParam({ page: String(p) });
+            }}
             onPageSizeChange={(sz) => {
               setPageSize(sz);
               setPage(1);
+              updateQueryParam({ limit: String(sz), page: '1' });
             }}
           />
         )}
@@ -1068,12 +1149,6 @@ export const InventoryAuditsPage: React.FC = () => {
                 <Warehouse className="w-5 h-5 text-blue-600" />
                 <h3 className="font-bold text-slate-900 text-base">Tạo Phiếu Kiểm Kê Kho</h3>
               </div>
-              <button
-                onClick={() => setCreateModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
-              >
-                ✕
-              </button>
             </div>
 
             <form onSubmit={handleCreateAudit} className="p-6 space-y-4">
@@ -1084,8 +1159,8 @@ export const InventoryAuditsPage: React.FC = () => {
                 <input
                   type="text"
                   disabled
-                  value="Kho Tổng Miền Nam - LOHA WH01"
-                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-700"
+                  value={user?.assignedWarehouse || 'Kho Tổng Miền Nam - LOHA WH01'}
+                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium"
                 />
               </div>
 
@@ -1156,8 +1231,8 @@ export const InventoryAuditsPage: React.FC = () => {
               <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setCreateModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-sm font-medium"
+                  onClick={handleCloseCreateModal}
+                  className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-sm font-medium cursor-pointer"
                 >
                   Hủy
                 </button>

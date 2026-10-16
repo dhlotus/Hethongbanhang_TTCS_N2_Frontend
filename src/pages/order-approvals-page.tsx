@@ -41,15 +41,7 @@ const formatDate = (isoString?: string): string => {
   }
 };
 
-/** Chuyển mã nhóm đại lý sang tiếng Việt */
-const formatCustomerGroup = (group?: string): string => {
-  if (!group) return '';
-  const g = group.toUpperCase();
-  if (g.includes('LEVEL_1') || g === 'AGENT_LEVEL_1') return 'Đại lý Cấp 1';
-  if (g.includes('LEVEL_2') || g === 'AGENT_LEVEL_2') return 'Đại lý Cấp 2';
-  if (g.includes('RETAIL')) return 'Khách lẻ';
-  return group;
-};
+
 
 /** Render huy hiệu trạng thái đơn hàng chuẩn xác */
 const renderStatusBadge = (status: OrderStatus, isPending: boolean) => {
@@ -108,7 +100,6 @@ export const OrderApprovalsPage: React.FC = () => {
 
   // Modal thẩm định chi tiết & ra quyết định
   const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
-  const [activeDetailTab, setActiveDetailTab] = useState<'ITEMS' | 'CREDIT'>('ITEMS');
   const [decisionComment, setDecisionComment] = useState('');
   const [modalValidationError, setModalValidationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -247,26 +238,17 @@ export const OrderApprovalsPage: React.FC = () => {
     );
   };
 
-  // Lọc tập đơn theo tab và điều kiện tìm kiếm
-  const filteredOrders = useMemo(() => {
+  // 1. Lọc tập đơn cơ sở theo NVKD và Từ khóa tìm kiếm
+  const baseOrders = useMemo(() => {
     return orders.filter((order) => {
-      // 1. Phân loại theo tab
-      if (activeTab === 'HISTORY') {
-        const isHistory = ['APPROVED', 'REJECTED', 'RETURNED_FOR_UPDATE'].includes(order.status);
-        if (!isHistory) return false;
-      } else {
-        // Tab Chờ duyệt: hiển thị toàn bộ đơn chờ duyệt
-        if (!isOrderPendingApproval(order)) return false;
-      }
-
-      // 2. Lọc theo nhân viên kinh doanh
+      // Lọc theo nhân viên kinh doanh
       if (selectedSalesRep !== 'ALL') {
         if (order.salesRepId !== selectedSalesRep && order.salesRepName !== selectedSalesRep) {
           return false;
         }
       }
 
-      // 3. Lọc theo từ khóa tìm kiếm
+      // Lọc theo từ khóa tìm kiếm
       if (searchTerm) {
         const q = searchTerm.toLowerCase();
         const matchCode = order.orderCode?.toLowerCase().includes(q);
@@ -275,29 +257,22 @@ export const OrderApprovalsPage: React.FC = () => {
         if (!matchCode && !matchCust && !matchRep) return false;
       }
 
-      // 4. Lọc theo tình trạng tồn kho khi ở tab Chờ duyệt
-      if (activeTab === 'PENDING' && stockFilter !== 'ALL') {
-        const stockStatus = checkOrderStock(order);
-        if (stockFilter === 'SUFFICIENT' && !stockStatus.isSufficient) return false;
-        if (stockFilter === 'INSUFFICIENT' && stockStatus.isSufficient) return false;
-      }
-
       return true;
     });
-  }, [orders, activeTab, selectedSalesRep, searchTerm, stockFilter, productsMap]);
+  }, [orders, selectedSalesRep, searchTerm]);
 
-  // Thống kê số lượng
+  // 2. Thống kê số lượng chuẩn xác theo đúng bộ lọc đang chọn (NVKD, Từ khóa)
   const stats = useMemo(() => {
-    const pendingList = orders.filter(isOrderPendingApproval);
+    const pendingList = baseOrders.filter(isOrderPendingApproval);
     const pendingCount = pendingList.length;
     const pendingAmount = pendingList.reduce((acc, o) => acc + (o.grandTotal || 0), 0);
-    const approvedCount = orders.filter((o) => o.status === 'APPROVED').length;
-    const rejectedCount = orders.filter((o) => ['REJECTED', 'RETURNED_FOR_UPDATE'].includes(o.status)).length;
-    const totalProcessed = orders.filter((o) =>
+    const approvedCount = baseOrders.filter((o) => o.status === 'APPROVED').length;
+    const rejectedCount = baseOrders.filter((o) => ['REJECTED', 'RETURNED_FOR_UPDATE'].includes(o.status)).length;
+    const totalProcessed = baseOrders.filter((o) =>
       ['APPROVED', 'REJECTED', 'RETURNED_FOR_UPDATE'].includes(o.status)
     ).length;
 
-    // Đếm số đơn chờ duyệt đủ tồn và thiếu tồn
+    // Đếm số đơn chờ duyệt đủ tồn và thiếu tồn theo đúng bộ lọc
     const pendingStockStatuses = pendingList.map((o) => checkOrderStock(o));
     const pendingSufficientCount = pendingStockStatuses.filter((s) => s.isSufficient).length;
     const pendingInsufficientCount = pendingStockStatuses.filter((s) => !s.isSufficient).length;
@@ -311,7 +286,30 @@ export const OrderApprovalsPage: React.FC = () => {
       pendingSufficientCount,
       pendingInsufficientCount,
     };
-  }, [orders, productsMap]);
+  }, [baseOrders, productsMap]);
+
+  // 3. Lọc tập đơn hiển thị theo Tab và Tình trạng tồn kho
+  const filteredOrders = useMemo(() => {
+    return baseOrders.filter((order) => {
+      // 1. Phân loại theo tab
+      if (activeTab === 'HISTORY') {
+        const isHistory = ['APPROVED', 'REJECTED', 'RETURNED_FOR_UPDATE'].includes(order.status);
+        if (!isHistory) return false;
+      } else {
+        // Tab Chờ duyệt: hiển thị đơn chờ duyệt
+        if (!isOrderPendingApproval(order)) return false;
+
+        // 2. Lọc theo tình trạng tồn kho khi ở tab Chờ duyệt
+        if (stockFilter !== 'ALL') {
+          const stockStatus = checkOrderStock(order);
+          if (stockFilter === 'SUFFICIENT' && !stockStatus.isSufficient) return false;
+          if (stockFilter === 'INSUFFICIENT' && stockStatus.isSufficient) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [baseOrders, activeTab, stockFilter, productsMap]);
 
   // Danh sách nhân viên kinh doanh
   const salesRepOptions = useMemo(() => {
@@ -415,49 +413,22 @@ export const OrderApprovalsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* ── TIÊU ĐỀ TRANG & NÚT LÀM MỚI ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
-              <ClipboardCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                Phê duyệt đơn hàng
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                Danh sách các đơn hàng đang chờ Quản lý kinh doanh xem xét và phê duyệt
-              </p>
-            </div>
-          </div>
+      {/* ── TIÊU ĐỀ TRANG (BỎ NÚT LÀM MỚI) ── */}
+      <div className="flex items-center gap-2.5">
+        <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
+          <ClipboardCheck className="w-5 h-5" />
         </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setRefreshKey((k) => k + 1)}
-            disabled={loading}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-            title="Làm mới danh sách chờ duyệt"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
-            <span>Làm mới</span>
-          </button>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+            Phê duyệt đơn hàng
+          </h1>
         </div>
       </div>
 
-      {/* ── 4 THẺ CHỈ SỐ NHANH (KPI SUMMARY THUẦN VIỆT) ── */}
+      {/* ── 4 THẺ CHỈ SỐ NHANH (KPI TĨNH, KHÔNG BẤM ĐƯỢC, BỎ CÁC NOTE NHỎ) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1: Số đơn chờ duyệt */}
-        <div
-          onClick={() => { setActiveTab('PENDING'); setCurrentPage(1); }}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer shadow-xs ${
-            activeTab === 'PENDING'
-              ? 'bg-indigo-50/70 border-indigo-300 ring-2 ring-indigo-200'
-              : 'bg-white border-slate-200/80 hover:border-slate-300'
-          }`}
-        >
+        <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Đơn chờ duyệt</span>
             <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
@@ -468,9 +439,6 @@ export const OrderApprovalsPage: React.FC = () => {
             <span className="text-2xl font-extrabold text-indigo-700">{stats.pendingCount}</span>
             <span className="text-xs text-slate-400 font-medium">đơn</span>
           </div>
-          <p className="mt-1 text-[11px] font-semibold text-slate-600 truncate">
-            Cần xem xét xử lý
-          </p>
         </div>
 
         {/* Card 2: Tổng giá trị chờ duyệt */}
@@ -486,18 +454,10 @@ export const OrderApprovalsPage: React.FC = () => {
               {formatCurrency(stats.pendingAmount)}
             </span>
           </div>
-          <p className="mt-1 text-[11px] text-slate-400 font-medium">Toàn bộ đơn chờ duyệt</p>
         </div>
 
         {/* Card 3: Đã duyệt */}
-        <div
-          onClick={() => { setActiveTab('HISTORY'); setCurrentPage(1); }}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer shadow-xs ${
-            activeTab === 'HISTORY'
-              ? 'bg-slate-50 border-slate-400 ring-2 ring-slate-200'
-              : 'bg-white border-slate-200/80 hover:border-slate-300'
-          }`}
-        >
+        <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Đã phê duyệt</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
@@ -508,14 +468,10 @@ export const OrderApprovalsPage: React.FC = () => {
             <span className="text-2xl font-extrabold text-emerald-700">{stats.approvedCount}</span>
             <span className="text-xs text-slate-400 font-medium">đơn</span>
           </div>
-          <p className="mt-1 text-[11px] text-emerald-700/80 font-medium">Đã chuyển sang giữ hàng</p>
         </div>
 
         {/* Card 4: Đã từ chối / Trả lại */}
-        <div
-          onClick={() => { setActiveTab('HISTORY'); setCurrentPage(1); }}
-          className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs cursor-pointer hover:border-slate-300"
-        >
+        <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Từ chối / Trả lại</span>
             <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
@@ -526,7 +482,6 @@ export const OrderApprovalsPage: React.FC = () => {
             <span className="text-2xl font-extrabold text-rose-700">{stats.rejectedCount}</span>
             <span className="text-xs text-slate-400 font-medium">đơn</span>
           </div>
-          <p className="mt-1 text-[11px] text-rose-700/80 font-medium">Cần chỉnh sửa hoặc hủy</p>
         </div>
       </div>
 
@@ -551,7 +506,7 @@ export const OrderApprovalsPage: React.FC = () => {
               onClick={() => { setActiveTab('HISTORY'); setCurrentPage(1); }}
               className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
                 activeTab === 'HISTORY'
-                  ? 'bg-slate-800 text-white shadow-xs'
+                  ? 'bg-indigo-600 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
@@ -562,7 +517,6 @@ export const OrderApprovalsPage: React.FC = () => {
           {/* Lọc nhanh theo tình trạng tồn kho khi ở tab Chờ duyệt */}
           {activeTab === 'PENDING' && (
             <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl border border-slate-200/80">
-              <span className="text-[11px] font-semibold text-slate-500 pl-1.5 pr-0.5">Tồn kho:</span>
               <button
                 type="button"
                 onClick={() => { setStockFilter('ALL'); setCurrentPage(1); }}
@@ -693,61 +647,55 @@ export const OrderApprovalsPage: React.FC = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left">
-              <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
+              <thead className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                 <tr>
-                  <th className="px-4 py-3.5">Mã đơn</th>
-                  <th className="px-4 py-3.5">Đại lý</th>
-                  <th className="px-3 py-3.5">NVKD / Khu vực</th>
-                  <th className="px-3 py-3.5">Ngày giao</th>
-                  <th className="px-4 py-3.5 text-right">Tổng phải thu</th>
-                  <th className="px-3 py-3.5 text-center">Trạng thái</th>
-                  <th className="px-4 py-3.5 text-center min-w-[210px]">Thao tác</th>
+                  <th className="px-4 py-3 text-left whitespace-nowrap">Mã đơn</th>
+                  <th className="px-4 py-3 text-left">Đại lý</th>
+                  <th className="px-3 py-3 text-left whitespace-nowrap">NVKD</th>
+                  <th className="px-3 py-3 text-left whitespace-nowrap">Ngày tạo đơn</th>
+                  <th className="px-4 py-3 text-right whitespace-nowrap">Tổng phải thu</th>
+                  <th className="px-3 py-3 text-center whitespace-nowrap">Trạng thái</th>
+                  <th className="px-4 py-3 text-center min-w-[13.5rem] whitespace-nowrap">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100/90">
                 {pagedOrders.map((order) => {
                   const isPending = isOrderPendingApproval(order);
                   const stockCheck = checkOrderStock(order);
 
                   return (
-                    <tr key={order.id} className="hover:bg-indigo-50/30 transition-colors">
-                      {/* Mã đơn & Ngày đặt */}
-                      <td className="px-4 py-3.5">
-                        <span className="font-extrabold text-indigo-700 font-mono text-xs block">
+                    <tr key={order.id} className="hover:bg-indigo-50/25 transition-colors group">
+                      {/* Mã đơn: Badge monospace chuyên nghiệp chuẩn Quản lý đại lý */}
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span className="inline-flex items-center font-mono text-xs font-bold text-indigo-700 bg-indigo-50/80 border border-indigo-200/60 px-2.5 py-1 rounded-md">
                           {order.orderCode}
-                        </span>
-                        <span className="text-[11px] text-slate-400">
-                          {formatDate(order.createdAt || order.deliveryDate)}
                         </span>
                       </td>
 
                       {/* Đại lý */}
                       <td className="px-4 py-3.5">
-                        <p className="font-bold text-slate-900 line-clamp-1" title={order.customerName}>
+                        <p className="font-semibold text-slate-800 line-clamp-1 text-sm" title={order.customerName}>
                           {order.customerName}
                         </p>
                         <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                          {order.customerCode || '---'} {order.customerGroup && `· ${formatCustomerGroup(order.customerGroup)}`}
+                          {order.customerCode || '---'}
                         </p>
                       </td>
 
-                      {/* NVKD / Khu vực */}
-                      <td className="px-3 py-3.5">
-                        <p className="font-semibold text-slate-800">
+                      {/* NVKD */}
+                      <td className="px-3 py-3.5 whitespace-nowrap">
+                        <p className="font-medium text-slate-700 text-xs">
                           {order.salesRepName || 'Trần Văn Long'}
                         </p>
-                        <p className="text-[11px] text-slate-400">
-                          {order.region || 'Miền Nam'}
-                        </p>
                       </td>
 
-                      {/* Ngày giao */}
-                      <td className="px-3 py-3.5 font-medium text-slate-700">
-                        {formatDate(order.deliveryDate)}
+                      {/* Ngày tạo đơn */}
+                      <td className="px-3 py-3.5 font-medium text-slate-700 whitespace-nowrap text-xs">
+                        {formatDate(order.createdAt)}
                       </td>
 
                       {/* Tổng phải thu */}
-                      <td className="px-4 py-3.5 text-right font-mono">
+                      <td className="px-4 py-3.5 text-right font-mono whitespace-nowrap">
                         <span className="font-extrabold text-slate-900 text-sm">
                           {formatCurrency(order.grandTotal)}
                         </span>
@@ -758,46 +706,52 @@ export const OrderApprovalsPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Trạng thái & Cảnh báo tồn kho trước khi duyệt */}
-                      <td className="px-3 py-3.5 text-center">
+                      {/* Trạng thái & Cảnh báo tồn kho trước khi duyệt (Kích thước badge đồng bộ w-[5.75rem] h-6 rounded-full thẳng hàng tuyệt đối) */}
+                      <td className="px-3 py-3.5 text-center whitespace-nowrap">
                         {isPending ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                              <Clock className="w-3 h-3" /> Chờ duyệt
+                          <div className="inline-flex flex-col items-center gap-1.5">
+                            <span className="w-[5.75rem] h-6 inline-flex items-center justify-center gap-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80 shadow-2xs">
+                              <Clock className="w-3 h-3 shrink-0" />
+                              <span>Chờ duyệt</span>
                             </span>
                             {stockCheck.isSufficient ? (
                               <span
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                className="w-[5.75rem] h-6 inline-flex items-center justify-center gap-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs"
                                 title="Kho đủ hàng khả dụng để đáp ứng toàn bộ đơn này"
                               >
-                                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" /> Đủ tồn kho
+                                <CheckCircle2 className="w-3 h-3 shrink-0 text-emerald-600" />
+                                <span>Đủ tồn kho</span>
                               </span>
                             ) : (
                               <span
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
+                                className="w-[5.75rem] h-6 inline-flex items-center justify-center gap-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs"
                                 title={`Không đủ tồn khả dụng: ${stockCheck.outOfStockLines.map((l) => `${l.productName} (còn ${l.available}, cần ${l.required})`).join(', ')}`}
                               >
-                                <AlertCircle className="w-2.5 h-2.5 text-rose-600" /> Thiếu tồn ({stockCheck.outOfStockLines.length})
+                                <AlertCircle className="w-3 h-3 shrink-0 text-rose-600" />
+                                <span>Thiếu tồn</span>
                               </span>
                             )}
                           </div>
                         ) : order.status === 'APPROVED' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                            <CheckCircle2 className="w-3 h-3" /> Đã duyệt
+                          <span className="w-[5.75rem] h-6 inline-flex items-center justify-center gap-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
+                            <CheckCircle2 className="w-3 h-3 shrink-0 text-emerald-600" />
+                            <span>Đã duyệt</span>
                           </span>
                         ) : order.status === 'REJECTED' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
-                            <XCircle className="w-3 h-3" /> Từ chối
+                          <span className="w-[5.75rem] h-6 inline-flex items-center justify-center gap-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs">
+                            <XCircle className="w-3 h-3 shrink-0 text-rose-600" />
+                            <span>Từ chối</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                            {order.status === 'RETURNED_FOR_UPDATE' ? 'Trả lại sửa' : order.status}
+                          <span className="w-[5.75rem] h-6 inline-flex items-center justify-center gap-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80 shadow-2xs">
+                            <CornerUpLeft className="w-3 h-3 shrink-0 text-amber-600" />
+                            <span>Trả lại sửa</span>
                           </span>
                         )}
                       </td>
 
-                      {/* Thao tác */}
-                      <td className="px-4 py-3.5 text-center">
+                      {/* Thao tác (Kích thước nút đồng bộ w-[5.75rem] h-8 không bao giờ bị lệch) */}
+                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-2">
                           <button
                             type="button"
@@ -806,13 +760,11 @@ export const OrderApprovalsPage: React.FC = () => {
                               setDecisionComment('');
                               setModalValidationError(null);
                             }}
-                            className={`${
-                              isPending ? 'w-[96px]' : 'px-3.5'
-                            } inline-flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer shrink-0`}
-                            title={isPending ? 'Mở hồ sơ thẩm định chi tiết' : 'Xem chi tiết đơn hàng'}
+                            className="w-[5.75rem] h-8 inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer shrink-0"
+                            title="Xem chi tiết đơn hàng"
                           >
                             <Eye className="w-3.5 h-3.5 shrink-0" />
-                            <span>{isPending ? 'Thẩm định' : 'Xem chi tiết'}</span>
+                            <span>Chi tiết</span>
                           </button>
 
                           {isPending && (
@@ -820,7 +772,7 @@ export const OrderApprovalsPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => void handleQuickApprove(order)}
-                                className="w-[90px] inline-flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors cursor-pointer shadow-2xs shrink-0"
+                                className="w-[5.75rem] h-8 inline-flex items-center justify-center gap-1 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-600 transition-colors cursor-pointer shadow-2xs shrink-0"
                                 title="Duyệt đơn hàng ngay (kho đủ hàng)"
                               >
                                 <Check className="w-3.5 h-3.5 shrink-0" />
@@ -830,8 +782,8 @@ export const OrderApprovalsPage: React.FC = () => {
                               <button
                                 type="button"
                                 disabled={true}
-                                className="w-[90px] inline-flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed opacity-80 shrink-0"
-                                title={`Không thể duyệt: Đơn có ${stockCheck.outOfStockLines.length} mặt hàng thiếu tồn (${stockCheck.outOfStockLines.map((l) => l.productName).join(', ')}). Bấm Thẩm định để xem chi tiết hoặc Trả lại sửa.`}
+                                className="w-[5.75rem] h-8 inline-flex items-center justify-center gap-1 rounded-lg text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed opacity-80 shrink-0"
+                                title={`Không thể duyệt: Đơn có ${stockCheck.outOfStockLines.length} mặt hàng thiếu tồn (${stockCheck.outOfStockLines.map((l) => l.productName).join(', ')}). Bấm Chi tiết để xem hoặc Trả lại sửa.`}
                               >
                                 <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                                 <span>Thiếu tồn</span>
@@ -858,7 +810,8 @@ export const OrderApprovalsPage: React.FC = () => {
             pageSize={pageSize}
             pageSizeOptions={[10, 20, 50]}
             itemLabel="đơn"
-            showFirstLast={true}
+            showRecordRange={false}
+            showFirstLast={false}
             onPageChange={(page) => setCurrentPage(page)}
             onPageSizeChange={(size) => {
               setPageSize(size);
@@ -876,21 +829,16 @@ export const OrderApprovalsPage: React.FC = () => {
           <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
-                  <ClipboardCheck className="w-5 h-5" />
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
+                    Chi tiết đơn hàng {reviewOrder.orderCode}
+                  </h3>
+                  {renderStatusBadge(reviewOrder.status, isOrderPendingApproval(reviewOrder))}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
-                      {isOrderPendingApproval(reviewOrder) ? 'Hồ sơ thẩm định đơn hàng' : 'Chi tiết đơn hàng'} {reviewOrder.orderCode}
-                    </h3>
-                    {renderStatusBadge(reviewOrder.status, isOrderPendingApproval(reviewOrder))}
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Đại lý: <strong>{reviewOrder.customerName}</strong> ({reviewOrder.customerCode || '---'}) · NVKD: <strong>{reviewOrder.salesRepName || 'Trần Văn Long'}</strong>
-                  </p>
-                </div>
+                <p className="text-xs text-slate-500">
+                  Đại lý: <strong className="text-slate-800">{reviewOrder.customerName}</strong> ({reviewOrder.customerCode || '---'}) · NVKD: <strong className="text-slate-800">{reviewOrder.salesRepName || 'Trần Văn Long'}</strong>
+                </p>
               </div>
 
               <button
@@ -903,194 +851,121 @@ export const OrderApprovalsPage: React.FC = () => {
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-5 flex-1">
-              {/* Tabs chuyển đổi nội dung thẩm định */}
-              <div className="flex items-center gap-2 border-b border-slate-200 pb-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setActiveDetailTab('ITEMS')}
-                  className={`px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
-                    activeDetailTab === 'ITEMS'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Dòng hàng ({reviewOrder.lines?.length || 0})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveDetailTab('CREDIT')}
-                  className={`px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
-                    activeDetailTab === 'CREDIT'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Kiểm tra công nợ
-                </button>
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
+              {/* Khối Kiểm tra công nợ (Gộp trực tiếp xem được ngay, không cần click thêm tab) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-slate-50/80 border border-slate-200/80 rounded-2xl text-xs">
+                <div className="space-y-0.5">
+                  <span className="text-[11px] text-slate-500 font-semibold block">Hạn mức nợ tối đa</span>
+                  <span className="text-sm sm:text-base font-extrabold text-slate-900 block font-mono">
+                    {formatCurrency(50000000)}
+                  </span>
+                </div>
+
+                <div className="space-y-0.5">
+                  <span className="text-[11px] text-slate-500 font-semibold block">Dư nợ hiện tại</span>
+                  <span className="text-sm sm:text-base font-extrabold text-slate-900 block font-mono">
+                    {formatCurrency(35000000)}
+                  </span>
+                  <span className="text-[10px] text-emerald-600 font-semibold">Không có nợ quá hạn</span>
+                </div>
+
+                <div className="space-y-0.5">
+                  <span className="text-[11px] text-indigo-700 font-semibold block">Dự kiến nợ sau đơn này</span>
+                  <span className="text-sm sm:text-base font-extrabold text-indigo-700 block font-mono">
+                    {formatCurrency(35000000 + reviewOrder.grandTotal)}
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    Khả dụng: <strong className="text-emerald-700 font-bold">{formatCurrency(Math.max(0, 50000000 - (35000000 + reviewOrder.grandTotal)))}</strong>
+                  </span>
+                </div>
               </div>
 
-              {/* Tab 1: Danh sách mặt hàng & Đối soát tồn kho trực tiếp */}
-              {activeDetailTab === 'ITEMS' && (
-                <div className="space-y-3">
-                  {/* Alert cảnh báo tồn kho nếu có sản phẩm không đủ hàng */}
-                  {stockCheckResults.outOfStockItems.length > 0 ? (
-                    <div className="p-3.5 bg-rose-50/90 border border-rose-200 rounded-2xl flex items-start gap-3 text-xs text-rose-900 animate-in fade-in">
-                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        <p className="font-bold text-rose-800">
-                          Phát hiện {stockCheckResults.outOfStockItems.length} sản phẩm không đủ tồn khả dụng để duyệt đơn:
-                        </p>
-                        <ul className="list-disc list-inside space-y-0.5 text-slate-700">
-                          {stockCheckResults.outOfStockItems.map((item) => (
-                            <li key={item.sku}>
-                              <strong>{item.line.productName}</strong>: Tồn khả dụng còn <strong>{item.availableStock.toLocaleString('vi-VN')} {item.baseUnit}</strong> (Tồn kho thực tế: {item.physicalStock.toLocaleString('vi-VN')}, Đã giữ cho đơn khác: {item.reservedStock.toLocaleString('vi-VN')}), nhưng đơn này yêu cầu <strong>{item.requiredBase.toLocaleString('vi-VN')} {item.baseUnit}</strong>.
-                            </li>
-                          ))}
-                        </ul>
-                        <p className="text-[11px] text-rose-700 pt-0.5">
-                          💡 Bạn có thể bấm <strong>Trả lại sửa</strong> để NVKD chỉnh sửa lại số lượng hoặc liên hệ Thủ kho nhập thêm hàng.
-                        </p>
-                      </div>
-                    </div>
-                  ) : isOrderPendingApproval(reviewOrder) && !isLoadingStock ? (
-                    <div className="p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-800">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>Tồn kho khả dụng đầy đủ cho toàn bộ {reviewOrder.lines?.length || 0} sản phẩm trong đơn. Sẵn sàng phê duyệt!</span>
-                    </div>
-                  ) : null}
+              {/* Bảng danh sách dòng hàng */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                    <tr>
+                      <th className="px-3.5 py-2.5">Sản phẩm / Mã hàng</th>
+                      <th className="px-2.5 py-2.5 text-center">Đơn vị</th>
+                      <th className="px-2.5 py-2.5 text-center">Số lượng</th>
+                      <th className="px-3 py-2.5 text-center">Tồn khả dụng</th>
+                      <th className="px-3 py-2.5 text-right">Đơn giá bán</th>
+                      <th className="px-3 py-2.5 text-right">Chiết khấu</th>
+                      <th className="px-3 py-2.5 text-right">Thành tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {reviewOrder.lines?.map((line, idx) => {
+                      const itemStock = stockCheckResults.linesStockInfo[idx];
 
-                  <div className="border border-slate-200 rounded-xl overflow-hidden">
-                    <table className="w-full text-xs text-left">
-                      <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-                        <tr>
-                          <th className="px-3.5 py-2.5">Sản phẩm / Mã hàng</th>
-                          <th className="px-2.5 py-2.5 text-center">Đơn vị</th>
-                          <th className="px-2.5 py-2.5 text-center">Số lượng</th>
-                          <th className="px-3 py-2.5 text-center">Tồn khả dụng</th>
-                          <th className="px-3 py-2.5 text-right">Đơn giá bán</th>
-                          <th className="px-3 py-2.5 text-right">Chiết khấu</th>
-                          <th className="px-3 py-2.5 text-right">Thành tiền</th>
+                      return (
+                        <tr key={idx}>
+                          <td className="px-3.5 py-2.5">
+                            <p className="font-bold text-slate-900">{line.productName}</p>
+                            <span className="text-[10px] font-mono text-slate-500">{line.productSku}</span>
+                          </td>
+                          <td className="px-2.5 py-2.5 text-center font-medium text-slate-600">{line.unit}</td>
+                          <td className="px-2.5 py-2.5 text-center font-bold text-slate-900">{line.quantity}</td>
+                          {/* Cột Tồn khả dụng (Gọn gàng, bỏ text thừa Kho/Đã giữ) */}
+                          <td className="px-3 py-2.5 text-center">
+                            {isLoadingStock ? (
+                              <span className="text-[10px] text-slate-400">Đang đối soát...</span>
+                            ) : itemStock ? (
+                              <span
+                                className={`inline-block px-2.5 py-1 rounded-md text-[11px] font-bold ${
+                                  itemStock.isSufficient
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                }`}
+                              >
+                                {itemStock.availableStock.toLocaleString('vi-VN')} {itemStock.baseUnit}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400">---</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-bold text-slate-900">
+                            {formatCurrency(line.unitPrice)}
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-medium text-emerald-700">
+                            {line.discountPercent > 0 ? `${line.discountPercent}%` : '---'}
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-extrabold text-indigo-700">
+                            {formatCurrency(line.lineTotal)}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {reviewOrder.lines?.map((line, idx) => {
-                          const itemStock = stockCheckResults.linesStockInfo[idx];
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-                          return (
-                            <tr key={idx}>
-                              <td className="px-3.5 py-2.5">
-                                <p className="font-bold text-slate-900">{line.productName}</p>
-                                <span className="text-[10px] font-mono text-slate-500">{line.productSku}</span>
-                              </td>
-                              <td className="px-2.5 py-2.5 text-center font-medium text-slate-600">{line.unit}</td>
-                              <td className="px-2.5 py-2.5 text-center font-bold text-slate-900">{line.quantity}</td>
-                              {/* Cột Tồn khả dụng trực quan */}
-                              <td className="px-3 py-2.5 text-center">
-                                {isLoadingStock ? (
-                                  <span className="text-[10px] text-slate-400">Đang đối soát...</span>
-                                ) : itemStock ? (
-                                  <div>
-                                    <span
-                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold ${
-                                        itemStock.isSufficient
-                                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                          : 'bg-rose-50 text-rose-700 border border-rose-200'
-                                      }`}
-                                    >
-                                      {itemStock.isSufficient ? (
-                                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                      ) : (
-                                        <AlertCircle className="w-3 h-3 text-rose-600" />
-                                      )}
-                                      {itemStock.availableStock.toLocaleString('vi-VN')} {itemStock.baseUnit}
-                                    </span>
-                                    <span className="block text-[10px] text-slate-400 mt-0.5">
-                                      Kho: {itemStock.physicalStock.toLocaleString('vi-VN')} · Đã giữ: {itemStock.reservedStock.toLocaleString('vi-VN')}
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <span className="text-[10px] text-slate-400">---</span>
-                                )}
-                              </td>
-                              <td className="px-3 py-2.5 text-right font-bold text-slate-900">
-                                {formatCurrency(line.unitPrice)}
-                              </td>
-                              <td className="px-3 py-2.5 text-right font-medium text-emerald-700">
-                                {line.discountPercent > 0 ? `${line.discountPercent}%` : '---'}
-                              </td>
-                              <td className="px-3 py-2.5 text-right font-extrabold text-indigo-700">
-                                {formatCurrency(line.lineTotal)}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Tổng kết tiền */}
-                  <div className="flex justify-end gap-6 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
-                    <div>
-                      <span className="text-slate-500">Tiền hàng: </span>
-                      <strong className="text-slate-800">{formatCurrency(reviewOrder.subtotal)}</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Chiết khấu: </span>
-                      <strong className="text-emerald-700">-{formatCurrency(reviewOrder.totalDiscount)}</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Tổng thanh toán: </span>
-                      <strong className="text-base text-indigo-700 font-extrabold">{formatCurrency(reviewOrder.grandTotal)}</strong>
-                    </div>
-                  </div>
+              {/* Tổng kết tiền */}
+              <div className="flex justify-end gap-6 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div>
+                  <span className="text-slate-500">Tiền hàng: </span>
+                  <strong className="text-slate-800">{formatCurrency(reviewOrder.subtotal)}</strong>
                 </div>
-              )}
-
-              {/* Tab 2: Kiểm tra công nợ */}
-              {activeDetailTab === 'CREDIT' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50">
-                      <span className="text-[11px] text-slate-500 font-semibold block">Hạn mức nợ tối đa:</span>
-                      <span className="text-base font-extrabold text-slate-900 mt-1 block">
-                        {formatCurrency(50000000)}
-                      </span>
-                      <span className="text-[10px] text-slate-400">Thời hạn tối đa 30 ngày</span>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50">
-                      <span className="text-[11px] text-slate-500 font-semibold block">Dư nợ hiện tại:</span>
-                      <span className="text-base font-extrabold text-slate-900 mt-1 block">
-                        {formatCurrency(35000000)}
-                      </span>
-                      <span className="text-[10px] text-emerald-600 font-semibold">Không có nợ quá hạn</span>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl border border-indigo-200 bg-indigo-50/50">
-                      <span className="text-[11px] text-indigo-700 font-semibold block">Dự kiến nợ sau đơn này:</span>
-                      <span className="text-base font-extrabold text-indigo-800 mt-1 block">
-                        {formatCurrency(35000000 + reviewOrder.grandTotal)}
-                      </span>
-                      <span className="text-[10px] text-slate-500">
-                        Còn lại: {formatCurrency(Math.max(0, 50000000 - (35000000 + reviewOrder.grandTotal)))}
-                      </span>
-                    </div>
-                  </div>
+                <div>
+                  <span className="text-slate-500">Chiết khấu: </span>
+                  <strong className="text-emerald-700">-{formatCurrency(reviewOrder.totalDiscount)}</strong>
                 </div>
-              )}
+                <div>
+                  <span className="text-slate-500">Tổng thanh toán: </span>
+                  <strong className="text-base text-indigo-700 font-extrabold">{formatCurrency(reviewOrder.grandTotal)}</strong>
+                </div>
+              </div>
 
               {/* Khu vực quyết định phê duyệt */}
               {isOrderPendingApproval(reviewOrder) ? (
                 <div className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
                   <label className="text-xs font-bold text-slate-800 block">
-                    Ý kiến chỉ đạo / Lý do phê duyệt (Bắt buộc khi Từ chối hoặc Trả lại):
+                    Ý kiến chỉ đạo / Lý do (Bắt buộc khi Trả lại sửa):
                   </label>
 
                   {/* Thông báo lỗi validation hiển thị ngay trên modal */}
                   {modalValidationError && (
-                    <div className="flex items-center gap-2 p-3 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl animate-in fade-in">
-                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                    <div className="p-3 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl animate-in fade-in">
                       <span>{modalValidationError}</span>
                     </div>
                   )}
@@ -1101,7 +976,7 @@ export const OrderApprovalsPage: React.FC = () => {
                       setDecisionComment(e.target.value);
                       if (modalValidationError) setModalValidationError(null);
                     }}
-                    placeholder="Nhập ghi chú phê duyệt hoặc lý do yêu cầu sửa đổi..."
+                    placeholder="Nhập ghi chú hoặc lý do yêu cầu sửa đổi..."
                     rows={2}
                     className={`w-full px-3 py-2 text-xs border rounded-xl bg-white focus:outline-none focus:ring-2 resize-none transition-all ${
                       modalValidationError
@@ -1111,25 +986,13 @@ export const OrderApprovalsPage: React.FC = () => {
                   />
 
                   <div className="flex items-center justify-end gap-2 pt-1">
-                    {/* Nút Từ chối */}
-                    <button
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => void handleDecisionSubmit('REJECT')}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      <XCircle className="w-3.5 h-3.5" />
-                      <span>Từ chối</span>
-                    </button>
-
-                    {/* Nút Trả lại yêu cầu sửa */}
+                    {/* Chỉ giữ lại 1 nút: Trả lại sửa */}
                     <button
                       type="button"
                       disabled={isSubmitting}
                       onClick={() => void handleDecisionSubmit('RETURN_FOR_UPDATE')}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 transition-colors cursor-pointer disabled:opacity-50"
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 transition-colors cursor-pointer disabled:opacity-50"
                     >
-                      <CornerUpLeft className="w-3.5 h-3.5" />
                       <span>Trả lại sửa</span>
                     </button>
 
@@ -1138,10 +1001,9 @@ export const OrderApprovalsPage: React.FC = () => {
                       <button
                         type="button"
                         disabled={true}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none"
+                        className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none"
                         title="Đơn này có mặt hàng thiếu tồn kho. Vui lòng bấm 'Trả lại sửa' hoặc 'Từ chối' thay vì duyệt."
                       >
-                        <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
                         <span>Không đủ tồn để duyệt</span>
                       </button>
                     ) : (
@@ -1149,30 +1011,27 @@ export const OrderApprovalsPage: React.FC = () => {
                         type="button"
                         disabled={isSubmitting}
                         onClick={() => void handleDecisionSubmit('APPROVE')}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                        className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
                       >
                         {isSubmitting ? (
-                          <>
+                          <span className="flex items-center gap-1.5">
                             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                             <span>Đang lưu...</span>
-                          </>
+                          </span>
                         ) : (
-                          <>
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Duyệt đơn</span>
-                          </>
+                          <span>Duyệt đơn</span>
                         )}
                       </button>
                     )}
                   </div>
                 </div>
-              ) : (
-                /* Với đơn trong Lịch sử đã xét duyệt: chỉ hiển thị thông tin trạng thái, đóng modal bằng nút X góc trên */
-                <div className="flex items-center gap-2 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-700">
-                  <span className="font-semibold text-slate-500">Trạng thái xét duyệt:</span>
-                  {renderStatusBadge(reviewOrder.status, false)}
+              ) : (reviewOrder.status === 'REJECTED' || reviewOrder.status === 'RETURNED_FOR_UPDATE') && (reviewOrder.note || reviewOrder.warningNote) ? (
+                /* Với đơn bị từ chối / trả lại: chỉ hiển thị lý do nếu có ghi chú, không lặp lại chữ đã duyệt */
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900">
+                  <span className="font-semibold">Lý do yêu cầu sửa đổi: </span>
+                  <span>{reviewOrder.note || reviewOrder.warningNote}</span>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         </div>,
