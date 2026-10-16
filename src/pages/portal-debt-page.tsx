@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Receipt,
   Search,
-  Filter,
   RefreshCw,
   Download,
   Eye,
@@ -10,7 +9,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
-  ArrowUpDown,
   Building2,
   DollarSign,
   Bell,
@@ -414,60 +412,53 @@ export const PortalDebtPage: React.FC = () => {
       </div>
 
       {/* 4. Toolbar: Tìm kiếm, Lọc trạng thái, Sắp xếp */}
-      <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-stretch md:items-center gap-3">
+      <div className="p-3 sm:p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         {/* Tìm kiếm */}
-        <div className="relative flex-1">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Tìm theo số hóa đơn (HD...), mã đơn hàng (DH...), ghi chú..."
+            placeholder="Tìm theo số hóa đơn (HD...), mã đơn (DH...)..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-slate-50/50"
           />
         </div>
 
-        {/* Lọc trạng thái */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 text-xs text-slate-500 font-medium whitespace-nowrap">
-            <Filter className="h-3.5 w-3.5" />
-            <span>Trạng thái:</span>
+        {/* Lọc trạng thái & Sắp xếp */}
+        <div className="flex flex-col xs:flex-row sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full sm:w-auto px-3 py-2 text-xs sm:text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            >
+              <option value="ALL">Tất cả ({invoices.length})</option>
+              <option value="UNPAID">Chưa thanh toán</option>
+              <option value="PARTIAL">Thanh toán 1 phần</option>
+              <option value="UPCOMING_3">⏰ Còn 3 ngày đến hạn</option>
+              <option value="OVERDUE">🚨 Quá hạn thanh toán</option>
+              <option value="PAID">Đã thanh toán đủ</option>
+            </select>
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-          >
-            <option value="ALL">Tất cả ({invoices.length})</option>
-            <option value="UNPAID">Chưa thanh toán</option>
-            <option value="PARTIAL">Thanh toán một phần</option>
-            <option value="UPCOMING_3">⏰ Còn 3 ngày đến hạn</option>
-            <option value="OVERDUE">🚨 Quá hạn thanh toán</option>
-            <option value="PAID">Đã thanh toán đủ</option>
-          </select>
-        </div>
 
-        {/* Sắp xếp */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 text-xs text-slate-500 font-medium whitespace-nowrap">
-            <ArrowUpDown className="h-3.5 w-3.5" />
-            <span>Sắp xếp:</span>
+          <div className="flex items-center gap-2">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full sm:w-auto px-3 py-2 text-xs sm:text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            >
+              <option value="DUE_DATE_ASC">Hạn thanh toán: Gần nhất</option>
+              <option value="DUE_DATE_DESC">Hạn thanh toán: Xa nhất</option>
+              <option value="REMAINING_DESC">Nợ: Lớn nhất trước</option>
+              <option value="AMOUNT_DESC">Tổng tiền: Lớn nhất</option>
+              <option value="ISSUE_DATE_DESC">Ngày phát hành: Mới nhất</option>
+            </select>
           </div>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-          >
-            <option value="DUE_DATE_ASC">Hạn thanh toán: Gần nhất trước</option>
-            <option value="DUE_DATE_DESC">Hạn thanh toán: Xa nhất trước</option>
-            <option value="REMAINING_DESC">Số tiền nợ: Lớn nhất trước</option>
-            <option value="AMOUNT_DESC">Tổng tiền: Lớn nhất trước</option>
-            <option value="ISSUE_DATE_DESC">Ngày phát hành: Mới nhất</option>
-          </select>
         </div>
       </div>
 
-      {/* 5. Bảng danh sách Hóa đơn công nợ (SN-207 A) */}
+      {/* 5. Danh sách Hóa đơn công nợ (SN-207 A) */}
       <div className="rounded-xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
         {loading ? (
           <div className="py-20 text-center">
@@ -475,7 +466,7 @@ export const PortalDebtPage: React.FC = () => {
             <p className="text-sm text-slate-500">Đang tải danh sách hóa đơn công nợ...</p>
           </div>
         ) : filteredInvoices.length === 0 ? (
-          <div className="py-16 text-center">
+          <div className="py-16 text-center px-4">
             <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-3 shadow-inner">
               <Receipt className="h-7 w-7 text-slate-400" />
             </div>
@@ -491,140 +482,263 @@ export const PortalDebtPage: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left text-sm border-collapse min-w-[940px]">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  <th className="py-3 px-4">Số hóa đơn</th>
-                  <th className="py-3 px-4">Đơn hàng gốc</th>
-                  <th className="py-3 px-4">Ngày phát hành</th>
-                  <th className="py-3 px-4">Hạn thanh toán</th>
-                  <th className="py-3 px-4 text-right">Tổng tiền</th>
-                  <th className="py-3 px-4 text-right">Đã thanh toán</th>
-                  <th className="py-3 px-4 text-right">Còn nợ</th>
-                  <th className="py-3 px-4 text-center">Trạng thái</th>
-                  <th className="py-3 px-4 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200/70 bg-white">
-                {filteredInvoices.map((inv) => {
-                  const isOverdue =
-                    inv.remainingAmount > 0 && new Date(inv.dueDate) < new Date();
+          <>
+            {/* 5.1 GIAO DIỆN MOBILE (< 768px): Hiển thị dạng Card dọc không cuộn ngang */}
+            <div className="block md:hidden divide-y divide-slate-100">
+              {filteredInvoices.map((inv) => {
+                const isOverdue =
+                  inv.remainingAmount > 0 && new Date(inv.dueDate) < new Date();
 
-                  return (
-                    <tr key={inv.id} className="hover:bg-slate-50/60 transition-colors">
-                      {/* Số hóa đơn */}
-                      <td className="py-3 px-4">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedInvoiceForDetail(inv)}
-                          className="font-mono font-bold text-indigo-600 hover:text-indigo-800 hover:underline"
-                        >
-                          {inv.invoiceCode}
-                        </button>
-                      </td>
-
-                      {/* Đơn hàng gốc */}
-                      <td className="py-3 px-4 font-mono text-slate-600 text-xs">
-                        {inv.orderCode}
-                      </td>
-
-                      {/* Ngày phát hành */}
-                      <td className="py-3 px-4 text-slate-600 text-xs">
-                        {formatDate(inv.issueDate)}
-                      </td>
-
-                      {/* Hạn thanh toán kèm badge */}
-                      <td className="py-3 px-4">
-                        <div className="text-xs font-medium text-slate-800">
-                          {formatDate(inv.dueDate)}
-                        </div>
-                        <div className="mt-0.5">
-                          {getDueBadge(inv.dueDate, inv.remainingAmount)}
-                        </div>
-                      </td>
-
-                      {/* Tổng tiền */}
-                      <td className="py-3 px-4 text-right font-mono font-semibold text-slate-900">
-                        {formatCurrency(inv.amount)}
-                      </td>
-
-                      {/* Đã thanh toán */}
-                      <td className="py-3 px-4 text-right font-mono text-emerald-700 font-medium">
-                        {formatCurrency(inv.paidAmount)}
-                      </td>
-
-                      {/* Còn nợ */}
-                      <td className="py-3 px-4 text-right font-mono font-bold">
-                        <span className={inv.remainingAmount > 0 ? (isOverdue ? 'text-rose-600' : 'text-slate-900') : 'text-slate-400'}>
-                          {formatCurrency(inv.remainingAmount)}
-                        </span>
-                      </td>
-
-                      {/* Trạng thái */}
-                      <td className="py-3 px-4 text-center">
+                return (
+                  <div key={inv.id} className="p-4 space-y-3 hover:bg-slate-50/50 transition-colors">
+                    {/* Header Card: Mã hóa đơn & Trạng thái */}
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedInvoiceForDetail(inv)}
+                        className="font-mono font-bold text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
+                      >
+                        {inv.invoiceCode}
+                      </button>
+                      <div>
                         {inv.status === 'PAID' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            Đã thanh toán đủ
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Đã thanh toán
                           </span>
                         ) : isOverdue ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                            <AlertTriangle className="h-3.5 w-3.5" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                            <AlertTriangle className="h-3 w-3" />
                             Quá hạn
                           </span>
                         ) : inv.status === 'PARTIALLY_PAID' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                            <Clock className="h-3.5 w-3.5" />
-                            Thanh toán 1 phần
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                            <Clock className="h-3 w-3" />
+                            Trả 1 phần
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                            Chưa thanh toán
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                            Chưa trả
                           </span>
                         )}
-                      </td>
+                      </div>
+                    </div>
 
-                      {/* Thao tác */}
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                    {/* Chi tiết đơn hàng & hạn */}
+                    <div className="text-xs text-slate-600 space-y-1 bg-slate-50/80 p-2.5 rounded-lg border border-slate-100">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Đơn hàng gốc:</span>
+                        <span className="font-mono font-semibold text-slate-800">{inv.orderCode}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Ngày phát hành:</span>
+                        <span className="text-slate-700">{formatDate(inv.issueDate)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Hạn thanh toán:</span>
+                        <span className="font-medium text-slate-800">{formatDate(inv.dueDate)}</span>
+                      </div>
+                      <div className="pt-1 flex justify-end">
+                        {getDueBadge(inv.dueDate, inv.remainingAmount)}
+                      </div>
+                    </div>
+
+                    {/* Số tiền: Tổng - Đã trả - Còn nợ */}
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="p-2 rounded-lg bg-slate-50 border border-slate-100">
+                        <div className="text-[10px] text-slate-500 font-medium">Tổng tiền</div>
+                        <div className="font-mono text-xs font-semibold text-slate-900 mt-0.5 truncate">
+                          {formatCurrency(inv.amount)}
+                        </div>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-50 border border-slate-100">
+                        <div className="text-[10px] text-slate-500 font-medium">Đã trả</div>
+                        <div className="font-mono text-xs font-semibold text-emerald-700 mt-0.5 truncate">
+                          {formatCurrency(inv.paidAmount)}
+                        </div>
+                      </div>
+                      <div className="p-2 rounded-lg bg-slate-50 border border-slate-100">
+                        <div className="text-[10px] text-slate-500 font-medium">Còn nợ</div>
+                        <div className={`font-mono text-xs font-bold mt-0.5 truncate ${
+                          inv.remainingAmount > 0 ? (isOverdue ? 'text-rose-600' : 'text-slate-900') : 'text-slate-400'
+                        }`}>
+                          {formatCurrency(inv.remainingAmount)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Thao tác */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedInvoiceForDetail(inv)}
+                        className="flex-1 py-1.5 px-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors flex items-center justify-center gap-1 shadow-2xs"
+                      >
+                        <Eye className="h-3.5 w-3.5 text-slate-500" />
+                        <span>Chi tiết</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadPdf(inv)}
+                        className="flex-1 py-1.5 px-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors flex items-center justify-center gap-1 shadow-2xs"
+                      >
+                        <Download className="h-3.5 w-3.5 text-slate-500" />
+                        <span>Tải PDF</span>
+                      </button>
+
+                      {inv.remainingAmount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedInvoiceForPayment(inv)}
+                          className="flex-1 py-1.5 px-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors flex items-center justify-center gap-1 shadow-2xs"
+                        >
+                          <CreditCard className="h-3.5 w-3.5" />
+                          <span>Trả nợ</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 5.2 GIAO DIỆN DESKTOP / TABLET (>= 768px): Hiển thị dạng Bảng chuẩn mực */}
+            <div className="hidden md:block overflow-x-auto custom-scrollbar">
+              <table className="w-full text-left text-sm border-collapse min-w-[900px]">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    <th className="py-3 px-4">Số hóa đơn</th>
+                    <th className="py-3 px-4">Đơn hàng gốc</th>
+                    <th className="py-3 px-4">Ngày phát hành</th>
+                    <th className="py-3 px-4">Hạn thanh toán</th>
+                    <th className="py-3 px-4 text-right">Tổng tiền</th>
+                    <th className="py-3 px-4 text-right">Đã thanh toán</th>
+                    <th className="py-3 px-4 text-right">Còn nợ</th>
+                    <th className="py-3 px-4 text-center">Trạng thái</th>
+                    <th className="py-3 px-4 text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200/70 bg-white">
+                  {filteredInvoices.map((inv) => {
+                    const isOverdue =
+                      inv.remainingAmount > 0 && new Date(inv.dueDate) < new Date();
+
+                    return (
+                      <tr key={inv.id} className="hover:bg-slate-50/60 transition-colors">
+                        {/* Số hóa đơn */}
+                        <td className="py-3 px-4">
                           <button
                             type="button"
                             onClick={() => setSelectedInvoiceForDetail(inv)}
-                            className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                            title="Xem chi tiết hóa đơn"
+                            className="font-mono font-bold text-indigo-600 hover:text-indigo-800 hover:underline"
                           >
-                            <Eye className="h-4 w-4" />
+                            {inv.invoiceCode}
                           </button>
+                        </td>
 
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadPdf(inv)}
-                            className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                            title="Tải / In hóa đơn PDF"
-                          >
-                            <Download className="h-4 w-4" />
-                          </button>
+                        {/* Đơn hàng gốc */}
+                        <td className="py-3 px-4 font-mono text-slate-600 text-xs">
+                          {inv.orderCode}
+                        </td>
 
-                          {inv.remainingAmount > 0 && (
+                        {/* Ngày phát hành */}
+                        <td className="py-3 px-4 text-slate-600 text-xs">
+                          {formatDate(inv.issueDate)}
+                        </td>
+
+                        {/* Hạn thanh toán kèm badge */}
+                        <td className="py-3 px-4">
+                          <div className="text-xs font-medium text-slate-800">
+                            {formatDate(inv.dueDate)}
+                          </div>
+                          <div className="mt-0.5">
+                            {getDueBadge(inv.dueDate, inv.remainingAmount)}
+                          </div>
+                        </td>
+
+                        {/* Tổng tiền */}
+                        <td className="py-3 px-4 text-right font-mono font-semibold text-slate-900">
+                          {formatCurrency(inv.amount)}
+                        </td>
+
+                        {/* Đã thanh toán */}
+                        <td className="py-3 px-4 text-right font-mono text-emerald-700 font-medium">
+                          {formatCurrency(inv.paidAmount)}
+                        </td>
+
+                        {/* Còn nợ */}
+                        <td className="py-3 px-4 text-right font-mono font-bold">
+                          <span className={inv.remainingAmount > 0 ? (isOverdue ? 'text-rose-600' : 'text-slate-900') : 'text-slate-400'}>
+                            {formatCurrency(inv.remainingAmount)}
+                          </span>
+                        </td>
+
+                        {/* Trạng thái */}
+                        <td className="py-3 px-4 text-center">
+                          {inv.status === 'PAID' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Đã thanh toán đủ
+                            </span>
+                          ) : isOverdue ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                              Quá hạn
+                            </span>
+                          ) : inv.status === 'PARTIALLY_PAID' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                              <Clock className="h-3.5 w-3.5" />
+                              Thanh toán 1 phần
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                              Chưa thanh toán
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Thao tác */}
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
-                              onClick={() => setSelectedInvoiceForPayment(inv)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-2xs transition-colors ml-1"
-                              title="Thanh toán nợ hóa đơn này"
+                              onClick={() => setSelectedInvoiceForDetail(inv)}
+                              className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                              title="Xem chi tiết hóa đơn"
                             >
-                              <CreditCard className="h-3.5 w-3.5" />
-                              <span>Thanh toán</span>
+                              <Eye className="h-4 w-4" />
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadPdf(inv)}
+                              className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                              title="Tải hóa đơn PDF chuẩn VAT"
+                            >
+                              <Download className="h-4 w-4" />
+                            </button>
+
+                            {inv.remainingAmount > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedInvoiceForPayment(inv)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-2xs transition-colors ml-1"
+                                title="Thanh toán nợ hóa đơn này"
+                              >
+                                <CreditCard className="h-3.5 w-3.5" />
+                                <span>Thanh toán</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

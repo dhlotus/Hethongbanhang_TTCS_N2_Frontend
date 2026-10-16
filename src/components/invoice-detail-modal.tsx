@@ -57,11 +57,19 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
 
   const handleDownloadPdf = async () => {
     try {
-      showToast('info', 'Đang tạo và tải bản in hóa đơn VAT...');
+      showToast('info', 'Đang tạo và tải file hóa đơn PDF...');
       await invoicesService.downloadInvoicePdf(invoice.id, invoice.invoiceCode);
-      showToast('success', 'Đã mở bản in hóa đơn thành công');
+      showToast('success', 'Đã tải hóa đơn PDF thành công');
     } catch {
       showToast('error', 'Không thể tải hóa đơn. Vui lòng thử lại sau.');
+    }
+  };
+
+  const handlePrint = async () => {
+    try {
+      await invoicesService.printInvoice(invoice.id);
+    } catch {
+      showToast('error', 'Không thể mở bản in');
     }
   };
 
@@ -69,14 +77,14 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-fade-in">
       <div className="relative w-full max-w-3xl my-8 bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header Modal */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-200/80">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 bg-slate-50 border-b border-slate-200/80">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-10 w-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
               <FileText className="h-5 w-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-slate-900">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 truncate">
                   Hóa Đơn {invoice.invoiceCode}
                 </h2>
                 {invoice.status === 'PAID' ? (
@@ -100,21 +108,29 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5 truncate">
                 Đơn hàng gốc: <span className="font-semibold text-slate-700">{invoice.orderCode}</span>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors"
+              title="In trực tiếp qua trình duyệt"
+            >
+              <span>In</span>
+            </button>
             <button
               type="button"
               onClick={handleDownloadPdf}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors"
-              title="Tải hóa đơn hoặc in"
+              title="Tải file PDF chuẩn VAT về máy"
             >
               <Download className="h-3.5 w-3.5" />
-              <span>Tải PDF / In</span>
+              <span>Tải PDF</span>
             </button>
             <button
               type="button"

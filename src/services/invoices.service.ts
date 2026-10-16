@@ -167,8 +167,9 @@ export const invoicesService = {
       note?: string;
     }>;
   }> {
-    const res = await apiClient.post('/invoices/reminders/trigger', null, {
+    const res = await apiClient.post('/invoices/reminders/trigger', {}, {
       params: { force: force ? 'true' : undefined },
+      timeout: 60000,
     });
     return res.data;
   },
@@ -201,40 +202,51 @@ export const invoicesService = {
   },
 
   /**
-   * Tải hóa đơn PDF / In hóa đơn chuẩn VAT (SN-207 B)
-   * Tự động lấy file HTML/PDF từ backend và kích hoạt cửa sổ lưu file/in ấn
+   * Tải hóa đơn PDF chuẩn VAT (SN-207 B)
+   * Tự động lấy file PDF nhị phân từ backend và tải file .pdf về thiết bị
    */
   async downloadInvoicePdf(id: string, invoiceCode: string): Promise<void> {
     try {
+      const res = await apiClient.get(`/invoices/${id}/pdf`, {
+        params: { format: 'pdf' },
+        responseType: 'blob',
+      });
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Hoa_Don_${invoiceCode}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Lỗi khi tải hóa đơn PDF:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * Xem và in hóa đơn trực tiếp trên trình duyệt (SN-207 B)
+   */
+  async printInvoice(id: string): Promise<void> {
+    try {
       const res = await apiClient.get<string>(`/invoices/${id}/pdf`, {
+        params: { format: 'html' },
         responseType: 'text',
       });
-      const htmlContent = res.data;
-
-      // Mở cửa sổ in chuyên dụng hoặc tải về
       const printWindow = window.open('', '_blank');
       if (printWindow) {
         printWindow.document.open();
-        printWindow.document.write(htmlContent);
+        printWindow.document.write(res.data);
         printWindow.document.close();
         setTimeout(() => {
           printWindow.focus();
           printWindow.print();
         }, 300);
-      } else {
-        // Fallback tải file blob
-        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Hoa_Don_${invoiceCode}.html`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
       }
     } catch (err) {
-      console.error('Lỗi khi tải hóa đơn PDF:', err);
+      console.error('Lỗi khi mở bản in hóa đơn:', err);
       throw err;
     }
   },
