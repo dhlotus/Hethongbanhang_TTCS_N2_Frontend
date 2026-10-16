@@ -13,7 +13,6 @@ import {
   X,
   Warehouse,
   Mail,
-  Phone,
   ShieldAlert,
   Shield,
   Info,
@@ -26,12 +25,15 @@ import {
   EyeOff,
   FileSpreadsheet,
   RotateCcw,
+  Trash2,
 } from 'lucide-react';
 import { Pagination } from '../components/pagination';
 import { UsersTableSkeleton, UsersMobileCardSkeleton } from '../components/skeletons';
 import { ExcelImportModal } from '../components/excel-import-modal';
 import { showToast } from '../components/toast';
 import { usersService } from '../services/users.service';
+import { warehouseService } from '../services/warehouse.service';
+import type { Warehouse as WarehouseType } from '../types/warehouse.types';
 import type {
   AssignedCustomerItem,
   CreateUserPayload,
@@ -98,10 +100,7 @@ const ROLE_CONFIG: Record<
   },
 };
 
-const WAREHOUSE_OPTIONS = [
-  'Kho Tổng Miền Nam - LOHA WH01',
-  'Kho Trung Chuyển Miền Bắc - LOHA WH02',
-  'Kho Vận Miền Trung - LOHA WH03',
+const TERRITORY_OPTIONS = [
   'Địa bàn TP. Hồ Chí Minh',
   'Địa bàn Hà Nội & Phía Bắc',
   'Địa bàn Miền Tây',
@@ -429,6 +428,49 @@ export const UsersPage: React.FC = () => {
   const [detailCustomers, setDetailCustomers] = useState<AssignedCustomerItem[]>([]);
   const [loadingDetailCustomers, setLoadingDetailCustomers] = useState(false);
 
+
+
+  // Quản lý modal xác nhận xóa vĩnh viễn tài khoản khỏi hệ thống & DB
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserManagementItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Danh sách kho hàng thời gian thực từ API (phục vụ phân quyền & phân kho)
+  const [warehouseList, setWarehouseList] = useState<WarehouseType[]>([]);
+  const [loadingWarehouses, setLoadingWarehouses] = useState(false);
+
+  // Tải danh sách kho hàng thời gian thực từ API
+  const fetchWarehousesRealtime = useCallback(async () => {
+    try {
+      setLoadingWarehouses(true);
+      const data = await warehouseService.getWarehouses();
+      if (Array.isArray(data)) {
+        setWarehouseList(data);
+      }
+    } catch (err) {
+      console.warn('[USERS_PAGE] Lỗi tải danh sách kho thời gian thực:', err);
+    } finally {
+      setLoadingWarehouses(false);
+    }
+  }, []);
+
+  // Tải kho khi component mount và khi mở modal tạo/sửa nhân sự
+  useEffect(() => {
+    void fetchWarehousesRealtime();
+  }, [fetchWarehousesRealtime]);
+
+  useEffect(() => {
+    if (modalOpen) {
+      void fetchWarehousesRealtime();
+    }
+  }, [modalOpen, fetchWarehousesRealtime]);
+
+  // Mở modal xác nhận xóa tài khoản
+  const handleOpenDeleteModal = (user: UserManagementItem) => {
+    setUserToDelete(user);
+    setDeleteModalOpen(true);
+  };
+
   // Mở modal xem chi tiết nhân sự
   const handleOpenDetailModal = async (user: UserManagementItem) => {
     setSelectedUserForDetail(user);
@@ -517,6 +559,7 @@ export const UsersPage: React.FC = () => {
 
   // Mở Modal tạo mới
   const handleOpenCreateModal = () => {
+    void fetchWarehousesRealtime();
     setEditingUser(null);
     setFormErrors({});
     setShowPassword(false);
@@ -535,6 +578,7 @@ export const UsersPage: React.FC = () => {
 
   // Mở Modal chỉnh sửa
   const handleOpenEditModal = (user: UserManagementItem) => {
+    void fetchWarehousesRealtime();
     setEditingUser(user);
     setFormErrors({});
     setShowPassword(false);
@@ -761,6 +805,28 @@ export const UsersPage: React.FC = () => {
     }
   };
 
+  // Xác nhận thực hiện xóa vĩnh viễn tài khoản khỏi hệ thống & cơ sở dữ liệu
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await usersService.deleteUser(userToDelete.id);
+      showToast('success', res.message || `Đã xóa vĩnh viễn tài khoản ${userToDelete.fullName}`);
+      setDeleteModalOpen(false);
+      if (selectedUserForDetail?.id === userToDelete.id) {
+        setDetailModalOpen(false);
+      }
+      setUserToDelete(null);
+      await fetchUsers();
+      await fetchSummary();
+    } catch (err: unknown) {
+      const serverMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      showToast('error', typeof serverMsg === 'string' ? serverMsg : 'Xóa tài khoản thất bại');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* ========================================================================= */}
@@ -769,58 +835,61 @@ export const UsersPage: React.FC = () => {
       {/* 2. STATS CARDS: THỐNG KÊ NHANH TỔNG QUAN TOÀN HỆ THỐNG                     */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div className="rounded-xl bg-white p-4 sm:p-5 border border-slate-100 shadow-2xs min-w-0">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold truncate">Tổng nhân sự</span>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary)]">
-              <Users className="h-4 w-4" />
+        {/* Tổng nhân sự */}
+        <div className="rounded-xl bg-white p-3.5 sm:p-5 border border-slate-100 shadow-2xs min-w-0 flex sm:flex-col justify-between sm:justify-start items-center sm:items-stretch">
+          <div className="flex items-center gap-2.5 sm:justify-between text-slate-500 sm:mb-2">
+            <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg sm:rounded-md bg-[var(--color-primary-light)] text-[var(--color-primary)]">
+              <Users className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
             </div>
+            <span className="text-sm font-semibold truncate text-slate-600">Tổng nhân sự</span>
           </div>
-          <div className="text-2xl font-bold tracking-tight text-slate-900">
+          <div className="text-xl sm:text-3xl font-bold tracking-tight text-slate-900">
             {summary.total.toLocaleString('vi-VN')}
           </div>
         </div>
 
-        <div className="rounded-xl bg-white p-4 sm:p-5 border border-slate-100 shadow-2xs min-w-0">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold truncate">Đang hoạt động</span>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-600">
+        {/* Đang hoạt động */}
+        <div className="rounded-xl bg-white p-3.5 sm:p-5 border border-slate-100 shadow-2xs min-w-0 flex sm:flex-col justify-between sm:justify-start items-center sm:items-stretch">
+          <div className="flex items-center gap-2.5 sm:justify-between text-slate-500 sm:mb-2">
+            <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg sm:rounded-md bg-emerald-50 text-emerald-600">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
             </div>
+            <span className="text-sm font-semibold truncate text-slate-600">Đang hoạt động</span>
           </div>
-          <div className="text-2xl font-bold tracking-tight text-emerald-700">
+          <div className="text-xl sm:text-3xl font-bold tracking-tight text-slate-900">
             {summary.active.toLocaleString('vi-VN')}
           </div>
         </div>
 
-        <div className="rounded-xl bg-white p-4 sm:p-5 border border-slate-100 shadow-2xs min-w-0">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold truncate">Đang bị khóa</span>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-rose-50 text-rose-600">
-              <Lock className="h-4 w-4" />
+        {/* Đang bị khóa */}
+        <div className="rounded-xl bg-white p-3.5 sm:p-5 border border-slate-100 shadow-2xs min-w-0 flex sm:flex-col justify-between sm:justify-start items-center sm:items-stretch">
+          <div className="flex items-center gap-2.5 sm:justify-between text-slate-500 sm:mb-2">
+            <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg sm:rounded-md bg-rose-50 text-rose-600">
+              <Lock className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
             </div>
+            <span className="text-sm font-semibold truncate text-slate-600">Đang bị khóa</span>
           </div>
-          <div className="text-2xl font-bold tracking-tight text-rose-600">
+          <div className="text-xl sm:text-3xl font-bold tracking-tight text-slate-900">
             {summary.locked.toLocaleString('vi-VN')}
           </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. TOOLBAR: TÌM KIẾM, BỘ LỌC & THAO TÁC HỆ THỐNG (CHUẨN 2 TẦNG RÕ RÀNG)    */}
+      {/* 3. TOOLBAR: TÌM KIẾM, BỘ LỌC & THAO TÁC HỆ THỐNG                          */}
       {/* ========================================================================= */}
-      <div className="rounded-xl bg-white p-3.5 sm:p-4 border border-slate-100 shadow-2xs space-y-3">
-        {/* HÀNG TRÊN: Ô TÌM KIẾM BÊN TRÁI & BỘ 3 NÚT THAO TÁC BÊN PHẢI */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Ô tìm kiếm Search bar co giãn theo % tương đối */}
+      <div className="-mx-4 sm:mx-0 rounded-none sm:rounded-xl bg-white p-3.5 sm:p-4 border-y sm:border border-slate-100 shadow-2xs space-y-3">
+        {/* HÀNG TRÊN: Ô TÌM KIẾM BÊN TRÁI & BỘ 3 NÚT THAO TÁC BÊN PHẢI (TỰ ĐỘNG THÍCH ỨNG) */}
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          {/* Ô tìm kiếm Search bar co giãn theo % tương đối - Chiều cao chuẩn h-10.5, font chữ text-sm rõ nét */}
           <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-slate-400 pointer-events-none" />
             <input
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Tìm theo họ tên, username, email, SĐT..."
-              className="w-full rounded-lg border border-slate-200 bg-slate-50/50 pl-10 pr-9 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] transition-all"
+              className="w-full h-10.5 rounded-lg border border-slate-200 bg-slate-50/50 pl-10.5 pr-9 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] transition-all"
             />
             {searchInput && (
               <button
@@ -834,24 +903,25 @@ export const UsersPage: React.FC = () => {
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 title="Xóa tìm kiếm"
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-4 w-4" />
               </button>
             )}
           </div>
 
-          {/* Nhóm nút hành động bên phải: thẳng hàng với ô tìm kiếm trên hàng trên */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+          {/* Nhóm nút hành động: Mobile chia 2 hàng tiện bấm, Tablet & Desktop trải ngang */}
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto shrink-0">
             <button
               type="button"
               onClick={() => {
                 fetchUsers();
                 fetchSummary();
+                void fetchWarehousesRealtime();
               }}
               disabled={loading}
               title="Làm mới danh sách"
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-2xs cursor-pointer active:scale-95 whitespace-nowrap"
+              className="flex-1 sm:flex-initial h-10.5 inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-2xs cursor-pointer active:scale-95 whitespace-nowrap"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               <span>Làm mới</span>
             </button>
 
@@ -861,9 +931,9 @@ export const UsersPage: React.FC = () => {
                 type="button"
                 onClick={() => setImportModalOpen(true)}
                 title="Import nhân sự từ file Excel (.xlsx)"
-                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-[0.98] transition-all shadow-2xs cursor-pointer whitespace-nowrap"
+                className="flex-1 sm:flex-initial h-10.5 inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-[0.98] transition-all shadow-2xs cursor-pointer whitespace-nowrap"
               >
-                <FileSpreadsheet className="h-4 w-4" />
+                <FileSpreadsheet className="h-4.5 w-4.5" />
                 <span>Import Excel</span>
               </button>
             )}
@@ -872,25 +942,25 @@ export const UsersPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleOpenCreateModal}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--color-primary)] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)] active:scale-[0.98] transition-all cursor-pointer shadow-xs whitespace-nowrap"
+                className="w-full sm:w-auto h-10.5 inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] active:scale-[0.98] transition-all cursor-pointer shadow-xs whitespace-nowrap"
               >
-                <UserPlus className="h-4 w-4" />
+                <UserPlus className="h-4.5 w-4.5" />
                 <span>Thêm nhân sự mới</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* HÀNG DƯỚI: BỘ LỌC VAI TRÒ & TRẠNG THÁI + CHIP TAGS ĐANG LỌC */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2.5 border-t border-slate-100/80">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-slate-500 mr-0.5">Bộ lọc:</span>
+        {/* HÀNG DƯỚI: BỘ LỌC VAI TRÒ & TRẠNG THÁI (CHIẾM TRỌN 100% CHIỀU NGANG TRÊN MOBILE, KHÔNG BỊ CẮT CHỮ) */}
+        <div className="pt-2.5 border-t border-slate-100/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <span className="text-sm font-medium text-slate-600 mr-0.5 hidden sm:inline shrink-0">Bộ lọc:</span>
 
-            {/* Dropdown Vai trò */}
+            {/* Dropdown Vai trò: Chiếm 50% trên mobile, cố định sm:w-44 trên desktop */}
             <select
               value={roleFilter}
               onChange={(e) => handleRoleChange(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-1.5 text-xs font-medium text-slate-700 focus:bg-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] cursor-pointer transition-all"
+              className="flex-1 sm:flex-initial sm:w-44 min-w-0 h-10 sm:h-9.5 rounded-lg border border-slate-200 bg-slate-50/60 px-3 text-sm font-medium text-slate-700 focus:bg-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] cursor-pointer transition-all"
             >
               <option value="">Tất cả vai trò (7)</option>
               {Object.keys(ROLE_CONFIG).map((roleKey) => (
@@ -900,69 +970,51 @@ export const UsersPage: React.FC = () => {
               ))}
             </select>
 
-            {/* Dropdown Trạng thái */}
+            {/* Dropdown Trạng thái: Chiếm 50% trên mobile, cố định sm:w-40 trên desktop */}
             <select
               value={statusFilter}
               onChange={(e) => handleStatusChange(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-1.5 text-xs font-medium text-slate-700 focus:bg-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] cursor-pointer transition-all"
+              className="flex-1 sm:flex-initial sm:w-40 min-w-0 h-10 sm:h-9.5 rounded-lg border border-slate-200 bg-slate-50/60 px-3 text-sm font-medium text-slate-700 focus:bg-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] cursor-pointer transition-all"
             >
               <option value="">Tất cả trạng thái</option>
               <option value="ACTIVE">Đang hoạt động</option>
               <option value="LOCKED">Đang bị khóa</option>
             </select>
 
-            {/* Chip filter Vai trò */}
-            {roleFilter && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--color-primary-subtle)] border border-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold">
-                <span>{ROLE_CONFIG[roleFilter]?.label || roleFilter}</span>
-                <button
-                  type="button"
-                  onClick={() => handleRoleChange('')}
-                  className="hover:opacity-75 cursor-pointer p-0.5"
-                  title="Gỡ lọc vai trò"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            )}
-
-            {/* Chip filter Trạng thái */}
-            {statusFilter && (
-              <span
-                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-semibold ${
-                  statusFilter === 'ACTIVE'
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                    : 'bg-rose-50 border-rose-200 text-rose-700'
-                }`}
-              >
-                <span>{statusFilter === 'ACTIVE' ? 'Đang hoạt động' : 'Đang bị khóa'}</span>
-                <button
-                  type="button"
-                  onClick={() => handleStatusChange('')}
-                  className="hover:opacity-75 cursor-pointer p-0.5"
-                  title="Gỡ lọc trạng thái"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            )}
-
-            {/* Đặt lại bộ lọc */}
+            {/* Nút Đặt lại trên Desktop */}
             {(roleFilter || statusFilter || search) && (
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="inline-flex items-center gap-1 text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1 rounded-md hover:bg-rose-50 transition-colors cursor-pointer ml-1"
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 h-9.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-rose-600 active:scale-95 transition-all shadow-2xs cursor-pointer shrink-0"
+                title="Đặt lại bộ lọc về mặc định"
               >
-                <RotateCcw className="w-3 h-3" />
+                <RotateCcw className="w-4 h-4 text-slate-400" />
                 <span>Đặt lại</span>
               </button>
             )}
           </div>
 
-          {/* Thống kê tổng số lượng bên phải hàng dưới */}
-          <div className="text-xs text-slate-400 font-medium">
-            Tìm thấy <strong className="text-slate-700 font-bold">{total}</strong> nhân sự
+          {/* Dòng hiển thị kết quả & Nút Đặt lại trên mobile */}
+          <div className="flex items-center justify-between sm:justify-end text-sm text-slate-600 font-medium w-full sm:w-auto shrink-0 pt-1.5 sm:pt-0 border-t border-slate-50 sm:border-0">
+            {/* Nút Đặt lại trên Mobile */}
+            {(roleFilter || statusFilter || search) ? (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="sm:hidden inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:text-rose-600 active:scale-95 transition-all cursor-pointer"
+                title="Đặt lại bộ lọc về mặc định"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                <span>Đặt lại bộ lọc</span>
+              </button>
+            ) : (
+              <span className="sm:hidden text-slate-400 text-xs">Kết quả</span>
+            )}
+
+            <div>
+              Tìm thấy : <strong className="text-slate-800 font-bold">{total}</strong>
+            </div>
           </div>
         </div>
       </div>
@@ -970,46 +1022,43 @@ export const UsersPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* 4. DATA TABLE: BẢNG DỮ LIỆU NGƯỜI DÙNG                                    */}
       {/* ========================================================================= */}
-      <div className="rounded-xl bg-white border border-slate-100 shadow-sm overflow-hidden">
-        {/* ===================================================================== */}
-        {/* A. BẢNG DỮ LIỆU GỌN GÀNG CHO TABLET & DESKTOP (KHÔNG CÒN THANH CUỘN)  */}
-        {/* ===================================================================== */}
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[45rem]">
+      {/* A. BẢNG DỮ LIỆU GỌN GÀNG CHO TABLET & DESKTOP (>=640px) */}
+      <div className="hidden sm:block rounded-xl bg-white border border-slate-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[32rem]">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/70 text-xs font-bold uppercase tracking-wider text-slate-500">
-                <th className="px-5 py-3.5">Nhân sự</th>
-                <th className="px-5 py-3.5 whitespace-nowrap">Số điện thoại</th>
-                <th className="px-5 py-3.5">Vai trò</th>
-                <th className="px-5 py-3.5 text-center whitespace-nowrap min-w-[7.5rem]">
+              <tr className="border-b border-slate-100 bg-slate-50/70 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <th className="px-3.5 md:px-5 py-3.5 whitespace-nowrap">Nhân sự</th>
+                <th className="px-3.5 md:px-5 py-3.5 whitespace-nowrap">Vai trò</th>
+                <th className="px-3.5 md:px-5 py-3.5 text-center whitespace-nowrap min-w-[7rem]">
                   Trạng thái
                 </th>
-                <th className="px-5 py-3.5 text-center whitespace-nowrap min-w-[7.5rem]">
+                <th className="px-3.5 md:px-5 py-3.5 text-center whitespace-nowrap min-w-[7rem]">
                   Thao tác
                 </th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-100 text-xs">
+            <tbody className="divide-y divide-slate-100 text-sm">
               {loading ? (
                 <UsersTableSkeleton count={6} />
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                  <td colSpan={4} className="py-12 text-center text-slate-400">
                     <Users className="h-8 w-8 mx-auto mb-2 text-slate-300" />
                     <p className="font-semibold text-slate-600 text-sm">
                       Không tìm thấy tài khoản phù hợp
                     </p>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs sm:text-sm text-slate-400 mt-1">
                       Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc vai trò / trạng thái.
                     </p>
                     {(search || roleFilter || statusFilter) && (
                       <button
                         type="button"
                         onClick={handleResetFilters}
-                        className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold border border-[var(--color-primary-subtle)] shadow-2xs transition-all cursor-pointer active:scale-95"
+                        className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-sm font-semibold border border-[var(--color-primary-subtle)] shadow-2xs transition-all cursor-pointer active:scale-95"
                       >
-                        <RotateCcw className="h-3.5 w-3.5" />
+                        <RotateCcw className="h-4 w-4" />
                         <span>Đặt lại bộ lọc</span>
                       </button>
                     )}
@@ -1030,10 +1079,10 @@ export const UsersPage: React.FC = () => {
 
                   return (
                     <tr key={u.id} className="hover:bg-slate-50/70 transition-colors group">
-                      {/* Nhân sự: Avatar + Họ tên sạch sẽ (Không role thừa, không ID rườm rà) */}
-                      <td className="px-5 py-3.5">
+                      {/* Nhân sự: Avatar + Họ tên */}
+                      <td className="px-3.5 md:px-5 py-3.5 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-primary-light)] font-bold text-[var(--color-primary)] text-xs shadow-2xs">
+                          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-primary-light)] font-semibold text-[var(--color-primary)] text-sm shadow-2xs">
                             {userAvatar ? (
                               <img
                                 src={resolveAvatarUrl(userAvatar)}
@@ -1044,7 +1093,7 @@ export const UsersPage: React.FC = () => {
                               cleanName.charAt(0).toUpperCase()
                             )}
                           </div>
-                          <div className="font-semibold text-slate-900 flex items-center gap-1.5 truncate">
+                          <div className="font-medium text-slate-900 text-sm flex items-center gap-1.5 truncate">
                             <span className="truncate">{cleanName}</span>
                             {isCurrentSelf && (
                               <span className="rounded-md bg-[var(--color-primary-subtle)] px-1.5 py-0.5 text-xs font-bold text-[var(--color-primary)] shrink-0">
@@ -1055,52 +1104,25 @@ export const UsersPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Số điện thoại */}
-                      <td className="px-5 py-3.5 whitespace-nowrap">
-                        {u.phone ? (
-                          <div className="flex items-center gap-1.5 font-mono text-slate-700 text-xs">
-                            <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                            <span>{u.phone}</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 italic">---</span>
-                        )}
-                      </td>
-
                       {/* Vai trò */}
-                      <td className="px-5 py-3.5">
-                        <div className="flex flex-wrap gap-1">
-                          {((u.roles && u.roles.length > 0 ? u.roles : [u.role]) as string[]).map(
-                            (rKey) => {
-                              const config = ROLE_CONFIG[rKey] || {
-                                label: rKey,
-                                bgClass: 'bg-slate-100',
-                                textClass: 'text-slate-700',
-                                ringClass: 'ring-slate-700/10',
-                              };
-                              return (
-                                <span
-                                  key={rKey}
-                                  className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold ring-1 ring-inset whitespace-nowrap ${config.bgClass} ${config.textClass} ${config.ringClass}`}
-                                >
-                                  {config.label}
-                                </span>
-                              );
-                            }
-                          )}
-                        </div>
+                      <td className="px-3.5 md:px-5 py-3.5 whitespace-nowrap">
+                        <span className="text-sm text-slate-700 font-medium">
+                          {((u.roles && u.roles.length > 0 ? u.roles : [u.role]) as string[])
+                            .map((rKey) => ROLE_CONFIG[rKey]?.label || rKey)
+                            .join(', ')}
+                        </span>
                       </td>
 
                       {/* Trạng thái */}
-                      <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                      <td className="px-3.5 md:px-5 py-3.5 text-center whitespace-nowrap">
                         {u.status === 'ACTIVE' ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20 whitespace-nowrap">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
                             <span>Hoạt động</span>
                           </span>
                         ) : (
                           <span
-                            className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/20 cursor-help whitespace-nowrap"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-sm font-medium text-rose-700 ring-1 ring-inset ring-rose-600/20 cursor-help whitespace-nowrap"
                             title={u.lockReason || 'Tài khoản bị khóa bởi Quản trị viên'}
                           >
                             <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
@@ -1109,64 +1131,19 @@ export const UsersPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Thao tác (Xem chi tiết, Chỉnh sửa, Khóa/Mở khóa) */}
-                      <td className="px-5 py-3.5 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1">
-                          {/* Nút xem chi tiết */}
+                      {/* Thao tác */}
+                      <td className="px-3.5 md:px-5 py-3.5 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center">
                           <button
                             type="button"
                             onClick={() => handleOpenDetailModal(u)}
-                            className="btn-icon text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                            title="Xem toàn bộ thông tin chi tiết nhân sự"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-[var(--color-primary)] shadow-2xs active:scale-95 transition-all cursor-pointer"
+                            title="Xem chi tiết nhân sự"
                             aria-label="Xem chi tiết"
                           >
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-4 w-4 text-slate-500" />
+                            <span>Chi tiết</span>
                           </button>
-
-                          {/* Nút sửa thông tin */}
-                          {canManageUsers && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditModal(u)}
-                              className="btn-icon text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-                              title="Sửa thông tin & Cấp mã đổi mật khẩu"
-                              aria-label="Chỉnh sửa"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                          )}
-
-                          {/* Nút Khóa / Mở khóa */}
-                          {canManageUsers && (
-                            isCurrentSelf ? (
-                              <span
-                                className="btn-icon text-slate-300 cursor-not-allowed"
-                                title="Bạn không thể tự khóa tài khoản của chính mình"
-                              >
-                                <Lock className="h-4 w-4" />
-                              </span>
-                            ) : u.status === 'ACTIVE' ? (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenStatusModal(u, 'LOCKED')}
-                                className="btn-icon text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
-                                title="Khóa tài khoản"
-                                aria-label="Khóa tài khoản"
-                              >
-                                <Lock className="h-4 w-4" />
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenStatusModal(u, 'ACTIVE')}
-                                className="btn-icon text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
-                                title="Mở khóa tài khoản"
-                                aria-label="Mở khóa tài khoản"
-                              >
-                                <Unlock className="h-4 w-4" />
-                              </button>
-                            )
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -1177,162 +1154,7 @@ export const UsersPage: React.FC = () => {
           </table>
         </div>
 
-        {/* ===================================================================== */}
-        {/* B. GIAO DIỆN THẺ (CARD VIEW) CHO MOBILE (<640px) KHÔNG BỊ TRÀN NGANG */}
-        {/* ===================================================================== */}
-        <div className="divide-y divide-slate-100 sm:hidden">
-          {loading ? (
-            <UsersMobileCardSkeleton count={4} />
-          ) : users.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 px-4">
-              <Users className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-              <p className="font-semibold text-slate-600 text-sm">
-                Không tìm thấy tài khoản phù hợp
-              </p>
-              <p className="text-xs text-slate-400 mt-1">
-                Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc vai trò / trạng thái.
-              </p>
-              {(search || roleFilter || statusFilter) && (
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold border border-[var(--color-primary-subtle)] shadow-2xs transition-all cursor-pointer active:scale-95"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  <span>Đặt lại bộ lọc</span>
-                </button>
-              )}
-            </div>
-          ) : (
-            users.map((u) => {
-              const isCurrentSelf = Boolean(
-                currentAdmin &&
-                (currentAdmin.id === u.id ||
-                  currentAdmin.username?.toLowerCase() === u.username.toLowerCase() ||
-                  currentAdmin.email?.toLowerCase() === u.email.toLowerCase())
-              );
-              const userAvatar = isCurrentSelf
-                ? currentAdmin?.avatarUrl || u.avatarUrl
-                : u.avatarUrl;
-              const cleanName = formatCleanName(u.fullName);
-
-              return (
-                <div key={u.id} className="p-4 space-y-3 hover:bg-slate-50/50 transition-colors">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-primary-light)] font-bold text-[var(--color-primary)] text-sm shadow-2xs">
-                        {userAvatar ? (
-                          <img
-                            src={resolveAvatarUrl(userAvatar)}
-                            alt={cleanName}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          cleanName.charAt(0).toUpperCase()
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-semibold text-slate-900 flex items-center gap-1.5 truncate">
-                          <span className="truncate">{cleanName}</span>
-                          {isCurrentSelf && (
-                            <span className="rounded-md bg-[var(--color-primary-subtle)] px-1.5 py-0.5 text-xs font-bold text-[var(--color-primary)] shrink-0">
-                              Bạn
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-slate-500 mt-0.5 font-mono">
-                          {u.phone || '---'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Trạng thái */}
-                    {u.status === 'ACTIVE' ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 shrink-0">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        <span>Hoạt động</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/20 shrink-0">
-                        <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                        <span>Bị khóa</span>
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-50">
-                    {/* Vai trò */}
-                    <div className="flex flex-wrap gap-1 min-w-0">
-                      {((u.roles && u.roles.length > 0 ? u.roles : [u.role]) as string[]).map(
-                        (rKey) => {
-                          const config = ROLE_CONFIG[rKey] || {
-                            label: rKey,
-                            bgClass: 'bg-slate-100',
-                            textClass: 'text-slate-700',
-                            ringClass: 'ring-slate-700/10',
-                          };
-                          return (
-                            <span
-                              key={rKey}
-                              className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${config.bgClass} ${config.textClass} ${config.ringClass}`}
-                            >
-                              {config.label}
-                            </span>
-                          );
-                        }
-                      )}
-                    </div>
-
-                    {/* Thao tác */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDetailModal(u)}
-                        className="btn-icon text-slate-500 hover:bg-blue-50 hover:text-blue-600"
-                        title="Xem chi tiết"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      {canManageUsers && (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditModal(u)}
-                          className="btn-icon text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                          title="Chỉnh sửa"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                      )}
-                      {canManageUsers && (
-                        isCurrentSelf ? null : u.status === 'ACTIVE' ? (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenStatusModal(u, 'LOCKED')}
-                            className="btn-icon text-slate-500 hover:bg-rose-50 hover:text-rose-600"
-                            title="Khóa tài khoản"
-                          >
-                            <Lock className="h-4 w-4" />
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenStatusModal(u, 'ACTIVE')}
-                            className="btn-icon text-slate-500 hover:bg-emerald-50 hover:text-emerald-600"
-                            title="Mở khóa tài khoản"
-                          >
-                            <Unlock className="h-4 w-4" />
-                          </button>
-                        )
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN BẢNG (CHUẨN HỆ THỐNG LOHA SALES) ── */}
+        {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN BẢNG DESKTOP ── */}
         {total > 0 && (
           <Pagination
             variant="default"
@@ -1351,6 +1173,145 @@ export const UsersPage: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
+      {/* B. GIAO DIỆN THẺ (CARD VIEW) CHO MOBILE (<640px) TỐI ƯU UI/UX RỜI RẠC     */}
+      {/* ========================================================================= */}
+      <div className="sm:hidden space-y-3">
+        {loading ? (
+          <UsersMobileCardSkeleton count={4} />
+        ) : users.length === 0 ? (
+          <div className="rounded-xl bg-white border border-slate-200/80 p-8 text-center text-slate-400">
+            <Users className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+            <p className="font-semibold text-slate-600 text-base">
+              Không tìm thấy tài khoản phù hợp
+            </p>
+            <p className="text-sm text-slate-400 mt-1">
+              Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc vai trò / trạng thái.
+            </p>
+            {(search || roleFilter || statusFilter) && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-sm font-semibold border border-[var(--color-primary-subtle)] shadow-2xs transition-all cursor-pointer active:scale-95"
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span>Đặt lại bộ lọc</span>
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="space-y-2.5">
+              {users.map((u) => {
+                const isCurrentSelf = Boolean(
+                  currentAdmin &&
+                  (currentAdmin.id === u.id ||
+                    currentAdmin.username?.toLowerCase() === u.username.toLowerCase() ||
+                    currentAdmin.email?.toLowerCase() === u.email.toLowerCase())
+                );
+                const userAvatar = isCurrentSelf
+                  ? currentAdmin?.avatarUrl || u.avatarUrl
+                  : u.avatarUrl;
+                const cleanName = formatCleanName(u.fullName);
+
+                return (
+                  <div
+                    key={u.id}
+                    onClick={() => handleOpenDetailModal(u)}
+                    className="rounded-xl bg-white border border-slate-200/80 p-3.5 shadow-2xs hover:border-slate-300 active:scale-[0.99] transition-all cursor-pointer select-none space-y-2.5"
+                  >
+                    {/* HÀNG 1: Avatar + Tên nhân sự (rộng rãi, không bị cắt) + Trạng thái */}
+                    <div className="flex items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="relative flex h-10.5 w-10.5 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-primary-light)] font-bold text-[var(--color-primary)] text-sm shadow-2xs">
+                          {userAvatar ? (
+                            <img
+                              src={resolveAvatarUrl(userAvatar)}
+                              alt={cleanName}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            cleanName.charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <div className="font-semibold text-slate-900 text-sm flex items-center gap-1.5 min-w-0 flex-1">
+                          <span className="truncate">{cleanName}</span>
+                          {isCurrentSelf && (
+                            <span className="rounded-md bg-[var(--color-primary-subtle)] px-1.5 py-0.5 text-[11px] font-bold text-[var(--color-primary)] shrink-0">
+                              Bạn
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Trạng thái */}
+                      <div className="shrink-0">
+                        {u.status === 'ACTIVE' ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            <span>Hoạt động</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/20">
+                            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                            <span>Bị khóa</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* HÀNG 2: Vai trò (bên trái) + Nút Chi tiết (bên phải) */}
+                    <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100">
+                      <div className="text-xs text-slate-500 font-medium truncate flex-1 pr-2">
+                        <span className="text-slate-400 mr-1 font-normal">Vai trò:</span>
+                        <span className="text-slate-700 font-semibold">
+                          {((u.roles && u.roles.length > 0 ? u.roles : [u.role]) as string[])
+                            .map((rKey) => ROLE_CONFIG[rKey]?.label || rKey)
+                            .join(', ')}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDetailModal(u);
+                        }}
+                        className="inline-flex items-center gap-1 h-7.5 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all shadow-2xs active:scale-95 shrink-0 cursor-pointer"
+                        title="Xem chi tiết nhân sự"
+                        aria-label="Xem chi tiết"
+                      >
+                        <Eye className="h-3.5 w-3.5 text-slate-500" />
+                        <span>Chi tiết</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Thanh phân trang Mobile */}
+            {total > 0 && (
+              <div className="rounded-xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden">
+                <Pagination
+                  variant="default"
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={total}
+                  pageSize={limit}
+                  pageSizeOptions={[10, 20, 50]}
+                  itemLabel="nhân sự"
+                  showRecordRange={false}
+                  showFirstLast={false}
+                  onPageChange={handlePageChange}
+                  onPageSizeChange={handleLimitChange}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
       {/* 5. MODAL THÊM / CẬP NHẬT NHÂN SỰ & CẤP MÃ ĐỔI MẬT KHẨU                    */}
       {/* ========================================================================= */}
       {modalOpen &&
@@ -1365,10 +1326,10 @@ export const UsersPage: React.FC = () => {
                     {editingUser ? <Edit2 className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900">
                       {editingUser ? 'Cập nhật Thông tin Nhân sự' : 'Thêm mới Nhân sự'}
                     </h3>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs sm:text-sm text-slate-500">
                       {editingUser
                         ? `Mã tài khoản: ${editingUser.id}`
                         : 'Điền đầy đủ thông tin để cấp tài khoản truy cập hệ thống'}
@@ -1379,7 +1340,7 @@ export const UsersPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -1390,7 +1351,7 @@ export const UsersPage: React.FC = () => {
                 {/* Họ tên & SĐT */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Họ và tên nhân sự <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -1401,7 +1362,7 @@ export const UsersPage: React.FC = () => {
                         clearFieldError('fullName');
                       }}
                       placeholder="VD: Nguyễn Văn An"
-                      className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-all ${
+                      className={`w-full rounded-xl border px-3.5 py-2.5 text-sm transition-all ${
                         formErrors.fullName
                           ? 'border-rose-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 bg-rose-50/15'
                           : 'border-slate-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20'
@@ -1416,7 +1377,7 @@ export const UsersPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Số điện thoại liên hệ (SĐT Việt Nam)
                     </label>
                     <input
@@ -1427,7 +1388,7 @@ export const UsersPage: React.FC = () => {
                         clearFieldError('phone');
                       }}
                       placeholder="VD: 0912345678"
-                      className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-all ${
+                      className={`w-full rounded-xl border px-3.5 py-2.5 text-sm transition-all ${
                         formErrors.phone
                           ? 'border-rose-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 bg-rose-50/15'
                           : 'border-slate-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20'
@@ -1445,7 +1406,7 @@ export const UsersPage: React.FC = () => {
                 {/* Tên đăng nhập & Email */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Tên đăng nhập (Username) <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -1457,7 +1418,7 @@ export const UsersPage: React.FC = () => {
                         clearFieldError('username');
                       }}
                       placeholder="VD: sales_an"
-                      className={`w-full rounded-xl border px-3.5 py-2 text-xs disabled:bg-slate-100 disabled:text-slate-500 transition-all ${
+                      className={`w-full rounded-xl border px-3.5 py-2.5 text-sm disabled:bg-slate-100 disabled:text-slate-500 transition-all ${
                         formErrors.username
                           ? 'border-rose-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 bg-rose-50/15'
                           : 'border-slate-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20'
@@ -1472,7 +1433,7 @@ export const UsersPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Email công việc <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -1483,7 +1444,7 @@ export const UsersPage: React.FC = () => {
                         clearFieldError('email');
                       }}
                       placeholder="VD: an.nguyen@loha.vn"
-                      className={`w-full rounded-xl border px-3.5 py-2 text-xs transition-all ${
+                      className={`w-full rounded-xl border px-3.5 py-2.5 text-sm transition-all ${
                         formErrors.email
                           ? 'border-rose-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 bg-rose-50/15'
                           : 'border-slate-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20'
@@ -1501,10 +1462,10 @@ export const UsersPage: React.FC = () => {
                 {/* PHÂN QUYỀN ĐA VAI TRÒ (Multi-role - SN-14) */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="block text-xs font-semibold text-slate-700">
+                    <label className="block text-sm font-semibold text-slate-700">
                       Vai trò hệ thống (Đa vai trò) <span className="text-rose-500">*</span>
                     </label>
-                    <span className="text-xs text-slate-500 font-medium">
+                    <span className="text-sm text-slate-500 font-medium">
                       Đã chọn:{' '}
                       <strong className="text-[var(--color-primary)]">
                         {formData.roles?.length || 0}
@@ -1515,8 +1476,8 @@ export const UsersPage: React.FC = () => {
 
                   {/* Cảnh báo an toàn khi Admin sửa tài khoản chính mình */}
                   {isEditingCurrentSelf && (
-                    <div className="flex items-start gap-2.5 rounded-xl border border-[var(--color-primary-subtle)] bg-[var(--color-primary-light)]/80 p-3 text-xs text-slate-800 shadow-2xs">
-                      <Shield className="h-4 w-4 text-[var(--color-primary)] shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2.5 rounded-xl border border-[var(--color-primary-subtle)] bg-[var(--color-primary-light)]/80 p-3.5 text-sm text-slate-800 shadow-2xs">
+                      <Shield className="h-5 w-5 text-[var(--color-primary)] shrink-0 mt-0.5" />
                       <div>
                         <span className="font-bold">Bảo vệ quyền Quản trị viên:</span> Bạn đang
                         chỉnh sửa tài khoản Quản trị của chính mình. Quyền{' '}
@@ -1532,64 +1493,64 @@ export const UsersPage: React.FC = () => {
                       .filter((roleKey) => roleKey !== 'CUSTOMER' && roleKey !== USER_ROLES.CUSTOMER)
                       .map((roleKey) => {
                         const cfg = ROLE_CONFIG[roleKey];
-                      const isSelected = (formData.roles || []).includes(roleKey);
-                      const isAdminLocked = isEditingCurrentSelf && roleKey === USER_ROLES.ADMIN;
+                        const isSelected = (formData.roles || []).includes(roleKey);
+                        const isAdminLocked = isEditingCurrentSelf && roleKey === USER_ROLES.ADMIN;
 
-                      return (
-                        <div
-                          key={roleKey}
-                          onClick={() => {
-                            if (!isAdminLocked) handleToggleRole(roleKey);
-                          }}
-                          className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
-                            isAdminLocked
-                              ? 'bg-[var(--color-primary-light)]/40 border-[var(--color-primary-subtle)] cursor-not-allowed'
-                              : isSelected
-                                ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] shadow-2xs'
-                                : 'bg-white border-slate-200 hover:bg-slate-50/80'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              disabled={isAdminLocked}
-                              onChange={() => {
-                                if (!isAdminLocked) handleToggleRole(roleKey);
-                              }}
-                              className="h-4 w-4 rounded text-[var(--color-primary)] focus:ring-[var(--color-primary-ring)] border-slate-300 cursor-pointer disabled:cursor-not-allowed"
-                            />
-                            <div className="truncate">
-                              <span className="font-semibold text-slate-800">{cfg.label}</span>
-                              <span className="text-xs font-mono text-slate-400 ml-1.5">
-                                ({roleKey})
-                              </span>
+                        return (
+                          <div
+                            key={roleKey}
+                            onClick={() => {
+                              if (!isAdminLocked) handleToggleRole(roleKey);
+                            }}
+                            className={`flex items-center justify-between p-3 rounded-xl border text-sm cursor-pointer transition-all ${
+                              isAdminLocked
+                                ? 'bg-[var(--color-primary-light)]/40 border-[var(--color-primary-subtle)] cursor-not-allowed'
+                                : isSelected
+                                  ? 'bg-[var(--color-primary-light)] border-[var(--color-primary)] shadow-2xs'
+                                  : 'bg-white border-slate-200 hover:bg-slate-50/80'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                disabled={isAdminLocked}
+                                onChange={() => {
+                                  if (!isAdminLocked) handleToggleRole(roleKey);
+                                }}
+                                className="h-4.5 w-4.5 rounded text-[var(--color-primary)] focus:ring-[var(--color-primary-ring)] border-slate-300 cursor-pointer disabled:cursor-not-allowed"
+                              />
+                              <div className="truncate">
+                                <span className="font-semibold text-slate-800">{cfg.label}</span>
+                                <span className="text-xs font-mono text-slate-400 ml-1.5">
+                                  ({roleKey})
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1 shrink-0 ml-2">
+                              {isAdminLocked ? (
+                                <span
+                                  title="Quyền quản trị của chính bạn được bảo vệ"
+                                  className="inline-flex items-center gap-1 rounded-md bg-[var(--color-primary-subtle)] px-2 py-0.5 text-xs font-bold text-[var(--color-primary)]"
+                                >
+                                  <Lock className="h-3 w-3" />
+                                  Khóa
+                                </span>
+                              ) : (
+                                <span
+                                  className={`rounded-md px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${cfg.bgClass} ${cfg.textClass} ${cfg.ringClass}`}
+                                >
+                                  {roleKey === USER_ROLES.WAREHOUSE_KEEPER ||
+                                  roleKey === USER_ROLES.WAREHOUSE_MANAGER
+                                    ? 'Kho'
+                                    : 'Nhóm'}
+                                </span>
+                              )}
                             </div>
                           </div>
-
-                          <div className="flex items-center gap-1 shrink-0 ml-2">
-                            {isAdminLocked ? (
-                              <span
-                                title="Quyền quản trị của chính bạn được bảo vệ"
-                                className="inline-flex items-center gap-1 rounded-md bg-[var(--color-primary-subtle)] px-1.5 py-0.5 text-xs font-bold text-[var(--color-primary)]"
-                              >
-                                <Lock className="h-2.5 w-2.5" />
-                                Khóa
-                              </span>
-                            ) : (
-                              <span
-                                className={`rounded-md px-1.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${cfg.bgClass} ${cfg.textClass} ${cfg.ringClass}`}
-                              >
-                                {roleKey === USER_ROLES.WAREHOUSE_KEEPER ||
-                                roleKey === USER_ROLES.WAREHOUSE_MANAGER
-                                  ? 'Kho'
-                                  : 'Nhóm'}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                   </div>
 
                   {formErrors.roles && (
@@ -1609,17 +1570,33 @@ export const UsersPage: React.FC = () => {
 
                     return (
                       <>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="block text-xs font-semibold text-slate-700">
-                            Kho hoặc Địa bàn phụ trách{' '}
-                            {hasWarehouseRole ? (
-                              <span className="text-rose-500 font-bold">*</span>
-                            ) : (
-                              <span className="text-slate-400 font-normal">(Tùy chọn)</span>
-                            )}
-                          </label>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <label className="block text-sm font-semibold text-slate-700">
+                              Kho hoặc Địa bàn phụ trách{' '}
+                              {hasWarehouseRole ? (
+                                <span className="text-rose-500 font-bold">*</span>
+                              ) : (
+                                <span className="text-slate-400 font-normal">(Tùy chọn)</span>
+                              )}
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => void fetchWarehousesRealtime()}
+                              className="text-slate-400 hover:text-indigo-600 p-0.5 rounded cursor-pointer transition-colors"
+                              title="Cập nhật danh sách kho mới nhất từ hệ thống (Thời gian thực)"
+                            >
+                              <RotateCcw
+                                className={`w-3.5 h-3.5 ${loadingWarehouses ? 'animate-spin text-indigo-600' : ''}`}
+                              />
+                            </button>
+                            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/80 font-medium">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              Thời gian thực
+                            </span>
+                          </div>
                           {hasWarehouseRole && (
-                            <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                            <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200">
                               Bắt buộc cho vai trò Kho
                             </span>
                           )}
@@ -1634,18 +1611,64 @@ export const UsersPage: React.FC = () => {
                             });
                             clearFieldError('assignedWarehouse');
                           }}
-                          className={`w-full rounded-xl border bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-2 transition-all ${
+                          className={`w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 transition-all ${
                             formErrors.assignedWarehouse
                               ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/15'
                               : 'border-slate-200 focus:border-brand-500 focus:ring-brand-500/20'
                           }`}
                         >
                           <option value="">-- Chưa chọn kho / địa bàn --</option>
-                          {WAREHOUSE_OPTIONS.map((wh) => (
-                            <option key={wh} value={wh}>
-                              {wh}
-                            </option>
-                          ))}
+
+                          {/* Nhóm kho hàng thực tế từ hệ thống (API Thời gian thực) */}
+                          <optgroup label="🏢 Kho hàng trên hệ thống (Thời gian thực)">
+                            {warehouseList.length > 0 ? (
+                              warehouseList.map((wh) => {
+                                const label = wh.name.includes(wh.code)
+                                  ? wh.name
+                                  : `${wh.name} - ${wh.code}`;
+                                return (
+                                  <option key={wh.id} value={label}>
+                                    {label} {wh.status === 'INACTIVE' ? '(Ngưng hoạt động)' : ''}
+                                  </option>
+                                );
+                              })
+                            ) : (
+                              <option disabled value="">
+                                {loadingWarehouses
+                                  ? 'Đang tải danh sách kho từ hệ thống...'
+                                  : 'Chưa có kho nào trên hệ thống'}
+                              </option>
+                            )}
+                          </optgroup>
+
+                          {/* Nhóm địa bàn kinh doanh (Dành cho Sales / Đại lý) */}
+                          {!hasWarehouseRole && (
+                            <optgroup label="📍 Địa bàn kinh doanh phụ trách (Tùy chọn)">
+                              {TERRITORY_OPTIONS.map((ter) => (
+                                <option key={ter} value={ter}>
+                                  {ter}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+
+                          {/* Fallback cho giá trị kho cũ đang gán nếu chưa khớp danh sách */}
+                          {formData.assignedWarehouse &&
+                            !warehouseList.some((wh) => {
+                              const label = wh.name.includes(wh.code)
+                                ? wh.name
+                                : `${wh.name} - ${wh.code}`;
+                              return (
+                                label === formData.assignedWarehouse ||
+                                wh.name === formData.assignedWarehouse ||
+                                wh.code === formData.assignedWarehouse
+                              );
+                            }) &&
+                            !TERRITORY_OPTIONS.includes(formData.assignedWarehouse) && (
+                              <option value={formData.assignedWarehouse}>
+                                {formData.assignedWarehouse} (Đang gán)
+                              </option>
+                            )}
                         </select>
 
                         {formErrors.assignedWarehouse ? (
@@ -1669,7 +1692,7 @@ export const UsersPage: React.FC = () => {
 
                 {editingUser ? (
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Đặt lại mật khẩu mới (Để trống nếu giữ nguyên mật khẩu cũ)
                     </label>
                     <div className="relative">
@@ -1678,22 +1701,22 @@ export const UsersPage: React.FC = () => {
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         placeholder="Nhập mật khẩu mới nếu muốn thay đổi (để trống nếu không đổi)..."
-                        className="w-full rounded-xl border border-slate-200 bg-white pl-3.5 pr-10 py-2 text-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                        className="w-full rounded-xl border border-slate-200 bg-white pl-3.5 pr-10 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
                       >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                       </button>
                     </div>
                   </div>
                 ) : (
                   /* Khi Tạo mới nhân sự */
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Mật khẩu khởi tạo (Để trống hệ thống sẽ tự động sinh mật khẩu tạm thời an
                       toàn)
                     </label>
@@ -1703,15 +1726,15 @@ export const UsersPage: React.FC = () => {
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         placeholder="Mặc định: Loha@2026 (nếu bỏ trống)"
-                        className="w-full rounded-xl border border-slate-200 bg-white pl-3.5 pr-10 py-2 text-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                        className="w-full rounded-xl border border-slate-200 bg-white pl-3.5 pr-10 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
                       >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                       </button>
                     </div>
                   </div>
@@ -1722,14 +1745,14 @@ export const UsersPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setModalOpen(false)}
-                    className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors text-center cursor-pointer"
+                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors text-center cursor-pointer"
                   >
                     Hủy bỏ
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="rounded-xl bg-[var(--color-primary)] px-5 py-2 text-xs font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 transition-all shadow-sm text-center cursor-pointer"
+                    className="rounded-xl bg-[var(--color-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 transition-all shadow-sm text-center cursor-pointer"
                   >
                     {submitting ? 'Đang lưu...' : editingUser ? 'Lưu cập nhật' : 'Tạo tài khoản'}
                   </button>
@@ -1752,14 +1775,14 @@ export const UsersPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setStatusModalOpen(false)}
-                className="absolute top-4 right-4 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                className="absolute top-4 right-4 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
 
               <div className="flex items-center gap-3 mb-4">
                 <div
-                  className={`flex h-11 w-11 items-center justify-center rounded-xl shadow-2xs ${
+                  className={`flex h-12 w-12 items-center justify-center rounded-xl shadow-2xs ${
                     targetStatus === 'LOCKED'
                       ? 'bg-rose-50 text-rose-600'
                       : 'bg-emerald-50 text-emerald-600'
@@ -1772,12 +1795,12 @@ export const UsersPage: React.FC = () => {
                   )}
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900">
                     {targetStatus === 'LOCKED'
                       ? 'Xác nhận Khóa tài khoản'
                       : 'Xác nhận Mở khóa tài khoản'}
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-sm text-slate-500">
                     Nhân sự: <strong>{selectedUserForStatus.fullName}</strong> (
                     {selectedUserForStatus.username})
                   </p>
@@ -1785,9 +1808,9 @@ export const UsersPage: React.FC = () => {
               </div>
 
               {targetStatus === 'LOCKED' && (
-                <div className="mb-3.5 rounded-xl bg-rose-50 border border-rose-200/80 p-3.5 text-xs text-rose-800 space-y-1">
+                <div className="mb-3.5 rounded-xl bg-rose-50 border border-rose-200/80 p-3.5 text-sm text-rose-800 space-y-1">
                   <div className="font-bold flex items-center gap-1.5">
-                    <ShieldAlert className="h-4 w-4 shrink-0 text-rose-600" />
+                    <ShieldAlert className="h-4.5 w-4.5 shrink-0 text-rose-600" />
                     <span>Cảnh báo bảo mật hệ thống:</span>
                   </div>
                   <p className="leading-relaxed">
@@ -1802,14 +1825,14 @@ export const UsersPage: React.FC = () => {
               {targetStatus === 'LOCKED' && (
                 <>
                   {loadingAssignedCustomers ? (
-                    <div className="mb-3.5 rounded-xl bg-slate-50 border border-slate-200/80 p-3 text-xs text-slate-500 flex items-center gap-2">
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin text-[var(--color-primary)]" />
+                    <div className="mb-3.5 rounded-xl bg-slate-50 border border-slate-200/80 p-3 text-sm text-slate-500 flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4 animate-spin text-[var(--color-primary)]" />
                       <span>Đang kiểm tra danh sách đại lý phụ trách...</span>
                     </div>
                   ) : assignedCustomers.length > 0 ? (
-                    <div className="mb-3.5 rounded-xl bg-amber-50/90 border border-amber-200 p-3.5 text-xs text-amber-900 space-y-2 shadow-2xs">
+                    <div className="mb-3.5 rounded-xl bg-amber-50/90 border border-amber-200 p-3.5 text-sm text-amber-900 space-y-2 shadow-2xs">
                       <div className="font-bold flex items-center gap-1.5 text-amber-800">
-                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                        <AlertTriangle className="h-4.5 w-4.5 shrink-0 text-amber-600" />
                         <span>Cảnh báo bàn giao đại lý phụ trách:</span>
                       </div>
                       <p className="leading-relaxed">
@@ -1824,16 +1847,16 @@ export const UsersPage: React.FC = () => {
                         {assignedCustomers.map((dealer) => (
                           <div
                             key={dealer.id}
-                            className="flex items-center justify-between rounded-lg bg-white/95 border border-amber-200/70 px-2.5 py-1.5 text-xs shadow-2xs"
+                            className="flex items-center justify-between rounded-lg bg-white/95 border border-amber-200/70 px-2.5 py-1.5 text-sm shadow-2xs"
                           >
                             <div className="font-medium text-slate-800 flex items-center gap-1.5 min-w-0">
-                              <Store className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                              <Store className="h-4 w-4 shrink-0 text-amber-600" />
                               <span className="font-mono font-bold text-amber-900">
                                 {dealer.code}
                               </span>
                               <span className="truncate">- {dealer.name}</span>
                             </div>
-                            <span className="text-xs text-slate-600 font-semibold bg-slate-100 px-1.5 py-0.5 rounded shrink-0 ml-1.5">
+                            <span className="text-xs text-slate-600 font-semibold bg-slate-100 px-2 py-0.5 rounded shrink-0 ml-1.5">
                               {dealer.region}
                             </span>
                           </div>
@@ -1846,7 +1869,7 @@ export const UsersPage: React.FC = () => {
 
               <form onSubmit={handleSubmitStatus} className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                     Lý do {targetStatus === 'LOCKED' ? 'khóa' : 'mở khóa'} tài khoản{' '}
                     <span className="text-rose-500">*</span>
                   </label>
@@ -1860,14 +1883,14 @@ export const UsersPage: React.FC = () => {
                         ? 'Nhập lý do cụ thể (Bắt buộc để lưu nhật ký kiểm toán)...'
                         : 'Nhập ghi chú mở khóa...'
                     }
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]"
+                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)]"
                   />
                 </div>
 
                 {/* Gợi ý lý do nhanh khi khóa */}
                 {targetStatus === 'LOCKED' && (
                   <div>
-                    <span className="text-xs text-slate-400 font-medium block mb-1">
+                    <span className="text-xs text-slate-500 font-medium block mb-1.5">
                       Gợi ý lý do phổ biến:
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -1876,7 +1899,7 @@ export const UsersPage: React.FC = () => {
                           type="button"
                           key={preset}
                           onClick={() => setStatusReason(preset)}
-                          className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs sm:text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors"
                         >
                           {preset}
                         </button>
@@ -1885,11 +1908,11 @@ export const UsersPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-3.5 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={() => setStatusModalOpen(false)}
-                    className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors text-center cursor-pointer"
+                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors text-center cursor-pointer"
                   >
                     Hủy bỏ
                   </button>
@@ -1898,7 +1921,7 @@ export const UsersPage: React.FC = () => {
                     disabled={
                       statusSubmitting || (targetStatus === 'LOCKED' && !statusReason.trim())
                     }
-                    className={`rounded-xl px-5 py-2 text-xs font-semibold text-white transition-all text-center cursor-pointer ${
+                    className={`rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all text-center cursor-pointer ${
                       targetStatus === 'LOCKED'
                         ? 'bg-rose-600 hover:bg-rose-700'
                         : 'bg-emerald-600 hover:bg-emerald-700'
@@ -1948,7 +1971,7 @@ export const UsersPage: React.FC = () => {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <h4 className="text-base font-bold text-slate-900 truncate">
+                    <h4 className="text-base sm:text-lg font-bold text-slate-900 truncate">
                       {formatCleanName(selectedUserForDetail.fullName)}
                     </h4>
                     <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
@@ -1966,7 +1989,7 @@ export const UsersPage: React.FC = () => {
                         return (
                           <span
                             key={rKey}
-                            className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-bold ring-1 ring-inset ${cfg.bgClass} ${cfg.textClass} ${cfg.ringClass}`}
+                            className={`inline-flex items-center rounded-lg px-2.5 py-0.5 text-xs sm:text-sm font-semibold ring-1 ring-inset ${cfg.bgClass} ${cfg.textClass} ${cfg.ringClass}`}
                           >
                             {cfg.label}
                           </span>
@@ -1974,12 +1997,12 @@ export const UsersPage: React.FC = () => {
                       })}
 
                       {selectedUserForDetail.status === 'ACTIVE' ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-600/20">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs sm:text-sm font-semibold text-emerald-700 ring-1 ring-emerald-600/20">
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                           Hoạt động
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-600/20">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs sm:text-sm font-semibold text-rose-700 ring-1 ring-rose-600/20">
                           <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                           Bị khóa
                         </span>
@@ -1989,13 +2012,13 @@ export const UsersPage: React.FC = () => {
                 </div>
 
                 {/* Detail grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   {/* Tên đăng nhập */}
                   <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-1">
-                    <span className="text-xs font-medium text-slate-400 block">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                       Tên đăng nhập
                     </span>
-                    <div className="flex items-center justify-between font-mono font-bold text-slate-800">
+                    <div className="flex items-center justify-between font-mono font-bold text-slate-800 text-sm sm:text-base">
                       <span className="truncate">{selectedUserForDetail.username}</span>
                       <button
                         type="button"
@@ -2004,9 +2027,9 @@ export const UsersPage: React.FC = () => {
                         title="Sao chép tên đăng nhập"
                       >
                         {copiedCode === selectedUserForDetail.username ? (
-                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          <Check className="h-4 w-4 text-emerald-600" />
                         ) : (
-                          <Copy className="h-3.5 w-3.5" />
+                          <Copy className="h-4 w-4" />
                         )}
                       </button>
                     </div>
@@ -2014,12 +2037,12 @@ export const UsersPage: React.FC = () => {
 
                   {/* Email */}
                   <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-1">
-                    <span className="text-xs font-medium text-slate-400 block">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                       Địa chỉ Email
                     </span>
-                    <div className="flex items-center justify-between font-medium text-slate-800">
+                    <div className="flex items-center justify-between font-medium text-slate-800 text-sm">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                        <Mail className="h-4 w-4 text-slate-400 shrink-0" />
                         <span className="truncate" title={selectedUserForDetail.email}>
                           {selectedUserForDetail.email}
                         </span>
@@ -2031,9 +2054,9 @@ export const UsersPage: React.FC = () => {
                         title="Sao chép email"
                       >
                         {copiedCode === selectedUserForDetail.email ? (
-                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          <Check className="h-4 w-4 text-emerald-600" />
                         ) : (
-                          <Copy className="h-3.5 w-3.5" />
+                          <Copy className="h-4 w-4" />
                         )}
                       </button>
                     </div>
@@ -2041,20 +2064,20 @@ export const UsersPage: React.FC = () => {
 
                   {/* Số điện thoại */}
                   <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-1">
-                    <span className="text-xs font-medium text-slate-400 block">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                       Số điện thoại
                     </span>
-                    <span className="font-mono font-medium text-slate-800 block">
+                    <span className="font-medium text-slate-800 text-sm block">
                       {selectedUserForDetail.phone || 'Chưa cập nhật'}
                     </span>
                   </div>
 
                   {/* Mã ID người dùng */}
                   <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-1">
-                    <span className="text-xs font-medium text-slate-400 block">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                       Mã ID nhân sự
                     </span>
-                    <div className="flex items-center justify-between font-mono text-xs text-slate-700">
+                    <div className="flex items-center justify-between font-mono text-sm text-slate-700">
                       <span className="truncate">{selectedUserForDetail.id}</span>
                       <button
                         type="button"
@@ -2063,9 +2086,9 @@ export const UsersPage: React.FC = () => {
                         title="Sao chép ID"
                       >
                         {copiedCode === selectedUserForDetail.id ? (
-                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          <Check className="h-4 w-4 text-emerald-600" />
                         ) : (
-                          <Copy className="h-3.5 w-3.5" />
+                          <Copy className="h-4 w-4" />
                         )}
                       </button>
                     </div>
@@ -2073,11 +2096,11 @@ export const UsersPage: React.FC = () => {
 
                   {/* Kho / Địa bàn phụ trách */}
                   <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-1 sm:col-span-2">
-                    <span className="text-xs font-medium text-slate-400 block">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide block">
                       Kho / Địa bàn phụ trách
                     </span>
-                    <div className="flex items-center gap-1.5 font-medium text-slate-800">
-                      <Warehouse className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <div className="flex items-center gap-1.5 font-medium text-slate-800 text-sm">
+                      <Warehouse className="h-4 w-4 text-slate-400 shrink-0" />
                       <span>
                         {selectedUserForDetail.assignedWarehouse || 'Chưa phân công địa bàn / kho'}
                       </span>
@@ -2088,20 +2111,20 @@ export const UsersPage: React.FC = () => {
                   {selectedUserForDetail.status === 'LOCKED' &&
                     selectedUserForDetail.lockReason && (
                       <div className="p-3.5 rounded-2xl bg-rose-50/70 border border-rose-100 space-y-1 sm:col-span-2 text-rose-800">
-                        <span className="text-xs font-semibold text-rose-600 block">
+                        <span className="text-xs font-semibold text-rose-600 uppercase tracking-wide block">
                           Lý do khóa tài khoản
                         </span>
-                        <p className="text-xs">{selectedUserForDetail.lockReason}</p>
+                        <p className="text-sm">{selectedUserForDetail.lockReason}</p>
                       </div>
                     )}
 
                   {/* Mã cấp đổi mật khẩu (nếu có) */}
                   {selectedUserForDetail.resetCode && (
                     <div className="p-3.5 rounded-2xl bg-indigo-50/80 border border-indigo-100 space-y-1 sm:col-span-2">
-                      <span className="text-xs font-semibold text-indigo-700 block">
+                      <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wide block">
                         Mã cấp đổi mật khẩu tạm thời
                       </span>
-                      <div className="flex items-center justify-between font-mono font-bold text-sm text-indigo-900">
+                      <div className="flex items-center justify-between font-mono font-bold text-sm sm:text-base text-indigo-900">
                         <span>{selectedUserForDetail.resetCode}</span>
                         <button
                           type="button"
@@ -2123,18 +2146,18 @@ export const UsersPage: React.FC = () => {
                   {loadingDetailCustomers ? (
                     <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 sm:col-span-2 text-center text-slate-400">
                       <RefreshCw className="h-4 w-4 animate-spin mx-auto mb-1 text-blue-600" />
-                      <span>Đang tải danh sách khách hàng phụ trách...</span>
+                      <span className="text-sm">Đang tải danh sách khách hàng phụ trách...</span>
                     </div>
                   ) : detailCustomers.length > 0 ? (
                     <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100 space-y-2 sm:col-span-2">
-                      <span className="text-xs font-semibold text-blue-700 block">
+                      <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide block">
                         Đại lý / Khách hàng đang phụ trách ({detailCustomers.length})
                       </span>
                       <div className="max-h-32 overflow-y-auto space-y-1 pr-1">
                         {detailCustomers.map((c) => (
                           <div
                             key={c.id}
-                            className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-lg bg-white/90 border border-blue-100 shadow-2xs"
+                            className="flex items-center justify-between text-sm py-1.5 px-2.5 rounded-lg bg-white/90 border border-blue-100 shadow-2xs"
                           >
                             <span className="font-semibold text-slate-800 truncate">{c.name}</span>
                             <span className="font-mono text-slate-500 text-xs shrink-0">
@@ -2158,9 +2181,9 @@ export const UsersPage: React.FC = () => {
                         setDetailModalOpen(false);
                         handleOpenEditModal(selectedUserForDetail);
                       }}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition-colors cursor-pointer"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-2xs transition-colors cursor-pointer"
                     >
-                      <Edit2 className="h-3.5 w-3.5 text-slate-600" />
+                      <Edit2 className="h-4 w-4 text-slate-600" />
                       <span>Chỉnh sửa</span>
                     </button>
                   )}
@@ -2176,7 +2199,7 @@ export const UsersPage: React.FC = () => {
                           selectedUserForDetail.status === 'ACTIVE' ? 'LOCKED' : 'ACTIVE'
                         );
                       }}
-                      className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold shadow-2xs transition-colors cursor-pointer ${
+                      className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-2xs transition-colors cursor-pointer ${
                         selectedUserForDetail.status === 'ACTIVE'
                           ? 'border border-rose-200 bg-rose-50/80 hover:bg-rose-100 text-rose-700'
                           : 'border border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-700'
@@ -2184,15 +2207,31 @@ export const UsersPage: React.FC = () => {
                     >
                       {selectedUserForDetail.status === 'ACTIVE' ? (
                         <>
-                          <Lock className="h-3.5 w-3.5 text-rose-600" />
+                          <Lock className="h-4 w-4 text-rose-600" />
                           <span>Khóa tài khoản</span>
                         </>
                       ) : (
                         <>
-                          <Unlock className="h-3.5 w-3.5 text-emerald-600" />
+                          <Unlock className="h-4 w-4 text-emerald-600" />
                           <span>Mở khóa</span>
                         </>
                       )}
+                    </button>
+                  )}
+
+                  {/* Xóa vĩnh viễn tài khoản khỏi hệ thống & DB */}
+                  {canManageUsers && currentAdmin?.id !== selectedUserForDetail.id && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDetailModalOpen(false);
+                        handleOpenDeleteModal(selectedUserForDetail);
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/80 hover:bg-rose-100 text-rose-700 px-3.5 py-2 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                      title="Xóa vĩnh viễn tài khoản khỏi hệ thống và cơ sở dữ liệu"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                      <span>Xóa tài khoản</span>
                     </button>
                   )}
                 </div>
@@ -2200,7 +2239,7 @@ export const UsersPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setDetailModalOpen(false)}
-                  className="rounded-xl bg-slate-200/80 hover:bg-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 transition-colors text-center cursor-pointer"
+                  className="rounded-xl bg-slate-200/80 hover:bg-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors text-center cursor-pointer"
                 >
                   Đóng
                 </button>
@@ -2221,6 +2260,90 @@ export const UsersPage: React.FC = () => {
             fetchSummary();
           }}
         />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 8. MODAL XÁC NHẬN XÓA TÀI KHOẢN KHỎI HỆ THỐNG & CƠ SỞ DỮ LIỆU                */}
+      {/* ========================================================================= */}
+      {deleteModalOpen && userToDelete && createPortal(
+        <div
+          onClick={() => !isDeleting && setDeleteModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-modal-backdrop-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden flex flex-col animate-modal-in"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-rose-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shadow-2xs">
+                  <Trash2 className="w-5 h-5 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Xóa tài khoản vĩnh viễn</h3>
+                  <p className="text-[11px] text-slate-500">Xóa khỏi hệ thống và cơ sở dữ liệu</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeleteModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4 text-xs text-slate-600">
+              <p className="leading-relaxed">
+                Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản của nhân sự{' '}
+                <strong className="text-slate-900 font-bold">{formatCleanName(userToDelete.fullName)}</strong>{' '}
+                (Tên đăng nhập: <span className="font-mono font-bold text-slate-800">{userToDelete.username}</span>)?
+              </p>
+
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200/80 text-rose-900 flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div className="text-[11px] leading-relaxed">
+                  <strong className="font-bold block text-rose-800 mb-0.5">Cảnh báo hệ thống:</strong>
+                  Thao tác này sẽ xóa hoàn toàn thông tin tài khoản, phân quyền và lịch sử phiên đăng nhập khỏi cơ sở dữ liệu. Thao tác này mang tính vĩnh viễn và <strong className="underline">không thể hoàn tác</strong>.
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2.5 px-6 py-3.5 border-t border-slate-100 bg-slate-50/60">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeleteModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer shadow-2xs"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => void handleConfirmDelete()}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md shadow-rose-600/30 cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Đang xóa...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Xác nhận xóa</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

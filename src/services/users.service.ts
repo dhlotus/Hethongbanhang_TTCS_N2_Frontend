@@ -160,4 +160,14 @@ export const usersService = {
     });
     return response.data;
   },
+
+  /**
+   * Xóa vĩnh viễn tài khoản người dùng khỏi hệ thống và cơ sở dữ liệu
+   */
+  async deleteUser(id: string): Promise<{ success: boolean; message: string; deletedId: string }> {
+    const response = await apiClient.delete<{ success: boolean; message: string; deletedId: string }>(
+      `/users/${id}`
+    );
+    return response.data;
+  },
 };
