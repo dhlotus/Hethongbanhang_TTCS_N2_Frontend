@@ -11,6 +11,7 @@ import {
   Edit2,
   Clock,
   BookOpen,
+  CalendarClock,
 } from 'lucide-react';
 import { ModalLayout } from './modal-layout';
 import type { Product } from '../types/products';
@@ -61,17 +62,29 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       maxWidth="max-w-2xl"
       bodyClassName="p-6 space-y-6 text-xs text-slate-700"
       badge={
-        product.status === 'ACTIVE' ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Đang kinh doanh
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-inset ring-slate-500/20">
-            <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-            Ngừng kinh doanh
-          </span>
-        )
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {product.isBatchManaged !== false ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-600/20">
+              <CalendarClock className="h-3 w-3" />
+              Lô & HSD (FEFO)
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500 ring-1 ring-inset ring-slate-400/20">
+              Không theo dõi lô
+            </span>
+          )}
+          {product.status === 'ACTIVE' ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Đang kinh doanh
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-inset ring-slate-500/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+              Ngừng kinh doanh
+            </span>
+          )}
+        </div>
       }
       footer={
         <div className="flex items-center justify-between w-full">
