@@ -21,6 +21,8 @@ import {
   Unlock,
   Trash2,
   Tag,
+  ArrowRightLeft,
+  History,
   Pencil,
   ChevronDown,
   Eye,
@@ -28,10 +30,14 @@ import {
 import { showToast } from '../components/toast';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
 import { LockAgencyModal } from '../components/lock-agency-modal';
+import { AssignSalesRepModal } from '../components/assign-sales-rep-modal';
+import { BulkTransferTerritoryModal } from '../components/bulk-transfer-territory-modal';
+import { AssignmentHistoryModal } from '../components/assignment-history-modal';
 import { UpdateLimitModal } from '../components/credit-limit/update-limit-modal';
+import axios from 'axios';
 import { Pagination } from '../components/pagination';
 import { customerService, getStoredCustomers } from '../services/customer.service';
-import type { Customer, CreateCustomerPayload, DeliveryPoint } from '../types/customer.types';
+import type { Customer, CreateCustomerPayload, DeliveryPoint, SalesRepOption, BulkTransferResult } from '../types/customer.types';
 import type { UpdateCreditLimitPayload } from '../types/credit-limit.type';
 import { Role } from '../types/auth';
 import { tokenStorage } from '../utils/token-storage';
@@ -43,6 +49,7 @@ const SALES_REPS = [
   { id: 'usr-sale-01', name: 'Trần Văn Long (Kinh doanh Miền Nam)', shortName: 'Trần Văn Long' },
   { id: 'usr-sale-02', name: 'Nguyễn Thị Hằng (Kinh doanh Miền Nam)', shortName: 'Nguyễn Thị Hằng' },
   { id: 'usr-sale-03', name: 'Phạm Minh Tuấn (Kinh doanh Miền Bắc)', shortName: 'Phạm Minh Tuấn' },
+  { id: 'usr-salesmgr-003', name: 'Lê Hoàng (Quản lý Kinh doanh)', shortName: 'Lê Hoàng' },
 ];
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -221,10 +228,47 @@ export const CustomersPage: React.FC = () => {
     };
   }, [viewCustomer]);
 
+  // Modal Phân công nhân viên kinh doanh phụ trách chính (SN-35)
+  const [assignModalCustomer, setAssignModalCustomer] = useState<Customer | null>(null);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState<boolean>(false);
+
+  // Modal Chuyển giao địa bàn hàng loạt (SN-35)
+  const [isBulkTransferOpen, setIsBulkTransferOpen] = useState<boolean>(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
+  const [availableSalesReps, setAvailableSalesReps] = useState<SalesRepOption[]>([]);
+
   // Modal thêm đại lý mới
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Phân quyền RBAC (SN-35: Chỉ Admin và Quản lý kinh doanh được gán / chuyển giao địa bàn)
+  const currentUser = tokenStorage.getUser();
+  const userRoles = useMemo(() => {
+    return currentUser?.roles || (currentUser?.role ? [currentUser.role] : []);
+  }, [currentUser]);
+
+  const isManagerOrAdmin = useMemo(() => {
+    if (!currentUser || userRoles.length === 0) return true;
+    return userRoles.some((r) => {
+      const u = r.toUpperCase();
+      return u.includes('ADMIN') || u.includes('MANAGER');
+    });
+  }, [currentUser, userRoles]);
+
+  // Dropdown menu thao tác trên từng dòng đại lý
+  const [openActionDropdownId, setOpenActionDropdownId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (openActionDropdownId && !(e.target as Element).closest('.action-menu-container')) {
+        setOpenActionDropdownId(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [openActionDropdownId]);
+
   const [formBannerError, setFormBannerError] = useState<string | null>(null);
   const [formData, setFormData] = useState<CreateCustomerPayload>({
     name: '',
@@ -625,6 +669,19 @@ export const CustomersPage: React.FC = () => {
     };
   }, [loadCustomers]);
 
+  // Lấy danh sách nhân viên kinh doanh phục vụ phân công / chuyển giao (SN-35)
+  useEffect(() => {
+    const fetchSalesReps = async () => {
+      try {
+        const reps = await customerService.getAvailableSalesReps();
+        setAvailableSalesReps(reps);
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách nhân viên kinh doanh:', err);
+      }
+    };
+    void fetchSalesReps();
+  }, []);
+
   // Làm mới dữ liệu từ server
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -834,9 +891,12 @@ export const CustomersPage: React.FC = () => {
       // Tải lại danh sách từ server ở trang 1 để cập nhật dữ liệu đại lý mới
       void loadCustomers({ page: 1 });
     } catch (err: unknown) {
-      const respData = (err as any)?.response?.data;
       let errMsg = 'Không thể tạo đại lý mới. Vui lòng kiểm tra lại thông tin.';
-      if (respData) {
+      if (
+        axios.isAxiosError<{ message?: string | string[]; error?: string }>(err) &&
+        err.response?.data
+      ) {
+        const respData = err.response.data;
         if (Array.isArray(respData.message)) {
           errMsg = respData.message.join('; ');
         } else if (typeof respData.message === 'string') {
@@ -884,12 +944,15 @@ export const CustomersPage: React.FC = () => {
       setDeleteModalCustomer(null);
       void loadCustomers();
     } catch (err: unknown) {
-      const errMsg =
-        err && typeof err === 'object' && 'response' in err && (err as any).response?.data?.message
-          ? (err as any).response.data.message
-          : err instanceof Error
-          ? err.message
-          : 'Không thể xóa đại lý.';
+      let errMsg = 'Không thể xóa đại lý.';
+      if (
+        axios.isAxiosError<{ message?: string }>(err) &&
+        err.response?.data?.message
+      ) {
+        errMsg = err.response.data.message;
+      } else if (err instanceof Error) {
+        errMsg = err.message;
+      }
       showToast('error', 'Chặn xóa đại lý', errMsg);
     } finally {
       setIsDeleting(false);
@@ -1006,6 +1069,34 @@ export const CustomersPage: React.FC = () => {
     );
   };
 
+  // Mở modal phân công nhân viên kinh doanh phụ trách (SN-35)
+  const handleOpenAssignModal = (customer: Customer) => {
+    setAssignModalCustomer(customer);
+    setIsAssignModalOpen(true);
+  };
+
+  // Xử lý khi phân công nhân viên thành công (SN-35)
+  const handleAssignSuccess = (updatedCustomer: Customer) => {
+    setCustomers((prev) =>
+      prev.map((c) => (c.id === updatedCustomer.id ? { ...c, ...updatedCustomer } : c))
+    );
+    setIsAssignModalOpen(false);
+    setAssignModalCustomer(null);
+    void loadCustomers();
+  };
+
+  // Xử lý khi chuyển giao địa bàn thành công (SN-35)
+  const handleBulkTransferSuccess = (result: BulkTransferResult) => {
+    setIsBulkTransferOpen(false);
+    showToast(
+      'success',
+      'Chuyển giao địa bàn thành công',
+      `Đã chuyển giao ${result.transferredCount} đại lý sang cho ${result.toSalesRep.fullName || 'nhân sự tiếp nhận'}.`
+    );
+    void loadCustomers();
+    void customerService.getAvailableSalesReps().then(setAvailableSalesReps);
+  };
+
   // Mở modal sửa hạn mức công nợ đại lý (SN-34)
   const handleOpenCreditLimitModal = (customer: Customer) => {
     const currentUser = tokenStorage.getUser();
@@ -1095,6 +1186,65 @@ export const CustomersPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* ── HEADER GIỐNG TRANG ĐƠN HÀNG BÁN BUÔN ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <Building2 className="w-6 h-6 text-blue-600" />
+            Đại lý & Hạn mức nợ
+          </h1>
+          <p className="text-sm text-slate-500 mt-2">
+            Quản lý danh sách khách hàng đại lý, theo dõi hạn mức tín dụng và công nợ
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+            title="Đồng bộ danh sách"
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-600' : 'text-slate-500'}`}
+            />
+            <span>Làm mới</span>
+          </button>
+
+          {isManagerOrAdmin && (
+            <>
+              <button
+                type="button"
+                onClick={() => setIsHistoryModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+                title="Xem lịch sử chuyển giao và phân công địa bàn (SN-35)"
+              >
+                <History className="w-4 h-4 text-indigo-600" />
+                <span>Lịch sử chuyển giao</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsBulkTransferOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-colors shadow-xs cursor-pointer"
+                title="Chuyển giao địa bàn hàng loạt khi nhân sự nghỉ việc (SN-35)"
+              >
+                <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
+                <span>Chuyển giao địa bàn</span>
+              </button>
+            </>
+          )}
+
+          <button
+            type="button"
+            onClick={handleOpenCreateModal}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-xs cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Thêm đại lý mới</span>
+          </button>
+        </div>
+      </div>
       {/* ── THỐNG KÊ NHANH KPI (CARD-BASED UI) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
@@ -1351,6 +1501,16 @@ export const CustomersPage: React.FC = () => {
                           >
                             {customer.name}
                           </button>
+                          {(() => {
+                            const rawRep = customer.salesRepName || customer.salesRep?.name;
+                            const cleanRep = rawRep ? rawRep.replace(/\s*\([^)]*\)/g, '').trim() : null;
+                            return cleanRep ? (
+                              <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-1">
+                                <UserCheck className="w-3 h-3 text-slate-400 shrink-0" />
+                                <span>Phụ trách: {cleanRep}</span>
+                              </div>
+                            ) : null;
+                          })()}
                         </td>
 
                         {/* 3. Phân nhóm: Pill badge tinh tế, không wrap người phụ trách */}
@@ -1370,7 +1530,7 @@ export const CustomersPage: React.FC = () => {
                           </span>
                         </td>
 
-                        {/* 4. Dư nợ hiện tại: Số tiền tabular-nums rõ ràng, căn phải chuẩn ảnh Quản lý đơn hàng */}
+                        {/* 4. Dư nợ hiện tại: Số tiền tabular-nums rõ ràng */}
                         <td className="px-4 py-3.5 text-right whitespace-nowrap">
                           <span
                             className={`font-bold tabular-nums text-sm ${
@@ -1411,7 +1571,7 @@ export const CustomersPage: React.FC = () => {
                           )}
                         </td>
 
-                        {/* 6. Thao tác: Giữ chữ "Thao tác" không bao giờ bị nhảy dòng */}
+                        {/* 6. Thao tác */}
                         <td className="px-4 py-3.5 text-right whitespace-nowrap">
                           <div className="relative inline-flex items-center justify-end customer-action-dropdown-container">
                             <button
@@ -1508,6 +1668,22 @@ export const CustomersPage: React.FC = () => {
                       <ShoppingCart className="w-4 h-4 text-indigo-600" />
                       <span>Lên đơn hàng mới</span>
                     </button>
+
+                    {/* Phân công NVKD phụ trách (SN-35) */}
+                    {isManagerOrAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionMenuId(null);
+                          setActionMenuAnchor(null);
+                          handleOpenAssignModal(customer);
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                      >
+                        <UserCheck className="w-4 h-4 text-indigo-600" />
+                        <span>Phân công phụ trách</span>
+                      </button>
+                    )}
                   </div>
 
                   <div className="py-1">
@@ -2156,6 +2332,34 @@ export const CustomersPage: React.FC = () => {
           </div>,
           document.body
         )}
+
+      {/* ── MODAL PHÂN CÔNG NHÂN VIÊN PHỤ TRÁCH CHÍNH (SN-35) ── */}
+      <AssignSalesRepModal
+        isOpen={isAssignModalOpen}
+        onClose={() => {
+          setIsAssignModalOpen(false);
+          setAssignModalCustomer(null);
+        }}
+        customer={assignModalCustomer}
+        salesReps={availableSalesReps}
+        onSuccess={handleAssignSuccess}
+      />
+
+      {/* ── MODAL CHUYỂN GIAO ĐỊA BÀN HÀNG LOẠT KHI NHÂN VIÊN NGHỈ VIỆC (SN-35) ── */}
+      <BulkTransferTerritoryModal
+        isOpen={isBulkTransferOpen}
+        onClose={() => setIsBulkTransferOpen(false)}
+        allCustomers={customers}
+        salesReps={availableSalesReps}
+        onSuccess={handleBulkTransferSuccess}
+      />
+
+      {/* ── MODAL XEM LỊCH SỬ CHUYỂN GIAO & PHÂN CÔNG ĐỊA BÀN (SN-35) ── */}
+      <AssignmentHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        salesReps={availableSalesReps}
+      />
 
       {/* ── MODAL SỬA HẠN MỨC CÔNG NỢ (SN-34) ── */}
       <UpdateLimitModal

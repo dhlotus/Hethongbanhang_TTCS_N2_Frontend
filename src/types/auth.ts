@@ -27,6 +27,7 @@ export interface AuthUser {
   assignedWarehouseId?: string;
   warehouseCode?: string;
   assignedWarehouseCode?: string;
+  warehouseIds?: string[];
   warehouses?: AuthUserWarehouse[];
   avatarUrl?: string;
   createdAt?: string | Date;

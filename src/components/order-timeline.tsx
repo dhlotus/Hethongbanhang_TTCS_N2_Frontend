@@ -11,7 +11,8 @@ const LIFECYCLE_STEPS = [
   { status: 'PENDING', label: 'Chờ duyệt', icon: Clock },
   { status: 'APPROVED', label: 'Đã duyệt', icon: CheckCircle2 },
   { status: 'PROCESSING', label: 'Đang soạn', icon: Package },
-  { status: 'SHIPPED', label: 'Đã xuất', icon: Truck },
+  { status: 'DISPATCHED', label: 'Đã xuất', icon: Package },
+  { status: 'SHIPPED', label: 'Đang giao', icon: Truck },
   { status: 'DELIVERED', label: 'Đã giao', icon: CheckCircle2 },
   { status: 'CLOSED', label: 'Đóng', icon: CheckCircle2 },
 ] as const;
