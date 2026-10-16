@@ -86,7 +86,7 @@ export interface PickingLineItem {
   baseUnit: string;
   conversionRate: number;
   location: WarehouseLocationDetail;
-  stepNumber: number; // Số thứ tự bước nhặt trên lộ trình
+  stepNumber: number; // Thứ tự điểm nhặt trên lộ trình (Pick Stop Sequence)
   totalRequiredQuantity: number;
   totalPickedQuantity: number;
   status: PickingItemStatus;
