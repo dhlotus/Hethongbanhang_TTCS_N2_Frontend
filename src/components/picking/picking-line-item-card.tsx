@@ -47,12 +47,11 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
     }
   };
 
-  // Giảm 1 đơn vị
+  // Khi ấn nút trừ: Kích hoạt cảnh báo & mở modal nhập lý do soạn thiếu
   const handleDecrement = () => {
     if (item.totalPickedQuantity <= 0) return;
     const nextVal = item.totalPickedQuantity - 1;
-    setInputVal(String(nextVal));
-    onUpdateQuantityDirect(item.id, nextVal);
+    onRequestShortPickReason(item, nextVal);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,8 +67,12 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
     }
 
     const clamped = Math.min(parsed, item.totalRequiredQuantity);
-    setInputVal(String(clamped));
-    onUpdateQuantityDirect(item.id, clamped);
+    if (clamped < item.totalRequiredQuantity) {
+      onRequestShortPickReason(item, clamped);
+    } else {
+      setInputVal(String(clamped));
+      onUpdateQuantityDirect(item.id, clamped);
+    }
   };
 
   return (
@@ -178,8 +181,9 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
               <button
                 type="button"
                 onClick={handleDecrement}
-                className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer"
-                title="Giảm 1"
+                disabled={item.totalPickedQuantity <= 0}
+                className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                title="Giảm số lượng & Báo thiếu"
               >
                 <Minus className="w-4 h-4" />
               </button>
