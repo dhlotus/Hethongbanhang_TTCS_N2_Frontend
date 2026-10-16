@@ -23,6 +23,7 @@ import { showToast } from '../components/toast';
 import { getFriendlyErrorMessage } from '../utils/error-handler';
 import { customerService } from '../services/customer.service';
 import { warehouseService } from '../services/warehouse.service';
+import { getStoredUser } from '../utils/navigation';
 import type { Customer } from '../types/customer.types';
 import type { Warehouse, WarehouseLocation, WarehouseManager } from '../types/warehouse.types';
 
@@ -89,6 +90,7 @@ interface SearchableManagerSelectProps {
   onChange: (managerId: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  currentWarehouseId?: string;
 }
 
 function SearchableManagerSelect({
@@ -97,9 +99,11 @@ function SearchableManagerSelect({
   onChange,
   placeholder = 'Chọn người phụ trách...',
   disabled = false,
+  currentWarehouseId,
 }: SearchableManagerSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; width: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -114,14 +118,28 @@ function SearchableManagerSelect({
     return managers.filter((m) => normalizeVietnamese(m.name).includes(q));
   }, [managers, keyword]);
 
+  const updateMenuPosition = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const dropdownHeight = 280;
+    const fitsBelow = rect.bottom + dropdownHeight <= window.innerHeight;
+    setMenuPosition({
+      top: fitsBelow ? rect.bottom + 4 : Math.max(10, rect.top - dropdownHeight - 4),
+      left: rect.left,
+      width: rect.width,
+    });
+  }, []);
+
   // Đóng khi click ngoài hoặc bấm phím Escape
   useEffect(() => {
     if (!isOpen) return;
 
     function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
       if (
         containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
+        !containerRef.current.contains(target) &&
+        !(target as HTMLElement).closest('.manager-select-portal-menu')
       ) {
         setIsOpen(false);
       }
@@ -143,13 +161,21 @@ function SearchableManagerSelect({
 
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => {
+      updateMenuPosition();
+      const timer = setTimeout(() => {
         searchInputRef.current?.focus();
       }, 50);
+      window.addEventListener('resize', updateMenuPosition);
+      window.addEventListener('scroll', updateMenuPosition, true);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('resize', updateMenuPosition);
+        window.removeEventListener('scroll', updateMenuPosition, true);
+      };
     } else {
       setKeyword('');
     }
-  }, [isOpen]);
+  }, [isOpen, updateMenuPosition]);
 
   return (
     <div ref={containerRef} className="relative w-full">
@@ -157,7 +183,12 @@ function SearchableManagerSelect({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (!disabled) {
+            updateMenuPosition();
+            setIsOpen(!isOpen);
+          }
+        }}
         className={`w-full h-10 px-3 rounded-lg border text-sm flex items-center justify-between gap-2 transition-all bg-white text-left ${
           isOpen
             ? 'border-[#371cdb] ring-4 ring-[#371cdb]/10'
@@ -172,6 +203,9 @@ function SearchableManagerSelect({
               </div>
               <span className="truncate text-slate-800 font-medium">
                 {selectedManager.name}
+                <span className="text-slate-400 font-normal text-xs ml-1">
+                  ({selectedManager.roleName || 'Thủ kho'})
+                </span>
               </span>
             </>
           ) : (
@@ -204,9 +238,18 @@ function SearchableManagerSelect({
         </div>
       </button>
 
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div className="absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-100">
+      {/* Dropdown Menu Portal */}
+      {isOpen && menuPosition && typeof document !== 'undefined' && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: `${menuPosition.top}px`,
+            left: `${menuPosition.left}px`,
+            width: `${menuPosition.width}px`,
+          }}
+          className="manager-select-portal-menu bg-white rounded-xl shadow-2xl border border-slate-200 z-[10005] overflow-hidden animate-in fade-in-0 zoom-in-95 duration-100 text-left"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Ô tìm kiếm sticky ở đầu */}
           <div className="p-2 border-b border-slate-100 bg-slate-50/80">
             <div className="relative">
@@ -217,7 +260,7 @@ function SearchableManagerSelect({
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Tìm kiếm người phụ trách..."
+                placeholder="Tìm kiếm nhân viên kho..."
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 onKeyDown={(e) => {
@@ -244,7 +287,7 @@ function SearchableManagerSelect({
           </div>
 
           {/* Danh sách người phụ trách */}
-          <div className="max-h-52 overflow-y-auto p-1.5 space-y-0.5 overscroll-contain">
+          <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5 overscroll-contain">
             {/* Tùy chọn để trống */}
             <button
               type="button"
@@ -252,7 +295,7 @@ function SearchableManagerSelect({
                 onChange('');
                 setIsOpen(false);
               }}
-              className={`w-full px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors text-left cursor-pointer ${
+              className={`w-full px-2.5 py-2 rounded-lg text-xs flex items-center justify-between transition-colors text-left cursor-pointer ${
                 value === ''
                   ? 'bg-[#eff2fe] text-[#371cdb] font-medium'
                   : 'text-slate-600 hover:bg-slate-50'
@@ -270,6 +313,9 @@ function SearchableManagerSelect({
             {filteredManagers.length > 0 ? (
               filteredManagers.map((manager) => {
                 const isSelected = manager.id === value;
+                const isAssignedHere =
+                  currentWarehouseId && manager.assignedWarehouseId === currentWarehouseId;
+
                 return (
                   <button
                     key={manager.id}
@@ -278,13 +324,13 @@ function SearchableManagerSelect({
                       onChange(manager.id);
                       setIsOpen(false);
                     }}
-                    className={`w-full px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors text-left cursor-pointer ${
+                    className={`w-full px-2.5 py-2 rounded-lg text-xs flex items-center justify-between transition-colors text-left cursor-pointer ${
                       isSelected
                         ? 'bg-[#eff2fe] text-[#371cdb] font-semibold'
                         : 'text-slate-700 hover:bg-slate-50'
                     }`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       <div
                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
                           isSelected
@@ -294,7 +340,21 @@ function SearchableManagerSelect({
                       >
                         {getInitials(manager.name)}
                       </div>
-                      <span className="truncate">{manager.name}</span>
+                      <div className="flex flex-col min-w-0 text-left">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="truncate font-medium text-slate-800">{manager.name}</span>
+                          <span className="text-[11px] text-slate-400 font-normal">
+                            ({manager.roleName || 'Thủ kho'})
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-slate-500 mt-0.5 truncate">
+                          {isAssignedHere
+                            ? 'Đang hoạt động ở kho này'
+                            : manager.assignedWarehouseName
+                            ? `Đang hoạt động ở ${manager.assignedWarehouseName}`
+                            : 'Chưa phân công kho'}
+                        </span>
+                      </div>
                     </div>
                     {isSelected && (
                       <Check size={14} className="text-[#371cdb] shrink-0 ml-2" />
@@ -304,7 +364,7 @@ function SearchableManagerSelect({
               })
             ) : (
               <div className="py-5 px-3 text-center text-xs text-slate-400">
-                <p>Không tìm thấy người phụ trách</p>
+                <p>Không tìm thấy nhân viên kho nào</p>
                 {keyword && (
                   <p className="mt-0.5 text-[11px] text-slate-400">
                     với từ khóa "{keyword}"
@@ -316,16 +376,28 @@ function SearchableManagerSelect({
 
           {/* Footer nhỏ thông tin số lượng */}
           <div className="px-3 py-1.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-            <span>Tổng số: {managers.length} người</span>
+            <span>Tổng số: {managers.length} nhân viên kho</span>
             {keyword && <span>Tìm thấy: {filteredManagers.length}</span>}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
 }
 
 export function WarehousesPage(): React.ReactElement {
+  const user = getStoredUser();
+  const userRoles = useMemo(() => user?.roles || [], [user]);
+  const isAdmin = userRoles.includes('ADMIN');
+  const isManager =
+    userRoles.includes('WAREHOUSE_MANAGER') || userRoles.includes('WH_MANAGER') || isAdmin;
+  const isKeeper =
+    !isManager &&
+    (userRoles.includes('WAREHOUSE_KEEPER') ||
+      userRoles.includes('WAREHOUSE') ||
+      userRoles.includes('WH_KEEPER'));
+
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [selectedId, setSelectedId] = useState(
     () => sessionStorage.getItem(SELECTED_WAREHOUSE_STORAGE_KEY) || ''
@@ -484,10 +556,32 @@ export function WarehousesPage(): React.ReactElement {
     setIsEditModalOpen(true);
   };
 
+  // Danh sách kho hiển thị theo phân quyền người dùng:
+  // - Thủ kho (isKeeper): Giới hạn chỉ hiển thị đúng 1 kho mình phụ trách (1-1)
+  // - Quản lý kho / Admin: Hiển thị toàn bộ các kho trên hệ thống
+  const visibleWarehouses = useMemo(() => {
+    if (isKeeper) {
+      if (warehouses.length <= 1) return warehouses;
+      const keeperWhId = user?.warehouseId || (user as any)?.assignedWarehouseId;
+      const matched = warehouses.filter(
+        (w) =>
+          (keeperWhId && w.id === keeperWhId) ||
+          (user?.id && w.managerId === user.id)
+      );
+      if (matched.length > 0) return matched;
+      if (keeperWhId) {
+        const byId = warehouses.filter((w) => w.id === keeperWhId);
+        if (byId.length > 0) return byId;
+      }
+      return warehouses.slice(0, 1);
+    }
+    return warehouses;
+  }, [warehouses, isKeeper, user]);
+
   // Filtered warehouses based on search query and status filter
   const filteredWarehouses = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return warehouses.filter((item) => {
+    return visibleWarehouses.filter((item) => {
       // Filter by status
       if (statusFilter !== 'ALL' && item.status !== statusFilter) {
         return false;
@@ -503,7 +597,7 @@ export function WarehousesPage(): React.ReactElement {
         managerName.toLowerCase().includes(query)
       );
     });
-  }, [warehouses, searchQuery, statusFilter, managers]);
+  }, [visibleWarehouses, searchQuery, statusFilter, managers]);
 
   // Reset page to 1 when search or filter changes
   useEffect(() => {
@@ -561,21 +655,21 @@ export function WarehousesPage(): React.ReactElement {
 
   // KPI summary statistics for dashboard top cards
   const activeCount = useMemo(
-    () => warehouses.filter((w) => w.status === 'ACTIVE').length,
-    [warehouses]
+    () => visibleWarehouses.filter((w) => w.status === 'ACTIVE').length,
+    [visibleWarehouses]
   );
   const inactiveCount = useMemo(
-    () => warehouses.filter((w) => w.status === 'INACTIVE').length,
-    [warehouses]
+    () => visibleWarehouses.filter((w) => w.status === 'INACTIVE').length,
+    [visibleWarehouses]
   );
   const totalLocations = useMemo(
-    () => warehouses.reduce((sum, w) => sum + (w.locationCount || 0), 0),
-    [warehouses]
+    () => visibleWarehouses.reduce((sum, w) => sum + (w.locationCount || 0), 0),
+    [visibleWarehouses]
   );
-  const totalAssignedAgencies = useMemo(
-    () => Object.keys(agencyDefaults).length,
-    [agencyDefaults]
-  );
+  const totalAssignedAgencies = useMemo(() => {
+    const visibleIds = new Set(visibleWarehouses.map((w) => w.id));
+    return Object.values(agencyDefaults).filter((whId) => visibleIds.has(whId)).length;
+  }, [visibleWarehouses, agencyDefaults]);
 
   // CREATE WAREHOUSE
   const handleCreateWarehouse = async (event: React.FormEvent): Promise<void> => {
@@ -720,7 +814,36 @@ export function WarehousesPage(): React.ReactElement {
   // Quản lý modal xác nhận xóa kho vĩnh viễn khỏi hệ thống & CSDL
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [warehouseToDelete, setWarehouseToDelete] = useState<Warehouse | null>(null);
+  const [deleteEligibility, setDeleteEligibility] = useState<{
+    canDelete: boolean;
+    hasPositiveStock: boolean;
+    totalOnHand: number;
+    totalAllocated: number;
+    hasZeroStockProducts: boolean;
+    productRecordCount: number;
+    isEmpty: boolean;
+    warehouseName: string;
+    warehouseCode: string;
+    message: string;
+  } | null>(null);
+  const [isCheckingDelete, setIsCheckingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Mở modal xóa kho kèm kiểm tra điều kiện ràng buộc
+  const handleOpenDeleteModal = async (warehouse: Warehouse): Promise<void> => {
+    setWarehouseToDelete(warehouse);
+    setDeleteModalOpen(true);
+    setIsCheckingDelete(true);
+    setDeleteEligibility(null);
+    try {
+      const res = await warehouseService.checkDeleteEligibility(warehouse.id);
+      setDeleteEligibility(res);
+    } catch {
+      // fallback
+    } finally {
+      setIsCheckingDelete(false);
+    }
+  };
 
   // Đóng dropdown thao tác khi click ra ngoài, cuộn trang hoặc nhấn ESC
   useEffect(() => {
@@ -762,10 +885,11 @@ export function WarehousesPage(): React.ReactElement {
     if (!warehouseToDelete) return;
     setIsDeleting(true);
     try {
-      await warehouseService.deleteWarehouse(warehouseToDelete.id);
+      const confirmZeroStock = deleteEligibility?.hasZeroStockProducts || false;
+      await warehouseService.deleteWarehouse(warehouseToDelete.id, confirmZeroStock);
       showToast(
         'success',
-        `Đã xóa sạch sẽ kho hàng "${warehouseToDelete.name}" (${warehouseToDelete.code}) và toàn bộ dữ liệu liên quan khỏi hệ thống`
+        `Đã xóa kho hàng "${warehouseToDelete.name}" (${warehouseToDelete.code}) và toàn bộ dữ liệu liên quan khỏi hệ thống`
       );
 
       // Nếu đang chọn kho bị xóa thì bỏ chọn
@@ -776,6 +900,7 @@ export function WarehousesPage(): React.ReactElement {
 
       setDeleteModalOpen(false);
       setWarehouseToDelete(null);
+      setDeleteEligibility(null);
 
       // Tải lại dữ liệu hệ thống
       await reload();
@@ -797,13 +922,15 @@ export function WarehousesPage(): React.ReactElement {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#371cdb] hover:bg-[#2d14b8] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-all cursor-pointer active:scale-95"
-          >
-            <Plus size={16} /> Tạo kho mới
-          </button>
+          {(isAdmin || isManager) && (
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#371cdb] hover:bg-[#2d14b8] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-all cursor-pointer active:scale-95"
+            >
+              <Plus size={16} /> Tạo kho mới
+            </button>
+          )}
         </div>
       </header>
 
@@ -812,8 +939,10 @@ export function WarehousesPage(): React.ReactElement {
         <div className="rounded-2xl border border-slate-200/80 bg-white p-4.5 shadow-2xs flex items-center justify-between">
           <div>
             <span className="text-xs font-medium text-slate-500 block mb-1">Tổng số kho hàng</span>
-            <span className="text-2xl font-extrabold text-slate-900 tracking-tight">{warehouses.length}</span>
-            <span className="text-[11px] text-slate-400 block mt-0.5">Kho trên toàn hệ thống</span>
+            <span className="text-2xl font-extrabold text-slate-900 tracking-tight">{visibleWarehouses.length}</span>
+            <span className="text-[11px] text-slate-400 block mt-0.5">
+              {isKeeper ? 'Kho được phân công' : 'Kho trên toàn hệ thống'}
+            </span>
           </div>
           <div className="h-11 w-11 rounded-xl bg-[#eff2fe] text-[#371cdb] flex items-center justify-center ring-1 ring-[#371cdb]/20">
             <WarehouseIcon size={22} />
@@ -868,7 +997,7 @@ export function WarehousesPage(): React.ReactElement {
               <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                 Danh sách kho hàng
                 <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                  {warehouses.length}
+                  {visibleWarehouses.length}
                 </span>
               </h2>
               <p className="text-xs text-slate-500">
@@ -906,7 +1035,7 @@ export function WarehousesPage(): React.ReactElement {
               {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((filter) => {
                 const count =
                   filter === 'ALL'
-                    ? warehouses.length
+                    ? visibleWarehouses.length
                     : filter === 'ACTIVE'
                     ? activeCount
                     : inactiveCount;
@@ -946,8 +1075,8 @@ export function WarehousesPage(): React.ReactElement {
                 <th className="px-5 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Tên kho
                 </th>
-                <th className="px-5 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-60">
-                  Người phụ trách
+                <th className="px-5 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-64">
+                  Thủ kho phụ trách (1-1)
                 </th>
                 <th className="px-5 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-44">
                   Trạng thái
@@ -997,8 +1126,18 @@ export function WarehousesPage(): React.ReactElement {
                       {/* Người phụ trách */}
                       <td className="px-5 py-4">
                         <div className="font-semibold text-slate-800 flex items-center gap-1.5 text-xs">
-                          <User size={13} className="text-slate-400" />
-                          {manager?.name || <span className="text-slate-400 font-normal">Chưa phân công</span>}
+                          {manager?.name ? (
+                            <span>
+                              {manager.name}
+                              {(manager.roleName || manager.roleCode) && (
+                                <span className="text-slate-400 font-normal ml-1">
+                                  ({manager.roleName || manager.roleCode})
+                                </span>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 font-normal">Chưa phân công</span>
+                          )}
                         </div>
                       </td>
 
@@ -1067,7 +1206,7 @@ export function WarehousesPage(): React.ReactElement {
 
         {/* Dropdown Menu Portal Thao tác */}
         {openActionMenuId && actionMenuAnchor && typeof document !== 'undefined' && (() => {
-          const warehouse = warehouses.find((item) => item.id === openActionMenuId);
+          const warehouse = visibleWarehouses.find((item) => item.id === openActionMenuId);
           if (!warehouse) return null;
 
           return createPortal(
@@ -1108,51 +1247,56 @@ export function WarehousesPage(): React.ReactElement {
                   <span>Quản lý vị trí lưu trữ</span>
                 </button>
 
-                {/* 3. Gán đại lý phục vụ */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenActionMenuId(null);
-                    setActionMenuAnchor(null);
-                    handleOpenAssignAgencyModal(warehouse);
-                  }}
-                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                >
-                  <Building2 className="w-4 h-4 text-slate-400" />
-                  <span>Gán đại lý phục vụ</span>
-                </button>
+                {/* 3. Gán đại lý phục vụ (Chỉ Admin và Quản lý kho) */}
+                {(isAdmin || isManager) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenActionMenuId(null);
+                      setActionMenuAnchor(null);
+                      handleOpenAssignAgencyModal(warehouse);
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <Building2 className="w-4 h-4 text-slate-400" />
+                    <span>Gán đại lý phục vụ</span>
+                  </button>
+                )}
 
-                {/* 4. Chỉnh sửa thông tin kho */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenActionMenuId(null);
-                    setActionMenuAnchor(null);
-                    handleOpenEditModal(warehouse);
-                  }}
-                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-amber-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                >
-                  <Edit3 className="w-4 h-4 text-amber-500" />
-                  <span>Chỉnh sửa thông tin kho</span>
-                </button>
+                {/* 4. Chỉnh sửa thông tin kho (Chỉ Admin và Quản lý kho) */}
+                {(isAdmin || isManager) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenActionMenuId(null);
+                      setActionMenuAnchor(null);
+                      handleOpenEditModal(warehouse);
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-amber-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <Edit3 className="w-4 h-4 text-amber-500" />
+                    <span>Chỉnh sửa thông tin kho</span>
+                  </button>
+                )}
               </div>
 
-              {/* 5. Xóa kho hàng */}
-              <div className="py-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenActionMenuId(null);
-                    setActionMenuAnchor(null);
-                    setWarehouseToDelete(warehouse);
-                    setDeleteModalOpen(true);
-                  }}
-                  className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
-                >
-                  <Trash2 className="w-4 h-4 text-rose-500" />
-                  <span>Xóa kho</span>
-                </button>
-              </div>
+              {/* 5. Xóa kho hàng (Chỉ Quản trị viên ADMIN và Quản lý kho) */}
+              {(isAdmin || isManager) && (
+                <div className="py-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenActionMenuId(null);
+                      setActionMenuAnchor(null);
+                      void handleOpenDeleteModal(warehouse);
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-500" />
+                    <span>Xóa kho</span>
+                  </button>
+                </div>
+              )}
             </div>,
             document.body
           );
@@ -1227,20 +1371,21 @@ export function WarehousesPage(): React.ReactElement {
         bodyClassName="p-5 sm:p-6 space-y-4 bg-slate-50/60"
         footer={
           <div className="flex items-center justify-between gap-2.5 w-full">
-            <button
-              type="button"
-              onClick={() => {
-                if (selectedWarehouse) {
-                  const target = selectedWarehouse;
-                  setIsDetailModalOpen(false);
-                  setWarehouseToDelete(target);
-                  setDeleteModalOpen(true);
-                }
-              }}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/50 px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-100/70 transition-colors cursor-pointer"
-            >
-              <Trash2 size={14} /> Xóa kho
-            </button>
+            {(isAdmin || isManager) && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedWarehouse) {
+                    const target = selectedWarehouse;
+                    setIsDetailModalOpen(false);
+                    void handleOpenDeleteModal(target);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/50 px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-100/70 transition-colors cursor-pointer"
+              >
+                <Trash2 size={14} /> Xóa kho
+              </button>
+            )}
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
@@ -1433,7 +1578,7 @@ export function WarehousesPage(): React.ReactElement {
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Người phụ trách kho
+                Thủ kho phụ trách
               </label>
               <SearchableManagerSelect
                 managers={managers}
@@ -1441,7 +1586,7 @@ export function WarehousesPage(): React.ReactElement {
                 onChange={(managerId) =>
                   setWarehouseForm({ ...warehouseForm, managerId })
                 }
-                placeholder="Chọn hoặc tìm người phụ trách..."
+                placeholder="Chọn người phụ trách..."
               />
             </div>
           </div>
@@ -1548,7 +1693,7 @@ export function WarehousesPage(): React.ReactElement {
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Người phụ trách
+                Thủ kho phụ trách
               </label>
               <SearchableManagerSelect
                 managers={managers}
@@ -1556,7 +1701,8 @@ export function WarehousesPage(): React.ReactElement {
                 onChange={(managerId) =>
                   setEditForm({ ...editForm, managerId })
                 }
-                placeholder="Chọn hoặc tìm người phụ trách..."
+                placeholder="Chọn người phụ trách..."
+                currentWarehouseId={selectedWarehouse?.id}
               />
             </div>
             <div>
@@ -2069,15 +2215,27 @@ export function WarehousesPage(): React.ReactElement {
           <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Header cảnh báo */}
             <div className="p-6 pb-4 flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${
+                deleteEligibility?.hasPositiveStock
+                  ? 'bg-rose-50 border-rose-200 text-rose-600'
+                  : deleteEligibility?.hasZeroStockProducts
+                  ? 'bg-amber-50 border-amber-200 text-amber-600'
+                  : 'bg-rose-50 border-rose-100 text-rose-600'
+              }`}>
                 <Trash2 size={24} />
               </div>
               <div className="flex-1">
                 <h3 className="text-base font-bold text-slate-900">
-                  Xác nhận xóa kho hàng
+                  {deleteEligibility?.hasPositiveStock
+                    ? 'Không thể xóa kho hàng'
+                    : deleteEligibility?.hasZeroStockProducts
+                    ? 'Xác nhận xóa kho và danh mục'
+                    : 'Xác nhận xóa kho hàng'}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Hành động này sẽ xóa sạch sẽ toàn bộ thông tin kho và dữ liệu liên quan khỏi hệ thống và cơ sở dữ liệu.
+                  {deleteEligibility?.hasPositiveStock
+                    ? 'Hệ thống đã phát hiện kho này vẫn còn hàng tồn kho.'
+                    : 'Xóa thông tin kho và dữ liệu liên quan khỏi cơ sở dữ liệu.'}
                 </p>
               </div>
             </div>
@@ -2098,16 +2256,50 @@ export function WarehousesPage(): React.ReactElement {
               </div>
             </div>
 
-            {/* Cảnh báo chi tiết */}
+            {/* Chi tiết điều kiện xóa */}
             <div className="p-6 pt-4 space-y-4">
-              <div className="p-3 bg-rose-50/70 border border-rose-200/80 rounded-xl text-xs text-rose-800 space-y-1">
-                <p className="font-bold flex items-center gap-1.5">
-                  ⚠️ Lưu ý quan trọng:
-                </p>
-                <p className="text-[11px] leading-relaxed text-rose-700">
-                  Thao tác này sẽ xóa sạch sẽ các vị trí lưu trữ, liên kết đại lý mặc định, phân công quản lý kho và các bản ghi tồn kho liên quan đến kho này. Thao tác mang tính vĩnh viễn và <strong className="underline">không thể hoàn tác</strong>.
-                </p>
-              </div>
+              {isCheckingDelete ? (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                  <span>Đang kiểm tra dữ liệu tồn kho...</span>
+                </div>
+              ) : deleteEligibility?.hasPositiveStock ? (
+                /* TH1: Kho còn tồn kho > 0 -> Tuyệt đối không cho xóa */
+                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 space-y-1.5">
+                  <p className="font-bold flex items-center gap-1.5 text-rose-900">
+                    ❌ Không được phép xóa kho này!
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-rose-700">
+                    Kho hàng hiện đang có sản phẩm tồn kho (<strong>Tồn thực tế: {deleteEligibility.totalOnHand}</strong>, <strong>Tạm giữ: {deleteEligibility.totalAllocated}</strong>).
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-rose-600">
+                    Theo quy định, kho còn hàng tồn tuyệt đối không được phép xóa. Vui lòng xuất kho hoặc điều chuyển toàn bộ tồn kho về 0 trước khi xóa.
+                  </p>
+                </div>
+              ) : deleteEligibility?.hasZeroStockProducts ? (
+                /* TH2: Kho có sản phẩm nhưng tồn = 0 (như kho Thái Nguyên) -> Cần xác nhận xóa sạch DB */
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-1.5">
+                  <p className="font-bold flex items-center gap-1.5 text-amber-900">
+                    ⚠️ Kho có sản phẩm nhưng đã hết hàng (Tồn kho = 0)
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-amber-700">
+                    Kho đang chứa <strong>{deleteEligibility.productRecordCount} sản phẩm</strong> trong danh mục nhưng toàn bộ số lượng tồn kho đều bằng 0.
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-amber-800 font-medium">
+                    Nếu bạn xác nhận xóa, kho và toàn bộ các bản ghi danh mục sản phẩm của kho này sẽ được xóa vĩnh viễn khỏi database.
+                  </p>
+                </div>
+              ) : (
+                /* TH3: Kho ma không có dữ liệu */
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5 text-slate-800">
+                    ℹ️ Kho trống không có dữ liệu (Kho ma)
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-slate-600">
+                    Kho hàng này hoàn toàn trống, không có hàng hóa hoặc lịch sử giao dịch. Bạn có thể an tâm xóa kho khỏi hệ thống.
+                  </p>
+                </div>
+              )}
 
               {/* Nút hành động */}
               <div className="flex items-center justify-end gap-3 pt-2">
@@ -2117,29 +2309,38 @@ export function WarehousesPage(): React.ReactElement {
                   onClick={() => {
                     setDeleteModalOpen(false);
                     setWarehouseToDelete(null);
+                    setDeleteEligibility(null);
                   }}
                   className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  Hủy bỏ
+                  {deleteEligibility?.hasPositiveStock ? 'Đóng' : 'Hủy bỏ'}
                 </button>
-                <button
-                  type="button"
-                  disabled={isDeleting}
-                  onClick={() => void handleConfirmDelete()}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  {isDeleting ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Đang xóa...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 size={14} />
-                      <span>Xóa kho vĩnh viễn</span>
-                    </>
-                  )}
-                </button>
+
+                {/* Nếu kho còn hàng > 0 thì KHÔNG hiển thị nút xóa */}
+                {!deleteEligibility?.hasPositiveStock && !isCheckingDelete && (
+                  <button
+                    type="button"
+                    disabled={isDeleting}
+                    onClick={() => void handleConfirmDelete()}
+                    className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Đang xóa...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 size={14} />
+                        <span>
+                          {deleteEligibility?.hasZeroStockProducts
+                            ? 'Xác nhận xóa kho khỏi database'
+                            : 'Xóa kho vĩnh viễn'}
+                        </span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </div>

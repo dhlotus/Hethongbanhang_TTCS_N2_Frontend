@@ -118,9 +118,30 @@ export const warehouseService = {
     );
     return response.data;
   },
-  async deleteWarehouse(id: string): Promise<{ success: boolean; message?: string }> {
+  async checkDeleteEligibility(id: string): Promise<{
+    canDelete: boolean;
+    hasPositiveStock: boolean;
+    totalOnHand: number;
+    totalAllocated: number;
+    hasZeroStockProducts: boolean;
+    productRecordCount: number;
+    isEmpty: boolean;
+    warehouseName: string;
+    warehouseCode: string;
+    message: string;
+  }> {
+    const response = await apiClient.get(
+      `/warehouses/${encodeURIComponent(id)}/delete-check`
+    );
+    return response.data;
+  },
+  async deleteWarehouse(
+    id: string,
+    confirmZeroStock?: boolean
+  ): Promise<{ success: boolean; message?: string }> {
     const response = await apiClient.delete<{ success: boolean; message?: string }>(
-      `/warehouses/${encodeURIComponent(id)}`
+      `/warehouses/${encodeURIComponent(id)}`,
+      { params: { confirmZeroStock: confirmZeroStock ? 'true' : undefined } }
     );
     return response.data;
   },

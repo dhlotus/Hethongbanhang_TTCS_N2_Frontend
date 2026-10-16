@@ -9,8 +9,6 @@ import {
   Receipt as ReceiptIcon,
 } from 'lucide-react';
 import { numberToVietnameseWords } from '../utils/number-to-words';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import { receiptsService } from '../services/receipts.service';
 import type { Receipt, ReceiptPrintData, PaymentMethod } from '../types/receipt';
 
@@ -260,6 +258,10 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
       const element = printContentRef.current;
       if (element) {
         try {
+          const html2canvasModule = await import('html2canvas');
+          const html2canvas = html2canvasModule.default || html2canvasModule;
+          const { jsPDF } = await import('jspdf');
+
           const canvas = await html2canvas(element, {
             scale: 2.5,
             useCORS: true,

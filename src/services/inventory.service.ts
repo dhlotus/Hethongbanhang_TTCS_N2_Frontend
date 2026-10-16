@@ -567,4 +567,26 @@ export const inventoryService = {
       throw err;
     }
   },
+  /**
+   * Xóa sản phẩm khỏi kho (Yêu cầu mới):
+   * - Chỉ Admin và Quản lý kho
+   * - Ràng buộc: Hết mọi loại tồn (thực tế, tạm giữ, khả dụng = 0)
+   */
+  async removeProductFromWarehouse(
+    warehouseId: string,
+    sku: string,
+    productId?: string
+  ): Promise<{ success: boolean; message: string }> {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(
+      '/inventory/stock',
+      {
+        params: {
+          warehouseId,
+          sku,
+          productId,
+        },
+      }
+    );
+    return response.data;
+  },
 };
