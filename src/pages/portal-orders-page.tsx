@@ -883,6 +883,7 @@ export const PortalOrdersPage: React.FC = () => {
                         <td
                           className="py-3.5 px-4 text-center whitespace-nowrap"
                           onClick={(e) => e.stopPropagation()}
+                        >
                           <button
                             type="button"
                             onClick={(e) => handleToggleDropdown(e, order)}
