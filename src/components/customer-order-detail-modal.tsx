@@ -15,7 +15,6 @@ import {
   FileText,
   AlertCircle,
 } from 'lucide-react';
-import { Button } from './button';
 import { OrderPrintModal } from './order-print-modal';
 import type { Order, OrderLine, OrderStatus } from '../types/order';
 
@@ -1001,33 +1000,25 @@ export const CustomerOrderDetailModal: React.FC<CustomerOrderDetailModalProps> =
           {/* =============================================================== */}
           {/* 3. Footer Actions: Đặt lại đơn hàng (SN-174) & Đóng              */}
           {/* =============================================================== */}
-          <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-t border-slate-100 bg-white gap-2 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setIsPrintModalOpen(true)}
-                leftIcon={<Printer className="w-4 h-4" />}
-                className="cursor-pointer h-[38px]"
-              >
-                In phiếu
-              </Button>
-            </div>
+          <div className="flex items-center justify-end gap-2.5 px-4 sm:px-6 py-3.5 border-t border-slate-100 bg-white pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+            {/* Nút Đặt lại đơn: Nền tím, chữ trắng, icon bên trái, chữ 1 dòng */}
+            <button
+              type="button"
+              onClick={() => onOpenReorder(order)}
+              className="inline-flex items-center justify-center gap-1.5 h-[38px] px-4 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer whitespace-nowrap"
+            >
+              <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+              <span>Đặt lại đơn</span>
+            </button>
 
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={onClose} className="cursor-pointer h-[38px]">
-                Đóng
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => onOpenReorder(order)}
-                leftIcon={<RotateCcw className="w-4 h-4" />}
-                className="shadow-xs cursor-pointer h-[38px]"
-              >
-                Đặt lại đơn
-              </Button>
-            </div>
+            {/* Nút Đóng: Nền xám nhạt, chữ đen, cùng chiều cao */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center justify-center h-[38px] px-4 text-xs font-semibold text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200/90 rounded-lg transition-all cursor-pointer whitespace-nowrap"
+            >
+              <span>Đóng</span>
+            </button>
           </div>
         </div>
       </div>
