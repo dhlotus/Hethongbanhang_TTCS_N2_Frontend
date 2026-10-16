@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
@@ -17,6 +17,7 @@ import {
   Scale,
   Plus,
   Trash2,
+  CalendarClock,
 } from 'lucide-react';
 import { Button } from './button';
 import { ModalLayout } from './modal-layout';
@@ -80,6 +81,7 @@ export interface ProductFormValues {
   price?: number;
   costPrice?: number;
   status: 'ACTIVE' | 'INACTIVE';
+  isBatchManaged?: boolean;
   imageUrl?: string;
 }
 
@@ -109,6 +111,7 @@ const productSchema = z.object({
     z.number().min(0, 'Giá vốn không được là số âm').optional()
   ),
   status: z.enum(['ACTIVE', 'INACTIVE']),
+  isBatchManaged: z.boolean().default(true),
   imageUrl: z.string().optional(),
 });
 
@@ -141,7 +144,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     reset,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema) as any,
+    resolver: zodResolver(productSchema) as Resolver<ProductFormValues>,
     defaultValues: {
       sku: '',
       name: '',
@@ -152,6 +155,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       price: 0,
       costPrice: canManageCostPrice ? 0 : undefined,
       status: 'ACTIVE',
+      isBatchManaged: true,
       imageUrl: '',
     },
     mode: 'onChange',
@@ -171,7 +175,19 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       .getCategoryTree()
       .then((tree) => {
         if (isMounted && Array.isArray(tree) && tree.length > 0) {
-          const mapTree = (nodes: any[]): ProductCategory[] => {
+          interface CategoryRawNode {
+            id: string;
+            name: string;
+            code?: string;
+            level?: number;
+            parentId?: string | null;
+            parent_id?: string | null;
+            productCount?: number;
+            product_count?: number;
+            children?: CategoryRawNode[];
+            subCategories?: CategoryRawNode[];
+          }
+          const mapTree = (nodes: CategoryRawNode[]): ProductCategory[] => {
             return nodes.map((n) => ({
               id: n.id,
               name: n.name,
@@ -264,6 +280,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           price: initialData.price ?? 0,
           costPrice: canManageCostPrice ? (initialData.costPrice ?? 0) : undefined,
           status: initialData.status || 'ACTIVE',
+          isBatchManaged: initialData.isBatchManaged !== undefined ? initialData.isBatchManaged : true,
           imageUrl: initialData.imageUrl || '',
         });
 
@@ -296,6 +313,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           price: 0,
           costPrice: canManageCostPrice ? 0 : undefined,
           status: 'ACTIVE',
+          isBatchManaged: true,
           imageUrl: '',
         });
         setConversionUnits([]);
@@ -473,6 +491,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             : undefined
           : undefined,
         status: formData.status,
+        isBatchManaged: formData.isBatchManaged !== undefined ? formData.isBatchManaged : true,
         imageUrl: formData.imageUrl?.trim() || undefined,
         stockQuantity: initialData ? initialData.stockQuantity : undefined,
         units: allUnits,
@@ -593,6 +612,28 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               {errors.name && (
                 <p className="text-[11px] text-rose-500 mt-1 font-medium">{errors.name.message}</p>
               )}
+            </div>
+
+            {/* Bật hoặc tắt quản lý lô theo từng SKU (SN-184 AC-1) */}
+            <div className="md:col-span-2 p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
+              <div className="space-y-0.5">
+                <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <CalendarClock className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <span>Quản lý theo Lô & Hạn sử dụng (FEFO)</span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Bắt buộc nhập số lô, NSX, HSD khi nhập kho và kích hoạt cảnh báo cận hạn khi xuất kho cho đại lý.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  {...register('isBatchManaged')}
+                  disabled={isSubmitting}
+                  className="sr-only peer"
+                />
+                <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
             </div>
           </div>
         </div>

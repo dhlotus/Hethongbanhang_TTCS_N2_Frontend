@@ -107,6 +107,8 @@ export interface CreateProductPayload {
   costPrice?: number;
   stockQuantity?: number;
   status: ProductStatus;
+  isBatchManaged?: boolean;
+  is_batch_managed?: boolean;
   imageUrl?: string;
   barcode?: string;
   description?: string;

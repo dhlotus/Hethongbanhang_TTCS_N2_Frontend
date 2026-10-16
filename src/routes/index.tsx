@@ -41,6 +41,7 @@ import { tokenStorage } from '../utils/token-storage';
 import { WarehousesPage } from '../pages/warehouses-page';
 import { InternalTransfersPage } from '../pages/inventory/internal-transfers-page';
 import { OrderPickingPage } from '../pages/order-picking-page';
+import { InventoryBatchesPage } from '../pages/inventory-batches-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -310,6 +311,25 @@ export const AppRoutes: React.FC = () => {
               />
             </Route>
 
+            {/* Quản lý Lô & Hạn sử dụng (FEFO - SN-184) cho Nhân viên kho & Quản lý kho */}
+            <Route
+              element={
+                <RoleGuard
+                  allowedRoles={[
+                    'WAREHOUSE_KEEPER',
+                    'WAREHOUSE_STAFF',
+                    'WAREHOUSE_MANAGER',
+                    'WH_MANAGER',
+                    'ADMIN',
+                  ]}
+                  moduleName="Quản lý Lô & Hạn sử dụng (FEFO)"
+                />
+              }
+            >
+              <Route path="/inventory/batches" element={<InventoryBatchesPage />} />
+              <Route path="/warehouse/batches" element={<InventoryBatchesPage />} />
+            </Route>
+
             <Route
               element={
                 <RoleGuard
@@ -321,16 +341,6 @@ export const AppRoutes: React.FC = () => {
               <Route
                 path="/inventory/adjustments"
                 element={<InventoryAuditsPage />}
-              />
-              <Route
-                path="/inventory/batches"
-                element={
-                  <RoleModulePage
-                    title="Quản lý Lô & Hạn sử dụng (FEFO)"
-                    subtitle="Giám sát vòng đời lô hàng, cảnh báo cận hạn sử dụng để kích hoạt xả hàng khuyến mãi"
-                    requiredRole="Quản lý kho"
-                  />
-                }
               />
               <Route
                 path="/reports/inventory"

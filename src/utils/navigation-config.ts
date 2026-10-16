@@ -357,6 +357,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Quản lý Tồn kho',
     },
     {
+      id: 'inventory-batches',
+      name: 'Quản lý lô & Hạn sử dụng',
+      path: '/inventory/batches',
+      icon: CalendarClock,
+      category: 'Quản lý Tồn kho',
+    },
+    {
       id: 'inventory-suppliers',
       name: 'Quản lý nhà cung cấp',
       path: '/inventory/suppliers',
@@ -618,6 +625,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Quản lý tồn kho & Lô hàng',
       path: '/inventory/stock',
       icon: Warehouse,
+      category: 'Kho vận & Hàng hóa',
+    },
+    {
+      id: 'inventory-batches',
+      name: 'Quản lý lô & Hạn sử dụng',
+      path: '/inventory/batches',
+      icon: CalendarClock,
       category: 'Kho vận & Hàng hóa',
     },
     {
