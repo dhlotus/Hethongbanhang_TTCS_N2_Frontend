@@ -36,6 +36,7 @@ export interface ProductUnit {
  */
 export interface Product {
   id: string;
+  uuid?: string;
   sku: string;
   name: string;
   category: string;
@@ -188,7 +189,7 @@ export interface ImportProductItemDto {
   baseUnit: string;
   price: number;
   costPrice: number;
-  stockQuantity: number;
+  stockQuantity?: number;
   barcode?: string;
   description?: string;
   status: 'NEW' | 'UPDATE';

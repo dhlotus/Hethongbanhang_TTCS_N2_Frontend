@@ -295,11 +295,23 @@ export const ProductsPage: React.FC = () => {
   const user = getStoredUser();
   const userRoles = user?.roles || [];
 
-  // 1. Phân quyền xem Giá vốn & Biên lợi nhuận (Chỉ ADMIN & SALES_MANAGER)
-  const canViewCostPrice = userRoles.includes('ADMIN') || userRoles.includes('SALES_MANAGER');
+  // 1. Phân quyền xem Giá vốn & Biên lợi nhuận (Chỉ ADMIN & Quản lý kinh doanh)
+  const canViewCostPrice =
+    userRoles.includes('ADMIN') ||
+    userRoles.includes('SALES_MANAGER') ||
+    userRoles.includes('BUSINESS_MANAGER');
 
-  // 2. Phân quyền Thêm / Sửa / Đổi trạng thái sản phẩm (Chỉ ADMIN & SALES_MANAGER)
-  const canManageProducts = userRoles.includes('ADMIN') || userRoles.includes('SALES_MANAGER');
+  // 2. Phân quyền Thêm / Sửa / Đổi trạng thái sản phẩm (Chỉ ADMIN & Quản lý kinh doanh)
+  const canManageProducts =
+    userRoles.includes('ADMIN') ||
+    userRoles.includes('SALES_MANAGER') ||
+    userRoles.includes('BUSINESS_MANAGER');
+
+  // 3. Phân quyền Xóa sản phẩm: Chỉ Admin và Quản lý kinh doanh
+  const canDeleteProduct =
+    userRoles.includes('ADMIN') ||
+    userRoles.includes('SALES_MANAGER') ||
+    userRoles.includes('BUSINESS_MANAGER');
 
   // 3. Phân quyền điều chỉnh tồn kho (Chỉ ADMIN & Nhóm vai trò kho)
   const canAdjustStock =
@@ -323,12 +335,10 @@ export const ProductsPage: React.FC = () => {
   const keeperWarehouseId = useMemo(() => {
     if (!user) return STANDARD_WAREHOUSES[2].id;
     if (user.warehouseId) {
-      const match = STANDARD_WAREHOUSES.find((w) => w.id === user.warehouseId);
-      if (match) return match.id;
+      return user.warehouseId;
     }
     if (user.assignedWarehouseId) {
-      const match = STANDARD_WAREHOUSES.find((w) => w.id === user.assignedWarehouseId);
-      if (match) return match.id;
+      return user.assignedWarehouseId;
     }
     const rawWh = (user.warehouseCode || user.assignedWarehouseCode || user.assignedWarehouse || '').toUpperCase();
     const match = STANDARD_WAREHOUSES.find(
@@ -712,8 +722,16 @@ export const ProductsPage: React.FC = () => {
 
   // Mở modal xác nhận xóa
   const handlePromptDelete = (p: Product) => {
-    if (p.hasTransactions) {
-      showToast('error', 'Không thể xóa sản phẩm đã phát sinh giao dịch');
+    if (!canDeleteProduct) {
+      showToast('error', 'Chỉ Admin và Quản lý kinh doanh mới có quyền xóa sản phẩm.');
+      return;
+    }
+    const currentStock = p.stockQuantity ?? 0;
+    if (currentStock > 0) {
+      showToast(
+        'error',
+        `Không thể xóa sản phẩm "${p.name}" (${p.sku}) vì kho vẫn còn tồn hàng (${currentStock} ${p.baseUnit || 'đơn vị'}). Vui lòng xuất hết tồn kho hoặc điều chỉnh về 0 trước khi xóa.`
+      );
       return;
     }
     setProductToDelete(p);
@@ -1388,8 +1406,8 @@ export const ProductsPage: React.FC = () => {
                                 )}
                               </div>
 
-                              {/* 7. Xóa sản phẩm */}
-                              {canManageProducts && (
+                              {/* 7. Xóa sản phẩm - Chỉ hiển thị cho Admin và Quản lý kinh doanh */}
+                              {canDeleteProduct && (
                                 <div className="py-1">
                                   <button
                                     type="button"
@@ -1398,24 +1416,17 @@ export const ProductsPage: React.FC = () => {
                                       handlePromptDelete(p);
                                     }}
                                     className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
-                                      p.hasTransactions
-                                        ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
+                                      (p.stockQuantity ?? 0) > 0
+                                        ? 'text-slate-400 hover:bg-slate-50 cursor-pointer'
                                         : 'text-rose-600 hover:bg-rose-50 cursor-pointer font-medium'
                                     }`}
                                     title={
-                                      p.hasTransactions
-                                        ? 'Sản phẩm đã có giao dịch (Chặn xóa an toàn)'
-                                        : 'Xóa sản phẩm'
+                                      (p.stockQuantity ?? 0) > 0
+                                        ? `Sản phẩm còn tồn kho (${p.stockQuantity} ${p.baseUnit || 'đơn vị'})`
+                                        : 'Xóa sản phẩm khỏi danh mục'
                                     }
-                                    disabled={p.hasTransactions}
                                   >
-                                    <Trash2
-                                      className={`w-4 h-4 ${
-                                        p.hasTransactions
-                                          ? 'text-slate-300'
-                                          : 'text-rose-500'
-                                      }`}
-                                    />
+                                    <Trash2 className="w-4 h-4 text-rose-500" />
                                     <span>Xóa sản phẩm</span>
                                   </button>
                                 </div>
@@ -1702,20 +1713,20 @@ export const ProductsPage: React.FC = () => {
                         </button>
                       )}
 
-                      {/* Xóa sản phẩm */}
-                      {canManageProducts && (
+                      {/* Xóa sản phẩm - Chỉ hiển thị cho Admin và Quản lý kinh doanh */}
+                      {canDeleteProduct && (
                         <button
                           type="button"
                           onClick={() => handlePromptDelete(p)}
                           className={`p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 ${
-                            p.hasTransactions
-                              ? 'border-slate-200 text-slate-300 hover:text-amber-600 hover:bg-amber-50'
+                            (p.stockQuantity ?? 0) > 0
+                              ? 'border-slate-200 text-slate-400 hover:bg-slate-50'
                               : 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'
                           }`}
                           title={
-                            p.hasTransactions
-                              ? 'Không thể xóa: SKU đã phát sinh giao dịch xuất/nhập'
-                              : 'Xóa sản phẩm'
+                            (p.stockQuantity ?? 0) > 0
+                              ? `Sản phẩm còn tồn kho (${p.stockQuantity} ${p.baseUnit || 'đơn vị'})`
+                              : 'Xóa sản phẩm khỏi danh mục'
                           }
                         >
                           <Trash2 className="h-4 w-4" />
@@ -1881,13 +1892,21 @@ export const ProductsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 text-xs text-slate-600 space-y-1 mb-5">
+              <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 text-xs text-slate-600 space-y-2 mb-5">
                 <p>
                   Bạn có chắc chắn muốn xóa sản phẩm <strong>"{productToDelete.name}"</strong> khỏi
                   danh mục hàng hóa?
                 </p>
+                <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-2 text-[11px] text-emerald-800 space-y-0.5">
+                  <p className="font-semibold flex items-center gap-1">
+                    ✓ Kiểm tra ràng buộc: Tồn kho = 0 (Hết hàng)
+                  </p>
+                  <p className="text-emerald-700">
+                    Hệ thống sẽ xác nhận sản phẩm không còn giao dịch nào đang ở trạng thái chờ hoặc đang vận chuyển.
+                  </p>
+                </div>
                 <p className="text-[11px] text-rose-600 font-medium">
-                  * Thao tác này không thể hoàn tác sau khi xác nhận.
+                  * Thao tác này sẽ xóa hoàn toàn SKU khỏi danh mục và không thể hoàn tác sau khi xác nhận.
                 </p>
               </div>
 

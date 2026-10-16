@@ -63,6 +63,30 @@ const getPageHeaderInfo = (
       ],
     };
   }
+  if (
+    pathname === '/inventory/receipts/create' ||
+    pathname === '/inventory/receipts/new' ||
+    pathname.startsWith('/inventory/receipts/create/')
+  ) {
+    return {
+      title: 'Lập phiếu nhập kho từ Nhà cung cấp',
+      category: 'Nhập / Xuất kho',
+      breadcrumbs: [
+        { label: 'Nhập kho hàng hóa', path: '/inventory/receipts' },
+        { label: 'Lập phiếu nhập kho từ Nhà cung cấp' },
+      ],
+    };
+  }
+  if (pathname.startsWith('/inventory/receipts/edit')) {
+    return {
+      title: 'Chỉnh sửa phiếu nhập kho',
+      category: 'Nhập / Xuất kho',
+      breadcrumbs: [
+        { label: 'Nhập kho hàng hóa', path: '/inventory/receipts' },
+        { label: 'Chỉnh sửa phiếu nhập kho' },
+      ],
+    };
+  }
 
   // 1. Ưu tiên khớp chính xác theo menu item của người dùng hiện tại trên Navbar
   const sortedUserItems = [...userMenuItems].sort((a, b) => b.path.length - a.path.length);
@@ -267,12 +291,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                     ) : crumb.path ? (
                       <Link
                         to={crumb.path}
-                        className="text-slate-500 hover:text-indigo-600 transition-colors truncate font-semibold"
+                        className="text-slate-600 hover:text-indigo-600 transition-colors truncate font-semibold"
                       >
                         {crumb.label}
                       </Link>
                     ) : (
-                      <span className="text-slate-500 truncate font-semibold">
+                      <span className="text-slate-600 truncate font-semibold">
                         {crumb.label}
                       </span>
                     )}

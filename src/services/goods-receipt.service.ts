@@ -1,5 +1,10 @@
 import { apiClient } from './api';
 import type { GoodsReceipt, CreateGoodsReceiptDto, GoodsReceiptStatus } from '../types/inventory-receipt';
+import {
+  normalizeProductIdToUuid,
+  normalizeWarehouseIdToUuid,
+  normalizeSupplierIdToUuid,
+} from '../utils/uuid-utils';
 
 export interface QueryGoodsReceiptsDto {
   search?: string;
@@ -46,9 +51,19 @@ export const goodsReceiptService = {
 
   /**
    * Tạo mới phiếu nhập kho (Mặc định ở trạng thái DRAFT)
+   * Tự động chuẩn hóa các mã định danh (warehouseId, supplierId, productId) về UUID chuẩn
    */
   createReceipt: async (data: CreateGoodsReceiptDto): Promise<{ id: string }> => {
-    const response = await apiClient.post<{ id: string }>('/goods-receipts', data);
+    const payload: CreateGoodsReceiptDto = {
+      ...data,
+      warehouseId: normalizeWarehouseIdToUuid(data.warehouseId),
+      supplierId: normalizeSupplierIdToUuid(data.supplierId),
+      items: (data.items || []).map((item) => ({
+        ...item,
+        productId: normalizeProductIdToUuid(item.productId),
+      })),
+    };
+    const response = await apiClient.post<{ id: string }>('/goods-receipts', payload);
     return response.data;
   },
 
@@ -56,7 +71,16 @@ export const goodsReceiptService = {
    * Cập nhật thông tin phiếu nhập kho (chỉ áp dụng khi phiếu còn ở trạng thái DRAFT)
    */
   updateReceipt: async (id: string, data: UpdateGoodsReceiptDto): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.put<{ success: boolean; message: string }>(`/goods-receipts/${id}`, data);
+    const payload: UpdateGoodsReceiptDto = {
+      ...data,
+      warehouseId: data.warehouseId ? normalizeWarehouseIdToUuid(data.warehouseId) : undefined,
+      supplierId: normalizeSupplierIdToUuid(data.supplierId),
+      items: data.items?.map((item) => ({
+        ...item,
+        productId: normalizeProductIdToUuid(item.productId),
+      })),
+    };
+    const response = await apiClient.put<{ success: boolean; message: string }>(`/goods-receipts/${id}`, payload);
     return response.data;
   },
 

@@ -48,6 +48,7 @@ export interface GoodsReceipt {
 export interface CreateGoodsReceiptItemDto {
   productId: string;
   unitId: string;
+  unitName?: string;
   packageQuantity: number;
   conversionFactor: number;
   unitCost?: number;

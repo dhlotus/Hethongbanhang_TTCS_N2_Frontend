@@ -326,7 +326,7 @@ export const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ onClos
             ) : (
               <CheckCircle2 className="h-4 w-4" />
             )}
-            Xác nhận nhập kho
+            Xác nhận tạo sản phẩm
           </button>
         </div>
       </div>

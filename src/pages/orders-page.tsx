@@ -13,6 +13,7 @@ import {
   AlertCircle,
   AlertTriangle,
   Package,
+  PackageCheck,
   FileText,
   Truck,
   Copy,
@@ -857,6 +858,18 @@ export const OrdersPage: React.FC = () => {
                 />
                 <span className="hidden sm:inline">Làm mới</span>
               </button>
+
+              {(isWarehouse || isAdmin) && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/warehouse/picking')}
+                  className="hidden xl:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
+                  title="Soạn hàng theo vị trí kho từ đơn đã duyệt"
+                >
+                  <PackageCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span>Soạn hàng (Picking)</span>
+                </button>
+              )}
 
               {(isSalesRep || isSalesManager || isAdmin) && (
                 <button

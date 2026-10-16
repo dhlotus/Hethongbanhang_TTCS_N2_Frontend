@@ -109,6 +109,7 @@ export interface Order {
   subtotal: number; // Tổng tiền hàng trước chiết khấu
   totalDiscount: number; // Tổng chiết khấu
   grandTotal: number; // Tổng phải thu = subtotal - totalDiscount
+  totalAmount?: number; // Alias cho grandTotal
   note?: string;
   warningNote?: string; // Ghi chú cảnh báo công nợ / tồn kho (SN-41 / SN-39)
   status: OrderStatus;
