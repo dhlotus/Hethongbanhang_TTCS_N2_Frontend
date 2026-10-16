@@ -51,8 +51,8 @@ export const TransferFilters: React.FC<TransferFiltersProps> = ({
             onChange={(e) => onStatusChange(e.target.value as TransferStatus | 'ALL')}
             className="w-full text-xs font-medium px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all"
           >
+            <option value="IN_TRANSIT">Đang vận chuyển (IN_TRANSIT)</option>
             <option value="ALL">Tất cả trạng thái</option>
-            <option value="IN_TRANSIT">Đang trên đường (IN_TRANSIT)</option>
             <option value="COMPLETED">Đã nhận đủ (COMPLETED)</option>
             <option value="PARTIALLY_RECEIVED">Nhận chênh lệch (PARTIALLY_RECEIVED)</option>
             <option value="DRAFT">Bản nháp (DRAFT)</option>

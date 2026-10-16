@@ -23,6 +23,7 @@ export interface AutocompleteProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   openOnFocus?: boolean;
+  id?: string;
 }
 
 /**
@@ -48,6 +49,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   className = '',
   size = 'md',
   openOnFocus = true,
+  id,
 }) => {
   const [internalValue, setInternalValue] = useState(controlledValue || '');
   const [isOpen, setIsOpen] = useState(false);
@@ -149,7 +151,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   };
 
   const sizeClasses = {
-    sm: 'h-8.5 px-3 py-1.5 text-sm rounded',
+    sm: 'h-8.5 px-2.5 py-1 text-xs rounded-lg',
     md: 'h-10.5 sm:h-11 px-4 text-base rounded-md',
     lg: 'h-12 px-4.5 text-lg rounded-lg',
   }[size];
@@ -164,6 +166,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
 
       <div className="relative flex items-center">
         <input
+          id={id}
           ref={inputRef}
           type="text"
           value={query}
@@ -175,10 +178,10 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className={`w-full ${sizeClasses} bg-white border text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none focus:ring-2 focus:ring-[var(--color-primary-ring)] focus:border-[var(--color-border-focus)] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${
+          className={`w-full ${sizeClasses} bg-white border text-slate-900 placeholder-slate-400 transition-all duration-200 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${
             error
-              ? 'border-[var(--color-border-error)] focus:border-[var(--color-border-error)]'
-              : 'border-[var(--color-border)] hover:border-[var(--color-border-hover)]'
+              ? 'border-rose-500 focus:border-rose-500 ring-1 ring-rose-200'
+              : 'border-slate-300 hover:border-slate-400'
           }`}
         />
         {isLoading && (
@@ -189,8 +192,8 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
       </div>
 
       {error && (
-        <p className="mt-2 text-xs text-rose-600 flex items-center gap-2 font-medium">
-          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+        <p className={size === 'sm' ? "mt-1 text-[10px] text-rose-600 flex items-center gap-1 font-medium leading-tight" : "mt-2 text-xs text-rose-600 flex items-center gap-2 font-medium"}>
+          <AlertCircle className={size === 'sm' ? "w-3 h-3 shrink-0" : "w-3.5 h-3.5 shrink-0"} />
           <span>{error}</span>
         </p>
       )}

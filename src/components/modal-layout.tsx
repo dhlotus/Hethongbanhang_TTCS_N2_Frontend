@@ -137,7 +137,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               {icon && (
-                <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-500/20">
+                <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 ring-1 ring-indigo-500/20">
                   {icon}
                 </div>
               )}
@@ -161,7 +161,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
                 type="button"
                 onClick={requestClose}
                 aria-label="Đóng popup"
-                className="w-9 h-9 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
+                className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>

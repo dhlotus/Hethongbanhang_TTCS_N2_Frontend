@@ -24,6 +24,7 @@ import { orderPricingService } from '../services/order-pricing.service';
 import { priceListsService } from '../services/price-lists.service';
 import { discountPoliciesService, getApplicablePolicyInfo, type DiscountPolicy } from '../services/discount-policies.service';
 import { customerService } from '../services/customer.service';
+import { warehouseService } from '../services/warehouse.service';
 import { tokenStorage } from '../utils/token-storage';
 import { getStoredUser } from '../utils/navigation';
 import type { Customer, DeliveryPoint as CustomerDeliveryPoint } from '../types/customer.types';
@@ -44,6 +45,28 @@ const formatVND = (value: number): string => {
 const cleanProductName = (name?: string): string => {
   if (!name) return '';
   return name.replace(/\s*\((lon|chai|hộp|gói|thùng|lốc|lon\s*\d*|chai\s*\d*)\)\s*$/i, '').trim();
+};
+
+/** Nhãn hiển thị cho Nhóm/Cấp đại lý */
+const getGroupBadgeMeta = (group?: string) => {
+  switch (group) {
+    case 'AGENT_LEVEL_1':
+      return {
+        label: 'Đại lý Cấp 1',
+        className: 'bg-indigo-50 text-indigo-700 border-indigo-200 ring-1 ring-indigo-500/10',
+      };
+    case 'AGENT_LEVEL_2':
+      return {
+        label: 'Đại lý Cấp 2',
+        className: 'bg-sky-50 text-sky-700 border-sky-200 ring-1 ring-sky-500/10',
+      };
+    case 'RETAIL':
+    default:
+      return {
+        label: 'Đại lý Bán lẻ',
+        className: 'bg-emerald-50 text-emerald-700 border-emerald-200 ring-1 ring-emerald-500/10',
+      };
+  }
 };
 
 /** Cấu trúc một món trong Giỏ hàng của Đại lý */
@@ -91,6 +114,18 @@ export const PortalOrderConfirmPage: React.FC = () => {
     return matched || list[0] || null;
   });
 
+  const groupBadge = getGroupBadgeMeta(currentCustomer?.customerGroup || (currentCustomer as unknown as { group?: string })?.group);
+
+  // 2.1 Kho phục vụ mặc định của Đại lý (SN: 1 Kho - N Đại lý)
+  const [servingWarehouse, setServingWarehouse] = useState<{ warehouseId: string; warehouseName: string; warehouseCode: string } | null>(null);
+
+  useEffect(() => {
+    if (!currentCustomer?.id) return;
+    warehouseService.getAgencyDefault(currentCustomer.id).then((wh) => {
+      if (wh) setServingWarehouse(wh);
+    }).catch(() => {});
+  }, [currentCustomer?.id]);
+
   // 3. Chính sách chiết khấu & Bảng giá
   const [discountPolicies, setDiscountPolicies] = useState<DiscountPolicy[]>([]);
   const [effectivePriceList, setEffectivePriceList] = useState<PriceList | null>(null);
@@ -129,17 +164,17 @@ export const PortalOrderConfirmPage: React.FC = () => {
       });
   }, [currentCustomer]);
 
-  // 3.1 Tải danh mục sản phẩm phục vụ thêm nhanh trực tiếp tại trang
+  // 3.1 Tải danh mục sản phẩm phục vụ thêm nhanh trực tiếp tại trang theo kho của đại lý
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [isAddProductDropdownOpen, setIsAddProductDropdownOpen] = useState<boolean>(false);
   const [productSearchTerm, setProductSearchTerm] = useState<string>('');
   const addProductDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    void ordersService.searchProducts('', 100).then((prods) => {
+    void ordersService.searchProducts('', 100, currentCustomer?.id).then((prods) => {
       if (prods && prods.length > 0) setAvailableProducts(prods);
     }).catch(() => {});
-  }, []);
+  }, [currentCustomer?.id]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -591,6 +626,10 @@ export const PortalOrderConfirmPage: React.FC = () => {
         priceListId: effectivePriceList?.id,
         isCreditLimitExceeded: cartTotals.isExceeded,
         creditLimitExceededAmount: cartTotals.exceededAmount,
+        warehouseId: servingWarehouse?.warehouseId,
+        warehouse_id: servingWarehouse?.warehouseId,
+        warehouseName: servingWarehouse?.warehouseName,
+        warehouseCode: servingWarehouse?.warehouseCode,
       };
 
       const created = await ordersService.createOrder(payload);
@@ -664,12 +703,17 @@ export const PortalOrderConfirmPage: React.FC = () => {
           {/* ── GIAO DIỆN DESKTOP / LAPTOP / PC (GIỮ NGUYÊN 100% CẤU TRÚC & KÍCH THƯỚC BAN ĐẦU) ── */}
           <div className="hidden sm:block space-y-4">
             {/* Chi tiết đại lý */}
-            <div className="p-4 sm:p-5 rounded-xl bg-slate-50/80 border border-slate-200/70 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+            <div className="p-4 sm:p-5 rounded-xl bg-slate-50/80 border border-slate-200/70 grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className="text-slate-500 font-medium block mb-1">Tên doanh nghiệp:</span>
-                <strong className="text-slate-900 text-sm sm:text-base font-semibold block">
-                  {currentCustomer?.name}
-                </strong>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <strong className="text-slate-900 text-sm sm:text-base font-semibold">
+                    {currentCustomer?.name}
+                  </strong>
+                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${groupBadge.className}`}>
+                    {groupBadge.label}
+                  </span>
+                </div>
               </div>
               <div>
                 <span className="text-slate-500 font-medium block mb-1">Mã đại lý:</span>
@@ -682,6 +726,13 @@ export const PortalOrderConfirmPage: React.FC = () => {
                 <strong className="text-slate-900 text-sm sm:text-base font-semibold block">
                   {currentCustomer?.phone || 'Chưa cập nhật'}
                 </strong>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium block mb-1">Kho xuất hàng phục vụ:</span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 font-semibold text-xs mt-0.5">
+                  <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                  {servingWarehouse?.warehouseName || 'Kho mặc định hệ thống'}
+                </span>
               </div>
             </div>
 
@@ -1247,7 +1298,7 @@ export const PortalOrderConfirmPage: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Tổng thanh toán:</span>
-                <span className="font-mono font-bold text-slate-900">{formatVND(submittedOrder.grandTotal ?? (submittedOrder as any).totalAmount ?? 0)}</span>
+                <span className="font-mono font-bold text-slate-900">{formatVND(submittedOrder.grandTotal ?? submittedOrder.totalAmount ?? submittedOrder.subtotal ?? 0)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Trạng thái:</span>

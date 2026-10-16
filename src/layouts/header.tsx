@@ -63,6 +63,30 @@ const getPageHeaderInfo = (
       ],
     };
   }
+  if (
+    pathname === '/inventory/receipts/create' ||
+    pathname === '/inventory/receipts/new' ||
+    pathname.startsWith('/inventory/receipts/create/')
+  ) {
+    return {
+      title: 'Lập phiếu nhập kho từ Nhà cung cấp',
+      category: 'Nhập / Xuất kho',
+      breadcrumbs: [
+        { label: 'Nhập kho hàng hóa', path: '/inventory/receipts' },
+        { label: 'Lập phiếu nhập kho từ Nhà cung cấp' },
+      ],
+    };
+  }
+  if (pathname.startsWith('/inventory/receipts/edit')) {
+    return {
+      title: 'Chỉnh sửa phiếu nhập kho',
+      category: 'Nhập / Xuất kho',
+      breadcrumbs: [
+        { label: 'Nhập kho hàng hóa', path: '/inventory/receipts' },
+        { label: 'Chỉnh sửa phiếu nhập kho' },
+      ],
+    };
+  }
 
   // 1. Ưu tiên khớp chính xác theo menu item của người dùng hiện tại trên Navbar
   const sortedUserItems = [...userMenuItems].sort((a, b) => b.path.length - a.path.length);
@@ -230,7 +254,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     'Người dùng';
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-xs px-4 sm:px-6 lg:px-8 shadow-2xs">
+    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-xs px-3 sm:px-6 lg:px-8 shadow-2xs">
       {/* =================================================================== */}
       {/* 1. BÊN TRÁI: NÚT ĐÓNG MỞ NAVBAR & TIÊU ĐỀ TRANG                     */}
       {/* =================================================================== */}
@@ -267,12 +291,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                     ) : crumb.path ? (
                       <Link
                         to={crumb.path}
-                        className="text-slate-500 hover:text-indigo-600 transition-colors truncate font-semibold"
+                        className="text-slate-600 hover:text-indigo-600 transition-colors truncate font-semibold"
                       >
                         {crumb.label}
                       </Link>
                     ) : (
-                      <span className="text-slate-500 truncate font-semibold">
+                      <span className="text-slate-600 truncate font-semibold">
                         {crumb.label}
                       </span>
                     )}
@@ -344,13 +368,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           {/* Tên & Tag vai trò (Ẩn trên mobile siêu nhỏ, hiện từ sm trở lên) */}
           <div className="hidden sm:flex flex-col text-left min-w-0">
             <span
-              className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors truncate max-w-[140px] leading-tight"
+              className="text-sm font-bold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors truncate max-w-[150px] leading-tight"
               title={context.fullName}
             >
               {cleanFullName}
             </span>
             <span
-              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold mt-0.5 w-fit max-w-[140px] truncate ${context.badgeClass}`}
+              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold mt-0.5 w-fit max-w-[150px] truncate ${context.badgeClass}`}
               title={context.roleLabel}
             >
               <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${context.dotClass}`} />

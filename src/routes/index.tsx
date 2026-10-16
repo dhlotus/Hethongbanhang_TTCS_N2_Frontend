@@ -30,6 +30,7 @@ import { ReturnsPage } from '../pages/returns-page';
 import { DashboardPage } from '../pages/dashboard-page';
 import { AgencyPortalPage } from '../pages/agency-portal-page';
 import { PortalOrderConfirmPage } from '../pages/portal-order-confirm-page';
+import { PortalDebtPage } from '../pages/portal-debt-page';
 import { NotFoundPage } from '../pages/not-found-page';
 import { ForbiddenPage } from '../pages/forbidden-page';
 import { ProtectedRoute } from '../components/protected-route';
@@ -40,6 +41,7 @@ import { getRedirectPathByUser, getStoredUser } from '../utils/navigation';
 import { tokenStorage } from '../utils/token-storage';
 import { WarehousesPage } from '../pages/warehouses-page';
 import { InternalTransfersPage } from '../pages/inventory/internal-transfers-page';
+import { OrderPickingPage } from '../pages/order-picking-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -90,6 +92,26 @@ export const AppRoutes: React.FC = () => {
               <Route path="/inventory/warehouses" element={<WarehousesPage />} />
             </Route>
 
+            {/* SN-170 & SN-174: Cổng Theo dõi vận chuyển & Danh sách đơn Đại lý */}
+            <Route
+              element={
+                <RoleGuard
+                  allowedRoles={[
+                    'CUSTOMER',
+                    'ADMIN',
+                    'SALES_REP',
+                    'SALES_MANAGER',
+                    'WAREHOUSE_STAFF',
+                    'WAREHOUSE_MANAGER',
+                    'ACCOUNTANT',
+                  ]}
+                  moduleName="Theo dõi đơn hàng & Giao vận"
+                />
+              }
+            >
+              <Route path="/portal/tracking" element={<PortalOrdersPage />} />
+            </Route>
+
             <Route
               element={
                 <RoleGuard
@@ -102,18 +124,7 @@ export const AppRoutes: React.FC = () => {
               <Route path="/portal/orders" element={<AgencyPortalPage />} />
               <Route path="/portal/orders/confirm" element={<PortalOrderConfirmPage />} />
               <Route path="/portal/orders/create" element={<Navigate to="/portal/orders/confirm" replace />} />
-              {/* SN-170 & SN-174: Cổng Theo dõi vận chuyển & Danh sách đơn Đại lý */}
-              <Route path="/portal/tracking" element={<PortalOrdersPage />} />
-              <Route
-                path="/portal/debt"
-                element={
-                  <RoleModulePage
-                    title="Sổ công nợ của tôi"
-                    subtitle="Đối chiếu công nợ phát sinh, lịch sử thanh toán và thời hạn tín dụng mua buôn"
-                    requiredRole="Đại lý B2B"
-                  />
-                }
-              />
+              <Route path="/portal/debt" element={<PortalDebtPage />} />
               <Route
                 path="/portal/profile"
                 element={
@@ -277,6 +288,9 @@ export const AppRoutes: React.FC = () => {
               />
               {/* Route chuyên biệt cho Đơn hàng chuẩn bị xuất thuộc phân hệ Kho vận (SN-180) */}
               <Route path="/warehouse/orders" element={<OrdersPage />} />
+              {/* Route phiếu soạn hàng theo vị trí & đường đi trong kho (Wave Picking) */}
+              <Route path="/inventory/picking" element={<OrderPickingPage />} />
+              <Route path="/warehouse/picking" element={<OrderPickingPage />} />
             </Route>
 
             <Route
@@ -291,6 +305,10 @@ export const AppRoutes: React.FC = () => {
                 path="/inventory/transfers"
                 element={<InternalTransfersPage />}
               />
+              <Route
+                path="/inventory/internal-transfers"
+                element={<InternalTransfersPage />}
+              />
             </Route>
 
             <Route
@@ -303,7 +321,7 @@ export const AppRoutes: React.FC = () => {
             >
               <Route
                 path="/inventory/adjustments"
-                element={<ReturnsPage />}
+                element={<InventoryAuditsPage />}
               />
               <Route
                 path="/inventory/batches"

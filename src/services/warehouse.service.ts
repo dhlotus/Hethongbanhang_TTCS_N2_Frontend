@@ -19,27 +19,36 @@ export const warehouseService = {
     } catch {}
     return [
       {
-        id: '11111111-0000-4000-8000-000000000001',
-        code: 'WH01',
-        name: 'Kho Tổng Miền Nam - LOHA WH01',
-        address: 'Số 18 Đại lộ Độc Lập, KCN Sóng Thần 1, Dĩ An, Bình Dương',
-        phone: '02743790001',
-        status: 'ACTIVE',
-        locationCount: 3,
-      },
-      {
         id: '11111111-0000-0000-0000-000000000002',
         code: 'KHO-MB-01',
-        name: 'Kho Phân Phối Hà Nội',
+        name: 'Kho Miền Bắc (Hà Nội)',
         address: 'Lô CN-05 KCN Ninh Hiệp, Gia Lâm, Hà Nội',
         phone: '02438890002',
         status: 'ACTIVE',
         locationCount: 2,
       },
       {
-        id: '11111111-0000-0000-0000-000000000003',
+        id: '11111111-0000-0000-0000-000000000004',
         code: 'KHO-MT-01',
-        name: 'Kho Vùng Tây Nam Bộ',
+        name: 'Kho Miền Trung (Đà Nẵng)',
+        address: 'KCN Hòa Khánh, Liên Chiểu, Đà Nẵng',
+        phone: '02363890004',
+        status: 'ACTIVE',
+        locationCount: 2,
+      },
+      {
+        id: '11111111-0000-0000-0000-000000000001',
+        code: 'KHO-MN-01',
+        name: 'Kho Miền Nam (TP. Hồ Chí Minh)',
+        address: 'Số 18 Đại lộ Độc Lập, KCN Sóng Thần 1, Dĩ An, Bình Dương',
+        phone: '02838890001',
+        status: 'ACTIVE',
+        locationCount: 3,
+      },
+      {
+        id: '11111111-0000-0000-0000-000000000003',
+        code: 'KHO-WEST-01',
+        name: 'Kho Miền Tây (Cần Thơ)',
         address: 'Đường số 3 KCN Trà Nóc 1, Bình Thủy, Cần Thơ',
         phone: '02923890003',
         status: 'ACTIVE',
@@ -86,6 +95,17 @@ export const warehouseService = {
       warehouseId,
     });
   },
+  async assignAgencies(warehouseId: string, agencyIds: string[]): Promise<void> {
+    try {
+      await apiClient.post(`/warehouses/${encodeURIComponent(warehouseId)}/agencies`, {
+        agencyIds,
+      });
+    } catch {
+      await Promise.all(
+        agencyIds.map((agencyId) => this.setAgencyDefaultWarehouse(agencyId, warehouseId))
+      );
+    }
+  },
   async getAgencyDefaults(): Promise<AgencyWarehouseAssignment[]> {
     const response = await apiClient.get<AgencyWarehouseAssignment[]>(
       '/warehouses/agencies/defaults'
@@ -98,4 +118,32 @@ export const warehouseService = {
     );
     return response.data;
   },
+  async checkDeleteEligibility(id: string): Promise<{
+    canDelete: boolean;
+    hasPositiveStock: boolean;
+    totalOnHand: number;
+    totalAllocated: number;
+    hasZeroStockProducts: boolean;
+    productRecordCount: number;
+    isEmpty: boolean;
+    warehouseName: string;
+    warehouseCode: string;
+    message: string;
+  }> {
+    const response = await apiClient.get(
+      `/warehouses/${encodeURIComponent(id)}/delete-check`
+    );
+    return response.data;
+  },
+  async deleteWarehouse(
+    id: string,
+    confirmZeroStock?: boolean
+  ): Promise<{ success: boolean; message?: string }> {
+    const response = await apiClient.delete<{ success: boolean; message?: string }>(
+      `/warehouses/${encodeURIComponent(id)}`,
+      { params: { confirmZeroStock: confirmZeroStock ? 'true' : undefined } }
+    );
+    return response.data;
+  },
 };
+

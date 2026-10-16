@@ -36,6 +36,7 @@ export interface ProductUnit {
  */
 export interface Product {
   id: string;
+  uuid?: string;
   sku: string;
   name: string;
   category: string;
@@ -137,6 +138,8 @@ export interface AdjustStockPayload {
   reason: string;
   referenceCode?: string; // Mã phiếu kho / chứng từ tham chiếu
   warehouseLocation?: string;
+  warehouseId?: string;
+  warehouse_id?: string;
 }
 
 export interface StockAdjustmentResponse {
@@ -186,7 +189,7 @@ export interface ImportProductItemDto {
   baseUnit: string;
   price: number;
   costPrice: number;
-  stockQuantity: number;
+  stockQuantity?: number;
   barcode?: string;
   description?: string;
   status: 'NEW' | 'UPDATE';

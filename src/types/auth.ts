@@ -3,6 +3,13 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface AuthUserWarehouse {
+  id: string;
+  code: string;
+  name: string;
+  isPrimary?: boolean;
+}
+
 export interface AuthUser {
   id: string;
   username: string;
@@ -16,6 +23,12 @@ export interface AuthUser {
   role?: string;
   status?: string;
   assignedWarehouse?: string;
+  warehouseId?: string;
+  assignedWarehouseId?: string;
+  warehouseCode?: string;
+  assignedWarehouseCode?: string;
+  warehouseIds?: string[];
+  warehouses?: AuthUserWarehouse[];
   avatarUrl?: string;
   createdAt?: string | Date;
 }
