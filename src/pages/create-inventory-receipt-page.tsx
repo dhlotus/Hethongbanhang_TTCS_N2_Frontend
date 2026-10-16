@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { showToast } from "../components/toast";
 import { ConfirmDialog } from "../components/confirm-dialog";
-import { CurrencyInput } from "../components/currency-input";
 import { Autocomplete, type AutocompleteItem } from "../components/autocomplete";
 import { suppliersService } from "../services/suppliers.service";
 import { productsService } from "../services/products.service";
@@ -311,22 +310,15 @@ export const CreateInventoryReceiptPage: React.FC = () => {
     }
 
     if (!warehouseId) {
-      showToast("warning", "Vui lòng chọn kho nhập hàng");
       focusAndScrollElement("warehouse-select");
       return false;
     }
-    if (!receiptDate || !receiptDate.trim()) {
-      showToast("warning", "Vui lòng chọn ngày nhập kho");
-      focusAndScrollElement("receipt-date-input");
+    if (!supplierId) {
+      supplierSelectRef.current?.focus();
+      supplierSelectRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return false;
     }
-    if (receiptDate > todayString) {
-      showToast("warning", "Ngày nhập kho không được lớn hơn ngày hiện tại");
-      focusAndScrollElement("receipt-date-input");
-      return false;
-    }
-    if (receiptDate < minReceiptDateString) {
-      showToast("warning", "Ngày nhập kho không được chọn ngày của tháng trước (chỉ trong tháng hiện tại)");
+    if (!receiptDate || !receiptDate.trim() || receiptDate > todayString || receiptDate < minReceiptDateString) {
       focusAndScrollElement("receipt-date-input");
       return false;
     }
@@ -338,29 +330,24 @@ export const CreateInventoryReceiptPage: React.FC = () => {
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
       if (!it.productId) {
-        showToast("warning", `Dòng ${i + 1}: Vui lòng chọn sản phẩm / SKU`);
         focusAndScrollElement(`product-input-${i}`);
         return false;
       }
       if (!it.unitId) {
-        showToast("warning", `Dòng ${i + 1}: Vui lòng chọn đơn vị tính`);
         focusAndScrollElement(`unit-select-${i}`);
         return false;
       }
       if (!it.packageQuantity || it.packageQuantity <= 0) {
-        showToast("warning", `Dòng ${i + 1}: Số lượng nhập phải lớn hơn 0`);
         focusAndScrollElement(`qty-input-${i}`);
         return false;
       }
 
       if (it.mfgDate && receiptDate && it.mfgDate > receiptDate) {
-        showToast("warning", `Dòng ${i + 1}: Ngày sản xuất không thể sau ngày nhập kho`);
         focusAndScrollElement(`mfg-input-${i}`);
         return false;
       }
 
       if (it.mfgDate && it.expiryDate && it.mfgDate >= it.expiryDate) {
-        showToast("warning", `Dòng ${i + 1}: Hạn sử dụng phải sau Ngày sản xuất`);
         focusAndScrollElement(`expiry-input-${i}`);
         return false;
       }
@@ -372,20 +359,12 @@ export const CreateInventoryReceiptPage: React.FC = () => {
         const isMissingBatch = !it.batchNumber?.trim();
         const isMissingExpiry = !it.expiryDate?.trim();
 
-        if (isMissingBatch && isMissingExpiry) {
-          showToast("warning", `Dòng ${i + 1}: Vui lòng nhập đầy đủ Số lô và Hạn sử dụng.`);
-          focusAndScrollElement(`batch-input-${i}`);
-          return false;
-        }
-
         if (isMissingBatch) {
-          showToast("warning", `Dòng ${i + 1}: Vui lòng nhập Số lô hàng.`);
           focusAndScrollElement(`batch-input-${i}`);
           return false;
         }
 
         if (isMissingExpiry) {
-          showToast("warning", `Dòng ${i + 1}: Vui lòng chọn Hạn sử dụng.`);
           focusAndScrollElement(`expiry-input-${i}`);
           return false;
         }
@@ -503,7 +482,11 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                 id="warehouse-select"
                 value={warehouseId}
                 onChange={(e) => setWarehouseId(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-xs font-medium text-slate-800 transition-all truncate"
+                className={`w-full pl-9 pr-3 py-1.5 bg-white border ${
+                  showValidationErrors && !warehouseId
+                    ? "border-rose-500 ring-1 ring-rose-200 focus:border-rose-500 focus:ring-rose-200"
+                    : "border-slate-300 focus:border-indigo-600 focus:ring-indigo-500/20"
+                } rounded-xl focus:outline-none focus:ring-2 text-xs font-medium text-slate-800 transition-all truncate`}
               >
                 {warehouses.map((w) => {
                   const cleanName = w.name
@@ -524,6 +507,12 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                 })}
               </select>
             </div>
+            {showValidationErrors && !warehouseId && (
+              <p className="text-[10px] text-rose-600 font-medium mt-1 flex items-center gap-1 leading-tight">
+                <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                <span>Vui lòng chọn kho nhập hàng</span>
+              </p>
+            )}
           </div>
 
           {/* Cột 2: Nhà cung cấp */}
@@ -537,7 +526,11 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                 ref={supplierSelectRef}
                 value={supplierId}
                 onChange={(e) => setSupplierId(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-xs font-medium text-slate-800 transition-all truncate"
+                className={`w-full pl-9 pr-3 py-1.5 bg-white border ${
+                  showValidationErrors && !supplierId
+                    ? "border-rose-500 ring-1 ring-rose-200 focus:border-rose-500 focus:ring-rose-200"
+                    : "border-slate-300 focus:border-indigo-600 focus:ring-indigo-500/20"
+                } rounded-xl focus:outline-none focus:ring-2 text-xs font-medium text-slate-800 transition-all truncate`}
               >
                 <option value="">-- Chọn nhà cung cấp --</option>
                 {suppliers.map((s) => (
@@ -547,6 +540,12 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                 ))}
               </select>
             </div>
+            {showValidationErrors && !supplierId && (
+              <p className="text-[10px] text-rose-600 font-medium mt-1 flex items-center gap-1 leading-tight">
+                <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                <span>Vui lòng chọn nhà cung cấp</span>
+              </p>
+            )}
           </div>
 
           {/* Cột 3: Số chứng từ gốc */}
@@ -691,17 +690,23 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                     item.product?.baseUnit ||
                     "Đơn vị";
                   const isBatchManaged = Boolean(item.product && item.product.isBatchManaged !== false);
+                  const hasBatchInput = Boolean(item.batchNumber?.trim() || item.expiryDate?.trim());
+                  const isBatchRequired = isBatchManaged || hasBatchInput;
                   const isProductMissing = showConfirmErrors && !item.productId;
+                  const isQtyInvalid = showValidationErrors && (!item.packageQuantity || item.packageQuantity <= 0);
+                  const isBatchMissing = isBatchRequired && showValidationErrors && !item.batchNumber.trim();
+                  const isExpiryMissing = isBatchRequired && showValidationErrors && !item.expiryDate.trim();
+                  const isExpiryBeforeMfg = Boolean(item.mfgDate && item.expiryDate && item.mfgDate >= item.expiryDate);
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
                       {/* Cột 0: STT */}
-                      <td className="p-2 text-center text-slate-400 font-mono text-xs align-middle">
+                      <td className="p-2 text-center text-slate-400 font-mono text-xs align-top pt-3">
                         {idx + 1}
                       </td>
 
                       {/* Cột 1: Sản phẩm / SKU */}
-                      <td className="p-2 text-left align-middle">
+                      <td className="p-2 text-left align-top">
                         <Autocomplete
                           id={`product-input-${idx}`}
                           size="sm"
@@ -715,7 +720,8 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                       </td>
 
                       {/* Cột 2: Đơn vị tính & Quy đổi */}
-                      <td className="p-2 text-left align-middle">
+                      {/* Cột 2: ĐVT & Quy đổi */}
+                      <td className="p-2 text-left align-top">
                         <select
                           id={`unit-select-${idx}`}
                           value={item.unitId}
@@ -743,7 +749,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                       </td>
 
                       {/* Cột 3: Số lượng nhập */}
-                      <td className="p-2 text-right align-middle">
+                      <td className="p-2 text-right align-top">
                         <input
                           id={`qty-input-${idx}`}
                           type="number"
@@ -760,15 +766,21 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                               : undefined
                           }
                           className={`w-full h-8.5 px-2.5 bg-white border ${
-                            showValidationErrors && (!item.packageQuantity || item.packageQuantity <= 0)
-                              ? "border-rose-500 ring-1 ring-rose-200"
-                              : "border-slate-300 focus:border-indigo-600"
-                          } rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-xs text-right font-mono font-medium text-slate-900 transition-all`}
+                            isQtyInvalid
+                              ? "border-rose-500 ring-1 ring-rose-200 focus:border-rose-500 focus:ring-rose-200"
+                              : "border-slate-300 focus:border-indigo-600 focus:ring-indigo-500/20"
+                          } rounded-lg focus:outline-none focus:ring-2 text-xs text-right font-mono font-medium text-slate-900 transition-all`}
                         />
+                        {isQtyInvalid && (
+                          <p className="mt-1 text-[10px] text-rose-600 flex items-center gap-1 font-medium leading-tight justify-end">
+                            <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                            <span>SL phải &gt; 0</span>
+                          </p>
+                        )}
                       </td>
 
                       {/* Cột 4: Số lô (Batch No) */}
-                      <td className="p-2 text-left align-middle">
+                      <td className="p-2 text-left align-top">
                         <input
                           id={`batch-input-${idx}`}
                           type="text"
@@ -777,17 +789,23 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                           placeholder="LOT-..."
                           title={isBatchManaged ? "Mặt hàng bắt buộc quản lý số lô" : "Số lô (tùy chọn)"}
                           className={`w-full h-8.5 px-2.5 bg-white border ${
-                            isBatchManaged && showValidationErrors && !item.batchNumber.trim()
-                              ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-200"
+                            isBatchMissing
+                              ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-200 focus:border-rose-500 focus:ring-rose-200"
                               : isBatchManaged && !item.batchNumber.trim()
-                                ? "border-amber-300 bg-amber-50/20 focus:border-indigo-600"
-                                : "border-slate-300 focus:border-indigo-600"
-                          } rounded-lg text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all`}
+                                ? "border-amber-300 bg-amber-50/20 focus:border-indigo-600 focus:ring-indigo-500/20"
+                                : "border-slate-300 focus:border-indigo-600 focus:ring-indigo-500/20"
+                          } rounded-lg text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 transition-all`}
                         />
+                        {isBatchMissing && (
+                          <p className="mt-1 text-[10px] text-rose-600 flex items-center gap-1 font-medium leading-tight">
+                            <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                            <span>Vui lòng nhập số lô</span>
+                          </p>
+                        )}
                       </td>
 
                       {/* Cột 5: Hạn sử dụng */}
-                      <td className="p-2 text-left align-middle">
+                      <td className="p-2 text-left align-top">
                         <input
                           id={`expiry-input-${idx}`}
                           type="date"
@@ -795,30 +813,51 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                           onChange={(e) => handleItemChange(idx, "expiryDate", e.target.value)}
                           title="Hạn sử dụng (HSD)"
                           className={`w-full h-8.5 px-2.5 bg-white border ${
-                            (isBatchManaged || Boolean(item.batchNumber)) &&
-                            showValidationErrors &&
-                            !item.expiryDate.trim()
-                              ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-200"
+                            isExpiryMissing || isExpiryBeforeMfg
+                              ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-200 focus:border-rose-500 focus:ring-rose-200"
                               : isBatchManaged && !item.expiryDate.trim()
-                                ? "border-amber-300 bg-amber-50/20 focus:border-indigo-600"
-                                : "border-slate-300 focus:border-indigo-600"
-                          } rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-mono`}
+                                ? "border-amber-300 bg-amber-50/20 focus:border-indigo-600 focus:ring-indigo-500/20"
+                                : "border-slate-300 focus:border-indigo-600 focus:ring-indigo-500/20"
+                          } rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 transition-all font-mono`}
                         />
+                        {isExpiryMissing && (
+                          <p className="mt-1 text-[10px] text-rose-600 flex items-center gap-1 font-medium leading-tight">
+                            <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                            <span>Vui lòng chọn HSD</span>
+                          </p>
+                        )}
+                        {!isExpiryMissing && isExpiryBeforeMfg && (
+                          <p className="mt-1 text-[10px] text-rose-600 flex items-center gap-1 font-medium leading-tight">
+                            <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                            <span>HSD phải sau NSX</span>
+                          </p>
+                        )}
                       </td>
 
                       {/* Cột 6: Đơn giá nhập */}
-                      <td className="p-2 text-right align-middle">
-                        <CurrencyInput
-                          value={item.unitCost}
-                          onChange={(val) => handleItemChange(idx, "unitCost", val || 0)}
-                          placeholder="0"
-                          showWordsBadge={false}
-                          className="w-full h-8.5 px-2.5 bg-white border border-slate-300 rounded-lg text-xs text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-slate-900 transition-all font-medium"
-                        />
+                      <td className="p-2 text-right align-top">
+                        <div className="relative w-full flex items-center">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={Number(item.unitCost || 0).toLocaleString("vi-VN")}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => {
+                              const cleanValue = e.target.value.replace(/\D/g, "");
+                              const finalPrice = cleanValue === "" ? 0 : parseInt(cleanValue, 10);
+                              handleItemChange(idx, "unitCost", finalPrice);
+                            }}
+                            placeholder="0"
+                            className="w-full h-8.5 pl-2.5 pr-7 bg-white border border-slate-300 rounded-lg text-xs text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-slate-900 transition-all font-medium"
+                          />
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-mono font-semibold text-slate-400 pointer-events-none select-none">
+                            đ
+                          </span>
+                        </div>
                       </td>
 
                       {/* Cột 7: Thao tác */}
-                      <td className="p-2 text-center align-middle">
+                      <td className="p-2 text-center align-top pt-2">
                         <button
                           type="button"
                           onClick={() => handleRemoveItem(idx)}
