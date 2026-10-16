@@ -177,7 +177,7 @@ export const OrderPickingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50/60 pb-24 sm:pb-12 text-slate-900">
       {/* ── 1. HEADER CHÍNH CỦA TRANG ── */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-2xs">
+      <div className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-600/30">
