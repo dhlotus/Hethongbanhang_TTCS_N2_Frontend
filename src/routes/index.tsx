@@ -40,6 +40,7 @@ import { getRedirectPathByUser, getStoredUser } from '../utils/navigation';
 import { tokenStorage } from '../utils/token-storage';
 import { WarehousesPage } from '../pages/warehouses-page';
 import { InternalTransfersPage } from '../pages/inventory/internal-transfers-page';
+import { OrderPickingPage } from '../pages/order-picking-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -286,6 +287,9 @@ export const AppRoutes: React.FC = () => {
               />
               {/* Route chuyên biệt cho Đơn hàng chuẩn bị xuất thuộc phân hệ Kho vận (SN-180) */}
               <Route path="/warehouse/orders" element={<OrdersPage />} />
+              {/* Route phiếu soạn hàng theo vị trí & đường đi trong kho (Wave Picking) */}
+              <Route path="/inventory/picking" element={<OrderPickingPage />} />
+              <Route path="/warehouse/picking" element={<OrderPickingPage />} />
             </Route>
 
             <Route

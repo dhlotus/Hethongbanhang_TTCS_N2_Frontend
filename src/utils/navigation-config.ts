@@ -14,6 +14,7 @@ import {
   BarChart3,
   PackagePlus,
   PackageMinus,
+  PackageCheck,
   ArrowLeftRight,
   ClipboardList,
   SlidersHorizontal,
@@ -314,6 +315,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Soạn hàng & Giao nhận',
     },
     {
+      id: 'order-picking',
+      name: 'Soạn hàng theo vị trí (Picking)',
+      path: '/warehouse/picking',
+      icon: PackageCheck,
+      category: 'Soạn hàng & Giao nhận',
+    },
+    {
       id: 'inventory-receipts',
       name: 'Nhập kho hàng hóa',
       path: '/inventory/receipts',
@@ -385,6 +393,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Quản lý đơn hàng',
       path: '/warehouse/orders',
       icon: ShoppingCart,
+      category: 'Soạn hàng & Giao nhận',
+    },
+    {
+      id: 'order-picking',
+      name: 'Phiếu soạn hàng (Picking)',
+      path: '/warehouse/picking',
+      icon: PackageCheck,
       category: 'Soạn hàng & Giao nhận',
     },
     {
@@ -610,6 +625,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Quản lý kho & vị trí',
       path: '/inventory/warehouses',
       icon: Warehouse,
+      category: 'Kho vận & Hàng hóa',
+    },
+    {
+      id: 'order-picking',
+      name: 'Phiếu soạn hàng (Picking)',
+      path: '/warehouse/picking',
+      icon: PackageCheck,
       category: 'Kho vận & Hàng hóa',
     },
     {
