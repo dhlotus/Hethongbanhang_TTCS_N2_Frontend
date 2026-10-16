@@ -517,18 +517,17 @@ export const orderPickingService = {
     const currentItem = targetSheet.items[itemIndex];
     const validQty = Math.max(0, Number(payload.pickedQuantity) || 0);
 
-    // Kiểm tra quy tắc nghiệp vụ: Soạn thiếu bắt buộc nhập lý do
-    if (validQty < currentItem.totalRequiredQuantity) {
-      if (!payload.shortPickReason || !payload.shortPickReason.trim()) {
-        throw new Error('Soạn thiếu bắt buộc phải nhập lý do giải trình');
-      }
-    }
+    // Xác định lý do giải trình (nếu có truyền mới hoặc giữ lý do hiện có)
+    const effectiveReason = payload.shortPickReason?.trim() || currentItem.shortPickReason?.trim();
+    const effectiveReasonCode = payload.shortPickReasonCode || currentItem.shortPickReasonCode;
 
     let nextStatus: PickingItemStatus = 'PENDING';
     if (validQty >= currentItem.totalRequiredQuantity) {
       nextStatus = 'PICKED';
-    } else if (validQty < currentItem.totalRequiredQuantity && payload.shortPickReason?.trim()) {
+    } else if (effectiveReason) {
       nextStatus = 'SHORT_PICKED';
+    } else {
+      nextStatus = 'PENDING';
     }
 
     // Phân bổ số lượng nhặt cho từng đơn hàng thành phần
@@ -538,9 +537,9 @@ export const orderPickingService = {
       ...currentItem,
       totalPickedQuantity: validQty,
       status: nextStatus,
-      shortPickReason: validQty < currentItem.totalRequiredQuantity ? payload.shortPickReason?.trim() : undefined,
-      shortPickReasonCode: validQty < currentItem.totalRequiredQuantity ? payload.shortPickReasonCode : undefined,
-      notes: payload.notes?.trim() || undefined,
+      shortPickReason: validQty < currentItem.totalRequiredQuantity ? effectiveReason : undefined,
+      shortPickReasonCode: validQty < currentItem.totalRequiredQuantity ? effectiveReasonCode : undefined,
+      notes: payload.notes?.trim() || currentItem.notes,
       orders: updatedOrders,
       completedAt: nextStatus !== 'PENDING' ? new Date().toISOString() : undefined,
     };

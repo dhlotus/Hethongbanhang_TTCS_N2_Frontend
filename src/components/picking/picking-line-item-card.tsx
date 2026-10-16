@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   MapPin,
   CheckCircle2,
@@ -29,10 +29,16 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
   const [showOrderBreakdown, setShowOrderBreakdown] = useState(false);
   const [inputVal, setInputVal] = useState<string>(String(item.totalPickedQuantity));
 
+  // Tự động đồng bộ ô input khi số lượng thực soạn thay đổi từ props
+  useEffect(() => {
+    setInputVal(String(item.totalPickedQuantity));
+  }, [item.totalPickedQuantity]);
+
   const isCompleted = item.status === 'PICKED';
   const isShortPicked = item.status === 'SHORT_PICKED';
   const isPending = item.status === 'PENDING';
 
+  // Tăng 1 đơn vị
   const handleIncrement = () => {
     const nextVal = item.totalPickedQuantity + 1;
     if (nextVal <= item.totalRequiredQuantity) {
@@ -41,14 +47,12 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
     }
   };
 
+  // Giảm 1 đơn vị
   const handleDecrement = () => {
-    const nextVal = Math.max(0, item.totalPickedQuantity - 1);
+    if (item.totalPickedQuantity <= 0) return;
+    const nextVal = item.totalPickedQuantity - 1;
     setInputVal(String(nextVal));
-    if (nextVal < item.totalRequiredQuantity) {
-      onRequestShortPickReason(item, nextVal);
-    } else {
-      onUpdateQuantityDirect(item.id, nextVal);
-    }
+    onUpdateQuantityDirect(item.id, nextVal);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,12 +67,9 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
       return;
     }
 
-    if (parsed >= item.totalRequiredQuantity) {
-      setInputVal(String(item.totalRequiredQuantity));
-      onUpdateQuantityDirect(item.id, item.totalRequiredQuantity);
-    } else {
-      onRequestShortPickReason(item, parsed);
-    }
+    const clamped = Math.min(parsed, item.totalRequiredQuantity);
+    setInputVal(String(clamped));
+    onUpdateQuantityDirect(item.id, clamped);
   };
 
   return (
