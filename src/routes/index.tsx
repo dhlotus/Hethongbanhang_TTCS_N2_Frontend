@@ -320,7 +320,7 @@ export const AppRoutes: React.FC = () => {
             >
               <Route
                 path="/inventory/adjustments"
-                element={<ReturnsPage />}
+                element={<InventoryAuditsPage />}
               />
               <Route
                 path="/inventory/batches"

@@ -49,6 +49,8 @@ export const InventoryAuditsPage: React.FC = () => {
   }, [userRoles]);
 
   const [searchParams, setSearchParams] = useSearchParams();
+  // Search params từ điều hướng (ví dụ: chuyển từ Phiếu nhập kho đã xác nhận sang lập điều chỉnh)
+  const referenceCode = searchParams.get('referenceCode');
 
   // Helper đồng bộ query parameters với URL
   const updateQueryParam = useCallback(
@@ -88,11 +90,11 @@ export const InventoryAuditsPage: React.FC = () => {
   // State
   const [audits, setAudits] = useState<InventoryAudit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [searchTerm, setSearchTerm] = useState(referenceCode || initialSearch);
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
 
   // Modal State
-  const [createModalOpen, setCreateModalOpen] = useState(initialCreate);
+  const [createModalOpen, setCreateModalOpen] = useState(Boolean(referenceCode) || initialCreate);
   const [selectedAudit, setSelectedAudit] = useState<InventoryAudit | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
@@ -102,7 +104,9 @@ export const InventoryAuditsPage: React.FC = () => {
   const [createWarehouseId] = useState('WH01');
   const [createScope, setCreateScope] = useState<'ALL' | 'CATEGORY'>('ALL');
   const [createCategory, setCreateCategory] = useState('');
-  const [createNote, setCreateNote] = useState('');
+  const [createNote, setCreateNote] = useState(
+    referenceCode ? `Lập phiếu kiểm kê điều chỉnh tồn theo chứng từ nhập kho ${referenceCode}` : ''
+  );
   const [isCreating, setIsCreating] = useState(false);
 
   // Detail / Counting Form State (Map productId -> { actualQty, note })
