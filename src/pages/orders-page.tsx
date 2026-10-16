@@ -239,6 +239,20 @@ export const OrdersPage: React.FC = () => {
   const [toDate, setToDate] = useState<string>(initialToDate);
 
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
+  const urlOrderId = searchParams.get('orderId') || searchParams.get('id');
+
+  // Tự động mở modal chi tiết đơn hàng khi click từ chuông thông báo
+  useEffect(() => {
+    if (urlOrderId) {
+      ordersService
+        .getOrderById(urlOrderId)
+        .then((ord) => {
+          if (ord) setViewOrder(ord);
+        })
+        .catch(() => {});
+    }
+  }, [urlOrderId]);
+
   const [approvingOrder, setApprovingOrder] = useState(false);
   // Trạng thái hủy đơn hàng (SN-45)
   const [cancelingOrder, setCancelingOrder] = useState<Order | null>(null);

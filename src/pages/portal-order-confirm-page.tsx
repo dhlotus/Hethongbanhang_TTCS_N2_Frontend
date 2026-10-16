@@ -639,7 +639,7 @@ export const PortalOrderConfirmPage: React.FC = () => {
       setCart({});
       sessionStorage.removeItem('loha_portal_cart');
       window.dispatchEvent(new Event('loha_portal_cart_updated'));
-      window.dispatchEvent(new Event('loha_order_created'));
+      window.dispatchEvent(new CustomEvent('loha_order_created', { detail: created }));
     } catch (err: unknown) {
       showToast('error', err instanceof Error ? err.message : 'Có lỗi xảy ra khi gửi đơn hàng. Vui lòng thử lại!');
     } finally {
@@ -1317,10 +1317,10 @@ export const PortalOrderConfirmPage: React.FC = () => {
                 Đặt đơn mới
               </Link>
               <Link
-                to="/portal/tracking"
-                className="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/30"
+                to={`/portal/tracking?orderId=${submittedOrder.id}`}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/30 text-center"
               >
-                Theo dõi tiến độ đơn
+                Xem chi tiết & Theo dõi đơn
               </Link>
             </div>
           </div>

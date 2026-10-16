@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import {
   ShoppingCart,
   Truck,
@@ -276,6 +276,25 @@ export const PortalOrdersPage: React.FC = () => {
       setIsLoading(false);
     }
   }, [page, limit, searchTerm, activeTab]);
+
+  const [searchParams] = useSearchParams();
+  const urlOrderId = searchParams.get('orderId') || searchParams.get('id');
+
+  // Tự động gọi API nhảy thẳng vào "xem chi tiết đơn" khi click từ chuông thông báo
+  useEffect(() => {
+    if (urlOrderId) {
+      ordersService
+        .getOrderById(urlOrderId)
+        .then((order) => {
+          if (order) {
+            setSelectedOrderForDetail(order);
+          }
+        })
+        .catch((err) => {
+          console.warn('Không thể tải chi tiết đơn hàng từ thông báo:', err);
+        });
+    }
+  }, [urlOrderId]);
 
   useEffect(() => {
     document.title = isTrackingRoute
