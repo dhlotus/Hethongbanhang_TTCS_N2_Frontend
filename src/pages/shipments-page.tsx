@@ -13,6 +13,9 @@ import {
   User,
   Trash2,
   AlertCircle,
+  Lock,
+  AlertTriangle,
+  Layers,
 } from 'lucide-react';
 import { shipmentsService, type Shipment } from '../services/shipments.service';
 import { ordersService } from '../services/orders.service';
@@ -20,6 +23,7 @@ import type { Order } from '../types/order';
 import { showToast } from '../components/toast';
 import { getStoredUser } from '../utils/navigation';
 import { USER_ROLES } from '../types/auth';
+import { ConfirmExportModal } from '../components/confirm-export-modal';
 
 const STATUS_CONFIG: Record<
   Shipment['status'],
@@ -70,7 +74,7 @@ export const ShipmentsPage: React.FC = () => {
   const isWarehouseManager = roles.includes(USER_ROLES.WAREHOUSE_MANAGER) || roles.includes('WH_MANAGER');
   const isWarehouseKeeper = roles.includes(USER_ROLES.WAREHOUSE_KEEPER) || roles.includes('WAREHOUSE');
 
-  const canConfirm = isAdmin || isWarehouseManager;
+  const canConfirm = isAdmin || isWarehouseManager || isWarehouseKeeper;
   const canUpdateStatus = isAdmin || isWarehouseManager || isWarehouseKeeper;
   const canCreate = isAdmin || isWarehouseManager || isWarehouseKeeper;
   const canDelete = isAdmin || isWarehouseManager;
@@ -79,6 +83,7 @@ export const ShipmentsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [creatingBackorderOrderId, setCreatingBackorderOrderId] = useState<string | null>(null);
 
   // Modal tạo phiếu xuất mới
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -338,8 +343,27 @@ export const ShipmentsPage: React.FC = () => {
     }
   };
 
-  // Xử lý xóa / hủy phiếu xuất kho
-  const handleDelete = async (id: string) => {
+  // Xử lý tạo đợt xuất giao bù (SN-195)
+  const handleCreateBackorder = async (orderId: string) => {
+    try {
+      setCreatingBackorderOrderId(orderId);
+      const res = await shipmentsService.createBackorder(orderId);
+      showToast('success', `Đã tạo phiếu giao bù ${res.id} cho đơn ${res.orderCode}`);
+      fetchShipments();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      showToast('error', msg || 'Không thể tạo phiếu giao bù cho đơn hàng này');
+    } finally {
+      setCreatingBackorderOrderId(null);
+    }
+  };
+
+  // Xử lý xóa / hủy phiếu xuất kho (Chặn nếu đã xác nhận xuất kho)
+  const handleDelete = async (id: string, isConfirmed?: boolean) => {
+    if (isConfirmed) {
+      showToast('error', 'Phiếu xuất kho đã được xác nhận thực xuất và khóa bất biến, không thể xóa.');
+      return;
+    }
     if (!window.confirm('Bạn có chắc chắn muốn xóa phiếu xuất kho này?')) return;
     try {
       await shipmentsService.deleteShipment(id);
@@ -351,9 +375,19 @@ export const ShipmentsPage: React.FC = () => {
     }
   };
 
+  const backordersCount = shipments.filter(
+    (s) => s.hasShortDelivery || (s.lines && s.lines.some((l) => l.remainingQuantity > 0)),
+  ).length;
+
   // Lọc dữ liệu
   const filtered = shipments.filter((item) => {
-    const matchStatus = statusFilter === 'ALL' || item.status === statusFilter;
+    let matchStatus = true;
+    if (statusFilter === 'BACKORDERS') {
+      matchStatus = Boolean(item.hasShortDelivery || (item.lines && item.lines.some((l) => l.remainingQuantity > 0)));
+    } else if (statusFilter !== 'ALL') {
+      matchStatus = item.status === statusFilter;
+    }
+
     const matchSearch =
       !searchTerm ||
       item.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -460,17 +494,26 @@ export const ShipmentsPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap gap-1.5 w-full sm:w-auto">
-            {['ALL', 'PENDING', 'PICKING', 'PACKED', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((st) => (
+            {['ALL', 'PENDING', 'PICKING', 'PACKED', 'SHIPPED', 'DELIVERED', 'BACKORDERS', 'CANCELLED'].map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
                   statusFilter === st
-                    ? 'bg-blue-600 text-white shadow-sm'
+                    ? st === 'BACKORDERS'
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'bg-blue-600 text-white shadow-sm'
+                    : st === 'BACKORDERS'
+                    ? 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 font-bold'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                {st === 'ALL' ? 'Tất cả' : STATUS_CONFIG[st as Shipment['status']]?.label || st}
+                {st === 'BACKORDERS' && <AlertTriangle className="w-3.5 h-3.5" />}
+                {st === 'ALL'
+                  ? 'Tất cả'
+                  : st === 'BACKORDERS'
+                  ? `Đơn nợ hàng (${backordersCount})`
+                  : STATUS_CONFIG[st as Shipment['status']]?.label || st}
               </button>
             ))}
           </div>
@@ -550,22 +593,53 @@ export const ShipmentsPage: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusInfo.bg} ${statusInfo.text}`}
-                        >
-                          <StatusIcon className="w-3.5 h-3.5" />
-                          {statusInfo.label}
-                        </span>
+                        <div className="flex flex-col items-center gap-1">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusInfo.bg} ${statusInfo.text}`}
+                          >
+                            <StatusIcon className="w-3.5 h-3.5" />
+                            {statusInfo.label}
+                          </span>
+                          {item.isConfirmed && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200" title="Dữ liệu đã được khóa bất biến sau khi xác nhận">
+                              <Lock className="w-3 h-3 text-slate-500" />
+                              Đã khóa
+                            </span>
+                          )}
+                          {(item.hasShortDelivery || (item.lines && item.lines.some((l) => l.remainingQuantity > 0))) && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                              <AlertTriangle className="w-3 h-3 text-amber-600" />
+                              Còn nợ hàng
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Nút Xác nhận xuất kho (Quản lý kho / Admin) */}
-                          {canConfirm && item.status !== 'DELIVERED' && item.status !== 'CANCELLED' && (
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          {/* Nút Tạo đợt xuất giao bù (SN-195) */}
+                          {canCreate && (item.hasShortDelivery || (item.lines && item.lines.some((l) => l.remainingQuantity > 0))) && (
+                            <button
+                              onClick={() => handleCreateBackorder(item.orderId)}
+                              disabled={creatingBackorderOrderId === item.orderId}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg transition-colors shadow-sm disabled:opacity-50"
+                              title="Tạo phiếu xuất đợt 2 cho phần hàng còn nợ"
+                            >
+                              {creatingBackorderOrderId === item.orderId ? (
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Layers className="w-3.5 h-3.5 text-amber-600" />
+                              )}
+                              Giao bù lượt sau
+                            </button>
+                          )}
+
+                          {/* Nút Xác nhận xuất kho (Thủ kho / Quản lý kho / Admin) - Chỉ hiện khi CHƯA xác nhận */}
+                          {canConfirm && !item.isConfirmed && item.status !== 'DELIVERED' && item.status !== 'CANCELLED' && (
                             <button
                               onClick={() => setConfirmingShipment(item)}
                               className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
-                              title="Xác nhận xuất kho & giao hàng"
+                              title="Xác nhận xuất kho & kiểm tra giao thiếu"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               Xác nhận xuất kho
@@ -589,12 +663,21 @@ export const ShipmentsPage: React.FC = () => {
                             </button>
                           )}
 
-                          {/* Nút Hủy / Xóa */}
+                          {/* Nút Hủy / Xóa - Khóa khi phiếu đã xác nhận (SN-195) */}
                           {canDelete && (
                             <button
-                              onClick={() => handleDelete(item.id)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                              title="Xóa phiếu"
+                              onClick={() => handleDelete(item.id, item.isConfirmed)}
+                              disabled={item.isConfirmed}
+                              className={`p-1.5 rounded-lg transition-colors ${
+                                item.isConfirmed
+                                  ? 'text-slate-300 cursor-not-allowed opacity-50'
+                                  : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
+                              }`}
+                              title={
+                                item.isConfirmed
+                                  ? 'Phiếu xuất kho đã xác nhận và khóa bất biến, không thể xóa'
+                                  : 'Xóa phiếu'
+                              }
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -610,48 +693,13 @@ export const ShipmentsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal Xác nhận xuất kho */}
-      {confirmingShipment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center gap-3 text-emerald-600">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">Xác nhận Xuất kho</h3>
-            </div>
-            <p className="text-sm text-slate-600">
-              Bạn có chắc chắn muốn xác nhận hoàn tất xuất kho cho phiếu{' '}
-              <strong className="text-slate-900">{confirmingShipment.id}</strong> (Đơn hàng:{' '}
-              <strong className="text-blue-600">{confirmingShipment.orderCode}</strong>)?
-            </p>
-            <div className="bg-slate-50 p-3 rounded-xl text-xs text-slate-500 space-y-1">
-              <p>• Đại lý nhận: <strong>{confirmingShipment.customerName}</strong></p>
-              <p>• Đơn vị vận chuyển: <strong>{confirmingShipment.carrierName || 'Tự vận chuyển'}</strong></p>
-              <p>• Trạng thái sau xác nhận: <strong className="text-emerald-600">Giao thành công (DELIVERED)</strong></p>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setConfirmingShipment(null)}
-                disabled={isConfirming}
-                className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmShipment}
-                disabled={isConfirming}
-                className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm flex items-center gap-1.5 disabled:opacity-50"
-              >
-                {isConfirming ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                Xác nhận Hoàn tất
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal Xác nhận xuất kho & Xử lý giao thiếu (SN-195) */}
+      <ConfirmExportModal
+        isOpen={Boolean(confirmingShipment)}
+        shipment={confirmingShipment}
+        onClose={() => setConfirmingShipment(null)}
+        onSuccess={fetchShipments}
+      />
 
       {/* Modal Cập nhật trạng thái */}
       {selectedShipment && (
