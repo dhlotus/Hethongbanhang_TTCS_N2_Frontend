@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { apiClient } from './api';
 import { tokenStorage } from '../utils/token-storage';
 import {
@@ -9,6 +10,11 @@ import {
   type DeliveryPoint,
   type UpdateDeliveryPointPayload,
   type CreateCustomerPayload,
+  type AssignSalesRepPayload,
+  type BulkTransferPayload,
+  type BulkTransferResult,
+  type CustomerAssignmentHistory,
+  type SalesRepOption,
 } from '../types/customer.types';
 import { matchesSearchTerm, removeVietnameseTones } from '../utils/vietnamese';
 
@@ -330,6 +336,108 @@ export function saveStoredCustomers(customers: Customer[]): void {
   }
 }
 
+export const CUSTOMER_HISTORY_STORAGE_KEY = 'loha_customer_assignment_history';
+
+export const INITIAL_DEMO_SALES_REPS: SalesRepOption[] = [
+  {
+    id: 'usr-sales-002',
+    fullName: 'Trần Văn Nam (Nhân Viên Kinh Doanh)',
+    username: 'sales',
+    email: 'sales@loha.vn',
+    phone: '0923456789',
+    role: 'SALES_REP',
+    status: 'ACTIVE',
+    assignedCustomerCount: 4,
+  },
+  {
+    id: 'usr-sale-01',
+    fullName: 'Trần Văn Long (NVKD Miền Nam)',
+    username: 'long_tran',
+    email: 'long.tran@loha.vn',
+    phone: '0907000001',
+    role: 'SALES_REP',
+    status: 'ACTIVE',
+    assignedCustomerCount: 6,
+  },
+  {
+    id: 'usr-salesmgr-003',
+    fullName: 'Lê Hoàng Trưởng Phòng (Quản Lý Kinh Doanh)',
+    username: 'salesmanager',
+    email: 'salesmanager@loha.vn',
+    phone: '0934567890',
+    role: 'SALES_MANAGER',
+    status: 'ACTIVE',
+    assignedCustomerCount: 2,
+  },
+  {
+    id: 'usr-sale-02',
+    fullName: 'Nguyễn Thị Hằng (NVKD Miền Nam)',
+    username: 'hangnguyen',
+    email: 'hang.nguyen@loha.vn',
+    phone: '0945678901',
+    role: 'SALES_REP',
+    status: 'ACTIVE',
+    assignedCustomerCount: 1,
+  },
+  {
+    id: 'usr-sale-03',
+    fullName: 'Phạm Minh Tuấn (NVKD Miền Bắc)',
+    username: 'tuanpham',
+    email: 'tuan.pham@loha.vn',
+    phone: '0934567890',
+    role: 'SALES_REP',
+    status: 'ACTIVE',
+    assignedCustomerCount: 1,
+  },
+];
+
+export function getStoredHistory(): CustomerAssignmentHistory[] {
+  try {
+    const raw = localStorage.getItem(CUSTOMER_HISTORY_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        let changed = false;
+        const cleaned = parsed.map((item: CustomerAssignmentHistory) => {
+          const updated = { ...item };
+          if (updated.toSalesRepId === 'usr-sale-02' && (updated.toSalesRepName === 'Lê Thị Thu Thảo' || !updated.toSalesRepName)) {
+            updated.toSalesRepName = 'Nguyễn Thị Hằng';
+            changed = true;
+          }
+          if (updated.fromSalesRepId === 'usr-sale-02' && (updated.fromSalesRepName === 'Lê Thị Thu Thảo' || !updated.fromSalesRepName)) {
+            updated.fromSalesRepName = 'Nguyễn Thị Hằng';
+            changed = true;
+          }
+          if (updated.toSalesRepId === 'usr-salesmgr-003' && updated.toSalesRepName?.includes('Lê Quản Lý')) {
+            updated.toSalesRepName = 'Lê Hoàng';
+            changed = true;
+          }
+          if (updated.fromSalesRepId === 'usr-salesmgr-003' && updated.fromSalesRepName?.includes('Lê Quản Lý')) {
+            updated.fromSalesRepName = 'Lê Hoàng';
+            changed = true;
+          }
+          return updated;
+        });
+        if (changed) {
+          saveStoredHistory(cleaned);
+        }
+        return cleaned;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+export function saveStoredHistory(history: CustomerAssignmentHistory[]): void {
+  try {
+    localStorage.setItem(CUSTOMER_HISTORY_STORAGE_KEY, JSON.stringify(history));
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Cập nhật biến động dư nợ thời gian thực cho đại lý và phát sự kiện đồng bộ toàn hệ thống
  */
@@ -389,10 +497,7 @@ export function filterDemoCustomers(params: CustomerFilterParams = {}): Paginate
 
     if (isSalesRep && !isManagerOrAdmin) {
       list = list.filter((c) => {
-        if (c.salesRepId === currentUser.id || c.salesRep?.id === currentUser.id) {
-          return true;
-        }
-        return c.salesRepId === 'usr-sale-01' || c.salesRepId === 'usr-sales-002';
+        return c.salesRepId === currentUser.id || c.salesRep?.id === currentUser.id;
       });
     }
   }
@@ -485,8 +590,7 @@ export const customerService = {
       }
       return res.data;
     } catch (err: unknown) {
-      const axiosErr = err as any;
-      if (axiosErr?.response?.data) {
+      if (axios.isAxiosError(err) && err.response?.data) {
         throw err;
       }
 
@@ -840,6 +944,238 @@ export const customerService = {
   },
 
   /**
+   * Lấy danh sách nhân sự kinh doanh khả dụng để phân công (SN-35)
+   */
+  async getAvailableSalesReps(): Promise<SalesRepOption[]> {
+    try {
+      const res = await apiClient.get<SalesRepOption[]>('/customers/sales-reps');
+      return res.data;
+    } catch {
+      const customers = getStoredCustomers();
+      return INITIAL_DEMO_SALES_REPS.map((rep) => ({
+        ...rep,
+        assignedCustomerCount: customers.filter((c) => c.salesRepId === rep.id).length,
+      }));
+    }
+  },
+
+  /**
+   * Phân công nhân viên kinh doanh phụ trách chính cho đại lý (SN-35)
+   */
+  async assignSalesRep(
+    customerId: string,
+    payload: AssignSalesRepPayload,
+  ): Promise<Customer> {
+    try {
+      const res = await apiClient.patch<Customer>(
+        `/customers/${customerId}/assign-sales-rep`,
+        payload,
+      );
+      return res.data;
+    } catch {
+      try {
+        const res = await apiClient.patch<Customer>(
+          `/customers/${customerId}/assign`,
+          payload,
+        );
+        return res.data;
+      } catch {
+        const list = getStoredCustomers();
+        const reps = await this.getAvailableSalesReps();
+        const rep = reps.find((r) => r.id === payload.salesRepId);
+        const custIndex = list.findIndex((c) => c.id === customerId);
+        if (custIndex === -1) throw new Error('Không tìm thấy đại lý');
+
+        const prevRepId = list[custIndex].salesRepId;
+        const prevRepName = list[custIndex].salesRepName;
+        list[custIndex].salesRepId = payload.salesRepId;
+        list[custIndex].salesRepName = rep?.fullName || 'Nhân viên kinh doanh';
+        list[custIndex].salesRepPhone = rep?.phone;
+        list[custIndex].salesRepEmail = rep?.email;
+        list[custIndex].salesRep = {
+          id: payload.salesRepId,
+          name: rep?.fullName || 'Nhân viên kinh doanh',
+        };
+        saveStoredCustomers(list);
+
+        const history = getStoredHistory();
+        history.unshift({
+          id: `hist-${Date.now()}`,
+          transferBatchId: `ASSIGN-${Date.now()}`,
+          customerId: list[custIndex].id,
+          customerCode: list[custIndex].code,
+          customerName: list[custIndex].name,
+          region: list[custIndex].region || 'Chưa phân vùng',
+          fromSalesRepId: prevRepId,
+          fromSalesRepName: prevRepName || '(Chưa phân công)',
+          toSalesRepId: payload.salesRepId,
+          toSalesRepName: rep?.fullName || 'Nhân viên kinh doanh',
+          performedById: 'CURRENT_USER',
+          performedByName: 'Quản trị viên',
+          reason: payload.reason || 'Phân công nhân viên phụ trách chính cho đại lý',
+          notes: payload.notes,
+          createdAt: new Date().toISOString(),
+        });
+        saveStoredHistory(history);
+
+        return list[custIndex];
+      }
+    }
+  },
+
+  /**
+   * Chuyển giao địa bàn hàng loạt khi nhân viên nghỉ việc (SN-35)
+   */
+  async bulkTransferTerritory(
+    payload: BulkTransferPayload,
+  ): Promise<BulkTransferResult> {
+    try {
+      const res = await apiClient.post<BulkTransferResult>(
+        '/customers/bulk-transfer-territory',
+        payload,
+      );
+      return res.data;
+    } catch {
+      try {
+        const res = await apiClient.post<BulkTransferResult>(
+          '/customers/bulk-transfer',
+          payload,
+        );
+        return res.data;
+      } catch {
+        const list = getStoredCustomers();
+        const reps = await this.getAvailableSalesReps();
+        const fromRep = reps.find((r) => r.id === payload.fromSalesRepId);
+        const toRep = reps.find((r) => r.id === payload.toSalesRepId);
+        if (!fromRep || !toRep) throw new Error('Không tìm thấy thông tin nhân sự kinh doanh');
+
+        let targets = list.filter((c) => c.salesRepId === payload.fromSalesRepId);
+        if (payload.customerIds && payload.customerIds.length > 0) {
+          const allowed = new Set(payload.customerIds);
+          targets = targets.filter((c) => allowed.has(c.id));
+        }
+
+        if (targets.length === 0) {
+          throw new Error('Không có đại lý nào để chuyển giao');
+        }
+
+        const batchId = `BATCH-${Date.now()}`;
+        const history = getStoredHistory();
+        const nowStr = new Date().toISOString();
+
+        for (const target of targets) {
+          const prevRepName = target.salesRepName;
+          target.salesRepId = toRep.id;
+          target.salesRepName = toRep.fullName;
+          target.salesRepPhone = toRep.phone;
+          target.salesRepEmail = toRep.email;
+          target.salesRep = { id: toRep.id, name: toRep.fullName };
+
+          history.unshift({
+            id: `hist-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            transferBatchId: batchId,
+            customerId: target.id,
+            customerCode: target.code,
+            customerName: target.name,
+            region: target.region || 'Chưa phân vùng',
+            fromSalesRepId: fromRep.id,
+            fromSalesRepName: prevRepName,
+            toSalesRepId: toRep.id,
+            toSalesRepName: toRep.fullName,
+            performedById: 'CURRENT_USER',
+            performedByName: 'Quản trị viên',
+            reason: payload.reason,
+            notes: payload.notes,
+            createdAt: nowStr,
+          });
+        }
+
+        saveStoredCustomers(list);
+        saveStoredHistory(history);
+
+        return {
+          transferBatchId: batchId,
+          transferredCount: targets.length,
+          fromSalesRep: { id: fromRep.id, fullName: fromRep.fullName, email: fromRep.email },
+          toSalesRep: { id: toRep.id, fullName: toRep.fullName, email: toRep.email },
+          reason: payload.reason,
+          notes: payload.notes,
+          transferredCustomers: targets.map((c) => ({
+            id: c.id,
+            code: c.code,
+            name: c.name,
+            region: c.region || 'Chưa phân vùng',
+          })),
+          transferredAt: nowStr,
+        };
+      }
+    }
+  },
+
+  /**
+   * Lấy lịch sử phân công và chuyển giao địa bàn (SN-35)
+   */
+  async getAssignmentHistory(params?: {
+    fromSalesRepId?: string;
+    toSalesRepId?: string;
+    customerId?: string;
+    transferBatchId?: string;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: CustomerAssignmentHistory[]; total: number }> {
+    try {
+      const res = await apiClient.get<{
+        data: CustomerAssignmentHistory[];
+        total: number;
+      }>('/customers/assignment-history', { params });
+      return res.data;
+    } catch {
+      let list = getStoredHistory();
+      if (params?.customerId) {
+        list = list.filter((h) => h.customerId === params.customerId);
+      }
+      if (params?.transferBatchId) {
+        list = list.filter((h) => h.transferBatchId === params.transferBatchId);
+      }
+      if (params?.fromSalesRepId) {
+        list = list.filter((h) => h.fromSalesRepId === params.fromSalesRepId);
+      }
+      if (params?.toSalesRepId) {
+        list = list.filter((h) => h.toSalesRepId === params.toSalesRepId);
+      }
+      if (params?.startDate) {
+        const fromTime = new Date(params.startDate).getTime();
+        if (!isNaN(fromTime)) {
+          list = list.filter((h) => new Date(h.createdAt).getTime() >= fromTime);
+        }
+      }
+      if (params?.endDate) {
+        const toTime = new Date(params.endDate).getTime();
+        if (!isNaN(toTime)) {
+          list = list.filter((h) => new Date(h.createdAt).getTime() <= toTime);
+        }
+      }
+      if (params?.search && params.search.trim()) {
+        const s = params.search.trim().toLowerCase();
+        list = list.filter(
+          (h) =>
+            h.customerName?.toLowerCase().includes(s) ||
+            h.customerCode?.toLowerCase().includes(s) ||
+            h.reason?.toLowerCase().includes(s) ||
+            h.fromSalesRepName?.toLowerCase().includes(s) ||
+            h.toSalesRepName?.toLowerCase().includes(s) ||
+            (h.transferBatchId && h.transferBatchId.toLowerCase().includes(s)) ||
+            (h.performedByName && h.performedByName.toLowerCase().includes(s)),
+        );
+      }
+      return { data: list, total: list.length };
+    }
+  },
+
+  /**
    * Cập nhật hạn mức công nợ & số ngày nợ tối đa cho đại lý (SN-34)
    * Kèm lý do phục vụ kiểm toán hệ thống (Audit Log)
    */
@@ -891,6 +1227,8 @@ export const customerService = {
    */
   getStoredCustomers,
   saveStoredCustomers,
+  getStoredHistory,
+  saveStoredHistory,
 };
 
 export const customersService = customerService;
