@@ -191,8 +191,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             return nodes.map((n) => ({
               id: n.id,
               name: n.name,
-              code: n.code,
-              level: n.level,
+              code: n.code || '',
+              level: n.level ?? 1,
               parentId: n.parentId || n.parent_id || null,
               productCount: n.productCount ?? n.product_count ?? 0,
               children: n.children ? mapTree(n.children) : [],

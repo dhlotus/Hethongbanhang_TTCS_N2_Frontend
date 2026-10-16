@@ -10,6 +10,11 @@ import {
   Boxes,
   Check,
   AlertCircle,
+  Sliders,
+  ShieldAlert,
+  ShieldCheck,
+  Filter,
+  RotateCcw,
 } from 'lucide-react';
 import { inventoryBatchesService } from '../services/inventory-batches.service';
 import type {
@@ -113,8 +118,21 @@ export const InventoryBatchesPage: React.FC = () => {
       });
   }, [warehouseFilter, statusFilter, searchTerm, thresholdDays, page, limit]);
 
+  // Kiểm tra xem có bộ lọc nào đang được kích hoạt hay không
+  const hasActiveFilter =
+    statusFilter !== 'ALL' || warehouseFilter !== 'ALL' || searchTerm.trim() !== '';
+
+  // Đặt lại tất cả các bộ lọc về mặc định
+  const handleResetFilters = () => {
+    setStatusFilter('ALL');
+    setWarehouseFilter('ALL');
+    setSearchTerm('');
+    setPage(1);
+  };
+
   useEffect(() => {
     let isCancelled = false;
+    setLoading(true);
 
     Promise.all([
       inventoryBatchesService.getBatches({
@@ -271,13 +289,31 @@ export const InventoryBatchesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. KPI Summary Metrics (Tiêu chí 3) */}
+      {/* 2. KPI Summary Metrics (Tiêu chí 3) - Thẻ tương tác lọc nhanh theo trạng thái */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1: Tổng số lô */}
-        <div className="bg-white rounded-xl border border-slate-200/90 p-4 shadow-xs space-y-2">
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter('ALL');
+            setPage(1);
+          }}
+          className={`text-left bg-white rounded-xl border p-4 shadow-xs space-y-2 transition-all cursor-pointer hover:shadow-md ${
+            statusFilter === 'ALL'
+              ? 'border-indigo-500 ring-2 ring-indigo-500/25 bg-indigo-50/15'
+              : 'border-slate-200/90 hover:border-slate-300'
+          }`}
+          title="Nhấn để xem Tất cả lô hàng"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-600">Tổng số Lô tồn</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                statusFilter === 'ALL'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-indigo-50 text-indigo-600'
+              }`}
+            >
               <Boxes className="w-4 h-4" />
             </div>
           </div>
@@ -289,13 +325,31 @@ export const InventoryBatchesPage: React.FC = () => {
               {(stats?.totalQuantity ?? 0).toLocaleString('vi-VN')} đơn vị
             </span>
           </div>
-        </div>
+        </button>
 
         {/* Card 2: Lô an toàn / Hợp lệ */}
-        <div className="bg-white rounded-xl border border-slate-200/90 p-4 shadow-xs space-y-2">
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter('VALID');
+            setPage(1);
+          }}
+          className={`text-left bg-white rounded-xl border p-4 shadow-xs space-y-2 transition-all cursor-pointer hover:shadow-md ${
+            statusFilter === 'VALID'
+              ? 'border-emerald-500 ring-2 ring-emerald-500/25 bg-emerald-50/15'
+              : 'border-slate-200/90 hover:border-slate-300'
+          }`}
+          title="Nhấn để chỉ lọc Lô còn hạn an toàn"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-600">Còn hạn an toàn</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                statusFilter === 'VALID'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-emerald-50 text-emerald-600'
+              }`}
+            >
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
@@ -307,13 +361,31 @@ export const InventoryBatchesPage: React.FC = () => {
               HSD &gt; {thresholdDays} ngày
             </span>
           </div>
-        </div>
+        </button>
 
         {/* Card 3: Lô sắp hết hạn (Cận hạn) */}
-        <div className="bg-white rounded-xl border border-slate-200/90 p-4 shadow-xs space-y-2">
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter('EXPIRING_SOON');
+            setPage(1);
+          }}
+          className={`text-left bg-white rounded-xl border p-4 shadow-xs space-y-2 transition-all cursor-pointer hover:shadow-md ${
+            statusFilter === 'EXPIRING_SOON'
+              ? 'border-amber-500 ring-2 ring-amber-500/25 bg-amber-50/15'
+              : 'border-slate-200/90 hover:border-slate-300'
+          }`}
+          title="Nhấn để chỉ lọc Lô sắp hết hạn"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-600">Sắp hết hạn</span>
-            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                statusFilter === 'EXPIRING_SOON'
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-amber-50 text-amber-600'
+              }`}
+            >
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
@@ -325,13 +397,31 @@ export const InventoryBatchesPage: React.FC = () => {
               HSD ≤ {thresholdDays} ngày
             </span>
           </div>
-        </div>
+        </button>
 
         {/* Card 4: Lô đã quá hạn (Nguy cơ) */}
-        <div className="bg-white rounded-xl border border-slate-200/90 p-4 shadow-xs space-y-2">
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter('EXPIRED');
+            setPage(1);
+          }}
+          className={`text-left bg-white rounded-xl border p-4 shadow-xs space-y-2 transition-all cursor-pointer hover:shadow-md ${
+            statusFilter === 'EXPIRED'
+              ? 'border-rose-500 ring-2 ring-rose-500/25 bg-rose-50/15'
+              : 'border-slate-200/90 hover:border-slate-300'
+          }`}
+          title="Nhấn để chỉ lọc Lô đã quá hạn"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-600">Đã quá hạn (Chặn xuất)</span>
-            <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600">
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                statusFilter === 'EXPIRED'
+                  ? 'bg-rose-600 text-white'
+                  : 'bg-rose-50 text-rose-600'
+              }`}
+            >
               <XCircle className="w-4 h-4" />
             </div>
           </div>
@@ -343,7 +433,7 @@ export const InventoryBatchesPage: React.FC = () => {
               Quá hạn HSD
             </span>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* 3. Khung Bộ Lọc & Cấu hình Ngưỡng Cảnh Báo (Filter Toolbar) */}
@@ -351,7 +441,7 @@ export const InventoryBatchesPage: React.FC = () => {
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
           {/* Ô tìm kiếm */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchTerm}
@@ -360,19 +450,20 @@ export const InventoryBatchesPage: React.FC = () => {
                 setPage(1);
               }}
               placeholder="Tìm theo Số lô (Batch No), Mã SKU, Tên sản phẩm..."
-              className="w-full h-[38px] pl-9 pr-3 text-xs border border-slate-200 rounded-lg bg-slate-50/60 hover:bg-white focus:bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
+              className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400"
             />
           </div>
 
           {/* Lọc theo Kho hàng */}
-          <div className="w-full lg:w-56">
+          <div className="relative w-full lg:w-56">
+            <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <select
               value={warehouseFilter}
               onChange={(e) => {
                 setWarehouseFilter(e.target.value);
                 setPage(1);
               }}
-              className="w-full h-[38px] px-3 text-xs font-medium border border-slate-200 rounded-lg bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer shadow-2xs"
+              className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer truncate"
             >
               <option value="ALL">Tất cả kho lưu trữ</option>
               {STANDARD_WAREHOUSES.map((wh) => (
@@ -383,22 +474,36 @@ export const InventoryBatchesPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Lọc theo Trạng thái Hạn dùng */}
-          <div className="w-full lg:w-48">
+          {/* Lọc theo Trạng thái Lô (Thiết kế đồng nhất theo ảnh người dùng yêu cầu) */}
+          <div className="relative w-full lg:w-56">
+            <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <select
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value as 'ALL' | BatchStatus);
                 setPage(1);
               }}
-              className="w-full h-[38px] px-3 text-xs font-medium border border-slate-200 rounded-lg bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer shadow-2xs"
+              className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer truncate"
             >
               <option value="ALL">Tất cả trạng thái lô</option>
-              <option value="VALID">Lô còn hạn an toàn</option>
-              <option value="EXPIRING_SOON">Lô sắp hết hạn</option>
-              <option value="EXPIRED">Lô đã quá hạn</option>
+              <option value="VALID">Còn hạn an toàn</option>
+              <option value="EXPIRING_SOON">⚠️ Sắp hết hạn</option>
+              <option value="EXPIRED">🚫 Đã quá hạn</option>
             </select>
           </div>
+
+          {/* Nút Đặt lại bộ lọc (khi có lọc) */}
+          {hasActiveFilter && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-xl transition-all cursor-pointer shadow-2xs shrink-0"
+              title="Đặt lại toàn bộ bộ lọc về mặc định"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Đặt lại</span>
+            </button>
+          )}
         </div>
 
         {/* Cấu hình Ngưỡng Cảnh Báo Cận Hạn Khai Báo Được (Tiêu chí 3) */}
@@ -491,11 +596,31 @@ export const InventoryBatchesPage: React.FC = () => {
               ) : batches.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-slate-500">
-                    <div className="max-w-sm mx-auto space-y-1.5">
-                      <p className="font-semibold text-slate-700 text-sm">Không tìm thấy lô hàng nào</p>
-                      <p className="text-xs text-slate-400">
-                        Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh bộ lọc trạng thái.
+                    <div className="max-w-sm mx-auto space-y-2">
+                      <p className="font-semibold text-slate-700 text-sm">
+                        {statusFilter === 'EXPIRED'
+                          ? 'Tuyệt vời! Không có lô hàng nào bị quá hạn'
+                          : statusFilter === 'EXPIRING_SOON'
+                          ? `Không có lô hàng nào sắp hết hạn trong ${thresholdDays} ngày tới`
+                          : statusFilter === 'VALID'
+                          ? 'Không tìm thấy lô hàng còn hạn an toàn'
+                          : 'Không tìm thấy lô hàng nào'}
                       </p>
+                      <p className="text-xs text-slate-400">
+                        {hasActiveFilter
+                          ? 'Thử điều chỉnh lại bộ lọc trạng thái hoặc từ khóa tìm kiếm.'
+                          : 'Kho hiện tại chưa có dữ liệu lô hàng nào được ghi nhận.'}
+                      </p>
+                      {hasActiveFilter && (
+                        <button
+                          type="button"
+                          onClick={handleResetFilters}
+                          className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors cursor-pointer"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Xem tất cả trạng thái lô</span>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -630,6 +755,7 @@ export const InventoryBatchesPage: React.FC = () => {
           totalPages={totalPages}
           totalItems={totalItems}
           pageSize={limit}
+          showRecordRange={false}
           onPageChange={(newPage) => setPage(newPage)}
           onPageSizeChange={(newSize) => {
             setLimit(newSize);
@@ -715,13 +841,6 @@ export const InventoryBatchesPage: React.FC = () => {
                   (quá hạn {Math.abs(selectedBatchForDispatch.daysRemaining)} ngày).
                   Hệ thống <strong>chặn xuất kho thông thường</strong> để đảm bảo không giao nhầm hàng cho đại lý.
                 </p>
-
-                {/* Kiểm tra thẩm quyền người dùng */}
-                {!canOverrideExpired && (
-                  <div className="p-2.5 bg-rose-100/60 rounded-lg text-rose-900 font-semibold text-[11px]">
-                    ⛔ Bạn đang đăng nhập với quyền <strong>Nhân viên kho</strong>. Thao tác xuất lô quá hạn bị KHÓA. Cần có Quản lý kho (Warehouse Manager) hoặc Quản trị viên phê duyệt ghi đè.
-                  </div>
-                )}
               </div>
             )}
 
@@ -838,11 +957,11 @@ export const InventoryBatchesPage: React.FC = () => {
                 }`}
               >
                 {isCheckingDispatch ? (
-                  <span>Đang kiểm tra...</span>
+                  <span>Đang xử lý...</span>
                 ) : selectedBatchForDispatch.daysRemaining < 0 ? (
-                  <span>Xác nhận ghi đè & Kiểm tra xuất</span>
+                  <span>Xác nhận ghi đè & Xuất kho</span>
                 ) : (
-                  <span>Kiểm tra điều kiện xuất kho</span>
+                  <span>Xuất kho</span>
                 )}
               </button>
             </div>
