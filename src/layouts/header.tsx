@@ -34,6 +34,20 @@ const getPageHeaderInfo = (
 ): PageHeaderInfo => {
   // 0. Trang con phân cấp (Breadcrumbs)
   if (
+    pathname.startsWith('/catalog/products/edit/') ||
+    pathname.startsWith('/products/edit/') ||
+    pathname.includes('/edit') && pathname.includes('/products')
+  ) {
+    return {
+      title: 'Chỉnh sửa sản phẩm',
+      category: 'Sản phẩm & Chính sách',
+      breadcrumbs: [
+        { label: 'Danh mục sản phẩm', path: '/catalog/products' },
+        { label: 'Chỉnh sửa sản phẩm' },
+      ],
+    };
+  }
+  if (
     pathname.startsWith('/catalog/products/edit-price/') ||
     pathname.startsWith('/products/edit-price/')
   ) {

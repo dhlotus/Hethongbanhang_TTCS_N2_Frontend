@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
+import { Pagination } from '../components/pagination';
 import {
   Package,
   Plus,
@@ -172,6 +173,7 @@ const formatCurrency = (val?: number): string => {
 };
 
 export const ProductsPage: React.FC = () => {
+  const navigate = useNavigate();
   // URL Query Params & State Management
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -676,10 +678,9 @@ export const ProductsPage: React.FC = () => {
     setFormModalOpen(true);
   };
 
-  // Mở modal sửa sản phẩm
+  // Chuyển hướng sang trang riêng chỉnh sửa sản phẩm thay vì mở popup
   const handleOpenEditModal = (p: Product) => {
-    setEditingProduct(p);
-    setFormModalOpen(true);
+    navigate(`/catalog/products/${p.id}/edit`);
   };
 
   // Xử lý submit thêm hoặc sửa sản phẩm
@@ -1106,341 +1107,206 @@ export const ProductsPage: React.FC = () => {
           <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
             {/* A. BẢNG DỮ LIỆU CHO TABLET & DESKTOP (>=640px) */}
             <div className="hidden sm:block overflow-x-auto min-h-[360px]">
-              <table className="w-full text-left text-xs sm:text-sm text-slate-600">
-                <thead className="bg-slate-50/70 text-slate-500 text-xs uppercase font-semibold border-b border-slate-100 tracking-wide">
-              <tr>
-                <th className="px-4 py-3.5 whitespace-nowrap w-36">Mã SKU</th>
-                <th className="px-4 py-3.5">Sản phẩm</th>
-                <th className="px-4 py-3.5 whitespace-nowrap w-48">Nhóm hàng</th>
-                <th className="px-4 py-3.5 text-center whitespace-nowrap w-24">ĐVT</th>
-                <th className="px-4 py-3.5 text-right whitespace-nowrap w-36">Giá niêm yết</th>
-                <th className="px-4 py-3.5 text-center whitespace-nowrap w-32">Tồn kho</th>
-                <th className="px-4 py-3.5 text-center whitespace-nowrap w-36">Trạng thái</th>
-                <th className="px-4 py-3.5 text-center whitespace-nowrap w-32">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium bg-white">
-              {loading ? (
-                <ProductsTableSkeleton count={6} />
-              ) : products.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="py-14 text-center text-slate-400"
-                  >
-                    <Package className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-                    <p className="font-semibold text-slate-600 text-sm">
-                      Không tìm thấy sản phẩm nào
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc nhóm hàng / trạng
-                      thái.
-                    </p>
-                    {(searchTerm || activeFilterCount > 0) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSearchInput('');
-                          handleResetFilters();
-                        }}
-                        className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 shadow-2xs transition-all cursor-pointer active:scale-95"
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                        <span>Đặt lại bộ lọc</span>
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ) : (
-                products.map((p, idx) => {
-                  const isLowStock = p.stockQuantity <= 100 && p.stockQuantity > 0;
-                  const isOutOfStock = p.stockQuantity === 0;
-                  const isDropUp =
-                    idx >= Math.max(1, products.length - 2) ||
-                    (products.length > 3 && idx >= Math.floor(products.length / 2));
-
-                  return (
-                    <tr
-                      key={p.id}
-                      className={`hover:bg-slate-50/70 transition-colors border-b border-slate-100 ${
-                        isOutOfStock
-                          ? 'bg-rose-50/30'
-                          : isLowStock
-                          ? 'bg-amber-50/20'
-                          : ''
-                      }`}
-                    >
-                      {/* Cột 1: Mã SKU */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
-                        <span className="font-mono font-bold text-slate-900 tracking-wider">
-                          {p.sku}
-                        </span>
-                      </td>
-
-                      {/* Cột 2: Sản phẩm (Ảnh + Tên) */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-xl border border-slate-200/90 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
-                            {p.imageUrl ? (
-                              <img
-                                src={p.imageUrl}
-                                alt={p.name}
-                                className="h-full w-full object-cover object-center"
-                                onError={(e) => {
-                                  (e.target as HTMLElement).style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <Package className="h-4.5 w-4.5 text-slate-300" />
-                            )}
-                          </div>
+              <table className="w-full table-fixed border-collapse">
+                <colgroup>
+                  <col className="w-[14%]" /> {/* Mã SKU */}
+                  <col className="w-[28%]" /> {/* Sản phẩm (Ảnh + Tên + ĐVT & Tồn kho) */}
+                  <col className="w-[18%]" /> {/* Nhóm hàng */}
+                  <col className="w-[16%]" /> {/* Giá niêm yết */}
+                  <col className="w-[12%]" /> {/* Trạng thái */}
+                  <col className="w-[12%]" /> {/* Thao tác */}
+                </colgroup>
+                <thead className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3.5 text-left whitespace-nowrap">Mã SKU</th>
+                    <th className="px-4 py-3.5 text-left whitespace-nowrap">Sản phẩm</th>
+                    <th className="px-4 py-3.5 text-left whitespace-nowrap">Nhóm hàng</th>
+                    <th className="px-4 py-3.5 text-right whitespace-nowrap">Giá niêm yết</th>
+                    <th className="px-3 py-3.5 text-center whitespace-nowrap">Trạng thái</th>
+                    <th className="px-3 py-3.5 text-center whitespace-nowrap">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium bg-white text-xs sm:text-sm">
+                  {loading ? (
+                    <ProductsTableSkeleton count={6} />
+                  ) : products.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-14 text-center text-slate-400">
+                        <Package className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                        <p className="font-semibold text-slate-600 text-sm">
+                          Không tìm thấy sản phẩm nào
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc nhóm hàng / trạng thái.
+                        </p>
+                        {(searchTerm || activeFilterCount > 0) && (
                           <button
                             type="button"
-                            onClick={() => handleOpenDetailModal(p)}
-                            className="font-semibold text-slate-900 hover:text-blue-600 transition-colors text-left leading-snug cursor-pointer line-clamp-1 max-w-[280px]"
-                            title={`Xem chi tiết: ${p.name}`}
+                            onClick={() => {
+                              setSearchInput('');
+                              handleResetFilters();
+                            }}
+                            className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 shadow-2xs transition-all cursor-pointer active:scale-95"
                           >
-                            {p.name}
+                            <RotateCcw className="h-4 w-4" />
+                            <span>Đặt lại bộ lọc</span>
                           </button>
-                        </div>
-                      </td>
-
-                      {/* Cột 3: Nhóm hàng */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex flex-col gap-0.5 max-w-[200px]">
-                          <span className="inline-block w-fit rounded-md bg-[var(--color-primary-light)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-primary)] ring-1 ring-inset ring-[var(--color-primary-subtle)] truncate">
-                            {p.parentCategory || p.category?.split('/')[0]?.trim() || 'Nhóm hàng'}
-                          </span>
-                          {p.category && p.category.includes('/') ? (
-                            <span
-                              className="text-[11px] text-slate-500 font-medium pl-0.5 truncate"
-                              title={p.category}
-                            >
-                              ↳{' '}
-                              {p.category
-                                .split('/')
-                                .slice(1)
-                                .map((s) => s.trim())
-                                .join(' > ')}
-                            </span>
-                          ) : p.subCategory ? (
-                            <span className="text-[11px] text-slate-500 font-medium pl-0.5 truncate">
-                              ↳ {p.subCategory}
-                            </span>
-                          ) : null}
-                        </div>
-                      </td>
-
-                      {/* Cột 4: ĐVT cơ sở */}
-                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                          {p.baseUnit}
-                        </span>
-                      </td>
-
-                      {/* Cột 5: Giá niêm yết */}
-                      <td className="px-4 py-3.5 text-right font-semibold text-slate-900 font-mono whitespace-nowrap">
-                        {formatCurrency(p.price)}
-                      </td>
-
-                      {/* Cột 6: Tồn kho */}
-                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center gap-1 font-bold px-2.5 py-1 rounded-md text-xs border ${
-                            isOutOfStock
-                              ? 'bg-rose-100 text-rose-900 border-rose-200'
-                              : isLowStock
-                                ? 'bg-amber-100 text-amber-900 border-amber-200'
-                                : 'bg-emerald-100 text-emerald-900 border-emerald-200'
-                          }`}
-                        >
-                          <Warehouse className="h-3.5 w-3.5" />
-                          <span>{p.stockQuantity.toLocaleString('vi-VN')}</span>
-                          {isOutOfStock && <span className="text-[10px] ml-0.5">(Hết)</span>}
-                          {isLowStock && <span className="text-[10px] ml-0.5">(Ít)</span>}
-                        </span>
-                      </td>
-
-                      {/* Cột 7: Trạng thái */}
-                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                        {p.status === 'ACTIVE' ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                            <span>Đang kinh doanh</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-inset ring-slate-500/20">
-                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
-                            <span>Ngừng kinh doanh</span>
-                          </span>
                         )}
                       </td>
+                    </tr>
+                  ) : (
+                    products.map((p) => {
+                      return (
+                        <tr
+                          key={p.id}
+                          className="hover:bg-slate-50/70 transition-colors border-b border-slate-100"
+                        >
+                          {/* Cột 1: Mã SKU */}
+                          <td className="px-5 py-4 whitespace-nowrap text-left">
+                            <span className="font-mono font-bold text-slate-900 tracking-wider text-xs">
+                              {p.sku}
+                            </span>
+                          </td>
 
-                      {/* Cột 8: Thao tác (Dropdown menu chuẩn) */}
-                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                        <div className="relative inline-block text-left product-action-dropdown-container">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenActionMenuId(openActionMenuId === p.id ? null : p.id);
-                            }}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none ${
-                              openActionMenuId === p.id
-                                ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-xs'
-                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-slate-300'
-                            }`}
-                            title="Thao tác"
-                          >
-                            <span>Thao tác</span>
-                            <ChevronDown
-                              className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${
-                                openActionMenuId === p.id ? 'rotate-180 text-blue-600' : ''
-                              }`}
-                            />
-                          </button>
-
-                          {openActionMenuId === p.id && (
-                            <div
-                              className={`absolute right-0 ${
-                                isDropUp
-                                  ? 'bottom-full mb-1 origin-bottom-right'
-                                  : 'top-full mt-1 origin-top-right'
-                              } w-48 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100`}
-                            >
-                              <div className="py-1">
-                                {/* 1. Xem chi tiết */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setOpenActionMenuId(null);
-                                    handleOpenDetailModal(p);
-                                  }}
-                                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                >
-                                  <Eye className="w-4 h-4 text-slate-400" />
-                                  <span>Xem chi tiết</span>
-                                </button>
-
-                                {/* 2. Sửa thông tin SKU */}
-                                {canManageProducts && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      handleOpenEditModal(p);
+                          {/* Cột 2: Sản phẩm (Ảnh + Tên + ĐVT & Tồn kho) */}
+                          <td className="px-4 py-4 text-left">
+                            <div className="flex items-center gap-3">
+                              <div className="h-9 w-9 rounded-xl border border-slate-200/90 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
+                                {p.imageUrl ? (
+                                  <img
+                                    src={p.imageUrl}
+                                    alt={p.name}
+                                    className="h-full w-full object-cover object-center"
+                                    onError={(e) => {
+                                      (e.target as HTMLElement).style.display = 'none';
                                     }}
-                                    className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-amber-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Edit2 className="w-4 h-4 text-amber-500" />
-                                    <span>Sửa thông tin SKU</span>
-                                  </button>
-                                )}
-
-                                {/* 3. Lịch sử thay đổi giá */}
-                                {canManageProducts && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      handleOpenPriceHistory(p);
-                                    }}
-                                    className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Clock className="w-4 h-4 text-slate-400" />
-                                    <span>Lịch sử giá</span>
-                                  </button>
-                                )}
-
-                                {/* 4. Điều chỉnh tồn kho */}
-                                {canAdjustStock && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      handleOpenAdjustModal(p);
-                                    }}
-                                    className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Warehouse className="w-4 h-4 text-slate-400" />
-                                    <span>Điều chỉnh tồn kho</span>
-                                  </button>
-                                )}
-
-                                {/* 5. Sổ kho & Lịch sử quy đổi */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setOpenActionMenuId(null);
-                                    handleOpenLedgerModal(p.sku);
-                                  }}
-                                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                >
-                                  <BookOpen className="w-4 h-4 text-indigo-500" />
-                                  <span>Sổ kho & Quy đổi</span>
-                                </button>
-
-                                {/* 6. Bật / Tắt kinh doanh */}
-                                {canManageProducts && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      handleToggleStatus(p);
-                                    }}
-                                    className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Power
-                                      className={`w-4 h-4 ${
-                                        p.status === 'ACTIVE'
-                                          ? 'text-amber-500'
-                                          : 'text-emerald-500'
-                                      }`}
-                                    />
-                                    <span>
-                                      {p.status === 'ACTIVE'
-                                        ? 'Ngừng kinh doanh'
-                                        : 'Bật kinh doanh'}
-                                    </span>
-                                  </button>
+                                  />
+                                ) : (
+                                  <Package className="h-4.5 w-4.5 text-slate-300" />
                                 )}
                               </div>
-
-                              {/* 7. Xóa sản phẩm - Chỉ hiển thị cho Admin và Quản lý kinh doanh */}
-                              {canDeleteProduct && (
-                                <div className="py-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      handlePromptDelete(p);
-                                    }}
-                                    className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
-                                      (p.stockQuantity ?? 0) > 0
-                                        ? 'text-slate-400 hover:bg-slate-50 cursor-pointer'
-                                        : 'text-rose-600 hover:bg-rose-50 cursor-pointer font-medium'
-                                    }`}
-                                    title={
-                                      (p.stockQuantity ?? 0) > 0
-                                        ? `Sản phẩm còn tồn kho (${p.stockQuantity} ${p.baseUnit || 'đơn vị'})`
-                                        : 'Xóa sản phẩm khỏi danh mục'
-                                    }
-                                  >
-                                    <Trash2 className="w-4 h-4 text-rose-500" />
-                                    <span>Xóa sản phẩm</span>
-                                  </button>
+                              <div className="min-w-0 flex-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenDetailModal(p)}
+                                  className="font-semibold text-slate-900 hover:text-indigo-600 transition-colors text-left leading-snug cursor-pointer line-clamp-1 truncate block max-w-full text-xs sm:text-sm"
+                                  title={`Xem chi tiết: ${p.name}`}
+                                >
+                                  {p.name}
+                                </button>
+                                <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
+                                  <span className="font-semibold text-slate-600">{p.baseUnit}</span>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="font-semibold text-emerald-700">
+                                    Tồn: {p.stockQuantity.toLocaleString('vi-VN')}
+                                  </span>
+                                  {p.stockQuantity === 0 && (
+                                    <span className="text-[10px] text-rose-600 font-bold bg-rose-50 px-1 rounded">
+                                      Hết
+                                    </span>
+                                  )}
                                 </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Cột 3: Nhóm hàng */}
+                          <td className="px-4 py-4 text-left">
+                            <div className="flex flex-col gap-0.5 max-w-full">
+                              <span className="inline-block w-fit max-w-full rounded-md bg-[var(--color-primary-light)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-primary)] ring-1 ring-inset ring-[var(--color-primary-subtle)] truncate">
+                                {p.parentCategory || p.category?.split('/')[0]?.trim() || 'Nhóm hàng'}
+                              </span>
+                              {p.category && p.category.includes('/') ? (
+                                <span
+                                  className="text-[11px] text-slate-500 font-medium pl-0.5 truncate"
+                                  title={p.category}
+                                >
+                                  ↳{' '}
+                                  {p.category
+                                    .split('/')
+                                    .slice(1)
+                                    .map((s) => s.trim())
+                                    .join(' > ')}
+                                </span>
+                              ) : p.subCategory ? (
+                                <span className="text-[11px] text-slate-500 font-medium pl-0.5 truncate">
+                                  ↳ {p.subCategory}
+                                </span>
+                              ) : null}
+                            </div>
+                          </td>
+
+                          {/* Cột 4: Giá niêm yết */}
+                          <td className="px-4 py-4 text-right whitespace-nowrap font-semibold text-slate-900 font-mono tabular-nums text-xs sm:text-sm">
+                            {formatCurrency(p.price)}
+                          </td>
+
+                          {/* Cột 5: Trạng thái */}
+                          <td className="px-3 py-4 text-center whitespace-nowrap">
+                            {p.status === 'ACTIVE' ? (
+                              <button
+                                type="button"
+                                disabled={!canManageProducts}
+                                onClick={() => handleToggleStatus(p)}
+                                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200/80 hover:bg-emerald-100/80 transition-all cursor-pointer shadow-2xs disabled:cursor-default"
+                                title={
+                                  canManageProducts
+                                    ? 'Đang hoạt động - Nhấn để chuyển ngừng kinh doanh'
+                                    : 'Đang hoạt động'
+                                }
+                              >
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                <span>Hoạt động</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={!canManageProducts}
+                                onClick={() => handleToggleStatus(p)}
+                                className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer shadow-2xs disabled:cursor-default"
+                                title={
+                                  canManageProducts
+                                    ? 'Ngừng kinh doanh - Nhấn để kích hoạt hoạt động'
+                                    : 'Ngừng kinh doanh'
+                                }
+                              >
+                                <span className="h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
+                                <span>Ngừng</span>
+                              </button>
+                            )}
+                          </td>
+
+                          {/* Cột 6: Thao tác */}
+                          <td className="px-3 py-4 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {canManageProducts ? (
+                                <Link
+                                  to={`/catalog/products/${p.id}/edit`}
+                                  className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50/70 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+                                  title="Chỉnh sửa thông tin sản phẩm"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                  <span>Sửa</span>
+                                </Link>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenDetailModal(p)}
+                                  className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+                                  title="Xem chi tiết sản phẩm"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Chi tiết</span>
+                                </button>
                               )}
                             </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
         </div>
 
         {/* ===================================================================== */}
@@ -1740,82 +1606,21 @@ export const ProductsPage: React.FC = () => {
           )}
         </div>
 
-        {/* 4. Thanh phân trang chuẩn Clean SaaS (Mặc định 20 dòng / trang) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-100 text-xs text-slate-500 bg-slate-50/40">
-          <div className="flex items-center gap-3 shrink-0 whitespace-nowrap">
-            <div>
-              Hiển thị{' '}
-              <strong>
-                {total === 0 ? 0 : (page - 1) * limit + 1} - {Math.min(page * limit, total)}
-              </strong>{' '}
-              trong tổng số <strong>{total}</strong> SKU sản phẩm
-            </div>
-
-            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
-              <span className="text-slate-400">Số dòng/trang:</span>
-              <select
-                value={limit}
-                onChange={(e) => {
-                  setLimit(Number(e.target.value));
-                  handlePageChange(1);
-                }}
-                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-              >
-                <option value={10}>10 dòng</option>
-                <option value={20}>20 dòng (Chuẩn)</option>
-                <option value={50}>50 dòng</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => handlePageChange(Math.max(1, page - 1))}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span>Trước</span>
-            </button>
-
-            {/* Các nút bấm trang */}
-            <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-                .map((p, idx, arr) => {
-                  const showEllipsisBefore = idx > 0 && p - arr[idx - 1] > 1;
-                  return (
-                    <React.Fragment key={p}>
-                      {showEllipsisBefore && (
-                        <span className="px-1 text-slate-400 font-bold">...</span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handlePageChange(p)}
-                        className={`h-7 min-w-7 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                          page === p
-                            ? 'bg-blue-600 text-white shadow-2xs shadow-blue-600/30'
-                            : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    </React.Fragment>
-                  );
-                })}
-            </div>
-
-            <button
-              type="button"
-              disabled={page >= totalPages}
-              onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
-            >
-              <span>Sau</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+        {/* 4. Thanh phân trang chuẩn Clean SaaS đồng bộ hệ thống */}
+        <div className="px-5 py-4 border-t border-slate-200/80 bg-slate-50/50">
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={total}
+            pageSize={limit}
+            pageSizeOptions={[10, 20, 50]}
+            itemLabel="sản phẩm"
+            onPageChange={(newPage) => handlePageChange(newPage)}
+            onPageSizeChange={(newLimit) => {
+              setLimit(newLimit);
+              handlePageChange(1);
+            }}
+          />
         </div>
       </div>
 
