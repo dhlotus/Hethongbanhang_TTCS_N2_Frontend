@@ -110,11 +110,14 @@ export const AgencyPortalPage: React.FC = () => {
     const matched = list.find(
       (c) =>
         c.id === user?.id ||
+        (user?.customerId && (c.id === user.customerId || c.code === user.customerId)) ||
+        (user?.customerCode && (c.code === user.customerCode || c.id === user.customerCode)) ||
+        (user?.agencyId && (c.id === user.agencyId || c.code === user.agencyId)) ||
         (user?.email && c.email && user.email.toLowerCase() === c.email.toLowerCase()) ||
         (user?.username && c.code && c.code.toLowerCase() === user.username.toLowerCase()) ||
         (user?.email && c.phone && user.email.includes(c.phone))
     );
-    return matched || list[0] || null;
+    return matched || list.find((c) => c.id === 'cust-dl-0002') || list[0] || null;
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -343,6 +346,9 @@ export const AgencyPortalPage: React.FC = () => {
       const matchedCustomer = list.find(
         (c) =>
           c.id === user?.id ||
+          (user?.customerId && (c.id === user.customerId || c.code === user.customerId)) ||
+          (user?.customerCode && (c.code === user.customerCode || c.id === user.customerCode)) ||
+          (user?.agencyId && (c.id === user.agencyId || c.code === user.agencyId)) ||
           (user?.email && c.email && user.email.toLowerCase() === c.email.toLowerCase()) ||
           (user?.username && c.code && c.code.toLowerCase() === user.username.toLowerCase()) ||
           (user?.email && c.phone && user.email.includes(c.phone))
@@ -1246,16 +1252,18 @@ export const AgencyPortalPage: React.FC = () => {
         deliveryDate: String(deliveryDate),
         items,
         lines,
-        deliveryPoint: selectedDeliveryPoint
+        deliveryPoint: (selectedDeliveryPoint &&
+          currentCustomer.deliveryPoints?.some((dp) => dp.id === selectedDeliveryPoint.id) &&
+          selectedDeliveryPoint.address.trim().toLowerCase() === resolvedDeliveryAddress.trim().toLowerCase())
           ? {
               id: selectedDeliveryPoint.id,
               name: selectedDeliveryPoint.name,
               address: resolvedDeliveryAddress,
-              receiverName: selectedDeliveryPoint.receiverName,
-              phone: selectedDeliveryPoint.phone,
+              receiverName: selectedDeliveryPoint.receiverName || currentCustomer.name,
+              phone: selectedDeliveryPoint.phone || currentCustomer.phone,
             }
           : {
-              name: 'Điểm giao hàng',
+              name: 'Điểm giao tự chỉ định',
               address: resolvedDeliveryAddress,
               receiverName: currentCustomer.name,
               phone: currentCustomer.phone,
@@ -2432,7 +2440,12 @@ export const AgencyPortalPage: React.FC = () => {
                         <select
                           value={selectedDeliveryPoint?.id || ''}
                           onChange={(e) => {
-                            const found = currentCustomer.deliveryPoints?.find((dp) => dp.id === e.target.value);
+                            const pointId = e.target.value;
+                            if (!pointId) {
+                              setSelectedDeliveryPoint(null);
+                              return;
+                            }
+                            const found = currentCustomer.deliveryPoints?.find((dp) => dp.id === pointId);
                             if (found) {
                               setSelectedDeliveryPoint(found);
                               setCustomDeliveryAddress(found.address);
@@ -2442,9 +2455,10 @@ export const AgencyPortalPage: React.FC = () => {
                         >
                           {currentCustomer.deliveryPoints.map((dp) => (
                             <option key={dp.id} value={dp.id}>
-                              {dp.name} — {dp.address}
+                              {dp.name} — {dp.address} {dp.isDefault ? '(Mặc định)' : ''}
                             </option>
                           ))}
+                          <option value="">Địa chỉ khác / Tự nhập</option>
                         </select>
                       )}
 
@@ -2452,7 +2466,13 @@ export const AgencyPortalPage: React.FC = () => {
                         id="portal-delivery-address"
                         type="text"
                         value={customDeliveryAddress}
-                        onChange={(e) => setCustomDeliveryAddress(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCustomDeliveryAddress(val);
+                          if (selectedDeliveryPoint && selectedDeliveryPoint.address.trim().toLowerCase() !== val.trim().toLowerCase()) {
+                            setSelectedDeliveryPoint(null);
+                          }
+                        }}
                         placeholder="Nhập địa chỉ nhận hàng chi tiết..."
                         className="w-full text-xs sm:text-sm rounded-xl border border-slate-200 bg-white p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
                       />

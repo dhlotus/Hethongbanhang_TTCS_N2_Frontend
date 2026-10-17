@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   X,
   Package,
+  PackageCheck,
   Truck,
   CheckCircle2,
   AlertTriangle,
@@ -96,6 +97,12 @@ const STATUS_META: Record<
     textClass: 'text-purple-800',
     icon: <Package className="w-3.5 h-3.5" />,
   },
+  PACKED: {
+    label: 'Đã đóng gói',
+    bgClass: 'bg-indigo-50 ring-1 ring-indigo-300',
+    textClass: 'text-indigo-800',
+    icon: <PackageCheck className="w-3.5 h-3.5" />,
+  },
   DISPATCHED: {
     label: 'Đã xuất kho',
     bgClass: 'bg-cyan-50 ring-1 ring-cyan-300',
@@ -165,9 +172,9 @@ export const CustomerOrderDetailModal: React.FC<CustomerOrderDetailModalProps> =
       (l) => l.deliveredQuantity !== undefined && l.deliveredQuantity < l.quantity,
     );
 
-  // Xác định cấp độ tiến trình của 5 bước SN-199:
+  // Xác định cấp độ tiến trình của các bước SN-199 & SN-45:
   // 1: APPROVED (Đã duyệt)
-  // 2: PROCESSING (Đang soạn)
+  // 2: PROCESSING (Đang soạn) / PACKED (Đã đóng gói)
   // 3: DISPATCHED (Đã xuất)
   // 4: SHIPPED (Đang giao)
   // 5: DELIVERED (Đã giao)
@@ -181,6 +188,7 @@ export const CustomerOrderDetailModal: React.FC<CustomerOrderDetailModalProps> =
         return 4;
       case 'DISPATCHED':
         return 3;
+      case 'PACKED':
       case 'PROCESSING':
         return 2;
       case 'APPROVED':
@@ -207,6 +215,8 @@ export const CustomerOrderDetailModal: React.FC<CustomerOrderDetailModalProps> =
         return { percent: 80, label: 'Xe đang vận chuyển tới đại lý (80%)', color: 'bg-indigo-600' };
       case 'DISPATCHED':
         return { percent: 60, label: 'Đã xuất kho bàn giao vận chuyển (60%)', color: 'bg-cyan-600' };
+      case 'PACKED':
+        return { percent: 50, label: 'Đơn hàng đã đóng gói hoàn tất (50%)', color: 'bg-indigo-600' };
       case 'PROCESSING':
         return { percent: 40, label: 'Kho đang chuẩn bị soạn hàng (40%)', color: 'bg-purple-600' };
       case 'APPROVED':
@@ -219,14 +229,6 @@ export const CustomerOrderDetailModal: React.FC<CustomerOrderDetailModalProps> =
   const overallProgress = getOverallProgress(order.status);
 
   // Cấu hình 5 mốc thời gian chuẩn xác theo Jira SN-199:
-  // "Hiển thị mốc thời gian: đã duyệt, đang soạn, đã xuất, đang giao, đã giao"
-  // Yêu cầu:
-  // - Hiển thị đủ 5 mốc thời gian.
-  // - Trạng thái đã hoàn thành có dấu tích.
-  // - Trạng thái hiện tại được làm nổi bật.
-  // - Trạng thái chưa đến hiển thị màu xám.
-  // - Hiển thị ngày giờ thực tế của từng mốc nếu có.
-  // - Không tự động đánh dấu hoàn thành khi chưa có dữ liệu xác nhận.
   const deliveryMilestones = [
     {
       id: 'step-approved',
@@ -244,14 +246,16 @@ export const CustomerOrderDetailModal: React.FC<CustomerOrderDetailModalProps> =
     {
       id: 'step-processing',
       level: 2,
-      label: 'Đang soạn',
-      desc: 'Kho đang chuẩn bị hàng',
-      timestamp: order.processingAt
+      label: order.status === 'PACKED' ? 'Đã đóng gói' : 'Đang soạn',
+      desc: order.status === 'PACKED' ? 'Kho đã đóng thùng niêm phong' : 'Kho đang chuẩn bị hàng',
+      timestamp: order.status === 'PACKED'
+        ? 'Đã đóng gói'
+        : order.processingAt
         ? formatDateTime(order.processingAt)
         : currentStageLevel >= 2
         ? 'Đang soạn hàng'
         : 'Chờ phân kho',
-      isCompleted: currentStageLevel > 2 || (currentStageLevel === 2 && !!order.processingAt),
+      isCompleted: currentStageLevel > 2 || (currentStageLevel === 2 && (!!order.processingAt || order.status === 'PACKED')),
       isCurrent: currentStageLevel === 2,
     },
     {

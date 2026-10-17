@@ -107,11 +107,14 @@ export const PortalOrderConfirmPage: React.FC = () => {
     const matched = list.find(
       (c) =>
         c.id === user?.id ||
+        (user?.customerId && (c.id === user.customerId || c.code === user.customerId)) ||
+        (user?.customerCode && (c.code === user.customerCode || c.id === user.customerCode)) ||
+        (user?.agencyId && (c.id === user.agencyId || c.code === user.agencyId)) ||
         (user?.email && c.email && user.email.toLowerCase() === c.email.toLowerCase()) ||
         (user?.username && c.code && c.code.toLowerCase() === user.username.toLowerCase()) ||
         (user?.email && c.phone && user.email.includes(c.phone))
     );
-    return matched || list[0] || null;
+    return matched || list.find((c) => c.id === 'cust-dl-0002') || list[0] || null;
   });
 
   const groupBadge = getGroupBadgeMeta(currentCustomer?.customerGroup || (currentCustomer as unknown as { group?: string })?.group);
@@ -238,16 +241,44 @@ export const PortalOrderConfirmPage: React.FC = () => {
 
   // 5. Thông tin giao hàng & Ghi chú
   const [selectedDeliveryPoint, setSelectedDeliveryPoint] = useState<CustomerDeliveryPoint | null>(() => {
-    return currentCustomer?.deliveryPoints?.[0] || null;
+    const points = currentCustomer?.deliveryPoints || [];
+    return points.find((dp) => dp.isDefault) || points[0] || null;
   });
 
   const [customDeliveryAddress, setCustomDeliveryAddress] = useState<string>(() => {
-    try {
-      const saved = sessionStorage.getItem('loha_portal_delivery_address');
-      if (saved) return saved;
-    } catch {}
-    return currentCustomer?.deliveryPoints?.[0]?.address || currentCustomer?.address || '';
+    if (currentCustomer?.id) {
+      try {
+        const saved = sessionStorage.getItem(`loha_portal_delivery_address_${currentCustomer.id}`);
+        if (saved) return saved;
+      } catch {}
+    }
+    const defaultPoint = currentCustomer?.deliveryPoints?.find((dp) => dp.isDefault) || currentCustomer?.deliveryPoints?.[0];
+    return defaultPoint?.address || currentCustomer?.address || '';
   });
+
+  // Đồng bộ điểm giao hàng và địa chỉ khi currentCustomer thay đổi
+  useEffect(() => {
+    if (!currentCustomer) return;
+    const points = currentCustomer.deliveryPoints || [];
+    const isPointBelongs = selectedDeliveryPoint && points.some((dp) => dp.id === selectedDeliveryPoint.id);
+    if (!isPointBelongs) {
+      const defaultPoint = points.find((dp) => dp.isDefault) || points[0] || null;
+      setSelectedDeliveryPoint(defaultPoint);
+
+      let savedAddr = '';
+      try {
+        savedAddr = sessionStorage.getItem(`loha_portal_delivery_address_${currentCustomer.id}`) || '';
+      } catch {}
+
+      if (savedAddr) {
+        setCustomDeliveryAddress(savedAddr);
+      } else if (defaultPoint?.address) {
+        setCustomDeliveryAddress(defaultPoint.address);
+      } else if (currentCustomer.address) {
+        setCustomDeliveryAddress(currentCustomer.address);
+      }
+    }
+  }, [currentCustomer]);
 
   const [deliveryDate, setDeliveryDate] = useState<string>(() => {
     try {
@@ -266,14 +297,16 @@ export const PortalOrderConfirmPage: React.FC = () => {
     return '';
   });
 
-  // Lưu tạm vào sessionStorage để không mất khi reload
+  // Lưu tạm vào sessionStorage theo ID đại lý để không bị lẫn địa chỉ giữa các đại lý
   useEffect(() => {
     try {
-      sessionStorage.setItem('loha_portal_delivery_address', customDeliveryAddress);
+      if (currentCustomer?.id) {
+        sessionStorage.setItem(`loha_portal_delivery_address_${currentCustomer.id}`, customDeliveryAddress);
+      }
       sessionStorage.setItem('loha_portal_delivery_date', deliveryDate);
       sessionStorage.setItem('loha_portal_order_note', orderNote);
     } catch {}
-  }, [customDeliveryAddress, deliveryDate, orderNote]);
+  }, [currentCustomer?.id, customDeliveryAddress, deliveryDate, orderNote]);
 
   const [isSubmittingOrder, setIsSubmittingOrder] = useState<boolean>(false);
   const [submittedOrder, setSubmittedOrder] = useState<Order | null>(null);
@@ -608,16 +641,18 @@ export const PortalOrderConfirmPage: React.FC = () => {
         deliveryDate: String(deliveryDate),
         items,
         lines,
-        deliveryPoint: selectedDeliveryPoint
+        deliveryPoint: (selectedDeliveryPoint &&
+          currentCustomer.deliveryPoints?.some((dp) => dp.id === selectedDeliveryPoint.id) &&
+          selectedDeliveryPoint.address.trim().toLowerCase() === resolvedDeliveryAddress.trim().toLowerCase())
           ? {
               id: selectedDeliveryPoint.id,
               name: selectedDeliveryPoint.name,
               address: resolvedDeliveryAddress,
-              receiverName: selectedDeliveryPoint.receiverName,
-              phone: selectedDeliveryPoint.phone,
+              receiverName: selectedDeliveryPoint.receiverName || currentCustomer.name,
+              phone: selectedDeliveryPoint.phone || currentCustomer.phone,
             }
           : {
-              name: 'Điểm giao hàng',
+              name: 'Điểm giao tự chỉ định',
               address: resolvedDeliveryAddress,
               receiverName: currentCustomer.name,
               phone: currentCustomer.phone,
@@ -872,7 +907,12 @@ export const PortalOrderConfirmPage: React.FC = () => {
                 <select
                   value={selectedDeliveryPoint?.id || ''}
                   onChange={(e) => {
-                    const found = currentCustomer.deliveryPoints?.find((dp) => dp.id === e.target.value);
+                    const pointId = e.target.value;
+                    if (!pointId) {
+                      setSelectedDeliveryPoint(null);
+                      return;
+                    }
+                    const found = currentCustomer.deliveryPoints?.find((dp) => dp.id === pointId);
                     if (found) {
                       setSelectedDeliveryPoint(found);
                       setCustomDeliveryAddress(found.address);
@@ -882,9 +922,10 @@ export const PortalOrderConfirmPage: React.FC = () => {
                 >
                   {currentCustomer.deliveryPoints.map((dp) => (
                     <option key={dp.id} value={dp.id}>
-                      {dp.name} — {dp.address}
+                      {dp.name} — {dp.address} {dp.isDefault ? '(Mặc định)' : ''}
                     </option>
                   ))}
+                  <option value="">Địa chỉ khác / Tự nhập địa chỉ giao hàng</option>
                 </select>
               )}
 
@@ -892,7 +933,13 @@ export const PortalOrderConfirmPage: React.FC = () => {
                 id="confirm-delivery-address"
                 type="text"
                 value={customDeliveryAddress}
-                onChange={(e) => setCustomDeliveryAddress(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCustomDeliveryAddress(val);
+                  if (selectedDeliveryPoint && selectedDeliveryPoint.address.trim().toLowerCase() !== val.trim().toLowerCase()) {
+                    setSelectedDeliveryPoint(null);
+                  }
+                }}
                 placeholder="Nhập chi tiết số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố..."
                 className="w-full text-sm rounded-xl border border-slate-200 bg-white p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
               />

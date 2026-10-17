@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Package,
+  PackageCheck,
   Clock,
   CheckCircle2,
   AlertTriangle,
@@ -84,6 +85,13 @@ export const StockListPage: React.FC = () => {
           <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700 ring-1 ring-purple-200">
             <Package className="h-2.5 w-2.5 text-purple-600" />
             Đang soạn
+          </span>
+        );
+      case 'PACKED':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 ring-1 ring-indigo-200">
+            <PackageCheck className="h-2.5 w-2.5 text-indigo-600" />
+            Đã đóng gói
           </span>
         );
       case 'DELIVERED':
