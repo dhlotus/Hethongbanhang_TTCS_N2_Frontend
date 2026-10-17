@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Search,
   X,
+  Edit2,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -92,7 +93,15 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
 
   // Kiểm tra bảng giá đã phát sinh đơn hàng hay chưa
   const hasOrders = Boolean(initialData?.hasOrders);
-  const effectiveReadOnly = isReadOnly || hasOrders;
+
+  // Quản lý chế độ xem chi tiết / chỉnh sửa
+  const [isEditing, setIsEditing] = useState(!isReadOnly);
+
+  useEffect(() => {
+    setIsEditing(!isReadOnly);
+  }, [isReadOnly, isOpen]);
+
+  const effectiveReadOnly = !isEditing || hasOrders;
 
   // Xử lý đóng modal trực tiếp không flicker
   const handleClose = () => {
@@ -414,42 +423,75 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
       </div>
 
       <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-        <button
-          type="button"
-          onClick={handleClose}
-          className="flex-1 sm:flex-initial px-4 py-2.5 sm:py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-        >
-          {effectiveReadOnly ? 'Đóng' : 'Hủy bỏ'}
-        </button>
-
-        {!effectiveReadOnly && (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting || hasPricingErrors || isDateRangeInvalid || items.length === 0}
-            title={
-              isDateRangeInvalid
-                ? dateRangeErrorMessage || undefined
-                : hasPricingErrors
-                  ? `Không thể lưu: Có ${Object.keys(pricingErrors).length} mặt hàng có Giá bán nhỏ hơn Giá sàn`
-                  : items.length === 0
-                    ? 'Bảng giá chưa có sản phẩm nào'
-                    : 'Lưu cấu hình Bảng giá'
-            }
-            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 sm:py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white shadow-xs transition-all cursor-pointer"
-          >
-            {submitting ? (
-              <>
-                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Đang lưu...</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Lưu Bảng giá</span>
-              </>
+        {effectiveReadOnly ? (
+          <>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="flex-1 sm:flex-initial px-4 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+            >
+              Đóng
+            </button>
+            {!hasOrders && (
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-all cursor-pointer"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+                <span>Chỉnh sửa</span>
+              </button>
             )}
-          </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                if (initialData) {
+                  setIsEditing(false);
+                  setName(initialData.name || '');
+                  setCode(initialData.code || '');
+                  setCustomerGroup(initialData.customerGroup || 'AGENT_LEVEL_1');
+                  setStartDate(initialData.startDate || '');
+                  setEndDate(initialData.endDate || '');
+                  setStatus(initialData.status || 'ACTIVE');
+                  setDescription(initialData.description || '');
+                  setItems(
+                    (initialData.items || []).map((it) => ({
+                      ...it,
+                      price: Number(it.price) || 0,
+                      minPrice: Number(it.minPrice) || 0,
+                    }))
+                  );
+                } else {
+                  handleClose();
+                }
+              }}
+              className="flex-1 sm:flex-initial px-4 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+            >
+              {initialData ? 'Hủy chỉnh sửa' : 'Hủy bỏ'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting || hasPricingErrors || isDateRangeInvalid || items.length === 0}
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white shadow-xs transition-all cursor-pointer"
+            >
+              {submitting ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Đang lưu...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Lưu Bảng giá</span>
+                </>
+              )}
+            </button>
+          </>
         )}
       </div>
     </div>
@@ -461,9 +503,9 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
       aria-modal="true"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-200"
     >
-      <div className="relative w-full max-w-4xl bg-white shadow-2xl flex flex-col overflow-hidden max-h-[90vh] rounded-2xl animate-in fade-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-4xl bg-white shadow-2xl flex flex-col overflow-hidden max-h-[90vh] rounded-xl animate-in fade-in zoom-in-95 duration-150">
         {/* Header - Không có icon nút X */}
-        <div className="sticky top-0 z-20 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-t-2xl">
+        <div className="sticky top-0 z-20 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-t-xl">
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/20">
               <FileSpreadsheet className="w-5 h-5 text-blue-600" />
@@ -932,7 +974,7 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
         </div>
 
         {/* Footer cố định - Nút Hủy bỏ là lối thoát duy nhất */}
-        <div className="sticky bottom-0 z-20 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-b-2xl">
+        <div className="sticky bottom-0 z-20 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-b-xl">
           {modalFooter}
         </div>
       </div>

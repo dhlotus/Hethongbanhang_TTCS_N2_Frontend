@@ -11,7 +11,7 @@ import {
   FileSpreadsheet,
   Calendar,
   ChevronDown,
-  Layers,
+  Eye,
 } from 'lucide-react';
 import { showToast } from './toast';
 import { ConfirmDialog } from './confirm-dialog';
@@ -84,6 +84,7 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<DiscountPolicy | null>(null);
+  const [isViewOnly, setIsViewOnly] = useState(false);
   const [policyToDelete, setPolicyToDelete] = useState<DiscountPolicy | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -329,11 +330,19 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
 
   const handleOpenCreateModal = () => {
     setEditingPolicy(null);
+    setIsViewOnly(false);
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (policy: DiscountPolicy) => {
     setEditingPolicy(policy);
+    setIsViewOnly(false);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenViewModal = (policy: DiscountPolicy) => {
+    setEditingPolicy(policy);
+    setIsViewOnly(true);
     setIsModalOpen(true);
   };
 
@@ -490,15 +499,12 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
           <table className="w-full text-sm divide-y divide-slate-100">
             <thead>
               <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="px-4 py-3 text-center w-[5%]">STT</th>
-                <th className="px-4 py-3 text-left w-[15%]">Mã chính sách</th>
-                <th className="px-4 py-3 text-left w-[26%]">Tên chính sách</th>
-                <th className="px-4 py-3 text-left w-[18%]">Đối tượng</th>
-                <th className="px-4 py-3 text-left w-[12%]">Loại chiết khấu</th>
-                <th className="px-4 py-3 text-left w-[16%]">Thời gian hiệu lực</th>
+                <th className="px-4 py-3 text-left w-[20%]">Mã chính sách</th>
+                <th className="px-4 py-3 text-left w-[35%]">Tên chính sách</th>
+                <th className="px-4 py-3 text-left w-[25%]">Thời gian hiệu lực</th>
                 <th className="px-4 py-3 text-center w-[10%]">Trạng thái</th>
                 {canManage && (
-                  <th className="px-4 py-3 text-right w-[8%] min-w-[95px]">Thao tác</th>
+                  <th className="px-4 py-3 text-right w-[10%] min-w-[95px]">Thao tác</th>
                 )}
               </tr>
             </thead>
@@ -510,7 +516,7 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
               {loading ? (
                 <tr>
                   <td
-                    colSpan={canManage ? 8 : 7}
+                    colSpan={canManage ? 5 : 4}
                     className="py-12 text-center text-slate-400 border-b border-slate-100"
                   >
                     <div className="flex flex-col items-center justify-center gap-2">
@@ -524,7 +530,7 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
               ) : filteredPolicies.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={canManage ? 8 : 7}
+                    colSpan={canManage ? 5 : 4}
                     className="py-12 text-center text-slate-400 border-b border-slate-100"
                   >
                     <div className="flex flex-col items-center justify-center gap-2">
@@ -551,13 +557,12 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
                   </td>
                 </tr>
               ) : (
-                paginatedPolicies.map((p, i) => (
-                  <tr key={p.id} className="hover:bg-indigo-50/25 transition-colors group">
-                    {/* STT */}
-                    <td className="px-4 py-3.5 text-center text-slate-400 font-mono text-xs">
-                      {startIndex + i + 1}
-                    </td>
-
+                paginatedPolicies.map((p) => (
+                  <tr
+                    key={p.id}
+                    onClick={() => handleOpenViewModal(p)}
+                    className="hover:bg-indigo-50/25 transition-colors group cursor-pointer"
+                  >
                     {/* Mã chính sách: Monospace badge chuẩn Quản lý đại lý / Bảng giá */}
                     <td className="px-4 py-3.5 whitespace-nowrap">
                       <span className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-blue-700 bg-blue-50/80 border border-blue-200/60 px-2.5 py-1 rounded-md shadow-2xs group-hover:border-blue-300">
@@ -568,38 +573,9 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
 
                     {/* Tên chính sách */}
                     <td className="px-4 py-3.5">
-                      <div className="font-semibold text-slate-800 line-clamp-1 text-sm">
+                      <div className="font-semibold text-slate-800 line-clamp-1 text-sm group-hover:text-blue-600 transition-colors">
                         {p.name}
                       </div>
-                    </td>
-
-                    {/* Đối tượng áp dụng */}
-                    <td className="px-4 py-3.5">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-semibold text-slate-800 text-xs flex items-center gap-1">
-                          <Layers className="w-3 h-3 text-slate-400" />
-                          <span>
-                            {p.targetType === 'HYBRID'
-                              ? 'Đa tầng (Nhóm + SKU)'
-                              : p.targetType === 'SKU'
-                              ? 'Sản phẩm (SKU)'
-                              : 'Nhóm hàng (Category)'}
-                          </span>
-                        </span>
-                        <span
-                          className="text-slate-400 font-mono text-[11px] truncate max-w-[200px]"
-                          title={p.targetIds?.join(', ') || p.targetId}
-                        >
-                          {p.targetIds && p.targetIds.length > 0
-                            ? p.targetIds.join(', ')
-                            : p.targetId}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Loại chiết khấu */}
-                    <td className="px-4 py-3.5 whitespace-nowrap text-slate-700 font-medium">
-                      {p.discountType === 'PERCENTAGE' ? '% Phần trăm' : 'Số tiền cố định'}
                     </td>
 
                     {/* Thời gian hiệu lực */}
@@ -629,7 +605,10 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
 
                     {/* Thao tác */}
                     {canManage && (
-                      <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                      <td
+                        className="px-4 py-3.5 text-right whitespace-nowrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="relative inline-flex items-center justify-end disc-action-menu-dropdown-container">
                           <button
                             type="button"
@@ -696,6 +675,18 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
                   onClick={() => {
                     setOpenActionMenuId(null);
                     setActionMenuAnchor(null);
+                    handleOpenViewModal(policy);
+                  }}
+                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                >
+                  <Eye className="w-4 h-4 text-blue-500" />
+                  <span>Xem chi tiết</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenActionMenuId(null);
+                    setActionMenuAnchor(null);
                     handleOpenEditModal(policy);
                   }}
                   className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-amber-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
@@ -747,6 +738,7 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleFormSubmit}
         initialData={editingPolicy}
+        isReadOnly={isViewOnly}
       />
 
       <ConfirmDialog

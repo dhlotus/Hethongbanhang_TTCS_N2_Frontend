@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { X, Plus, Trash2, Save, AlertCircle, Check, Sparkles } from 'lucide-react';
+import { X, Plus, Trash2, Save, AlertCircle, Check, Sparkles, Edit2 } from 'lucide-react';
 import { ConfirmDialog } from './confirm-dialog';
 import type {
   DiscountPolicy,
@@ -13,6 +13,7 @@ interface DiscountPolicyFormModalProps {
   onClose: () => void;
   onSubmit: (payload: CreateDiscountPolicyPayload, id?: string) => Promise<void>;
   initialData: DiscountPolicy | null;
+  isReadOnly?: boolean;
 }
 
 interface TargetItem {
@@ -39,6 +40,7 @@ interface QuantityInputProps {
   className?: string;
   allowNull?: boolean;
   hasError?: boolean;
+  disabled?: boolean;
 }
 
 const QuantityInput: React.FC<QuantityInputProps> = ({
@@ -49,6 +51,7 @@ const QuantityInput: React.FC<QuantityInputProps> = ({
   className = '',
   allowNull = false,
   hasError = false,
+  disabled = false,
 }) => {
   const [displayValue, setDisplayValue] = useState<string>(value === null ? '' : String(value));
 
@@ -57,6 +60,7 @@ const QuantityInput: React.FC<QuantityInputProps> = ({
   }, [value]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
     const raw = e.target.value;
 
     if (allowNull && raw.trim() === '') {
@@ -80,12 +84,14 @@ const QuantityInput: React.FC<QuantityInputProps> = ({
   };
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (disabled) return;
     if (displayValue === '0') {
       e.target.select();
     }
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (disabled) return;
     const raw = e.target.value.trim();
     if (raw === '') {
       if (allowNull) {
@@ -93,7 +99,6 @@ const QuantityInput: React.FC<QuantityInputProps> = ({
         onChange(null);
       } else {
         setDisplayValue('0');
-        onChange(0);
       }
     } else {
       const sanitized = raw.replace(/^0+(?=\d)/, '');
@@ -113,11 +118,14 @@ const QuantityInput: React.FC<QuantityInputProps> = ({
       onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
+      disabled={disabled}
       placeholder={placeholder}
       className={`w-full px-2.5 py-1.5 border rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 ${
-        hasError
+        disabled
+          ? 'bg-slate-50 text-slate-500 border-slate-200 cursor-not-allowed'
+          : hasError
           ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100 bg-rose-50/20 text-rose-900'
-          : 'border-slate-200 focus:border-blue-400 focus:ring-blue-100 text-slate-800'
+          : 'border-slate-200 focus:border-blue-400 focus:ring-blue-100 text-slate-800 bg-white'
       } ${className}`}
     />
   );
@@ -135,6 +143,7 @@ interface DiscountValueInputProps {
   discountType: 'PERCENTAGE' | 'FIXED_AMOUNT';
   onChange: (val: number) => void;
   hasError?: boolean;
+  disabled?: boolean;
 }
 
 const DiscountValueInput: React.FC<DiscountValueInputProps> = ({
@@ -142,6 +151,7 @@ const DiscountValueInput: React.FC<DiscountValueInputProps> = ({
   discountType,
   onChange,
   hasError = false,
+  disabled = false,
 }) => {
   const [displayValue, setDisplayValue] = useState<string>('');
   const [isFocused, setIsFocused] = useState<boolean>(false);
@@ -234,7 +244,9 @@ const DiscountValueInput: React.FC<DiscountValueInputProps> = ({
     <div className="relative" ref={containerRef}>
       <div
         className={`flex items-center rounded-lg border overflow-hidden transition-colors ${
-          hasError
+          disabled
+            ? 'bg-slate-50 border-slate-200 cursor-not-allowed'
+            : hasError
             ? 'border-rose-300 ring-2 ring-rose-100 bg-rose-50/20'
             : 'border-slate-200 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 bg-white'
         }`}
@@ -246,8 +258,11 @@ const DiscountValueInput: React.FC<DiscountValueInputProps> = ({
           onChange={handleChange}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          disabled={disabled}
           placeholder="0"
-          className="flex-1 min-w-0 px-2.5 py-1.5 text-sm font-semibold text-slate-800 bg-transparent border-none focus:outline-none"
+          className={`flex-1 min-w-0 px-2.5 py-1.5 text-sm font-semibold bg-transparent border-none focus:outline-none ${
+            disabled ? 'text-slate-500 cursor-not-allowed' : 'text-slate-800'
+          }`}
         />
         <span className="px-2.5 py-1.5 text-xs font-semibold text-slate-500 bg-slate-50 border-l border-slate-200 shrink-0 select-none">
           {discountType === 'PERCENTAGE' ? '%' : 'VNĐ'}
@@ -255,7 +270,7 @@ const DiscountValueInput: React.FC<DiscountValueInputProps> = ({
       </div>
 
       {/* Dropdown Gợi ý quy đổi tròn tiền thông minh */}
-      {suggestions.length > 0 && (
+      {!disabled && suggestions.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 flex flex-col gap-1 min-w-[180px] animate-fadeIn">
           <div className="flex items-center gap-1 text-[11px] font-semibold text-blue-600 px-2 py-0.5 uppercase tracking-wider">
             <Sparkles className="w-3 h-3 text-amber-500" />
@@ -298,6 +313,7 @@ interface ScopeRowItemProps {
   cachedProducts: TargetItem[];
   cachedCategories: TargetItem[];
   onErrorChange: (err: string | null) => void;
+  disabled?: boolean;
 }
 
 const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
@@ -311,6 +327,7 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
   cachedProducts,
   cachedCategories,
   onErrorChange,
+  disabled = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [suggestions, setSuggestions] = useState<TargetItem[]>([]);
@@ -426,13 +443,18 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
         <div className="w-full sm:w-56 shrink-0">
           <select
             value={row.type}
+            disabled={disabled}
             onChange={(e) => {
               onChangeType(e.target.value as any);
               setSearchTerm('');
               setRowError(null);
               onErrorChange(null);
             }}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            className={`w-full px-3 py-2 border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+              disabled
+                ? 'bg-slate-50 text-slate-500 border-slate-200 cursor-not-allowed'
+                : 'bg-white border-slate-200 text-slate-800'
+            }`}
           >
             <option value="CATEGORY" disabled={isCategoryDisabled}>
               {isCategoryDisabled ? '⛔ Nhóm hàng (Đã chọn ở dòng khác)' : 'Nhóm hàng (Category)'}
@@ -446,12 +468,15 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
         {/* Multi-select input field */}
         <div className="flex-1 w-full relative" ref={dropdownRef}>
           <div
-            className={`min-h-[42px] px-2.5 py-1.5 border rounded-lg bg-white flex flex-wrap items-center gap-1.5 transition-colors ${
-              rowError
-                ? 'border-rose-300 ring-2 ring-rose-100'
-                : 'border-slate-200 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100'
+            className={`min-h-[42px] px-2.5 py-1.5 border rounded-lg flex flex-wrap items-center gap-1.5 transition-colors ${
+              disabled
+                ? 'bg-slate-50/70 border-slate-200 cursor-default'
+                : rowError
+                ? 'bg-white border-rose-300 ring-2 ring-rose-100'
+                : 'bg-white border-slate-200 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100'
             }`}
             onClick={() => {
+              if (disabled) return;
               searchInputRef.current?.focus();
               setIsDropdownOpen(true);
             }}
@@ -466,58 +491,67 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
                 <span className="truncate max-w-[180px]" title={item.name}>
                   {item.name}
                 </span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveItem(item.code);
-                  }}
-                  className="p-0.5 hover:bg-blue-200/60 rounded text-blue-600 hover:text-blue-900 transition-colors cursor-pointer"
-                >
-                  <X className="w-3 h-3" />
-                </button>
+                {!disabled && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveItem(item.code);
+                    }}
+                    className="p-0.5 hover:bg-blue-200/60 rounded text-blue-600 hover:text-blue-900 transition-colors cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
               </span>
             ))}
 
-            {/* Input tìm kiếm */}
-            <div className="flex-1 min-w-[150px] flex items-center">
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                onFocus={() => {
-                  setIsDropdownOpen(true);
-                  if (suggestions.length === 0) {
-                    const cache = row.type === 'SKU' ? cachedProducts : cachedCategories;
-                    setSuggestions(cache.slice(0, 10));
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (searchTerm.trim()) {
-                      handleValidateManualCode(searchTerm);
+            {/* Thông báo nếu chưa chọn mục nào trong chế độ disabled */}
+            {disabled && row.items.length === 0 && (
+              <span className="text-xs text-slate-400 italic px-1">Chưa chọn mục nào</span>
+            )}
+
+            {/* Input tìm kiếm - Chỉ hiện khi mở khóa chỉnh sửa */}
+            {!disabled && (
+              <div className="flex-1 min-w-[150px] flex items-center">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onFocus={() => {
+                    setIsDropdownOpen(true);
+                    if (suggestions.length === 0) {
+                      const cache = row.type === 'SKU' ? cachedProducts : cachedCategories;
+                      setSuggestions(cache.slice(0, 10));
                     }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (searchTerm.trim()) {
+                        handleValidateManualCode(searchTerm);
+                      }
+                    }
+                  }}
+                  placeholder={
+                    row.items.length === 0
+                      ? row.type === 'SKU'
+                        ? 'Gõ mã hoặc tên SKU để tìm (VD: MILK-VIN-01)...'
+                        : 'Gõ mã hoặc tên nhóm hàng (VD: MILK)...'
+                      : 'Thêm mục khác...'
                   }
-                }}
-                placeholder={
-                  row.items.length === 0
-                    ? row.type === 'SKU'
-                      ? 'Gõ mã hoặc tên SKU để tìm (VD: MILK-VIN-01)...'
-                      : 'Gõ mã hoặc tên nhóm hàng (VD: MILK)...'
-                    : 'Thêm mục khác...'
-                }
-                className="w-full text-sm text-slate-800 placeholder-slate-400 bg-transparent border-none focus:outline-none px-1"
-              />
-              {isSearching && (
-                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0 mr-1" />
-              )}
-            </div>
+                  className="w-full text-sm text-slate-800 placeholder-slate-400 bg-transparent border-none focus:outline-none px-1"
+                />
+                {isSearching && (
+                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0 mr-1" />
+                )}
+              </div>
+            )}
           </div>
 
           {/* Dropdown Đề xuất thông minh */}
-          {isDropdownOpen && (
+          {!disabled && isDropdownOpen && (
             <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto p-1.5 space-y-0.5">
               <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                 Đề xuất {row.type === 'SKU' ? 'Sản phẩm' : 'Nhóm hàng'}
@@ -558,7 +592,7 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
         </div>
 
         {/* Nút xóa dòng phạm vi */}
-        {canDelete && (
+        {!disabled && canDelete && (
           <button
             type="button"
             onClick={onDelete}
@@ -580,33 +614,106 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
   );
 };
 
+const getInitialFormDataAndScope = (data: DiscountPolicy | null) => {
+  if (data) {
+    const initialScopeRows: ScopeRow[] = [];
+
+    if (data.appliedCategoryIds && data.appliedCategoryIds.length > 0) {
+      initialScopeRows.push({
+        id: 'scope-cat',
+        type: 'CATEGORY',
+        items: data.appliedCategoryIds.map((code) => ({ code, name: code })),
+      });
+    }
+
+    if (data.appliedProductSkus && data.appliedProductSkus.length > 0) {
+      initialScopeRows.push({
+        id: 'scope-sku',
+        type: 'SKU',
+        items: data.appliedProductSkus.map((code) => ({ code, name: code })),
+      });
+    }
+
+    if (initialScopeRows.length === 0) {
+      const rawIds: string[] =
+        data.targetIds && data.targetIds.length > 0
+          ? data.targetIds
+          : data.targetId
+            ? data.targetId
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : [];
+
+      const type: 'SKU' | 'CATEGORY' = data.targetType === 'CATEGORY' ? 'CATEGORY' : 'SKU';
+      initialScopeRows.push({
+        id: 'scope-default',
+        type,
+        items: rawIds.map((code) => ({ code, name: code })),
+      });
+    }
+
+    return {
+      scopeRows: initialScopeRows,
+      formData: {
+        code: data.code,
+        name: data.name,
+        targetType: data.targetType,
+        targetId: data.targetId,
+        targetIds: data.targetIds || [],
+        appliedCategoryIds: data.appliedCategoryIds || [],
+        appliedProductSkus: data.appliedProductSkus || [],
+        discountType: data.discountType,
+        startDate: data.startDate.split('T')[0],
+        endDate: data.endDate.split('T')[0],
+        status: data.status,
+        tiers: data.tiers.map((t) => ({ ...t })),
+      },
+    };
+  }
+
+  return {
+    scopeRows: [{ id: 'scope-1', type: 'CATEGORY' as const, items: [] }],
+    formData: {
+      code: `DP-${Date.now().toString().slice(-6)}`,
+      name: '',
+      targetType: 'CATEGORY' as const,
+      targetId: '',
+      targetIds: [],
+      appliedCategoryIds: [],
+      appliedProductSkus: [],
+      discountType: 'PERCENTAGE' as const,
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
+        .toISOString()
+        .split('T')[0],
+      status: 'ACTIVE' as const,
+      tiers: [{ minQuantity: 1, maxQuantity: null, discountValue: 0 }],
+    },
+  };
+};
+
 export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
   initialData,
+  isReadOnly = false,
 }) => {
-  const [formData, setFormData] = useState<CreateDiscountPolicyPayload>({
-    code: '',
-    name: '',
-    targetType: 'SKU',
-    targetId: '',
-    targetIds: [],
-    appliedCategoryIds: [],
-    appliedProductSkus: [],
-    discountType: 'PERCENTAGE',
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
-      .toISOString()
-      .split('T')[0],
-    status: 'ACTIVE',
-    tiers: [],
-  });
+  const [isEditing, setIsEditing] = useState<boolean>(!isReadOnly);
+
+  useEffect(() => {
+    setIsEditing(!isReadOnly);
+  }, [isReadOnly, isOpen]);
+
+  const [formData, setFormData] = useState<CreateDiscountPolicyPayload>(() =>
+    getInitialFormDataAndScope(initialData).formData
+  );
 
   // Phạm vi áp dụng Đa tầng (Tối đa 2 dòng: 1 Nhóm hàng + 1 SKU lẻ)
-  const [scopeRows, setScopeRows] = useState<ScopeRow[]>([
-    { id: 'scope-1', type: 'CATEGORY', items: [] },
-  ]);
+  const [scopeRows, setScopeRows] = useState<ScopeRow[]>(() =>
+    getInitialFormDataAndScope(initialData).scopeRows
+  );
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
 
   // Checkbox xác nhận bắt buộc ở vị trí áp chót (reset tự động khi có bất kỳ thay đổi nào)
@@ -621,11 +728,22 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
+  const handleCancelEdit = () => {
+    const { scopeRows: initScope, formData: initForm } = getInitialFormDataAndScope(initialData);
+    setScopeRows(initScope);
+    setFormData(initForm);
+    setErrors({});
+    setRowErrors({});
+    setIsConfirmed(false);
+    setIsEditing(false);
+  };
+
   const isDirty = Boolean(
-    formData.name ||
-    (formData.code && (!initialData || formData.code !== initialData.code)) ||
-    formData.tiers.length > 0 ||
-    scopeRows.some((r) => r.items.length > 0)
+    isEditing &&
+      (formData.name ||
+        (formData.code && (!initialData || formData.code !== initialData.code)) ||
+        formData.tiers.length > 0 ||
+        scopeRows.some((r) => r.items.length > 0))
   );
 
   const handleRequestClose = useCallback(() => {
@@ -678,79 +796,9 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
   // Khởi tạo dữ liệu khi mở Modal
   useEffect(() => {
     if (isOpen) {
-      if (initialData) {
-        const initialScopeRows: ScopeRow[] = [];
-
-        if (initialData.appliedCategoryIds && initialData.appliedCategoryIds.length > 0) {
-          initialScopeRows.push({
-            id: 'scope-cat',
-            type: 'CATEGORY',
-            items: initialData.appliedCategoryIds.map((code) => ({ code, name: code })),
-          });
-        }
-
-        if (initialData.appliedProductSkus && initialData.appliedProductSkus.length > 0) {
-          initialScopeRows.push({
-            id: 'scope-sku',
-            type: 'SKU',
-            items: initialData.appliedProductSkus.map((code) => ({ code, name: code })),
-          });
-        }
-
-        if (initialScopeRows.length === 0) {
-          const rawIds: string[] =
-            initialData.targetIds && initialData.targetIds.length > 0
-              ? initialData.targetIds
-              : initialData.targetId
-                ? initialData.targetId
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter(Boolean)
-                : [];
-
-          const type: 'SKU' | 'CATEGORY' =
-            initialData.targetType === 'CATEGORY' ? 'CATEGORY' : 'SKU';
-          initialScopeRows.push({
-            id: 'scope-default',
-            type,
-            items: rawIds.map((code) => ({ code, name: code })),
-          });
-        }
-
-        setScopeRows(initialScopeRows);
-        setFormData({
-          code: initialData.code,
-          name: initialData.name,
-          targetType: initialData.targetType,
-          targetId: initialData.targetId,
-          targetIds: initialData.targetIds || [],
-          appliedCategoryIds: initialData.appliedCategoryIds || [],
-          appliedProductSkus: initialData.appliedProductSkus || [],
-          discountType: initialData.discountType,
-          startDate: initialData.startDate.split('T')[0],
-          endDate: initialData.endDate.split('T')[0],
-          status: initialData.status,
-          tiers: initialData.tiers.map((t) => ({ ...t })),
-        });
-      } else {
-        setScopeRows([{ id: 'scope-1', type: 'CATEGORY', items: [] }]);
-        setFormData({
-          code: `DP-${Date.now().toString().slice(-6)}`,
-          name: '',
-          targetType: 'CATEGORY',
-          targetId: '',
-          targetIds: [],
-          appliedCategoryIds: [],
-          appliedProductSkus: [],
-          discountType: 'PERCENTAGE',
-          startDate: new Date().toISOString().split('T')[0],
-          endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
-            .toISOString()
-            .split('T')[0],
-          status: 'ACTIVE',
-          tiers: [{ minQuantity: 1, maxQuantity: null, discountValue: 0 }],
-        });
-      }
+      const { scopeRows: initScope, formData: initForm } = getInitialFormDataAndScope(initialData);
+      setScopeRows(initScope);
+      setFormData(initForm);
       setIsConfirmed(false);
       setRowErrors({});
       setErrors({});
@@ -1072,21 +1120,27 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
           <div>
             <h2 className="text-lg font-bold text-slate-900">
-              {initialData ? 'Chỉnh sửa Chính sách Chiết khấu' : 'Thêm mới Chính sách Chiết khấu'}
+              {!isEditing
+                ? 'Chi tiết Chính sách Chiết khấu'
+                : initialData
+                ? 'Chỉnh sửa Chính sách Chiết khấu'
+                : 'Thêm mới Chính sách Chiết khấu'}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Phạm vi áp dụng đa tầng, nấc chiết khấu linh hoạt & cảnh báo thông minh
+              {!isEditing
+                ? 'Xem chi tiết phạm vi áp dụng, loại chiết khấu và các nấc bậc thang'
+                : 'Phạm vi áp dụng đa tầng, nấc chiết khấu linh hoạt & cảnh báo thông minh'}
             </p>
           </div>
           <button
             type="button"
             onClick={handleRequestClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -1108,23 +1162,26 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                   <input
                     type="text"
                     value={formData.code}
-                    onChange={(e) => setFormData((p) => ({ ...p, code: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-600 focus:outline-none"
+                    disabled={true}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-500 cursor-not-allowed focus:outline-none"
                     placeholder="Mã tự động"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Tên chính sách <span className="text-rose-500">*</span>
+                    Tên chính sách {isEditing && <span className="text-rose-500">*</span>}
                   </label>
                   <input
                     type="text"
                     value={formData.name}
+                    disabled={!isEditing}
                     onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${
-                      errors.name
-                        ? 'border-rose-300 focus:ring-rose-200'
-                        : 'border-slate-200 focus:ring-blue-100'
+                      !isEditing
+                        ? 'bg-slate-50 text-slate-700 border-slate-200 cursor-default'
+                        : errors.name
+                        ? 'border-rose-300 focus:ring-rose-200 bg-white'
+                        : 'border-slate-200 focus:ring-blue-100 bg-white'
                     }`}
                     placeholder="Ví dụ: Chiết khấu sản lượng Tháng 10"
                   />
@@ -1136,11 +1193,14 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
               <div className="w-full space-y-2.5">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-medium text-slate-700">
-                    Phạm vi áp dụng <span className="text-rose-500">*</span>
+                    Phạm vi áp dụng (Đối tượng áp dụng){' '}
+                    {isEditing && <span className="text-rose-500">*</span>}
                   </label>
-                  <span className="text-[11px] text-slate-400">
-                    Mỗi loại (Nhóm hàng & Sản phẩm lẻ) chỉ được chọn tối đa 1 lần
-                  </span>
+                  {isEditing && (
+                    <span className="text-[11px] text-slate-400">
+                      Mỗi loại (Nhóm hàng & Sản phẩm lẻ) chỉ được chọn tối đa 1 lần
+                    </span>
+                  )}
                 </div>
 
                 {/* Danh sách các dòng phạm vi áp dụng */}
@@ -1154,6 +1214,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                       <ScopeRowItem
                         key={row.id}
                         row={row}
+                        disabled={!isEditing}
                         canDelete={scopeRows.length > 1}
                         disabledTypes={disabledTypes}
                         onDelete={() => handleRemoveScopeRow(row.id)}
@@ -1170,22 +1231,24 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                   })}
                 </div>
 
-                {/* Nút bấm "+ Thêm phạm vi áp dụng" (Vô hiệu hóa khi đã chọn đủ 2 phạm vi) */}
-                <button
-                  type="button"
-                  onClick={handleAddScopeRow}
-                  disabled={!canAddScopeRow}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                    canAddScopeRow
-                      ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer'
-                      : 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-60'
-                  }`}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  {canAddScopeRow
-                    ? '+ Thêm phạm vi áp dụng'
-                    : 'Đã chọn tối đa 2 phạm vi (Nhóm hàng & SKU lẻ)'}
-                </button>
+                {/* Nút bấm "+ Thêm phạm vi áp dụng" (Chỉ hiện khi đang chỉnh sửa) */}
+                {isEditing && (
+                  <button
+                    type="button"
+                    onClick={handleAddScopeRow}
+                    disabled={!canAddScopeRow}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      canAddScopeRow
+                        ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer'
+                        : 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-60'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {canAddScopeRow
+                      ? '+ Thêm phạm vi áp dụng'
+                      : 'Đã chọn tối đa 2 phạm vi (Nhóm hàng & SKU lẻ)'}
+                  </button>
+                )}
 
                 {errors.targetId && (
                   <p className="mt-1 text-xs text-rose-500 flex items-center gap-1.5">
@@ -1199,14 +1262,19 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Loại chiết khấu <span className="text-rose-500">*</span>
+                    Loại chiết khấu {isEditing && <span className="text-rose-500">*</span>}
                   </label>
                   <select
                     value={formData.discountType}
+                    disabled={!isEditing}
                     onChange={(e) =>
                       setFormData((p) => ({ ...p, discountType: e.target.value as any }))
                     }
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                      !isEditing
+                        ? 'bg-slate-50 text-slate-600 border-slate-200 cursor-default'
+                        : 'bg-white border-slate-200 text-slate-800'
+                    }`}
                   >
                     <option value="PERCENTAGE">% Phần trăm</option>
                     <option value="FIXED_AMOUNT">Số tiền cố định (VNĐ)</option>
@@ -1218,8 +1286,13 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                   </label>
                   <select
                     value={formData.status}
+                    disabled={!isEditing}
                     onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value as any }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                      !isEditing
+                        ? 'bg-slate-50 text-slate-600 border-slate-200 cursor-default'
+                        : 'bg-white border-slate-200 text-slate-800'
+                    }`}
                   >
                     <option value="ACTIVE">Kích hoạt</option>
                     <option value="INACTIVE">Tạm ngưng</option>
@@ -1231,24 +1304,34 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Từ ngày <span className="text-rose-500">*</span>
+                    Từ ngày {isEditing && <span className="text-rose-500">*</span>}
                   </label>
                   <input
                     type="date"
                     value={formData.startDate}
+                    disabled={!isEditing}
                     onChange={(e) => setFormData((p) => ({ ...p, startDate: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                      !isEditing
+                        ? 'bg-slate-50 text-slate-600 border-slate-200 cursor-default'
+                        : 'bg-white border-slate-200 text-slate-800'
+                    }`}
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Đến ngày <span className="text-rose-500">*</span>
+                    Đến ngày {isEditing && <span className="text-rose-500">*</span>}
                   </label>
                   <input
                     type="date"
                     value={formData.endDate}
+                    disabled={!isEditing}
                     onChange={(e) => setFormData((p) => ({ ...p, endDate: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                      !isEditing
+                        ? 'bg-slate-50 text-slate-600 border-slate-200 cursor-default'
+                        : 'bg-white border-slate-200 text-slate-800'
+                    }`}
                   />
                 </div>
               </div>
@@ -1266,14 +1349,16 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                     Hỗ trợ mức giảm 0% hoặc 0 VNĐ để tạm dừng chiết khấu tại nấc chỉ định.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAddTier}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-semibold transition-colors cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Thêm nấc
-                </button>
+                {isEditing && (
+                  <button
+                    type="button"
+                    onClick={handleAddTier}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Thêm nấc
+                  </button>
+                )}
               </div>
 
               {errors.tiers && (
@@ -1296,19 +1381,21 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                       <th className="py-2.5 px-3 border-b border-slate-200 w-56">
                         Đến số lượng (Q_max)
                       </th>
-                      <th className="py-2.5 px-3 border-b border-slate-200">
+                      <th className={`py-2.5 px-3 border-b border-slate-200 ${!isEditing ? 'rounded-tr-lg' : ''}`}>
                         Mức giảm ({formData.discountType === 'PERCENTAGE' ? '%' : 'VNĐ'})
                       </th>
-                      <th className="py-2.5 px-3 border-b border-slate-200 w-16 text-center rounded-tr-lg">
-                        Xóa
-                      </th>
+                      {isEditing && (
+                        <th className="py-2.5 px-3 border-b border-slate-200 w-16 text-center rounded-tr-lg">
+                          Xóa
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
                     {formData.tiers.map((tier, idx) => {
                       const isQMaxInvalid =
                         tier.maxQuantity !== null && tier.maxQuantity <= tier.minQuantity;
-                      const tierNotice = getTierNotice(tier.discountValue, formData.discountType);
+                      const tierNotice = isEditing ? getTierNotice(tier.discountValue, formData.discountType) : null;
 
                       return (
                         <tr key={idx} className="hover:bg-slate-50/50">
@@ -1320,6 +1407,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                           <td className="py-3 px-3 border-b border-slate-100 align-top">
                             <QuantityInput
                               value={tier.minQuantity}
+                              disabled={!isEditing}
                               onChange={(val) => handleTierChange(idx, 'minQuantity', val ?? 1)}
                               placeholder="Từ số lượng"
                             />
@@ -1329,12 +1417,13 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                           <td className="py-3 px-3 border-b border-slate-100 align-top">
                             <QuantityInput
                               value={tier.maxQuantity}
+                              disabled={!isEditing}
                               onChange={(val) => handleTierChange(idx, 'maxQuantity', val)}
                               placeholder="Không giới hạn"
                               allowNull={true}
-                              hasError={isQMaxInvalid}
+                              hasError={isEditing && isQMaxInvalid}
                             />
-                            {isQMaxInvalid && (
+                            {isEditing && isQMaxInvalid && (
                               <p className="mt-1 text-[11px] font-semibold text-rose-500 leading-tight">
                                 Q<sub>max</sub> ({tier.maxQuantity}) phải lớn hơn Q<sub>min</sub> (
                                 {tier.minQuantity})
@@ -1342,13 +1431,14 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                             )}
                           </td>
 
-                          {/* Mức giảm kèm Gợi ý thông minh & Cảnh báo hiển thị 1 dòng dưới chân ô input */}
+                          {/* Mức giảm kèm Gợi ý thông minh */}
                           <td className="py-3 px-3 border-b border-slate-100 align-top">
                             <DiscountValueInput
                               value={tier.discountValue}
                               discountType={formData.discountType}
+                              disabled={!isEditing}
                               onChange={(val) => handleTierChange(idx, 'discountValue', val)}
-                              hasError={Boolean(tierNotice && tierNotice.color.includes('rose'))}
+                              hasError={Boolean(isEditing && tierNotice && tierNotice.color.includes('rose'))}
                             />
                             {tierNotice && (
                               <p className={`mt-1 text-[11px] leading-tight ${tierNotice.color}`}>
@@ -1357,16 +1447,18 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                             )}
                           </td>
 
-                          {/* Nút xóa nấc */}
-                          <td className="py-3 px-3 border-b border-slate-100 text-center align-top pt-2">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveTier(idx)}
-                              className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
+                          {/* Nút xóa nấc - Chỉ hiện khi đang sửa */}
+                          {isEditing && (
+                            <td className="py-3 px-3 border-b border-slate-100 text-center align-top pt-2">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTier(idx)}
+                                className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       );
                     })}
@@ -1374,10 +1466,10 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                     {formData.tiers.length === 0 && (
                       <tr>
                         <td
-                          colSpan={5}
+                          colSpan={isEditing ? 5 : 4}
                           className="py-8 text-center text-slate-400 text-sm border-b border-slate-100"
                         >
-                          Chưa có nấc chiết khấu nào. Vui lòng thêm ít nhất 1 nấc.
+                          Chưa có nấc chiết khấu nào.
                         </td>
                       </tr>
                     )}
@@ -1388,52 +1480,72 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
           </form>
         </div>
 
-        {/* Footer: Vị trí áp chót chứa Ô Checkbox xác nhận bắt buộc + Hàng 2 nút hành động */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-3">
-          {/* Vị trí Áp chót: Ô Checkbox xác nhận bắt buộc */}
-          <div className="flex items-center">
-            <label className="inline-flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-slate-800 select-none bg-white border border-slate-200 hover:border-blue-400 px-3.5 py-2.5 rounded-xl shadow-2xs transition-all w-full sm:w-auto">
-              <input
-                type="checkbox"
-                checked={isConfirmed}
-                onChange={(e) => setIsConfirmed(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
-              />
-              <span>Tôi đã kiểm tra kỹ và xác nhận áp dụng chính sách chiết khấu này</span>
-            </label>
-          </div>
-
-          {/* Hàng chứa 2 nút Hủy bỏ và Lưu chính sách */}
-          <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-200/60">
+        {/* Footer: Thiết kế chuẩn UI_GUIDELINES: Nút h-[38px] rounded-lg */}
+        {!isEditing ? (
+          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3 rounded-b-xl">
             <button
               type="button"
-              onClick={handleRequestClose}
-              className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
-              disabled={isSubmitting}
+              onClick={onClose}
+              className="h-[38px] px-4 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer shadow-2xs"
             >
-              Hủy bỏ
+              Đóng
             </button>
             <button
-              type="submit"
-              form="discount-policy-form"
-              disabled={isSaveDisabled}
-              className={`inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-xl shadow-xs transition-colors cursor-pointer ${
-                isSaveDisabled
-                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-70'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20'
-              }`}
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="inline-flex items-center gap-1.5 h-[38px] px-4 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors cursor-pointer"
             >
-              {isSubmitting ? (
-                <>Đang lưu...</>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Lưu chính sách
-                </>
-              )}
+              <Edit2 className="w-3.5 h-3.5" />
+              <span>Chỉnh sửa</span>
             </button>
           </div>
-        </div>
+        ) : (
+          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-3 rounded-b-xl">
+            {/* Vị trí Áp chót: Ô Checkbox xác nhận bắt buộc */}
+            <div className="flex items-center">
+              <label className="inline-flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-slate-800 select-none bg-white border border-slate-200 hover:border-blue-400 px-3.5 py-2.5 rounded-lg shadow-2xs transition-all w-full sm:w-auto">
+                <input
+                  type="checkbox"
+                  checked={isConfirmed}
+                  onChange={(e) => setIsConfirmed(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                />
+                <span>Tôi đã kiểm tra kỹ và xác nhận áp dụng chính sách chiết khấu này</span>
+              </label>
+            </div>
+
+            {/* Hàng chứa 2 nút Hủy và Lưu */}
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-200/60">
+              <button
+                type="button"
+                onClick={isReadOnly ? handleCancelEdit : handleRequestClose}
+                className="h-[38px] px-4 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                disabled={isSubmitting}
+              >
+                {isReadOnly ? 'Hủy chỉnh sửa' : 'Hủy bỏ'}
+              </button>
+              <button
+                type="submit"
+                form="discount-policy-form"
+                disabled={isSaveDisabled}
+                className={`inline-flex items-center gap-1.5 h-[38px] px-5 text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer ${
+                  isSaveDisabled
+                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-70'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20'
+                }`}
+              >
+                {isSubmitting ? (
+                  <>Đang lưu...</>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Lưu chính sách</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <ConfirmDialog
@@ -1452,3 +1564,4 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
     </div>
   );
 };
+

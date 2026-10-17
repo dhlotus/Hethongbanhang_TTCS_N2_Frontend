@@ -960,25 +960,22 @@ export const PriceListsPage: React.FC = () => {
               <table className="w-full text-sm divide-y divide-slate-100">
                 <thead>
                   <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="px-4 py-3 text-center w-[5%]">
-                      STT
-                    </th>
-                    <th className="px-4 py-3 text-left w-[14%]">
+                    <th className="px-4 py-3 text-left w-[15%]">
                       Mã bảng giá
                     </th>
-                    <th className="px-4 py-3 text-left w-[26%]">
+                    <th className="px-4 py-3 text-left w-[28%]">
                       Tên bảng giá
                     </th>
-                    <th className="px-4 py-3 text-left w-[14%]">
+                    <th className="px-4 py-3 text-left w-[15%]">
                       Nhóm áp dụng
                     </th>
-                    <th className="px-4 py-3 text-left w-[16%]">
+                    <th className="px-4 py-3 text-left w-[18%]">
                       Thời gian hiệu lực
                     </th>
                     <th className="px-4 py-3 text-center w-[12%]">
                       Trạng thái
                     </th>
-                    <th className="px-4 py-3 text-center w-[13%]">
+                    <th className="px-4 py-3 text-center w-[12%]">
                       Ràng buộc đơn
                     </th>
                     <th className="px-4 py-3 text-right w-[10%] min-w-[105px]">
@@ -997,7 +994,7 @@ export const PriceListsPage: React.FC = () => {
                   ) : priceLists.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={7}
                         className="py-12 text-center text-slate-400 border-b border-slate-100"
                       >
                         <div className="flex flex-col items-center justify-center gap-2">
@@ -1023,16 +1020,11 @@ export const PriceListsPage: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    priceLists.map((pl, idx) => {
+                    priceLists.map((pl) => {
                       const isLocked = pl.hasOrders;
 
                       return (
                         <tr key={pl.id} className="hover:bg-indigo-50/25 transition-colors group">
-                          {/* STT */}
-                          <td className="px-4 py-3.5 text-center text-slate-400 font-mono text-xs">
-                            {(page - 1) * limit + idx + 1}
-                          </td>
-
                           {/* 1. Mã bảng giá: Hiển thị badge monospace chuẩn Quản lý đại lý, đã bỏ badge phiên bản */}
                           <td className="px-4 py-3.5 whitespace-nowrap">
                             <span className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-blue-700 bg-blue-50/80 border border-blue-200/60 px-2.5 py-1 rounded-md shadow-2xs group-hover:border-blue-300">
