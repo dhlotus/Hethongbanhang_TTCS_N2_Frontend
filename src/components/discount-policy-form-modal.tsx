@@ -5,7 +5,7 @@ import type {
   DiscountPolicy,
   CreateDiscountPolicyPayload,
 } from '../services/discount-policies.service';
-import { productsService } from '../services/products.service';
+import { productsService, INITIAL_MOCK_PRODUCTS, PRODUCT_CATEGORIES } from '../services/products.service';
 import { categoriesService } from '../services/categories.service';
 
 interface DiscountPolicyFormModalProps {
@@ -26,6 +26,25 @@ interface ScopeRow {
   type: 'SKU' | 'CATEGORY';
   items: TargetItem[];
 }
+
+/**
+ * Làm phẳng cây danh mục thành danh sách phân cấp trực quan có ký hiệu cây
+ */
+const flattenCategoryTree = (nodes: any[], depth = 0): TargetItem[] => {
+  let result: TargetItem[] = [];
+  for (const node of nodes) {
+    const prefix = depth > 0 ? `${'  '.repeat(depth)}└─ ` : '';
+    result.push({
+      code: node.code,
+      name: `${prefix}${node.name}`,
+    });
+    const children = node.children || node.subCategories;
+    if (Array.isArray(children) && children.length > 0) {
+      result = result.concat(flattenCategoryTree(children, depth + 1));
+    }
+  }
+  return result;
+};
 
 /**
  * Component ô nhập số lượng Q_min và Q_max:
@@ -349,6 +368,14 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Luôn đồng bộ danh sách đề xuất khi đổi loại phạm vi hoặc khi nạp xong Master Data
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      const cache = row.type === 'SKU' ? cachedProducts : cachedCategories;
+      setSuggestions(cache.slice(0, 50));
+    }
+  }, [row.type, cachedProducts, cachedCategories, searchTerm]);
+
   const handleSearchChange = (val: string) => {
     setSearchTerm(val);
     setRowError(null);
@@ -360,7 +387,7 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
 
     if (!val.trim()) {
       const cache = row.type === 'SKU' ? cachedProducts : cachedCategories;
-      setSuggestions(cache.slice(0, 10));
+      setSuggestions(cache.slice(0, 50));
       setIsSearching(false);
       return;
     }
@@ -369,25 +396,36 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
     debounceTimerRef.current = setTimeout(async () => {
       try {
         if (row.type === 'SKU') {
-          const res = await productsService.getProducts({ search: val.trim(), limit: 20 });
-          const items: TargetItem[] = (res.data || []).map((p: any) => ({
-            code: p.sku,
-            name: p.name,
-          }));
-          setSuggestions(items);
+          const q = val.trim().toLowerCase();
+          const localFiltered = cachedProducts.filter(
+            (p) => p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)
+          );
+          if (localFiltered.length > 0) {
+            setSuggestions(localFiltered.slice(0, 50));
+          }
+          try {
+            const res = await productsService.getProducts({ search: val.trim(), limit: 50 });
+            if (res.data && res.data.length > 0) {
+              const items: TargetItem[] = res.data.map((p: any) => ({
+                code: p.sku,
+                name: p.name,
+              }));
+              setSuggestions(items);
+            }
+          } catch {}
         } else {
           const q = val.trim().toLowerCase();
           const filtered = cachedCategories.filter(
             (c) => c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
           );
-          setSuggestions(filtered.slice(0, 20));
+          setSuggestions(filtered.slice(0, 50));
         }
       } catch (err) {
         // Xử lý ngầm hoặc ignore
       } finally {
         setIsSearching(false);
       }
-    }, 300);
+    }, 250);
   };
 
   const handleToggleSelect = (item: TargetItem) => {
@@ -433,15 +471,15 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
           return;
         }
       } catch {}
-      setRowError('Mã sản phẩm/nhóm hàng không tồn tại trong danh mục');
-      onErrorChange('Mã sản phẩm/nhóm hàng không tồn tại trong danh mục');
+      setRowError('Mã sản phẩm không tồn tại trong danh mục');
+      onErrorChange('Mã sản phẩm không tồn tại trong danh mục');
     } else {
       const found = cachedCategories.find((c) => c.code.toLowerCase() === trimmed.toLowerCase());
       if (found) {
         handleSelect(found);
       } else {
-        setRowError('Mã sản phẩm/nhóm hàng không tồn tại trong danh mục');
-        onErrorChange('Mã sản phẩm/nhóm hàng không tồn tại trong danh mục');
+        setRowError('Mã nhóm hàng không tồn tại trong danh mục');
+        onErrorChange('Mã nhóm hàng không tồn tại trong danh mục');
       }
     }
   };
@@ -458,10 +496,13 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
             value={row.type}
             disabled={disabled}
             onChange={(e) => {
-              onChangeType(e.target.value as any);
+              const nextType = e.target.value as any;
+              onChangeType(nextType);
               setSearchTerm('');
               setRowError(null);
               onErrorChange(null);
+              const cache = nextType === 'SKU' ? cachedProducts : cachedCategories;
+              setSuggestions(cache.slice(0, 50));
             }}
             className={`w-full px-3 py-1.5 border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 ${
               disabled
@@ -505,6 +546,10 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
             if (disabled) return;
             searchInputRef.current?.focus();
             setIsDropdownOpen(true);
+            if (!searchTerm.trim()) {
+              const cache = row.type === 'SKU' ? cachedProducts : cachedCategories;
+              setSuggestions(cache.slice(0, 50));
+            }
           }}
         >
           {/* Tags đã chọn */}
@@ -515,7 +560,7 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
             >
               <span className="font-semibold text-blue-900">[{item.code}]</span>
               <span className="truncate max-w-[180px]" title={item.name}>
-                {item.name}
+                {item.name.replace(/^[\s└─]+/, '')}
               </span>
               {!disabled && (
                 <button
@@ -547,9 +592,9 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
                 onChange={(e) => handleSearchChange(e.target.value)}
                 onFocus={() => {
                   setIsDropdownOpen(true);
-                  if (suggestions.length === 0) {
+                  if (!searchTerm.trim()) {
                     const cache = row.type === 'SKU' ? cachedProducts : cachedCategories;
-                    setSuggestions(cache.slice(0, 15));
+                    setSuggestions(cache.slice(0, 50));
                   }
                 }}
                 onKeyDown={(e) => {
@@ -563,7 +608,7 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
                 placeholder={
                   row.items.length === 0
                     ? row.type === 'SKU'
-                      ? 'Gõ mã hoặc tên SKU để tìm (VD: MILK-VIN-01)...'
+                      ? 'Gõ mã hoặc tên SKU để tìm (VD: LH-MILK-900G)...'
                       : 'Gõ mã hoặc tên nhóm hàng (VD: MILK)...'
                     : 'Tìm thêm...'
                 }
@@ -579,9 +624,9 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
         {/* Dropdown Đề xuất thông minh có ô tích (checkbox) để chọn nhiều sản phẩm */}
         {!disabled && isDropdownOpen && (
           <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg max-h-64 overflow-y-auto p-1.5 space-y-0.5">
-            <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-100 mb-1">
+            <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center justify-between border-b border-slate-100 mb-1">
               <span>
-                Danh sách {row.type === 'SKU' ? 'Sản phẩm' : 'Nhóm hàng'}
+                {row.type === 'SKU' ? 'Danh sách Sản phẩm chi tiết' : 'Cây danh mục Nhóm hàng'}
                 {row.items.length > 0 && ` (Đã chọn: ${row.items.length})`}
               </span>
               <button
@@ -621,11 +666,11 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
                         readOnly
                         className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 mr-2.5 pointer-events-none shrink-0"
                       />
-                      <div className="truncate">
-                        <span className="font-mono font-semibold text-slate-900">
+                      <div className="truncate font-mono">
+                        <span className="font-semibold text-slate-900">
                           [{item.code}]
                         </span>
-                        <span className="text-slate-600 ml-1.5">- {item.name}</span>
+                        <span className="text-slate-600 ml-1.5 font-sans">- {item.name}</span>
                       </div>
                     </div>
                   </div>
@@ -798,31 +843,42 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, handleRequestClose]);
 
-  // Tải Master Data cache
+  // Tải Master Data cache: Đảm bảo phân biệt rõ Cây nhóm hàng & Danh sách sản phẩm chi tiết
   useEffect(() => {
     if (!isOpen) return;
 
+    // 1. Tải danh sách sản phẩm chi tiết
     productsService
       .getProducts({ limit: 100 })
       .then((res) => {
-        const items: TargetItem[] = (res.data || []).map((p: any) => ({
-          code: p.sku,
-          name: p.name,
-        }));
-        setCachedProducts(items);
+        const list = res.data || [];
+        if (list.length > 0) {
+          const items: TargetItem[] = list.map((p: any) => ({
+            code: p.sku,
+            name: p.name,
+          }));
+          setCachedProducts(items);
+        } else {
+          setCachedProducts(INITIAL_MOCK_PRODUCTS.map((p) => ({ code: p.sku, name: p.name })));
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        setCachedProducts(INITIAL_MOCK_PRODUCTS.map((p) => ({ code: p.sku, name: p.name })));
+      });
 
+    // 2. Tải cây danh mục nhóm hàng phân cấp
     categoriesService
-      .getCategories()
-      .then((cats) => {
-        const items: TargetItem[] = (cats || []).map((c: any) => ({
-          code: c.code,
-          name: c.name,
-        }));
-        setCachedCategories(items);
+      .getCategoryTree()
+      .then((tree) => {
+        if (Array.isArray(tree) && tree.length > 0) {
+          setCachedCategories(flattenCategoryTree(tree));
+        } else {
+          setCachedCategories(flattenCategoryTree(PRODUCT_CATEGORIES));
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        setCachedCategories(flattenCategoryTree(PRODUCT_CATEGORIES));
+      });
   }, [isOpen]);
 
   // Khởi tạo dữ liệu khi mở Modal
@@ -914,65 +970,27 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
     );
   };
 
-  // Kiểm tra lỗi logic vi phạm bắt buộc chặn Lưu
-  const hasLogicError = useMemo(() => {
-    return formData.tiers.some((tier) => {
-      if (formData.discountType === 'PERCENTAGE') {
-        return tier.discountValue < 0 || tier.discountValue > 100;
-      } else {
-        return tier.discountValue < 0;
-      }
-    });
-  }, [formData.tiers, formData.discountType]);
-
-  const hasQMaxError = useMemo(() => {
-    return formData.tiers.some(
-      (tier) => tier.maxQuantity !== null && tier.maxQuantity <= tier.minQuantity
-    );
-  }, [formData.tiers]);
-
   const totalSelectedCount = useMemo(() => {
     return scopeRows.reduce((acc, r) => acc + r.items.length, 0);
   }, [scopeRows]);
 
-  const hasMasterDataErrors = Object.values(rowErrors).some((err) => Boolean(err));
-
-  // Trạng thái vô hiệu hóa nút Lưu (Bắt buộc phải tích checkbox xác nhận áp chót)
-  const isSaveDisabled = useMemo(() => {
-    if (isSubmitting) return true;
-    if (!isConfirmed) return true; // BẮT BỘC: Nếu ô Checkbox xác nhận CHƯA ĐƯỢC TÍCH, nút Lưu bị vô hiệu hóa
-    if (!formData.name.trim()) return true;
-    if (totalSelectedCount === 0) return true;
-    if (hasMasterDataErrors) return true;
-    if (formData.tiers.length === 0) return true;
-    if (hasLogicError) return true;
-    if (hasQMaxError) return true;
-    if (formData.startDate > formData.endDate) return true;
-    return false;
-  }, [
-    isSubmitting,
-    isConfirmed,
-    formData.name,
-    totalSelectedCount,
-    hasMasterDataErrors,
-    formData.tiers.length,
-    hasLogicError,
-    hasQMaxError,
-    formData.startDate,
-    formData.endDate,
-  ]);
-
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim()) newErrors.name = 'Tên chính sách không được để trống';
-    if (totalSelectedCount === 0)
+    if (!formData.name.trim()) {
+      newErrors.name = 'Vui lòng nhập tên chính sách';
+    }
+    if (totalSelectedCount === 0) {
       newErrors.targetId = 'Vui lòng chọn ít nhất 1 sản phẩm hoặc nhóm hàng';
-    if (formData.startDate > formData.endDate)
+    } else if (Object.values(rowErrors).some((err) => Boolean(err))) {
+      newErrors.targetId = 'Có mã không hợp lệ trong phạm vi áp dụng';
+    }
+    if (formData.startDate > formData.endDate) {
       newErrors.date = 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu';
+    }
 
     if (formData.tiers.length === 0) {
-      newErrors.tiers = 'Phải có ít nhất 1 nấc chiết khấu';
+      newErrors.tiers = 'Chính sách phải có ít nhất 1 nấc chiết khấu';
     } else {
       let tierError = '';
       const sortedTiers = [...formData.tiers].sort((a, b) => a.minQuantity - b.minQuantity);
@@ -980,11 +998,11 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
       for (let i = 0; i < sortedTiers.length; i++) {
         const tier = sortedTiers[i];
         if (tier.minQuantity < 1) {
-          tierError = 'Số lượng tối thiểu phải >= 1';
+          tierError = `Nấc ${i + 1}: Số lượng từ phải lớn hơn hoặc bằng 1`;
           break;
         }
         if (tier.maxQuantity !== null && tier.maxQuantity <= tier.minQuantity) {
-          tierError = `Nấc ${i + 1}: Q_max phải lớn hơn Q_min`;
+          tierError = `Nấc ${i + 1}: Số lượng đến (${tier.maxQuantity}) phải lớn hơn số lượng từ (${tier.minQuantity})`;
           break;
         }
         if (formData.discountType === 'PERCENTAGE') {
@@ -1001,12 +1019,16 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
         if (i > 0) {
           const prevTier = sortedTiers[i - 1];
           if (prevTier.maxQuantity === null || tier.minQuantity <= prevTier.maxQuantity) {
-            tierError = 'Các khoảng số lượng không được chồng chéo nhau';
+            tierError = 'Khoảng số lượng giữa các nấc chiết khấu không được chồng chéo nhau';
             break;
           }
         }
       }
       if (tierError) newErrors.tiers = tierError;
+    }
+
+    if (!isConfirmed) {
+      newErrors.confirmed = 'Vui lòng tích xác nhận áp dụng chính sách chiết khấu trước khi lưu';
     }
 
     setErrors(newErrors);
@@ -1437,10 +1459,10 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                         STT
                       </th>
                       <th className="py-2.5 px-3 border-b border-slate-200 w-48">
-                        Từ số lượng (Q_min)
+                        Từ số lượng
                       </th>
                       <th className="py-2.5 px-3 border-b border-slate-200 w-56">
-                        Đến số lượng (Q_max)
+                        Đến số lượng
                       </th>
                       <th className={`py-2.5 px-3 border-b border-slate-200 ${!isEditing ? 'rounded-tr-lg' : ''}`}>
                         Mức giảm ({formData.discountType === 'PERCENTAGE' ? '%' : 'VNĐ'})
@@ -1464,7 +1486,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                             {idx + 1}
                           </td>
 
-                          {/* Q_min */}
+                          {/* Từ số lượng */}
                           <td className="py-3 px-3 border-b border-slate-100 align-top">
                             <QuantityInput
                               value={tier.minQuantity}
@@ -1474,7 +1496,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                             />
                           </td>
 
-                          {/* Q_max kèm Real-time validation */}
+                          {/* Đến số lượng */}
                           <td className="py-3 px-3 border-b border-slate-100 align-top">
                             <QuantityInput
                               value={tier.maxQuantity}
@@ -1482,14 +1504,8 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                               onChange={(val) => handleTierChange(idx, 'maxQuantity', val)}
                               placeholder="Không giới hạn"
                               allowNull={true}
-                              hasError={isEditing && isQMaxInvalid}
+                              hasError={Boolean(errors.tiers && isQMaxInvalid)}
                             />
-                            {isEditing && isQMaxInvalid && (
-                              <p className="mt-1 text-[11px] font-semibold text-rose-500 leading-tight">
-                                Q<sub>max</sub> ({tier.maxQuantity}) phải lớn hơn Q<sub>min</sub> (
-                                {tier.minQuantity})
-                              </p>
-                            )}
                           </td>
 
                           {/* Mức giảm kèm Gợi ý thông minh */}
@@ -1563,16 +1579,31 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
         ) : (
           <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-3 rounded-b-xl">
             {/* Vị trí Áp chót: Ô Checkbox xác nhận bắt buộc */}
-            <div className="flex items-center">
+            <div className="flex flex-col gap-1">
               <label className="inline-flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-slate-800 select-none bg-white border border-slate-200 hover:border-blue-400 px-3.5 py-2.5 rounded-lg shadow-2xs transition-all w-full sm:w-auto">
                 <input
                   type="checkbox"
                   checked={isConfirmed}
-                  onChange={(e) => setIsConfirmed(e.target.checked)}
+                  onChange={(e) => {
+                    setIsConfirmed(e.target.checked);
+                    if (errors.confirmed) {
+                      setErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.confirmed;
+                        return next;
+                      });
+                    }
+                  }}
                   className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
                 />
                 <span>Tôi đã kiểm tra kỹ và xác nhận áp dụng chính sách chiết khấu này</span>
               </label>
+              {errors.confirmed && (
+                <p className="text-xs font-semibold text-rose-500 flex items-center gap-1.5 pl-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {errors.confirmed}
+                </p>
+              )}
             </div>
 
             {/* Hàng chứa 2 nút Hủy và Lưu */}
@@ -1588,11 +1619,9 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
               <button
                 type="submit"
                 form="discount-policy-form"
-                disabled={isSaveDisabled}
-                className={`inline-flex items-center gap-1.5 h-[38px] px-5 text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer ${
-                  isSaveDisabled
-                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-70'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20'
+                disabled={isSubmitting}
+                className={`inline-flex items-center gap-1.5 h-[38px] px-5 text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white shadow-blue-500/20 ${
+                  isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
                 }`}
               >
                 {isSubmitting ? (
