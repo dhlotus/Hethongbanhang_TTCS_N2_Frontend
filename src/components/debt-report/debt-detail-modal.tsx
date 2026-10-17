@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Building2,
   X,
@@ -18,12 +18,20 @@ const formatCurrency = (val: number): string => {
 
 /**
  * Modal Sổ Chi Tiết Công Nợ
- * Hiển thị 4 thẻ KPI công nợ cốt lõi + Thông tin đại lý & số ngày nợ hiện tại.
+ * Hiển thị 4 thẻ KPI công nợ cốt lõi + Khối Thông tin đại lý dạng danh sách dòng tối ưu.
  */
 export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({
   agency,
   onClose,
 }) => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   if (!agency) {
     return null;
   }
@@ -64,7 +72,7 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({
         className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-3xl w-full flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 1. Header: Chỉ hiển thị tên mục to [Sổ Chi Tiết Công Nợ] */}
+        {/* 1. Header: Tiêu đề Sổ Chi Tiết Công Nợ + Nút đóng X */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/80 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100/80 shadow-2xs">
@@ -157,57 +165,54 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({
             </div>
           </div>
 
-          {/* 3. Phần bên dưới: Hiển thị Mã đại lý, Tên đại lý, Số điện thoại và Đang nằm trong ngày nợ bao nhiêu */}
+          {/* 3. Phần Thông tin: Tối ưu mỗi mục (Mã, Tên, Số điện thoại, Ngày nợ) thành một dòng rõ ràng */}
           <div className="bg-slate-50/80 border border-slate-200/90 rounded-xl p-4 sm:p-5">
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3.5 flex items-center gap-1.5">
+            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-indigo-600" />
-              <span>Thông tin đại lý & Số ngày nợ hiện tại</span>
+              <span>THÔNG TIN</span>
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-              {/* Mã đại lý */}
-              <div className="sm:col-span-2 space-y-1">
-                <span className="text-xs text-slate-500 font-medium block">
+            <div className="divide-y divide-slate-200/70 text-sm">
+              {/* Dòng 1: Mã đại lý */}
+              <div className="py-2.5 grid grid-cols-1 sm:grid-cols-12 items-center gap-2 first:pt-0">
+                <span className="sm:col-span-3 text-xs text-slate-500 font-medium">
                   Mã đại lý
                 </span>
-                <div>
-                  <span className="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-1 rounded-md shadow-2xs whitespace-nowrap">
+                <div className="sm:col-span-9">
+                  <span className="inline-flex items-center font-mono text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-md shadow-2xs">
                     {agency.agencyCode}
                   </span>
                 </div>
               </div>
 
-              {/* Tên đại lý (Đủ độ rộng hiển thị trọn vẹn trên 1 dòng duy nhất) */}
-              <div className="sm:col-span-5 space-y-1 min-w-0">
-                <span className="text-xs text-slate-500 font-medium block">
+              {/* Dòng 2: Tên đại lý */}
+              <div className="py-2.5 grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
+                <span className="sm:col-span-3 text-xs text-slate-500 font-medium">
                   Tên đại lý
                 </span>
-                <p
-                  className="text-sm font-semibold text-slate-800 whitespace-nowrap truncate"
-                  title={agency.agencyName}
-                >
+                <p className="sm:col-span-9 font-semibold text-slate-800">
                   {agency.agencyName}
                 </p>
               </div>
 
-              {/* Số điện thoại */}
-              <div className="sm:col-span-2 space-y-1">
-                <span className="text-xs text-slate-500 font-medium block">
+              {/* Dòng 3: Số điện thoại */}
+              <div className="py-2.5 grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
+                <span className="sm:col-span-3 text-xs text-slate-500 font-medium">
                   Số điện thoại
                 </span>
-                <p className="text-sm font-semibold text-slate-700 font-mono flex items-center gap-1.5 whitespace-nowrap">
+                <p className="sm:col-span-9 font-semibold text-slate-700 font-mono flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   <span>{agency.phone || 'Chưa cập nhật'}</span>
                 </p>
               </div>
 
-              {/* Đang nằm trong ngày nợ bao nhiêu */}
-              <div className="sm:col-span-3 space-y-1">
-                <span className="text-xs text-slate-500 font-medium block">
+              {/* Dòng 4: Ngày nợ hiện tại */}
+              <div className="py-2.5 grid grid-cols-1 sm:grid-cols-12 items-center gap-2 last:pb-0">
+                <span className="sm:col-span-3 text-xs text-slate-500 font-medium">
                   Ngày nợ hiện tại
                 </span>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-sm font-bold font-mono text-slate-900 flex items-center gap-1 whitespace-nowrap">
+                <div className="sm:col-span-9 flex items-center gap-2">
+                  <span className="font-bold font-mono text-slate-900 flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>{debtDays} ngày</span>
                   </span>
@@ -216,17 +221,6 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Modal Footer */}
-        <div className="px-5 py-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-end shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer shadow-2xs"
-          >
-            Đóng
-          </button>
         </div>
       </div>
     </div>
