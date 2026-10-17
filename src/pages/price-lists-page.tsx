@@ -296,32 +296,42 @@ export const PriceListsPage: React.FC = () => {
       setActiveTab(urlTab);
     }
 
-    const urlStatus = parseStatusParam(searchParams.get('status'));
-    if (urlStatus !== selectedStatus) {
-      setSelectedStatus(urlStatus);
-    }
+    // Chỉ đồng bộ state bộ lọc của Bảng giá cơ sở khi đang đứng ở tab BASE
+    if (urlTab === 'BASE') {
+      const urlStatus = parseStatusParam(searchParams.get('status'));
+      if (urlStatus !== selectedStatus) {
+        setSelectedStatus(urlStatus);
+      }
 
-    const urlGroup = parseGroupParam(searchParams.get('group'));
-    if (urlGroup !== selectedGroup) {
-      setSelectedGroup(urlGroup);
-    }
+      const urlGroup = parseGroupParam(searchParams.get('group'));
+      if (urlGroup !== selectedGroup) {
+        setSelectedGroup(urlGroup);
+      }
 
-    const urlSearch = searchParams.get('search') || '';
-    if (urlSearch !== searchTerm) {
-      setSearchTerm(urlSearch);
-      setSearchInput(urlSearch);
-    }
+      const urlSearch = searchParams.get('search') || '';
+      if (urlSearch !== searchTerm) {
+        setSearchTerm(urlSearch);
+        setSearchInput(urlSearch);
+      }
 
-    const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
-    if (urlPage !== page) {
-      setPage(urlPage);
+      const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+      if (urlPage !== page) {
+        setPage(urlPage);
+      }
     }
   }, [searchParams, activeTab, selectedStatus, selectedGroup, searchTerm, page]);
 
   // Chuyển đổi tab hiển thị
   const handleTabChange = (newTab: 'BASE' | 'DISCOUNT') => {
     setActiveTab(newTab);
-    updateUrlParams({ tab: newTab });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', TAB_TO_PARAM[newTab]);
+        return next;
+      },
+      { replace: true }
+    );
   };
 
   // Thay đổi bộ lọc trạng thái
