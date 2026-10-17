@@ -4,7 +4,6 @@ import * as XLSX from 'xlsx';
 import { useSearchParams } from 'react-router-dom';
 import {
   Plus,
-  RefreshCw,
   Search,
   CheckCircle2,
   Clock,
@@ -166,6 +165,17 @@ export const PriceListsPage: React.FC = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [priceListToDelete, setPriceListToDelete] = useState<PriceList | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Modal xác nhận xuất Excel
+  const [exportModalConfig, setExportModalConfig] = useState<{
+    isOpen: boolean;
+    type: 'ALL' | 'SINGLE';
+    priceList?: PriceList | null;
+  }>({
+    isOpen: false,
+    type: 'ALL',
+    priceList: null,
+  });
 
   // Phân quyền người dùng: Chỉ ADMIN và SALES_MANAGER có quyền quản trị/tạo mới
   // Nhân viên kinh doanh (SALES_REP) chỉ có quyền xem
@@ -496,15 +506,18 @@ export const PriceListsPage: React.FC = () => {
   };
 
   // Helper hiển thị tên tiếng Việt nhóm khách hàng
-  const getCustomerGroupName = (group: CustomerGroupType) => {
+  const getCustomerGroupName = (group?: CustomerGroupType | string) => {
     switch (group) {
       case 'AGENT_LEVEL_1':
         return 'Đại lý Cấp 1';
       case 'AGENT_LEVEL_2':
         return 'Đại lý Cấp 2';
       case 'RETAIL':
-      default:
         return 'Bán lẻ Niêm yết';
+      case 'WHOLESALE':
+        return 'Bán buôn';
+      default:
+        return group || 'Tất cả Nhóm';
     }
   };
 
@@ -813,7 +826,7 @@ export const PriceListsPage: React.FC = () => {
           </div>
 
           {/* 3. Filter Toolbar: Tabs nhóm khách hàng, Search Box, Dropdown Trạng thái */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-4">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-4">
             {/* Tabs Nhóm khách hàng */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100 text-xs">
               {CUSTOMER_GROUP_TABS.map((tab) => {
@@ -823,7 +836,7 @@ export const PriceListsPage: React.FC = () => {
                     key={tab.key}
                     type="button"
                     onClick={() => handleGroupChange(tab.key)}
-                    className={`px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                    className={`px-3.5 py-1.5 rounded-lg font-semibold transition-all whitespace-nowrap cursor-pointer ${
                       isActive
                         ? 'bg-blue-600 text-white shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -844,7 +857,7 @@ export const PriceListsPage: React.FC = () => {
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Tìm theo mã bảng giá, tên bảng giá hoặc ghi chú..."
-                  className="w-full pl-9.5 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-medium"
+                  className="w-full h-[38px] pl-9.5 pr-8 text-xs rounded-lg border border-slate-200 bg-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-medium"
                 />
                 {searchInput && (
                   <button
@@ -868,7 +881,7 @@ export const PriceListsPage: React.FC = () => {
                 <select
                   value={selectedStatus}
                   onChange={(e) => handleStatusChange(e.target.value as PriceListStatusType | 'ALL')}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+                  className="w-full h-[38px] px-3 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer shadow-2xs"
                 >
                   <option value="ALL">Tất cả Trạng thái</option>
                   <option value="ACTIVE">Đang hiệu lực</option>
@@ -878,26 +891,12 @@ export const PriceListsPage: React.FC = () => {
                 </select>
               </div>
 
-              {/* Nút Làm mới */}
-              <button
-                type="button"
-                onClick={loadPriceLists}
-                disabled={loading}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer shrink-0 disabled:opacity-50"
-                title="Tải lại danh sách"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`}
-                />
-                <span className="hidden sm:inline">Làm mới</span>
-              </button>
-
               {/* Nút Bỏ lọc nếu có bộ lọc */}
               {(searchTerm || selectedStatus !== 'ALL' || selectedGroup !== 'ALL') && (
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/50 px-3.5 py-2 text-xs font-semibold text-rose-700 shadow-2xs hover:bg-rose-100/60 active:scale-[0.98] transition-all cursor-pointer shrink-0"
+                  className="inline-flex items-center justify-center gap-1.5 h-[38px] rounded-lg border border-rose-200 bg-rose-50/50 px-3.5 text-xs font-semibold text-rose-700 shadow-2xs hover:bg-rose-100/60 active:scale-[0.98] transition-all cursor-pointer shrink-0"
                   title="Đặt lại toàn bộ bộ lọc"
                 >
                   <RotateCcw className="h-3.5 w-3.5 text-rose-500" />
@@ -905,12 +904,12 @@ export const PriceListsPage: React.FC = () => {
                 </button>
               )}
 
-              {/* Nút Xuất danh sách bảng giá ra Excel */}
+              {/* Nút Xuất danh sách bảng giá ra Excel - mở Modal hỏi xác nhận */}
               <button
                 type="button"
-                onClick={handleExportAllPriceLists}
+                onClick={() => setExportModalConfig({ isOpen: true, type: 'ALL', priceList: null })}
                 disabled={priceLists.length === 0}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-1.5 h-[38px] rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-emerald-700 active:scale-[0.98] transition-all cursor-pointer shrink-0 disabled:opacity-50"
                 title="Xuất danh sách bảng giá ra tệp Excel (.xlsx)"
               >
                 <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
@@ -922,7 +921,7 @@ export const PriceListsPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleOpenCreateModal}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+                  className="inline-flex items-center justify-center gap-1.5 h-[38px] rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-[0.98] px-4 text-xs font-semibold text-white shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Thêm mới bảng giá</span>
@@ -930,20 +929,24 @@ export const PriceListsPage: React.FC = () => {
               )}
             </div>
 
-            {/* Thông tin bộ lọc đang áp dụng (nếu có) */}
+            {/* Thông tin bộ lọc đang áp dụng (Việt hóa hoàn toàn) */}
             {(searchTerm || selectedStatus !== 'ALL' || selectedGroup !== 'ALL') && (
               <div className="flex items-center text-xs text-blue-600 font-medium pt-2 border-t border-slate-100 gap-1.5">
                 <span>Đang lọc:</span>
-                {selectedStatus !== 'ALL' && <span>Trạng thái: {selectedStatus} • </span>}
-                {selectedGroup !== 'ALL' && <span>Nhóm: {selectedGroup} • </span>}
+                {selectedStatus !== 'ALL' && (
+                  <span>Trạng thái: {getStatusName(selectedStatus as PriceListStatusType)} • </span>
+                )}
+                {selectedGroup !== 'ALL' && (
+                  <span>Nhóm: {getCustomerGroupName(selectedGroup)} • </span>
+                )}
                 {searchTerm && <span>Từ khóa: &quot;{searchTerm}&quot;</span>}
               </div>
             )}
           </div>
 
           {/* 4. Table: Danh sách Bảng giá */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-            <div className="overflow-x-auto min-h-[360px]">
+          <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
               <table className="w-full text-sm divide-y divide-slate-100">
                 <thead>
                   <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -1209,7 +1212,7 @@ export const PriceListsPage: React.FC = () => {
                       onClick={() => {
                         setOpenActionMenuId(null);
                         setActionMenuAnchor(null);
-                        handleExportPriceList(pl);
+                        setExportModalConfig({ isOpen: true, type: 'SINGLE', priceList: pl });
                       }}
                       className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-emerald-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
                       title="Xuất chi tiết các mặt hàng của bảng giá ra tệp Excel (.xlsx)"
@@ -1322,6 +1325,99 @@ export const PriceListsPage: React.FC = () => {
             cancelText="Hủy bỏ"
             isDeleting={deleting}
           />
+
+          {/* 8. Modal Xác nhận Xuất Excel chuẩn UI_GUIDELINES */}
+          {exportModalConfig.isOpen &&
+            createPortal(
+              <div
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    setExportModalConfig({ isOpen: false, type: 'ALL', priceList: null });
+                  }
+                }}
+                className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+              >
+                <div
+                  className="w-full max-w-md bg-white rounded-xl border border-slate-200/90 shadow-2xl p-5 space-y-4 animate-in zoom-in-95 duration-150"
+                  role="dialog"
+                  aria-modal="true"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                        <FileSpreadsheet className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900">
+                          Xác nhận xuất tệp Excel
+                        </h3>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          {exportModalConfig.type === 'ALL'
+                            ? 'Xuất danh sách bảng giá'
+                            : 'Xuất chi tiết mặt hàng bảng giá'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setExportModalConfig({ isOpen: false, type: 'ALL', priceList: null })}
+                      className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                      title="Đóng"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-slate-600 leading-relaxed bg-slate-50/70 p-3.5 rounded-lg border border-slate-100 space-y-1.5">
+                    {exportModalConfig.type === 'ALL' ? (
+                      <p>
+                        Bạn có chắc chắn muốn xuất toàn bộ{' '}
+                        <strong className="text-slate-900 font-bold">{priceLists.length}</strong> bảng giá
+                        đang hiển thị ra tệp Excel (<span className="font-mono text-emerald-700 font-semibold">.xlsx</span>) không?
+                      </p>
+                    ) : (
+                      <p>
+                        Bạn có chắc chắn muốn xuất chi tiết bảng giá{' '}
+                        <strong className="text-slate-900 font-bold">&quot;{exportModalConfig.priceList?.name}&quot;</strong>{' '}
+                        [<span className="font-mono text-blue-700 font-semibold">{exportModalConfig.priceList?.code}</span>] gồm{' '}
+                        <strong className="text-slate-900 font-bold">{exportModalConfig.priceList?.items?.length || 0}</strong> mặt hàng
+                        ra tệp Excel (<span className="font-mono text-emerald-700 font-semibold">.xlsx</span>) không?
+                      </p>
+                    )}
+                    <p className="text-[11px] text-slate-400">
+                      Tệp Excel sau khi xuất có thể mở trực tiếp bằng Microsoft Excel hoặc Google Trang tính.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setExportModalConfig({ isOpen: false, type: 'ALL', priceList: null })}
+                      className="h-[38px] px-4 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-all shadow-2xs cursor-pointer"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const config = exportModalConfig;
+                        setExportModalConfig({ isOpen: false, type: 'ALL', priceList: null });
+                        if (config.type === 'ALL') {
+                          handleExportAllPriceLists();
+                        } else if (config.priceList) {
+                          handleExportPriceList(config.priceList);
+                        }
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 h-[38px] px-4 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      <span>Xác nhận xuất</span>
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )}
         </>
       ) : (
         <DiscountPoliciesTab canManage={canManage} />
