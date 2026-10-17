@@ -58,16 +58,16 @@ export const TripReturnCheckinModal: React.FC<TripReturnCheckinModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
       <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-amber-50/70">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-sm">
-              <RotateCcw className="h-5 w-5" />
+        <div className="flex items-center justify-between p-4 sm:p-4.5 border-b border-slate-200 bg-white">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
+              <RotateCcw className="w-4 h-4" />
             </div>
             <div>
-              <span className="font-mono text-xs font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded">
+              <span className="font-mono text-xs font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                 {trip.tripCode}
               </span>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 mt-0.5">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 mt-1">
                 Đối soát xe về kho & Nhập lại hàng chưa giao
               </h2>
             </div>
@@ -76,9 +76,9 @@ export const TripReturnCheckinModal: React.FC<TripReturnCheckinModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
           >
-            <X className="h-5 w-5" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 

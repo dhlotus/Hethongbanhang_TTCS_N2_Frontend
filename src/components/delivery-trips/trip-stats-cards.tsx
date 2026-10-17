@@ -2,10 +2,8 @@ import React from 'react';
 import {
   Truck,
   AlertTriangle,
-  Clock,
-  PackageCheck,
   RotateCcw,
-  ShieldAlert,
+  CheckCircle2,
 } from 'lucide-react';
 import type { GoodsInTransitStats } from '../../types/delivery-trip';
 import { formatVndCurrency } from '../../utils/delivery-format';
@@ -16,146 +14,143 @@ interface TripStatsCardsProps {
 }
 
 /**
- * Thẻ thống kê KPI Tiền hàng trên đường & Cảnh báo trễ hạn (SN-194 / SN-197)
+ * Thẻ thống kê KPI Tiền hàng trên đường chuẩn LOHA SALES (Giao diện chuẩn Corporate SaaS, tinh tế, không màu mè)
  */
 export const TripStatsCards: React.FC<TripStatsCardsProps> = ({ stats, loading = false }) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      {/* 1. Tổng tiền hàng đang nằm trên đường */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-900 via-indigo-800 to-indigo-950 p-5 text-white shadow-lg border border-indigo-700/50">
-        <div className="absolute right-3 top-3 opacity-15">
-          <Truck className="h-24 w-24 text-white" />
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 mb-5">
+      {/* 1. Tiền hàng trên đường */}
+      <div className="bg-white p-4.5 rounded-xl border border-slate-200 shadow-2xs hover:shadow-xs transition-all flex items-center">
+        <div className="w-11 h-11 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0">
+          <Truck className="w-5 h-5" />
         </div>
-        <div className="relative z-10">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-200">
+        <div className="ml-3.5 w-0 flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-1">
+            <span className="truncate text-xs font-medium text-slate-500 uppercase tracking-wider">
               Tiền hàng trên đường
             </span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-semibold bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
-              Đang vận chuyển
+            <span className="text-2xs font-semibold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200/60 shrink-0">
+              {stats?.activeTripsCount || 0} xe
             </span>
           </div>
-
-          <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white my-1 font-mono">
+          <div className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-slate-900 font-mono truncate">
             {loading ? (
-              <div className="h-8 w-36 bg-indigo-700/60 animate-pulse rounded" />
+              <div className="h-7 w-28 bg-slate-200 animate-pulse rounded" />
             ) : (
               formatVndCurrency(stats?.totalGoodsValueInTransit || 0)
             )}
           </div>
-
-          <p className="text-xs text-indigo-200/90 mt-2 flex items-center gap-1.5">
-            <PackageCheck className="h-3.5 w-3.5 text-indigo-300 shrink-0" />
-            <span>
-              {loading
-                ? 'Đang tính toán...'
-                : `Thuộc ${stats?.activeTripsCount || 0} chuyến xe đang chạy trên tuyến`}
-            </span>
+          <p className="text-2xs text-slate-400 mt-0.5 truncate">
+            Đang luân chuyển trên tuyến giao
           </p>
         </div>
       </div>
 
-      {/* 2. Cảnh báo chuyến đi quá thời gian dự kiến */}
+      {/* 2. Chuyến quá hạn dự kiến */}
       <div
-        className={`relative overflow-hidden rounded-2xl p-5 shadow-sm border transition-all ${
+        className={`p-4.5 rounded-xl border transition-all flex items-center ${
           (stats?.overdueTripsCount || 0) > 0
-            ? 'bg-rose-50/90 border-rose-200 text-rose-950 ring-2 ring-rose-500/20'
-            : 'bg-white border-slate-200 text-slate-800'
+            ? 'bg-rose-50/40 border-rose-200 shadow-2xs'
+            : 'bg-white border-slate-200 shadow-2xs hover:shadow-xs'
         }`}
       >
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Chuyến quá hạn dự kiến
-          </span>
-          {(stats?.overdueTripsCount || 0) > 0 ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold bg-rose-100 text-rose-700 border border-rose-300 animate-pulse">
-              <AlertTriangle className="h-3 w-3" />
-              Cảnh báo khẩn
-            </span>
-          ) : (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-              Đúng tiến độ
-            </span>
-          )}
+        <div
+          className={`w-11 h-11 rounded-lg border flex items-center justify-center shrink-0 ${
+            (stats?.overdueTripsCount || 0) > 0
+              ? 'bg-rose-50 text-rose-600 border-rose-200'
+              : 'bg-slate-50 text-slate-500 border-slate-200'
+          }`}
+        >
+          <AlertTriangle className="w-5 h-5" />
         </div>
-
-        <div className="flex items-baseline gap-2 my-1">
-          <div
-            className={`text-2xl sm:text-3xl font-extrabold tracking-tight font-mono ${
-              (stats?.overdueTripsCount || 0) > 0 ? 'text-rose-600' : 'text-slate-900'
-            }`}
-          >
-            {loading ? (
-              <div className="h-8 w-16 bg-slate-200 animate-pulse rounded" />
-            ) : (
-              stats?.overdueTripsCount || 0
+        <div className="ml-3.5 w-0 flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-1">
+            <span className="truncate text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Quá hạn dự kiến
+            </span>
+            {(stats?.overdueTripsCount || 0) > 0 && (
+              <span className="text-2xs font-semibold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200 shrink-0">
+                Cần xử lý
+              </span>
             )}
           </div>
-          <span className="text-sm font-medium text-slate-500">chuyến xe</span>
-        </div>
-
-        <p className="text-xs text-slate-600 mt-2 flex items-center gap-1.5">
-          <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-          <span>
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <span
+              className={`text-xl sm:text-2xl font-bold tracking-tight font-mono ${
+                (stats?.overdueTripsCount || 0) > 0 ? 'text-rose-600' : 'text-slate-900'
+              }`}
+            >
+              {loading ? (
+                <div className="h-7 w-12 bg-slate-200 animate-pulse rounded" />
+              ) : (
+                stats?.overdueTripsCount || 0
+              )}
+            </span>
+            <span className="text-xs text-slate-400 font-medium">chuyến</span>
+          </div>
+          <p className="text-2xs text-slate-400 mt-0.5 truncate">
             {(stats?.overdueTripsCount || 0) > 0
-              ? 'Vượt mốc ETA, cần liên hệ tài xế kiểm tra'
-              : '100% chuyến xe đang trong khung giờ an toàn'}
-          </span>
-        </p>
+              ? 'Đã vượt mốc thời gian cam kết'
+              : 'Đúng khung giờ tiến độ'}
+          </p>
+        </div>
       </div>
 
-      {/* 3. Hàng chưa giao được vẫn giữ trên xe */}
-      <div className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm border border-slate-200">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Hàng giữ trên xe
-          </span>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-            <ShieldAlert className="h-3 w-3" />
-            Chưa về kho
-          </span>
+      {/* 3. Hàng giữ trên xe (Chưa về kho) */}
+      <div className="bg-white p-4.5 rounded-xl border border-slate-200 shadow-2xs hover:shadow-xs transition-all flex items-center">
+        <div className="w-11 h-11 rounded-lg bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
+          <RotateCcw className="w-5 h-5" />
         </div>
-
-        <div className="text-xl sm:text-2xl font-bold tracking-tight text-amber-700 my-1 font-mono">
-          {loading ? (
-            <div className="h-8 w-28 bg-slate-200 animate-pulse rounded" />
-          ) : (
-            formatVndCurrency(stats?.totalRetainedUndeliveredValue || 0)
-          )}
-        </div>
-
-        <p className="text-xs text-slate-600 mt-2 flex items-center gap-1.5">
-          <RotateCcw className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-          <span>Thuộc trách nhiệm chuyến đi, chờ đối soát về kho</span>
-        </p>
-      </div>
-
-      {/* 4. Tổng số điểm giao còn lại */}
-      <div className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm border border-slate-200">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Điểm dừng chờ giao
-          </span>
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-medium bg-sky-50 text-sky-700 border border-sky-200">
-            Chưa bàn giao
-          </span>
-        </div>
-
-        <div className="flex items-baseline gap-2 my-1">
-          <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 font-mono">
+        <div className="ml-3.5 w-0 flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-1">
+            <span className="truncate text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Hàng giữ trên xe
+            </span>
+            <span className="text-2xs font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
+              Chưa về kho
+            </span>
+          </div>
+          <div className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-slate-900 font-mono truncate">
             {loading ? (
-              <div className="h-8 w-16 bg-slate-200 animate-pulse rounded" />
+              <div className="h-7 w-28 bg-slate-200 animate-pulse rounded" />
             ) : (
-              stats?.totalRemainingStops || 0
+              formatVndCurrency(stats?.totalRetainedUndeliveredValue || 0)
             )}
           </div>
-          <span className="text-sm font-medium text-slate-500">đại lý</span>
+          <p className="text-2xs text-slate-400 mt-0.5 truncate">
+            Thuộc trách nhiệm chuyến, chờ đối soát
+          </p>
         </div>
+      </div>
 
-        <p className="text-xs text-slate-600 mt-2 flex items-center gap-1.5">
-          <PackageCheck className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-          <span>Hôm nay đã hoàn thành {stats?.completedTripsToday || 0} chuyến</span>
-        </p>
+      {/* 4. Điểm dừng chờ giao */}
+      <div className="bg-white p-4.5 rounded-xl border border-slate-200 shadow-2xs hover:shadow-xs transition-all flex items-center">
+        <div className="w-11 h-11 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+          <CheckCircle2 className="w-5 h-5" />
+        </div>
+        <div className="ml-3.5 w-0 flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-1">
+            <span className="truncate text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Điểm chờ giao
+            </span>
+            <span className="text-2xs font-semibold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+              Chưa bàn giao
+            </span>
+          </div>
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <span className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 font-mono">
+              {loading ? (
+                <div className="h-7 w-12 bg-slate-200 animate-pulse rounded" />
+              ) : (
+                stats?.totalRemainingStops || 0
+              )}
+            </span>
+            <span className="text-xs text-slate-400 font-medium">điểm dừng</span>
+          </div>
+          <p className="text-2xs text-slate-400 mt-0.5 truncate">
+            Hôm nay xong {stats?.completedTripsToday || 0} chuyến
+          </p>
+        </div>
       </div>
     </div>
   );

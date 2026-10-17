@@ -83,27 +83,27 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
       <div className="relative w-full max-w-4xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Header Modal */}
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-slate-50/70">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
-              <Truck className="h-5 w-5" />
+        <div className="flex items-center justify-between p-4 sm:p-4.5 border-b border-slate-200 bg-white">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center shrink-0">
+              <Truck className="w-4 h-4" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                   {trip.tripCode}
                 </span>
-                <span className="font-mono text-xs font-semibold text-slate-700 bg-slate-200 px-2 py-0.5 rounded">
+                <span className="font-mono text-xs font-semibold text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
                   {trip.vehicleNumber}
                 </span>
                 {trip.isOverdue && trip.status === 'IN_TRANSIT' && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-300 animate-pulse">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    Quá hạn {trip.overdueMinutes} phút
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                    <AlertTriangle className="w-3 h-3 text-rose-600" />
+                    Trễ {trip.overdueMinutes}p
                   </span>
                 )}
               </div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 mt-1">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 mt-0.5">
                 {trip.tripName}
               </h2>
             </div>
@@ -112,9 +112,9 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
           >
-            <X className="h-5 w-5" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 

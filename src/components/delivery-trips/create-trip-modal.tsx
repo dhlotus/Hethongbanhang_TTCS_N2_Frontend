@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Truck } from 'lucide-react';
+import { X, Truck } from 'lucide-react';
 import type { CreateDeliveryTripPayload } from '../../types/delivery-trip';
 
 interface CreateTripModalProps {
@@ -100,10 +100,10 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
       <div className="relative w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-indigo-50/60">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 bg-slate-50/80">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
-              <Plus className="h-5 w-5" />
+            <div className="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center">
+              <Truck className="h-5 w-5" />
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-bold text-slate-900">
@@ -118,7 +118,7 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
