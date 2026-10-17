@@ -25,6 +25,66 @@ export interface Shipment {
   deliveredAt?: string;
   createdAt: string;
   updatedAt: string;
+  items?: {
+    id?: string;
+    sku_code?: string;
+    skuCode?: string;
+    product_name?: string;
+    productName?: string;
+    quantity_requested?: number;
+    quantity?: number;
+    selected_batch_no?: string;
+    selectedBatchNo?: string;
+    fefo_suggested_batch_no?: string;
+    fefoSuggestedBatchNo?: string;
+    is_overridden?: boolean;
+    isOverridden?: boolean;
+    override_reason?: string | null;
+    overrideReason?: string | null;
+  }[];
+}
+
+export interface BatchItem {
+  id: string;
+  batchNumber: string;
+  batchNo?: string;
+  productSku: string;
+  productName?: string;
+  manufacturingDate?: string;
+  expiryDate: string;
+  quantity: number;
+  availableQuantity: number;
+  warehouseId?: string;
+  warehouseName?: string;
+  isFefoRecommended?: boolean;
+}
+
+export interface FefoSuggestionResult {
+  suggestedBatch: BatchItem | null;
+  allBatches: BatchItem[];
+  isSufficient: boolean;
+  requiredQuantity: number;
+}
+
+export interface CreateShipmentItemPayload {
+  sku_code: string;
+  product_name?: string;
+  quantity_requested: number;
+  selected_batch_no: string;
+  fefo_suggested_batch_no?: string;
+  is_overridden: boolean;
+  override_reason?: string | null;
+}
+
+export interface CreateShipmentPayload {
+  order_id: string;
+  warehouse_id: string;
+  customer_name?: string;
+  receiver_name?: string;
+  phone?: string;
+  delivery_address?: string;
+  shipping_carrier?: string;
+  items: CreateShipmentItemPayload[];
 }
 
 export interface ConfirmDeliveryPayload {
@@ -71,6 +131,12 @@ export const shipmentsService = {
   },
 
   async getShipmentById(id: string): Promise<Shipment> {
+    try {
+      const res = await apiClient.get<Shipment>(`/inventory/shipments/${id}`);
+      if (res.data) return res.data;
+    } catch {
+      // Fallback to general shipments endpoint
+    }
     const res = await apiClient.get<Shipment>(`/shipments/${id}`);
     return res.data;
   },
@@ -79,6 +145,49 @@ export const shipmentsService = {
     const res = await apiClient.post<Shipment>('/shipments', data);
     notifyOrderSync(res.data);
     return res.data;
+  },
+
+  /** SN-188: Tạo phiếu xuất kho kèm chi tiết lô xuất FEFO và kiểm soát ghi đè */
+  async createFefoShipment(payload: CreateShipmentPayload): Promise<Shipment> {
+    const res = await apiClient.post<Shipment>('/inventory/shipments', payload);
+    notifyOrderSync(res.data);
+    return res.data;
+  },
+
+  /** SN-188: Gợi ý lô xuất kho theo nguyên tắc FEFO */
+  async suggestFefo(params: {
+    skuCode: string;
+    quantity: number;
+    warehouseId?: string;
+  }): Promise<FefoSuggestionResult> {
+    const res = await apiClient.get<FefoSuggestionResult>('/inventory/batches/suggest-fefo', {
+      params: {
+        skuCode: params.skuCode,
+        quantity: params.quantity,
+        warehouseId: params.warehouseId,
+      },
+    });
+    return res.data;
+  },
+
+  /** SN-188: Lấy danh sách tất cả các lô khả dụng của một SKU tại kho (phục vụ Popup Đổi Lô) */
+  async getBatchesBySku(params: {
+    skuCode: string;
+    warehouseId?: string;
+  }): Promise<BatchItem[]> {
+    const res = await apiClient.get<any>('/inventory/batches/by-sku', {
+      params: {
+        skuCode: params.skuCode,
+        warehouseId: params.warehouseId,
+      },
+    });
+    if (Array.isArray(res.data)) {
+      return res.data;
+    }
+    if (res.data && Array.isArray(res.data.batches)) {
+      return res.data.batches;
+    }
+    return [];
   },
 
   async updateStatus(id: string, status: Shipment['status'], data?: Partial<Shipment>): Promise<Shipment> {
@@ -112,4 +221,5 @@ export const shipmentsService = {
     return res.data;
   },
 };
+
 

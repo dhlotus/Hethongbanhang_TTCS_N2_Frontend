@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Truck,
   Plus,
@@ -113,6 +114,7 @@ const TRIP_STATUS_CONFIG: Record<
 };
 
 export const ShipmentsPage: React.FC = () => {
+  const navigate = useNavigate();
   const user = getStoredUser();
   const roles = user?.roles || [];
   const isAdmin = roles.includes(USER_ROLES.ADMIN);
@@ -576,8 +578,8 @@ export const ShipmentsPage: React.FC = () => {
 
           {canCreate && (
             <button
-              onClick={() => setIsCreateOpen(true)}
-              className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-all shadow-2xs cursor-pointer"
+              onClick={() => navigate('/inventory/shipments/create')}
+              className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Tạo Phiếu Lẻ</span>
@@ -744,7 +746,14 @@ export const ShipmentsPage: React.FC = () => {
                       return (
                         <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
                           <td className="py-3.5 px-4">
-                            <span className="font-semibold text-indigo-600 font-mono">{item.id}</span>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/inventory/shipments/${item.id}`)}
+                              className="font-semibold text-indigo-600 hover:text-indigo-800 hover:underline font-mono cursor-pointer text-left block"
+                              title="Xem chi tiết phiếu xuất kho và lô hàng"
+                            >
+                              {item.id}
+                            </button>
                             <div className="text-[11px] text-slate-400 mt-0.5">
                               {new Date(item.createdAt).toLocaleDateString('vi-VN')}
                             </div>
@@ -828,6 +837,16 @@ export const ShipmentsPage: React.FC = () => {
 
                           <td className="py-3.5 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
+                              {/* Nút Xem chi tiết phiếu xuất kho */}
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/inventory/shipments/${item.id}`)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                                title="Xem chi tiết phiếu xuất kho & lô hàng FEFO"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-slate-500" />
+                                Chi tiết
+                              </button>
                               {/* SN-198: Nút Xác nhận giao hàng khi đơn đang giao */}
                               {canUpdateStatus && item.status === 'SHIPPED' && (
                                 <button
