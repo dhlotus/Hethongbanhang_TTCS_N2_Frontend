@@ -20,6 +20,72 @@ import { matchesSearchTerm, removeVietnameseTones } from '../utils/vietnamese';
 
 export const DEMO_CUSTOMERS_DATA: Customer[] = [
   {
+    id: 'cust-dl-0001',
+    code: 'DL-0001',
+    name: 'Công Ty TNHH Thương Mại & Phân Phối Minh Khang',
+    taxCode: '0316789001',
+    customerGroup: 'AGENT_LEVEL_1',
+    region: 'Miền Nam',
+    salesRepId: 'usr-sale-01',
+    salesRepName: 'Trần Văn Long',
+    salesRep: { id: 'usr-sale-01', name: 'Trần Văn Long' },
+    creditLimit: 500000000,
+    currentDebt: 45000000,
+    maxDebtDays: 45,
+    phone: '0901234561',
+    email: 'minhkhang.dist@lohasales.vn',
+    address: '123 Nguyễn Trọng Tuyển, P.8, Q.Phú Nhuận, TP.HCM',
+    status: CustomerStatus.ACTIVE,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0001-1',
+        customerId: 'cust-dl-0001',
+        name: 'Kho Tổng Phú Nhuận',
+        address: '123 Nguyễn Trọng Tuyển, Phường 8, Quận Phú Nhuận, TP.HCM',
+        ward: 'Phường 8',
+        district: 'Quận Phú Nhuận',
+        province: 'TP. Hồ Chí Minh',
+        receiverName: 'Anh Nguyễn Minh Khang',
+        phone: '0901234561',
+        roadNote: 'Đường 2 chiều, xe tải 5T vào thoải mái, giao giờ hành chính',
+        isDefault: true,
+      },
+    ],
+  },
+  {
+    id: 'cust-dl-0002',
+    code: 'DL-0002',
+    name: 'Đại Lý Bán Buôn An Bình',
+    taxCode: '0316789002',
+    customerGroup: 'AGENT_LEVEL_1',
+    region: 'Miền Nam',
+    salesRepId: 'usr-sale-01',
+    salesRepName: 'Trần Văn Long',
+    salesRep: { id: 'usr-sale-01', name: 'Trần Văn Long' },
+    creditLimit: 400000000,
+    currentDebt: 28000000,
+    maxDebtDays: 45,
+    phone: '0901234562',
+    email: 'daily@loha.vn',
+    address: '88 Quốc Lộ 13, P.Hiệp Bình Chánh, TP.Thủ Đức, TP.HCM',
+    status: CustomerStatus.ACTIVE,
+    deliveryPoints: [
+      {
+        id: 'dp-dl-0002-1',
+        customerId: 'cust-dl-0002',
+        name: 'Kho Phân Phối Thủ Đức',
+        address: '88 Quốc Lộ 13, P.Hiệp Bình Chánh, TP.Thủ Đức, TP.HCM',
+        ward: 'Phường Hiệp Bình Chánh',
+        district: 'TP. Thủ Đức',
+        province: 'TP. Hồ Chí Minh',
+        receiverName: 'Anh Vũ Toàn Cầu',
+        phone: '0901234562',
+        roadNote: 'Kho mặt tiền QL13, bốc xếp xe container 24/7',
+        isDefault: true,
+      },
+    ],
+  },
+  {
     id: 'cust-001',
     code: 'DL-HCM-001',
     name: 'Cửa Hàng Thực Phẩm Tiêu Dùng Minh Khang',
@@ -303,6 +369,25 @@ export function getStoredCustomers(): Customer[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
+        // Đảm bảo các đại lý chuẩn (DL-0001, DL-0002) luôn có mặt
+        const existingIds = new Set(parsed.map((c: Customer) => c.id));
+        let hasNew = false;
+        for (const demo of DEMO_CUSTOMERS_DATA) {
+          const idx = parsed.findIndex((c: Customer) => c.id === demo.id);
+          if (idx >= 0) {
+            if (demo.id === 'cust-dl-0002' && parsed[idx].email !== demo.email) {
+              parsed[idx] = { ...parsed[idx], ...demo };
+              hasNew = true;
+            }
+          } else {
+            parsed.unshift(demo);
+            existingIds.add(demo.id);
+            hasNew = true;
+          }
+        }
+        if (hasNew) {
+          localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(parsed));
+        }
         return parsed as Customer[];
       }
     }

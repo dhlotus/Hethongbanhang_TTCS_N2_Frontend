@@ -13,55 +13,39 @@ export const ProductsTableSkeleton: React.FC<{
       {Array.from({ length: count }).map((_, idx) => (
         <tr key={idx} className="animate-pulse">
           {/* Cột 1: Mã SKU */}
-          <td className="border-b border-slate-100 px-4 py-3.5 whitespace-nowrap w-36">
+          <td className="border-b border-slate-100 px-5 py-4 whitespace-nowrap">
             <div className="h-4 w-20 bg-slate-200 rounded-md" />
           </td>
 
-          {/* Cột 2: Sản phẩm (Ảnh + Tên) */}
-          <td className="border-b border-slate-100 px-4 py-3.5">
+          {/* Cột 2: Tên sản phẩm */}
+          <td className="border-b border-slate-100 px-4 py-4">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl bg-slate-200/80 shrink-0 shadow-2xs" />
-              <div className="space-y-1.5 flex-1 max-w-[240px]">
-                <div
-                  className="h-4 bg-slate-200 rounded-md"
-                  style={{ width: `${75 + (idx % 3) * 10}%` }}
-                />
-                <div className="h-3 w-28 bg-slate-100 rounded-md" />
-              </div>
+              <div
+                className="h-4 bg-slate-200 rounded-md flex-1 max-w-[240px]"
+                style={{ width: `${70 + (idx % 3) * 10}%` }}
+              />
             </div>
           </td>
 
-          {/* Cột 3: Nhóm hàng */}
-          <td className="border-b border-slate-100 px-4 py-3.5 w-48">
-            <div className="space-y-1 max-w-[180px]">
-              <div className="h-5 w-24 bg-purple-100/70 rounded-md" />
-              <div className="h-3 w-28 bg-slate-100 rounded-md" />
-            </div>
+          {/* Cột 3: Tồn kho */}
+          <td className="border-b border-slate-100 px-4 py-4 text-center whitespace-nowrap">
+            <div className="h-4 w-14 mx-auto bg-slate-200 rounded-md" />
           </td>
 
-          {/* Cột 4: ĐVT */}
-          <td className="border-b border-slate-100 px-4 py-3.5 text-center whitespace-nowrap w-24">
-            <div className="h-4 w-12 mx-auto bg-blue-100/60 rounded-md" />
-          </td>
-
-          {/* Cột 5: Giá niêm yết */}
-          <td className="border-b border-slate-100 px-4 py-3.5 text-right whitespace-nowrap w-36">
+          {/* Cột 4: Giá niêm yết */}
+          <td className="border-b border-slate-100 px-4 py-4 text-right whitespace-nowrap">
             <div className="h-4 w-20 ml-auto bg-slate-200 rounded-md" />
           </td>
 
-          {/* Cột 6: Tồn kho */}
-          <td className="border-b border-slate-100 px-4 py-3.5 text-center whitespace-nowrap w-32">
-            <div className="h-6 w-16 mx-auto bg-slate-100 rounded-md" />
+          {/* Cột 5: Trạng thái */}
+          <td className="border-b border-slate-100 px-3 py-4 text-center whitespace-nowrap">
+            <div className="h-6 w-20 mx-auto bg-slate-100 rounded-full" />
           </td>
 
-          {/* Cột 7: Trạng thái */}
-          <td className="border-b border-slate-100 px-4 py-3.5 text-center whitespace-nowrap w-36">
-            <div className="h-6 w-24 mx-auto bg-slate-100 rounded-full" />
-          </td>
-
-          {/* Cột 8: Thao tác */}
-          <td className="border-b border-slate-100 px-4 py-3.5 text-center whitespace-nowrap w-32">
-            <div className="h-8 w-24 mx-auto bg-slate-100 rounded-lg" />
+          {/* Cột 6: Thao tác */}
+          <td className="border-b border-slate-100 px-3 py-4 text-center whitespace-nowrap">
+            <div className="h-7 w-14 mx-auto bg-slate-100 rounded-xl" />
           </td>
         </tr>
       ))}

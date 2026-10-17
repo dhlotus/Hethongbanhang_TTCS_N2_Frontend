@@ -16,6 +16,9 @@ export interface ConfirmDialogProps {
   type?: ConfirmDialogType;
   isLoading?: boolean;
   maxWidth?: string;
+  customIcon?: React.ReactNode;
+  iconBg?: string;
+  confirmClassName?: string;
 }
 
 /**
@@ -36,6 +39,9 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   type = 'danger',
   isLoading = false,
   maxWidth = 'max-w-md',
+  customIcon,
+  iconBg,
+  confirmClassName,
 }) => {
   const [isRendered, setIsRendered] = useState(isOpen);
   const [isClosing, setIsClosing] = useState(false);
@@ -110,9 +116,9 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         <div className="p-5 sm:p-6">
           <div className="flex items-start gap-3.5">
             <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${typeConfig.iconBg}`}
+              className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${iconBg || typeConfig.iconBg}`}
             >
-              {typeConfig.icon}
+              {customIcon || typeConfig.icon}
             </div>
             <div className="flex-1 min-w-0 pr-4">
               <h3 className="text-base font-bold text-slate-900 leading-snug">{title}</h3>
@@ -147,6 +153,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             fullWidth={false}
             isLoading={isLoading}
             onClick={onConfirm}
+            className={confirmClassName}
           >
             {confirmText}
           </Button>

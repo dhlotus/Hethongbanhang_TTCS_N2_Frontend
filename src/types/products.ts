@@ -107,6 +107,8 @@ export interface CreateProductPayload {
   costPrice?: number;
   stockQuantity?: number;
   status: ProductStatus;
+  isBatchManaged?: boolean;
+  is_batch_managed?: boolean;
   imageUrl?: string;
   barcode?: string;
   description?: string;
@@ -189,7 +191,7 @@ export interface ImportProductItemDto {
   baseUnit: string;
   price: number;
   costPrice: number;
-  stockQuantity: number;
+  stockQuantity?: number;
   barcode?: string;
   description?: string;
   status: 'NEW' | 'UPDATE';

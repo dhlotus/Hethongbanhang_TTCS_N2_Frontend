@@ -29,6 +29,8 @@ export const ReminderTestModal: React.FC<ReminderTestModalProps> = ({
   const [triggering, setTriggering] = useState<boolean>(false);
   const [lastResult, setLastResult] = useState<any>(null);
 
+  const [isForceRetrying, setIsForceRetrying] = useState<boolean>(false);
+
   const fetchLogs = async () => {
     try {
       setLoading(true);
@@ -50,18 +52,47 @@ export const ReminderTestModal: React.FC<ReminderTestModalProps> = ({
   const handleTrigger = async (force = false) => {
     try {
       setTriggering(true);
+      if (force) setIsForceRetrying(true);
+
       const res = await invoicesService.triggerReminders(force);
       setLastResult(res);
-      showToast(
-        'success',
-        `Quét xong: ${res.upcomingRemindersSent} nhắc 3 ngày, ${res.overdueRemindersSent} quá hạn, ${res.skippedAlreadySent} bỏ qua chống trùng.`
-      );
+
+      if (force) {
+        showToast(
+          'success',
+          'Thử lại cưỡng chế thành công',
+          `Gửi thành công ${res.upcomingRemindersSent} nhắc 3 ngày, ${res.overdueRemindersSent} cảnh báo quá hạn (${res.failedCount} lỗi).`,
+          8000
+        );
+      } else {
+        showToast(
+          'success',
+          'Quét định kỳ hoàn tất',
+          `${res.upcomingRemindersSent} nhắc 3 ngày, ${res.overdueRemindersSent} quá hạn, ${res.skippedAlreadySent} bỏ qua chống trùng lặp.`,
+          6000
+        );
+      }
+
       await fetchLogs();
       if (onRefreshDebt) onRefreshDebt();
     } catch (err: any) {
-      showToast('error', err.message || 'Lỗi khi kích hoạt nhắc nợ');
+      console.error('[FORCE_RETRY_ERROR_LOG]', {
+        name: err.name,
+        message: err.message,
+        code: err.code,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        config: err.config,
+      });
+      const isTimeout = err.code === 'ECONNABORTED' || err.message?.includes('timeout');
+      const errorMsg = isTimeout
+        ? 'Thời gian gửi qua SMTP kéo dài, tác vụ vẫn đang được xử lý và ghi sổ ngầm trong CSDL.'
+        : err.response?.data?.message || err.message || 'Lỗi khi kích hoạt nhắc nợ';
+      showToast('error', 'Kích hoạt tác vụ thất bại', errorMsg, 6000);
     } finally {
       setTriggering(false);
+      setIsForceRetrying(false);
     }
   };
 
@@ -88,7 +119,7 @@ export const ReminderTestModal: React.FC<ReminderTestModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -111,23 +142,26 @@ export const ReminderTestModal: React.FC<ReminderTestModalProps> = ({
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-3">
             <button
+              id="run-scheduler-btn"
               type="button"
               disabled={triggering}
               onClick={() => handleTrigger(false)}
-              className="inline-flex items-center gap-2 px-4 h-[38px] text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg shadow-sm transition-colors"
+              className="inline-flex items-center gap-2 px-4 h-[38px] text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg shadow-sm transition-colors cursor-pointer"
             >
-              <RefreshCw className={`h-4 w-4 ${triggering ? 'animate-spin' : ''}`} />
-              <span>Kích hoạt chạy Scheduler ngay (Thử nghiệm)</span>
+              <RefreshCw className={`h-4 w-4 ${triggering && !isForceRetrying ? 'animate-spin' : ''}`} />
+              <span>{triggering && !isForceRetrying ? 'Đang chạy Scheduler...' : 'Kích hoạt chạy Scheduler ngay (Thử nghiệm)'}</span>
             </button>
 
             <button
+              id="force-retry-btn"
               type="button"
               disabled={triggering}
               onClick={() => handleTrigger(true)}
-              className="inline-flex items-center gap-1.5 px-3 h-[38px] text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg transition-colors"
-              title="Bỏ qua cờ chống trùng để thử nghiệm lại quy trình gửi email"
+              className="inline-flex items-center gap-2 px-3.5 h-[38px] text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 border border-amber-300 rounded-lg transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+              title="Bỏ qua cờ chống trùng để thử nghiệm lại quy trình gửi email & thông báo"
             >
-              <span>Thử lại cưỡng chế (Force Retry)</span>
+              <RefreshCw className={`h-3.5 w-3.5 ${isForceRetrying ? 'animate-spin text-amber-700' : 'text-amber-600'}`} />
+              <span>{isForceRetrying ? 'Đang thử lại cưỡng chế...' : 'Thử lại cưỡng chế (Force Retry)'}</span>
             </button>
 
             <button
@@ -159,7 +193,9 @@ export const ReminderTestModal: React.FC<ReminderTestModalProps> = ({
                 </div>
                 <div className="p-2.5 rounded-lg bg-white border border-slate-200">
                   <span className="text-slate-500">Lỗi gửi email:</span>
-                  <p className="text-base font-bold text-slate-700">{lastResult.failedCount}</p>
+                  <p className={`text-base font-bold ${lastResult.failedCount === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {lastResult.failedCount === 0 ? '0 (Hoàn hảo)' : lastResult.failedCount}
+                  </p>
                 </div>
               </div>
 
@@ -198,8 +234,8 @@ export const ReminderTestModal: React.FC<ReminderTestModalProps> = ({
                 Chưa có lịch sử nhắc nợ nào. Nhấn nút "Kích hoạt chạy Scheduler ngay" ở trên để chạy tác vụ đầu tiên.
               </div>
             ) : (
-              <div className="rounded-xl border border-slate-200 overflow-hidden">
-                <table className="w-full text-left text-xs border-collapse">
+              <div className="rounded-xl border border-slate-200 overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left text-xs border-collapse min-w-[650px]">
                   <thead>
                     <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-semibold">
                       <th className="py-2.5 px-3">Mã Hóa đơn</th>

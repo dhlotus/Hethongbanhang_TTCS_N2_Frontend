@@ -13,6 +13,8 @@ export interface AuditLogUser {
   email: string;
   ip_address: string;
   role?: string;
+  avatarUrl?: string | null;
+  avatar_url?: string | null;
 }
 
 export interface AuditLogItem {

@@ -11,6 +11,7 @@ export type OrderStatus =
   | 'REJECTED' // Bị từ chối khi xét duyệt
   | 'RETURNED_FOR_UPDATE' // Trả lại nhân viên kinh doanh để chỉnh sửa
   | 'PROCESSING' // Đang xử lý / soạn hàng
+  | 'PACKED' // Đã đóng gói
   | 'DISPATCHED' // Đã xuất kho (SN-199)
   | 'SHIPPED' // Đang giao
   | 'DELIVERED' // Giao thành công
@@ -204,6 +205,8 @@ export interface OrderQueryParams {
   fromDate?: string;
   toDate?: string;
   dateType?: 'CREATED' | 'DELIVERY';
+  forShipment?: boolean | string;
+  warehouseId?: string;
 }
 
 /** Thông tin khách hàng đại lý (dùng trong form tạo đơn) */

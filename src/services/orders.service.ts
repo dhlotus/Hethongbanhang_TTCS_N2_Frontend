@@ -33,6 +33,13 @@ const DRAFT_ORDERS_KEY = 'loha_draft_orders';
 const DEMO_ORDERS_KEY = 'loha_demo_orders';
 const DEMO_APPROVAL_HISTORY_KEY = 'loha_demo_order_approval_history';
 
+interface ProductsCacheEntry {
+  data: Product[];
+  expiresAt: number;
+}
+const productsListCache = new Map<string, ProductsCacheEntry>();
+const stockOverviewCache = new Map<string, { data: Map<string, number>; expiresAt: number }>();
+
 export const authStorage = tokenStorage;
 
 
@@ -326,6 +333,25 @@ const saveStoredDemoOrders = (list: Order[]): void => {
   }
 };
 
+/** Đồng bộ trạng thái đơn hàng trong storage cục bộ và phát sự kiện thời gian thực */
+export const syncDemoOrderStatus = (orderCodeOrId: string, status: OrderStatus): void => {
+  try {
+    const all = getStoredDemoOrders();
+    const idx = all.findIndex((o) => o.id === orderCodeOrId || o.orderCode === orderCodeOrId);
+    if (idx !== -1) {
+      all[idx] = {
+        ...all[idx],
+        status,
+        updatedAt: new Date().toISOString(),
+      };
+      saveStoredDemoOrders(all);
+    }
+    window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: { orderCode: orderCodeOrId, status } }));
+  } catch (e) {
+    void e;
+  }
+};
+
 
 /** Tính tổng đơn hàng từ danh sách dòng hàng */
 export const calcOrderTotals = (
@@ -521,9 +547,16 @@ export const ordersService = {
     if (params.dateType) {
       cleanParams.dateType = params.dateType;
     }
+    if (params.forShipment !== undefined) {
+      cleanParams.forShipment = String(params.forShipment);
+    }
+    if (params.warehouseId && params.warehouseId !== 'ALL') {
+      cleanParams.warehouseId = params.warehouseId;
+    }
 
     try {
-      const res = await apiClient.get<PaginatedOrdersResponse | Order[]>('/orders', {
+      const endpoint = params.forShipment ? '/orders/for-shipment' : '/orders';
+      const res = await apiClient.get<PaginatedOrdersResponse | Order[]>(endpoint, {
         params: cleanParams,
       });
 
@@ -572,12 +605,128 @@ export const ordersService = {
       };
 
       let list = getStoredDemoOrders();
-      if (params.status && params.status !== 'ALL') {
+      if (params.forShipment) {
+        // Chuẩn ERP xuất kho: Chỉ lọc đơn đã duyệt (APPROVED, READY_TO_SHIP, PROCESSING)
+        // Tuyệt đối loại bỏ: CANCELLED, DRAFT, PENDING*
+        const VALID_SHIPMENT_STATUSES = new Set(['APPROVED', 'READY_TO_SHIP', 'PROCESSING']);
+        const FORBIDDEN_STATUSES = new Set([
+          'CANCELLED',
+          'DRAFT',
+          'PENDING',
+          'PENDING_APPROVAL',
+          'PENDING_INVENTORY_APPROVAL',
+          'REJECTED',
+          'RETURNED_FOR_UPDATE',
+          'RETURNED',
+          'CLOSED',
+          'COMPLETED',
+          'DISPATCHED',
+        ]);
+        list = list.filter((o) => {
+          const st = String(o.status || '').toUpperCase().trim();
+          return VALID_SHIPMENT_STATUSES.has(st) && !FORBIDDEN_STATUSES.has(st);
+        });
+      } else if (params.status && params.status !== 'ALL') {
         const st = String(params.status).toUpperCase();
         list = list.filter((o) => o.status?.toUpperCase() === st);
       }
+
+      // Lọc theo kho xuất hàng (warehouseId)
+      const targetWh = params.warehouseId ? String(params.warehouseId).toLowerCase() : '';
+      if (targetWh && targetWh !== 'all') {
+        const isMb = targetWh.includes('mb') || targetWh.includes('bắc') || targetWh === '11111111-0000-0000-0000-000000000002';
+        const isMt = targetWh.includes('mt') || targetWh.includes('trung') || targetWh === '11111111-0000-0000-0000-000000000003';
+        const isMn = targetWh.includes('mn') || targetWh.includes('nam') || targetWh === '11111111-0000-0000-0000-000000000001';
+
+        list = list.filter((o) => {
+          if ((o as any).warehouseId && String((o as any).warehouseId).toLowerCase() === targetWh) return true;
+          if ((o as any).warehouseCode && String((o as any).warehouseCode).toLowerCase() === targetWh) return true;
+
+          const reg = String(o.region || '').toLowerCase();
+          const addr = String(o.deliveryPoint?.address || '').toLowerCase();
+          const cCode = String(o.customerCode || '').toUpperCase();
+          const cName = String(o.customerName || '').toLowerCase();
+
+          if (isMb) {
+            const isNorth =
+              reg.includes('bắc') ||
+              reg.includes('north') ||
+              addr.includes('hà nội') ||
+              addr.includes('bắc') ||
+              cCode.includes('HN') ||
+              cName.includes('thăng long') ||
+              cName.includes('hà nội') ||
+              cName.includes('cầu giấy');
+            const isOther =
+              reg.includes('trung') ||
+              reg.includes('nam') ||
+              addr.includes('đà nẵng') ||
+              addr.includes('hồ chí minh') ||
+              addr.includes('tp.hcm') ||
+              cCode.includes('DN');
+            return isNorth && !isOther;
+          }
+
+          if (isMt) {
+            const isCentral =
+              reg.includes('trung') ||
+              reg.includes('central') ||
+              addr.includes('đà nẵng') ||
+              cCode.includes('DN') ||
+              cName.includes('miền trung') ||
+              cName.includes('đà nẵng');
+            const isOther =
+              reg.includes('bắc') ||
+              reg.includes('nam') ||
+              addr.includes('hà nội') ||
+              addr.includes('hồ chí minh') ||
+              cCode.includes('HN');
+            return isCentral && !isOther;
+          }
+
+          if (isMn) {
+            const isSouth =
+              reg.includes('nam') ||
+              reg.includes('south') ||
+              addr.includes('hồ chí minh') ||
+              addr.includes('tp.hcm') ||
+              addr.includes('bình dương') ||
+              cName.includes('minh khang') ||
+              cName.includes('thịnh vượng');
+            const isOther =
+              reg.includes('bắc') ||
+              reg.includes('trung') ||
+              addr.includes('hà nội') ||
+              addr.includes('đà nẵng') ||
+              cCode.includes('HN') ||
+              cCode.includes('DN');
+            return isSouth && !isOther;
+          }
+
+          return false;
+        });
+      }
       if (params.customerId && params.customerId !== 'ALL') {
-        list = list.filter((o) => o.customerId === params.customerId || o.customerCode === params.customerId);
+        const qCust = String(params.customerId).toLowerCase().trim();
+        const validIds = new Set<string>([qCust]);
+        const m = qCust.match(/^(?:cust-)?(?:dl-)?([a-z]+-)?(\d+)$/i);
+        if (m) {
+          const regionalPrefix = (m[1] || '').toLowerCase();
+          const num = parseInt(m[2], 10);
+          if (!isNaN(num)) {
+            validIds.add(`cust-dl-${regionalPrefix}${String(num).padStart(4, '0')}`);
+            validIds.add(`cust-${regionalPrefix}${String(num).padStart(3, '0')}`);
+            validIds.add(`cust-${regionalPrefix}${String(num).padStart(4, '0')}`);
+            validIds.add(`dl-${regionalPrefix}${String(num).padStart(4, '0')}`);
+            validIds.add(`dl-${regionalPrefix}${String(num).padStart(3, '0')}`);
+          }
+        }
+
+        list = list.filter((o) => {
+          const oCustId = (o.customerId || '').toLowerCase().trim();
+          const oCustCode = (o.customerCode || '').toLowerCase().trim();
+          return validIds.has(oCustId) || validIds.has(oCustCode);
+        });
       }
       if (params.salesRepId && params.salesRepId !== 'ALL') {
         const rep = params.salesRepId.toLowerCase();
@@ -609,6 +758,13 @@ export const ordersService = {
           o.salesRepName?.toLowerCase().includes(q)
         );
       }
+
+      list.sort((a, b) => {
+        const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+
       const total = list.length;
       const totalAmount = list.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
       const page = Math.max(1, Number(params.page) || 1);
@@ -624,6 +780,18 @@ export const ordersService = {
         totalPages,
       };
     }
+  },
+
+  /**
+   * Lấy danh sách đơn hàng cho phép xuất kho chuẩn ERP (SN-188)
+   * Chỉ lấy các đơn đã duyệt (APPROVED, READY_TO_SHIP, PROCESSING)
+   * Tuyệt đối loại bỏ các đơn CANCELLED, DRAFT, PENDING
+   */
+  async getOrdersForShipment(params: OrderQueryParams = {}): Promise<PaginatedOrdersResponse> {
+    return this.getOrders({
+      ...params,
+      forShipment: true,
+    });
   },
 
   /**
@@ -1007,7 +1175,12 @@ export const ordersService = {
   /**
    * Tìm kiếm sản phẩm để thêm vào dòng hàng
    */
-  async searchProducts(query: string = '', limit: number = 100, customerId?: string): Promise<Product[]> {
+  async searchProducts(
+    query: string = '',
+    limit: number = 100,
+    customerId?: string,
+    warehouseIdHint?: string,
+  ): Promise<Product[]> {
     const token = tokenStorage.getAccessToken();
     const isDemo = token?.startsWith('demo-jwt-');
 
@@ -1047,25 +1220,62 @@ export const ordersService = {
     }
 
     try {
-      const res = await apiClient.get<{ data: Product[] }>('/products', {
-        params: { search: query || undefined, limit, status: 'ACTIVE' },
-      });
-      const products = res.data.data ?? [];
-      let warehouseId: string | undefined = undefined;
-      try {
-        if (customerId) {
-          const defaultWh = await warehouseService.getAgencyDefault(customerId);
-          warehouseId = defaultWh.warehouseId;
-        }
-      } catch {}
+      const q = (query || '').trim();
+      const cacheKey = `${q.toLowerCase()}_${limit}`;
+      const cachedProdEntry = productsListCache.get(cacheKey);
+      const isProductCacheValid = cachedProdEntry && Date.now() < cachedProdEntry.expiresAt;
 
-      let availableBySku = new Map<string, number>();
-      try {
-        const stockRows = await inventoryService.getStockOverview(warehouseId);
-        availableBySku = new Map(
-          stockRows.map((stock) => [stock.sku.toUpperCase(), (stock as { availableQuantity?: number; stockQuantity?: number }).availableQuantity ?? stock.stockQuantity]),
-        );
-      } catch {}
+      // 1. Chạy song song: Tải danh mục sản phẩm và xác định kho của đại lý
+      const [productsData, resolvedWarehouseId] = await Promise.all([
+        isProductCacheValid
+          ? Promise.resolve(cachedProdEntry.data)
+          : apiClient
+              .get<{ data: Product[] }>('/products', {
+                params: { search: q || undefined, limit, status: 'ACTIVE' },
+              })
+              .then((res) => {
+                const list = res.data.data ?? [];
+                productsListCache.set(cacheKey, {
+                  data: list,
+                  expiresAt: Date.now() + 30 * 1000,
+                });
+                return list;
+              }),
+        warehouseIdHint
+          ? Promise.resolve(warehouseIdHint)
+          : customerId
+            ? warehouseService
+                .getAgencyDefault(customerId)
+                .then((res) => res.warehouseId)
+                .catch(() => undefined)
+            : Promise.resolve(undefined),
+      ]);
+
+      const products = productsData;
+      const whKey = resolvedWarehouseId || 'ALL';
+      const cachedStock = stockOverviewCache.get(whKey);
+
+      let availableBySku: Map<string, number>;
+      if (cachedStock && Date.now() < cachedStock.expiresAt) {
+        availableBySku = cachedStock.data;
+      } else {
+        try {
+          const stockRows = await inventoryService.getStockOverview(resolvedWarehouseId);
+          availableBySku = new Map(
+            stockRows.map((stock) => [
+              stock.sku.toUpperCase(),
+              (stock as { availableQuantity?: number; stockQuantity?: number }).availableQuantity ??
+                stock.stockQuantity,
+            ]),
+          );
+          stockOverviewCache.set(whKey, {
+            data: availableBySku,
+            expiresAt: Date.now() + 15 * 1000,
+          });
+        } catch {
+          availableBySku = new Map<string, number>();
+        }
+      }
 
       return products.map((product) => {
         const knownProduct = MOCK_PRODUCTS.find(
@@ -1080,11 +1290,12 @@ export const ordersService = {
             ? knownProduct.units
             : product.units;
 
-        const availableStock = availableBySku.get(product.sku.toUpperCase())
-          ?? product.availableStock
-          ?? product.availableQuantity
-          ?? product.stockQuantity
-          ?? 0;
+        const availableStock =
+          availableBySku.get(product.sku.toUpperCase()) ??
+          product.availableStock ??
+          product.availableQuantity ??
+          product.stockQuantity ??
+          0;
         return {
           ...product,
           units,
@@ -1276,17 +1487,15 @@ export const ordersService = {
    */
   getCurrentDealerCustomerId(): string {
     const user = tokenStorage.getUser();
-    if (!user) return 'cust-001';
-    // Nếu là tài khoản dealer demo hoặc thông tin đại lý Minh Khang
-    if (
-      user.username === 'dealer' ||
-      user.email?.includes('dealer') ||
-      user.email?.includes('daily') ||
-      user.roles?.includes('CUSTOMER')
-    ) {
-      return 'cust-001';
+    if (user?.customerId) return user.customerId;
+    if (user?.agencyId) return user.agencyId;
+    if (user?.username === 'daily' || user?.email?.includes('daily')) {
+      return 'cust-dl-0002';
     }
-    return 'cust-001';
+    if (user?.username === 'dealer' || user?.email?.includes('dealer')) {
+      return 'cust-dl-0001';
+    }
+    return 'cust-dl-0001';
   },
 
   /**
@@ -1298,8 +1507,9 @@ export const ordersService = {
     let customerOrders = all.filter(
       (o) =>
         o.customerId === customerId ||
-        o.customerId === 'cust-001' ||
-        o.customerId === 'cust-dl-0001'
+        (customerId === 'cust-dl-0002' && (o.customerId === 'cust-dl-0002' || o.customerId === 'cust-002')) ||
+        (customerId === 'cust-dl-0001' && (o.customerId === 'cust-dl-0001' || o.customerId === 'cust-001')) ||
+        (!customerId && (o.customerId === 'cust-001' || o.customerId === 'cust-dl-0001'))
     );
 
     if (params.status && params.status !== 'ALL') {

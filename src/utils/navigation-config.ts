@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   CalendarClock,
   FileText,
+  FileSpreadsheet,
   CreditCard,
   RotateCcw,
   Building2,
@@ -364,9 +365,16 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Quản lý Tồn kho',
     },
     {
+      id: 'inventory-stock-card',
+      name: 'Thẻ kho hàng hóa',
+      path: '/inventory/stock-card',
+      icon: FileSpreadsheet,
+      category: 'Quản lý Tồn kho',
+    },
+    {
       id: 'inventory-batches',
-      name: 'Lô hàng & Gợi ý FEFO',
-      path: '/warehouse/batches',
+      name: 'Quản lý lô & Hạn sử dụng',
+      path: '/inventory/batches',
       icon: CalendarClock,
       category: 'Quản lý Tồn kho',
     },
@@ -463,6 +471,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Sổ tồn kho & Lô hàng',
       path: '/inventory/stock',
       icon: Warehouse,
+      category: 'Kiểm soát Kho',
+    },
+    {
+      id: 'inventory-stock-card',
+      name: 'Thẻ kho hàng hóa',
+      path: '/inventory/stock-card',
+      icon: FileSpreadsheet,
       category: 'Kiểm soát Kho',
     },
     {
@@ -615,7 +630,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     },
     {
       id: 'sales-customers',
-      name: 'Đại lý & Hạn mức nợ',
+      name: 'Quản lý đại lý',
       path: '/sales/customers',
       icon: Users,
       category: 'Nghiệp vụ Kinh doanh',
@@ -639,6 +654,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Quản lý tồn kho & Lô hàng',
       path: '/inventory/stock',
       icon: Warehouse,
+      category: 'Kho vận & Hàng hóa',
+    },
+    {
+      id: 'inventory-batches',
+      name: 'Quản lý lô & Hạn sử dụng',
+      path: '/inventory/batches',
+      icon: CalendarClock,
       category: 'Kho vận & Hàng hóa',
     },
     {

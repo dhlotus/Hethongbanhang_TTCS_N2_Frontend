@@ -1,11 +1,20 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, CheckCircle2, X, Edit2, Trash2, Search, RefreshCw, Filter } from 'lucide-react';
+import {
+  Plus,
+  X,
+  Edit2,
+  Trash2,
+  Search,
+  RotateCcw,
+  FileSpreadsheet,
+  Calendar,
+  ChevronDown,
+  Eye,
+} from 'lucide-react';
 import { showToast } from './toast';
 import { ConfirmDialog } from './confirm-dialog';
-import { Button } from './button';
-import { IconButton } from './icon-button';
-import { Badge } from './badge';
 import { discountPoliciesService } from '../services/discount-policies.service';
 import type {
   DiscountPolicy,
@@ -26,6 +35,21 @@ const getErrorMessage = (err: unknown, fallback: string): string => {
   }
   if (err instanceof Error) return err.message;
   return fallback;
+};
+
+/** Định dạng ngày hiển thị chuẩn Việt Nam: DD/MM/YYYY */
+const formatDate = (dateStr?: string): string => {
+  if (!dateStr) return '—';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch {
+    return dateStr;
+  }
 };
 
 export interface DiscountPoliciesTabProps {
@@ -60,74 +84,107 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<DiscountPolicy | null>(null);
+  const [isViewOnly, setIsViewOnly] = useState(false);
   const [policyToDelete, setPolicyToDelete] = useState<DiscountPolicy | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Phân tích trạng thái & từ khóa từ URL Search Params
-  const urlStatusParam = (searchParams.get('status') || 'ALL').toUpperCase();
+  // Quản lý dropdown thao tác với Portal
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+  const [actionMenuAnchor, setActionMenuAnchor] = useState<{
+    top: number;
+    right: number;
+    isDropUp: boolean;
+  } | null>(null);
+
+  // Tách biệt URL params: Sử dụng tiền tố 'disc_' để không bị trùng lặp với tab Bảng giá cơ sở
+  const urlStatusParam = (searchParams.get('disc_status') || 'ALL').toUpperCase();
   const validStatus =
     urlStatusParam === 'ACTIVE' || urlStatusParam === 'INACTIVE' || urlStatusParam === 'EXPIRED'
       ? urlStatusParam
       : 'ALL';
 
-  const urlSearchParam = searchParams.get('search') || '';
+  const urlSearchParam = searchParams.get('disc_search') || '';
 
   const [selectedStatus, setSelectedStatus] = useState<string>(validStatus);
   const [searchInput, setSearchInput] = useState<string>(urlSearchParam);
   const [searchTerm, setSearchTerm] = useState<string>(urlSearchParam);
 
-  // Phân trang từ URL Search Params (Hỗ trợ tùy chọn 5 - 10 - 20 bản ghi/trang)
-  const urlPageParam = parseInt(searchParams.get('page') || '1', 10);
+  // Phân trang từ URL Search Params (Hỗ trợ 10 - 20 - 50 dòng/trang)
+  const urlPageParam = parseInt(searchParams.get('disc_page') || '1', 10);
   const validPage = Number.isInteger(urlPageParam) && urlPageParam > 0 ? urlPageParam : 1;
 
-  const urlLimitParam = parseInt(searchParams.get('limit') || '10', 10);
-  const validLimit = [5, 10, 20].includes(urlLimitParam) ? urlLimitParam : 10;
+  const urlLimitParam = parseInt(searchParams.get('disc_limit') || '10', 10);
+  const validLimit = [10, 20, 50].includes(urlLimitParam) ? urlLimitParam : 10;
 
   const [currentPage, setCurrentPage] = useState<number>(validPage);
   const [pageSize, setPageSize] = useState<number>(validLimit);
 
   const isInitialSearchMount = useRef(true);
 
-  // Cập nhật an toàn các Query Params lên URL (không reload trang)
+  // Đóng dropdown thao tác khi click ra ngoài, cuộn trang hoặc resize
+  useEffect(() => {
+    const handleDocClick = (e: MouseEvent) => {
+      if (
+        !(e.target as HTMLElement).closest('.disc-action-menu-dropdown-container') &&
+        !(e.target as HTMLElement).closest('.disc-action-portal-menu')
+      ) {
+        setOpenActionMenuId(null);
+        setActionMenuAnchor(null);
+      }
+    };
+    const handleScrollOrResize = () => {
+      setOpenActionMenuId(null);
+      setActionMenuAnchor(null);
+    };
+    document.addEventListener('click', handleDocClick);
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      document.removeEventListener('click', handleDocClick);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, []);
+
+  // Cập nhật an toàn các Query Params riêng cho tab Chiết khấu lên URL (không reload trang)
   const updateUrlParams = useCallback(
     (updates: { status?: string; search?: string; page?: number; limit?: number }) => {
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
-          // Đảm bảo tab luôn là discount
           next.set('tab', 'discount');
 
-          // Trạng thái
+          // Trạng thái chính sách
           const targetStatus = updates.status !== undefined ? updates.status : selectedStatus;
           if (targetStatus && targetStatus !== 'ALL') {
-            next.set('status', targetStatus.toLowerCase());
+            next.set('disc_status', targetStatus.toLowerCase());
           } else {
-            next.delete('status');
+            next.delete('disc_status');
           }
 
           // Từ khóa tìm kiếm
           const targetSearch = updates.search !== undefined ? updates.search : searchTerm;
           const trimmed = targetSearch.trim();
           if (trimmed) {
-            next.set('search', trimmed);
+            next.set('disc_search', trimmed);
           } else {
-            next.delete('search');
+            next.delete('disc_search');
           }
 
-          // Phân trang: ?page=...
+          // Phân trang
           const targetPage = updates.page !== undefined ? updates.page : currentPage;
           if (targetPage > 1) {
-            next.set('page', String(targetPage));
+            next.set('disc_page', String(targetPage));
           } else {
-            next.delete('page');
+            next.delete('disc_page');
           }
 
-          // Kích thước trang: ?limit=... (nếu khác 10 thì đồng bộ URL)
+          // Số dòng / trang
           const targetLimit = updates.limit !== undefined ? updates.limit : pageSize;
           if (targetLimit !== 10) {
-            next.set('limit', String(targetLimit));
+            next.set('disc_limit', String(targetLimit));
           } else {
-            next.delete('limit');
+            next.delete('disc_limit');
           }
 
           return next;
@@ -157,9 +214,11 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
     return () => clearTimeout(timer);
   }, [searchInput, searchTerm, updateUrlParams]);
 
-  // Lắng nghe thay đổi của URL searchParams (Back/Forward hoặc link chia sẻ)
+  // Lắng nghe thay đổi của URL searchParams chỉ khi đang ở tab discount
   useEffect(() => {
-    const rawStatus = (searchParams.get('status') || 'ALL').toUpperCase();
+    if (searchParams.get('tab') !== 'discount') return;
+
+    const rawStatus = (searchParams.get('disc_status') || 'ALL').toUpperCase();
     const newStatus =
       rawStatus === 'ACTIVE' || rawStatus === 'INACTIVE' || rawStatus === 'EXPIRED'
         ? rawStatus
@@ -168,20 +227,20 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
       setSelectedStatus(newStatus);
     }
 
-    const newSearch = searchParams.get('search') || '';
+    const newSearch = searchParams.get('disc_search') || '';
     if (newSearch !== searchTerm) {
       setSearchTerm(newSearch);
       setSearchInput(newSearch);
     }
 
-    const rawPage = parseInt(searchParams.get('page') || '1', 10);
+    const rawPage = parseInt(searchParams.get('disc_page') || '1', 10);
     const newPage = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
     if (newPage !== currentPage) {
       setCurrentPage(newPage);
     }
 
-    const rawLimit = parseInt(searchParams.get('limit') || '10', 10);
-    const newLimit = [5, 10, 20].includes(rawLimit) ? rawLimit : 10;
+    const rawLimit = parseInt(searchParams.get('disc_limit') || '10', 10);
+    const newLimit = [10, 20, 50].includes(rawLimit) ? rawLimit : 10;
     if (newLimit !== pageSize) {
       setPageSize(newLimit);
     }
@@ -235,7 +294,7 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
     });
   }, [policies, selectedStatus, searchTerm]);
 
-  // Phân trang danh sách chính sách chiết khấu (5 - 10 - 20)
+  // Phân trang danh sách chính sách chiết khấu (10 - 20 - 50)
   const totalPages = filteredPolicies.length > 0 ? Math.ceil(filteredPolicies.length / pageSize) : 0;
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, filteredPolicies.length);
@@ -271,11 +330,19 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
 
   const handleOpenCreateModal = () => {
     setEditingPolicy(null);
+    setIsViewOnly(false);
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (policy: DiscountPolicy) => {
     setEditingPolicy(policy);
+    setIsViewOnly(false);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenViewModal = (policy: DiscountPolicy) => {
+    setEditingPolicy(policy);
+    setIsViewOnly(true);
     setIsModalOpen(true);
   };
 
@@ -316,6 +383,20 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
     updateUrlParams({ search: '', status: 'ALL', page: 1 });
   };
 
+  // Helper hiển thị nhãn tiếng Việt cho trạng thái
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'ACTIVE':
+        return 'Đang hiệu lực';
+      case 'INACTIVE':
+        return 'Tạm dừng';
+      case 'EXPIRED':
+        return 'Đã hết hạn';
+      default:
+        return status;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* 1. Header Toolbar */}
@@ -324,27 +405,23 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
           <h2 className="text-xl font-bold text-slate-900 tracking-tight">
             Chính sách Chiết khấu theo Sản lượng
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Thiết lập chiết khấu bậc thang theo số lượng đặt hàng cho đại lý và khách sỉ
-          </p>
         </div>
 
-        {/* Ẩn nút Thêm chính sách đối với tài khoản Nhân viên kinh doanh (chỉ ADMIN / SALES_MANAGER được tạo) */}
+        {/* Nút Thêm mới chính sách chuẩn UI_GUIDELINES: h-[38px] rounded-lg */}
         {canManage && (
-          <Button
-            variant="primary"
-            size="sm"
-            fullWidth={false}
-            leftIcon={<Plus className="h-4 w-4" />}
+          <button
+            type="button"
             onClick={handleOpenCreateModal}
+            className="inline-flex items-center justify-center gap-1.5 h-[38px] px-4 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
           >
-            Thêm chính sách
-          </Button>
+            <Plus className="w-4 h-4 shrink-0" />
+            <span>Thêm chính sách</span>
+          </button>
         )}
       </div>
 
-      {/* 2. Filter Bar (Đồng bộ URL searchParams) */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+      {/* 2. Filter Bar: rounded-xl theo UI_GUIDELINES, đã bỏ nút Làm mới, xóa text hiển thị số lượng */}
+      <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
           {/* Ô Tìm kiếm */}
           <div className="relative flex-1">
@@ -354,12 +431,17 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Tìm theo mã chính sách, tên hoặc đối tượng áp dụng..."
-              className="w-full pl-9.5 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-medium"
+              className="w-full h-[38px] pl-9.5 pr-8 text-xs rounded-lg border border-slate-200 bg-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-medium"
             />
             {searchInput && (
               <button
                 type="button"
-                onClick={() => setSearchInput('')}
+                onClick={() => {
+                  setSearchInput('');
+                  setSearchTerm('');
+                  setCurrentPage(1);
+                  updateUrlParams({ search: '', page: 1 });
+                }}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
                 title="Xóa tìm kiếm"
               >
@@ -368,189 +450,196 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
             )}
           </div>
 
-          {/* Lọc Trạng thái */}
+          {/* Lọc Trạng thái (Việt hóa hoàn toàn) */}
           <div className="sm:w-48">
             <select
               value={selectedStatus}
               onChange={(e) => handleStatusFilterChange(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+              className="w-full h-[38px] px-3 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer shadow-2xs"
             >
               <option value="ALL">Tất cả Trạng thái</option>
               <option value="ACTIVE">Đang hiệu lực</option>
-              <option value="INACTIVE">Không hiệu lực</option>
+              <option value="INACTIVE">Tạm dừng</option>
               <option value="EXPIRED">Đã hết hạn</option>
             </select>
           </div>
-
-          {/* Nút Làm mới */}
-          <button
-            type="button"
-            onClick={loadPolicies}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer shrink-0 disabled:opacity-50"
-            title="Tải lại danh sách chính sách"
-          >
-            <RefreshCw
-              className={`h-4 w-4 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`}
-            />
-            <span className="hidden sm:inline">Làm mới</span>
-          </button>
 
           {/* Nút Xóa bộ lọc nếu có lọc */}
           {(searchTerm || selectedStatus !== 'ALL') && (
             <button
               type="button"
               onClick={handleClearFilters}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/50 px-3.5 py-2 text-xs font-semibold text-rose-700 shadow-2xs hover:bg-rose-100/60 active:scale-[0.98] transition-all cursor-pointer shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 h-[38px] rounded-lg border border-rose-200 bg-rose-50/50 px-3.5 text-xs font-semibold text-rose-700 shadow-2xs hover:bg-rose-100/60 active:scale-[0.98] transition-all cursor-pointer shrink-0"
               title="Đặt lại toàn bộ bộ lọc"
             >
-              <Filter className="h-3.5 w-3.5 text-rose-500" />
+              <RotateCcw className="h-3.5 w-3.5 text-rose-500" />
               <span>Bỏ lọc</span>
             </button>
           )}
         </div>
 
-        {/* Thông tin kết quả tìm kiếm */}
-        <div className="mt-2.5 flex items-center justify-between text-xs text-slate-500 font-medium pt-2 border-t border-slate-100">
-          <div>
-            Hiển thị{' '}
-            <strong className="text-slate-900 font-semibold">
-              {filteredPolicies.length > 0 ? `${startIndex + 1} - ${endIndex}` : 0}
-            </strong>{' '}
-            / <strong className="text-slate-900 font-semibold">{filteredPolicies.length}</strong>{' '}
-            chính sách {filteredPolicies.length !== policies.length && `(Tổng ${policies.length})`}
+        {/* Thông tin bộ lọc đang áp dụng (Việt hóa hoàn toàn, đã xóa dòng "Hiển thị ... / ...") */}
+        {(searchTerm || selectedStatus !== 'ALL') && (
+          <div className="flex items-center text-xs text-blue-600 font-medium pt-2 border-t border-slate-100 gap-1.5">
+            <span>Đang lọc:</span>
+            {selectedStatus !== 'ALL' && (
+              <span>Trạng thái: {getStatusLabel(selectedStatus)} • </span>
+            )}
+            {searchTerm && <span>Từ khóa: &quot;{searchTerm}&quot;</span>}
           </div>
-          {(searchTerm || selectedStatus !== 'ALL') && (
-            <div className="text-[11px] text-blue-600 font-medium">
-              Đang áp dụng bộ lọc URL: {selectedStatus !== 'ALL' && `Trạng thái: ${selectedStatus} `}
-              {searchTerm && `• Từ khóa: "${searchTerm}"`}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* 3. Bảng dữ liệu chính sách chiết khấu */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
-        <div
-          className="overflow-auto max-h-[calc(100vh-320px)] relative [scrollbar-width:thin] [scrollbar-color:#E5E7EB_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#E5E7EB] hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full"
-          style={{ scrollbarWidth: 'thin', scrollbarColor: '#E5E7EB transparent' }}
-        >
-          <table className="w-full text-left text-xs border-separate border-spacing-0">
+      {/* 3. Bảng dữ liệu chính sách chiết khấu (Định dạng table chuẩn Quản lý đại lý & Bảng giá, không khoảng trắng thừa) */}
+      <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm divide-y divide-slate-100">
             <thead>
-              <tr className="text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-12 text-center">
-                  STT
-                </th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 min-w-[150px]">
-                  Mã chính sách
-                </th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 min-w-[200px]">
-                  Tên chính sách
-                </th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36">
-                  Đối tượng
-                </th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36">
-                  Loại chiết khấu
-                </th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-48">
-                  Thời gian hiệu lực
-                </th>
-                <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-36 text-center">
-                  Trạng thái
-                </th>
+              <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left w-[20%]">Mã chính sách</th>
+                <th className="px-4 py-3 text-left w-[35%]">Tên chính sách</th>
+                <th className="px-4 py-3 text-left w-[25%]">Thời gian hiệu lực</th>
+                <th className="px-4 py-3 text-center w-[10%]">Trạng thái</th>
                 {canManage && (
-                  <th className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200/80 py-3 px-4 w-28 text-center">
-                    Thao tác
-                  </th>
+                  <th className="px-4 py-3 text-right w-[10%] min-w-[95px]">Thao tác</th>
                 )}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
+            <tbody
+              className={`divide-y divide-slate-100/90 transition-opacity duration-150 ${
+                loading ? 'opacity-60 pointer-events-none' : 'opacity-100'
+              }`}
+            >
               {loading ? (
                 <tr>
-                  <td colSpan={canManage ? 8 : 7} className="py-8 text-center text-slate-500 font-medium">
-                    <div className="flex items-center justify-center gap-2">
-                      <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
-                      <span>Đang nạp danh sách chính sách chiết khấu...</span>
+                  <td
+                    colSpan={canManage ? 5 : 4}
+                    className="py-12 text-center text-slate-400 border-b border-slate-100"
+                  >
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <FileSpreadsheet className="w-8 h-8 text-blue-500 animate-pulse" />
+                      <p className="font-semibold text-slate-600 text-sm">
+                        Đang tải danh sách chính sách chiết khấu...
+                      </p>
                     </div>
                   </td>
                 </tr>
               ) : filteredPolicies.length === 0 ? (
                 <tr>
-                  <td colSpan={canManage ? 8 : 7} className="py-12 text-center text-slate-500">
+                  <td
+                    colSpan={canManage ? 5 : 4}
+                    className="py-12 text-center text-slate-400 border-b border-slate-100"
+                  >
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <p className="font-semibold text-slate-700">Không tìm thấy chính sách phù hợp</p>
+                      <FileSpreadsheet className="w-8 h-8 text-slate-300" />
+                      <p className="font-semibold text-slate-600 text-sm">
+                        Không tìm thấy chính sách phù hợp
+                      </p>
                       <p className="text-xs text-slate-400">
                         {searchTerm || selectedStatus !== 'ALL'
-                          ? 'Thử thay đổi từ khóa tìm kiếm hoặc đặt lại bộ lọc trạng thái'
-                          : 'Chưa có chính sách chiết khấu sản lượng nào trong hệ thống'}
+                          ? 'Thử thay đổi từ khóa tìm kiếm hoặc đặt lại bộ lọc trạng thái.'
+                          : 'Chưa có chính sách chiết khấu sản lượng nào trong hệ thống.'}
                       </p>
+                      {(searchTerm || selectedStatus !== 'ALL') && (
+                        <button
+                          type="button"
+                          onClick={handleClearFilters}
+                          className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 shadow-2xs transition-all cursor-pointer active:scale-95"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          <span>Đặt lại bộ lọc</span>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
               ) : (
-                paginatedPolicies.map((p, i) => (
-                  <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3.5 px-4 text-center text-slate-400 font-mono text-[11px] w-12">
-                      {startIndex + i + 1}
+                paginatedPolicies.map((p) => (
+                  <tr
+                    key={p.id}
+                    onClick={() => handleOpenViewModal(p)}
+                    className="hover:bg-indigo-50/25 transition-colors group cursor-pointer"
+                  >
+                    {/* Mã chính sách: Monospace badge chuẩn Quản lý đại lý / Bảng giá */}
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-blue-700 bg-blue-50/80 border border-blue-200/60 px-2.5 py-1 rounded-md shadow-2xs group-hover:border-blue-300">
+                        <FileSpreadsheet className="w-3 h-3 text-blue-500" />
+                        <span>{p.code}</span>
+                      </span>
                     </td>
-                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{p.code}</td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-900">{p.name}</td>
-                    <td className="py-3.5 px-4 text-slate-600">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-semibold text-slate-800 text-[11px]">
-                          {p.targetType === 'HYBRID'
-                            ? 'Đa tầng (Nhóm + SKU)'
-                            : p.targetType === 'SKU'
-                              ? 'Sản phẩm (SKU)'
-                              : 'Nhóm hàng (Category)'}
-                        </span>
-                        <span
-                          className="text-slate-500 font-mono text-[11px] truncate max-w-[220px]"
-                          title={p.targetIds?.join(', ') || p.targetId}
-                        >
-                          {p.targetIds && p.targetIds.length > 0
-                            ? p.targetIds.join(', ')
-                            : p.targetId}
+
+                    {/* Tên chính sách */}
+                    <td className="px-4 py-3.5">
+                      <div className="font-semibold text-slate-800 line-clamp-1 text-sm group-hover:text-blue-600 transition-colors">
+                        {p.name}
+                      </div>
+                    </td>
+
+                    {/* Thời gian hiệu lực */}
+                    <td className="px-4 py-3.5 text-slate-600 font-medium whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span>
+                          {formatDate(p.startDate)} – {formatDate(p.endDate)}
                         </span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-600">
-                      {p.discountType === 'PERCENTAGE' ? '% Phần trăm' : 'Cố định'}
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-600">
-                      {p.startDate ? p.startDate.split('T')[0] : ''} -{' '}
-                      {p.endDate ? p.endDate.split('T')[0] : ''}
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
+
+                    {/* Trạng thái: Pill badge bo tròn đồng bộ */}
+                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
                       {p.status === 'ACTIVE' ? (
-                        <Badge variant="success" icon={<CheckCircle2 className="w-3.5 h-3.5" />}>
-                          Đang hiệu lực
-                        </Badge>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          <span>Đang hiệu lực</span>
+                        </span>
                       ) : (
-                        <Badge variant="neutral" icon={<X className="w-3.5 h-3.5" />}>
-                          Không hiệu lực
-                        </Badge>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200/60">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                          <span>Tạm dừng</span>
+                        </span>
                       )}
                     </td>
+
+                    {/* Thao tác */}
                     {canManage && (
-                      <td className="py-3.5 px-4 text-center">
-                        <div className="flex justify-center items-center gap-1">
-                          <IconButton
-                            icon={<Edit2 className="w-3.5 h-3.5" />}
-                            size="sm"
-                            variant="default"
-                            tooltip="Chỉnh sửa chính sách"
-                            onClick={() => handleOpenEditModal(p)}
-                          />
-                          <IconButton
-                            icon={<Trash2 className="w-3.5 h-3.5" />}
-                            size="sm"
-                            variant="danger"
-                            tooltip="Xóa chính sách"
-                            onClick={() => handleDelete(p)}
-                          />
+                      <td
+                        className="px-4 py-3.5 text-right whitespace-nowrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="relative inline-flex items-center justify-end disc-action-menu-dropdown-container">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (openActionMenuId === p.id) {
+                                setOpenActionMenuId(null);
+                                setActionMenuAnchor(null);
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const spaceBelow = window.innerHeight - rect.bottom;
+                                const shouldDropUp = spaceBelow < 200 && rect.top > 200;
+                                setActionMenuAnchor({
+                                  top: shouldDropUp ? rect.top - 4 : rect.bottom + 4,
+                                  right: window.innerWidth - rect.right,
+                                  isDropUp: shouldDropUp,
+                                });
+                                setOpenActionMenuId(p.id);
+                              }
+                            }}
+                            className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none whitespace-nowrap shrink-0 ${
+                              openActionMenuId === p.id
+                                ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-xs ring-2 ring-blue-500/10'
+                                : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-slate-300'
+                            }`}
+                            title="Thao tác"
+                          >
+                            <span className="whitespace-nowrap">Thao tác</span>
+                            <ChevronDown
+                              className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${
+                                openActionMenuId === p.id ? 'rotate-180 text-blue-600' : ''
+                              }`}
+                            />
+                          </button>
                         </div>
                       </td>
                     )}
@@ -561,17 +650,84 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
           </table>
         </div>
 
-        {/* 4. Phân trang (Pagination) chuẩn với tùy chọn 5 - 10 - 20 dòng/trang */}
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={filteredPolicies.length}
-          pageSize={pageSize}
-          pageSizeOptions={[5, 10, 20]}
-          itemLabel="chính sách"
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-        />
+        {/* Dropdown Menu Portal Thao tác */}
+        {openActionMenuId && actionMenuAnchor && typeof document !== 'undefined' && (() => {
+          const policy = policies.find((item) => item.id === openActionMenuId);
+          if (!policy) return null;
+          return createPortal(
+            <div
+              className="disc-action-portal-menu fixed w-48 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-[9999] animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100"
+              style={{
+                top: actionMenuAnchor.isDropUp ? undefined : `${actionMenuAnchor.top}px`,
+                bottom: actionMenuAnchor.isDropUp
+                  ? `${window.innerHeight - actionMenuAnchor.top}px`
+                  : undefined,
+                right: `${actionMenuAnchor.right}px`,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="py-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenActionMenuId(null);
+                    setActionMenuAnchor(null);
+                    handleOpenViewModal(policy);
+                  }}
+                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                >
+                  <Eye className="w-4 h-4 text-blue-500" />
+                  <span>Xem chi tiết</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenActionMenuId(null);
+                    setActionMenuAnchor(null);
+                    handleOpenEditModal(policy);
+                  }}
+                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-amber-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                >
+                  <Edit2 className="w-4 h-4 text-amber-500" />
+                  <span>Chỉnh sửa chính sách</span>
+                </button>
+              </div>
+
+              <div className="py-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenActionMenuId(null);
+                    setActionMenuAnchor(null);
+                    handleDelete(policy);
+                  }}
+                  className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                >
+                  <Trash2 className="w-4 h-4 text-rose-500" />
+                  <span>Xóa chính sách</span>
+                </button>
+              </div>
+            </div>,
+            document.body
+          );
+        })()}
+
+        {/* 4. Phân trang (Pagination) chuẩn Quản lý đại lý & Bảng giá: 10 - 20 - 50 dòng/trang */}
+        {filteredPolicies.length > 0 && (
+          <Pagination
+            variant="default"
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredPolicies.length}
+            pageSize={pageSize}
+            pageSizeOptions={[10, 20, 50]}
+            itemLabel="chính sách"
+            showRecordRange={false}
+            showFirstLast={false}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        )}
       </div>
 
       <DiscountPolicyFormModal
@@ -579,6 +735,7 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleFormSubmit}
         initialData={editingPolicy}
+        isReadOnly={isViewOnly}
       />
 
       <ConfirmDialog

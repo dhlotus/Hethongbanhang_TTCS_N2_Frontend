@@ -33,6 +33,46 @@ const getPageHeaderInfo = (
   userMenuItems: MenuItem[] = []
 ): PageHeaderInfo => {
   // 0. Trang con phân cấp (Breadcrumbs)
+  if (
+    pathname.startsWith('/catalog/products/edit/') ||
+    pathname.startsWith('/products/edit/') ||
+    pathname.includes('/edit') && pathname.includes('/products')
+  ) {
+    return {
+      title: 'Chỉnh sửa sản phẩm',
+      category: 'Sản phẩm & Chính sách',
+      breadcrumbs: [
+        { label: 'Danh mục sản phẩm', path: '/catalog/products' },
+        { label: 'Chỉnh sửa sản phẩm' },
+      ],
+    };
+  }
+  if (
+    pathname.startsWith('/catalog/products/edit-price/') ||
+    pathname.startsWith('/products/edit-price/')
+  ) {
+    return {
+      title: 'Điều chỉnh giá sản phẩm',
+      category: 'Sản phẩm & Chính sách',
+      breadcrumbs: [
+        { label: 'Danh mục sản phẩm', path: '/catalog/products' },
+        { label: 'Điều chỉnh giá sản phẩm' },
+      ],
+    };
+  }
+  if (
+    (pathname.startsWith('/sales/customers/') && pathname !== '/sales/customers') ||
+    (pathname.startsWith('/customers/') && pathname !== '/customers')
+  ) {
+    return {
+      title: 'Chi tiết hồ sơ đại lý',
+      category: 'Bán hàng',
+      breadcrumbs: [
+        { label: 'Quản lý đại lý', path: '/sales/customers' },
+        { label: 'Chi tiết đại lý' },
+      ],
+    };
+  }
   if (pathname === '/sales/orders/create' || pathname === '/orders/create') {
     return {
       title: 'Tạo đơn hàng mới',
@@ -85,6 +125,48 @@ const getPageHeaderInfo = (
         { label: 'Nhập kho hàng hóa', path: '/inventory/receipts' },
         { label: 'Chỉnh sửa phiếu nhập kho' },
       ],
+    };
+  }
+
+  // SN-188: Phân hệ Soạn hàng & Xuất kho (FEFO)
+  if (
+    pathname === '/inventory/shipments/create' ||
+    pathname === '/app/inventory/shipments/create' ||
+    pathname === '/inventory/issues/create'
+  ) {
+    return {
+      title: 'Tạo phiếu xuất kho',
+      category: 'Nhập / Xuất kho',
+      breadcrumbs: [
+        { label: 'Soạn hàng & Xuất kho', path: '/inventory/shipments' },
+        { label: 'Tạo phiếu xuất kho' },
+      ],
+    };
+  }
+
+  if (
+    (pathname.startsWith('/inventory/shipments/') && pathname !== '/inventory/shipments') ||
+    (pathname.startsWith('/app/inventory/shipments/') && pathname !== '/app/inventory/shipments') ||
+    (pathname.startsWith('/inventory/issues/') && pathname !== '/inventory/issues')
+  ) {
+    return {
+      title: 'Chi tiết phiếu xuất kho',
+      category: 'Nhập / Xuất kho',
+      breadcrumbs: [
+        { label: 'Soạn hàng & Xuất kho', path: '/inventory/shipments' },
+        { label: 'Chi tiết phiếu xuất kho' },
+      ],
+    };
+  }
+
+  if (
+    pathname === '/inventory/shipments' ||
+    pathname === '/app/inventory/shipments' ||
+    pathname === '/inventory/issues'
+  ) {
+    return {
+      title: 'Soạn hàng & Xuất kho',
+      category: 'Nhập / Xuất kho',
     };
   }
 
@@ -254,7 +336,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     'Người dùng';
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-xs px-4 sm:px-6 lg:px-8 shadow-2xs">
+    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-xs px-3 sm:px-6 lg:px-8 shadow-2xs">
       {/* =================================================================== */}
       {/* 1. BÊN TRÁI: NÚT ĐÓNG MỞ NAVBAR & TIÊU ĐỀ TRANG                     */}
       {/* =================================================================== */}

@@ -9,8 +9,6 @@ import {
   Receipt as ReceiptIcon,
 } from 'lucide-react';
 import { numberToVietnameseWords } from '../utils/number-to-words';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import { receiptsService } from '../services/receipts.service';
 import type { Receipt, ReceiptPrintData, PaymentMethod } from '../types/receipt';
 
@@ -260,6 +258,10 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
       const element = printContentRef.current;
       if (element) {
         try {
+          const html2canvasModule = await import('html2canvas');
+          const html2canvas = html2canvasModule.default || html2canvasModule;
+          const { jsPDF } = await import('jspdf');
+
           const canvas = await html2canvas(element, {
             scale: 2.5,
             useCORS: true,
@@ -341,10 +343,10 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
         {/* =================================================================== */}
         {/* 2. KHU VỰC HIỂN THỊ NỘI DUNG TỜ BIÊN LAI IN ẤN                      */}
         {/* =================================================================== */}
-        <div className="p-4 sm:p-6 overflow-y-auto bg-slate-100/60 flex-1 flex justify-center">
+        <div className="p-4 sm:p-6 sm:py-8 overflow-y-auto bg-slate-100/80 flex-1">
           <div
             ref={printContentRef}
-            className="w-full max-w-[680px] bg-white rounded-lg border border-slate-200/90 shadow-sm p-6 sm:p-8 space-y-5 text-slate-800"
+            className="mx-auto w-full max-w-[680px] bg-white rounded-xl border border-slate-200 shadow-md p-6 sm:p-8 space-y-6 text-slate-800 mb-8"
           >
             {/* Tiêu đề Phiếu thu */}
             <div className="text-center space-y-1 py-1">
@@ -431,6 +433,39 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
                       {referenceCode}
                     </span>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Khung chữ ký 3 bên chuẩn mực chứng từ kế toán */}
+            <div className="pt-4 grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="space-y-1">
+                <div className="font-bold text-slate-900 uppercase text-[11px]">
+                  Người nộp tiền
+                </div>
+                <div className="text-[10px] text-slate-400 italic">(Ký, họ tên)</div>
+                <div className="h-14 sm:h-16 flex items-end justify-center font-medium text-slate-800 text-[11px]">
+                  {customerName}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="font-bold text-slate-900 uppercase text-[11px]">
+                  Người thu tiền
+                </div>
+                <div className="text-[10px] text-slate-400 italic">(Ký, họ tên)</div>
+                <div className="h-14 sm:h-16 flex items-end justify-center font-medium text-slate-800 text-[11px]">
+                  {collectorName}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="font-bold text-slate-900 uppercase text-[11px]">
+                  Thủ quỹ / Kế toán
+                </div>
+                <div className="text-[10px] text-slate-400 italic">(Ký, đóng dấu)</div>
+                <div className="h-14 sm:h-16 flex items-end justify-center font-medium text-slate-400 text-[10px] italic">
+                  (Đã ký xác nhận)
                 </div>
               </div>
             </div>

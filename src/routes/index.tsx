@@ -7,6 +7,8 @@ import { ChangePasswordPage } from '../pages/change-password-page';
 import { RoleModulePage } from '../pages/role-module-page';
 import { InvoicesPage } from '../pages/invoices-page';
 import { ProductsPage } from '../pages/products-page';
+import { ProductEditPage } from '../pages/product-edit-page';
+import { ProductEditPricePage } from '../pages/product-edit-price-page';
 import { PriceListsPage } from '../pages/price-lists-page';
 import { SuppliersPage } from '../pages/suppliers-page';
 import { CategoriesPage } from '../pages/categories-page';
@@ -18,13 +20,16 @@ import { CreateOrderPage } from '../pages/create-order-page';
 import { OrderApprovalsPage } from '../pages/order-approvals-page';
 import { StockListPage } from '../pages/inventory/stock-list-page';
 import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
+import { DebtReportPage } from '../pages/debt-report';
 import { CustomersPage } from '../pages/customers-page';
+import { CustomerDetailPage } from '../pages/customer-detail-page';
 import { InventoryStockPage } from '../pages/inventory-stock-page';
 import { InventoryAuditsPage } from '../pages/inventory-audits-page';
 import { InventoryReceiptsPage } from '../pages/inventory-receipts-page';
 import { CreateInventoryReceiptPage } from '../pages/create-inventory-receipt-page';
 import { PortalOrdersPage } from '../pages/portal-orders-page';
 import { ShipmentsPage } from '../pages/shipments-page';
+import { CreateShipmentPage } from '../pages/create-shipment-page';
 import { ReturnsPage } from '../pages/returns-page';
 import { DashboardPage } from '../pages/dashboard-page';
 import { AgencyPortalPage } from '../pages/agency-portal-page';
@@ -43,6 +48,7 @@ import { InternalTransfersPage } from '../pages/inventory/internal-transfers-pag
 import { OrderPickingPage } from '../pages/order-picking-page';
 import { InventoryBatchesPage } from '../pages/inventory-batches-page';
 import { GoodsInTransitPage } from '../pages/goods-in-transit-page';
+import { StockCardPage } from '../pages/inventory/stock-card-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -145,11 +151,13 @@ export const AppRoutes: React.FC = () => {
               element={
                 <RoleGuard
                   allowedRoles={['SALES_REP', 'SALES_MANAGER', 'ACCOUNTANT', 'ADMIN']}
-                  moduleName="Quản lý Đại lý & Hạn mức Tín dụng"
+                  moduleName="Quản lý đại lý"
                 />
               }
             >
               <Route path="/sales/customers" element={<CustomersPage />} />
+              <Route path="/sales/customers/:id" element={<CustomerDetailPage />} />
+              <Route path="/customers/:id" element={<CustomerDetailPage />} />
               <Route path="/customers" element={<Navigate to="/sales/customers" replace />} />
               <Route path="/sales/credit-limit" element={<CreditLimitPage />} />
             </Route>
@@ -241,6 +249,7 @@ export const AppRoutes: React.FC = () => {
               <Route path="/inventory/stock" element={<InventoryStockPage />} />
               <Route path="/inventory/stock-list" element={<StockListPage />} />
               <Route path="/inventory/stocks" element={<StockListPage />} />
+              <Route path="/inventory/stock-card" element={<StockCardPage />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
@@ -284,6 +293,39 @@ export const AppRoutes: React.FC = () => {
                 element={<ShipmentsPage />}
               />
               <Route
+                path="/inventory/issues/create"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/inventory/issues/:id"
+                element={<CreateShipmentPage />}
+              />
+              {/* SN-188: Route chuẩn phân hệ Soạn hàng & Xuất kho */}
+              <Route
+                path="/inventory/shipments"
+                element={<ShipmentsPage />}
+              />
+              <Route
+                path="/inventory/shipments/create"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/inventory/shipments/:id"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/app/inventory/shipments"
+                element={<ShipmentsPage />}
+              />
+              <Route
+                path="/app/inventory/shipments/create"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/app/inventory/shipments/:id"
+                element={<CreateShipmentPage />}
+              />
+              <Route
                 path="/inventory/audits"
                 element={<InventoryAuditsPage />}
               />
@@ -317,6 +359,25 @@ export const AppRoutes: React.FC = () => {
               />
             </Route>
 
+            {/* Quản lý Lô & Hạn sử dụng (FEFO - SN-184) cho Nhân viên kho & Quản lý kho */}
+            <Route
+              element={
+                <RoleGuard
+                  allowedRoles={[
+                    'WAREHOUSE_KEEPER',
+                    'WAREHOUSE_STAFF',
+                    'WAREHOUSE_MANAGER',
+                    'WH_MANAGER',
+                    'ADMIN',
+                  ]}
+                  moduleName="Quản lý Lô & Hạn sử dụng (FEFO)"
+                />
+              }
+            >
+              <Route path="/inventory/batches" element={<InventoryBatchesPage />} />
+              <Route path="/warehouse/batches" element={<InventoryBatchesPage />} />
+            </Route>
+
             <Route
               element={
                 <RoleGuard
@@ -328,10 +389,6 @@ export const AppRoutes: React.FC = () => {
               <Route
                 path="/inventory/adjustments"
                 element={<InventoryAuditsPage />}
-              />
-              <Route
-                path="/inventory/batches"
-                element={<InventoryBatchesPage />}
               />
               <Route
                 path="/reports/inventory"
@@ -412,13 +469,11 @@ export const AppRoutes: React.FC = () => {
             >
               <Route
                 path="/accounting/debt"
-                element={
-                  <RoleModulePage
-                    title="Sổ Chi tiết Công nợ & Tuổi nợ"
-                    subtitle="Báo cáo công nợ phải thu, phân loại tuổi nợ quá hạn (Aging Schedule) và tính lãi phạt"
-                    requiredRole="Kế toán công nợ / Kinh doanh"
-                  />
-                }
+                element={<DebtReportPage />}
+              />
+              <Route
+                path="/reports/debt"
+                element={<DebtReportPage />}
               />
             </Route>
 
@@ -471,6 +526,12 @@ export const AppRoutes: React.FC = () => {
             {/* Danh mục sản phẩm (giá vốn tự động ẩn trên server theo SN-10) */}
             <Route path="/catalog/products" element={<ProductsPage />} />
             <Route path="/products" element={<ProductsPage />} />
+            <Route path="/catalog/products/:id/edit" element={<ProductEditPage />} />
+            <Route path="/catalog/products/edit/:id" element={<ProductEditPage />} />
+            <Route path="/products/:id/edit" element={<ProductEditPage />} />
+            <Route path="/products/edit/:id" element={<ProductEditPage />} />
+            <Route path="/catalog/products/edit-price/:id" element={<ProductEditPricePage />} />
+            <Route path="/products/edit-price/:id" element={<ProductEditPricePage />} />
             {/* Quản lý Cây nhóm hàng đa cấp (Tree Structure - SN-150 / SN-22) */}
             <Route path="/catalog/categories" element={<CategoriesPage />} />
 
