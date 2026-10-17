@@ -29,6 +29,7 @@ import { InventoryReceiptsPage } from '../pages/inventory-receipts-page';
 import { CreateInventoryReceiptPage } from '../pages/create-inventory-receipt-page';
 import { PortalOrdersPage } from '../pages/portal-orders-page';
 import { ShipmentsPage } from '../pages/shipments-page';
+import { CreateShipmentPage } from '../pages/create-shipment-page';
 import { ReturnsPage } from '../pages/returns-page';
 import { DashboardPage } from '../pages/dashboard-page';
 import { AgencyPortalPage } from '../pages/agency-portal-page';
@@ -289,6 +290,39 @@ export const AppRoutes: React.FC = () => {
               <Route
                 path="/inventory/issues"
                 element={<ShipmentsPage />}
+              />
+              <Route
+                path="/inventory/issues/create"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/inventory/issues/:id"
+                element={<CreateShipmentPage />}
+              />
+              {/* SN-188: Route chuẩn phân hệ Soạn hàng & Xuất kho */}
+              <Route
+                path="/inventory/shipments"
+                element={<ShipmentsPage />}
+              />
+              <Route
+                path="/inventory/shipments/create"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/inventory/shipments/:id"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/app/inventory/shipments"
+                element={<ShipmentsPage />}
+              />
+              <Route
+                path="/app/inventory/shipments/create"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/app/inventory/shipments/:id"
+                element={<CreateShipmentPage />}
               />
               <Route
                 path="/inventory/audits"

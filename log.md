@@ -247,3 +247,76 @@ pm run build (	sc -b && vite build) -> 0 lỗi, compile thành công 100%.
   - ✅ ESLint: `npx eslint src/types/receipt.ts src/services/receipts.service.ts src/components/receipt-print-template.tsx src/pages/invoices-page.tsx` -> 0 lỗi, 0 warnings.
   - ✅ Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
 
+---
+
+### [Sprint 5] - [SN-188]: Trang Con Tạo Phiếu Xuất Kho, Gợi Ý Lô FEFO & Popup Đổi Lô Kèm Lý Do Ghi Đè
+- **Thời gian hoàn thành:** 2026-10-17
+- **Mã Jira / Task:** SN-188 (Sprint 5 - Soạn hàng & Xuất kho FEFO)
+- **Tiêu đề:** "Giao diện trang con Tạo phiếu xuất kho & Chi tiết phiếu xuất, hiển thị lô gợi ý FEFO, popup đổi lô bắt buộc lý do ghi đè, và router chuẩn theo UI_GUIDELINES.md"
+- **Danh sách file thay đổi:**
+  - `src/services/shipments.service.ts`: Cập nhật hàm `getBatchesBySku` xử lý response đa dạng, `createFefoShipment`, `suggestFefo` và bổ sung fallback cho `getShipmentById`.
+  - `src/pages/create-shipment-page.tsx`: Tối giản giao diện trang tạo phiếu: loại bỏ hoàn toàn khối sub-header trùng lặp và banner FEFO; vào thẳng Khu vực 1 (Thông tin chung đơn hàng & vận chuyển) và Khu vực 2 (Bảng sản phẩm & phân bổ lô FEFO); toàn bộ nút hành động tập trung ở chân trang cố định.
+  - `src/pages/shipments-page.tsx`: Điều hướng nút `[+ Tạo Phiếu Lẻ]` và click mã phiếu / nút `[Chi tiết]` trực tiếp sang trang con `/inventory/shipments/create` và `/inventory/shipments/:id` (không dùng modal inline nhỏ).
+  - `src/routes/index.tsx`: Đăng ký toàn bộ các route chuẩn: `/inventory/shipments/create`, `/inventory/shipments/:id`, `/app/inventory/shipments/create`, `/app/inventory/shipments/:id`.
+  - `src/layouts/header.tsx`: Bổ sung cấu hình breadcrumbs cho phân hệ Soạn hàng & Xuất kho (`getPageHeaderInfo`), đưa breadcrumb phân cấp `Soạn hàng & Xuất kho > Tạo phiếu xuất kho` lên Header cố định và loại bỏ chữ mặc định "Hệ thống LOHA SALES".
+- **Trạng thái kiểm thử:**
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
+
+---
+
+### [Sprint 5] - [SN-188-FIX]: Sửa Lỗi Nghiệp Vụ Dropdown 'Chọn Đơn Hàng Cần Xuất Kho'
+- **Thời gian hoàn thành:** 2026-10-17
+- **Mã Jira / Task:** SN-188-FIX (Nghiệp vụ Xuất kho ERP)
+- **Vấn đề đã khắc phục:** Khắc phục lỗi dropdown hiển thị tất cả các trạng thái đơn hàng (cho phép chọn cả đơn CANCELLED, DRAFT, PENDING).
+- **Danh sách file thay đổi:**
+  - `src/types/order.ts`: Bổ sung `forShipment?: boolean | string` vào `OrderQueryParams`.
+  - `src/services/orders.service.ts`: Thêm method `getOrdersForShipment(params)` kết nối `/orders/for-shipment`, bổ sung xử lý fallback lọc chặt chẽ chuẩn ERP.
+  - `src/pages/create-shipment-page.tsx`:
+    - Gọi API `ordersService.getOrdersForShipment({ limit: 100 })`.
+    - Thiết lập bộ lọc an toàn 2 lớp tại client: Chỉ nhận các đơn có trạng thái `APPROVED`, `READY_TO_SHIP`, `PROCESSING`; loại trừ triệt để `CANCELLED`, `DRAFT`, `PENDING*`.
+    - Bổ sung xác thực kiểm tra trạng thái trong `handleSelectOrder` chặn chọn đơn chưa duyệt hoặc đã hủy.
+    - Cập nhật text option rõ ràng: `-- Chọn đơn hàng cần xuất kho (Đã duyệt) --` và hiển thị nhãn `[Mã đơn] Tên KH - Số lượng SP (Đã duyệt)`.
+  - `src/components/create-shipment-modal.tsx`: Đồng bộ gọi `getOrdersForShipment` và lọc bỏ các đơn không hợp lệ.
+- **Trạng thái kiểm thử:**
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
+
+---
+
+### [Sprint 5] - [SN-188-RBAC]: Quản Lý Đơn Hàng Phát Sinh Theo Gán Đại Lý Cho Kho (Chuẩn Nghiệp Vụ Thủ Kho Miền Bắc)
+- **Thời gian hoàn thành:** 2026-10-17
+- **Mã Jira / Task:** SN-188-RBAC (Quản lý đơn hàng phát sinh theo cấu hình Gán đại lý cho kho)
+- **Bản chất nghiệp vụ:**
+  - Thủ kho đăng nhập tài khoản Hoàng Minh Tuấn (Thủ kho Miền Bắc - `KHO-MB-01`).
+  - Trong phân hệ "Gán đại lý cho kho" (`app_agency_default_warehouses`), Kho Miền Bắc được gán các đại lý (Minh Khang, Toàn Cầu, Hoàng Gia, An Phát, Phương Đông, Bảo Châu...). Khi tạo đơn cho các đại lý này thì hàng trừ ở Kho Miền Bắc.
+  - Do đó, Thủ kho Miền Bắc chỉ quản lý các đơn hàng phát sinh từ Kho Miền Bắc (đơn hàng của các đại lý được gán cho kho Miền Bắc hoặc đơn có `warehouseId` chỉ định Kho Miền Bắc).
+  - Tuyệt đối KHÔNG lọc theo chuỗi vùng miền địa chỉ (khu vực hay tỉnh thành), mà lọc trực tiếp theo bảng cấu hình Gán đại lý cho kho (`agencyDefaults` / `app_agency_default_warehouses`).
+- **Danh sách file thay đổi:**
+  - `src/types/order.ts`: Bổ sung `warehouseId?: string` vào `OrderQueryParams`.
+  - `src/services/orders.service.ts`: Truyền `warehouseId` trong `getOrders`, cập nhật fallback lọc đơn hàng theo kho.
+  - `src/pages/create-shipment-page.tsx`:
+    - Tải bảng phân công đại lý cho kho qua `warehouseService.getAgencyDefaults()`.
+    - Tự động nhận diện tài khoản nhân viên kho và gán đúng kho phụ trách (Thủ kho Hoàng Minh Tuấn cố định vào Kho Miền Bắc).
+    - Khóa trường chọn kho đối với nhân viên kho để tránh xuất nhầm kho khác.
+    - Bộ lọc dropdown "Chọn Đơn hàng cần xuất kho": Lọc chuẩn 100% theo các đại lý được gán cho kho trong `agencyDefaults` (`filteredOrdersForWarehouse`). Đơn hàng của các đại lý gán cho Kho Miền Bắc (Minh Khang, Toàn Cầu, Hoàng Gia, An Phát, Phương Đông, Bảo Châu...) được hiển thị; các đơn hàng của đại lý gán cho Kho Miền Trung (Đà Nẵng `cust-dl-dn-001`,...) hay Kho Miền Nam bị loại bỏ hoàn toàn.
+- **Trạng thái kiểm thử:**
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
+  - Backend Build: `npm run build` (`nest build`) -> 0 lỗi, compile thành công 100%.
+
+---
+
+### [Sprint 5] - [SN-188-NOTIF]: Thông Báo Cá Nhân Tức Thì Cho Thủ Kho Khi Tạo Phiếu Xuất Kho
+- **Thời gian hoàn thành:** 2026-10-17
+- **Mã Jira / Task:** SN-188-NOTIF (Personal Notification for Shipment Creation)
+- **Nghiệp vụ:**
+  - Sau khi thủ kho xác nhận tạo phiếu xuất kho thành công, ngoài việc hệ thống gửi thông báo cho Quản lý kho, hệ thống **tự động lưu và phát thông báo cá nhân cho chính tài khoản thủ kho tạo phiếu** lên chuông thông báo Header.
+  - Thông báo hiển thị rõ ràng: *"Bạn đã tạo thành công phiếu xuất kho [Mã phiếu] cho đơn hàng [Mã đơn]. Hàng hóa đã được phân bổ và trừ tồn theo chuẩn FEFO."*
+  - Bấm vào thông báo sẽ mở ngay màn hình chi tiết phiếu xuất kho để kiểm tra lại bất cứ lúc nào.
+- **Danh sách file thay đổi:**
+  - `HTBH_Backend/src/modules/shipments/shipments.service.ts`: Truyền thông tin người tạo (`creatorId`, `creatorName`, `creatorUsername`) sang notification service.
+  - `HTBH_Backend/src/modules/notifications/notifications.service.ts`: Gửi thông báo cá nhân cho chính người tạo phiếu xuất trong `notifyShipmentFefoCreated` và `notifyShipmentBatchOverridden`.
+  - `HTBH_Frontend/src/pages/create-shipment-page.tsx`: Bắn sự kiện `loha_shipment_created` khi tạo phiếu thành công.
+  - `HTBH_Frontend/src/components/notification-bell.tsx`: Lắng nghe sự kiện `loha_shipment_created`, lưu thông báo cá nhân vào danh sách thông báo và LocalStorage, hiển thị icon `PackageCheck` màu xanh ngọc/tím.
+- **Trạng thái kiểm thử:**
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
+  - Backend Build: `npm run build` (`nest build`) -> 0 lỗi, compile thành công 100%.
+

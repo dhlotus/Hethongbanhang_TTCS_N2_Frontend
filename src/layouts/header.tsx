@@ -128,6 +128,48 @@ const getPageHeaderInfo = (
     };
   }
 
+  // SN-188: Phân hệ Soạn hàng & Xuất kho (FEFO)
+  if (
+    pathname === '/inventory/shipments/create' ||
+    pathname === '/app/inventory/shipments/create' ||
+    pathname === '/inventory/issues/create'
+  ) {
+    return {
+      title: 'Tạo phiếu xuất kho',
+      category: 'Nhập / Xuất kho',
+      breadcrumbs: [
+        { label: 'Soạn hàng & Xuất kho', path: '/inventory/shipments' },
+        { label: 'Tạo phiếu xuất kho' },
+      ],
+    };
+  }
+
+  if (
+    (pathname.startsWith('/inventory/shipments/') && pathname !== '/inventory/shipments') ||
+    (pathname.startsWith('/app/inventory/shipments/') && pathname !== '/app/inventory/shipments') ||
+    (pathname.startsWith('/inventory/issues/') && pathname !== '/inventory/issues')
+  ) {
+    return {
+      title: 'Chi tiết phiếu xuất kho',
+      category: 'Nhập / Xuất kho',
+      breadcrumbs: [
+        { label: 'Soạn hàng & Xuất kho', path: '/inventory/shipments' },
+        { label: 'Chi tiết phiếu xuất kho' },
+      ],
+    };
+  }
+
+  if (
+    pathname === '/inventory/shipments' ||
+    pathname === '/app/inventory/shipments' ||
+    pathname === '/inventory/issues'
+  ) {
+    return {
+      title: 'Soạn hàng & Xuất kho',
+      category: 'Nhập / Xuất kho',
+    };
+  }
+
   // 1. Ưu tiên khớp chính xác theo menu item của người dùng hiện tại trên Navbar
   const sortedUserItems = [...userMenuItems].sort((a, b) => b.path.length - a.path.length);
   const matchedUserItem = sortedUserItems.find(

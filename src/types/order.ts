@@ -205,6 +205,8 @@ export interface OrderQueryParams {
   fromDate?: string;
   toDate?: string;
   dateType?: 'CREATED' | 'DELIVERY';
+  forShipment?: boolean | string;
+  warehouseId?: string;
 }
 
 /** Thông tin khách hàng đại lý (dùng trong form tạo đơn) */

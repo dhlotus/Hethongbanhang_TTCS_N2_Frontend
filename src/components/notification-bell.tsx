@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import {
   Bell,
   CheckCheck,
-  AlertTriangle,
   ShoppingCart,
   CheckCircle2,
   Tag,
   CreditCard,
   Clock,
   Sparkles,
+  PackageCheck,
 } from 'lucide-react';
 import { invoicesService } from '../services/invoices.service';
 import { notificationsService } from '../services/notifications.service';
@@ -18,7 +18,7 @@ import { getStoredUser } from '../utils/navigation';
 
 export interface SystemNotification {
   id: string;
-  type: 'STOCK_ALERT' | 'ORDER' | 'DELIVERY' | 'PRICING' | 'CREDIT';
+  type: 'STOCK_ALERT' | 'ORDER' | 'DELIVERY' | 'PRICING' | 'CREDIT' | 'SHIPMENT';
   title: string;
   message: string;
   timestamp: string;
@@ -200,7 +200,19 @@ export const NotificationBell: React.FC = () => {
         }
       } catch {}
 
-      const allFetched = [...formattedSystem, ...formattedDebt];
+      // 3. Tải thông báo cá nhân đã lưu cục bộ (như tạo phiếu xuất kho)
+      let personalNotifs: SystemNotification[] = [];
+      try {
+        const rawPersonal: any[] = JSON.parse(
+          localStorage.getItem('loha_personal_notifications') || '[]',
+        );
+        personalNotifs = rawPersonal.map((pn) => ({
+          ...pn,
+          isRead: savedReadIds.includes(pn.id) || pn.isRead,
+        }));
+      } catch {}
+
+      const allFetched = [...personalNotifs, ...formattedSystem, ...formattedDebt];
       if (allFetched.length > 0) {
         setNotifications((prev) => {
           const fetchedIds = new Set(allFetched.map((f) => f.id));
@@ -245,8 +257,38 @@ export const NotificationBell: React.FC = () => {
       void loadNotifications();
     };
 
+    // Lắng nghe sự kiện khi thủ kho tạo phiếu xuất kho thành công (nhận thông báo cá nhân tức thì)
+    const handleShipmentCreatedEvent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.id) {
+        const optNotif: SystemNotification = {
+          id: `shipment-notif-${detail.id}`,
+          type: 'SHIPMENT',
+          title: 'Tạo phiếu xuất kho thành công',
+          message: `Bạn đã tạo thành công phiếu xuất kho [${detail.id}] cho đơn hàng [${detail.orderCode || detail.orderId}]. Hàng hóa đã được phân bổ và trừ tồn theo chuẩn FEFO.`,
+          timestamp: 'Vừa xong',
+          link: `/inventory/shipments/${detail.id}`,
+          isRead: false,
+          priority: 'high',
+          orderId: detail.orderCode || detail.orderId,
+        };
+        setNotifications((prev) => [optNotif, ...prev.filter((p) => p.id !== optNotif.id)]);
+        try {
+          const savedPersonal: any[] = JSON.parse(
+            localStorage.getItem('loha_personal_notifications') || '[]',
+          );
+          localStorage.setItem(
+            'loha_personal_notifications',
+            JSON.stringify([optNotif, ...savedPersonal.filter((p) => p.id !== optNotif.id)].slice(0, 30)),
+          );
+        } catch {}
+      }
+      void loadNotifications();
+    };
+
     window.addEventListener('loha_order_created', handleOrderCreatedEvent);
     window.addEventListener('loha_orders_updated', handleOrdersUpdatedEvent);
+    window.addEventListener('loha_shipment_created', handleShipmentCreatedEvent);
 
     // Polling nhẹ mỗi 10 giây để cập nhật chuông realtime
     const timer = setInterval(() => {
@@ -256,6 +298,7 @@ export const NotificationBell: React.FC = () => {
     return () => {
       window.removeEventListener('loha_order_created', handleOrderCreatedEvent);
       window.removeEventListener('loha_orders_updated', handleOrdersUpdatedEvent);
+      window.removeEventListener('loha_shipment_created', handleShipmentCreatedEvent);
       clearInterval(timer);
     };
   }, [loadNotifications]);
@@ -283,10 +326,16 @@ export const NotificationBell: React.FC = () => {
 
   const getIcon = (type: SystemNotification['type']) => {
     switch (type) {
+      case 'SHIPMENT':
+        return (
+          <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+            <PackageCheck className="w-4 h-4" />
+          </div>
+        );
       case 'STOCK_ALERT':
         return (
-          <div className="p-2 rounded-xl bg-rose-50 text-rose-600 shrink-0">
-            <AlertTriangle className="w-4 h-4" />
+          <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+            <PackageCheck className="w-4 h-4" />
           </div>
         );
       case 'ORDER':
