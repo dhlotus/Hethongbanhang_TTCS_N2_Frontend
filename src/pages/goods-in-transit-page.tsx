@@ -5,6 +5,7 @@ import {
   RefreshCw,
   Search,
   AlertTriangle,
+  ChevronRight,
 } from 'lucide-react';
 import { deliveryTripsService } from '../services/delivery-trips.service';
 import type {
@@ -205,7 +206,7 @@ export const GoodsInTransitPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5 pb-12">
+    <div className="space-y-3.5 pb-12">
       {/* ================================================================= */}
       {/* 1. HEADER CHUẨN LOHA SALES                                        */}
       {/* ================================================================= */}
@@ -248,30 +249,23 @@ export const GoodsInTransitPage: React.FC = () => {
       </div>
 
       {/* ================================================================= */}
-      {/* 2. CẢNH BÁO TIẾN ĐỘ QUÁ HẠN (THIẾT KẾ GỌN GÀNG, KHÔNG MÀU MÈ)     */}
+      {/* 2. CẢNH BÁO TIẾN ĐỘ QUÁ HẠN (THIẾT KẾ NHỎ GỌN, DỄ NHÌN)          */}
       {/* ================================================================= */}
       {counts.overdue > 0 && (
-        <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 sm:p-3.5 text-rose-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-            <div>
-              <h4 className="font-semibold text-xs sm:text-sm text-rose-950">
-                Cảnh báo tiến độ: Có {counts.overdue} chuyến xe giao hàng quá thời gian dự kiến (ETA)
-              </h4>
-              <p className="text-2xs text-rose-700 mt-0.5">
-                Các chuyến xe này đã vượt mốc thời gian hoàn thành cam kết. Vui lòng kiểm tra định vị và liên hệ tài xế.
-              </p>
-            </div>
+        <div className="flex items-center justify-between gap-3 px-3.5 py-2 rounded-lg bg-rose-50/90 border border-rose-200 text-rose-950 text-xs shadow-2xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span className="font-medium text-rose-900 truncate">
+              <strong className="font-semibold text-rose-950">Cảnh báo:</strong> Có {counts.overdue} chuyến xe quá hạn thời gian giao dự kiến (ETA)
+            </span>
           </div>
-
           <button
             type="button"
             onClick={() => setActiveTab('OVERDUE')}
-            className="self-start sm:self-center px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-2xs transition-colors shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-600 hover:bg-rose-700 text-white text-2xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
           >
-            Xem chuyến quá hạn
+            <span>Xem chuyến quá hạn ({counts.overdue})</span>
+            <ChevronRight className="w-3 h-3" />
           </button>
         </div>
       )}
