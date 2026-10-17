@@ -333,6 +333,25 @@ const saveStoredDemoOrders = (list: Order[]): void => {
   }
 };
 
+/** Đồng bộ trạng thái đơn hàng trong storage cục bộ và phát sự kiện thời gian thực */
+export const syncDemoOrderStatus = (orderCodeOrId: string, status: OrderStatus): void => {
+  try {
+    const all = getStoredDemoOrders();
+    const idx = all.findIndex((o) => o.id === orderCodeOrId || o.orderCode === orderCodeOrId);
+    if (idx !== -1) {
+      all[idx] = {
+        ...all[idx],
+        status,
+        updatedAt: new Date().toISOString(),
+      };
+      saveStoredDemoOrders(all);
+    }
+    window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: { orderCode: orderCodeOrId, status } }));
+  } catch (e) {
+    void e;
+  }
+};
+
 
 /** Tính tổng đơn hàng từ danh sách dòng hàng */
 export const calcOrderTotals = (
@@ -635,6 +654,13 @@ export const ordersService = {
           o.salesRepName?.toLowerCase().includes(q)
         );
       }
+
+      list.sort((a, b) => {
+        const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+
       const total = list.length;
       const totalAmount = list.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
       const page = Math.max(1, Number(params.page) || 1);
@@ -1345,17 +1371,15 @@ export const ordersService = {
    */
   getCurrentDealerCustomerId(): string {
     const user = tokenStorage.getUser();
-    if (!user) return 'cust-001';
-    // Nếu là tài khoản dealer demo hoặc thông tin đại lý Minh Khang
-    if (
-      user.username === 'dealer' ||
-      user.email?.includes('dealer') ||
-      user.email?.includes('daily') ||
-      user.roles?.includes('CUSTOMER')
-    ) {
-      return 'cust-001';
+    if (user?.customerId) return user.customerId;
+    if (user?.agencyId) return user.agencyId;
+    if (user?.username === 'daily' || user?.email?.includes('daily')) {
+      return 'cust-dl-0002';
     }
-    return 'cust-001';
+    if (user?.username === 'dealer' || user?.email?.includes('dealer')) {
+      return 'cust-dl-0001';
+    }
+    return 'cust-dl-0001';
   },
 
   /**
@@ -1367,8 +1391,9 @@ export const ordersService = {
     let customerOrders = all.filter(
       (o) =>
         o.customerId === customerId ||
-        o.customerId === 'cust-001' ||
-        o.customerId === 'cust-dl-0001'
+        (customerId === 'cust-dl-0002' && (o.customerId === 'cust-dl-0002' || o.customerId === 'cust-002')) ||
+        (customerId === 'cust-dl-0001' && (o.customerId === 'cust-dl-0001' || o.customerId === 'cust-001')) ||
+        (!customerId && (o.customerId === 'cust-001' || o.customerId === 'cust-dl-0001'))
     );
 
     if (params.status && params.status !== 'ALL') {

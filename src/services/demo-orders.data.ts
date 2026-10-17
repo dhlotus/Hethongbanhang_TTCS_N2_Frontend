@@ -651,11 +651,11 @@ export const INITIAL_DEMO_ORDERS: Order[] = [
     subtotal: 75300000,
     totalDiscount: 3765000,
     grandTotal: 71535000,
-    status: 'APPROVED',
+    status: 'PACKED',
     paymentStatus: 'PARTIAL',
     note: 'Đơn hàng trọng điểm khu vực Miền Bắc tháng 10',
     createdAt: '2026-10-11T09:00:00Z',
-    updatedAt: '2026-10-11T11:00:00Z',
+    updatedAt: '2026-10-17T09:56:00Z',
   },
   {
     id: 'ord-012',

@@ -31,6 +31,9 @@ export interface AuthUser {
   warehouses?: AuthUserWarehouse[];
   avatarUrl?: string;
   createdAt?: string | Date;
+  customerId?: string;
+  customerCode?: string;
+  agencyId?: string;
 }
 
 export interface LoginResponse {
