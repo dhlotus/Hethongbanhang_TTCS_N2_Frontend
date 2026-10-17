@@ -7,18 +7,55 @@ import type {
 } from '../types/audit-log';
 
 /**
- * Danh mục đối tượng thao tác chuẩn hóa cho bộ lọc
+ * Danh mục đối tượng thao tác chuẩn hóa cho bộ lọc (100% Tiếng Việt)
  */
 export const AUDIT_ENTITIES: { value: AuditEntityType; label: string }[] = [
-  { value: 'INVENTORY', label: 'Tồn kho & Lô hàng (INVENTORY)' },
-  { value: 'DEBT', label: 'Công nợ & Hạn mức (DEBT)' },
-  { value: 'PRICING', label: 'Giá bán & Chiết khấu (PRICING)' },
-  { value: 'ORDER', label: 'Đơn hàng Bán buôn (ORDER)' },
-  { value: 'USER', label: 'Tài khoản & Phân quyền (USER)' },
+  { value: 'INVENTORY', label: 'Tồn kho & Lô hàng' },
+  { value: 'PRICING', label: 'Giá bán & Chiết khấu' },
+  { value: 'DEBT', label: 'Hạn mức công nợ' },
+  { value: 'ORDER', label: 'Đơn hàng & Hóa đơn' },
+  { value: 'USER', label: 'Tài khoản & Phân quyền' },
 ];
 
 /**
- * Định dạng ngày giờ chuẩn hiển thị: DD/MM/YYYY HH:mm:ss
+ * Định dạng chỉ ngày: DD/MM/YYYY (tối ưu hiển thị bảng, không cần giờ)
+ */
+export function formatAuditDateOnly(isoString: string): string {
+  if (!isoString) return '---';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const day = pad(d.getDate());
+    const month = pad(d.getMonth() + 1);
+    const year = d.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  } catch {
+    return isoString;
+  }
+}
+
+/**
+ * Lấy riêng tên người thực hiện (bỏ phần vai trò trong ngoặc để bảng gọn gàng)
+ */
+export function formatAuditUserName(
+  user?: {
+    full_name?: string;
+    role?: string;
+    email?: string;
+  } | null
+): string {
+  if (!user) return 'Hệ thống';
+  let rawName = (user.full_name || 'Người dùng').trim();
+  // Loại bỏ ngoặc tròn vai trò như (Thủ kho), (Quản trị viên)
+  rawName = rawName.replace(/\s*\([^)]*\)/g, '').trim();
+  return rawName || 'Người dùng';
+}
+
+/**
+ * Định dạng ngày giờ chuẩn hiển thị: DD/MM/YYYY HH:mm:ss (dùng cho modal chi tiết)
  */
 export function formatAuditDateTime(isoString: string): string {
   if (!isoString) return '---';
@@ -279,6 +316,8 @@ function normalizeAuditLog(raw: Record<string, unknown>): AuditLogItem {
       email: String(userObj.email || raw.user_email || ''),
       role: String(userObj.role || raw.user_role || ''),
       ip_address: String(raw.ip_address || raw.ipAddress || userObj.ip_address || '127.0.0.1'),
+      avatarUrl: (userObj.avatarUrl || userObj.avatar_url || raw.user_avatar_url || raw.avatarUrl || null) as string | null,
+      avatar_url: (userObj.avatarUrl || userObj.avatar_url || raw.user_avatar_url || raw.avatarUrl || null) as string | null,
     },
     action,
     entity_name: resolvedName,
