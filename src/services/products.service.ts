@@ -165,7 +165,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
 /**
  * Danh sách sản phẩm mẫu phong phú phục vụ demo / fallback
  */
-const INITIAL_MOCK_PRODUCTS: Product[] = [
+export const INITIAL_MOCK_PRODUCTS: Product[] = [
   {
     id: '33333333-0000-4000-8000-000000000001',
     sku: 'LH-MILK-900G',
