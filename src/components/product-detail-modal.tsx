@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Package,
   Layers,
@@ -12,6 +13,7 @@ import {
   Clock,
   BookOpen,
   CalendarClock,
+  DollarSign,
 } from 'lucide-react';
 import { ModalLayout } from './modal-layout';
 import type { Product } from '../types/products';
@@ -46,6 +48,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onPriceHistory,
   onOpenLedger,
 }) => {
+  const navigate = useNavigate();
   if (!isOpen || !product) return null;
 
   const isOutOfStock = product.stockQuantity <= 0;
@@ -122,6 +125,20 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <span>Lịch sử giá</span>
               </button>
             )}
+            {canManageProducts && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate(`/catalog/products/edit-price/${product.id}`);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 hover:text-indigo-600 border border-slate-200 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                title="Mở trang điều chỉnh giá"
+              >
+                <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Sửa giá</span>
+              </button>
+            )}
             {canManageProducts && onEdit && (
               <button
                 type="button"
@@ -129,10 +146,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   onClose();
                   onEdit(product);
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors cursor-pointer"
               >
                 <Edit2 className="w-3.5 h-3.5" />
-                <span>Sửa sản phẩm</span>
+                <span>Sửa thông tin</span>
               </button>
             )}
           </div>
