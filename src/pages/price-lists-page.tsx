@@ -835,29 +835,8 @@ export const PriceListsPage: React.FC = () => {
             )}
           </div>
 
-          {/* 3. Filter Toolbar: Tabs nhóm khách hàng, Search Box, Dropdown Trạng thái */}
-          <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-4">
-            {/* Tabs Nhóm khách hàng */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100 text-xs">
-              {CUSTOMER_GROUP_TABS.map((tab) => {
-                const isActive = selectedGroup === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => handleGroupChange(tab.key)}
-                    className={`px-3.5 py-1.5 rounded-lg font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                      isActive
-                        ? 'bg-blue-600 text-white shadow-2xs'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-
+          {/* 3. Filter Toolbar: Search Box, Dropdown Nhóm khách hàng, Dropdown Trạng thái */}
+          <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-3">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
               {/* Ô Tìm kiếm theo tên / mã */}
               <div className="relative flex-1">
@@ -884,6 +863,21 @@ export const PriceListsPage: React.FC = () => {
                     <X className="h-3.5 w-3.5" />
                   </button>
                 )}
+              </div>
+
+              {/* Lọc Nhóm khách hàng (Select option) */}
+              <div className="sm:w-48">
+                <select
+                  value={selectedGroup}
+                  onChange={(e) => handleGroupChange(e.target.value)}
+                  className="w-full h-[38px] px-3 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer shadow-2xs"
+                >
+                  {CUSTOMER_GROUP_TABS.map((tab) => (
+                    <option key={tab.key} value={tab.key}>
+                      {tab.key === 'ALL' ? 'Tất cả Nhóm khách hàng' : tab.label}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Lọc Trạng thái (Việt hóa hoàn toàn, không có từ tiếng Anh trong ngoặc) */}
