@@ -370,6 +370,7 @@ export const CreateOrderPage: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastCustomerIdRef = useRef<string | undefined>(undefined);
 
   // ── 3. Dòng hàng đơn hàng (Order Lines) ──
   const [lines, setLines] = useState<OrderLine[]>([]);
@@ -462,7 +463,6 @@ export const CreateOrderPage: React.FC = () => {
       if (!editingOrder) {
         setLines([]);
       }
-      setSearchResults([]);
       setSearchError('');
       ordersService.clearDraft(DRAFT_KEY);
     }
@@ -758,67 +758,46 @@ export const CreateOrderPage: React.FC = () => {
     };
   }, [selectedCustomer]);
 
-  // ── Tìm kiếm sản phẩm theo Từ khóa (debounce 300ms) ──
+  // ── Tìm kiếm sản phẩm (Tức thì khi đổi đại lý, Debounce khi gõ từ khóa) ──
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+
+    const isCustomerChanged = lastCustomerIdRef.current !== selectedCustomer?.id;
+    lastCustomerIdRef.current = selectedCustomer?.id;
+    const delay = isCustomerChanged ? 0 : 250;
+
+    setIsSearching(true);
+    setSearchError('');
+
     searchTimerRef.current = setTimeout(async () => {
-      setIsSearching(true);
-      setSearchError('');
       try {
         const results = await ordersService.searchProducts(
           productQuery,
           100,
           selectedCustomer?.id,
+          servingWarehouse?.warehouseId,
         );
 
         setSearchResults(results);
         setProductPage(1);
       } catch {
-        setSearchResults([]);
         setSearchError('Không thể tải danh sách sản phẩm. Vui lòng thử lại.');
       } finally {
         setIsSearching(false);
       }
-    }, 300);
+    }, delay);
 
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
-  }, [productQuery, selectedCustomer?.id]);
+  }, [productQuery, selectedCustomer?.id, servingWarehouse?.warehouseId]);
 
-  // ── Khôi phục nháp từ localStorage nếu tạo mới (chỉ chạy 1 lần khi mount) ──
-  const hasRestoredDraftRef = useRef(false);
+  // ── Dọn dẹp nháp cục bộ cũ nếu có khi mở trang tạo mới (không tự động khôi phục hay tự động lưu) ──
   useEffect(() => {
-    if (editingOrder || editOrderId || hasRestoredDraftRef.current) return;
-    hasRestoredDraftRef.current = true;
-    const draft = ordersService.getDraft(DRAFT_KEY);
-    if (draft?.lines && draft.lines.length > 0) {
-      setLines(draft.lines);
-      if (draft.customerId && !initialCustomerId) {
-        ordersService.getCustomers().then((list) => {
-          const c = list.find((x) => x.id === draft.customerId);
-          if (c) {
-            void handleSelectCustomer(c);
-            if (draft.deliveryPoint) setDeliveryPoint(draft.deliveryPoint);
-          }
-        });
-      }
-      if (draft.deliveryDate) setDeliveryDate(draft.deliveryDate);
-      if (draft.note) setNote(draft.note);
-      showToast('info', 'Đã khôi phục nháp đơn hàng từ phiên làm việc trước');
+    if (!editingOrder && !editOrderId) {
+      ordersService.clearDraft(DRAFT_KEY);
     }
-  }, [editingOrder, editOrderId, initialCustomerId]);
-
-  // ── Tự động lưu nháp ──
-  useEffect(() => {
-    if (editingOrder || lines.length === 0) return;
-    ordersService.saveDraft(DRAFT_KEY, {
-      customerId: selectedCustomer?.id,
-      deliveryDate,
-      note,
-      lines,
-    });
-  }, [lines, selectedCustomer, deliveryDate, note, editingOrder]);
+  }, [editingOrder, editOrderId]);
 
   // ── Thao tác thêm sản phẩm vào đơn ──
   const handleAddProduct = useCallback((product: Product) => {
@@ -874,7 +853,6 @@ export const CreateOrderPage: React.FC = () => {
     };
     setLines((current) => [...current, line]);
     refreshLinePricing(line, effectivePriceList);
-    showToast('success', `Đã thêm ${product.name} vào đơn`);
   }, [effectivePriceList, lines, priceListError, refreshLinePricing, selectedCustomer]);
 
   // ── Thêm mặt hàng từ Bảng Gợi ý (Task SN-43) ──
@@ -905,7 +883,6 @@ export const CreateOrderPage: React.FC = () => {
       };
       setLines((current) => current.map((l, idx) => idx === existingIndex ? updatedLine : l));
       refreshLinePricing(updatedLine, effectivePriceList);
-      showToast('success', `Đã tăng số lượng ${item.productName} (+${qtyToAdd} ${targetLine.unit || item.unit})`);
     } else {
       // Tìm trong danh mục sản phẩm nếu có để lấy unitOptions và category chuẩn
       const foundProduct = searchResults.find(
@@ -953,7 +930,6 @@ export const CreateOrderPage: React.FC = () => {
 
       setLines((current) => [...current, newLine]);
       refreshLinePricing(newLine, effectivePriceList);
-      showToast('success', `Đã thêm ${item.productName} (${qtyToAdd} ${baseUnit}) vào giỏ hàng`);
     }
   }, [effectivePriceList, lines, priceListError, refreshLinePricing, searchResults, selectedCustomer]);
 
@@ -1048,11 +1024,6 @@ export const CreateOrderPage: React.FC = () => {
         newLinesToAdd.forEach((l) => refreshLinePricing(l, effectivePriceList));
         return merged;
       });
-
-      showToast(
-        'success',
-        `Đã thêm ${addedCount} mặt hàng mới và cập nhật ${updatedCount} mặt hàng trong giỏ hàng!`,
-      );
     },
     [effectivePriceList, priceListError, refreshLinePricing, searchResults, selectedCustomer],
   );
@@ -1130,9 +1101,6 @@ export const CreateOrderPage: React.FC = () => {
         newLinesToAdd.forEach((l) => refreshLinePricing(l, effectivePriceList));
         return next;
       });
-      showToast('success', `Đã thêm nhanh ${addedCount} mặt hàng từ đơn hàng gần nhất!`);
-    } else {
-      showToast('info', 'Tất cả mặt hàng của đơn cũ đã có trong giỏ hàng.');
     }
   }, [effectivePriceList, lines, priceListError, refreshLinePricing, searchResults, selectedCustomer]);
 
@@ -1812,7 +1780,28 @@ export const CreateOrderPage: React.FC = () => {
                 {searchError && (
                   <div className="p-4 text-center text-xs text-rose-600">{searchError}</div>
                 )}
-                {pagedSearchResults.length === 0 ? (
+                {isSearching && pagedSearchResults.length === 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 py-1">
+                    {[1, 2, 3, 4, 5, 6].map((idx) => (
+                      <div
+                        key={idx}
+                        className="p-3.5 rounded-lg border border-slate-200/60 bg-slate-50/50 flex items-center justify-between gap-3 animate-pulse"
+                      >
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="h-4 bg-slate-200 rounded w-3/4" />
+                          <div className="flex gap-2">
+                            <div className="h-3 bg-slate-200 rounded w-16" />
+                            <div className="h-3 bg-slate-200 rounded w-20" />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="h-5 bg-slate-200 rounded w-16" />
+                          <div className="h-8 bg-slate-200 rounded w-16" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : pagedSearchResults.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-slate-400 text-xs">
                     <Package className="w-10 h-10 text-slate-300 mb-2" />
                     <span>

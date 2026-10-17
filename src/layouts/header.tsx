@@ -33,6 +33,19 @@ const getPageHeaderInfo = (
   userMenuItems: MenuItem[] = []
 ): PageHeaderInfo => {
   // 0. Trang con phân cấp (Breadcrumbs)
+  if (
+    (pathname.startsWith('/sales/customers/') && pathname !== '/sales/customers') ||
+    (pathname.startsWith('/customers/') && pathname !== '/customers')
+  ) {
+    return {
+      title: 'Chi tiết hồ sơ đại lý',
+      category: 'Bán hàng',
+      breadcrumbs: [
+        { label: 'Quản lý đại lý', path: '/sales/customers' },
+        { label: 'Chi tiết đại lý' },
+      ],
+    };
+  }
   if (pathname === '/sales/orders/create' || pathname === '/orders/create') {
     return {
       title: 'Tạo đơn hàng mới',

@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ordersService } from '../services/orders.service';
+import { customerService } from '../services/customer.service';
 import { OrderPrintModal } from '../components/order-print-modal';
 import { ReorderModal } from '../components/reorder-modal';
 import { getStoredUser } from '../utils/navigation';
@@ -205,7 +206,19 @@ export const OrdersPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const urlCustomerId = searchParams.get('customerId');
-  const shouldOpenCreate = searchParams.get('createOrder') === 'true' || !!urlCustomerId;
+  const [filterCustomerName, setFilterCustomerName] = useState<string>('');
+  const shouldOpenCreate = searchParams.get('createOrder') === 'true';
+
+  useEffect(() => {
+    if (urlCustomerId) {
+      customerService
+        .getCustomerById(urlCustomerId)
+        .then((c) => setFilterCustomerName(c.name || c.code || ''))
+        .catch(() => setFilterCustomerName(''));
+    } else {
+      setFilterCustomerName('');
+    }
+  }, [urlCustomerId]);
 
   const initialSearch = searchParams.get('search') || searchParams.get('q') || '';
   const initialStatus = (() => {
@@ -363,6 +376,10 @@ export const OrdersPage: React.FC = () => {
     setFromDate('');
     setToDate('');
     setPage(1);
+    if (urlCustomerId) {
+      searchParams.delete('customerId');
+      setSearchParams(searchParams);
+    }
   };
 
   const hasActiveFilters =
@@ -370,7 +387,8 @@ export const OrdersPage: React.FC = () => {
     searchTerm !== '' ||
     selectedRegion !== 'ALL' ||
     fromDate !== '' ||
-    toDate !== '';
+    toDate !== '' ||
+    !!urlCustomerId;
 
   // Đồng bộ trạng thái bộ lọc & phân trang vào URL query parameters
   useEffect(() => {
@@ -940,6 +958,24 @@ export const OrdersPage: React.FC = () => {
                   <option value="Miền Nam">Miền Nam</option>
                 </select>
               </div>
+
+              {urlCustomerId && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs max-w-xs truncate" title={filterCustomerName ? `Đang lọc theo đại lý: ${filterCustomerName}` : undefined}>
+                  <span className="truncate">Đại lý: {filterCustomerName || urlCustomerId}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = new URLSearchParams(searchParams);
+                      next.delete('customerId');
+                      setSearchParams(next);
+                    }}
+                    className="p-0.5 hover:bg-indigo-100 rounded-full cursor-pointer transition-colors shrink-0"
+                    title="Bỏ lọc theo đại lý"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
 
               {/* Nút Đặt lại bộ lọc */}
               {hasActiveFilters && (

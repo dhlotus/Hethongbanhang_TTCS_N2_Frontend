@@ -20,6 +20,7 @@ import { StockListPage } from '../pages/inventory/stock-list-page';
 import { CreditLimitPage } from '../pages/credit-limit/credit-limit-page';
 import { DebtReportPage } from '../pages/debt-report';
 import { CustomersPage } from '../pages/customers-page';
+import { CustomerDetailPage } from '../pages/customer-detail-page';
 import { InventoryStockPage } from '../pages/inventory-stock-page';
 import { InventoryAuditsPage } from '../pages/inventory-audits-page';
 import { InventoryReceiptsPage } from '../pages/inventory-receipts-page';
@@ -145,11 +146,13 @@ export const AppRoutes: React.FC = () => {
               element={
                 <RoleGuard
                   allowedRoles={['SALES_REP', 'SALES_MANAGER', 'ACCOUNTANT', 'ADMIN']}
-                  moduleName="Quản lý Đại lý & Hạn mức Tín dụng"
+                  moduleName="Quản lý đại lý"
                 />
               }
             >
               <Route path="/sales/customers" element={<CustomersPage />} />
+              <Route path="/sales/customers/:id" element={<CustomerDetailPage />} />
+              <Route path="/customers/:id" element={<CustomerDetailPage />} />
               <Route path="/customers" element={<Navigate to="/sales/customers" replace />} />
               <Route path="/sales/credit-limit" element={<CreditLimitPage />} />
             </Route>
