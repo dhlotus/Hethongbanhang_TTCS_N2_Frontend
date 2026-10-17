@@ -105,4 +105,16 @@
 
 ## 8. Kiểm Tra Chất Lượng Mã Nguồn
 - `npm run build`: Thành công (**0 lỗi**).
-- `npm run lint`: Thành công (**0 lỗi, 0 cảnh báo**).
+- `tsc -b`: Thành công (**0 lỗi**).
+
+---
+
+## 9. Tối Ưu Giao Diện Danh Mục Sản Phẩm & Trang Chỉnh Sửa Sản Phẩm Riêng Biệt (100% Hoàn Thành)
+| Hạng mục cải tiến | Trạng thái | Chi tiết kỹ thuật & Giải pháp |
+| :--- | :---: | :--- |
+| **Bảng 6 cột chuẩn đơn nhất (1 cột - 1 dữ liệu duy nhất)** | ✅ Đạt | Chuyển sang bố cục cố định `table-fixed w-full` với 6 cột độc lập rõ ràng: `Mã SKU (15%)`, `Tên sản phẩm (39%)`, `Tồn kho (12%)`, `Giá niêm yết (14%)`, `Trạng thái (10%)`, `Thao tác (10%)`. Mỗi cột hiển thị đúng 1 loại dữ liệu riêng biệt (không gộp nhiều thông tin vào cùng một ô), không bị vỡ cột và không sinh thanh cuộn ngang trên màn hình Desktop. |
+| **Chỉ báo Trạng thái chỉ xem (Read-only Badge)** | ✅ Đạt | Trạng thái ở bảng ngoài chỉ để quan sát: **Đang hoạt động** hiển thị huy hiệu xanh ngọc (`emerald`, nhãn "Hoạt động"), **Ngừng hoạt động** hiển thị huy hiệu xám (`slate`, nhãn "Ngừng"). Không cho phép ấn đổi trạng thái trực tiếp ở bảng để tránh bấm nhầm; việc kích hoạt / ngừng kinh doanh được quản lý tập trung bên trong trang chỉnh sửa sản phẩm. |
+| **Trang chỉnh sửa riêng biệt (`ProductEditPage`)** | ✅ Đạt | Thay thế toàn bộ popup modal cũ bằng trang chỉnh sửa chuyên biệt responsive tại route `/catalog/products/:id/edit`. Hỗ trợ chọn danh mục phân cấp Cấp 1 & Cấp 2, quản lý bảng quy đổi đơn vị phụ, giá niêm yết & giá vốn bảo mật, upload ảnh xem trước, tùy chọn chuyển đổi trạng thái Hoạt động / Ngừng, và thanh điều hướng dính ở chân trang. |
+| **Footer & Phân trang Backend chuẩn SaaS** | ✅ Đạt | Gắn liền component `<Pagination>` chuẩn LOHA SALES vào chân bảng, loại bỏ viền/padding kép, kết nối trực tiếp với API backend `productsService.getProducts` với `page`, `limit`, `search`, `parentCategory`, `status`. |
+| **Giao diện Thẻ thích ứng (Mobile Card View)** | ✅ Đạt | Tối ưu hiển thị cho thiết bị di động (< 640px) dạng thẻ dọc, huy hiệu trạng thái chỉ xem, giữ lại các nút chính: "Chi tiết", "Sửa", "Kho", "Xóa". |
+

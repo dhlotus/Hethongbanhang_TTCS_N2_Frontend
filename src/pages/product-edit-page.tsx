@@ -170,12 +170,6 @@ export const ProductEditPage: React.FC = () => {
     return parent?.subCategories || parent?.children || [];
   }, [categoriesList, parentCategory]);
 
-  // Danh sách Cấp 3 tương ứng Cấp 2 đã chọn
-  const availableChildCategories = useMemo(() => {
-    const sub = availableSubCategories.find((s) => s.name === subCategory);
-    return sub?.subCategories || sub?.children || [];
-  }, [availableSubCategories, subCategory]);
-
   // Xử lý đổi nhóm Cấp 1
   const handleParentCategoryChange = (newParent: string) => {
     setParentCategory(newParent);
@@ -701,7 +695,7 @@ export const ProductEditPage: React.FC = () => {
                   </label>
                   <CurrencyInput
                     value={price}
-                    onChange={(val) => setPrice(val)}
+                    onChange={(val) => setPrice(val ?? 0)}
                     placeholder="VD: 520.000 ₫"
                     className="w-full text-xs font-bold font-mono border border-slate-200 rounded-xl px-3.5 py-2.5 bg-slate-50/50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all"
                   />
