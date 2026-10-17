@@ -358,6 +358,17 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<any>(null);
 
+const removeVietnameseTones = (str: string): string => {
+  if (!str) return '';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .toLowerCase()
+    .trim();
+};
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -385,47 +396,58 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
       clearTimeout(debounceTimerRef.current);
     }
 
-    if (!val.trim()) {
+    const rawVal = val.trim();
+    const normalizedQ = removeVietnameseTones(val);
+
+    if (!rawVal) {
       const cache = row.type === 'SKU' ? cachedProducts : cachedCategories;
       setSuggestions(cache.slice(0, 50));
       setIsSearching(false);
       return;
     }
 
-    setIsSearching(true);
-    debounceTimerRef.current = setTimeout(async () => {
-      try {
-        if (row.type === 'SKU') {
-          const q = val.trim().toLowerCase();
-          const localFiltered = cachedProducts.filter(
-            (p) => p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)
-          );
-          if (localFiltered.length > 0) {
-            setSuggestions(localFiltered.slice(0, 50));
+    // Tìm kiếm tức thì hỗ trợ tiếng Việt không dấu trên Cache
+    if (row.type === 'SKU') {
+      const localFiltered = cachedProducts.filter((p) => {
+        const codeNorm = removeVietnameseTones(p.code);
+        const nameNorm = removeVietnameseTones(p.name);
+        return codeNorm.includes(normalizedQ) || nameNorm.includes(normalizedQ);
+      });
+      setSuggestions(localFiltered.slice(0, 50));
+    } else {
+      const filtered = cachedCategories.filter((c) => {
+        const codeNorm = removeVietnameseTones(c.code);
+        const nameNorm = removeVietnameseTones(c.name);
+        return codeNorm.includes(normalizedQ) || nameNorm.includes(normalizedQ);
+      });
+      setSuggestions(filtered.slice(0, 50));
+    }
+
+    // Debounce tìm kiếm bổ sung trên server cho SKU
+    if (row.type === 'SKU') {
+      setIsSearching(true);
+      debounceTimerRef.current = setTimeout(async () => {
+        try {
+          const res = await productsService.getProducts({ search: rawVal, limit: 50 });
+          if (res.data && res.data.length > 0) {
+            const serverItems: TargetItem[] = res.data.map((p: any) => ({
+              code: p.sku,
+              name: p.name,
+            }));
+            setSuggestions((prev) => {
+              const map = new Map<string, TargetItem>();
+              prev.forEach((item) => map.set(item.code.toLowerCase(), item));
+              serverItems.forEach((item) => map.set(item.code.toLowerCase(), item));
+              return Array.from(map.values()).slice(0, 50);
+            });
           }
-          try {
-            const res = await productsService.getProducts({ search: val.trim(), limit: 50 });
-            if (res.data && res.data.length > 0) {
-              const items: TargetItem[] = res.data.map((p: any) => ({
-                code: p.sku,
-                name: p.name,
-              }));
-              setSuggestions(items);
-            }
-          } catch {}
-        } else {
-          const q = val.trim().toLowerCase();
-          const filtered = cachedCategories.filter(
-            (c) => c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
-          );
-          setSuggestions(filtered.slice(0, 50));
+        } catch (err) {
+          // Ignore
+        } finally {
+          setIsSearching(false);
         }
-      } catch (err) {
-        // Xử lý ngầm hoặc ignore
-      } finally {
-        setIsSearching(false);
-      }
-    }, 250);
+      }, 300);
+    }
   };
 
   const handleToggleSelect = (item: TargetItem) => {
@@ -1191,13 +1213,6 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={handleRequestClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
         {/* Body */}
