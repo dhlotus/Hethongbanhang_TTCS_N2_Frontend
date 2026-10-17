@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   CalendarClock,
   FileText,
+  FileSpreadsheet,
   CreditCard,
   RotateCcw,
   Building2,
@@ -357,6 +358,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Quản lý Tồn kho',
     },
     {
+      id: 'inventory-stock-card',
+      name: 'Thẻ kho hàng hóa',
+      path: '/inventory/stock-card',
+      icon: FileSpreadsheet,
+      category: 'Quản lý Tồn kho',
+    },
+    {
       id: 'inventory-batches',
       name: 'Quản lý lô & Hạn sử dụng',
       path: '/inventory/batches',
@@ -449,6 +457,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Sổ tồn kho & Lô hàng',
       path: '/inventory/stock',
       icon: Warehouse,
+      category: 'Kiểm soát Kho',
+    },
+    {
+      id: 'inventory-stock-card',
+      name: 'Thẻ kho hàng hóa',
+      path: '/inventory/stock-card',
+      icon: FileSpreadsheet,
       category: 'Kiểm soát Kho',
     },
     {

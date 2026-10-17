@@ -44,6 +44,7 @@ import { WarehousesPage } from '../pages/warehouses-page';
 import { InternalTransfersPage } from '../pages/inventory/internal-transfers-page';
 import { OrderPickingPage } from '../pages/order-picking-page';
 import { InventoryBatchesPage } from '../pages/inventory-batches-page';
+import { StockCardPage } from '../pages/inventory/stock-card-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -244,6 +245,7 @@ export const AppRoutes: React.FC = () => {
               <Route path="/inventory/stock" element={<InventoryStockPage />} />
               <Route path="/inventory/stock-list" element={<StockListPage />} />
               <Route path="/inventory/stocks" element={<StockListPage />} />
+              <Route path="/inventory/stock-card" element={<StockCardPage />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
