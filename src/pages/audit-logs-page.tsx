@@ -353,6 +353,23 @@ export const AuditLogsPage: React.FC = () => {
     loadAuditLogs();
   }, [loadAuditLogs]);
 
+  // Tự động đồng bộ và tải lại nhật ký khi người dùng cập nhật hồ sơ hoặc đổi ảnh đại diện
+  useEffect(() => {
+    const handleProfileSync = () => {
+      void loadAuditLogs();
+    };
+
+    window.addEventListener('user-updated', handleProfileSync);
+    window.addEventListener('avatar-updated', handleProfileSync);
+    window.addEventListener('storage', handleProfileSync);
+
+    return () => {
+      window.removeEventListener('user-updated', handleProfileSync);
+      window.removeEventListener('avatar-updated', handleProfileSync);
+      window.removeEventListener('storage', handleProfileSync);
+    };
+  }, [loadAuditLogs]);
+
   // Cập nhật bộ lọc kết hợp với đồng bộ URL
   const handleFilterChange = (newFilters: Partial<AuditLogQueryParams>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
@@ -426,7 +443,6 @@ export const AuditLogsPage: React.FC = () => {
         onFilterChange={handleFilterChange}
         onReset={handleResetFilters}
         totalResults={total}
-        onRefresh={loadAuditLogs}
         loading={loading}
       />
 
