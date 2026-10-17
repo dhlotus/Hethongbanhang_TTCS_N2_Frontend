@@ -25,7 +25,8 @@ import { showToast } from '../components/toast';
 import { ModalLayout } from '../components/modal-layout';
 import { MinStockModal } from '../components/inventory/min-stock-modal';
 import { inventoryService } from '../services/inventory.service';
-import { productsService } from '../services/products.service';
+import { productsService, PRODUCT_CATEGORIES } from '../services/products.service';
+import { categoriesService } from '../services/categories.service';
 import { apiClient } from '../services/api';
 import { STANDARD_WAREHOUSES, type StandardWarehouse } from '../constants/warehouse.constants';
 import { getStoredUser } from '../utils/navigation';
@@ -346,13 +347,47 @@ export const InventoryStockPage: React.FC = () => {
     setCurrentPage(1);
   }, [searchTerm, selectedWarehouse, selectedCategory, selectedStatus]);
 
-  // Danh sách nhóm hàng duy nhất để hiển thị dropdown
-  const categoryOptions = useMemo(() => {
-    const set = new Set<string>();
-    stockItems.forEach((item) => {
-      if (item.parentCategory) set.add(item.parentCategory);
-    });
-    return Array.from(set);
+  // Danh sách nhóm hàng cấp 1 bền vững: chỉ lọc theo nhóm hàng cấp 1 (Level 1)
+  const [categoryOptions, setCategoryOptions] = useState<string[]>(() =>
+    PRODUCT_CATEGORIES.filter((c) => (c.level ? c.level === 1 : true)).map((c) => c.name)
+  );
+
+  useEffect(() => {
+    // Lấy cây danh mục để chỉ lấy các nhóm hàng cấp 1 (root nodes)
+    categoriesService
+      .getCategoryTree()
+      .then((tree) => {
+        if (Array.isArray(tree) && tree.length > 0) {
+          const level1Names = tree.map((c) => c.name).filter(Boolean);
+          setCategoryOptions((prev) => Array.from(new Set([...prev, ...level1Names])));
+        } else {
+          return categoriesService.getCategories().then((cats) => {
+            if (Array.isArray(cats) && cats.length > 0) {
+              const level1Names = cats
+                .filter((c) => c.level === 1 || !c.parentId || !c.parent_id)
+                .map((c) => c.name)
+                .filter(Boolean);
+              setCategoryOptions((prev) => Array.from(new Set([...prev, ...level1Names])));
+            }
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Chỉ bổ sung thêm nếu sản phẩm tồn kho có parentCategory cấp 1
+  useEffect(() => {
+    if (stockItems.length > 0) {
+      setCategoryOptions((prev) => {
+        const set = new Set(prev);
+        stockItems.forEach((item) => {
+          if (item.parentCategory && item.parentCategory.trim()) {
+            set.add(item.parentCategory.trim());
+          }
+        });
+        return Array.from(set);
+      });
+    }
   }, [stockItems]);
 
   // Thống kê tổng hợp 3 cột tồn kho + Cảnh báo đứt hàng (chỉ đếm hàng sắp đứt, không lấy hàng 0 tồn)
@@ -708,8 +743,8 @@ export const InventoryStockPage: React.FC = () => {
                 className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer truncate"
               >
                 <option value="ALL">Tất cả trạng thái tồn</option>
-                <option value="BELOW_MIN_STOCK">⚠️ Dưới tồn tối thiểu</option>
-                <option value="IN_STOCK">Còn hàng (Dồi dào)</option>
+                <option value="BELOW_MIN_STOCK">Dưới tồn tối thiểu</option>
+                <option value="IN_STOCK">Còn hàng</option>
                 <option value="OUT_OF_STOCK">Hết hàng (Tồn khả dụng = 0)</option>
               </select>
             </div>
@@ -1087,21 +1122,7 @@ export const InventoryStockPage: React.FC = () => {
                 <span>Xem chi tiết</span>
               </button>
 
-              {/* 2. Quy đổi Thùng / Lốc */}
-              <button
-                type="button"
-                onClick={() => {
-                  setOpenActionMenuKey(null);
-                  setActionMenuAnchor(null);
-                  handleOpenConversionModal(item);
-                }}
-                className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-              >
-                <ArrowRightLeft className="w-4 h-4 text-slate-400" />
-                <span>Quy đổi Thùng / Lốc</span>
-              </button>
-
-              {/* 3. Điều chỉnh tồn tối thiểu:
+              {/* 2. Điều chỉnh tồn tối thiểu:
                      - Ẩn nếu chỉ đứng ở bộ lọc "Tất cả kho hàng" (và không chọn Dưới tồn tối thiểu)
                      - Hiển thị nếu đứng ở kho cụ thể HOẶC khi đứng ở cả "Tất cả kho hàng" và "Dưới tồn tối thiểu"
               */}
