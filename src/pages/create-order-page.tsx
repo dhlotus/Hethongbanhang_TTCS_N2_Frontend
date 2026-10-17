@@ -43,6 +43,7 @@ import type { Product, ProductUnit } from '../types/products';
 import type { AgencyWarehouseDetail } from '../types/warehouse.types';
 import { DateInput } from '../components/date-input';
 import { OrderSuggestionsPanel } from '../components/order-suggestions-panel';
+import { AgencyFlagBadge } from '../components/agency-flag-badge';
 import type { SuggestedProductItem, LatestOrderItem } from '../types/order-suggestion.types';
 
 const DRAFT_KEY = 'new-order-page-draft';
@@ -1590,11 +1591,7 @@ export const CreateOrderPage: React.FC = () => {
                         <CreditCard className="w-3.5 h-3.5" />
                         Hạn mức công nợ
                       </span>
-                      {debtStatus && (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${debtStatus.canCreateOrder ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                          {debtStatus.canCreateOrder ? 'Hợp lệ' : 'Bị khóa nợ'}
-                        </span>
-                      )}
+                      <AgencyFlagBadge agencyId={selectedCustomer.id} size="sm" />
                     </div>
                     {debtStatus ? (
                       <div className="flex items-center gap-4 text-xs pt-1 flex-wrap">
