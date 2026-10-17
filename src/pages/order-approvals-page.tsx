@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
-  ClipboardCheck,
   CheckCircle2,
   XCircle,
   CornerUpLeft,
@@ -14,12 +14,14 @@ import {
   Check,
   DollarSign,
   AlertCircle,
+  RotateCcw,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { Pagination } from '../components/pagination';
 import { DateInput } from '../components/date-input';
 import { ordersService } from '../services/orders.service';
 import { productsService } from '../services/products.service';
+import { matchesSearchTerm } from '../utils/vietnamese';
 import type { Product } from '../types/products';
 import type {
   Order,
@@ -41,7 +43,20 @@ const formatDate = (isoString?: string): string => {
   }
 };
 
-
+/** Chuyển đổi ngày tháng của đơn hàng thành chuỗi YYYY-MM-DD phục vụ lọc chính xác */
+const getOrderDateKey = (dateVal?: string | Date): string => {
+  if (!dateVal) return '';
+  if (typeof dateVal === 'string') {
+    const m = dateVal.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) return m[1];
+  }
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
 
 /** Render huy hiệu trạng thái đơn hàng chuẩn xác */
 const renderStatusBadge = (status: OrderStatus, isPending: boolean) => {
@@ -81,22 +96,43 @@ const renderStatusBadge = (status: OrderStatus, isPending: boolean) => {
 };
 
 export const OrderApprovalsPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Khôi phục bộ lọc từ URL Search Parameters
+  const initialTab = useMemo<'PENDING' | 'HISTORY'>(() => {
+    return searchParams.get('tab') === 'history' ? 'HISTORY' : 'PENDING';
+  }, [searchParams]);
+
+  const initialSearch = searchParams.get('search') || '';
+  const initialRep = searchParams.get('rep') || 'ALL';
+  const initialStock = useMemo<'ALL' | 'SUFFICIENT' | 'INSUFFICIENT'>(() => {
+    const s = searchParams.get('stock')?.toUpperCase();
+    if (s === 'SUFFICIENT' || s === 'INSUFFICIENT') return s;
+    return 'ALL';
+  }, [searchParams]);
+  const initialFromDate = searchParams.get('from') || '';
+  const initialToDate = searchParams.get('to') || '';
+  const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const initialPageSize = [10, 20, 50].includes(Number(searchParams.get('limit')))
+    ? Number(searchParams.get('limit'))
+    : 10;
+
   // Danh sách đơn hàng
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Bộ lọc
-  const [activeTab, setActiveTab] = useState<'PENDING' | 'HISTORY'>('PENDING');
-  const [searchInput, setSearchInput] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSalesRep, setSelectedSalesRep] = useState<string>('ALL');
-  const [fromDate, setFromDate] = useState<string>('');
-  const [toDate, setToDate] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'PENDING' | 'HISTORY'>(initialTab);
+  const [searchInput, setSearchInput] = useState(initialSearch);
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [selectedSalesRep, setSelectedSalesRep] = useState<string>(initialRep);
+  const [fromDate, setFromDate] = useState<string>(initialFromDate);
+  const [toDate, setToDate] = useState<string>(initialToDate);
 
   // Phân trang chuẩn quản lý đại lý
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialPageSize);
 
   // Modal thẩm định chi tiết & ra quyết định
   const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
@@ -105,18 +141,124 @@ export const OrderApprovalsPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Bộ lọc nhanh theo tình trạng tồn kho khi ở tab Chờ duyệt
-  const [stockFilter, setStockFilter] = useState<'ALL' | 'SUFFICIENT' | 'INSUFFICIENT'>('ALL');
+  const [stockFilter, setStockFilter] = useState<'ALL' | 'SUFFICIENT' | 'INSUFFICIENT'>(initialStock);
 
   // Dữ liệu sản phẩm & tồn kho khả dụng để kiểm tra đối soát trực tiếp
   const [productsMap, setProductsMap] = useState<Map<string, Product>>(new Map());
   const [isLoadingStock, setIsLoadingStock] = useState(false);
+
+  // Hàm cập nhật URL Search Parameters đồng bộ
+  const updateUrlParams = useCallback(
+    (newParams: {
+      tab?: 'PENDING' | 'HISTORY';
+      search?: string;
+      rep?: string;
+      stock?: 'ALL' | 'SUFFICIENT' | 'INSUFFICIENT';
+      from?: string;
+      to?: string;
+      page?: number;
+      limit?: number;
+    }) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+
+          const targetTab = newParams.tab !== undefined ? newParams.tab : activeTab;
+          if (targetTab === 'HISTORY') {
+            next.set('tab', 'history');
+          } else {
+            next.delete('tab');
+          }
+
+          const targetSearch = newParams.search !== undefined ? newParams.search : searchInput;
+          if (targetSearch.trim()) {
+            next.set('search', targetSearch.trim());
+          } else {
+            next.delete('search');
+          }
+
+          const targetRep = newParams.rep !== undefined ? newParams.rep : selectedSalesRep;
+          if (targetRep && targetRep !== 'ALL') {
+            next.set('rep', targetRep);
+          } else {
+            next.delete('rep');
+          }
+
+          const targetStock = newParams.stock !== undefined ? newParams.stock : stockFilter;
+          if (targetTab === 'PENDING' && targetStock && targetStock !== 'ALL') {
+            next.set('stock', targetStock.toLowerCase());
+          } else {
+            next.delete('stock');
+          }
+
+          const targetFrom = newParams.from !== undefined ? newParams.from : fromDate;
+          if (targetFrom) {
+            next.set('from', targetFrom);
+          } else {
+            next.delete('from');
+          }
+
+          const targetTo = newParams.to !== undefined ? newParams.to : toDate;
+          if (targetTo) {
+            next.set('to', targetTo);
+          } else {
+            next.delete('to');
+          }
+
+          const targetPage = newParams.page !== undefined ? newParams.page : currentPage;
+          if (targetPage > 1) {
+            next.set('page', String(targetPage));
+          } else {
+            next.delete('page');
+          }
+
+          const targetLimit = newParams.limit !== undefined ? newParams.limit : pageSize;
+          if (targetLimit !== 10) {
+            next.set('limit', String(targetLimit));
+          } else {
+            next.delete('limit');
+          }
+
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [activeTab, searchInput, selectedSalesRep, stockFilter, fromDate, toDate, currentPage, pageSize, setSearchParams]
+  );
+
+  // Lắng nghe thay đổi của URL search parameters (hỗ trợ nút Back / Forward trên trình duyệt)
+  useEffect(() => {
+    const urlTab = searchParams.get('tab') === 'history' ? 'HISTORY' : 'PENDING';
+    const urlSearch = searchParams.get('search') || '';
+    const urlRep = searchParams.get('rep') || 'ALL';
+    const stockParam = searchParams.get('stock')?.toUpperCase();
+    const urlStock: 'ALL' | 'SUFFICIENT' | 'INSUFFICIENT' =
+      stockParam === 'SUFFICIENT' || stockParam === 'INSUFFICIENT' ? stockParam : 'ALL';
+    const urlFrom = searchParams.get('from') || '';
+    const urlTo = searchParams.get('to') || '';
+    const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    const urlLimit = [10, 20, 50].includes(Number(searchParams.get('limit')))
+      ? Number(searchParams.get('limit'))
+      : 10;
+
+    setActiveTab((prev) => (prev !== urlTab ? urlTab : prev));
+    setSearchInput((prev) => (prev !== urlSearch ? urlSearch : prev));
+    setSearchTerm((prev) => (prev !== urlSearch ? urlSearch : prev));
+    setSelectedSalesRep((prev) => (prev !== urlRep ? urlRep : prev));
+    setStockFilter((prev) => (prev !== urlStock ? urlStock : prev));
+    setFromDate((prev) => (prev !== urlFrom ? urlFrom : prev));
+    setToDate((prev) => (prev !== urlTo ? urlTo : prev));
+    setCurrentPage((prev) => (prev !== urlPage ? urlPage : prev));
+    setPageSize((prev) => (prev !== urlLimit ? urlLimit : prev));
+  }, [searchParams]);
 
   // Tải danh mục tồn kho toàn hệ thống để kiểm tra trước cho toàn bộ đơn hàng
   useEffect(() => {
     let active = true;
     setIsLoadingStock(true);
     productsService
-      .getProducts({ limit: 100 })
+      .getProducts({ limit: 500 })
       .then((res) => {
         if (!active) return;
         const list = Array.isArray(res) ? res : res.data || [];
@@ -180,14 +322,19 @@ export const OrderApprovalsPage: React.FC = () => {
     };
   };
 
-  // Debounce tìm kiếm
+  // Debounce tìm kiếm và đồng bộ URL query parameter
   useEffect(() => {
     const timer = setTimeout(() => {
-      setSearchTerm(searchInput.trim());
-      setCurrentPage(1);
+      const trimmed = searchInput.trim();
+      setSearchTerm(trimmed);
+      const currentParam = searchParams.get('search') || '';
+      if (trimmed !== currentParam) {
+        setCurrentPage(1);
+        updateUrlParams({ search: trimmed, page: 1 });
+      }
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchInput]);
+  }, [searchInput, searchParams, updateUrlParams]);
 
   // Lắng nghe sự kiện cập nhật đơn hàng realtime
   useEffect(() => {
@@ -238,30 +385,50 @@ export const OrderApprovalsPage: React.FC = () => {
     );
   };
 
-  // 1. Lọc tập đơn cơ sở theo NVKD và Từ khóa tìm kiếm
+  // 1. Lọc tập đơn cơ sở theo NVKD, Từ khóa tìm kiếm và Khoảng thời gian chuẩn xác
   const baseOrders = useMemo(() => {
     return orders.filter((order) => {
-      // Lọc theo nhân viên kinh doanh
+      // 1. Lọc theo nhân viên kinh doanh
       if (selectedSalesRep !== 'ALL') {
-        if (order.salesRepId !== selectedSalesRep && order.salesRepName !== selectedSalesRep) {
+        const repId = order.salesRepId || (order as unknown as { salesRep?: { id?: string } }).salesRep?.id;
+        const repName = order.salesRepName || (order as unknown as { salesRep?: { name?: string } }).salesRep?.name;
+        const matchesId = Boolean(repId && repId.toLowerCase() === selectedSalesRep.toLowerCase());
+        const matchesName = Boolean(
+          repName &&
+          (repName.toLowerCase() === selectedSalesRep.toLowerCase() ||
+           matchesSearchTerm(repName, selectedSalesRep))
+        );
+        if (!matchesId && !matchesName) {
           return false;
         }
       }
 
-      // Lọc theo từ khóa tìm kiếm
+      // 2. Lọc theo khoảng ngày (fromDate -> toDate) đối chiếu chuẩn YYYY-MM-DD
+      if (fromDate || toDate) {
+        const orderDateStr = getOrderDateKey(order.createdAt || (order as unknown as { orderDate?: string }).orderDate);
+        if (orderDateStr) {
+          if (fromDate && orderDateStr < fromDate) return false;
+          if (toDate && orderDateStr > toDate) return false;
+        }
+      }
+
+      // 3. Lọc theo từ khóa tìm kiếm (hỗ trợ tiếng Việt có dấu và không dấu: mã đơn, tên đại lý, mã đại lý, NVKD)
       if (searchTerm) {
-        const q = searchTerm.toLowerCase();
-        const matchCode = order.orderCode?.toLowerCase().includes(q);
-        const matchCust = order.customerName?.toLowerCase().includes(q) || order.customerCode?.toLowerCase().includes(q);
-        const matchRep = order.salesRepName?.toLowerCase().includes(q);
-        if (!matchCode && !matchCust && !matchRep) return false;
+        const matchCode = matchesSearchTerm(order.orderCode, searchTerm);
+        const matchCustName = matchesSearchTerm(order.customerName, searchTerm);
+        const matchCustCode = matchesSearchTerm(order.customerCode, searchTerm);
+        const repName = order.salesRepName || (order as unknown as { salesRep?: { name?: string } }).salesRep?.name;
+        const matchRep = matchesSearchTerm(repName, searchTerm);
+        if (!matchCode && !matchCustName && !matchCustCode && !matchRep) {
+          return false;
+        }
       }
 
       return true;
     });
-  }, [orders, selectedSalesRep, searchTerm]);
+  }, [orders, selectedSalesRep, searchTerm, fromDate, toDate]);
 
-  // 2. Thống kê số lượng chuẩn xác theo đúng bộ lọc đang chọn (NVKD, Từ khóa)
+  // 2. Thống kê số lượng chuẩn xác theo đúng bộ lọc đang chọn (NVKD, Từ khóa, Ngày)
   const stats = useMemo(() => {
     const pendingList = baseOrders.filter(isOrderPendingApproval);
     const pendingCount = pendingList.length;
@@ -315,10 +482,46 @@ export const OrderApprovalsPage: React.FC = () => {
   const salesRepOptions = useMemo(() => {
     const map = new Map<string, string>();
     orders.forEach((o) => {
-      if (o.salesRepName) map.set(o.salesRepId || o.salesRepName, o.salesRepName);
+      const repId = o.salesRepId || (o as unknown as { salesRep?: { id?: string } }).salesRep?.id || o.salesRepName;
+      const repName = o.salesRepName || (o as unknown as { salesRep?: { name?: string } }).salesRep?.name;
+      if (repId && repName) {
+        map.set(repId, repName);
+      }
     });
+    if (selectedSalesRep !== 'ALL' && !map.has(selectedSalesRep)) {
+      map.set(selectedSalesRep, selectedSalesRep);
+    }
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [orders]);
+  }, [orders, selectedSalesRep]);
+
+  // Kiểm tra xem có bất kỳ bộ lọc nào đang được kích hoạt hay không
+  const hasActiveFilters = Boolean(
+    searchInput.trim() ||
+    selectedSalesRep !== 'ALL' ||
+    fromDate ||
+    toDate ||
+    (activeTab === 'PENDING' && stockFilter !== 'ALL')
+  );
+
+  // Xóa toàn bộ bộ lọc về trạng thái ban đầu
+  const handleResetFilters = () => {
+    setSearchInput('');
+    setSearchTerm('');
+    setSelectedSalesRep('ALL');
+    setFromDate('');
+    setToDate('');
+    setStockFilter('ALL');
+    setCurrentPage(1);
+    updateUrlParams({
+      tab: activeTab,
+      search: '',
+      rep: 'ALL',
+      from: '',
+      to: '',
+      stock: 'ALL',
+      page: 1,
+    });
+  };
 
   // Phân trang danh sách hiển thị
   const totalPages = Math.ceil(filteredOrders.length / pageSize) || 1;
@@ -413,74 +616,34 @@ export const OrderApprovalsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* ── TIÊU ĐỀ TRANG (BỎ NÚT LÀM MỚI) ── */}
-      <div className="flex items-center gap-2.5">
-        <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
-          <ClipboardCheck className="w-5 h-5" />
-        </div>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-            Phê duyệt đơn hàng
-          </h1>
-        </div>
-      </div>
-
-      {/* ── 4 THẺ CHỈ SỐ NHANH (KPI TĨNH, KHÔNG BẤM ĐƯỢC, BỎ CÁC NOTE NHỎ) ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* ── 2 THẺ CHỈ SỐ QUAN TRỌNG NHẤT DÀNH CHO QUẢN LÝ (ĐƠN CHỜ DUYỆT & TỔNG TIỀN CHỜ DUYỆT) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {/* Card 1: Số đơn chờ duyệt */}
-        <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+        <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs hover:border-indigo-200 transition-colors">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Đơn chờ duyệt</span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
               <Clock className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-extrabold text-indigo-700">{stats.pendingCount}</span>
+            <span className="text-2xl sm:text-3xl font-extrabold text-indigo-700">{stats.pendingCount}</span>
             <span className="text-xs text-slate-400 font-medium">đơn</span>
           </div>
         </div>
 
         {/* Card 2: Tổng giá trị chờ duyệt */}
-        <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs">
+        <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs hover:border-emerald-200 transition-colors">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Tổng tiền chờ duyệt</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-1">
-            <span className="text-lg sm:text-xl font-extrabold text-emerald-700 truncate">
+            <span className="text-xl sm:text-2xl font-extrabold text-emerald-700 truncate font-mono">
               {formatCurrency(stats.pendingAmount)}
             </span>
-          </div>
-        </div>
-
-        {/* Card 3: Đã duyệt */}
-        <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Đã phê duyệt</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-extrabold text-emerald-700">{stats.approvedCount}</span>
-            <span className="text-xs text-slate-400 font-medium">đơn</span>
-          </div>
-        </div>
-
-        {/* Card 4: Đã từ chối / Trả lại */}
-        <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Từ chối / Trả lại</span>
-            <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
-              <XCircle className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-extrabold text-rose-700">{stats.rejectedCount}</span>
-            <span className="text-xs text-slate-400 font-medium">đơn</span>
           </div>
         </div>
       </div>
@@ -492,7 +655,11 @@ export const OrderApprovalsPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => { setActiveTab('PENDING'); setCurrentPage(1); }}
+              onClick={() => {
+                setActiveTab('PENDING');
+                setCurrentPage(1);
+                updateUrlParams({ tab: 'PENDING', page: 1 });
+              }}
               className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
                 activeTab === 'PENDING'
                   ? 'bg-indigo-600 text-white shadow-xs'
@@ -503,7 +670,11 @@ export const OrderApprovalsPage: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => { setActiveTab('HISTORY'); setCurrentPage(1); }}
+              onClick={() => {
+                setActiveTab('HISTORY');
+                setCurrentPage(1);
+                updateUrlParams({ tab: 'HISTORY', page: 1 });
+              }}
               className={`px-4 py-2 rounded-xl font-bold transition-all cursor-pointer ${
                 activeTab === 'HISTORY'
                   ? 'bg-indigo-600 text-white shadow-xs'
@@ -519,7 +690,11 @@ export const OrderApprovalsPage: React.FC = () => {
             <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl border border-slate-200/80">
               <button
                 type="button"
-                onClick={() => { setStockFilter('ALL'); setCurrentPage(1); }}
+                onClick={() => {
+                  setStockFilter('ALL');
+                  setCurrentPage(1);
+                  updateUrlParams({ stock: 'ALL', page: 1 });
+                }}
                 className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                   stockFilter === 'ALL'
                     ? 'bg-white text-indigo-700 shadow-2xs font-extrabold'
@@ -530,7 +705,11 @@ export const OrderApprovalsPage: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => { setStockFilter('SUFFICIENT'); setCurrentPage(1); }}
+                onClick={() => {
+                  setStockFilter('SUFFICIENT');
+                  setCurrentPage(1);
+                  updateUrlParams({ stock: 'SUFFICIENT', page: 1 });
+                }}
                 className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                   stockFilter === 'SUFFICIENT'
                     ? 'bg-emerald-600 text-white shadow-2xs'
@@ -542,7 +721,11 @@ export const OrderApprovalsPage: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => { setStockFilter('INSUFFICIENT'); setCurrentPage(1); }}
+                onClick={() => {
+                  setStockFilter('INSUFFICIENT');
+                  setCurrentPage(1);
+                  updateUrlParams({ stock: 'INSUFFICIENT', page: 1 });
+                }}
                 className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                   stockFilter === 'INSUFFICIENT'
                     ? 'bg-rose-600 text-white shadow-2xs'
@@ -556,7 +739,7 @@ export const OrderApprovalsPage: React.FC = () => {
           )}
         </div>
 
-        {/* Hàng 2: Tìm kiếm + Lọc NVKD + Khoảng ngày */}
+        {/* Hàng 2: Tìm kiếm + Lọc NVKD + Khoảng ngày + Nút xóa lọc */}
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
           <div className="relative flex-1 min-w-[240px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -570,8 +753,14 @@ export const OrderApprovalsPage: React.FC = () => {
             {searchInput && (
               <button
                 type="button"
-                onClick={() => setSearchInput('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50"
+                onClick={() => {
+                  setSearchInput('');
+                  setSearchTerm('');
+                  setCurrentPage(1);
+                  updateUrlParams({ search: '', page: 1 });
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 cursor-pointer"
+                title="Xóa từ khóa tìm kiếm"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -582,8 +771,13 @@ export const OrderApprovalsPage: React.FC = () => {
             {/* Lọc theo NVKD */}
             <select
               value={selectedSalesRep}
-              onChange={(e) => { setSelectedSalesRep(e.target.value); setCurrentPage(1); }}
-              className="text-xs font-medium border border-slate-200 rounded-xl px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedSalesRep(val);
+                setCurrentPage(1);
+                updateUrlParams({ rep: val, page: 1 });
+              }}
+              className="text-xs font-medium border border-slate-200 rounded-xl px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer shrink-0"
             >
               <option value="ALL">Tất cả NVKD</option>
               {salesRepOptions.map((rep) => (
@@ -592,14 +786,18 @@ export const OrderApprovalsPage: React.FC = () => {
             </select>
 
             {/* Khoảng ngày */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               <div className="relative flex items-center gap-1 bg-slate-50/80 border border-slate-200 rounded-xl px-2.5 py-1.5 h-9 min-w-[125px]">
                 <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <span className="text-[11px] text-slate-500 font-medium">Từ:</span>
                 <DateInput
                   compact={true}
                   value={fromDate}
-                  onChange={(val) => { setFromDate(val); setCurrentPage(1); }}
+                  onChange={(val) => {
+                    setFromDate(val);
+                    setCurrentPage(1);
+                    updateUrlParams({ from: val, page: 1 });
+                  }}
                   max={toDate || undefined}
                   className="w-full text-xs"
                 />
@@ -611,12 +809,29 @@ export const OrderApprovalsPage: React.FC = () => {
                 <DateInput
                   compact={true}
                   value={toDate}
-                  onChange={(val) => { setToDate(val); setCurrentPage(1); }}
+                  onChange={(val) => {
+                    setToDate(val);
+                    setCurrentPage(1);
+                    updateUrlParams({ to: val, page: 1 });
+                  }}
                   min={fromDate || undefined}
                   className="w-full text-xs"
                 />
               </div>
             </div>
+
+            {/* Nút Xóa lọc */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-xl transition-all shrink-0 cursor-pointer shadow-2xs whitespace-nowrap"
+                title="Xóa tất cả bộ lọc về mặc định"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Xóa lọc</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -812,10 +1027,14 @@ export const OrderApprovalsPage: React.FC = () => {
             itemLabel="đơn"
             showRecordRange={false}
             showFirstLast={false}
-            onPageChange={(page) => setCurrentPage(page)}
+            onPageChange={(page) => {
+              setCurrentPage(page);
+              updateUrlParams({ page });
+            }}
             onPageSizeChange={(size) => {
               setPageSize(size);
               setCurrentPage(1);
+              updateUrlParams({ limit: size, page: 1 });
             }}
           />
         )}
