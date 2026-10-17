@@ -1,16 +1,41 @@
 import { apiClient } from './api';
 import type { Receipt, ReceiptPrintData } from '../types/receipt';
 
+export interface PaginatedReceiptsResult {
+  data: Receipt[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 /**
  * Service Phiếu thu tiền & In/Tải PDF (SN-209)
  */
 export const receiptsService = {
   /**
-   * Lấy danh sách phiếu thu đã ghi nhận
+   * Lấy danh sách phiếu thu có phân trang, tìm kiếm và lọc từ Backend
    */
-  async getReceipts(params?: { search?: string; customerId?: string }): Promise<Receipt[]> {
-    const res = await apiClient.get<Receipt[]>('/receipts', { params });
-    return res.data || [];
+  async getPaginatedReceipts(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    customerId?: string;
+    paymentMethod?: string;
+  }): Promise<PaginatedReceiptsResult> {
+    const res = await apiClient.get<PaginatedReceiptsResult>('/receipts', { params });
+    return res.data;
+  },
+
+  /**
+   * Lấy danh sách phiếu thu đã ghi nhận (toàn bộ)
+   */
+  async getReceipts(params?: { search?: string; customerId?: string; paymentMethod?: string }): Promise<Receipt[]> {
+    const res = await apiClient.get<Receipt[] | PaginatedReceiptsResult>('/receipts', { params });
+    if (res.data && 'data' in res.data && Array.isArray((res.data as PaginatedReceiptsResult).data)) {
+      return (res.data as PaginatedReceiptsResult).data;
+    }
+    return (res.data as Receipt[]) || [];
   },
 
   /**

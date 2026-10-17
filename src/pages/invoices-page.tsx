@@ -180,6 +180,8 @@ export const InvoicesPage: React.FC = () => {
 
   // State Phiếu thu tiền
   const [receipts, setReceipts] = useState<ReceiptType[]>(INITIAL_DEMO_RECEIPTS);
+  const [totalReceipts, setTotalReceipts] = useState<number>(INITIAL_DEMO_RECEIPTS.length);
+  const [totalReceiptPages, setTotalReceiptPages] = useState<number>(1);
   const [selectedReceiptForPrint, setSelectedReceiptForPrint] = useState<ReceiptType | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
@@ -294,24 +296,44 @@ export const InvoicesPage: React.FC = () => {
     }
   }, [page, limit, searchTerm, statusFilter]);
 
-  // Tải danh sách Phiếu thu từ Backend
+  // Tải danh sách Phiếu thu từ Backend (kèm phân trang, tìm kiếm & lọc hình thức chuẩn Backend)
   const reloadReceipts = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await receiptsService.getReceipts({
+      const res = await receiptsService.getPaginatedReceipts({
+        page,
+        limit,
         search: searchTerm.trim() || undefined,
+        paymentMethod: methodFilter !== 'ALL' ? methodFilter : undefined,
       });
-      if (Array.isArray(data) && data.length > 0) {
-        setReceipts(data);
-      } else {
-        setReceipts(INITIAL_DEMO_RECEIPTS);
-      }
+      setReceipts(res.data);
+      setTotalReceipts(res.total);
+      setTotalReceiptPages(res.totalPages);
     } catch {
-      setReceipts(INITIAL_DEMO_RECEIPTS);
+      // Fallback demo nếu mất kết nối
+      let demoList = INITIAL_DEMO_RECEIPTS;
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase().trim();
+        demoList = demoList.filter(
+          (r) =>
+            r.code.toLowerCase().includes(q) ||
+            r.customerName.toLowerCase().includes(q) ||
+            r.customerCode.toLowerCase().includes(q),
+        );
+      }
+      if (methodFilter !== 'ALL') {
+        demoList = demoList.filter((r) => r.paymentMethod === methodFilter);
+      }
+      const total = demoList.length;
+      const totalPages = Math.ceil(total / limit) || 1;
+      const offset = (page - 1) * limit;
+      setReceipts(demoList.slice(offset, offset + limit));
+      setTotalReceipts(total);
+      setTotalReceiptPages(totalPages);
     } finally {
       setLoading(false);
     }
-  }, [searchTerm]);
+  }, [page, limit, searchTerm, methodFilter]);
 
   useEffect(() => {
     if (activeTab === 'INVOICES') {
@@ -372,35 +394,6 @@ export const InvoicesPage: React.FC = () => {
     updateUrlParams({ limit: newLimit, page: 1 });
   };
 
-  // Bộ lọc danh sách Phiếu thu (kèm phân trang client cho Tab Receipts)
-  const filteredReceipts = useMemo(() => {
-    return receipts.filter((r) => {
-      if (searchTerm.trim()) {
-        const q = searchTerm.toLowerCase().trim();
-        const matchCode = r.code?.toLowerCase().includes(q);
-        const matchCust = r.customerName?.toLowerCase().includes(q);
-        const matchCustCode = r.customerCode?.toLowerCase().includes(q);
-        const matchCollector = r.collectorName?.toLowerCase().includes(q);
-        if (!matchCode && !matchCust && !matchCustCode && !matchCollector) {
-          return false;
-        }
-      }
-
-      if (methodFilter !== 'ALL' && r.paymentMethod !== methodFilter) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [receipts, searchTerm, methodFilter]);
-
-  const totalReceipts = filteredReceipts.length;
-  const totalReceiptPages = Math.ceil(totalReceipts / limit) || 1;
-  const pagedReceipts = useMemo(() => {
-    const offset = (page - 1) * limit;
-    return filteredReceipts.slice(offset, offset + limit);
-  }, [filteredReceipts, page, limit]);
-
   // Xuất file Excel dữ liệu sạch
   const handleExportExcel = () => {
     try {
@@ -427,7 +420,7 @@ export const InvoicesPage: React.FC = () => {
         XLSX.utils.book_append_sheet(wb, ws, 'HoaDon');
         XLSX.writeFile(wb, `Danh_sach_hoa_don_${new Date().toISOString().slice(0, 10)}.xlsx`);
       } else {
-        const rows = filteredReceipts.map((r) => ({
+        const rows = receipts.map((r) => ({
           'Mã phiếu thu': r.code,
           'Tên đại lý': r.customerName,
           'Mã đại lý': r.customerCode || '—',
@@ -748,7 +741,7 @@ export const InvoicesPage: React.FC = () => {
                     <span className="font-medium text-sm">Đang tải dữ liệu phiếu thu...</span>
                   </td>
                 </tr>
-              ) : pagedReceipts.length === 0 ? (
+              ) : receipts.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-[4.5rem] text-center text-slate-400">
                     <ScrollText className="h-[2rem] w-[2rem] mx-auto mb-[0.5rem] text-slate-300" />
@@ -756,7 +749,7 @@ export const InvoicesPage: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                pagedReceipts.map((r) => {
+                receipts.map((r) => {
                   const methodBadge = getReceiptMethodBadge(r.paymentMethod);
 
                   return (
@@ -849,7 +842,7 @@ export const InvoicesPage: React.FC = () => {
             <RefreshCw className="h-[1.5rem] w-[1.5rem] animate-spin mx-auto mb-[0.5rem] text-[var(--color-primary)]" />
             <span className="font-medium text-xs">Đang tải dữ liệu...</span>
           </div>
-        ) : (activeTab === 'INVOICES' ? invoices.length : pagedReceipts.length) === 0 ? (
+        ) : (activeTab === 'INVOICES' ? invoices.length : receipts.length) === 0 ? (
           <div className="rounded-xl bg-white border border-slate-200/80 p-8 text-center text-slate-400">
             <ScrollText className="h-[2rem] w-[2rem] mx-auto mb-[0.5rem] text-slate-300" />
             <p className="text-sm text-slate-400 font-normal">Không tìm thấy</p>
@@ -914,7 +907,7 @@ export const InvoicesPage: React.FC = () => {
                     </div>
                   );
                 })
-              : pagedReceipts.map((r) => {
+              : receipts.map((r) => {
                   const methodBadge = getReceiptMethodBadge(r.paymentMethod);
 
                   return (
