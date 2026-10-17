@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { X, Plus, Trash2, Save, AlertCircle, Check, Sparkles, Edit2 } from 'lucide-react';
+import { X, Plus, Trash2, Save, AlertCircle, Sparkles, Edit2 } from 'lucide-react';
 import { ConfirmDialog } from './confirm-dialog';
 import type {
   DiscountPolicy,
@@ -390,6 +390,19 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
     }, 300);
   };
 
+  const handleToggleSelect = (item: TargetItem) => {
+    const isSelected = row.items.some(
+      (t) => t.code.toLowerCase() === item.code.toLowerCase()
+    );
+    if (isSelected) {
+      onRemoveItem(item.code);
+    } else {
+      onAddItem(item);
+    }
+    setRowError(null);
+    onErrorChange(null);
+  };
+
   const handleSelect = (item: TargetItem) => {
     onAddItem(item);
     setSearchTerm('');
@@ -437,10 +450,10 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
   const isSkuDisabled = disabledTypes.includes('SKU');
 
   return (
-    <div className="space-y-1.5 p-3 rounded-xl border border-slate-200/80 bg-slate-50/40">
-      <div className="flex flex-col sm:flex-row gap-2.5 items-start sm:items-center">
-        {/* Dropdown chọn loại: Khoá loại đã được chọn ở dòng khác */}
-        <div className="w-full sm:w-56 shrink-0">
+    <div className="space-y-2 p-3 rounded-xl border border-slate-200/80 bg-slate-50/40">
+      {/* Hàng 1: Chọn loại phạm vi (Category / SKU) & Nút xóa phạm vi */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="w-full sm:w-64 shrink-0">
           <select
             value={row.type}
             disabled={disabled}
@@ -450,7 +463,7 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
               setRowError(null);
               onErrorChange(null);
             }}
-            className={`w-full px-3 py-2 border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+            className={`w-full px-3 py-1.5 border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-100 ${
               disabled
                 ? 'bg-slate-50 text-slate-500 border-slate-200 cursor-not-allowed'
                 : 'bg-white border-slate-200 text-slate-800'
@@ -465,142 +478,161 @@ const ScopeRowItem: React.FC<ScopeRowItemProps> = ({
           </select>
         </div>
 
-        {/* Multi-select input field */}
-        <div className="flex-1 w-full relative" ref={dropdownRef}>
-          <div
-            className={`min-h-[42px] px-2.5 py-1.5 border rounded-lg flex flex-wrap items-center gap-1.5 transition-colors ${
-              disabled
-                ? 'bg-slate-50/70 border-slate-200 cursor-default'
-                : rowError
-                ? 'bg-white border-rose-300 ring-2 ring-rose-100'
-                : 'bg-white border-slate-200 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100'
-            }`}
-            onClick={() => {
-              if (disabled) return;
-              searchInputRef.current?.focus();
-              setIsDropdownOpen(true);
-            }}
-          >
-            {/* Tags đã chọn */}
-            {row.items.map((item) => (
-              <span
-                key={item.code}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 border border-blue-100 text-blue-800 text-xs font-medium animate-fadeIn"
-              >
-                <span className="font-semibold text-blue-900">[{item.code}]</span>
-                <span className="truncate max-w-[180px]" title={item.name}>
-                  {item.name}
-                </span>
-                {!disabled && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemoveItem(item.code);
-                    }}
-                    className="p-0.5 hover:bg-blue-200/60 rounded text-blue-600 hover:text-blue-900 transition-colors cursor-pointer"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </span>
-            ))}
-
-            {/* Thông báo nếu chưa chọn mục nào trong chế độ disabled */}
-            {disabled && row.items.length === 0 && (
-              <span className="text-xs text-slate-400 italic px-1">Chưa chọn mục nào</span>
-            )}
-
-            {/* Input tìm kiếm - Chỉ hiện khi mở khóa chỉnh sửa */}
-            {!disabled && (
-              <div className="flex-1 min-w-[150px] flex items-center">
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  onFocus={() => {
-                    setIsDropdownOpen(true);
-                    if (suggestions.length === 0) {
-                      const cache = row.type === 'SKU' ? cachedProducts : cachedCategories;
-                      setSuggestions(cache.slice(0, 10));
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      if (searchTerm.trim()) {
-                        handleValidateManualCode(searchTerm);
-                      }
-                    }
-                  }}
-                  placeholder={
-                    row.items.length === 0
-                      ? row.type === 'SKU'
-                        ? 'Gõ mã hoặc tên SKU để tìm (VD: MILK-VIN-01)...'
-                        : 'Gõ mã hoặc tên nhóm hàng (VD: MILK)...'
-                      : 'Thêm mục khác...'
-                  }
-                  className="w-full text-sm text-slate-800 placeholder-slate-400 bg-transparent border-none focus:outline-none px-1"
-                />
-                {isSearching && (
-                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0 mr-1" />
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Dropdown Đề xuất thông minh */}
-          {!disabled && isDropdownOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto p-1.5 space-y-0.5">
-              <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Đề xuất {row.type === 'SKU' ? 'Sản phẩm' : 'Nhóm hàng'}
-              </div>
-              {suggestions.length === 0 ? (
-                <div className="px-3 py-3 text-xs text-slate-400 text-center">
-                  {isSearching ? 'Đang tìm kiếm...' : 'Không tìm thấy kết quả phù hợp'}
-                </div>
-              ) : (
-                suggestions.map((item) => {
-                  const isSelected = row.items.some(
-                    (t) => t.code.toLowerCase() === item.code.toLowerCase()
-                  );
-                  return (
-                    <button
-                      key={item.code}
-                      type="button"
-                      onClick={() => handleSelect(item)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
-                        isSelected
-                          ? 'bg-blue-50/60 text-blue-700 font-medium'
-                          : 'hover:bg-slate-50 text-slate-800'
-                      }`}
-                    >
-                      <div className="truncate pr-2">
-                        <span className="font-mono font-semibold text-slate-900">
-                          [{item.code}]
-                        </span>
-                        <span className="text-slate-600 ml-1.5">- {item.name}</span>
-                      </div>
-                      {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0" />}
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Nút xóa dòng phạm vi */}
         {!disabled && canDelete && (
           <button
             type="button"
             onClick={onDelete}
             title="Xóa phạm vi này"
-            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0"
+            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0"
           >
             <Trash2 className="w-4 h-4" />
           </button>
+        )}
+      </div>
+
+      {/* Hàng 2: Khung chọn / tìm kiếm sản phẩm chi tiết */}
+      <div className="w-full relative" ref={dropdownRef}>
+        <div
+          className={`min-h-[42px] px-2.5 py-1.5 border rounded-lg flex flex-wrap items-center gap-1.5 transition-colors ${
+            disabled
+              ? 'bg-slate-50/70 border-slate-200 cursor-default'
+              : rowError
+              ? 'bg-white border-rose-300 ring-2 ring-rose-100'
+              : 'bg-white border-slate-200 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100'
+          }`}
+          onClick={() => {
+            if (disabled) return;
+            searchInputRef.current?.focus();
+            setIsDropdownOpen(true);
+          }}
+        >
+          {/* Tags đã chọn */}
+          {row.items.map((item) => (
+            <span
+              key={item.code}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 border border-blue-100 text-blue-800 text-xs font-medium animate-fadeIn"
+            >
+              <span className="font-semibold text-blue-900">[{item.code}]</span>
+              <span className="truncate max-w-[180px]" title={item.name}>
+                {item.name}
+              </span>
+              {!disabled && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveItem(item.code);
+                  }}
+                  className="p-0.5 hover:bg-blue-200/60 rounded text-blue-600 hover:text-blue-900 transition-colors cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </span>
+          ))}
+
+          {/* Thông báo nếu chưa chọn mục nào trong chế độ disabled */}
+          {disabled && row.items.length === 0 && (
+            <span className="text-xs text-slate-400 italic px-1">Chưa chọn mục nào</span>
+          )}
+
+          {/* Input tìm kiếm - Chỉ hiện khi mở khóa chỉnh sửa */}
+          {!disabled && (
+            <div className="flex-1 min-w-[180px] flex items-center">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onFocus={() => {
+                  setIsDropdownOpen(true);
+                  if (suggestions.length === 0) {
+                    const cache = row.type === 'SKU' ? cachedProducts : cachedCategories;
+                    setSuggestions(cache.slice(0, 15));
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (searchTerm.trim()) {
+                      handleValidateManualCode(searchTerm);
+                    }
+                  }
+                }}
+                placeholder={
+                  row.items.length === 0
+                    ? row.type === 'SKU'
+                      ? 'Gõ mã hoặc tên SKU để tìm (VD: MILK-VIN-01)...'
+                      : 'Gõ mã hoặc tên nhóm hàng (VD: MILK)...'
+                    : 'Tìm thêm...'
+                }
+                className="w-full text-sm text-slate-800 placeholder-slate-400 bg-transparent border-none focus:outline-none px-1"
+              />
+              {isSearching && (
+                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0 mr-1" />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Dropdown Đề xuất thông minh có ô tích (checkbox) để chọn nhiều sản phẩm */}
+        {!disabled && isDropdownOpen && (
+          <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-lg max-h-64 overflow-y-auto p-1.5 space-y-0.5">
+            <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-100 mb-1">
+              <span>
+                Danh sách {row.type === 'SKU' ? 'Sản phẩm' : 'Nhóm hàng'}
+                {row.items.length > 0 && ` (Đã chọn: ${row.items.length})`}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDropdownOpen(false);
+                }}
+                className="text-[11px] font-normal text-blue-600 hover:text-blue-800 cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+            {suggestions.length === 0 ? (
+              <div className="px-3 py-3 text-xs text-slate-400 text-center">
+                {isSearching ? 'Đang tìm kiếm...' : 'Không tìm thấy kết quả phù hợp'}
+              </div>
+            ) : (
+              suggestions.map((item) => {
+                const isSelected = row.items.some(
+                  (t) => t.code.toLowerCase() === item.code.toLowerCase()
+                );
+                return (
+                  <div
+                    key={item.code}
+                    onClick={() => handleToggleSelect(item)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer select-none ${
+                      isSelected
+                        ? 'bg-blue-50/80 text-blue-800 font-medium'
+                        : 'hover:bg-slate-50 text-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center min-w-0 pr-2">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        readOnly
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 mr-2.5 pointer-events-none shrink-0"
+                      />
+                      <div className="truncate">
+                        <span className="font-mono font-semibold text-slate-900">
+                          [{item.code}]
+                        </span>
+                        <span className="text-slate-600 ml-1.5">- {item.name}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         )}
       </div>
 
@@ -1059,31 +1091,31 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
     });
   };
 
-  // Đồng bộ cảnh báo dưới chân ô input (Ngắn gọn, không dùng dấu ngoặc kép)
+  // Đồng bộ cảnh báo dưới chân ô input (Ngắn gọn, không dùng dấu ngoặc kép, không dùng icon)
   const getTierNotice = (val: number, type: 'PERCENTAGE' | 'FIXED_AMOUNT') => {
     if (type === 'PERCENTAGE') {
       if (val === 0) {
         return {
           color: 'text-slate-500',
-          message: 'ℹ️ Mức giảm 0% (Tạm dừng chiết khấu cho nấc này)',
+          message: 'Mức giảm 0% (Tạm dừng chiết khấu cho nấc này)',
         };
       }
       if (val < 0 || val > 100) {
         return {
           color: 'text-rose-600 font-semibold',
-          message: '🚨 Mức chiết khấu không hợp lệ (Phải từ 0% đến 100%)',
+          message: 'Mức chiết khấu không hợp lệ (Phải từ 0% đến 100%)',
         };
       }
       if (val > 20 && val <= 100) {
         return {
           color: 'text-orange-600 font-medium',
-          message: '🟠 Mức chiết khấu lớn (>20%) có nguy cơ ảnh hưởng biên lợi nhuận!',
+          message: 'Mức chiết khấu lớn (>20%) có nguy cơ ảnh hưởng biên lợi nhuận!',
         };
       }
       if (val > 10 && val <= 20) {
         return {
           color: 'text-amber-600 font-medium',
-          message: '⚠️ Mức chiết khấu cao hơn thông thường (10% - 20%).',
+          message: 'Mức chiết khấu cao hơn thông thường (10% - 20%).',
         };
       }
     } else {
@@ -1091,25 +1123,25 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
       if (val === 0) {
         return {
           color: 'text-slate-500',
-          message: 'ℹ️ Mức giảm 0 VNĐ (Tạm dừng chiết khấu cho nấc này)',
+          message: 'Mức giảm 0 VNĐ (Tạm dừng chiết khấu cho nấc này)',
         };
       }
       if (val < 0) {
         return {
           color: 'text-rose-600 font-semibold',
-          message: '🚨 Mức giảm không được âm',
+          message: 'Mức giảm không được âm',
         };
       }
       if (val > 1_000_000_000) {
         return {
           color: 'text-orange-600 font-medium',
-          message: '🟠 Mức giá rất lớn có nguy cơ ảnh hưởng biên lợi nhuận!',
+          message: 'Mức giá rất lớn có nguy cơ ảnh hưởng biên lợi nhuận!',
         };
       }
       if (val >= 100_000_000 && val <= 1_000_000_000) {
         return {
           color: 'text-amber-600 font-medium',
-          message: '⚠️ Mức giá lớn, vui lòng kiểm tra kỹ',
+          message: 'Mức giá lớn, vui lòng kiểm tra kỹ',
         };
       }
     }
@@ -1131,11 +1163,11 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                 ? 'Chỉnh sửa Chính sách Chiết khấu'
                 : 'Thêm mới Chính sách Chiết khấu'}
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {!isEditing
-                ? 'Xem chi tiết phạm vi áp dụng, loại chiết khấu và các nấc bậc thang'
-                : 'Phạm vi áp dụng đa tầng, nấc chiết khấu linh hoạt & cảnh báo thông minh'}
-            </p>
+            {!isEditing && (
+              <p className="text-xs text-slate-500 mt-0.5">
+                Xem chi tiết phạm vi áp dụng, loại chiết khấu và các nấc bậc thang
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -1231,7 +1263,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                   })}
                 </div>
 
-                {/* Nút bấm "+ Thêm phạm vi áp dụng" (Chỉ hiện khi đang chỉnh sửa) */}
+                {/* Nút bấm "Thêm phạm vi áp dụng" (Chỉ hiện khi đang chỉnh sửa) */}
                 {isEditing && (
                   <button
                     type="button"
@@ -1245,7 +1277,7 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                   >
                     <Plus className="w-3.5 h-3.5" />
                     {canAddScopeRow
-                      ? '+ Thêm phạm vi áp dụng'
+                      ? 'Thêm phạm vi áp dụng'
                       : 'Đã chọn tối đa 2 phạm vi (Nhóm hàng & SKU lẻ)'}
                   </button>
                 )}
@@ -1310,7 +1342,20 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                     type="date"
                     value={formData.startDate}
                     disabled={!isEditing}
-                    onChange={(e) => setFormData((p) => ({ ...p, startDate: e.target.value }))}
+                    onChange={(e) => {
+                      const newStart = e.target.value;
+                      setFormData((p) => {
+                        const newEnd = p.endDate && newStart && p.endDate < newStart ? newStart : p.endDate;
+                        return { ...p, startDate: newStart, endDate: newEnd };
+                      });
+                      if (errors.date) {
+                        setErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.date;
+                          return next;
+                        });
+                      }
+                    }}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 ${
                       !isEditing
                         ? 'bg-slate-50 text-slate-600 border-slate-200 cursor-default'
@@ -1325,8 +1370,24 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                   <input
                     type="date"
                     value={formData.endDate}
+                    min={formData.startDate || undefined}
                     disabled={!isEditing}
-                    onChange={(e) => setFormData((p) => ({ ...p, endDate: e.target.value }))}
+                    onChange={(e) => {
+                      const newEnd = e.target.value;
+                      setFormData((p) => {
+                        if (p.startDate && newEnd && newEnd < p.startDate) {
+                          return { ...p, endDate: p.startDate };
+                        }
+                        return { ...p, endDate: newEnd };
+                      });
+                      if (errors.date) {
+                        setErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.date;
+                          return next;
+                        });
+                      }
+                    }}
                     className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 ${
                       !isEditing
                         ? 'bg-slate-50 text-slate-600 border-slate-200 cursor-default'

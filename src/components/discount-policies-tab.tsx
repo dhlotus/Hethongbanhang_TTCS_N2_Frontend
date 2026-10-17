@@ -405,9 +405,6 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
           <h2 className="text-xl font-bold text-slate-900 tracking-tight">
             Chính sách Chiết khấu theo Sản lượng
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Thiết lập chiết khấu bậc thang theo số lượng đặt hàng cho đại lý và khách sỉ
-          </p>
         </div>
 
         {/* Nút Thêm mới chính sách chuẩn UI_GUIDELINES: h-[38px] rounded-lg */}
