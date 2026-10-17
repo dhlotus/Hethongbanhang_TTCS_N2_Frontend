@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Boxes,
   Search,
@@ -11,6 +11,7 @@ import {
   Building2,
   ArrowRightLeft,
   Eye,
+  FileSpreadsheet,
   X,
   Filter,
   Layers,
@@ -41,6 +42,7 @@ import type { StockBalance } from '../types/inventory.types';
 
 export const InventoryStockPage: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [stockItems, setStockItems] = useState<StockOverviewItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [totalAlertsCount, setTotalAlertsCount] = useState<number>(0);
@@ -1122,7 +1124,21 @@ export const InventoryStockPage: React.FC = () => {
                 <span>Xem chi tiết</span>
               </button>
 
-              {/* 2. Điều chỉnh tồn tối thiểu:
+              {/* 2. Xem thẻ kho hàng hóa (SN-185) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenActionMenuKey(null);
+                  setActionMenuAnchor(null);
+                  navigate(`/inventory/stock-card?sku=${encodeURIComponent(item.sku)}&warehouse=${encodeURIComponent(item.warehouse)}`);
+                }}
+                className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-slate-400" />
+                <span>Xem thẻ kho</span>
+              </button>
+
+              {/* 3. Điều chỉnh tồn tối thiểu:
                      - Ẩn nếu chỉ đứng ở bộ lọc "Tất cả kho hàng" (và không chọn Dưới tồn tối thiểu)
                      - Hiển thị nếu đứng ở kho cụ thể HOẶC khi đứng ở cả "Tất cả kho hàng" và "Dưới tồn tối thiểu"
               */}
