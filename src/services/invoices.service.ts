@@ -96,12 +96,22 @@ export interface InAppDebtNotification {
   createdAt: string;
 }
 
+export interface PaginatedInvoicesResponse {
+  data: InvoiceItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface QueryInvoicesParams {
   customerId?: string;
   status?: string;
   search?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
 }
 
 export const invoicesService = {
@@ -115,12 +125,36 @@ export const invoicesService = {
   },
 
   /**
+   * Danh sách hóa đơn công nợ phân trang (SN-207 A)
+   * GET /api/invoices
+   */
+  async getPaginatedInvoices(params?: QueryInvoicesParams): Promise<PaginatedInvoicesResponse> {
+    const res = await apiClient.get<any>('/invoices', { params });
+    if (res.data && Array.isArray(res.data.data)) {
+      return res.data;
+    }
+    const list = Array.isArray(res.data) ? res.data : [];
+    const limit = params?.limit || 10;
+    const page = params?.page || 1;
+    return {
+      data: list,
+      total: list.length,
+      page,
+      limit,
+      totalPages: Math.ceil(list.length / limit) || 1,
+    };
+  },
+
+  /**
    * Danh sách hóa đơn công nợ kèm lọc và tìm kiếm (SN-207 A)
    * GET /api/invoices
    */
   async getInvoices(params?: QueryInvoicesParams): Promise<InvoiceItem[]> {
-    const res = await apiClient.get<InvoiceItem[]>('/invoices', { params });
-    return res.data;
+    const res = await apiClient.get<any>('/invoices', { params });
+    if (res.data && Array.isArray(res.data.data)) {
+      return res.data.data;
+    }
+    return Array.isArray(res.data) ? res.data : [];
   },
 
   /**

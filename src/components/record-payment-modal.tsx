@@ -188,14 +188,14 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="px-4 h-[38px] text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors"
+              className="px-4 h-9 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-lg shadow-2xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
             >
               Hủy
             </button>
             <button
               type="submit"
               disabled={submitting || amount <= 0}
-              className="inline-flex items-center gap-1.5 px-4 h-[38px] text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg shadow-sm transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg shadow-2xs transition-all active:scale-95 cursor-pointer"
             >
               <CheckCircle2 className="h-4 w-4" />
               <span>{submitting ? 'Đang ghi nhận...' : 'Xác nhận thanh toán'}</span>

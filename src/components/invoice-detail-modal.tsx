@@ -10,6 +10,7 @@ import {
   CreditCard,
   FileText,
   BadgeAlert,
+  Printer,
 } from 'lucide-react';
 import type { InvoiceItem } from '../services/invoices.service';
 import { invoicesService } from '../services/invoices.service';
@@ -118,15 +119,16 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             <button
               type="button"
               onClick={handlePrint}
-              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-lg shadow-2xs transition-all active:scale-95 cursor-pointer"
               title="In trực tiếp qua trình duyệt"
             >
+              <Printer className="h-3.5 w-3.5 text-slate-500" />
               <span>In</span>
             </button>
             <button
               type="button"
               onClick={handleDownloadPdf}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-2xs transition-all active:scale-95 cursor-pointer"
               title="Tải file PDF chuẩn VAT về máy"
             >
               <Download className="h-3.5 w-3.5" />
@@ -135,7 +137,8 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              title="Đóng modal"
             >
               <X className="h-5 w-5" />
             </button>
@@ -329,7 +332,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenPayment(invoice)}
-                className="inline-flex items-center gap-1.5 px-4 h-[38px] text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-2xs transition-all active:scale-95 cursor-pointer"
               >
                 <CreditCard className="h-3.5 w-3.5" />
                 <span>Thanh toán ngay</span>
@@ -338,7 +341,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 h-[38px] text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors"
+              className="px-4 h-9 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-lg shadow-2xs transition-all active:scale-95 cursor-pointer"
             >
               Đóng
             </button>
