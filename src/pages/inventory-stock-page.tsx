@@ -347,30 +347,43 @@ export const InventoryStockPage: React.FC = () => {
     setCurrentPage(1);
   }, [searchTerm, selectedWarehouse, selectedCategory, selectedStatus]);
 
-  // Danh sách nhóm hàng bền vững: không bị thu hẹp khi đã chọn lọc 1 danh mục cụ thể
+  // Danh sách nhóm hàng cấp 1 bền vững: chỉ lọc theo nhóm hàng cấp 1 (Level 1)
   const [categoryOptions, setCategoryOptions] = useState<string[]>(() =>
-    PRODUCT_CATEGORIES.map((c) => c.name)
+    PRODUCT_CATEGORIES.filter((c) => (c.level ? c.level === 1 : true)).map((c) => c.name)
   );
 
   useEffect(() => {
+    // Lấy cây danh mục để chỉ lấy các nhóm hàng cấp 1 (root nodes)
     categoriesService
-      .getCategories()
-      .then((cats) => {
-        if (Array.isArray(cats) && cats.length > 0) {
-          const names = cats.map((c) => c.name).filter(Boolean);
-          setCategoryOptions((prev) => Array.from(new Set([...prev, ...names])));
+      .getCategoryTree()
+      .then((tree) => {
+        if (Array.isArray(tree) && tree.length > 0) {
+          const level1Names = tree.map((c) => c.name).filter(Boolean);
+          setCategoryOptions((prev) => Array.from(new Set([...prev, ...level1Names])));
+        } else {
+          return categoriesService.getCategories().then((cats) => {
+            if (Array.isArray(cats) && cats.length > 0) {
+              const level1Names = cats
+                .filter((c) => c.level === 1 || !c.parentId || !c.parent_id)
+                .map((c) => c.name)
+                .filter(Boolean);
+              setCategoryOptions((prev) => Array.from(new Set([...prev, ...level1Names])));
+            }
+          });
         }
       })
       .catch(() => {});
   }, []);
 
-  // Luôn tích lũy bổ sung thêm nếu danh sách sản phẩm tồn kho có nhóm hàng mới
+  // Chỉ bổ sung thêm nếu sản phẩm tồn kho có parentCategory cấp 1
   useEffect(() => {
     if (stockItems.length > 0) {
       setCategoryOptions((prev) => {
         const set = new Set(prev);
         stockItems.forEach((item) => {
-          if (item.parentCategory) set.add(item.parentCategory);
+          if (item.parentCategory && item.parentCategory.trim()) {
+            set.add(item.parentCategory.trim());
+          }
         });
         return Array.from(set);
       });
@@ -731,7 +744,7 @@ export const InventoryStockPage: React.FC = () => {
               >
                 <option value="ALL">Tất cả trạng thái tồn</option>
                 <option value="BELOW_MIN_STOCK">Dưới tồn tối thiểu</option>
-                <option value="IN_STOCK">Còn hàng (Dồi dào)</option>
+                <option value="IN_STOCK">Còn hàng</option>
                 <option value="OUT_OF_STOCK">Hết hàng (Tồn khả dụng = 0)</option>
               </select>
             </div>
