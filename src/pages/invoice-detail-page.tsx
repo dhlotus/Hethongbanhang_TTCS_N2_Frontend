@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import type { InvoiceItem } from '../services/invoices.service';
 import { invoicesService } from '../services/invoices.service';
+import { Pagination } from '../components/pagination';
 import { RecordPaymentModal } from '../components/record-payment-modal';
 import { ConfirmActionModal } from '../components/confirm-action-modal';
 import { showToast } from '../components/toast';
@@ -62,6 +63,16 @@ export const InvoiceDetailPage: React.FC = () => {
     title: '',
     message: '',
   });
+
+  const [itemsPage, setItemsPage] = useState<number>(1);
+  const [itemsPageSize, setItemsPageSize] = useState<number>(10);
+
+  const invoiceItems = useMemo(() => invoice?.items || [], [invoice?.items]);
+  const totalItemsPages = Math.max(1, Math.ceil(invoiceItems.length / itemsPageSize));
+  const paginatedItems = useMemo(() => {
+    const start = (itemsPage - 1) * itemsPageSize;
+    return invoiceItems.slice(start, start + itemsPageSize);
+  }, [invoiceItems, itemsPage, itemsPageSize]);
 
   const fetchInvoice = useCallback(async () => {
     if (!id) return;
@@ -336,30 +347,33 @@ export const InvoiceDetailPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
-                {(invoice.items || []).length > 0 ? (
-                  invoice.items!.map((it, idx) => (
-                    <tr key={it.productId || it.productSku || idx} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3 px-3 text-center text-slate-400 font-medium">{idx + 1}</td>
-                      <td className="py-3 px-3.5">
-                        <span className="font-mono text-slate-700 font-semibold bg-slate-100/80 px-2 py-0.5 rounded text-[11px] inline-block border border-slate-200/60">
-                          {it.productSku}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3.5 font-semibold text-slate-900 leading-snug">
-                        {it.productName}
-                      </td>
-                      <td className="py-3 px-3 text-center text-slate-600 font-medium">{it.unit}</td>
-                      <td className="py-3 px-3.5 text-right font-bold text-slate-900 tabular-nums whitespace-nowrap">
-                        {it.quantity.toLocaleString('vi-VN')}
-                      </td>
-                      <td className="py-3 px-3.5 text-right text-slate-600 tabular-nums whitespace-nowrap">
-                        {formatCurrency(it.unitPrice)}
-                      </td>
-                      <td className="py-3 px-3.5 text-right font-bold text-slate-900 tabular-nums whitespace-nowrap">
-                        {formatCurrency(it.lineTotal)}
-                      </td>
-                    </tr>
-                  ))
+                {paginatedItems.length > 0 ? (
+                  paginatedItems.map((it, idx) => {
+                    const itemIndex = (itemsPage - 1) * itemsPageSize + idx + 1;
+                    return (
+                      <tr key={it.productId || it.productSku || idx} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3 px-3 text-center text-slate-400 font-medium">{itemIndex}</td>
+                        <td className="py-3 px-3.5">
+                          <span className="font-mono text-slate-700 font-semibold bg-slate-100/80 px-2 py-0.5 rounded text-[11px] inline-block border border-slate-200/60">
+                            {it.productSku}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3.5 font-semibold text-slate-900 leading-snug">
+                          {it.productName}
+                        </td>
+                        <td className="py-3 px-3 text-center text-slate-600 font-medium">{it.unit}</td>
+                        <td className="py-3 px-3.5 text-right font-bold text-slate-900 tabular-nums whitespace-nowrap">
+                          {it.quantity.toLocaleString('vi-VN')}
+                        </td>
+                        <td className="py-3 px-3.5 text-right text-slate-600 tabular-nums whitespace-nowrap">
+                          {formatCurrency(it.unitPrice)}
+                        </td>
+                        <td className="py-3 px-3.5 text-right font-bold text-slate-900 tabular-nums whitespace-nowrap">
+                          {formatCurrency(it.lineTotal)}
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={7} className="py-8 text-center text-slate-400">
@@ -370,6 +384,26 @@ export const InvoiceDetailPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Thanh phân trang gắn liền chân bảng chuẩn Quản lý đại lý */}
+          {invoiceItems.length > 0 && (
+            <Pagination
+              variant="default"
+              currentPage={itemsPage}
+              totalPages={totalItemsPages}
+              totalItems={invoiceItems.length}
+              pageSize={itemsPageSize}
+              pageSizeOptions={[5, 10, 20, 50]}
+              itemLabel="mặt hàng"
+              showRecordRange={false}
+              showFirstLast={false}
+              onPageChange={(page) => setItemsPage(page)}
+              onPageSizeChange={(size) => {
+                setItemsPageSize(size);
+                setItemsPage(1);
+              }}
+            />
+          )}
         </div>
       </div>
 

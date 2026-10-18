@@ -26,6 +26,7 @@ import {
 } from '../services/invoices.service';
 import { customerService } from '../services/customer.service';
 import { type Customer } from '../types/customer.types';
+import { Pagination } from '../components/pagination';
 import { showToast } from '../components/toast';
 
 const formatCurrency = (val?: number): string => {
@@ -70,6 +71,8 @@ export const CreateInvoicePage: React.FC = () => {
     return d.toISOString().split('T')[0];
   });
   const [note, setNote] = useState<string>('');
+  const [linesPage, setLinesPage] = useState<number>(1);
+  const [linesPageSize, setLinesPageSize] = useState<number>(10);
 
   // Tải danh sách khách hàng và các phiếu giao hàng đã giao thành công chưa xuất hóa đơn
   useEffect(() => {
@@ -245,6 +248,17 @@ export const CreateInvoicePage: React.FC = () => {
     }
     return lines;
   }, [slipsForCurrentCustomer, selectedSlipIds]);
+
+  // Reset về trang 1 khi đổi phiếu giao hoặc đổi đại lý
+  useEffect(() => {
+    setLinesPage(1);
+  }, [selectedSlipIds, selectedCustomerId]);
+
+  const totalLinesPages = Math.max(1, Math.ceil(previewLines.length / linesPageSize));
+  const paginatedPreviewLines = useMemo(() => {
+    const start = (linesPage - 1) * linesPageSize;
+    return previewLines.slice(start, start + linesPageSize);
+  }, [previewLines, linesPage, linesPageSize]);
 
   // RÀNG BUỘC KẾ TOÁN: Tiền hóa đơn sinh từ SỐ LƯỢNG THỰC GIAO
   const grandTotal = useMemo(() => {
@@ -719,42 +733,64 @@ export const CreateInvoicePage: React.FC = () => {
               </span>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-200/80">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200">
-                    <th className="py-2.5 px-3">SKU & SẢN PHẨM</th>
-                    <th className="py-2.5 px-3 text-center w-16">ĐVT</th>
-                    <th className="py-2.5 px-3 w-28">PHIẾU GIAO</th>
-                    <th className="py-2.5 px-3 text-right w-20">SL ĐẶT</th>
-                    <th className="py-2.5 px-3 text-right w-24 bg-indigo-50/70 text-indigo-900 font-extrabold">
-                      SL THỰC GIAO
-                    </th>
-                    <th className="py-2.5 px-3 text-right w-28">ĐƠN GIÁ</th>
-                    <th className="py-2.5 px-3 text-right w-32">THÀNH TIỀN</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {previewLines.map((line, idx) => (
-                    <tr key={`${line.slipId}-${line.productSku}-${idx}`} className="hover:bg-slate-50/70">
-                      <td className="py-2.5 px-3">
-                        <div className="font-mono text-[11px] text-slate-400">{line.productSku}</div>
-                        <div className="font-bold text-slate-900">{line.productName}</div>
-                      </td>
-                      <td className="py-2.5 px-3 text-center text-slate-600">{line.unit}</td>
-                      <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">{line.slipCode}</td>
-                      <td className="py-2.5 px-3 text-right text-slate-500 font-mono">{line.orderedQuantity}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-700 bg-indigo-50/40">
-                        {line.deliveredQuantity}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono text-slate-700">{formatCurrency(line.unitPrice)}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
-                        {formatCurrency(line.lineTotal)}
-                      </td>
+            <div className="rounded-xl border border-slate-200/80 overflow-hidden bg-white shadow-2xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200">
+                      <th className="py-2.5 px-3">SKU & SẢN PHẨM</th>
+                      <th className="py-2.5 px-3 text-center w-16">ĐVT</th>
+                      <th className="py-2.5 px-3 w-28">PHIẾU GIAO</th>
+                      <th className="py-2.5 px-3 text-right w-20">SL ĐẶT</th>
+                      <th className="py-2.5 px-3 text-right w-24 bg-indigo-50/70 text-indigo-900 font-extrabold">
+                        SL THỰC GIAO
+                      </th>
+                      <th className="py-2.5 px-3 text-right w-28">ĐƠN GIÁ</th>
+                      <th className="py-2.5 px-3 text-right w-32">THÀNH TIỀN</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {paginatedPreviewLines.map((line, idx) => (
+                      <tr key={`${line.slipId}-${line.productSku}-${idx}`} className="hover:bg-slate-50/70">
+                        <td className="py-2.5 px-3">
+                          <div className="font-mono text-[11px] text-slate-400">{line.productSku}</div>
+                          <div className="font-bold text-slate-900">{line.productName}</div>
+                        </td>
+                        <td className="py-2.5 px-3 text-center text-slate-600">{line.unit}</td>
+                        <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">{line.slipCode}</td>
+                        <td className="py-2.5 px-3 text-right text-slate-500 font-mono">{line.orderedQuantity}</td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-700 bg-indigo-50/40">
+                          {line.deliveredQuantity}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-700">{formatCurrency(line.unitPrice)}</td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                          {formatCurrency(line.lineTotal)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Thanh phân trang gắn liền chân bảng chuẩn Quản lý đại lý */}
+              {previewLines.length > 0 && (
+                <Pagination
+                  variant="default"
+                  currentPage={linesPage}
+                  totalPages={totalLinesPages}
+                  totalItems={previewLines.length}
+                  pageSize={linesPageSize}
+                  pageSizeOptions={[5, 10, 20, 50]}
+                  itemLabel="dòng sản phẩm"
+                  showRecordRange={false}
+                  showFirstLast={false}
+                  onPageChange={(page) => setLinesPage(page)}
+                  onPageSizeChange={(size) => {
+                    setLinesPageSize(size);
+                    setLinesPage(1);
+                  }}
+                />
+              )}
             </div>
           </div>
         )}

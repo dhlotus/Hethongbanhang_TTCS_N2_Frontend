@@ -22,6 +22,7 @@ import {
 } from '../services/invoices.service';
 import { customerService } from '../services/customer.service';
 import { type Customer } from '../types/customer.types';
+import { Pagination } from './pagination';
 import { showToast } from './toast';
 import { matchesSearchTerm } from '../utils/vietnamese';
 
@@ -71,6 +72,8 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
     return d.toISOString().split('T')[0];
   });
   const [note, setNote] = useState<string>('');
+  const [linesPage, setLinesPage] = useState<number>(1);
+  const [linesPageSize, setLinesPageSize] = useState<number>(10);
 
   // Tải danh sách khách hàng và các phiếu giao hàng DELIVERED chưa xuất hóa đơn
   useEffect(() => {
@@ -183,6 +186,16 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
     }
     return lines;
   }, [slipsForCurrentCustomer, selectedSlipIds]);
+
+  useEffect(() => {
+    setLinesPage(1);
+  }, [selectedSlipIds, selectedCustomerId]);
+
+  const totalLinesPages = Math.max(1, Math.ceil(previewLines.length / linesPageSize));
+  const paginatedPreviewLines = useMemo(() => {
+    const start = (linesPage - 1) * linesPageSize;
+    return previewLines.slice(start, start + linesPageSize);
+  }, [previewLines, linesPage, linesPageSize]);
 
   // RÀNG BUỘC 1: Tổng tiền hóa đơn được tính từ SỐ LƯỢNG THỰC GIAO (deliveredQuantity)
   const grandTotal = useMemo(() => {
@@ -575,7 +588,7 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
                         </td>
                       </tr>
                     ) : (
-                      previewLines.map((line, idx) => (
+                      paginatedPreviewLines.map((line, idx) => (
                         <tr key={`${line.slipId}-${line.productSku}-${idx}`} className="hover:bg-slate-50/60">
                           <td className="py-2 px-3">
                             <span className="font-mono text-slate-500 text-[11px] block">{line.productSku}</span>
@@ -603,6 +616,26 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
                   </tbody>
                 </table>
               </div>
+
+              {/* Thanh phân trang gắn liền chân bảng chuẩn Quản lý đại lý */}
+              {previewLines.length > 0 && (
+                <Pagination
+                  variant="default"
+                  currentPage={linesPage}
+                  totalPages={totalLinesPages}
+                  totalItems={previewLines.length}
+                  pageSize={linesPageSize}
+                  pageSizeOptions={[5, 10, 20, 50]}
+                  itemLabel="dòng sản phẩm"
+                  showRecordRange={false}
+                  showFirstLast={false}
+                  onPageChange={(page) => setLinesPage(page)}
+                  onPageSizeChange={(size) => {
+                    setLinesPageSize(size);
+                    setLinesPage(1);
+                  }}
+                />
+              )}
             </div>
           </div>
 

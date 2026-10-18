@@ -257,7 +257,7 @@ export const InvoicesPage: React.FC = () => {
             <option value="ALL">Tất cả trạng thái</option>
             <option value="UNPAID">Chưa thanh toán</option>
             <option value="PARTIALLY_PAID">Thanh toán một phần</option>
-            <option value="OVERDUE">Quá hạn nợ</option>
+            <option value="OVERDUE">Quá hạn</option>
             <option value="PAID">Đã thanh toán</option>
           </select>
 
@@ -436,56 +436,56 @@ export const InvoicesPage: React.FC = () => {
                   onClick={() => navigate(`/accounting/invoices/${inv.id}`)}
                   className="rounded-xl bg-white border border-slate-200/80 p-3.5 shadow-xs hover:border-slate-300 active:scale-[0.99] transition-all cursor-pointer select-none space-y-2 w-full"
                 >
-                      {/* Hàng 1: Mã hóa đơn & Trạng thái (Pastel Badge) */}
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-[var(--color-primary)]">
-                          {inv.invoiceCode}
+                  {/* Hàng 1: Mã hóa đơn & Trạng thái (Pastel Badge) */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-[var(--color-primary)]">
+                      {inv.invoiceCode}
+                    </span>
+                    <span
+                      className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-[11px] font-medium shrink-0 ${statusBadge.badgeClass}`}
+                    >
+                      {statusBadge.label}
+                    </span>
+                  </div>
+
+                  {/* Hàng 2: Đại lý (chỉ tên theo yêu cầu) */}
+                  <div className="text-xs font-medium text-slate-900 truncate" title={inv.customerName}>
+                    {inv.customerName}
+                  </div>
+
+                  {/* Hàng 3: Hạn thanh toán, Tổng tiền & Nút Chi tiết */}
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                    <div className="flex flex-col">
+                      <span className="text-[11px] text-slate-500">Hạn thanh toán</span>
+                      <span className="text-xs font-medium text-slate-700">{formatDate(inv.dueDate)}</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <span className="text-xs font-bold text-slate-900 tabular-nums">
+                          {formatCurrency(inv.amount)}
                         </span>
-                        <span
-                          className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-[11px] font-medium shrink-0 ${statusBadge.badgeClass}`}
+                      </div>
+
+                      <div className="flex items-center">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/accounting/invoices/${inv.id}`);
+                          }}
+                          className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[var(--color-primary)]/25 bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
+                          title="Xem chi tiết"
                         >
-                          {statusBadge.label}
-                        </span>
-                      </div>
-
-                      {/* Hàng 2: Đại lý (chỉ tên theo yêu cầu) */}
-                      <div className="text-xs font-medium text-slate-900 truncate" title={inv.customerName}>
-                        {inv.customerName}
-                      </div>
-
-                      {/* Hàng 3: Hạn thanh toán, Tổng tiền & Nút Chi tiết */}
-                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                        <div className="flex flex-col">
-                          <span className="text-[11px] text-slate-500">Hạn thanh toán</span>
-                          <span className="text-xs font-medium text-slate-700">{formatDate(inv.dueDate)}</span>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <span className="text-xs font-bold text-slate-900 tabular-nums">
-                              {formatCurrency(inv.amount)}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/accounting/invoices/${inv.id}`);
-                              }}
-                              className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[var(--color-primary)]/25 bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
-                              title="Xem chi tiết"
-                            >
-                              <Eye className="h-3.5 w-3.5 text-[var(--color-primary)]" />
-                              <span>Chi tiết</span>
-                            </button>
-                          </div>
-                        </div>
+                          <Eye className="h-3.5 w-3.5 text-[var(--color-primary)]" />
+                          <span>Chi tiết</span>
+                        </button>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
