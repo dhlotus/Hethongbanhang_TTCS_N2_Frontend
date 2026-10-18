@@ -64,7 +64,7 @@ export const RoleModulePage: React.FC<RoleModulePageProps> = ({
     if (!isInventoryPage) return;
     void warehouseService.getWarehouses().then((rows) => {
       setWarehouses(rows);
-      setSelectedWarehouseId((current) => rows.some((row) => row.id === current) ? current : rows[0]?.id || DEFAULT_WAREHOUSE_ID);
+      setSelectedWarehouseId((current) => rows.some((row: { id?: string }) => row.id === current) ? current : rows[0]?.id || DEFAULT_WAREHOUSE_ID);
     }).catch(() => setWarehouses([]));
   }, [isInventoryPage]);
 

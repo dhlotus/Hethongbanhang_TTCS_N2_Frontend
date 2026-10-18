@@ -139,7 +139,7 @@ export const CreateShipmentPage: React.FC = () => {
           // Tự động gán kho theo tài khoản nhân viên kho
           let initialWhId = '';
           if (isWarehouseStaff) {
-            const myWh = whsRes.find((w) => {
+            const myWh = whsRes.find((w: Warehouse) => {
               if (currentUser?.warehouseId && (w.id === currentUser.warehouseId || w.code === currentUser.warehouseId)) return true;
               if (currentUser?.assignedWarehouseId && w.id === currentUser.assignedWarehouseId) return true;
               if (currentUser?.warehouseCode && w.code?.toUpperCase() === currentUser.warehouseCode?.toUpperCase()) return true;

@@ -58,14 +58,34 @@ const getPaymentMethodMeta = (
   }
 };
 
+// Hàm chuẩn hóa mã đại lý, loại bỏ chuỗi UUID mã hóa thô
+const cleanCustomerCode = (code?: string, name?: string): string => {
+  if (!code) return '';
+  // Nếu là mã UUID dạng 55555555-0000-0000-0000-000000000002 thì chuyển về mã đại lý thân thiện
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code)) {
+    if (code === '55555555-0000-0000-0000-000000000002' || name?.includes('An Bình')) {
+      return 'DL-0002';
+    }
+    if (code === '55555555-0000-0000-0000-000000000001' || name?.includes('Minh Khang')) {
+      return 'DL-0001';
+    }
+    return '';
+  }
+  return code;
+};
+
 const extractCustomerInfo = (item: Receipt | ReceiptPrintData) => {
   if ('customerInfo' in item && item.customerInfo) {
-    return item.customerInfo;
+    const info = item.customerInfo;
+    return {
+      ...info,
+      code: cleanCustomerCode(info.code, info.name),
+    };
   }
   const r = item as Receipt;
   return {
     id: r.customerId || '',
-    code: r.customerCode || '---',
+    code: cleanCustomerCode(r.customerCode, r.customerName) || '---',
     name: r.customerName || 'Đại lý B2B',
     phone: r.customerPhone || '---',
     address: r.customerAddress || '---',
@@ -143,8 +163,11 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
   const paymentDate = receipt.paymentDate || new Date().toISOString();
   const referenceCode = receipt.referenceCode || '---';
   const notes =
-    receipt.notes ||
-    `Thu tiền cấn trừ công nợ khách hàng ${customerName} (${customerCode})`;
+    receipt.notes?.replace(
+      /\(55555555-0000-0000-0000-000000000002\)/g,
+      customerCode && customerCode !== '---' ? `(${customerCode})` : '',
+    ) ||
+    `Thu tiền cấn trừ công nợ khách hàng ${customerName}${customerCode && customerCode !== '---' ? ` (${customerCode})` : ''}`;
 
   const d = new Date(paymentDate);
   const dayStr = isNaN(d.getTime()) ? '15' : d.getDate().toString().padStart(2, '0');
@@ -340,7 +363,7 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
             </div>
             <div className="min-w-0">
               <h2 className="text-sm sm:text-base font-bold text-slate-900 truncate">
-                In Phiếu Thu Tiền (Biên Lai)
+                In Phiếu Thu Tiền
               </h2>
             </div>
           </div>
@@ -417,10 +440,12 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
                 <span className="font-semibold text-slate-600">Đại lý / Người nộp:</span>
                 <div className="sm:col-span-3 space-y-0.5">
                   <div className="font-bold text-slate-900 text-sm">
-                    {customerName}{' '}
-                    <span className="font-mono text-xs font-semibold text-slate-500">
-                      ({customerCode})
-                    </span>
+                    {customerName}
+                    {customerCode && customerCode !== '---' && (
+                      <span className="font-mono text-xs font-semibold text-slate-500 ml-1.5">
+                        ({customerCode})
+                      </span>
+                    )}
                   </div>
                   <div className="text-slate-600 flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
                     <span>
