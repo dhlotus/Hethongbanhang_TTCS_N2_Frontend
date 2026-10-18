@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   MapPin,
   CheckCircle2,
@@ -10,6 +10,8 @@ import {
   ChevronUp,
   Layers,
   FileText,
+  Sparkles,
+  AlertTriangle,
 } from 'lucide-react';
 import type { PickingLineItem } from '../../types/order-picking.types';
 
@@ -18,6 +20,7 @@ export interface PickingLineItemCardProps {
   onQuickPickAll: (itemId: string) => void;
   onRequestShortPickReason: (item: PickingLineItem, pickedQty: number) => void;
   onUpdateQuantityDirect: (itemId: string, pickedQty: number) => void;
+  onOpenFefoSelector?: (item: PickingLineItem) => void;
 }
 
 export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
@@ -25,14 +28,21 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
   onQuickPickAll,
   onRequestShortPickReason,
   onUpdateQuantityDirect,
+  onOpenFefoSelector,
 }) => {
   const [showOrderBreakdown, setShowOrderBreakdown] = useState(false);
   const [inputVal, setInputVal] = useState<string>(String(item.totalPickedQuantity));
+
+  // Tự động đồng bộ ô input khi số lượng thực soạn thay đổi từ props
+  useEffect(() => {
+    setInputVal(String(item.totalPickedQuantity));
+  }, [item.totalPickedQuantity]);
 
   const isCompleted = item.status === 'PICKED';
   const isShortPicked = item.status === 'SHORT_PICKED';
   const isPending = item.status === 'PENDING';
 
+  // Tăng 1 đơn vị
   const handleIncrement = () => {
     const nextVal = item.totalPickedQuantity + 1;
     if (nextVal <= item.totalRequiredQuantity) {
@@ -41,14 +51,11 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
     }
   };
 
+  // Khi ấn nút trừ: Kích hoạt cảnh báo & mở modal nhập lý do soạn thiếu
   const handleDecrement = () => {
-    const nextVal = Math.max(0, item.totalPickedQuantity - 1);
-    setInputVal(String(nextVal));
-    if (nextVal < item.totalRequiredQuantity) {
-      onRequestShortPickReason(item, nextVal);
-    } else {
-      onUpdateQuantityDirect(item.id, nextVal);
-    }
+    if (item.totalPickedQuantity <= 0) return;
+    const nextVal = item.totalPickedQuantity - 1;
+    onRequestShortPickReason(item, nextVal);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,11 +70,12 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
       return;
     }
 
-    if (parsed >= item.totalRequiredQuantity) {
-      setInputVal(String(item.totalRequiredQuantity));
-      onUpdateQuantityDirect(item.id, item.totalRequiredQuantity);
+    const clamped = Math.min(parsed, item.totalRequiredQuantity);
+    if (clamped < item.totalRequiredQuantity) {
+      onRequestShortPickReason(item, clamped);
     } else {
-      onRequestShortPickReason(item, parsed);
+      setInputVal(String(clamped));
+      onUpdateQuantityDirect(item.id, clamped);
     }
   };
 
@@ -152,6 +160,27 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
             )}
           </div>
 
+          {/* Hiển thị phân bổ Lô xuất FEFO nếu đã được chọn (SN-187) */}
+          {item.selectedBatches && item.selectedBatches.length > 0 && (
+            <div className="mt-2.5 p-2 rounded-xl bg-indigo-50/70 border border-indigo-200/80 space-y-1">
+              <div className="flex items-center gap-1.5 text-xs text-indigo-950 font-bold">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span>Lô xuất:</span>
+                <span className="font-mono text-indigo-800">
+                  {item.selectedBatches.map((b) => `${b.batchNumber} (${b.quantity} ${item.unit})`).join(', ')}
+                </span>
+              </div>
+              {item.isOverrideBatch && item.batchOverrideReason && (
+                <div className="flex items-start gap-1 text-[11px] text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-md border border-amber-200">
+                  <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Chọn khác FEFO:</strong> {item.batchOverrideReason}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Số lượng cần lấy */}
           <div className="mt-2.5 flex items-center gap-2">
             <span className="text-xs font-medium text-slate-500">Số lượng cần lấy:</span>
@@ -202,7 +231,8 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
               <button
                 type="button"
                 onClick={handleDecrement}
-                className="w-10 h-full flex items-center justify-center text-slate-600 hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer"
+                disabled={item.totalPickedQuantity <= 0}
+                className="w-10 h-full flex items-center justify-center text-slate-600 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 title="Giảm 1"
               >
                 <Minus className="w-4 h-4" />
@@ -239,6 +269,19 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
               <Check className="w-4 h-4 stroke-[3]" />
               <span>Soạn đủ</span>
             </button>
+
+            {/* Nút Chọn Lô FEFO (SN-187) */}
+            {onOpenFefoSelector && (
+              <button
+                type="button"
+                onClick={() => onOpenFefoSelector(item)}
+                className="h-10 px-3 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 text-indigo-900 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shadow-2xs"
+                title="Gợi ý và chọn Lô xuất theo nguyên tắc Hạn dùng gần nhất (FEFO)"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                Lô FEFO
+              </button>
+            )}
 
             {/* Nút Báo thiếu */}
             <button

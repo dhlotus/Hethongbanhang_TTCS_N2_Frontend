@@ -20,6 +20,9 @@ import type {
 } from '../types/order-picking.types';
 import { PickingLineItemCard } from '../components/picking/picking-line-item-card';
 import { ShortPickReasonModal } from '../components/picking/short-pick-reason-modal';
+import { FefoBatchSelectorModal } from '../components/picking/fefo-batch-selector-modal';
+import { fefoPickingService } from '../services/fefo-picking.service';
+import type { SelectedBatchAllocation } from '../types/fefo-picking.types';
 import { showToast } from '../components/toast';
 
 export const OrderPickingPage: React.FC = () => {
@@ -37,6 +40,7 @@ export const OrderPickingPage: React.FC = () => {
     item: PickingLineItem;
     pickedQuantity: number;
   } | null>(null);
+  const [fefoModalItem, setFefoModalItem] = useState<PickingLineItem | null>(null);
 
   // Tải danh sách phiếu soạn hàng
   const loadSheets = useCallback(async () => {
@@ -151,6 +155,52 @@ export const OrderPickingPage: React.FC = () => {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lỗi cập nhật số lượng';
       showToast('error', msg);
+    }
+  };
+
+  // Xác nhận phân bổ lô theo FEFO (SN-187) và trừ tồn kho các lô đã chọn (Tiêu chí 3)
+  const handleConfirmFefoBatches = async (
+    selectedBatches: SelectedBatchAllocation[],
+    isOverride: boolean,
+    overrideReason?: string,
+    overrideReasonCode?: string,
+  ) => {
+    if (!activeSheet || !fefoModalItem) return;
+    try {
+      // 1. Cập nhật phân bổ lô vào dòng hàng của phiếu soạn
+      const updatedSheet = await orderPickingService.updateLineItemBatches(
+        activeSheet.id,
+        fefoModalItem.id,
+        selectedBatches,
+        isOverride,
+        overrideReason,
+        overrideReasonCode,
+      );
+      setSheets((prev) => prev.map((s) => (s.id === updatedSheet.id ? updatedSheet : s)));
+
+      // 2. Tiêu chí 3: Gọi API / Service trừ tồn của các lô đã chọn
+      await fefoPickingService.confirmFefoDispatch({
+        orderId: activeSheet.sourceOrderIds[0],
+        warehouseId: activeSheet.warehouseId,
+        productId: fefoModalItem.productId,
+        selectedBatches,
+        isOverride,
+        overrideReason,
+        overrideReasonCode,
+        notes: `Xuất kho theo phiếu soạn ${activeSheet.sheetCode}`,
+      });
+
+      showToast(
+        'success',
+        isOverride
+          ? 'Đã ghi nhận lý do chọn lô khác FEFO và trừ tồn lô xuất thành công!'
+          : 'Đã phân bổ lô theo đề xuất FEFO và trừ tồn lô xuất thành công!',
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi lưu thông tin lô xuất';
+      showToast('error', msg);
+    } finally {
+      setFefoModalItem(null);
     }
   };
 
@@ -400,6 +450,7 @@ export const OrderPickingPage: React.FC = () => {
                   onQuickPickAll={handleQuickPickAll}
                   onRequestShortPickReason={handleRequestShortPickReason}
                   onUpdateQuantityDirect={handleUpdateQuantityDirect}
+                  onOpenFefoSelector={(it) => setFefoModalItem(it)}
                 />
               ))
             )}
@@ -563,6 +614,19 @@ export const OrderPickingPage: React.FC = () => {
         currentPickedQuantity={reasonModalItem?.pickedQuantity || 0}
         onClose={() => setReasonModalItem(null)}
         onConfirm={handleConfirmShortPick}
+      />
+
+      <FefoBatchSelectorModal
+        isOpen={Boolean(fefoModalItem)}
+        warehouseId={activeSheet?.warehouseId || 'wh-main-01'}
+        productId={fefoModalItem?.productId || ''}
+        productName={fefoModalItem?.productName || ''}
+        productSku={fefoModalItem?.productSku || ''}
+        unit={fefoModalItem?.unit || 'hộp'}
+        requiredQuantity={fefoModalItem?.totalRequiredQuantity || 0}
+        currentAllocations={fefoModalItem?.selectedBatches || []}
+        onClose={() => setFefoModalItem(null)}
+        onConfirm={handleConfirmFefoBatches}
       />
     </div>
   );

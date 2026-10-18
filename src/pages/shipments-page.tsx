@@ -662,14 +662,15 @@ export const ShipmentsPage: React.FC = () => {
   const filteredTrips = useMemo(() => {
     return trips.filter((t) => {
       const matchStatus = tripStatusFilter === 'ALL' || t.status === tripStatusFilter;
-      const matchArea = tripAreaFilter === 'ALL' || t.routeArea.toLowerCase().includes(tripAreaFilter.toLowerCase());
+      const matchArea = tripAreaFilter === 'ALL' || (t.routeArea || '').toLowerCase().includes(tripAreaFilter.toLowerCase());
       const tripCode = t.tripCode || t.code || '';
       const plate = t.vehicleNumber || t.licensePlate || '';
+      const tripName = t.name || t.tripName || '';
       const matchSearch =
         !tripSearch ||
         tripCode.toLowerCase().includes(tripSearch.toLowerCase()) ||
-        t.name.toLowerCase().includes(tripSearch.toLowerCase()) ||
-        t.routeArea.toLowerCase().includes(tripSearch.toLowerCase()) ||
+        tripName.toLowerCase().includes(tripSearch.toLowerCase()) ||
+        (t.routeArea || '').toLowerCase().includes(tripSearch.toLowerCase()) ||
         t.driverName?.toLowerCase().includes(tripSearch.toLowerCase()) ||
         plate.toLowerCase().includes(tripSearch.toLowerCase());
       return matchStatus && matchArea && matchSearch;

@@ -86,7 +86,7 @@ export interface PickingLineItem {
   baseUnit: string;
   conversionRate: number;
   location: WarehouseLocationDetail;
-  stepNumber: number; // Số thứ tự bước nhặt trên lộ trình
+  stepNumber: number; // Thứ tự điểm nhặt trên lộ trình (Pick Stop Sequence)
   totalRequiredQuantity: number;
   totalPickedQuantity: number;
   status: PickingItemStatus;
@@ -95,6 +95,11 @@ export interface PickingLineItem {
   notes?: string;
   orders: OrderAllocationItem[];
   completedAt?: string;
+  // Bổ sung quản lý Lô xuất FEFO (SN-187)
+  selectedBatches?: import('./fefo-picking.types').SelectedBatchAllocation[];
+  isOverrideBatch?: boolean;
+  batchOverrideReason?: string;
+  batchOverrideReasonCode?: string;
 }
 
 /** Thực thể Phiếu soạn hàng (Picking Sheet / Wave Picking) */
