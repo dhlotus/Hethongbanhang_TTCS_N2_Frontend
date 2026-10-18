@@ -49,6 +49,7 @@ import { RoleModulePage } from '../pages/role-module-page';
 import { WarehousesPage } from '../pages/warehouses-page';
 import { InternalTransfersPage } from '../pages/inventory/internal-transfers-page';
 import { OrderPickingPage } from '../pages/order-picking-page';
+import { CreatePickingSheetPage } from '../pages/create-picking-sheet-page';
 import { InventoryBatchesPage } from '../pages/inventory-batches-page';
 import { StockCardPage } from '../pages/inventory/stock-card-page';
 import { RouteCollectionsPage } from '../pages/route-collections-page';
@@ -337,7 +338,9 @@ export const AppRoutes: React.FC = () => {
               <Route path="/warehouse/orders" element={<OrdersPage />} />
               {/* Route phiếu soạn hàng theo vị trí & đường đi trong kho (Wave Picking) */}
               <Route path="/inventory/picking" element={<OrderPickingPage />} />
+              <Route path="/inventory/picking/create" element={<CreatePickingSheetPage />} />
               <Route path="/warehouse/picking" element={<OrderPickingPage />} />
+              <Route path="/warehouse/picking/create" element={<CreatePickingSheetPage />} />
             </Route>
 
             <Route

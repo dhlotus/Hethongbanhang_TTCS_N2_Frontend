@@ -1122,12 +1122,22 @@ input.glass-input:-webkit-autofill:active {
     margin: 10mm;
   }
 
-  /* Ẩn hoàn toàn toàn bộ giao diện ứng dụng web chính */
-  #root {
-    display: none !important;
+  /* Reset layout constraints để trình duyệt không bị trắng trang hoặc cắt trang khi in */
+  html,
+  body,
+  #root,
+  #root > div,
+  main {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
-  /* Ẩn các thành phần giao diện không thuộc phiếu in */
+  /* Ẩn các thành phần giao diện điều hướng không thuộc phiếu in */
   header,
   aside,
   nav,
@@ -1143,9 +1153,10 @@ input.glass-input:-webkit-autofill:active {
     padding: 0 !important;
   }
 
-  /* Định dạng tài liệu in chuẩn khổ giấy */
+  /* Định dạng tài liệu in chuẩn khổ giấy A4 */
   #order-print-document,
-  #transfer-print-document {
+  #transfer-print-document,
+  #picking-print-document {
     display: block !important;
     position: static !important;
     width: 100% !important;

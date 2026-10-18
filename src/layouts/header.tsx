@@ -206,6 +206,20 @@ const getPageHeaderInfo = (
     };
   }
 
+  if (
+    pathname === '/warehouse/picking/create' ||
+    pathname === '/inventory/picking/create'
+  ) {
+    return {
+      title: 'Tạo phiếu soạn hàng',
+      category: 'Kho & Vận hành',
+      breadcrumbs: [
+        { label: 'Phiếu soạn hàng', path: '/warehouse/picking' },
+        { label: 'Tạo phiếu mới' },
+      ],
+    };
+  }
+
   // 1. Ưu tiên khớp chính xác theo menu item của người dùng hiện tại trên Navbar
   const sortedUserItems = [...userMenuItems].sort((a, b) => b.path.length - a.path.length);
   const matchedUserItem = sortedUserItems.find(
