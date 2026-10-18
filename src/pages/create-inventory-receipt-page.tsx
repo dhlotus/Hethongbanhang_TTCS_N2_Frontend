@@ -20,11 +20,13 @@ import { suppliersService } from "../services/suppliers.service";
 import { productsService } from "../services/products.service";
 import { warehouseService } from "../services/warehouse.service";
 import { inventoryReceiptsService } from "../services/inventory-receipts.service";
+import { inventoryBatchesService } from "../services/inventory-batches.service";
 import {
   normalizeProductIdToUuid,
   normalizeWarehouseIdToUuid,
   normalizeSupplierIdToUuid,
   generateReferenceDocCode,
+  generateRandomBatchCode,
 } from "../utils/uuid-utils";
 import type { Supplier } from "../types/supplier";
 import type { Product } from "../types/products";
@@ -60,19 +62,21 @@ const getMinReceiptDateString = (): string => {
   return `${year}-${month}-01`;
 };
 
-const createInitialItem = (): ReceiptItemForm => ({
-  id: `row-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-  productId: "",
-  unitId: "",
-  unitName: "",
-  packageQuantity: 1,
-  conversionFactor: 1,
-  unitCost: 0,
-  batchNumber: "",
-  mfgDate: "",
-  expiryDate: "",
-  notes: "",
-});
+const createInitialItem = (_seq = 1, dateStr?: string): ReceiptItemForm => {
+  return {
+    id: `row-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+    productId: "",
+    unitId: "",
+    unitName: "",
+    packageQuantity: 1,
+    conversionFactor: 1,
+    unitCost: 0,
+    batchNumber: generateRandomBatchCode(dateStr),
+    mfgDate: "",
+    expiryDate: "",
+    notes: "",
+  };
+};
 
 /**
  * Màn hình Lập phiếu nhập kho từ nhà cung cấp (SN-178)
@@ -86,8 +90,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [showValidationErrors, setShowValidationErrors] = useState(false);
-  const [showConfirmErrors, setShowConfirmErrors] = useState(false);
+  const [activeErrorKey, setActiveErrorKey] = useState<string | null>(null);
 
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [warehouseId, setWarehouseId] = useState("");
@@ -105,7 +108,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
 
   const receiptDateError = useMemo(() => {
     if (!receiptDate || !receiptDate.trim()) {
-      return showValidationErrors ? "Vui lòng chọn ngày nhập kho." : "";
+      return activeErrorKey === "receiptDate" ? "Vui lòng chọn ngày nhập kho." : "";
     }
     if (receiptDate > todayString) {
       return "Ngày nhập kho không được lớn hơn ngày hiện tại.";
@@ -114,18 +117,17 @@ export const CreateInventoryReceiptPage: React.FC = () => {
       return "Ngày nhập kho không được chọn ngày của tháng trước (chỉ trong tháng hiện tại).";
     }
     return "";
-  }, [receiptDate, todayString, minReceiptDateString, showValidationErrors]);
+  }, [receiptDate, todayString, minReceiptDateString, activeErrorKey]);
 
   /**
    * Reset form về trạng thái ban đầu sạch sẽ (SN-178)
    */
   const resetForm = useCallback(() => {
-    setWarehouseId((prev) => prev || "11111111-0000-4000-8000-000000000001");
+    setWarehouseId("");
     setSupplierId("");
     setReceiptDate(getTodayString());
     setNotes("");
-    setShowValidationErrors(false);
-    setShowConfirmErrors(false);
+    setActiveErrorKey(null);
     setItems([]);
   }, []);
 
@@ -219,11 +221,6 @@ export const CreateInventoryReceiptPage: React.FC = () => {
         setProducts(prodList);
         setWarehouses(whList);
 
-        if (whList && whList.length > 0) {
-          setWarehouseId(whList[0].id);
-        } else {
-          setWarehouseId("11111111-0000-4000-8000-000000000001");
-        }
       } catch {
         showToast("error", "Lỗi khi tải dữ liệu khởi tạo");
       } finally {
@@ -233,12 +230,64 @@ export const CreateInventoryReceiptPage: React.FC = () => {
     loadData();
   }, []);
 
-  const handleAddItem = () => {
-    setShowConfirmErrors(false);
-    setItems((prev) => [...prev, createInitialItem()]);
+  const handleGenerateBatch = useCallback(
+    async (index: number, product?: Product) => {
+      try {
+        const res = await inventoryBatchesService.generateBatchNumber({
+          productId: product?.uuid || product?.id,
+          sku: product?.sku,
+          date: receiptDate,
+        });
+        if (res?.batchNumber) {
+          setItems((prev) => {
+            const next = [...prev];
+            if (next[index]) {
+              next[index] = { ...next[index], batchNumber: res.batchNumber };
+            }
+            return next;
+          });
+          return;
+        }
+      } catch {
+        // Fallback tự sinh ngẫu nhiên nếu không gọi được API
+      }
+      const fallbackBatch = generateRandomBatchCode(receiptDate);
+      setItems((prev) => {
+        const next = [...prev];
+        if (next[index]) {
+          next[index] = { ...next[index], batchNumber: fallbackBatch };
+        }
+        return next;
+      });
+    },
+    [receiptDate],
+  );
+
+  const handleAddItem = async () => {
+    const newIdx = items.length;
+    const newItem = createInitialItem(newIdx + 1, receiptDate);
+    try {
+      const res = await inventoryBatchesService.generateBatchNumber({
+        date: receiptDate,
+      });
+      if (res?.batchNumber) {
+        const existingBatches = new Set(items.map((it) => it.batchNumber));
+        if (existingBatches.has(res.batchNumber)) {
+          newItem.batchNumber = generateRandomBatchCode(receiptDate);
+        } else {
+          newItem.batchNumber = res.batchNumber;
+        }
+      }
+    } catch {
+      newItem.batchNumber = generateRandomBatchCode(receiptDate);
+    }
+    setItems((prev) => [...prev, newItem]);
   };
 
   const handleRemoveItem = (index: number) => {
+    if (activeErrorKey?.startsWith(`item-${index}-`)) {
+      setActiveErrorKey(null);
+    }
     setItems((prev) => prev.filter((_, idx) => idx !== index));
   };
 
@@ -248,6 +297,9 @@ export const CreateInventoryReceiptPage: React.FC = () => {
   };
 
   const handleItemChange = (index: number, field: keyof ReceiptItemForm, value: string | number) => {
+    if (activeErrorKey?.startsWith(`item-${index}-`)) {
+      setActiveErrorKey(null);
+    }
     const newItems = [...items];
     const item = newItems[index];
 
@@ -267,6 +319,9 @@ export const CreateInventoryReceiptPage: React.FC = () => {
       }
       if (prod?.costPrice) {
         item.unitCost = prod.costPrice * item.conversionFactor;
+      }
+      if (!item.batchNumber) {
+        handleGenerateBatch(index, prod);
       }
     } else if (field === "unitId") {
       item.unitId = value as string;
@@ -304,25 +359,24 @@ export const CreateInventoryReceiptPage: React.FC = () => {
   };
 
   const validateCommonFields = (isConfirming: boolean): boolean => {
-    setShowValidationErrors(true);
-    if (isConfirming) {
-      setShowConfirmErrors(true);
-    }
-
     if (!warehouseId) {
+      setActiveErrorKey("warehouse");
       focusAndScrollElement("warehouse-select");
       return false;
     }
     if (!supplierId) {
+      setActiveErrorKey("supplier");
       supplierSelectRef.current?.focus();
       supplierSelectRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return false;
     }
     if (!receiptDate || !receiptDate.trim() || receiptDate > todayString || receiptDate < minReceiptDateString) {
+      setActiveErrorKey("receiptDate");
       focusAndScrollElement("receipt-date-input");
       return false;
     }
     if (items.length === 0) {
+      setActiveErrorKey(null);
       showToast("warning", "Vui lòng thêm ít nhất 1 mặt hàng vào phiếu nhập");
       return false;
     }
@@ -330,47 +384,65 @@ export const CreateInventoryReceiptPage: React.FC = () => {
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
       if (!it.productId) {
+        setActiveErrorKey(`item-${i}-product`);
         focusAndScrollElement(`product-input-${i}`);
         return false;
       }
       if (!it.unitId) {
+        setActiveErrorKey(`item-${i}-unit`);
         focusAndScrollElement(`unit-select-${i}`);
         return false;
       }
       if (!it.packageQuantity || it.packageQuantity <= 0) {
+        setActiveErrorKey(`item-${i}-qty`);
         focusAndScrollElement(`qty-input-${i}`);
         return false;
       }
 
+      const isBatch = Boolean(it.product && it.product.isBatchManaged !== false);
+      const isBatchRequired = Boolean(it.productId && (isBatch || it.expiryDate?.trim() || it.mfgDate?.trim()));
+
+      if (isConfirming && isBatchRequired) {
+        if (!it.batchNumber?.trim()) {
+          it.batchNumber = generateRandomBatchCode(receiptDate);
+        }
+        const isMissingMfg = !it.mfgDate?.trim();
+        if (isMissingMfg) {
+          setActiveErrorKey(`item-${i}-mfg`);
+          focusAndScrollElement(`mfg-input-${i}`);
+          return false;
+        }
+      }
+
       if (it.mfgDate && receiptDate && it.mfgDate > receiptDate) {
+        setActiveErrorKey(`item-${i}-mfg-future`);
         focusAndScrollElement(`mfg-input-${i}`);
         return false;
       }
 
-      if (it.mfgDate && it.expiryDate && it.mfgDate >= it.expiryDate) {
-        focusAndScrollElement(`expiry-input-${i}`);
-        return false;
-      }
-
-      const isBatch = Boolean(it.product && it.product.isBatchManaged !== false);
-      const hasBatchInput = Boolean(it.batchNumber?.trim() || it.expiryDate?.trim());
-
-      if (isBatch || hasBatchInput) {
-        const isMissingBatch = !it.batchNumber?.trim();
+      if (isConfirming && isBatchRequired) {
         const isMissingExpiry = !it.expiryDate?.trim();
-
-        if (isMissingBatch) {
-          focusAndScrollElement(`batch-input-${i}`);
-          return false;
-        }
-
         if (isMissingExpiry) {
+          setActiveErrorKey(`item-${i}-expiry`);
           focusAndScrollElement(`expiry-input-${i}`);
           return false;
         }
       }
+
+      if (it.mfgDate && it.expiryDate && it.mfgDate >= it.expiryDate) {
+        setActiveErrorKey(`item-${i}-expiry-order`);
+        focusAndScrollElement(`expiry-input-${i}`);
+        return false;
+      }
+
+      if (!it.unitCost || it.unitCost <= 0) {
+        setActiveErrorKey(`item-${i}-cost`);
+        focusAndScrollElement(`cost-input-${i}`);
+        return false;
+      }
     }
 
+    setActiveErrorKey(null);
     return true;
   };
 
@@ -378,9 +450,14 @@ export const CreateInventoryReceiptPage: React.FC = () => {
     try {
       setSubmitting(true);
       const autoRefDoc = generateReferenceDocCode(receiptDate);
+      const selectedSupplier = suppliers.find((s) => s.id === supplierId || s.code === supplierId);
+      const selectedWarehouse = warehouses.find((w) => w.id === warehouseId || w.code === warehouseId);
+
       const res = await inventoryReceiptsService.create({
         warehouseId: normalizeWarehouseIdToUuid(warehouseId),
+        warehouseName: selectedWarehouse?.name,
         supplierId: normalizeSupplierIdToUuid(supplierId),
+        supplierName: selectedSupplier?.name,
         referenceDocument: autoRefDoc,
         receiptDate: receiptDate || undefined,
         notes: notes?.trim() || undefined,
@@ -432,13 +509,11 @@ export const CreateInventoryReceiptPage: React.FC = () => {
 
   const handleSaveDraft = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    setShowConfirmErrors(false);
     if (!validateCommonFields(false)) return;
     await submitReceipt("DRAFT");
   };
 
   const handleConfirmReceipt = () => {
-    setShowConfirmErrors(true);
     if (!validateCommonFields(true)) return;
     setIsConfirmDialogOpen(true);
   };
@@ -461,6 +536,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
   return (
     <form
       onSubmit={handleSaveDraft}
+      autoComplete="off"
       className="flex flex-col h-[calc(100vh-5rem)] sm:h-[calc(100vh-5.5rem)] max-h-[calc(100vh-5rem)] sm:max-h-[calc(100vh-5.5rem)] overflow-hidden gap-3"
     >
       {/* 1. Card Thông tin phiếu nhập (Cố định - KHÔNG cuộn) */}
@@ -481,13 +557,19 @@ export const CreateInventoryReceiptPage: React.FC = () => {
               <select
                 id="warehouse-select"
                 value={warehouseId}
-                onChange={(e) => setWarehouseId(e.target.value)}
+                onChange={(e) => {
+                  setWarehouseId(e.target.value);
+                  if (activeErrorKey === "warehouse") {
+                    setActiveErrorKey(null);
+                  }
+                }}
                 className={`w-full pl-9 pr-3 py-1.5 bg-white border ${
-                  showValidationErrors && !warehouseId
+                  activeErrorKey === "warehouse" && !warehouseId
                     ? "border-rose-500 ring-1 ring-rose-200 focus:border-rose-500 focus:ring-rose-200"
                     : "border-slate-300 focus:border-indigo-600 focus:ring-indigo-500/20"
                 } rounded-xl focus:outline-none focus:ring-2 text-xs font-medium text-slate-800 transition-all truncate`}
               >
+                <option value="">-- Chọn kho nhập hàng --</option>
                 {warehouses.map((w) => {
                   const cleanName = w.name
                     .replace(/\s*\(WH01\)/gi, '')
@@ -507,7 +589,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                 })}
               </select>
             </div>
-            {showValidationErrors && !warehouseId && (
+            {activeErrorKey === "warehouse" && !warehouseId && (
               <p className="text-[10px] text-rose-600 font-medium mt-1 flex items-center gap-1 leading-tight">
                 <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
                 <span>Vui lòng chọn kho nhập hàng</span>
@@ -525,9 +607,14 @@ export const CreateInventoryReceiptPage: React.FC = () => {
               <select
                 ref={supplierSelectRef}
                 value={supplierId}
-                onChange={(e) => setSupplierId(e.target.value)}
+                onChange={(e) => {
+                  setSupplierId(e.target.value);
+                  if (activeErrorKey === "supplier") {
+                    setActiveErrorKey(null);
+                  }
+                }}
                 className={`w-full pl-9 pr-3 py-1.5 bg-white border ${
-                  showValidationErrors && !supplierId
+                  activeErrorKey === "supplier" && !supplierId
                     ? "border-rose-500 ring-1 ring-rose-200 focus:border-rose-500 focus:ring-rose-200"
                     : "border-slate-300 focus:border-indigo-600 focus:ring-indigo-500/20"
                 } rounded-xl focus:outline-none focus:ring-2 text-xs font-medium text-slate-800 transition-all truncate`}
@@ -540,7 +627,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                 ))}
               </select>
             </div>
-            {showValidationErrors && !supplierId && (
+            {activeErrorKey === "supplier" && !supplierId && (
               <p className="text-[10px] text-rose-600 font-medium mt-1 flex items-center gap-1 leading-tight">
                 <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
                 <span>Vui lòng chọn nhà cung cấp</span>
@@ -575,7 +662,12 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                 value={receiptDate}
                 min={minReceiptDateString}
                 max={todayString}
-                onChange={(e) => setReceiptDate(e.target.value)}
+                onChange={(e) => {
+                  setReceiptDate(e.target.value);
+                  if (activeErrorKey === "receiptDate") {
+                    setActiveErrorKey(null);
+                  }
+                }}
                 className={`w-full pl-9 pr-3 py-1.5 bg-white border ${
                   receiptDateError
                     ? "border-rose-500 ring-1 ring-rose-200 focus:border-rose-500"
@@ -646,39 +738,39 @@ export const CreateInventoryReceiptPage: React.FC = () => {
           </div>
         ) : (
           <div className="flex-1 min-h-0 overflow-auto">
-            <table className="w-full min-w-[50rem] text-left border-collapse table-fixed">
+            <table className="w-full min-w-[54rem] text-left border-collapse table-fixed">
               <colgroup>
                 <col className="w-[3.5%]" />
-                <col className="w-[33.5%]" />
-                <col className="w-[13%]" />
-                <col className="w-[9%]" />
-                <col className="w-[13%]" />
+                <col className="w-[22.5%]" />
                 <col className="w-[12%]" />
-                <col className="w-[12%]" />
-                <col className="w-[4%]" />
+                <col className="w-[9.5%]" />
+                <col className="w-[14%]" />
+                <col className="w-[20%]" />
+                <col className="w-[13%]" />
+                <col className="w-[5.5%]" />
               </colgroup>
               <thead className="sticky top-0 bg-slate-50 z-10 shadow-2xs border-b border-slate-200 text-xs">
                 <tr>
                   <th className="p-2.5 font-semibold text-slate-600 text-center bg-slate-50">#</th>
                   <th className="p-2.5 font-semibold text-slate-600 text-left bg-slate-50">
-                    Sản phẩm / SKU
+                    Sản phẩm & SKU
                   </th>
                   <th className="p-2.5 font-semibold text-slate-600 text-left bg-slate-50">
                     ĐVT & Quy đổi
                   </th>
-                  <th className="p-2.5 font-semibold text-slate-600 text-right bg-slate-50">
-                    SL nhập
+                  <th className="p-2.5 font-semibold text-slate-600 text-center bg-slate-50 whitespace-nowrap">
+                    Số lượng
                   </th>
-                  <th className="p-2.5 font-semibold text-slate-600 text-left bg-slate-50">
-                    Số lô (Batch)
+                  <th className="p-2.5 font-semibold text-slate-600 text-center bg-slate-50 whitespace-nowrap">
+                    Số lô
                   </th>
-                  <th className="p-2.5 font-semibold text-slate-600 text-left bg-slate-50">
-                    Hạn sử dụng
+                  <th className="p-2.5 font-semibold text-slate-600 text-left bg-slate-50 whitespace-nowrap">
+                    NSX & HSD
                   </th>
-                  <th className="p-2.5 font-semibold text-slate-600 text-right bg-slate-50">
+                  <th className="p-2.5 font-semibold text-slate-600 text-right bg-slate-50 whitespace-nowrap">
                     Đơn giá nhập
                   </th>
-                  <th className="p-2.5 font-semibold text-slate-600 text-center bg-slate-50">
+                  <th className="p-2.5 font-semibold text-slate-600 text-center bg-slate-50 whitespace-nowrap">
                     Thao tác
                   </th>
                 </tr>
@@ -689,14 +781,13 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                     item.product?.units?.find((u) => u.isBaseUnit)?.unitName ||
                     item.product?.baseUnit ||
                     "Đơn vị";
-                  const isBatchManaged = Boolean(item.product && item.product.isBatchManaged !== false);
-                  const hasBatchInput = Boolean(item.batchNumber?.trim() || item.expiryDate?.trim());
-                  const isBatchRequired = isBatchManaged || hasBatchInput;
-                  const isProductMissing = showConfirmErrors && !item.productId;
-                  const isQtyInvalid = showValidationErrors && (!item.packageQuantity || item.packageQuantity <= 0);
-                  const isBatchMissing = isBatchRequired && showValidationErrors && !item.batchNumber.trim();
-                  const isExpiryMissing = isBatchRequired && showValidationErrors && !item.expiryDate.trim();
-                  const isExpiryBeforeMfg = Boolean(item.mfgDate && item.expiryDate && item.mfgDate >= item.expiryDate);
+                  const isProductMissing = activeErrorKey === `item-${idx}-product` && !item.productId;
+                  const isQtyInvalid = activeErrorKey === `item-${idx}-qty` && (!item.packageQuantity || item.packageQuantity <= 0);
+                  const isCostInvalid = activeErrorKey === `item-${idx}-cost` && (!item.unitCost || item.unitCost <= 0);
+                  const isMfgMissing = activeErrorKey === `item-${idx}-mfg` && !item.mfgDate?.trim();
+                  const isMfgAfterReceipt = activeErrorKey === `item-${idx}-mfg-future` || Boolean(item.mfgDate && receiptDate && item.mfgDate > receiptDate);
+                  const isExpiryMissing = activeErrorKey === `item-${idx}-expiry` && !item.expiryDate?.trim();
+                  const isExpiryBeforeMfg = activeErrorKey === `item-${idx}-expiry-order` || Boolean(item.mfgDate && item.expiryDate && item.mfgDate >= item.expiryDate);
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
@@ -705,12 +796,12 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                         {idx + 1}
                       </td>
 
-                      {/* Cột 1: Sản phẩm / SKU */}
+                      {/* Cột 1: Sản phẩm & SKU */}
                       <td className="p-2 text-left align-top">
                         <Autocomplete
                           id={`product-input-${idx}`}
                           size="sm"
-                          placeholder="- Tìm SKU / Tên SP -"
+                          placeholder="Chọn sản phẩm & SKU"
                           value={item.product ? `${item.product.sku} - ${item.product.name}` : ""}
                           items={productOptions}
                           error={isProductMissing ? "Chọn sản phẩm" : undefined}
@@ -719,7 +810,6 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                         />
                       </td>
 
-                      {/* Cột 2: Đơn vị tính & Quy đổi */}
                       {/* Cột 2: ĐVT & Quy đổi */}
                       <td className="p-2 text-left align-top">
                         <select
@@ -749,7 +839,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                       </td>
 
                       {/* Cột 3: Số lượng nhập */}
-                      <td className="p-2 text-right align-top">
+                      <td className="p-2 text-center align-top">
                         <input
                           id={`qty-input-${idx}`}
                           type="number"
@@ -765,79 +855,114 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                               ? `Quy đổi: ${((item.packageQuantity || 0) * item.conversionFactor).toLocaleString("vi-VN")} ${baseUnitName}`
                               : undefined
                           }
-                          className={`w-full h-8.5 px-2.5 bg-white border ${
+                          className={`w-full h-8.5 px-2 bg-white border ${
                             isQtyInvalid
                               ? "border-rose-500 ring-1 ring-rose-200 focus:border-rose-500 focus:ring-rose-200"
                               : "border-slate-300 focus:border-indigo-600 focus:ring-indigo-500/20"
-                          } rounded-lg focus:outline-none focus:ring-2 text-xs text-right font-mono font-medium text-slate-900 transition-all`}
+                          } rounded-lg focus:outline-none focus:ring-2 text-xs text-center font-mono font-medium text-slate-900 transition-all`}
                         />
                         {isQtyInvalid && (
-                          <p className="mt-1 text-[10px] text-rose-600 flex items-center gap-1 font-medium leading-tight justify-end">
+                          <p className="mt-1 text-[10px] text-rose-600 flex items-center justify-center gap-1 font-medium leading-tight">
                             <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
                             <span>SL phải &gt; 0</span>
                           </p>
                         )}
                       </td>
 
-                      {/* Cột 4: Số lô (Batch No) */}
-                      <td className="p-2 text-left align-top">
+                      {/* Cột 4: Số lô (Tự sinh - Không sửa được như số chứng từ) */}
+                      <td className="p-2 text-center align-top">
                         <input
                           id={`batch-input-${idx}`}
                           type="text"
                           value={item.batchNumber}
-                          onChange={(e) => handleItemChange(idx, "batchNumber", e.target.value)}
-                          placeholder="LOT-..."
-                          title={isBatchManaged ? "Mặt hàng bắt buộc quản lý số lô" : "Số lô (tùy chọn)"}
-                          className={`w-full h-8.5 px-2.5 bg-white border ${
-                            isBatchMissing
-                              ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-200 focus:border-rose-500 focus:ring-rose-200"
-                              : isBatchManaged && !item.batchNumber.trim()
-                                ? "border-amber-300 bg-amber-50/20 focus:border-indigo-600 focus:ring-indigo-500/20"
-                                : "border-slate-300 focus:border-indigo-600 focus:ring-indigo-500/20"
-                          } rounded-lg text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 transition-all`}
+                          placeholder="SỐ LÔ TỰ SINH"
+                          readOnly
+                          disabled
+                          title="Số lô tự sinh theo hệ thống (không thể chỉnh sửa)"
+                          className="w-full h-8.5 px-2.5 rounded-lg border border-slate-200 text-xs bg-slate-50 text-slate-600 font-mono font-semibold text-center cursor-not-allowed select-none transition-all uppercase placeholder:text-slate-400"
                         />
-                        {isBatchMissing && (
-                          <p className="mt-1 text-[10px] text-rose-600 flex items-center gap-1 font-medium leading-tight">
-                            <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
-                            <span>Vui lòng nhập số lô</span>
-                          </p>
-                        )}
                       </td>
 
-                      {/* Cột 5: Hạn sử dụng */}
+                      {/* Cột 5: NSX & HSD */}
                       <td className="p-2 text-left align-top">
-                        <input
-                          id={`expiry-input-${idx}`}
-                          type="date"
-                          value={item.expiryDate}
-                          onChange={(e) => handleItemChange(idx, "expiryDate", e.target.value)}
-                          title="Hạn sử dụng (HSD)"
-                          className={`w-full h-8.5 px-2.5 bg-white border ${
-                            isExpiryMissing || isExpiryBeforeMfg
-                              ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-200 focus:border-rose-500 focus:ring-rose-200"
-                              : isBatchManaged && !item.expiryDate.trim()
-                                ? "border-amber-300 bg-amber-50/20 focus:border-indigo-600 focus:ring-indigo-500/20"
-                                : "border-slate-300 focus:border-indigo-600 focus:ring-indigo-500/20"
-                          } rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 transition-all font-mono`}
-                        />
-                        {isExpiryMissing && (
-                          <p className="mt-1 text-[10px] text-rose-600 flex items-center gap-1 font-medium leading-tight">
-                            <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
-                            <span>Vui lòng chọn HSD</span>
-                          </p>
-                        )}
-                        {!isExpiryMissing && isExpiryBeforeMfg && (
-                          <p className="mt-1 text-[10px] text-rose-600 flex items-center gap-1 font-medium leading-tight">
-                            <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
-                            <span>HSD phải sau NSX</span>
-                          </p>
-                        )}
+                        <div className="flex flex-col gap-1.5 w-full">
+                          {/* Hàng 1: NSX */}
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] font-semibold text-slate-500 shrink-0 w-8">
+                                NSX:
+                              </span>
+                              <input
+                                id={`mfg-input-${idx}`}
+                                type="date"
+                                value={item.mfgDate}
+                                max={receiptDate || todayString}
+                                onChange={(e) => handleItemChange(idx, "mfgDate", e.target.value)}
+                                title="Ngày sản xuất (NSX)"
+                                className={`w-full h-7 px-2 bg-white border ${
+                                  isMfgMissing || isMfgAfterReceipt
+                                    ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-200 focus:border-rose-500"
+                                    : "border-slate-300 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500/20"
+                                } rounded-md text-xs text-slate-800 focus:outline-none transition-all font-mono`}
+                              />
+                            </div>
+                            {/* Cảnh báo lỗi NSX nằm trực tiếp dưới ô input NSX */}
+                            {isMfgAfterReceipt && (
+                              <p className="mt-1 pl-[2.375rem] text-[10px] text-rose-600 flex items-center gap-1 font-medium leading-tight">
+                                <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                                <span>NSX không được sau ngày nhập</span>
+                              </p>
+                            )}
+                            {isMfgMissing && (
+                              <p className="mt-1 pl-[2.375rem] text-[10px] text-rose-600 flex items-center gap-1 font-medium leading-tight">
+                                <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                                <span>Vui lòng chọn NSX</span>
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Hàng 2: HSD */}
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] font-semibold text-slate-500 shrink-0 w-8">
+                                HSD:
+                              </span>
+                              <input
+                                id={`expiry-input-${idx}`}
+                                type="date"
+                                value={item.expiryDate}
+                                min={item.mfgDate || undefined}
+                                onChange={(e) => handleItemChange(idx, "expiryDate", e.target.value)}
+                                title="Hạn sử dụng (HSD)"
+                                className={`w-full h-7 px-2 bg-white border ${
+                                  isExpiryMissing || isExpiryBeforeMfg
+                                    ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-200 focus:border-rose-500"
+                                    : "border-slate-300 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500/20"
+                                } rounded-md text-xs text-slate-800 focus:outline-none transition-all font-mono`}
+                              />
+                            </div>
+                            {/* Cảnh báo lỗi HSD nằm trực tiếp dưới ô input HSD */}
+                            {isExpiryMissing && (
+                              <p className="mt-1 pl-[2.375rem] text-[10px] text-rose-600 flex items-center gap-1 font-medium leading-tight">
+                                <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                                <span>Vui lòng chọn HSD</span>
+                              </p>
+                            )}
+                            {!isExpiryMissing && isExpiryBeforeMfg && (
+                              <p className="mt-1 pl-[2.375rem] text-[10px] text-rose-600 flex items-center gap-1 font-medium leading-tight">
+                                <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                                <span>HSD phải sau NSX</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       </td>
 
                       {/* Cột 6: Đơn giá nhập */}
                       <td className="p-2 text-right align-top">
                         <div className="relative w-full flex items-center">
                           <input
+                            id={`cost-input-${idx}`}
                             type="text"
                             inputMode="numeric"
                             value={Number(item.unitCost || 0).toLocaleString("vi-VN")}
@@ -848,12 +973,22 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                               handleItemChange(idx, "unitCost", finalPrice);
                             }}
                             placeholder="0"
-                            className="w-full h-8.5 pl-2.5 pr-7 bg-white border border-slate-300 rounded-lg text-xs text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-slate-900 transition-all font-medium"
+                            className={`w-full h-8.5 pl-2.5 pr-7 bg-white border ${
+                              isCostInvalid
+                                ? "border-rose-500 bg-rose-50/20 ring-1 ring-rose-200 focus:border-rose-500 focus:ring-rose-200"
+                                : "border-slate-300 focus:border-indigo-600 focus:ring-indigo-500/20"
+                            } rounded-lg text-xs text-right font-mono focus:outline-none focus:ring-2 text-slate-900 transition-all font-medium`}
                           />
                           <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-mono font-semibold text-slate-400 pointer-events-none select-none">
                             đ
                           </span>
                         </div>
+                        {isCostInvalid && (
+                          <p className="mt-1 text-[10px] text-rose-600 flex items-center justify-end gap-1 font-medium leading-tight">
+                            <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                            <span>Đơn giá phải &gt; 0</span>
+                          </p>
+                        )}
                       </td>
 
                       {/* Cột 7: Thao tác */}
@@ -878,25 +1013,37 @@ export const CreateInventoryReceiptPage: React.FC = () => {
 
       {/* 3. Thanh Action Footer (Cố định ở chân trang) */}
       <div className="shrink-0">
-        <div className="bg-white/95 backdrop-blur-md border border-slate-200 shadow-sm rounded-2xl px-4 py-2.5 sm:px-5 sm:py-2.5 flex flex-col md:flex-row items-center justify-between gap-3">
-          {/* Phía bên trái: Tóm tắt nhanh (Đã bỏ Tổng SKU theo yêu cầu) */}
-          <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-sm w-full md:w-auto">
+        <div className="bg-white/95 backdrop-blur-md border border-slate-200 shadow-sm rounded-2xl px-4 py-2.5 sm:px-6 sm:py-3 flex flex-col md:flex-row items-center justify-between gap-3">
+          {/* Phía bên trái: Tóm tắt nhanh */}
+          <div className="flex flex-wrap items-center gap-4 sm:gap-7 text-sm w-full md:w-auto">
             <div className="flex items-center gap-2">
-              <span className="text-xs uppercase font-semibold tracking-wider text-slate-400 whitespace-nowrap">
+              <span className="text-xs sm:text-sm font-medium text-slate-500 whitespace-nowrap">
                 Tổng lượng quy đổi:
               </span>
-              <span className="font-bold text-slate-900 font-mono text-xs sm:text-sm whitespace-nowrap">
-                {totalBaseQuantity.toLocaleString("vi-VN")} ĐVT cơ sở
-              </span>
+              <div className="flex items-baseline gap-1">
+                <span className="font-bold text-slate-900 font-mono text-sm sm:text-base whitespace-nowrap">
+                  {totalBaseQuantity.toLocaleString("vi-VN")}
+                </span>
+                <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
+                  ĐVT cơ sở
+                </span>
+              </div>
             </div>
-            <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+
+            <div className="h-4.5 w-px bg-slate-200 hidden sm:block" />
+
             <div className="flex items-center gap-2">
-              <span className="text-xs uppercase font-semibold tracking-wider text-slate-400 whitespace-nowrap">
-                Tổng tiền dự tính:
+              <span className="text-xs sm:text-sm font-medium text-slate-500 whitespace-nowrap">
+                Tổng tiền:
               </span>
-              <span className="text-sm sm:text-base font-bold text-indigo-600 font-mono whitespace-nowrap">
-                {totalAmount.toLocaleString("vi-VN")} đ
-              </span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-base sm:text-lg font-bold text-indigo-600 font-mono tracking-tight whitespace-nowrap">
+                  {totalAmount.toLocaleString("vi-VN")}
+                </span>
+                <span className="text-xs sm:text-sm font-semibold text-indigo-600 font-sans">
+                  đ
+                </span>
+              </div>
             </div>
           </div>
 

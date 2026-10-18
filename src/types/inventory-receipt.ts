@@ -60,7 +60,9 @@ export interface CreateGoodsReceiptItemDto {
 
 export interface CreateGoodsReceiptDto {
   warehouseId: string;
+  warehouseName?: string;
   supplierId?: string;
+  supplierName?: string;
   referenceDocument?: string;
   receiptDate?: string;
   notes?: string;

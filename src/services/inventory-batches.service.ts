@@ -53,4 +53,20 @@ export const inventoryBatchesService = {
     );
     return res.data;
   },
+
+  /**
+   * Sinh số lô hàng tự động kết nối API hệ thống
+   * GET /inventory/batches/generate-number
+   */
+  async generateBatchNumber(params?: {
+    productId?: string;
+    sku?: string;
+    date?: string;
+  }): Promise<{ batchNumber: string; success: boolean }> {
+    const res = await apiClient.get<{ batchNumber: string; success: boolean }>(
+      '/inventory/batches/generate-number',
+      { params },
+    );
+    return res.data;
+  },
 };
