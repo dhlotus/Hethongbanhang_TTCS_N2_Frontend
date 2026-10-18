@@ -7,6 +7,8 @@ import {
   RefreshCw,
   Eye,
   Printer,
+  Download,
+  Plus,
   X,
   RotateCcw,
 } from 'lucide-react';
@@ -15,6 +17,7 @@ import type { InvoiceItem } from '../services/invoices.service';
 import { invoicesService } from '../services/invoices.service';
 import { InvoiceDetailModal } from '../components/invoice-detail-modal';
 import { RecordPaymentModal } from '../components/record-payment-modal';
+import { IssueInvoiceModal } from '../components/issue-invoice-modal';
 import { receiptsService } from '../services/receipts.service';
 import { ReceiptPrintTemplate } from '../components/receipt-print-template';
 import { Pagination } from '../components/pagination';
@@ -177,6 +180,7 @@ export const InvoicesPage: React.FC = () => {
   const [totalInvoicePages, setTotalInvoicePages] = useState<number>(1);
   const [selectedInvoiceForDetail, setSelectedInvoiceForDetail] = useState<InvoiceItem | null>(null);
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<InvoiceItem | null>(null);
+  const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
 
   // State Phiếu thu tiền
   const [receipts, setReceipts] = useState<ReceiptType[]>(INITIAL_DEMO_RECEIPTS);
@@ -342,6 +346,26 @@ export const InvoicesPage: React.FC = () => {
       void reloadReceipts();
     }
   }, [activeTab, fetchInvoices, reloadReceipts]);
+
+  // In hóa đơn bán hàng (SN-200 ý 5 & SN-207)
+  const handlePrintInvoice = async (invoiceId: string) => {
+    try {
+      await invoicesService.printInvoice(invoiceId);
+    } catch {
+      showToast('error', 'Không thể mở bản in hóa đơn.');
+    }
+  };
+
+  // Tải file PDF hóa đơn bán hàng (SN-200 ý 5 & SN-207)
+  const handleDownloadInvoicePdf = async (invoiceId: string, invoiceCode: string) => {
+    try {
+      showToast('info', 'Đang tạo và tải hóa đơn PDF...');
+      await invoicesService.downloadInvoicePdf(invoiceId, invoiceCode);
+      showToast('success', 'Đã tải hóa đơn PDF thành công.');
+    } catch {
+      showToast('error', 'Không thể tải hóa đơn PDF.');
+    }
+  };
 
   // Xử lý chuyển tab
   const handleTabChange = (newTab: TabKey) => {
@@ -522,6 +546,18 @@ export const InvoicesPage: React.FC = () => {
 
         {/* Nhóm nút chức năng bên phải */}
         <div className="flex items-center gap-2">
+          {activeTab === 'INVOICES' && (
+            <button
+              type="button"
+              onClick={() => setIsIssueModalOpen(true)}
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-lg shadow-xs transition-all cursor-pointer"
+              title="Phát hành hóa đơn bán hàng từ phiếu thực giao (SN-200)"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Phát hành hóa đơn</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handleExportExcel}
@@ -689,18 +725,40 @@ export const InvoicesPage: React.FC = () => {
                         </span>
                       </td>
 
-                      {/* 6. Thao tác (Nút Chi tiết có màu và style rõ ràng nhận biết được) */}
+                      {/* 6. Thao tác: Không có sửa/xóa; hỗ trợ Chi tiết, In và Tải PDF (SN-200) */}
                       <td className="px-3 py-4 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center">
+                        <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => setSelectedInvoiceForDetail(inv)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-primary)]/25 bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-primary)]/25 bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
                             title="Xem chi tiết hóa đơn"
                             aria-label="Xem chi tiết"
                           >
                             <Eye className="h-3.5 w-3.5 text-[var(--color-primary)] shrink-0" />
                             <span>Chi tiết</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => void handlePrintInvoice(inv.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
+                            title="In hóa đơn (window.print)"
+                            aria-label="In hóa đơn"
+                          >
+                            <Printer className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+                            <span className="hidden lg:inline">In</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => void handleDownloadInvoicePdf(inv.id, inv.invoiceCode)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
+                            title="Tải hóa đơn PDF"
+                            aria-label="Tải PDF"
+                          >
+                            <Download className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+                            <span className="hidden lg:inline">PDF</span>
                           </button>
                         </div>
                       </td>
@@ -890,18 +948,44 @@ export const InvoicesPage: React.FC = () => {
                             </span>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedInvoiceForDetail(inv);
-                            }}
-                            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[var(--color-primary)]/25 bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
-                            title="Xem chi tiết"
-                          >
-                            <Eye className="h-3.5 w-3.5 text-[var(--color-primary)]" />
-                            <span>Chi tiết</span>
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedInvoiceForDetail(inv);
+                              }}
+                              className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-[var(--color-primary)]/25 bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
+                              title="Xem chi tiết"
+                            >
+                              <Eye className="h-3.5 w-3.5 text-[var(--color-primary)]" />
+                              <span>Chi tiết</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handlePrintInvoice(inv.id);
+                              }}
+                              className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                              title="In hóa đơn"
+                            >
+                              <Printer className="h-3.5 w-3.5 text-slate-600" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleDownloadInvoicePdf(inv.id, inv.invoiceCode);
+                              }}
+                              className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                              title="Tải PDF"
+                            >
+                              <Download className="h-3.5 w-3.5 text-slate-600" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1003,6 +1087,16 @@ export const InvoicesPage: React.FC = () => {
         onClose={() => setSelectedInvoiceForPayment(null)}
         onSuccess={() => {
           void fetchInvoices();
+        }}
+      />
+
+      {/* Modal phát hành hóa đơn mới từ phiếu thực giao (SN-200) */}
+      <IssueInvoiceModal
+        isOpen={isIssueModalOpen}
+        onClose={() => setIsIssueModalOpen(false)}
+        onSuccess={(newInvoice) => {
+          void fetchInvoices();
+          setSelectedInvoiceForDetail(newInvoice);
         }}
       />
 
