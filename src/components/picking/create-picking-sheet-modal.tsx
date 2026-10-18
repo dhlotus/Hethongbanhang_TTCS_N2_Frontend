@@ -4,10 +4,12 @@ import {
   Search,
   CheckSquare,
   Square,
-  PackagePlus,
   Building2,
   Calendar,
-  FileText,
+  Layers,
+  ArrowRight,
+  Package,
+  RefreshCw,
 } from 'lucide-react';
 import { orderPickingService } from '../../services/order-picking.service';
 import { STANDARD_WAREHOUSES } from '../../constants/warehouse.constants';
@@ -19,16 +21,22 @@ export interface CreatePickingSheetModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (sheetId: string) => void;
+  preSelectedOrderIds?: string[];
 }
 
+/**
+ * Modal Gộp đơn hàng (Wave / Batch Picking) thiết kế lại hiện đại, trực quan, dễ nhìn
+ */
 export const CreatePickingSheetModal: React.FC<CreatePickingSheetModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  preSelectedOrderIds = [],
 }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'APPROVED' | 'PROCESSING'>('ALL');
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>(
     STANDARD_WAREHOUSES[2].id, // Mặc định Kho Miền Nam
@@ -36,72 +44,129 @@ export const CreatePickingSheetModal: React.FC<CreatePickingSheetModalProps> = (
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Tải danh sách đơn hàng từ Quản lý đơn hàng
   useEffect(() => {
     if (!isOpen) return;
 
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        const data = await orderPickingService.getEligibleOrdersForPicking();
+        const data = await orderPickingService.getAllOrders();
         setOrders(data);
-        // Tự động tích chọn 1-2 đơn đầu tiên nếu có để nhân viên kho thao tác nhanh
-        if (data.length > 0 && selectedOrderIds.length === 0) {
-          const firstIds = data.slice(0, 2).map((o) => o.id || o.orderCode || '').filter(Boolean);
-          setSelectedOrderIds(firstIds);
+
+        // Khởi tạo danh sách đơn chọn
+        if (preSelectedOrderIds.length > 0) {
+          setSelectedOrderIds(preSelectedOrderIds);
+        } else if (data.length > 0) {
+          // Tự động gợi ý 2 đơn đã duyệt đầu tiên
+          const approved = data.filter((o) => o.status === 'APPROVED');
+          if (approved.length > 0) {
+            setSelectedOrderIds(
+              approved.slice(0, 2).map((o) => o.id || o.orderCode || '').filter(Boolean),
+            );
+          } else {
+            setSelectedOrderIds(
+              data.slice(0, 2).map((o) => o.id || o.orderCode || '').filter(Boolean),
+            );
+          }
         }
-      } catch (err) {
-        showToast('error', 'Không thể tải danh sách đơn hàng đã duyệt');
+      } catch {
+        showToast('error', 'Không thể tải danh sách đơn hàng');
       } finally {
         setLoading(false);
       }
     };
 
     fetchOrders();
-  }, [isOpen]);
+  }, [isOpen, preSelectedOrderIds]);
 
+  // Bộ lọc danh sách đơn hàng
   const filteredOrders = useMemo(() => {
-    if (!searchTerm.trim()) return orders;
-    const q = searchTerm.toLowerCase().trim();
-    return orders.filter(
-      (o) =>
-        o.orderCode?.toLowerCase().includes(q) ||
-        o.customerName?.toLowerCase().includes(q) ||
-        o.salesRepName?.toLowerCase().includes(q),
-    );
-  }, [orders, searchTerm]);
+    return orders.filter((o) => {
+      if (statusFilter !== 'ALL' && o.status !== statusFilter) return false;
 
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase().trim();
+        const matchCode = o.orderCode?.toLowerCase().includes(q);
+        const matchCust = o.customerName?.toLowerCase().includes(q);
+        const matchRep = o.salesRepName?.toLowerCase().includes(q);
+        if (!matchCode && !matchCust && !matchRep) return false;
+      }
+
+      return true;
+    });
+  }, [orders, statusFilter, searchTerm]);
+
+  // Toggle chọn từng đơn
   const handleToggleOrder = (orderId: string) => {
     setSelectedOrderIds((prev) =>
       prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId],
     );
   };
 
+  // Toggle chọn tất cả
   const handleSelectAll = () => {
-    if (selectedOrderIds.length === filteredOrders.length) {
-      setSelectedOrderIds([]);
+    const selectableIds = filteredOrders.map((o) => o.id || o.orderCode || '').filter(Boolean);
+    const allSelected = selectableIds.every((id) => selectedOrderIds.includes(id));
+    if (allSelected) {
+      setSelectedOrderIds((prev) => prev.filter((id) => !selectableIds.includes(id)));
     } else {
-      setSelectedOrderIds(filteredOrders.map((o) => o.id || o.orderCode || '').filter(Boolean));
+      const merged = Array.from(new Set([...selectedOrderIds, ...selectableIds]));
+      setSelectedOrderIds(merged);
     }
   };
 
+  // Dữ liệu các đơn đã chọn
   const selectedOrdersData = useMemo(() => {
     return orders.filter((o) => selectedOrderIds.includes(o.id || o.orderCode || ''));
   }, [orders, selectedOrderIds]);
 
-  const summaryStats = useMemo(() => {
-    const totalLines = selectedOrdersData.reduce((sum, o) => sum + (o.lines?.length || 0), 0);
-    const totalQuantity = selectedOrdersData.reduce(
-      (sum, o) => sum + (o.lines || []).reduce((lSum, l) => lSum + l.quantity, 0),
-      0,
-    );
-    return { totalLines, totalQuantity };
+  // Tổng hợp sản phẩm gộp theo SKU (Wave Aggregation)
+  const aggregatedItems = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        productSku: string;
+        productName: string;
+        unit: string;
+        totalQuantity: number;
+        sources: { orderCode: string; quantity: number }[];
+      }
+    >();
+
+    for (const order of selectedOrdersData) {
+      const orderCode = order.orderCode || order.id || 'Đơn';
+      for (const line of order.lines || []) {
+        const key = `${(line.productSku || line.productId).toUpperCase()}_${(line.unit || 'Đơn vị').toUpperCase()}`;
+        const existing = map.get(key);
+        if (existing) {
+          existing.totalQuantity += line.quantity;
+          existing.sources.push({ orderCode, quantity: line.quantity });
+        } else {
+          map.set(key, {
+            productSku: line.productSku,
+            productName: line.productName,
+            unit: line.unit,
+            totalQuantity: line.quantity,
+            sources: [{ orderCode, quantity: line.quantity }],
+          });
+        }
+      }
+    }
+
+    return Array.from(map.values());
   }, [selectedOrdersData]);
 
+  // Thống kê tổng quan gộp đơn
+  const totalQuantity = useMemo(() => {
+    return aggregatedItems.reduce((sum, it) => sum + it.totalQuantity, 0);
+  }, [aggregatedItems]);
+
+  // Xử lý tạo phiếu soạn hàng
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (selectedOrderIds.length === 0) {
-      showToast('error', 'Vui lòng chọn ít nhất 1 đơn hàng để tạo lượt soạn hàng');
+      showToast('error', 'Vui lòng chọn ít nhất 1 đơn hàng để gộp phiếu soạn');
       return;
     }
 
@@ -118,7 +183,10 @@ export const CreatePickingSheetModal: React.FC<CreatePickingSheetModalProps> = (
       };
 
       const created = await orderPickingService.createPickingSheet(payload);
-      showToast('success', `Đã tạo phiếu soạn hàng ${created.sheetCode} thành công!`);
+      showToast(
+        'success',
+        `Đã tạo phiếu ${created.sheetCode} và gộp thành công ${selectedOrderIds.length} đơn hàng!`,
+      );
       onSuccess(created.id);
       onClose();
     } catch (err) {
@@ -132,216 +200,380 @@ export const CreatePickingSheetModal: React.FC<CreatePickingSheetModalProps> = (
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
-        {/* Header Modal */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+      <div className="relative w-full max-w-5xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
+        {/* ── HEADER MODAL ── */}
+        <div className="flex items-center justify-between p-4 sm:p-4.5 border-b border-slate-200 bg-white">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-xs">
-              <PackagePlus className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200/60 flex items-center justify-center shrink-0">
+              <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-base sm:text-lg">
-                Tạo phiếu soạn hàng (Gộp nhiều đơn)
-              </h3>
-              <p className="text-xs text-slate-500">
-                Gom dòng hàng & sắp xếp tự động theo đường đi trong kho
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                Gộp đơn soạn hàng theo đợt
+                <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                  {selectedOrderIds.length} đơn đã chọn
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Gom nhiều đơn hàng để tự động cộng dồn số lượng và sắp xếp đường đi nhặt hàng tối ưu trong kho.
               </p>
             </div>
           </div>
+
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Nội dung form */}
-        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 flex-1">
-          {/* Chọn Kho xuất hàng */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Kho xuất hàng phụ trách <span className="text-rose-500">*</span>
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {STANDARD_WAREHOUSES.map((wh) => (
+        {/* ── BODY: 2 CỘT THÔNG MINH ── */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-5 flex flex-col justify-between">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
+            {/* CỘT TRÁI (7 CỘT): DANH SÁCH ĐƠN HÀNG CẦN GỘP */}
+            <div className="lg:col-span-7 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <span>1. Chọn đơn hàng từ Quản lý đơn hàng</span>
+                  <span className="text-rose-500">*</span>
+                </span>
                 <button
-                  key={wh.id}
                   type="button"
-                  onClick={() => setSelectedWarehouseId(wh.id)}
-                  className={`p-3 rounded-xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${
-                    selectedWarehouseId === wh.id
-                      ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-2 ring-indigo-500/20 shadow-xs'
-                      : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-                  }`}
+                  onClick={handleSelectAll}
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer flex items-center gap-1"
                 >
-                  <Building2
-                    className={`w-4 h-4 mt-0.5 shrink-0 ${
-                      selectedWarehouseId === wh.id ? 'text-indigo-600' : 'text-slate-400'
-                    }`}
-                  />
-                  <div>
-                    <span className="font-bold text-xs block">{wh.name}</span>
-                    <span className="text-[11px] font-mono text-slate-500">{wh.code}</span>
-                  </div>
+                  {filteredOrders.length > 0 &&
+                  filteredOrders.every((o) => selectedOrderIds.includes(o.id || o.orderCode || '')) ? (
+                    <>
+                      <CheckSquare className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Bỏ chọn tất cả</span>
+                    </>
+                  ) : (
+                    <>
+                      <Square className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Chọn tất cả ({filteredOrders.length})</span>
+                    </>
+                  )}
                 </button>
-              ))}
+              </div>
+
+              {/* Tìm kiếm & Tabs lọc trạng thái */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Tìm theo mã đơn (DH...), tên đại lý..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full h-8 pl-8 pr-7 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1.5 focus:ring-indigo-500/20 focus:border-indigo-500 placeholder:text-slate-400"
+                  />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('ALL')}
+                    className={`h-7 px-2 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                      statusFilter === 'ALL'
+                        ? 'bg-white text-indigo-600 shadow-2xs font-semibold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('APPROVED')}
+                    className={`h-7 px-2 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                      statusFilter === 'APPROVED'
+                        ? 'bg-white text-emerald-700 shadow-2xs font-semibold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Đã duyệt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('PROCESSING')}
+                    className={`h-7 px-2 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                      statusFilter === 'PROCESSING'
+                        ? 'bg-white text-purple-700 shadow-2xs font-semibold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Đang soạn
+                  </button>
+                </div>
+              </div>
+
+              {/* Danh sách thẻ đơn hàng cuộn được */}
+              <div className="border border-slate-200/90 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-[360px] overflow-y-auto">
+                {loading ? (
+                  <div className="p-8 text-center text-xs text-slate-500">
+                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-600" />
+                    Đang nạp danh sách đơn hàng...
+                  </div>
+                ) : filteredOrders.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-slate-500 space-y-1">
+                    <Package className="w-8 h-8 mx-auto text-slate-300" />
+                    <p className="font-semibold text-slate-700">Không tìm thấy đơn hàng nào</p>
+                    <p className="text-[11px] text-slate-400">Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc trạng thái</p>
+                  </div>
+                ) : (
+                  filteredOrders.map((ord) => {
+                    const ordId = ord.id || ord.orderCode || '';
+                    const isSelected = selectedOrderIds.includes(ordId);
+                    const lineCount = ord.lines?.length || 0;
+                    const isApproved = ord.status === 'APPROVED';
+
+                    return (
+                      <div
+                        key={ordId}
+                        onClick={() => handleToggleOrder(ordId)}
+                        className={`p-3 transition-colors cursor-pointer flex items-start gap-2.5 ${
+                          isSelected
+                            ? 'bg-indigo-50/60 hover:bg-indigo-50/80 border-l-3 border-indigo-600'
+                            : 'hover:bg-slate-50 bg-white'
+                        }`}
+                      >
+                        <div className="pt-0.5">
+                          {isSelected ? (
+                            <CheckSquare className="w-4 h-4 text-indigo-600" />
+                          ) : (
+                            <Square className="w-4 h-4 text-slate-400" />
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-mono text-xs font-bold text-slate-900">
+                                {ord.orderCode}
+                              </span>
+                              <span
+                                className={`text-[10px] font-semibold px-1.5 py-0.2 rounded border ${
+                                  isApproved
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : ord.status === 'PROCESSING'
+                                    ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                    : ord.status === 'PENDING'
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                    : 'bg-slate-100 text-slate-700 border-slate-200'
+                                }`}
+                              >
+                                {isApproved
+                                  ? 'Đã duyệt'
+                                  : ord.status === 'PROCESSING'
+                                  ? 'Đang soạn'
+                                  : ord.status === 'PENDING'
+                                  ? 'Chờ duyệt'
+                                  : ord.status === 'PENDING_APPROVAL'
+                                  ? 'Chờ duyệt hạn mức'
+                                  : ord.status === 'DISPATCHED' || ord.status === 'PACKED'
+                                  ? 'Đã xuất kho'
+                                  : ord.status === 'SHIPPED'
+                                  ? 'Đang giao'
+                                  : ord.status === 'DELIVERED'
+                                  ? 'Giao thành công'
+                                  : ord.status === 'CANCELLED'
+                                  ? 'Đã hủy'
+                                  : 'Chờ duyệt'}
+                              </span>
+                            </div>
+                            <span className="text-[11px] font-mono font-bold text-slate-800">
+                              {(ord.grandTotal || 0).toLocaleString('vi-VN')} đ
+                            </span>
+                          </div>
+
+                          <p className="text-xs font-semibold text-slate-800 truncate mt-0.5">
+                            {ord.customerName}
+                          </p>
+
+                          <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-1 flex-wrap">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-slate-400" />
+                              Giao: {ord.deliveryDate || 'Trong ngày'}
+                            </span>
+                            <span>•</span>
+                            <span>{lineCount} mặt hàng</span>
+                          </div>
+
+                          {/* Tóm tắt sản phẩm trong đơn */}
+                          {ord.lines && ord.lines.length > 0 && (
+                            <div className="mt-1.5 text-[11px] text-slate-600 bg-slate-50/80 px-2 py-1 rounded border border-slate-100 truncate">
+                              {ord.lines.map((l) => `${l.productName} (${l.quantity} ${l.unit})`).join(' • ')}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* CỘT PHẢI (5 CỘT): BẢNG ĐIỀU KHIỂN & XEM TRƯỚC GỘP HÀNG (WAVE PREVIEW) */}
+            <div className="lg:col-span-5 space-y-3.5 bg-slate-50/70 p-3.5 sm:p-4 rounded-xl border border-slate-200/90">
+              {/* Chọn kho phụ trách */}
+              <div>
+                <span className="text-xs font-bold text-slate-700 block mb-1.5">
+                  2. Kho xuất hàng phụ trách <span className="text-rose-500">*</span>
+                </span>
+                <div className="grid grid-cols-1 gap-1.5">
+                  {STANDARD_WAREHOUSES.map((wh) => {
+                    const isSelected = selectedWarehouseId === wh.id;
+                    return (
+                      <button
+                        key={wh.id}
+                        type="button"
+                        onClick={() => setSelectedWarehouseId(wh.id)}
+                        className={`p-2 rounded-lg border text-left flex items-center justify-between transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-indigo-600 bg-indigo-50/80 text-indigo-950 font-semibold ring-1.5 ring-indigo-500/20'
+                            : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Building2 className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-indigo-600' : 'text-slate-400'}`} />
+                          <span className="text-xs truncate">{wh.name}</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 shrink-0">
+                          {wh.code}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Khối thống kê tổng hợp gộp */}
+              <div className="bg-white rounded-xl p-3 border border-slate-200/90 shadow-2xs space-y-2">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Tổng quan gom hàng
+                </span>
+
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-indigo-50/60 rounded-lg p-2 border border-indigo-100">
+                    <span className="text-[10px] text-slate-500 block">Đơn gộp</span>
+                    <span className="text-sm sm:text-base font-bold text-indigo-700 font-mono">
+                      {selectedOrderIds.length}
+                    </span>
+                  </div>
+
+                  <div className="bg-emerald-50/60 rounded-lg p-2 border border-emerald-100">
+                    <span className="text-[10px] text-slate-500 block">Số SKU</span>
+                    <span className="text-sm sm:text-base font-bold text-emerald-700 font-mono">
+                      {aggregatedItems.length}
+                    </span>
+                  </div>
+
+                  <div className="bg-sky-50/60 rounded-lg p-2 border border-sky-100">
+                    <span className="text-[10px] text-slate-500 block">Tổng số lượng</span>
+                    <span className="text-sm sm:text-base font-bold text-sky-700 font-mono">
+                      {totalQuantity}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bản xem trước mặt hàng sau khi gộp (Wave Aggregation Preview) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700">
+                    3. Mặt hàng sau khi gộp ({aggregatedItems.length} SKU)
+                  </span>
+                  <span className="text-[10px] text-slate-400">Tự động cộng dồn</span>
+                </div>
+
+                <div className="bg-white rounded-xl border border-slate-200/90 divide-y divide-slate-100 max-h-[170px] overflow-y-auto">
+                  {aggregatedItems.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400">
+                      Chưa có đơn hàng nào được chọn
+                    </div>
+                  ) : (
+                    aggregatedItems.map((item, idx) => (
+                      <div key={item.productSku} className="p-2 text-xs flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-slate-800 truncate" title={item.productName}>
+                            #{idx + 1} {item.productName}
+                          </p>
+                          <span className="text-[10px] text-indigo-600 block truncate">
+                            Gộp từ {item.sources.length} đơn: {item.sources.map((s) => `${s.orderCode} (${s.quantity})`).join(', ')}
+                          </span>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            {item.totalQuantity} {item.unit}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Ghi chú chuyến soạn */}
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                  Ghi chú lượt soạn (tùy chọn)
+                </label>
+                <input
+                  type="text"
+                  placeholder="VD: Gộp 2 đơn giao buổi sáng khu vực Quận 3..."
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  className="w-full h-8 px-2.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1.5 focus:ring-indigo-500/20 focus:border-indigo-500 placeholder:text-slate-400"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Ô tìm kiếm & Chọn đơn */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Chọn đơn hàng cần soạn ({selectedOrderIds.length}/{filteredOrders.length}){' '}
-                <span className="text-rose-500">*</span>
-              </label>
+          {/* ── FOOTER MODAL ── */}
+          <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-200 mt-4 bg-white">
+            <span className="text-xs text-slate-500">
+              Đã chọn <strong className="text-slate-900">{selectedOrderIds.length}</strong> đơn hàng • Tổng cộng <strong className="text-indigo-600">{totalQuantity}</strong> món cần soạn
+            </span>
+
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={handleSelectAll}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer flex items-center gap-1"
+                onClick={onClose}
+                className="px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold cursor-pointer transition-colors"
               >
-                {selectedOrderIds.length === filteredOrders.length ? (
+                Hủy bỏ
+              </button>
+
+              <button
+                type="submit"
+                disabled={isSubmitting || selectedOrderIds.length === 0}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
+              >
+                {isSubmitting ? (
                   <>
-                    <CheckSquare className="w-3.5 h-3.5" /> Bỏ chọn tất cả
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Đang tạo phiếu...</span>
                   </>
                 ) : (
                   <>
-                    <Square className="w-3.5 h-3.5" /> Chọn tất cả
+                    <span>Xác nhận Gộp & Tạo phiếu soạn</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </>
                 )}
               </button>
             </div>
-
-            {/* Input tìm kiếm */}
-            <div className="relative mb-2">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Tìm theo mã đơn (DH...), tên đại lý..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-              />
-            </div>
-
-            {/* Danh sách các đơn hàng có thể chọn */}
-            <div className="max-h-56 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-slate-50/50">
-              {loading ? (
-                <div className="p-6 text-center text-xs text-slate-500">
-                  Đang tải danh sách đơn hàng đã duyệt...
-                </div>
-              ) : filteredOrders.length === 0 ? (
-                <div className="p-6 text-center text-xs text-slate-500">
-                  Không tìm thấy đơn hàng nào sẵn sàng để soạn
-                </div>
-              ) : (
-                filteredOrders.map((ord) => {
-                  const ordId = ord.id || ord.orderCode || '';
-                  const isSelected = selectedOrderIds.includes(ordId);
-                  return (
-                    <div
-                      key={ordId}
-                      onClick={() => handleToggleOrder(ordId)}
-                      className={`p-3 flex items-start gap-3 cursor-pointer transition-colors ${
-                        isSelected ? 'bg-indigo-50/50' : 'hover:bg-white'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => {}} // Đã xử lý ở thẻ cha
-                        className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono font-bold text-xs sm:text-sm text-slate-900">
-                            {ord.orderCode}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
-                            {ord.status === 'APPROVED' ? 'Đã duyệt' : ord.status}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-700 font-medium truncate mt-0.5">
-                          {ord.customerName}
-                        </p>
-                        <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-1">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            Giao: {ord.deliveryDate || 'Trong ngày'}
-                          </span>
-                          <span>•</span>
-                          <span>{ord.lines?.length || 0} mặt hàng</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          {/* Hộp tóm tắt khi gộp nhiều đơn */}
-          {selectedOrderIds.length > 0 && (
-            <div className="p-3 bg-indigo-50/80 border border-indigo-200/80 rounded-xl text-xs text-indigo-950 flex items-center justify-between">
-              <div>
-                <p className="font-bold flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-indigo-600" />
-                  Đã chọn {selectedOrderIds.length} đơn hàng để gộp
-                </p>
-                <p className="text-[11px] text-indigo-700 mt-0.5">
-                  Hệ thống sẽ gom các SKU trùng nhau và tự sắp xếp vị trí kệ
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="font-bold block text-sm text-indigo-900">
-                  {summaryStats.totalQuantity} món
-                </span>
-                <span className="text-[10px] text-indigo-600">
-                  ({summaryStats.totalLines} dòng hàng gộp)
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Ghi chú lượt soạn */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Ghi chú lượt soạn hàng (không bắt buộc):
-            </label>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Ví dụ: Đợt soạn ca sáng, ưu tiên xe tải 2.5 tấn khu vực Quận 7..."
-              className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-            />
-          </div>
-
-          {/* Footer nút bấm */}
-          <div className="pt-2 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="flex-1 py-3 px-4 rounded-xl border border-slate-300 text-slate-700 font-semibold text-xs sm:text-sm hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              Hủy bỏ
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || selectedOrderIds.length === 0}
-              className="flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/25 transition-all cursor-pointer flex items-center justify-center gap-2"
-            >
-              <PackagePlus className="w-4 h-4" />
-              {isSubmitting ? 'Đang tạo...' : 'Tạo phiếu & Bắt đầu soạn'}
-            </button>
           </div>
         </form>
       </div>

@@ -124,10 +124,60 @@ const notifyOrderSync = (shipment: Partial<Shipment>) => {
   syncDemoOrderStatus(targetCode, orderStatus);
 };
 
+const LOCAL_SHIPMENTS_KEY = 'loha_local_shipments_list';
+
+export const getStoredLocalShipments = (): Shipment[] => {
+  try {
+    const raw = localStorage.getItem(LOCAL_SHIPMENTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveStoredLocalShipments = (list: Shipment[]) => {
+  try {
+    localStorage.setItem(LOCAL_SHIPMENTS_KEY, JSON.stringify(list));
+  } catch {}
+};
+
 export const shipmentsService = {
   async getShipments(params?: Record<string, string | number>): Promise<Shipment[]> {
-    const res = await apiClient.get<Shipment[]>('/shipments', { params });
-    return res.data;
+    let serverList: Shipment[] = [];
+    try {
+      const res = await apiClient.get<Shipment[]>('/shipments', { params });
+      if (Array.isArray(res.data)) {
+        serverList = res.data;
+      }
+    } catch {
+      serverList = [];
+    }
+
+    // Kết hợp cùng các phiếu xuất kho được chuyển từ luồng soạn hàng (Local / Synced)
+    const localList = getStoredLocalShipments();
+    const map = new Map<string, Shipment>();
+
+    // Đưa server items vào map trước
+    for (const s of serverList) {
+      const key = s.orderCode || s.orderId || s.id;
+      map.set(key, s);
+    }
+
+    // Đưa local items vào map (nếu chưa có hoặc để đảm bảo trạng thái mới nhất từ kho)
+    for (const ls of localList) {
+      const key = ls.orderCode || ls.orderId || ls.id;
+      if (!map.has(key)) {
+        map.set(key, ls);
+      } else {
+        map.set(key, { ...map.get(key)!, ...ls });
+      }
+    }
+
+    const merged = Array.from(map.values());
+    if (params?.status && params.status !== 'ALL') {
+      return merged.filter((s) => s.status === params.status);
+    }
+    return merged;
   },
 
   async getShipmentById(id: string): Promise<Shipment> {
@@ -137,14 +187,52 @@ export const shipmentsService = {
     } catch {
       // Fallback to general shipments endpoint
     }
-    const res = await apiClient.get<Shipment>(`/shipments/${id}`);
-    return res.data;
+    try {
+      const res = await apiClient.get<Shipment>(`/shipments/${id}`);
+      if (res.data) return res.data;
+    } catch {}
+
+    const localList = getStoredLocalShipments();
+    const found = localList.find((s) => s.id === id || s.orderCode === id);
+    if (found) return found;
+
+    throw new Error(`Không tìm thấy phiếu xuất kho ${id}`);
   },
 
   async createShipment(data: Partial<Shipment>): Promise<Shipment> {
-    const res = await apiClient.post<Shipment>('/shipments', data);
-    notifyOrderSync(res.data);
-    return res.data;
+    let created: Shipment;
+    try {
+      const res = await apiClient.post<Shipment>('/shipments', data);
+      created = res.data;
+    } catch {
+      const id = data.id || `shp-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+      created = {
+        id,
+        orderId: data.orderId || data.orderCode || id,
+        orderCode: data.orderCode || data.orderId || id,
+        customerId: data.customerId || 'cust-001',
+        customerName: data.customerName || 'Đại lý',
+        status: data.status || 'PENDING',
+        deliveryAddress: data.deliveryAddress || 'Điểm giao kho chính',
+        receiverName: data.receiverName || data.customerName || 'Người nhận',
+        phone: data.phone || '0988123456',
+        trackingNumber:
+          data.trackingNumber ||
+          `TRK-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`,
+        carrierName: data.carrierName || 'Đội xe nội bộ LOHA',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ...data,
+      } as Shipment;
+    }
+
+    // Lưu vào local cache
+    const current = getStoredLocalShipments();
+    const filtered = current.filter((s) => s.id !== created.id && s.orderCode !== created.orderCode);
+    saveStoredLocalShipments([created, ...filtered]);
+
+    notifyOrderSync(created);
+    return created;
   },
 
   /** SN-188: Tạo phiếu xuất kho kèm chi tiết lô xuất FEFO và kiểm soát ghi đè */

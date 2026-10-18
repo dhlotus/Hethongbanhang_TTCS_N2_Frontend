@@ -7,7 +7,13 @@
  * - Xử lý try-catch và lưu trữ bền vững (Local Persistence).
  */
 
-import { ordersService } from './orders.service';
+import { ordersService, syncDemoOrderStatus } from './orders.service';
+import {
+  shipmentsService,
+  getStoredLocalShipments,
+  saveStoredLocalShipments,
+  type Shipment,
+} from './shipments.service';
 import type { Order } from '../types/order';
 import type {
   CreatePickingSheetPayload,
@@ -85,7 +91,7 @@ const calculateLocationForSku = (sku: string, category?: string): WarehouseLocat
 /**
  * Đọc danh sách phiếu soạn hàng từ bộ nhớ cục bộ
  */
-const getStoredSheets = (): PickingSheet[] => {
+export const getStoredPickingSheets = (): PickingSheet[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return getInitialDemoSheets();
@@ -96,12 +102,17 @@ const getStoredSheets = (): PickingSheet[] => {
   }
 };
 
+const getStoredSheets = getStoredPickingSheets;
+
 /**
  * Lưu danh sách phiếu soạn hàng vào bộ nhớ cục bộ
  */
 const saveStoredSheets = (sheets: PickingSheet[]): void => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(sheets));
+    try {
+      window.dispatchEvent(new CustomEvent('loha_picking_sheets_updated'));
+    } catch {}
   } catch (err) {
     console.error('Không thể lưu phiếu soạn hàng vào bộ nhớ:', err);
   }
@@ -136,19 +147,19 @@ const getInitialDemoSheets = (): PickingSheet[] => {
       status: 'PICKED',
       orders: [
         {
-          orderId: 'dh-demo-01',
-          orderCode: 'DH2610-88123',
-          customerId: 'cust-01',
-          customerName: 'Công Ty TNHH Thương Mại Minh Khang',
+          orderId: 'ord-023',
+          orderCode: 'DH2610-10403',
+          customerId: 'cust-001',
+          customerName: 'Công Ty TNHH Thương Mại & Phân Phối Minh Khang',
           requiredQuantity: 15,
           pickedQuantity: 15,
           unit: 'Thùng',
         },
         {
-          orderId: 'dh-demo-02',
-          orderCode: 'DH2610-88124',
-          customerId: 'cust-02',
-          customerName: 'Đại Lý Bách Hóa Tân Phú',
+          orderId: 'ord-022',
+          orderCode: 'DH2610-10402',
+          customerId: 'cust-002',
+          customerName: 'Tổng Đại Lý Phân Phối Thực Phẩm Toàn Cầu',
           requiredQuantity: 10,
           pickedQuantity: 10,
           unit: 'Thùng',
@@ -176,18 +187,16 @@ const getInitialDemoSheets = (): PickingSheet[] => {
       },
       stepNumber: 2,
       totalRequiredQuantity: 12,
-      totalPickedQuantity: 10,
-      status: 'SHORT_PICKED',
-      shortPickReasonCode: 'DAMAGED_GOODS',
-      shortPickReason: '2 thùng bị móp méo góc bao bì do va chạm kệ tầng trên',
+      totalPickedQuantity: 12,
+      status: 'PICKED',
       orders: [
         {
-          orderId: 'dh-demo-01',
-          orderCode: 'DH2610-88123',
-          customerId: 'cust-01',
-          customerName: 'Công Ty TNHH Thương Mại Minh Khang',
+          orderId: 'ord-023',
+          orderCode: 'DH2610-10403',
+          customerId: 'cust-001',
+          customerName: 'Công Ty TNHH Thương Mại & Phân Phối Minh Khang',
           requiredQuantity: 12,
-          pickedQuantity: 10,
+          pickedQuantity: 12,
           unit: 'Thùng',
         },
       ],
@@ -217,10 +226,10 @@ const getInitialDemoSheets = (): PickingSheet[] => {
       status: 'PENDING',
       orders: [
         {
-          orderId: 'dh-demo-02',
-          orderCode: 'DH2610-88124',
-          customerId: 'cust-02',
-          customerName: 'Đại Lý Bách Hóa Tân Phú',
+          orderId: 'ord-022',
+          orderCode: 'DH2610-10402',
+          customerId: 'cust-002',
+          customerName: 'Tổng Đại Lý Phân Phối Thực Phẩm Toàn Cầu',
           requiredQuantity: 30,
           pickedQuantity: 0,
           unit: 'Khay',
@@ -236,8 +245,8 @@ const getInitialDemoSheets = (): PickingSheet[] => {
       warehouseId: '11111111-0000-0000-0000-000000000001',
       warehouseCode: 'KHO-MN-01',
       warehouseName: 'Kho Miền Nam (TP. Hồ Chí Minh)',
-      sourceOrderIds: ['dh-demo-01', 'dh-demo-02'],
-      sourceOrderCodes: ['DH2610-88123', 'DH2610-88124'],
+      sourceOrderIds: ['ord-023', 'ord-022'],
+      sourceOrderCodes: ['DH2610-10403', 'DH2610-10402'],
       orderCount: 2,
       status: 'IN_PROGRESS',
       pickerName: 'Nguyễn Văn Kho',
@@ -247,8 +256,8 @@ const getInitialDemoSheets = (): PickingSheet[] => {
       totalLines: 3,
       pickedLines: 2,
       totalRequiredQuantity: 67,
-      totalPickedQuantity: 35,
-      note: 'Gộp 2 đơn giao buổi chiều khu vực Quận Phú Nhuận & Tân Phú',
+      totalPickedQuantity: 27,
+      note: 'Gộp 2 đơn giao buổi chiều khu vực Quận Phú Nhuận & Quận 3',
     },
   ];
 };
@@ -298,12 +307,181 @@ const recalculateSheetSummary = (sheet: PickingSheet): PickingSheet => {
   };
 };
 
+/**
+ * Đẩy trạng thái danh sách đơn hàng sang 'PROCESSING' (Đang soạn)
+ * Cập nhật đồng bộ cả localStorage demo và gọi API backend
+ */
+export const pushOrdersToProcessing = async (orderCodesOrIds: string[]): Promise<void> => {
+  if (!orderCodesOrIds || orderCodesOrIds.length === 0) return;
+
+  const uniqueIds = Array.from(new Set(orderCodesOrIds.filter(Boolean)));
+  for (const rawId of uniqueIds) {
+    const id = String(rawId).trim();
+    if (!id) continue;
+
+    // 1. Cập nhật localStorage demo & phát custom event 'loha_orders_updated' ngay lập tức
+    try {
+      syncDemoOrderStatus(id, 'PROCESSING');
+    } catch {}
+
+    // 2. Gọi ordersService.updateOrderStatus để lưu vào backend database nếu có server
+    try {
+      await ordersService.updateOrderStatus(id, 'PROCESSING', 'Đơn hàng được gộp và đang soạn hàng');
+    } catch {
+      try {
+        syncDemoOrderStatus(id, 'PROCESSING');
+      } catch {}
+    }
+  }
+};
+
+/**
+ * Đẩy trạng thái danh sách đơn hàng sang 'PENDING' (Chờ duyệt)
+ * Cập nhật đồng bộ cả localStorage demo và gọi API backend
+ */
+export const pushOrdersToPending = async (orderCodesOrIds: string[]): Promise<void> => {
+  if (!orderCodesOrIds || orderCodesOrIds.length === 0) return;
+
+  const uniqueIds = Array.from(new Set(orderCodesOrIds.filter(Boolean)));
+  for (const rawId of uniqueIds) {
+    const id = String(rawId).trim();
+    if (!id) continue;
+
+    // 1. Cập nhật localStorage demo & phát custom event 'loha_orders_updated' ngay lập tức
+    try {
+      syncDemoOrderStatus(id, 'PENDING');
+    } catch {}
+
+    // 2. Gọi ordersService.updateOrderStatus để lưu vào backend database nếu có server
+    try {
+      await ordersService.updateOrderStatus(id, 'PENDING', 'Đã soạn đủ đơn hàng và chuyển sang Chờ duyệt');
+    } catch {
+      try {
+        syncDemoOrderStatus(id, 'PENDING');
+      } catch {}
+    }
+  }
+};
+
+/**
+ * Tự động tạo / chuyển các đơn hàng trong phiếu gộp sang "Chờ duyệt" (status: PENDING) bên Xuất kho giao hàng
+ */
+export const pushOrdersToPendingShipments = async (sheet: PickingSheet): Promise<void> => {
+  const allOrders = await orderPickingService.getAllOrders();
+  const orderMap = new Map<string, Order>();
+  for (const o of allOrders) {
+    if (o.id) orderMap.set(o.id, o);
+    if (o.orderCode) orderMap.set(o.orderCode, o);
+  }
+
+  const existingShipments = getStoredLocalShipments();
+  const updatedShipments = [...existingShipments];
+
+  for (const rawCode of [...sheet.sourceOrderCodes, ...sheet.sourceOrderIds]) {
+    if (!rawCode) continue;
+    const orderCode = rawCode.trim();
+    const matchedOrder = orderMap.get(orderCode);
+
+    const year = new Date().getFullYear();
+    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
+    const trackingNumber = `TRK-${year}-${randomSuffix}`;
+    const shipmentId = `PXK-${orderCode.replace(/^ORD-?/i, '') || Date.now()}`;
+
+    // Lấy các mặt hàng thuộc đơn trong phiếu soạn này
+    const itemsForOrder = sheet.items
+      .filter((it) => it.orders.some((o) => o.orderCode === orderCode || o.orderId === orderCode))
+      .map((it) => {
+        const ordAlloc = it.orders.find((o) => o.orderCode === orderCode || o.orderId === orderCode);
+        return {
+          sku_code: it.productSku,
+          skuCode: it.productSku,
+          product_name: it.productName,
+          productName: it.productName,
+          quantity_requested: ordAlloc?.requiredQuantity || it.totalRequiredQuantity,
+          quantity: ordAlloc?.pickedQuantity || it.totalPickedQuantity,
+          selected_batch_no: it.selectedBatches?.[0]?.batchNumber || 'LO-DEFAULT-01',
+          selectedBatchNo: it.selectedBatches?.[0]?.batchNumber || 'LO-DEFAULT-01',
+        };
+      });
+
+    const shipmentData: Shipment = {
+      id: shipmentId,
+      orderId: matchedOrder?.id || orderCode,
+      orderCode: matchedOrder?.orderCode || orderCode,
+      customerId: matchedOrder?.customerId || 'cust-001',
+      customerName: matchedOrder?.customerName || 'Đại lý',
+      salesRepId: matchedOrder?.salesRepId,
+      warehouseId: sheet.warehouseId || '11111111-0000-0000-0000-000000000001',
+      status: 'PENDING', // <<< CHỜ DUYỆT TRÊN TRANG XUẤT KHO GIAO HÀNG
+      deliveryAddress:
+        matchedOrder?.deliveryPoint?.address ||
+        (matchedOrder as any)?.deliveryAddress ||
+        'Kho giao hàng đại lý',
+      receiverName:
+        matchedOrder?.deliveryPoint?.receiverName ||
+        matchedOrder?.deliveryPoint?.contactPerson ||
+        matchedOrder?.customerName ||
+        'Người nhận hàng',
+      phone:
+        matchedOrder?.deliveryPoint?.phone ||
+        (matchedOrder as any)?.phone ||
+        '0988123456',
+      carrierName: 'Đội xe nội bộ LOHA',
+      trackingNumber,
+      deliveryNote: `Xuất kho từ phiếu soạn gộp ${sheet.sheetCode} (đã soạn đủ 100%)`,
+      items: itemsForOrder,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Cập nhật vào danh sách local
+    const existingIdx = updatedShipments.findIndex(
+      (s) => s.orderCode === orderCode || s.orderId === orderCode,
+    );
+    if (existingIdx !== -1) {
+      updatedShipments[existingIdx] = { ...updatedShipments[existingIdx], ...shipmentData, status: 'PENDING' };
+    } else {
+      updatedShipments.push(shipmentData);
+    }
+
+    // Gửi lên backend API nếu kết nối được
+    try {
+      await shipmentsService.createShipment(shipmentData);
+    } catch {}
+  }
+
+  saveStoredLocalShipments(updatedShipments);
+  try {
+    window.dispatchEvent(new CustomEvent('loha_shipments_updated'));
+  } catch {}
+};
+
 export const orderPickingService = {
   /**
    * Lấy toàn bộ danh sách phiếu soạn hàng
    */
   async getPickingSheets(): Promise<PickingSheet[]> {
-    return getStoredSheets();
+    const sheets = getStoredSheets();
+    // Đồng bộ các đơn thuộc phiếu soạn hàng đang có: Đang soạn -> PROCESSING, Đã hoàn tất -> PENDING (Chờ duyệt)
+    const toProcessing: string[] = [];
+    const toPending: string[] = [];
+    for (const sheet of sheets) {
+      if (sheet.status === 'COMPLETED' || sheet.status === 'PARTIALLY_COMPLETED') {
+        if (!(sheet as any).isApproved) {
+          toPending.push(...sheet.sourceOrderIds, ...sheet.sourceOrderCodes);
+        }
+        void pushOrdersToPendingShipments(sheet);
+      } else if (sheet.status === 'IN_PROGRESS') {
+        toProcessing.push(...sheet.sourceOrderIds, ...sheet.sourceOrderCodes);
+      }
+    }
+    if (toProcessing.length > 0) {
+      void pushOrdersToProcessing(toProcessing);
+    }
+    if (toPending.length > 0) {
+      void pushOrdersToPending(toPending);
+    }
+    return sheets;
   },
 
   /**
@@ -315,6 +493,19 @@ export const orderPickingService = {
   },
 
   /**
+   * Lấy danh sách toàn bộ các đơn hàng trong Quản lý đơn hàng
+   */
+  async getAllOrders(): Promise<Order[]> {
+    try {
+      const response = await ordersService.getOrders({ limit: 100 });
+      const orders: Order[] = Array.isArray(response) ? response : response?.data || [];
+      return orders;
+    } catch {
+      return [];
+    }
+  },
+
+  /**
    * Lấy danh sách các đơn hàng đủ điều kiện để soạn hàng
    * Bao gồm các đơn có trạng thái APPROVED, PROCESSING hoặc PENDING
    */
@@ -322,12 +513,7 @@ export const orderPickingService = {
     try {
       const response = await ordersService.getOrders({ limit: 100 });
       const orders: Order[] = Array.isArray(response) ? response : response?.data || [];
-      return orders.filter(
-        (o: Order) =>
-          o.status === 'APPROVED' ||
-          o.status === 'PROCESSING' ||
-          o.status === 'PENDING',
-      );
+      return orders;
     } catch {
       return [];
     }
@@ -490,6 +676,9 @@ export const orderPickingService = {
     const currentSheets = getStoredSheets();
     saveStoredSheets([newSheet, ...currentSheets]);
 
+    // Tự động đẩy các đơn hàng được gộp sang 'PROCESSING' (Đang soạn)
+    await pushOrdersToProcessing([...newSheet.sourceOrderIds, ...newSheet.sourceOrderCodes]);
+
     return newSheet;
   },
 
@@ -550,6 +739,12 @@ export const orderPickingService = {
     list[sheetIndex] = finalSheet;
     saveStoredSheets(list);
 
+    // Nếu đã hoàn tất soạn đủ (100% dòng hàng đã nhặt) -> tự động đẩy các đơn gộp sang 'Chờ duyệt' (PENDING)
+    if (finalSheet.status === 'COMPLETED' || finalSheet.status === 'PARTIALLY_COMPLETED') {
+      await pushOrdersToPending([...finalSheet.sourceOrderIds, ...finalSheet.sourceOrderCodes]);
+      await pushOrdersToPendingShipments(finalSheet);
+    }
+
     return finalSheet;
   },
 
@@ -595,8 +790,13 @@ export const orderPickingService = {
     }
 
     const finalizedSheet = recalculateSheetSummary(targetSheet);
+    finalizedSheet.status = 'COMPLETED';
     list[sheetIndex] = finalizedSheet;
     saveStoredSheets(list);
+
+    // Đồng bộ trạng thái các đơn hàng gộp sang 'Chờ duyệt' (PENDING) bên Xuất kho & Quản lý đơn hàng
+    await pushOrdersToPending([...targetSheet.sourceOrderIds, ...targetSheet.sourceOrderCodes]);
+    await pushOrdersToPendingShipments(finalizedSheet);
 
     return finalizedSheet;
   },

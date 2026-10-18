@@ -308,7 +308,7 @@ export const resetDemoOrdersToDefault = (): Order[] => {
   return INITIAL_DEMO_ORDERS;
 };
 
-const getStoredDemoOrders = (): Order[] => {
+export const getStoredDemoOrders = (): Order[] => {
   try {
     const version = localStorage.getItem(DEMO_ORDERS_VERSION_KEY);
     const raw = localStorage.getItem(DEMO_ORDERS_KEY);
@@ -339,6 +339,13 @@ export const syncDemoOrderStatus = (orderCodeOrId: string, status: OrderStatus):
     const all = getStoredDemoOrders();
     const idx = all.findIndex((o) => o.id === orderCodeOrId || o.orderCode === orderCodeOrId);
     if (idx !== -1) {
+      // Không hạ cấp trạng thái nếu đơn đã được duyệt hoặc đang giao/hoàn tất
+      if (
+        (status === 'PENDING' || status === 'PROCESSING') &&
+        ['APPROVED', 'SHIPPED', 'DELIVERED', 'CANCELLED'].includes(all[idx].status)
+      ) {
+        return;
+      }
       all[idx] = {
         ...all[idx],
         status,
@@ -1093,6 +1100,7 @@ export const ordersService = {
     action: OrderApprovalAction,
     comment?: string,
   ): Promise<Order> {
+    const isDemo = tokenStorage.getAccessToken()?.startsWith('demo-jwt-');
     try {
       const res = await apiClient.post<Order>(`/orders/${id}/decision`, { action, comment });
       if (res.data) {
@@ -1120,15 +1128,16 @@ export const ordersService = {
       };
 
       // Fallback cho đơn hàng lưu cục bộ nếu backend trả về 404
-      if (errObj?.response?.status === 404) {
+      if (errObj?.response?.status === 404 || isDemo) {
         const all = getStoredDemoOrders();
         const idx = all.findIndex((order) => order.id === id || order.orderCode === id);
+        const nextStatus: Record<OrderApprovalAction, OrderStatus> = {
+          APPROVE: 'APPROVED',
+          REJECT: 'REJECTED',
+          RETURN_FOR_UPDATE: 'RETURNED_FOR_UPDATE',
+        };
+
         if (idx !== -1) {
-          const nextStatus: Record<OrderApprovalAction, OrderStatus> = {
-            APPROVE: 'APPROVED',
-            REJECT: 'REJECTED',
-            RETURN_FOR_UPDATE: 'RETURNED_FOR_UPDATE',
-          };
           const createdAt = new Date().toISOString();
           all[idx] = { ...all[idx], status: nextStatus[action], updatedAt: createdAt };
           saveStoredDemoOrders(all);
@@ -1142,6 +1151,52 @@ export const ordersService = {
             window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: all[idx] }));
           } catch { }
           return all[idx];
+        }
+
+        // Hỗ trợ đơn ghép (phiếu soạn hàng PSH)
+        let sheet: any = null;
+        try {
+          const rawSheets = localStorage.getItem('loha_picking_sheets');
+          if (rawSheets) {
+            const sheets = JSON.parse(rawSheets);
+            sheet = sheets.find((s: any) => s.id === id || s.sheetCode === id);
+          }
+        } catch {}
+
+        if (sheet && (sheet.sourceOrderCodes?.length || sheet.sourceOrderIds?.length)) {
+          const childCodes: string[] = Array.from(new Set([...(sheet.sourceOrderCodes || []), ...(sheet.sourceOrderIds || [])]));
+          for (const code of childCodes) {
+            const cIdx = all.findIndex((o) => o.id === code || o.orderCode === code);
+            if (cIdx !== -1) {
+              all[cIdx] = { ...all[cIdx], status: nextStatus[action], updatedAt: new Date().toISOString() };
+            }
+          }
+          saveStoredDemoOrders(all);
+          if (action === 'APPROVE') {
+            try {
+              const rawSheets = localStorage.getItem('loha_picking_sheets');
+              if (rawSheets) {
+                const sheets = JSON.parse(rawSheets);
+                const sIdx = sheets.findIndex((s: any) => s.id === id || s.sheetCode === id);
+                if (sIdx !== -1) {
+                  sheets[sIdx].isApproved = true;
+                  localStorage.setItem('loha_picking_sheets', JSON.stringify(sheets));
+                }
+              }
+            } catch {}
+          }
+          try {
+            window.dispatchEvent(new CustomEvent('loha_orders_updated'));
+          } catch {}
+          return {
+            id,
+            orderCode: sheet.sheetCode || id,
+            status: nextStatus[action],
+            lines: [],
+            customerName: 'Đơn ghép',
+            grandTotal: 0,
+            createdAt: new Date().toISOString(),
+          } as unknown as Order;
         }
       }
 
@@ -1433,6 +1488,7 @@ export const ordersService = {
   /**
    * Duyệt đơn hàng và kích hoạt giữ chỗ tồn kho 24h (SN-180 - Sprint 5)
    * Phân quyền: SALES_MANAGER, ADMIN
+   * Hỗ trợ duyệt cả đơn đơn lẻ và đơn ghép (nhận mã/ID phiếu soạn PSH)
    */
   async approveOrder(orderId: string): Promise<ApproveOrderResponse> {
     const token = tokenStorage.getAccessToken();
@@ -1443,20 +1499,87 @@ export const ordersService = {
         const res = await apiClient.post<ApproveOrderResponse>(`/orders/${orderId}/approve`);
         return res.data;
       } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'response' in err) {
-          const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+        const axiosErr = err as { response?: { status?: number; data?: { message?: string | string[] } } };
+        // Nếu là lỗi nghiệp vụ (không phải 404 không tìm thấy ID), báo lỗi
+        if (axiosErr.response?.status && axiosErr.response.status !== 404) {
           const errMsg = axiosErr.response?.data?.message;
           if (errMsg) {
             throw new Error(Array.isArray(errMsg) ? errMsg.join(', ') : errMsg);
           }
+          throw err;
         }
-        throw err;
       }
     }
 
     const all = getStoredDemoOrders();
-    const idx = all.findIndex((o) => o.id === orderId);
-    if (idx === -1) throw new Error(`Không tìm thấy đơn hàng ${orderId}`);
+    const idx = all.findIndex((o) => o.id === orderId || o.orderCode === orderId);
+
+    // Xử lý duyệt đơn ghép / phiếu soạn hàng (PSH-... hoặc psh-...)
+    if (idx === -1) {
+      let sheet: any = null;
+      try {
+        const rawSheets = localStorage.getItem('loha_picking_sheets');
+        if (rawSheets) {
+          const sheets = JSON.parse(rawSheets);
+          sheet = sheets.find((s: any) => s.id === orderId || s.sheetCode === orderId);
+        }
+      } catch {}
+
+      if (sheet && (sheet.sourceOrderCodes?.length || sheet.sourceOrderIds?.length)) {
+        const childCodes: string[] = Array.from(new Set([...(sheet.sourceOrderCodes || []), ...(sheet.sourceOrderIds || [])]));
+        const user = tokenStorage.getUser();
+        const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        let approvedCount = 0;
+        let totalItems = 0;
+
+        for (const code of childCodes) {
+          if (!code) continue;
+          const cIdx = all.findIndex((o) => o.id === code || o.orderCode === code);
+          if (cIdx !== -1) {
+            all[cIdx].status = 'APPROVED';
+            all[cIdx].approvedAt = new Date().toISOString();
+            all[cIdx].approverId = user?.id || 'mgr-demo';
+            all[cIdx].reservedUntil = expiry;
+            approvedCount++;
+            totalItems += all[cIdx].lines?.length || 0;
+            try {
+              void apiClient.post(`/orders/${all[cIdx].id}/approve`);
+            } catch {}
+          }
+        }
+
+        saveStoredDemoOrders(all);
+
+        // Đánh dấu phiếu soạn đã duyệt
+        try {
+          const rawSheets = localStorage.getItem('loha_picking_sheets');
+          if (rawSheets) {
+            const sheets = JSON.parse(rawSheets);
+            const sIdx = sheets.findIndex((s: any) => s.id === orderId || s.sheetCode === orderId);
+            if (sIdx !== -1) {
+              sheets[sIdx].isApproved = true;
+              sheets[sIdx].approvedAt = new Date().toISOString();
+              localStorage.setItem('loha_picking_sheets', JSON.stringify(sheets));
+            }
+          }
+        } catch {}
+
+        try {
+          window.dispatchEvent(new CustomEvent('loha_orders_updated'));
+        } catch {}
+
+        return {
+          success: true,
+          message: `Đã duyệt thành công đơn ghép ${sheet.sheetCode || orderId} (${approvedCount} đơn con) và kích hoạt giữ chỗ tồn kho 24h!`,
+          orderId,
+          status: 'APPROVED',
+          reservedUntil: expiry,
+          itemsReserved: totalItems,
+        };
+      }
+
+      throw new Error(`Không tìm thấy đơn hàng ${orderId}`);
+    }
 
     const existing = all[idx];
     const user = tokenStorage.getUser();
@@ -1469,6 +1592,10 @@ export const ordersService = {
 
     all[idx] = existing;
     saveStoredDemoOrders(all);
+
+    try {
+      window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: existing }));
+    } catch {}
 
     return {
       success: true,

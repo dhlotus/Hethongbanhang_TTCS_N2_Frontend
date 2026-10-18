@@ -40,7 +40,7 @@ const STATUS_CONFIG: Record<
   { label: string; bg: string; text: string; icon: React.ComponentType<{ className?: string }> }
 > = {
   PENDING: {
-    label: 'Chờ soạn hàng',
+    label: 'Chờ duyệt',
     bg: 'bg-amber-50 border-amber-200',
     text: 'text-amber-700',
     icon: Clock,
@@ -330,6 +330,14 @@ export const ShipmentsPage: React.FC = () => {
   useEffect(() => {
     fetchShipments();
     fetchTrips();
+
+    const handleShipmentUpdate = () => {
+      fetchShipments();
+    };
+    window.addEventListener('loha_shipments_updated', handleShipmentUpdate);
+    return () => {
+      window.removeEventListener('loha_shipments_updated', handleShipmentUpdate);
+    };
   }, [fetchShipments, fetchTrips]);
 
   // Xử lý tạo phiếu xuất với đầy đủ validation logic
@@ -1250,7 +1258,7 @@ export const ShipmentsPage: React.FC = () => {
                   onChange={(e) => setUpdateStatusVal(e.target.value as Shipment['status'])}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="PENDING">Chờ soạn hàng</option>
+                  <option value="PENDING">Chờ duyệt</option>
                   <option value="PICKING">Đang soạn hàng (FEFO)</option>
                   <option value="PACKED">Đã đóng gói</option>
                   <option value="SHIPPED">Đang giao hàng</option>

@@ -93,7 +93,7 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
       <div className="px-4 py-2.5 bg-slate-50/80 border-b border-slate-200/80 flex items-center justify-between flex-wrap gap-2 text-xs">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="px-2 py-0.5 rounded-md bg-slate-800 text-white font-mono font-bold text-[11px]">
-            Bước #{item.stepNumber}
+            Đơn {item.stepNumber}
           </span>
           <div className="flex items-center gap-1.5 font-mono font-bold text-slate-900 bg-white border border-slate-200/90 px-2.5 py-1 rounded-md text-xs sm:text-sm shadow-2xs">
             <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />

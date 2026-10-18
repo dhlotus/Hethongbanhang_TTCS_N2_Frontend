@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
@@ -29,9 +29,11 @@ import {
   Calendar,
   TrendingUp,
   ChevronDown,
+  ChevronUp,
+  Layers,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
-import { ordersService } from '../services/orders.service';
+import { ordersService, getStoredDemoOrders } from '../services/orders.service';
 import { customerService } from '../services/customer.service';
 import { OrderPrintModal } from '../components/order-print-modal';
 import { ReorderModal } from '../components/reorder-modal';
@@ -41,6 +43,7 @@ import { USER_ROLES } from '../types/auth';
 import type {
   Order,
   OrderStatus,
+  OrderLine,
   OrderApprovalAction,
   OrderApprovalHistory,
 } from '../types/order';
@@ -48,8 +51,21 @@ import { OrderTimeline } from '../components/order-timeline';
 import { CancelOrderModal } from '../components/cancel-order-modal';
 import { CreateShipmentModal } from '../components/create-shipment-modal';
 import { shipmentsService, type Shipment } from '../services/shipments.service';
+import { getStoredPickingSheets } from '../services/order-picking.service';
+import type { PickingSheet } from '../types/order-picking.types';
 import { Pagination } from '../components/pagination';
 import { DateInput } from '../components/date-input';
+
+export type DisplayOrderItem = Order & {
+  isMergedGroup?: boolean;
+  isChildOfGroup?: boolean;
+  parentGroupId?: string;
+  sheetCode?: string;
+  sheetId?: string;
+  childOrders?: Order[];
+  sourceOrderCodes?: string[];
+  warehouseName?: string;
+};
 
 // ──────────────────────────────────────────────────────────────────────────
 // HELPERS & FORMATTERS
@@ -503,16 +519,41 @@ export const OrdersPage: React.FC = () => {
   }, [searchInput]);
 
   const [refreshKey, setRefreshKey] = useState(0);
+  const [pickingSheets, setPickingSheets] = useState<PickingSheet[]>(() => {
+    try {
+      return getStoredPickingSheets();
+    } catch {
+      return [];
+    }
+  });
+  const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(new Set());
 
-  // Lắng nghe sự kiện đơn hàng thời gian thực toàn hệ thống (Real-time Sync SN-49)
+  const toggleExpandGroup = (groupId: string) => {
+    setExpandedGroupIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  };
+
+  // Lắng nghe sự kiện đơn hàng và phiếu soạn hàng thời gian thực toàn hệ thống (Real-time Sync SN-49)
   useEffect(() => {
     const handleOrdersUpdated = () => {
       setRefreshKey((k) => k + 1);
+      try {
+        setPickingSheets(getStoredPickingSheets());
+      } catch {}
     };
     window.addEventListener('loha_orders_updated', handleOrdersUpdated);
+    window.addEventListener('loha_picking_sheets_updated', handleOrdersUpdated);
     window.addEventListener('storage', handleOrdersUpdated);
     return () => {
       window.removeEventListener('loha_orders_updated', handleOrdersUpdated);
+      window.removeEventListener('loha_picking_sheets_updated', handleOrdersUpdated);
       window.removeEventListener('storage', handleOrdersUpdated);
     };
   }, []);
@@ -573,6 +614,169 @@ export const OrdersPage: React.FC = () => {
     user?.id,
     user?.fullName,
   ]);
+
+  // Gom gộp các đơn hàng đã được tạo thành Đơn Ghép (Phiếu soạn hàng từ 2 đơn trở lên)
+  const displayOrders = useMemo<DisplayOrderItem[]>(() => {
+    if (!orders || orders.length === 0) return [];
+
+    // Lọc các phiếu soạn hàng gộp từ 2 đơn trở lên
+    const groupSheets = (pickingSheets || []).filter(
+      (s) =>
+        s.status !== 'CANCELLED' &&
+        ((s.orderCount && s.orderCount >= 2) || (s.sourceOrderCodes && s.sourceOrderCodes.length >= 2)),
+    );
+
+    if (groupSheets.length === 0) {
+      return orders.map((o) => ({ ...o, isMergedGroup: false, isChildOfGroup: false }));
+    }
+
+    // Map mã đơn con / id đơn con -> phiếu soạn hàng tương ứng
+    const orderToSheetMap = new Map<string, PickingSheet>();
+    groupSheets.forEach((sheet) => {
+      sheet.sourceOrderCodes?.forEach((code: string) => {
+        if (code) orderToSheetMap.set(code.trim().toUpperCase(), sheet);
+      });
+      sheet.sourceOrderIds?.forEach((id: string) => {
+        if (id) orderToSheetMap.set(id.trim().toUpperCase(), sheet);
+      });
+    });
+
+    let allStoredOrders: Order[] = [];
+    try {
+      allStoredOrders = getStoredDemoOrders();
+    } catch {
+      allStoredOrders = orders;
+    }
+
+    const processedSheetIds = new Set<string>();
+    const result: DisplayOrderItem[] = [];
+
+    for (const order of orders) {
+      const orderCodeKey = (order.orderCode || '').trim().toUpperCase();
+      const orderIdKey = (order.id || '').trim().toUpperCase();
+      const matchedSheet = orderToSheetMap.get(orderCodeKey) || orderToSheetMap.get(orderIdKey);
+
+      if (!matchedSheet) {
+        result.push({ ...order, isMergedGroup: false, isChildOfGroup: false });
+        continue;
+      }
+
+      // Đơn này thuộc một đơn ghép
+      if (processedSheetIds.has(matchedSheet.id)) {
+        continue; // Đã tạo dòng đại diện cho đơn ghép này rồi
+      }
+
+      processedSheetIds.add(matchedSheet.id);
+
+      const childCodes = new Set((matchedSheet.sourceOrderCodes || []).map((c: string) => c.trim().toUpperCase()));
+      const childIds = new Set((matchedSheet.sourceOrderIds || []).map((id: string) => id.trim().toUpperCase()));
+
+      const childOrderMap = new Map<string, Order>();
+      orders.forEach((o) => {
+        if (
+          childCodes.has((o.orderCode || '').trim().toUpperCase()) ||
+          childIds.has((o.id || '').trim().toUpperCase())
+        ) {
+          childOrderMap.set(o.orderCode || o.id || '', o);
+        }
+      });
+      allStoredOrders.forEach((o) => {
+        const key = o.orderCode || o.id || '';
+        if (
+          (childCodes.has((o.orderCode || '').trim().toUpperCase()) ||
+            childIds.has((o.id || '').trim().toUpperCase())) &&
+          !childOrderMap.has(key)
+        ) {
+          childOrderMap.set(key, o);
+        }
+      });
+
+      const childOrders = Array.from(childOrderMap.values());
+      const combinedGrandTotal = childOrders.reduce((sum, c) => sum + (c.grandTotal || 0), 0);
+      const combinedSubtotal = childOrders.reduce((sum, c) => sum + (c.subtotal || 0), 0);
+      const combinedDiscount = childOrders.reduce((sum, c) => sum + (c.totalDiscount || 0), 0);
+
+      const uniqueCustomerNames = Array.from(new Set(childOrders.map((c) => c.customerName).filter(Boolean)));
+      const combinedCustomerName =
+        uniqueCustomerNames.length === 1
+          ? uniqueCustomerNames[0]!
+          : uniqueCustomerNames.length > 1
+          ? `${uniqueCustomerNames[0]} (+${uniqueCustomerNames.length - 1} đại lý)`
+          : order.customerName;
+
+      const deliveryDates = childOrders.map((c) => c.deliveryDate).filter(Boolean) as string[];
+      deliveryDates.sort();
+      const combinedDeliveryDate = deliveryDates[0] || order.deliveryDate;
+
+      const combinedLines: OrderLine[] = [];
+      childOrders.forEach((c) => {
+        (c.lines || []).forEach((line) => {
+          combinedLines.push({
+            ...line,
+            productName: line.productName ? `${line.productName} (${c.orderCode})` : line.productName,
+          });
+        });
+      });
+
+      let groupStatus: OrderStatus = 'PROCESSING';
+      const allApproved = childOrders.length > 0 && childOrders.every((c) => c.status === 'APPROVED');
+      const allCancelled = childOrders.length > 0 && childOrders.every((c) => c.status === 'CANCELLED');
+      const allDispatched = childOrders.length > 0 && childOrders.every((c) => c.status === 'SHIPPED' || c.status === 'DELIVERED');
+
+      if (allApproved || (matchedSheet as any).isApproved) {
+        groupStatus = 'APPROVED';
+      } else if (allCancelled) {
+        groupStatus = 'CANCELLED';
+      } else if (allDispatched) {
+        groupStatus = 'SHIPPED';
+      } else if (matchedSheet.status === 'COMPLETED' || matchedSheet.status === 'PARTIALLY_COMPLETED') {
+        groupStatus = 'PENDING';
+      } else {
+        groupStatus = 'PROCESSING';
+      }
+
+      const mergedGroupRow: DisplayOrderItem = {
+        ...order,
+        id: matchedSheet.id,
+        orderCode: matchedSheet.sheetCode,
+        customerId: childOrders[0]?.customerId || 'cust-merged',
+        customerName: combinedCustomerName,
+        customerGroup: childOrders[0]?.customerGroup,
+        salesRepName: childOrders[0]?.salesRepName,
+        deliveryDate: combinedDeliveryDate,
+        subtotal: combinedSubtotal,
+        totalDiscount: combinedDiscount,
+        grandTotal: combinedGrandTotal,
+        totalAmount: combinedGrandTotal,
+        status: groupStatus,
+        lines: combinedLines.length > 0 ? combinedLines : order.lines,
+        createdAt: matchedSheet.createdAt || order.createdAt,
+        isMergedGroup: true,
+        isChildOfGroup: false,
+        sheetCode: matchedSheet.sheetCode,
+        sheetId: matchedSheet.id,
+        childOrders,
+        sourceOrderCodes: matchedSheet.sourceOrderCodes || [],
+        warehouseName: matchedSheet.warehouseName,
+      };
+
+      result.push(mergedGroupRow);
+
+      // Nếu người dùng bấm mở rộng đơn ghép thì render các đơn con ngay sau đó
+      if (expandedGroupIds.has(matchedSheet.id)) {
+        childOrders.forEach((child) => {
+          result.push({
+            ...child,
+            isMergedGroup: false,
+            isChildOfGroup: true,
+            parentGroupId: matchedSheet.id,
+          });
+        });
+      }
+    }
+
+    return result;
+  }, [orders, pickingSheets, expandedGroupIds]);
 
   // Khôi phục modal In / Xuất PDF khi người dùng ấn F5 hoặc truy cập qua URL có query ?printOrderId=...
   useEffect(() => {
@@ -772,7 +976,8 @@ export const OrdersPage: React.FC = () => {
           ...viewOrder,
           status: 'APPROVED',
           reservedUntil: res.reservedUntil,
-        });
+          childOrders: (viewOrder as any).childOrders?.map((c: Order) => ({ ...c, status: 'APPROVED' })),
+        } as any);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi duyệt đơn và giữ chỗ tồn kho';
@@ -1151,7 +1356,211 @@ export const OrdersPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className={`divide-y divide-slate-100/90 transition-opacity duration-150 ${loading ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
-                    {orders.map((order) => {
+                    {displayOrders.map((order) => {
+                      if (order.isMergedGroup) {
+                        return (
+                          <tr
+                            key={`merged-${order.id}`}
+                            className="hover:bg-slate-50/80 transition-colors group"
+                          >
+                            {/* 1. Mã đơn: Mã đơn ghép PSH + Badge Đơn ghép + Nút Xem đơn con */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <div className="flex flex-col items-start gap-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <button
+                                    type="button"
+                                    onClick={() => setViewOrder(order)}
+                                    className="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2 py-0.5 rounded transition-all cursor-pointer"
+                                    title={`Xem chi tiết đơn ghép ${order.orderCode}`}
+                                  >
+                                    <Layers className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                                    <span>{order.orderCode}</span>
+                                  </button>
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                                    Đơn ghép ({order.childOrders?.length || 2} đơn)
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono mt-0.5">
+                                  <span className="truncate max-w-[210px]" title={order.sourceOrderCodes?.join(', ')}>
+                                    Gộp: {order.sourceOrderCodes?.join(', ')}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleExpandGroup(order.id!)}
+                                    className="inline-flex items-center gap-0.5 text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer text-[11px] select-none"
+                                  >
+                                    {expandedGroupIds.has(order.id!) ? (
+                                      <>
+                                        <ChevronUp className="w-3 h-3 text-indigo-600" />
+                                        <span>Thu gọn</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ChevronDown className="w-3 h-3 text-indigo-600" />
+                                        <span>Xem {order.childOrders?.length || 2} đơn con</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* 2. Đại lý: Hiển thị tên đại lý và nhãn gộp */}
+                            <td className="px-4 py-3.5">
+                              <button
+                                type="button"
+                                onClick={() => setViewOrder(order)}
+                                className="text-left font-semibold text-slate-800 hover:text-indigo-600 transition-colors line-clamp-1 text-sm cursor-pointer block max-w-full"
+                                title={order.customerName}
+                              >
+                                {order.customerName}
+                              </button>
+                              <span className="text-[11px] text-slate-400 block mt-0.5">
+                                Đơn ghép soạn chung cho {order.childOrders?.length || 2} đơn bán hàng
+                              </span>
+                            </td>
+
+                            {/* 3. Ngày giao: Clean badge với icon Calendar */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/60">
+                                <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                                {formatDate(order.deliveryDate)}
+                              </span>
+                            </td>
+
+                            {/* 4. Tổng phải thu: Tổng cộng của các đơn con */}
+                            <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                              <div className="flex flex-col items-end">
+                                <span className="font-bold text-slate-900 tabular-nums text-sm">
+                                  {formatCurrency(order.grandTotal)}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-normal">
+                                  Tổng {order.childOrders?.length || 2} đơn gộp
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* 5. Trạng thái */}
+                            <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                              <OrderStatusBadge status={order.status} reservedUntil={order.reservedUntil} />
+                            </td>
+
+                            {/* 6. Thao tác */}
+                            <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                              <div className="relative inline-flex items-center justify-end order-action-dropdown-container">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (openActionMenuId === order.id) {
+                                      setOpenActionMenuId(null);
+                                      setActionMenuAnchor(null);
+                                    } else {
+                                      const rect = e.currentTarget.getBoundingClientRect();
+                                      const spaceBelow = window.innerHeight - rect.bottom;
+                                      const shouldDropUp = spaceBelow < 280 && rect.top > 280;
+                                      setActionMenuAnchor({
+                                        top: shouldDropUp ? rect.top - 4 : rect.bottom + 4,
+                                        right: window.innerWidth - rect.right,
+                                        isDropUp: shouldDropUp,
+                                      });
+                                      setOpenActionMenuId(order.id ?? null);
+                                    }
+                                  }}
+                                  className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none whitespace-nowrap shrink-0 ${
+                                    openActionMenuId === order.id
+                                      ? 'bg-slate-100 border-slate-300 text-slate-800 shadow-xs ring-2 ring-slate-500/10'
+                                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+                                  }`}
+                                  title="Thao tác"
+                                >
+                                  <span className="whitespace-nowrap">Thao tác</span>
+                                  <ChevronDown
+                                    className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${
+                                      openActionMenuId === order.id ? 'rotate-180 text-slate-600' : ''
+                                    }`}
+                                  />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      if (order.isChildOfGroup) {
+                        return (
+                          <tr
+                            key={`child-${order.id}`}
+                            className="bg-slate-50/40 hover:bg-slate-50 transition-colors group"
+                          >
+                            {/* 1. Mã đơn con thụt dòng */}
+                            <td className="px-4 py-2.5 whitespace-nowrap pl-8">
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400 font-mono font-bold select-none text-xs">↳</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setViewOrder(order)}
+                                  className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200/90 px-2 py-0.5 rounded transition-all cursor-pointer shadow-2xs"
+                                  title={`Xem chi tiết đơn con ${order.orderCode}`}
+                                >
+                                  <FileText className="w-3 h-3 text-slate-400" />
+                                  <span>{order.orderCode ?? order.id?.slice(-8)}</span>
+                                </button>
+                                <span className="text-[10px] text-slate-500 font-medium bg-slate-100 border border-slate-200 px-1.5 py-0.2 rounded">
+                                  Đơn con
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* 2. Đại lý */}
+                            <td className="px-4 py-2.5">
+                              <button
+                                type="button"
+                                onClick={() => setViewOrder(order)}
+                                className="text-left font-medium text-slate-700 hover:text-indigo-600 transition-colors line-clamp-1 text-xs cursor-pointer block max-w-full"
+                                title={order.customerName}
+                              >
+                                {order.customerName}
+                              </button>
+                            </td>
+
+                            {/* 3. Ngày giao */}
+                            <td className="px-4 py-2.5 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                                <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                                {formatDate(order.deliveryDate)}
+                              </span>
+                            </td>
+
+                            {/* 4. Tổng phải thu */}
+                            <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                              <span className="font-semibold text-slate-800 tabular-nums text-xs">
+                                {formatCurrency(order.grandTotal)}
+                              </span>
+                            </td>
+
+                            {/* 5. Trạng thái */}
+                            <td className="px-4 py-2.5 text-center whitespace-nowrap">
+                              <OrderStatusBadge status={order.status} reservedUntil={order.reservedUntil} />
+                            </td>
+
+                            {/* 6. Thao tác đơn con */}
+                            <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => setViewOrder(order)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 rounded-md transition-colors cursor-pointer"
+                              >
+                                <Eye className="w-3 h-3 text-slate-400" />
+                                <span>Chi tiết</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      // Đơn lẻ thông thường
                       return (
                         <tr key={order.id} className="hover:bg-indigo-50/25 transition-colors group">
                           {/* 1. Mã đơn: Interactive monospace badge */}
@@ -1256,54 +1665,20 @@ export const OrdersPage: React.FC = () => {
 
               {/* Dropdown Menu Portal Thao tác */}
               {openActionMenuId && actionMenuAnchor && typeof document !== 'undefined' && (() => {
-                const order = orders.find((o) => o.id === openActionMenuId);
+                const order = (displayOrders.find((o) => o.id === openActionMenuId) || orders.find((o) => o.id === openActionMenuId)) as DisplayOrderItem | undefined;
                 if (!order) return null;
                 return createPortal(
                   <div
-                    className="order-action-portal-menu fixed w-48 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-[9999] animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100"
+                    className="order-action-portal-menu fixed w-52 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-[9999] animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100"
                     style={{
                       top: actionMenuAnchor.isDropUp ? undefined : `${actionMenuAnchor.top}px`,
                       bottom: actionMenuAnchor.isDropUp ? `${window.innerHeight - actionMenuAnchor.top}px` : undefined,
                       right: `${actionMenuAnchor.right}px`,
                     }}
                   >
-                    <div className="py-1">
-                      {/* 1. Xem chi tiết */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenActionMenuId(null);
-                          setActionMenuAnchor(null);
-                          setViewOrder(order);
-                        }}
-                        className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                      >
-                        <Eye className="w-4 h-4 text-slate-400" />
-                        <span>Xem chi tiết</span>
-                      </button>
-
-                      {/* 2. Chỉnh sửa đơn nháp / trả lại */}
-                      {!isWarehouseManager && (order.status === 'DRAFT' || order.status === 'RETURNED_FOR_UPDATE') && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOpenActionMenuId(null);
-                            setActionMenuAnchor(null);
-                            navigate(`/sales/orders/edit/${order.id}`);
-                          }}
-                          className="w-full text-left px-3.5 py-2 text-xs text-indigo-600 hover:bg-indigo-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
-                        >
-                          <Edit3 className="w-4 h-4 text-indigo-600" />
-                          <span>Chỉnh sửa đơn</span>
-                        </button>
-                      )}
-
-                      {/* 3. Duyệt đơn hàng */}
-                      {!isWarehouseManager && (isAdmin || isSalesManager) &&
-                        (order.status === 'PENDING' ||
-                          order.status === 'PENDING_APPROVAL' ||
-                          order.status === 'DRAFT' ||
-                          order.status === 'PENDING_INVENTORY_APPROVAL') && (
+                    {order.isMergedGroup ? (
+                      <div className="py-1">
+                        {!isWarehouseManager && (isAdmin || isSalesManager) && order.status === 'PENDING' && (
                           <button
                             type="button"
                             onClick={() => {
@@ -1311,92 +1686,183 @@ export const OrdersPage: React.FC = () => {
                               setActionMenuAnchor(null);
                               setApprovingOrderModal(order);
                             }}
-                            className="w-full text-left px-3.5 py-2 text-xs text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors cursor-pointer font-semibold"
+                            className="w-full text-left px-3.5 py-2 text-xs text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors cursor-pointer font-bold"
                           >
                             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                            <span>Duyệt đơn hàng</span>
+                            <span>Duyệt đơn ghép ({order.childOrders?.length || 0} đơn con)</span>
                           </button>
                         )}
-                    </div>
-
-                    <div className="py-1">
-                      {/* 4. In / Xuất PDF */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenActionMenuId(null);
-                          setActionMenuAnchor(null);
-                          handleOpenPrint(order);
-                        }}
-                        className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-emerald-700 flex items-center gap-2.5 transition-colors cursor-pointer"
-                      >
-                        <Printer className="w-4 h-4 text-slate-400" />
-                        <span>In / Xuất PDF</span>
-                      </button>
-
-                      {/* 5. Sao chép đơn */}
-                      {!isWarehouseManager && (
                         <button
                           type="button"
                           onClick={() => {
                             setOpenActionMenuId(null);
                             setActionMenuAnchor(null);
-                            void handleCloneOrder(order);
+                            setViewOrder(order);
                           }}
-                          disabled={isCloning === order.id}
-                          className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50"
+                          className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer font-semibold"
                         >
-                          {isCloning === order.id ? (
-                            <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
-                          ) : (
-                            <Copy className="w-4 h-4 text-slate-400" />
-                          )}
-                          <span>Sao chép đơn</span>
+                          <Eye className="w-4 h-4 text-slate-400" />
+                          <span>Xem chi tiết đơn ghép</span>
                         </button>
-                      )}
-
-                      {/* 6. Đặt lại đơn này */}
-                      {!isWarehouseManager && (
                         <button
                           type="button"
                           onClick={() => {
                             setOpenActionMenuId(null);
                             setActionMenuAnchor(null);
-                            setSelectedOrderForReorder(order);
+                            navigate('/warehouse/picking');
                           }}
-                          className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          className="w-full text-left px-3.5 py-2 text-xs text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5 transition-colors cursor-pointer font-semibold"
                         >
-                          <RotateCcw className="w-4 h-4 text-slate-400" />
-                          <span>Đặt lại đơn hàng</span>
+                          <PackageCheck className="w-4 h-4 text-indigo-600" />
+                          <span>Mở phiếu soạn hàng</span>
                         </button>
-                      )}
-                    </div>
-
-                    {/* 7. Hủy đơn */}
-                    {!isWarehouseManager &&
-                      order.status !== 'CANCELLED' &&
-                      order.status !== 'DELIVERED' &&
-                      order.status !== 'SHIPPED' &&
-                      order.status !== 'APPROVED' &&
-                      order.status !== 'PROCESSING' &&
-                      order.status !== 'PACKED' &&
-                      order.status !== 'DISPATCHED' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenActionMenuId(null);
+                            setActionMenuAnchor(null);
+                            handleOpenPrint(order);
+                          }}
+                          className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                        >
+                          <Printer className="w-4 h-4 text-slate-400" />
+                          <span>In / Xuất PDF đơn ghép</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <>
                         <div className="py-1">
+                          {/* 1. Xem chi tiết */}
                           <button
                             type="button"
                             onClick={() => {
                               setOpenActionMenuId(null);
                               setActionMenuAnchor(null);
-                              setCancellingOrderModal(order);
-                              setCancelReasonInput('');
+                              setViewOrder(order);
                             }}
-                            className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                            className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
                           >
-                            <XCircle className="w-4 h-4 text-rose-500" />
-                            <span>Hủy đơn hàng</span>
+                            <Eye className="w-4 h-4 text-slate-400" />
+                            <span>Xem chi tiết</span>
                           </button>
+
+                          {/* 2. Chỉnh sửa đơn nháp / trả lại */}
+                          {!isWarehouseManager && (order.status === 'DRAFT' || order.status === 'RETURNED_FOR_UPDATE') && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenActionMenuId(null);
+                                setActionMenuAnchor(null);
+                                navigate(`/sales/orders/edit/${order.id}`);
+                              }}
+                              className="w-full text-left px-3.5 py-2 text-xs text-indigo-600 hover:bg-indigo-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                            >
+                              <Edit3 className="w-4 h-4 text-indigo-600" />
+                              <span>Chỉnh sửa đơn</span>
+                            </button>
+                          )}
+
+                          {/* 3. Duyệt đơn hàng */}
+                          {!isWarehouseManager && (isAdmin || isSalesManager) &&
+                            (order.status === 'PENDING' ||
+                              order.status === 'PENDING_APPROVAL' ||
+                              order.status === 'DRAFT' ||
+                              order.status === 'PENDING_INVENTORY_APPROVAL') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenActionMenuId(null);
+                                  setActionMenuAnchor(null);
+                                  setApprovingOrderModal(order);
+                                }}
+                                className="w-full text-left px-3.5 py-2 text-xs text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors cursor-pointer font-semibold"
+                              >
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                <span>Duyệt đơn hàng</span>
+                              </button>
+                            )}
                         </div>
-                      )}
+
+                        <div className="py-1">
+                          {/* 4. In / Xuất PDF */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenActionMenuId(null);
+                              setActionMenuAnchor(null);
+                              handleOpenPrint(order);
+                            }}
+                            className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-emerald-700 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Printer className="w-4 h-4 text-slate-400" />
+                            <span>In / Xuất PDF</span>
+                          </button>
+
+                          {/* 5. Sao chép đơn */}
+                          {!isWarehouseManager && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenActionMenuId(null);
+                                setActionMenuAnchor(null);
+                                void handleCloneOrder(order);
+                              }}
+                              disabled={isCloning === order.id}
+                              className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              {isCloning === order.id ? (
+                                <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
+                              ) : (
+                                <Copy className="w-4 h-4 text-slate-400" />
+                              )}
+                              <span>Sao chép đơn</span>
+                            </button>
+                          )}
+
+                          {/* 6. Đặt lại đơn này */}
+                          {!isWarehouseManager && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenActionMenuId(null);
+                                setActionMenuAnchor(null);
+                                setSelectedOrderForReorder(order);
+                              }}
+                              className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                            >
+                              <RotateCcw className="w-4 h-4 text-slate-400" />
+                              <span>Đặt lại đơn hàng</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* 7. Hủy đơn */}
+                        {!isWarehouseManager &&
+                          order.status !== 'CANCELLED' &&
+                          order.status !== 'DELIVERED' &&
+                          order.status !== 'SHIPPED' &&
+                          order.status !== 'APPROVED' &&
+                          order.status !== 'PROCESSING' &&
+                          order.status !== 'PACKED' &&
+                          order.status !== 'DISPATCHED' && (
+                            <div className="py-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenActionMenuId(null);
+                                  setActionMenuAnchor(null);
+                                  setCancellingOrderModal(order);
+                                  setCancelReasonInput('');
+                                }}
+                                className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                              >
+                                <XCircle className="w-4 h-4 text-rose-500" />
+                                <span>Hủy đơn hàng</span>
+                              </button>
+                            </div>
+                          )}
+                      </>
+                    )}
                   </div>,
                   document.body
                 );
@@ -1404,11 +1870,112 @@ export const OrdersPage: React.FC = () => {
 
               {/* Mobile Card */}
               <div className={`sm:hidden divide-y divide-slate-100 transition-opacity duration-150 ${loading ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
-                {orders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="w-full text-left px-4 py-3.5 hover:bg-slate-50 transition-colors space-y-2.5"
-                  >
+                {displayOrders.map((order) => {
+                  if (order.isMergedGroup) {
+                    return (
+                      <div
+                        key={`mobile-merged-${order.id}`}
+                        className="w-full text-left px-4 py-3.5 hover:bg-slate-50 transition-colors space-y-2.5"
+                      >
+                        <div onClick={() => setViewOrder(order)} className="cursor-pointer">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                  {order.orderCode}
+                                </span>
+                                <span className="text-[10px] font-medium bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200">
+                                  Đơn ghép ({order.childOrders?.length || 2} đơn)
+                                </span>
+                              </div>
+                              <p className="font-bold text-slate-900 truncate mt-1 text-sm">
+                                {order.customerName}
+                              </p>
+                              <p className="text-xs text-slate-500 font-mono mt-0.5">
+                                Gộp: {order.sourceOrderCodes?.join(', ')}
+                              </p>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                Ngày giao: {formatDate(order.deliveryDate)}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-sm font-bold text-slate-900">
+                                {formatCurrency(order.grandTotal)}
+                              </p>
+                              <div className="mt-1">
+                                <OrderStatusBadge status={order.status} reservedUntil={order.reservedUntil} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => toggleExpandGroup(order.id!)}
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 cursor-pointer"
+                          >
+                            {expandedGroupIds.has(order.id!) ? (
+                              <>
+                                <ChevronUp className="w-3.5 h-3.5" />
+                                <span>Thu gọn</span>
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="w-3.5 h-3.5" />
+                                <span>Xem {order.childOrders?.length || 2} đơn con</span>
+                              </>
+                            )}
+                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => navigate('/warehouse/picking')}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded transition-colors cursor-pointer"
+                            >
+                              <PackageCheck className="w-3.5 h-3.5" />
+                              <span>Phiếu soạn</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setViewOrder(order)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded hover:bg-slate-50 cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Chi tiết</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (order.isChildOfGroup) {
+                    return (
+                      <div
+                        key={`mobile-child-${order.id}`}
+                        className="w-full text-left px-4 py-2.5 pl-8 bg-slate-50/50 space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-400 font-mono font-bold">↳</span>
+                            <span className="font-mono text-xs font-medium text-slate-700">{order.orderCode}</span>
+                            <span className="text-[10px] text-slate-500 bg-slate-100 px-1 rounded border border-slate-200">
+                              Đơn con
+                            </span>
+                          </div>
+                          <span className="text-xs font-bold text-slate-900">{formatCurrency(order.grandTotal)}</span>
+                        </div>
+                        <p className="text-xs text-slate-600 truncate">{order.customerName}</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={order.id}
+                      className="w-full text-left px-4 py-3.5 hover:bg-slate-50 transition-colors space-y-2.5"
+                    >
                     <div
                       onClick={() => setViewOrder(order)}
                       className="cursor-pointer"
@@ -1532,7 +2099,8 @@ export const OrdersPage: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                ))}
+                );
+              })}
               </div>
 
               {/* Thanh phân trang gắn liền chân bảng LOHA SALES */}
@@ -1567,14 +2135,21 @@ export const OrdersPage: React.FC = () => {
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[88vh] flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50">
               <div>
-                <h2 className="text-base font-semibold text-slate-900">
-                  Chi tiết Đơn hàng
-                </h2>
-                <p className="text-xs text-slate-500">{viewOrder.orderCode}</p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-semibold text-slate-900">
+                    {(viewOrder as DisplayOrderItem).isMergedGroup ? 'Chi tiết Đơn hàng ghép' : 'Chi tiết Đơn hàng'}
+                  </h2>
+                  {(viewOrder as DisplayOrderItem).isMergedGroup && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-600 text-white shadow-2xs">
+                      Đơn ghép ({(viewOrder as DisplayOrderItem).childOrders?.length || 2} đơn)
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 font-mono mt-0.5">{viewOrder.orderCode}</p>
               </div>
               <button
                 onClick={() => setViewOrder(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1586,6 +2161,44 @@ export const OrdersPage: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              {/* Banner thông tin đơn ghép */}
+              {(viewOrder as DisplayOrderItem).isMergedGroup && (
+                <div className="p-3.5 bg-purple-50/80 border border-purple-200 rounded-xl text-purple-900 text-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold flex items-center gap-1.5 text-purple-950 text-xs">
+                      <Layers className="w-4 h-4 text-purple-700" />
+                      Đơn ghép từ {((viewOrder as DisplayOrderItem).childOrders?.length || 2)} đơn bán hàng
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setViewOrder(null);
+                        navigate('/warehouse/picking');
+                      }}
+                      className="text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer text-xs"
+                    >
+                      Mở Phiếu soạn hàng →
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-purple-800">
+                    Các đơn hàng này đã được gom vào phiếu soạn kho <span className="font-mono font-bold">{viewOrder.orderCode}</span> để nhặt hàng theo lộ trình tối ưu và đóng gói giao hàng chung.
+                  </p>
+                  <div className="space-y-1.5 pt-1">
+                    <div className="text-[11px] font-semibold text-purple-900 uppercase tracking-wider">
+                      Các đơn hàng con thành phần:
+                    </div>
+                    {((viewOrder as DisplayOrderItem).childOrders || []).map((c, idx) => (
+                      <div key={c.id || c.orderCode || idx} className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-purple-200 shadow-2xs">
+                        <div>
+                          <span className="font-mono font-bold text-slate-900 text-xs">{c.orderCode}</span>
+                          <span className="text-[11px] text-slate-500 ml-2">({c.customerName})</span>
+                        </div>
+                        <span className="font-extrabold text-slate-900 text-xs">{formatCurrency(c.grandTotal)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {/* Thông tin đại lý */}
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
@@ -1771,7 +2384,7 @@ export const OrdersPage: React.FC = () => {
                           ? 'Đang soạn hàng (FEFO)'
                           : orderShipment.status === 'CANCELLED'
                           ? 'Đã hủy phiếu'
-                          : 'Chờ soạn hàng'}
+                          : 'Chờ duyệt'}
                       </span>
                     </div>
 
