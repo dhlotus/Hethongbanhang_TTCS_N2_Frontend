@@ -132,7 +132,7 @@ export const useDebtReport = () => {
     parseDebtQueryParams(searchParams),
   );
 
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Đồng bộ params lên URL mỗi khi params thay đổi (sạch sẽ, không tham số rác)
   const syncParamsToUrl = useCallback(
