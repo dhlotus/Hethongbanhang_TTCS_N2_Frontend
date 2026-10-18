@@ -338,7 +338,7 @@ export const CreateInvoicePage: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
-                {slipsForCurrentCustomer.length} phiếu chờ gộp
+                {unbilledSlips.length} phiếu chờ gộp
               </span>
             </div>
           </div>
