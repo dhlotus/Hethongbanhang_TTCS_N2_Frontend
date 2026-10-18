@@ -107,26 +107,33 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
     };
   }, [isOpen]);
 
+  // Hàm so khớp đại lý thông minh giữa hồ sơ khách hàng và phiếu giao hàng
+  const isMatchingCustomer = (slip: UnbilledDeliverySlip, customerId: string, customer?: Customer): boolean => {
+    if (!slip) return false;
+    if (slip.customerId === customerId) return true;
+    if (customerId === 'cust-001' && slip.customerId === '55555555-0000-0000-0000-000000000001') return true;
+    if (customerId === '55555555-0000-0000-0000-000000000001' && slip.customerId === 'cust-001') return true;
+    if (customer) {
+      if (customer.code && slip.customerId === customer.code) return true;
+      if (slip.customerName && customer.name && slip.customerName.trim().toLowerCase() === customer.name.trim().toLowerCase()) return true;
+      if (customer.id === 'cust-dl-0001' && (slip.customerId === 'cust-001' || slip.customerId === 'cust-003')) return true;
+      if (customer.id === 'cust-dl-0002' && slip.customerId === 'cust-002') return true;
+    }
+    return false;
+  };
+
   // Lọc các phiếu giao hàng thuộc về đại lý đã chọn
   const slipsForCurrentCustomer = useMemo(() => {
     if (!selectedCustomerId) return [];
-    return unbilledSlips.filter(
-      (s) =>
-        s.customerId === selectedCustomerId ||
-        (selectedCustomerId === 'cust-001' && s.customerId === '55555555-0000-0000-0000-000000000001') ||
-        (selectedCustomerId === '55555555-0000-0000-0000-000000000001' && s.customerId === 'cust-001'),
-    );
-  }, [unbilledSlips, selectedCustomerId]);
+    const cust = customers.find((c) => c.id === selectedCustomerId);
+    return unbilledSlips.filter((s) => isMatchingCustomer(s, selectedCustomerId, cust));
+  }, [unbilledSlips, selectedCustomerId, customers]);
 
   // Cập nhật selectedSlipIds khi đổi khách hàng
   const handleCustomerChange = (customerId: string) => {
     setSelectedCustomerId(customerId);
-    const matchingSlips = unbilledSlips.filter(
-      (s) =>
-        s.customerId === customerId ||
-        (customerId === 'cust-001' && s.customerId === '55555555-0000-0000-0000-000000000001') ||
-        (customerId === '55555555-0000-0000-0000-000000000001' && s.customerId === 'cust-001'),
-    );
+    const cust = customers.find((c) => c.id === customerId);
+    const matchingSlips = unbilledSlips.filter((s) => isMatchingCustomer(s, customerId, cust));
     // Mặc định chọn tất cả các phiếu của đại lý này để hỗ trợ gộp nhanh
     setSelectedSlipIds(matchingSlips.map((s) => s.id));
   };
@@ -291,12 +298,7 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
                 className="w-full h-[38px] px-3 text-xs border border-slate-200 rounded-lg bg-slate-50/60 hover:bg-white focus:bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium cursor-pointer"
               >
                 {customers.map((c) => {
-                  const slipCount = unbilledSlips.filter(
-                    (s) =>
-                      s.customerId === c.id ||
-                      (c.id === 'cust-001' && s.customerId === '55555555-0000-0000-0000-000000000001') ||
-                      (c.id === '55555555-0000-0000-0000-000000000001' && s.customerId === 'cust-001'),
-                  ).length;
+                  const slipCount = unbilledSlips.filter((s) => isMatchingCustomer(s, c.id, c)).length;
                   return (
                     <option key={c.id} value={c.id}>
                       {c.name} ({c.code || c.id}) {slipCount > 0 ? `— [${slipCount} phiếu chờ xuất HĐ]` : '— [0 phiếu]'}
@@ -397,7 +399,7 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="font-mono text-xs font-bold text-slate-900">
-                            {slip.trackingNumber || slip.id}
+                            {slip.trackingNumber || (slip as { deliveryCode?: string }).deliveryCode || slip.id}
                           </span>
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             Đã giao
@@ -408,9 +410,13 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
                           <span>{formatDate(slip.deliveredAt || slip.createdAt)}</span>
                         </div>
                         <div className="text-xs font-bold text-indigo-700 pt-0.5">
-                          {formatCurrency(slip.totalAmount)}
+                          {formatCurrency(
+                            slip.totalAmount ||
+                              (slip as { totalDeliveredAmount?: number }).totalDeliveredAmount ||
+                              (slip.items || []).reduce((acc, it) => acc + (it.lineTotal || 0), 0),
+                          )}
                           <span className="text-[11px] font-normal text-slate-500 ml-1">
-                            ({slip.items.length} món)
+                            ({slip.items?.length || 0} món)
                           </span>
                         </div>
                       </div>
