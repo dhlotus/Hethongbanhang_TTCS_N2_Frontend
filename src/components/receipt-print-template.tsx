@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { numberToVietnameseWords } from '../utils/number-to-words';
 import { receiptsService } from '../services/receipts.service';
+import { ConfirmActionModal } from './confirm-action-modal';
 import type { Receipt, ReceiptPrintData, PaymentMethod } from '../types/receipt';
 
 interface ReceiptPrintTemplateProps {
@@ -90,6 +91,17 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
 }) => {
   const printContentRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'download' | 'print';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'download',
+    title: '',
+    message: '',
+  });
 
   // Xử lý phím ESC để đóng modal
   useEffect(() => {
@@ -287,6 +299,34 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
     }
   };
 
+  const handleOpenPrintConfirm = () => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'print',
+      title: 'Xác nhận in phiếu thu',
+      message: `Bạn có chắc chắn muốn thực hiện in phiếu thu ${receiptCode} không?`,
+    });
+  };
+
+  const handleOpenDownloadConfirm = () => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'download',
+      title: 'Xác nhận tải phiếu thu PDF',
+      message: `Bạn có chắc chắn muốn tải file PDF cho phiếu thu ${receiptCode} về thiết bị không?`,
+    });
+  };
+
+  const handleExecuteConfirmedAction = async () => {
+    if (confirmModal.type === 'download') {
+      setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      await handleDownloadPdf();
+    } else {
+      setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      handlePrint();
+    }
+  };
+
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs overflow-y-auto">
       <div className="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] animate-in fade-in zoom-in-95 duration-200">
@@ -309,7 +349,7 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
             {/* Nút 1: Tải PDF */}
             <button
               type="button"
-              onClick={() => void handleDownloadPdf()}
+              onClick={handleOpenDownloadConfirm}
               disabled={isDownloading}
               className="inline-flex items-center justify-center gap-1.5 h-[36px] px-3 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-all shadow-2xs cursor-pointer disabled:opacity-50"
               title="Tải file PDF phiếu thu về máy"
@@ -321,7 +361,7 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
             {/* Nút 2: In phiếu trực tiếp */}
             <button
               type="button"
-              onClick={handlePrint}
+              onClick={handleOpenPrintConfirm}
               className="inline-flex items-center justify-center gap-1.5 h-[36px] px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all shadow-xs cursor-pointer"
               title="In trực tiếp phiếu thu (A4/A5)"
             >
@@ -472,6 +512,18 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Modal xác nhận trước khi In / Tải PDF */}
+      <ConfirmActionModal
+        isOpen={confirmModal.isOpen}
+        actionType={confirmModal.type}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.type === 'download' ? 'Xác nhận tải' : 'Xác nhận in'}
+        onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={handleExecuteConfirmedAction}
+        isLoading={isDownloading}
+      />
     </div>,
     document.body,
   );

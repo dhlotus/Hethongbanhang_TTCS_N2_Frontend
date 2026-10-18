@@ -18,6 +18,7 @@ import {
 import type { InvoiceItem } from '../services/invoices.service';
 import { invoicesService } from '../services/invoices.service';
 import { RecordPaymentModal } from '../components/record-payment-modal';
+import { ConfirmActionModal } from '../components/confirm-action-modal';
 import { showToast } from '../components/toast';
 
 const formatCurrency = (val?: number): string => {
@@ -50,6 +51,17 @@ export const InvoiceDetailPage: React.FC = () => {
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'download' | 'print';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'download',
+    title: '',
+    message: '',
+  });
 
   const fetchInvoice = useCallback(async () => {
     if (!id) return;
@@ -75,26 +87,47 @@ export const InvoiceDetailPage: React.FC = () => {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  const handleDownloadPdf = async () => {
+  const handlePrintClick = () => {
     if (!invoice) return;
-    try {
-      setIsDownloading(true);
-      showToast('info', 'Đang tạo và tải file hóa đơn PDF...');
-      await invoicesService.downloadInvoicePdf(invoice.id, invoice.invoiceCode);
-      showToast('success', 'Đã tải hóa đơn PDF thành công');
-    } catch {
-      showToast('error', 'Không thể tải hóa đơn. Vui lòng thử lại sau.');
-    } finally {
-      setIsDownloading(false);
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: 'print',
+      title: 'Xác nhận in hóa đơn',
+      message: `Bạn có chắc chắn muốn mở bản in hóa đơn ${invoice.invoiceCode} cho đại lý ${invoice.customerName}?`,
+    });
   };
 
-  const handlePrint = async () => {
+  const handleDownloadPdfClick = () => {
     if (!invoice) return;
-    try {
-      await invoicesService.printInvoice(invoice.id);
-    } catch {
-      showToast('error', 'Không thể mở bản in hóa đơn');
+    setConfirmModal({
+      isOpen: true,
+      type: 'download',
+      title: 'Xác nhận tải file PDF',
+      message: `Bạn có chắc chắn muốn tải file PDF hóa đơn ${invoice.invoiceCode} về thiết bị không?`,
+    });
+  };
+
+  const handleExecuteConfirmedAction = async () => {
+    if (!invoice) return;
+    if (confirmModal.type === 'download') {
+      try {
+        setIsDownloading(true);
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        // Tải file trực tiếp, không hiển thị thông báo toast theo yêu cầu
+        await invoicesService.downloadInvoicePdf(invoice.id, invoice.invoiceCode);
+      } catch {
+        showToast('error', 'Không thể tải hóa đơn. Vui lòng thử lại sau.');
+      } finally {
+        setIsDownloading(false);
+      }
+    } else if (confirmModal.type === 'print') {
+      try {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        // In trực tiếp, không hiển thị thông báo toast theo yêu cầu
+        await invoicesService.printInvoice(invoice.id);
+      } catch {
+        showToast('error', 'Không thể mở bản in hóa đơn');
+      }
     }
   };
 
@@ -180,7 +213,7 @@ export const InvoiceDetailPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={handlePrint}
+            onClick={handlePrintClick}
             className="inline-flex items-center gap-1.5 h-9 px-3 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-lg shadow-2xs transition-all active:scale-95 cursor-pointer"
             title="In trực tiếp qua trình duyệt"
           >
@@ -189,7 +222,7 @@ export const InvoiceDetailPage: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={handleDownloadPdf}
+            onClick={handleDownloadPdfClick}
             disabled={isDownloading}
             className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-2xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
             title="Tải file PDF hóa đơn về thiết bị"
@@ -500,6 +533,18 @@ export const InvoiceDetailPage: React.FC = () => {
         onSuccess={() => {
           void fetchInvoice();
         }}
+      />
+
+      {/* Modal xác nhận trước khi In / Tải PDF */}
+      <ConfirmActionModal
+        isOpen={confirmModal.isOpen}
+        actionType={confirmModal.type}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.type === 'download' ? 'Xác nhận tải' : 'Xác nhận in'}
+        onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={handleExecuteConfirmedAction}
+        isLoading={isDownloading}
       />
     </div>
   );
