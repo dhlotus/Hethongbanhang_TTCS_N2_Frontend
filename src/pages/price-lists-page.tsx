@@ -732,7 +732,7 @@ export const PriceListsPage: React.FC = () => {
           onClick={() => handleTabChange('BASE')}
           className={`px-4 py-2 rounded-t-xl font-semibold transition-all whitespace-nowrap cursor-pointer border-b-2 ${
             activeTab === 'BASE'
-              ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/50'
               : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
           }`}
         >
@@ -743,7 +743,7 @@ export const PriceListsPage: React.FC = () => {
           onClick={() => handleTabChange('DISCOUNT')}
           className={`px-4 py-2 rounded-t-xl font-semibold transition-all whitespace-nowrap cursor-pointer border-b-2 ${
             activeTab === 'DISCOUNT'
-              ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/50'
               : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
           }`}
         >
@@ -753,63 +753,86 @@ export const PriceListsPage: React.FC = () => {
 
       {activeTab === 'BASE' ? (
         <>
-          {/* 2. Thống kê tổng quan KPI (Card Header đồng bộ hệ thống) */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Card 1: Tổng số bảng giá */}
-            <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center justify-between">
-              <div className="space-y-1">
-                <span className="text-xs font-medium text-slate-500 block">Tổng số bảng giá</span>
-                <div className="text-2xl font-bold text-slate-900 tracking-tight">
-                  {metrics.totalCount}
+          {/* 2. Metrics Header: Hiển thị linh hoạt theo trạng thái được chọn */}
+          <div
+            className={`grid gap-4 ${
+              selectedStatus === 'ALL' ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 max-w-sm'
+            }`}
+          >
+            {/* Card 1: Tổng số bảng giá (Chỉ hiển thị khi chọn Tất cả Trạng thái) */}
+            {selectedStatus === 'ALL' && (
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/10 shrink-0">
+                  <FileSpreadsheet className="w-5 h-5" />
                 </div>
-                <span className="text-[11px] text-slate-400 block">Toàn bộ bảng giá B2B</span>
+                <div>
+                  <div className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                    {metrics.totalCount}
+                  </div>
+                  <div className="text-xs font-medium text-slate-500">Tổng số bảng giá</div>
+                </div>
               </div>
-              <div className="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                <FileSpreadsheet className="w-5 h-5" />
-              </div>
-            </div>
+            )}
 
             {/* Card 2: Đang hiệu lực */}
-            <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center justify-between">
-              <div className="space-y-1">
-                <span className="text-xs font-medium text-slate-500 block">Đang hiệu lực</span>
-                <div className="text-2xl font-bold text-emerald-600 tracking-tight">
-                  {metrics.activeCount}
+            {(selectedStatus === 'ALL' || selectedStatus === 'ACTIVE') && (
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3.5">
+                <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/10 shrink-0">
+                  <CheckCircle2 className="w-5 h-5" />
                 </div>
-                <span className="text-[11px] text-slate-400 block">Áp dụng cho đơn hàng</span>
+                <div>
+                  <div className="text-2xl font-extrabold text-emerald-700 tracking-tight">
+                    {metrics.activeCount}
+                  </div>
+                  <div className="text-xs font-medium text-slate-500">Đang hiệu lực</div>
+                </div>
               </div>
-              <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-            </div>
+            )}
 
             {/* Card 3: Bản nháp */}
-            <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center justify-between">
-              <div className="space-y-1">
-                <span className="text-xs font-medium text-slate-500 block">Bản nháp</span>
-                <div className="text-2xl font-bold text-amber-600 tracking-tight">
-                  {metrics.draftCount}
+            {(selectedStatus === 'ALL' || selectedStatus === 'DRAFT') && (
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-500/10 shrink-0">
+                  <FileEdit className="w-5 h-5" />
                 </div>
-                <span className="text-[11px] text-slate-400 block">Đang soạn / Chờ duyệt</span>
+                <div>
+                  <div className="text-2xl font-extrabold text-amber-700 tracking-tight">
+                    {metrics.draftCount}
+                  </div>
+                  <div className="text-xs font-medium text-slate-500">Bản nháp</div>
+                </div>
               </div>
-              <div className="h-10 w-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                <FileEdit className="w-5 h-5" />
-              </div>
-            </div>
+            )}
 
             {/* Card 4: Đã hết hạn */}
-            <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center justify-between">
-              <div className="space-y-1">
-                <span className="text-xs font-medium text-slate-500 block">Đã hết hạn</span>
-                <div className="text-2xl font-bold text-rose-600 tracking-tight">
-                  {metrics.expiredCount}
+            {(selectedStatus === 'ALL' || selectedStatus === 'EXPIRED') && (
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-rose-50 text-rose-600 ring-1 ring-rose-500/10 shrink-0">
+                  <Clock className="w-5 h-5" />
                 </div>
-                <span className="text-[11px] text-slate-400 block">Hết thời hạn hiệu lực</span>
+                <div>
+                  <div className="text-2xl font-extrabold text-rose-700 tracking-tight">
+                    {metrics.expiredCount}
+                  </div>
+                  <div className="text-xs font-medium text-slate-500">Đã hết hạn</div>
+                </div>
               </div>
-              <div className="h-10 w-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                <Clock className="w-5 h-5" />
+            )}
+
+            {/* Card 5: Tạm dừng (nếu lọc riêng INACTIVE) */}
+            {selectedStatus === 'INACTIVE' && (
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-500/10 shrink-0">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-2xl font-extrabold text-amber-700 tracking-tight">
+                    {metrics.inactiveCount}
+                  </div>
+                  <div className="text-xs font-medium text-slate-500">Tạm dừng</div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* 3. Filter Toolbar: Search Box, Dropdown Nhóm khách hàng, Dropdown Trạng thái */}
@@ -823,7 +846,7 @@ export const PriceListsPage: React.FC = () => {
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Tìm theo mã bảng giá, tên bảng giá hoặc ghi chú..."
-                  className="w-full h-[38px] pl-9.5 pr-8 text-xs rounded-lg border border-slate-200 bg-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 font-medium"
+                  className="w-full h-[38px] pl-9.5 pr-8 text-xs rounded-lg border border-slate-200 bg-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-medium"
                 />
                 {searchInput && (
                   <button
@@ -847,7 +870,7 @@ export const PriceListsPage: React.FC = () => {
                 <select
                   value={selectedGroup}
                   onChange={(e) => handleGroupChange(e.target.value)}
-                  className="w-full h-[38px] px-3 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer shadow-2xs"
+                  className="w-full h-[38px] px-3 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer shadow-2xs"
                 >
                   {CUSTOMER_GROUP_TABS.map((tab) => (
                     <option key={tab.key} value={tab.key}>
@@ -862,7 +885,7 @@ export const PriceListsPage: React.FC = () => {
                 <select
                   value={selectedStatus}
                   onChange={(e) => handleStatusChange(e.target.value as PriceListStatusType | 'ALL')}
-                  className="w-full h-[38px] px-3 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer shadow-2xs"
+                  className="w-full h-[38px] px-3 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer shadow-2xs"
                 >
                   <option value="ALL">Tất cả Trạng thái</option>
                   <option value="ACTIVE">Đang hiệu lực</option>
@@ -902,7 +925,7 @@ export const PriceListsPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleOpenCreateModal}
-                  className="inline-flex items-center justify-center gap-1.5 h-[38px] rounded-lg bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] px-4 text-xs font-semibold text-white shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+                  className="inline-flex items-center justify-center gap-1.5 h-[38px] rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-[0.98] px-4 text-xs font-semibold text-white shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Thêm mới bảng giá</span>
@@ -912,7 +935,7 @@ export const PriceListsPage: React.FC = () => {
 
             {/* Thông tin bộ lọc đang áp dụng (Việt hóa hoàn toàn) */}
             {(searchTerm || selectedStatus !== 'ALL' || selectedGroup !== 'ALL') && (
-              <div className="flex items-center text-xs text-indigo-600 font-medium pt-2 border-t border-slate-100 gap-1.5">
+              <div className="flex items-center text-xs text-blue-600 font-medium pt-2 border-t border-slate-100 gap-1.5">
                 <span>Đang lọc:</span>
                 {selectedStatus !== 'ALL' && (
                   <span>Trạng thái: {getStatusName(selectedStatus as PriceListStatusType)} • </span>
@@ -981,7 +1004,7 @@ export const PriceListsPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={handleResetFilters}
-                              className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold border border-indigo-200 shadow-2xs transition-all cursor-pointer active:scale-95"
+                              className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 shadow-2xs transition-all cursor-pointer active:scale-95"
                             >
                               <RotateCcw className="h-4 w-4" />
                               <span>Đặt lại bộ lọc</span>
@@ -998,8 +1021,8 @@ export const PriceListsPage: React.FC = () => {
                         <tr key={pl.id} className="hover:bg-indigo-50/25 transition-colors group">
                           {/* 1. Mã bảng giá: Hiển thị badge monospace chuẩn Quản lý đại lý, đã bỏ badge phiên bản */}
                           <td className="px-4 py-3.5 whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-indigo-700 bg-indigo-50/80 border border-indigo-200/60 px-2.5 py-1 rounded-md shadow-2xs group-hover:border-indigo-300">
-                              <FileSpreadsheet className="w-3 h-3 text-indigo-500" />
+                            <span className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-blue-700 bg-blue-50/80 border border-blue-200/60 px-2.5 py-1 rounded-md shadow-2xs group-hover:border-blue-300">
+                              <FileSpreadsheet className="w-3 h-3 text-blue-500" />
                               <span>{pl.code}</span>
                             </span>
                           </td>

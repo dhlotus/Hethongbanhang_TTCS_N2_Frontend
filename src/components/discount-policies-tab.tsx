@@ -12,10 +12,6 @@ import {
   Calendar,
   ChevronDown,
   Eye,
-  CheckCircle2,
-  Clock,
-  Power,
-  BadgePercent,
 } from 'lucide-react';
 import { showToast } from './toast';
 import { ConfirmDialog } from './confirm-dialog';
@@ -267,33 +263,6 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
     loadPolicies();
   }, [loadPolicies]);
 
-  // Thống kê Metrics Header Chính sách chiết khấu (Đồng bộ Card Header hệ thống)
-  const policyMetrics = useMemo(() => {
-    const totalCount = policies.length;
-    const now = new Date();
-    let activeCount = 0;
-    let inactiveCount = 0;
-    let expiredCount = 0;
-
-    for (const p of policies) {
-      const isExpired = p.endDate ? new Date(p.endDate) < now : false;
-      if (isExpired) {
-        expiredCount++;
-      } else if (p.status === 'ACTIVE') {
-        activeCount++;
-      } else {
-        inactiveCount++;
-      }
-    }
-
-    return {
-      totalCount,
-      activeCount,
-      inactiveCount,
-      expiredCount,
-    };
-  }, [policies]);
-
   // Lọc dữ liệu hiển thị theo trạng thái và từ khóa tìm kiếm
   const filteredPolicies = useMemo(() => {
     return policies.filter((p) => {
@@ -430,66 +399,28 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* 1. Thống kê tổng quan KPI (Card Header đồng bộ hệ thống) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Tổng số chính sách */}
-        <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-xs font-medium text-slate-500 block">Tổng số chính sách</span>
-            <div className="text-2xl font-bold text-slate-900 tracking-tight">
-              {policyMetrics.totalCount}
-            </div>
-            <span className="text-[11px] text-slate-400 block">Chiết khấu theo sản lượng</span>
-          </div>
-          <div className="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-            <BadgePercent className="w-5 h-5" />
-          </div>
+      {/* 1. Header Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+            Chính sách Chiết khấu theo Sản lượng
+          </h2>
         </div>
 
-        {/* Card 2: Đang hiệu lực */}
-        <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-xs font-medium text-slate-500 block">Đang hiệu lực</span>
-            <div className="text-2xl font-bold text-emerald-600 tracking-tight">
-              {policyMetrics.activeCount}
-            </div>
-            <span className="text-[11px] text-slate-400 block">Áp dụng cho đơn hàng</span>
-          </div>
-          <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Card 3: Tạm dừng */}
-        <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-xs font-medium text-slate-500 block">Tạm dừng</span>
-            <div className="text-2xl font-bold text-amber-600 tracking-tight">
-              {policyMetrics.inactiveCount}
-            </div>
-            <span className="text-[11px] text-slate-400 block">Tạm ngừng áp dụng</span>
-          </div>
-          <div className="h-10 w-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-            <Power className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Card 4: Đã hết hạn */}
-        <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-xs font-medium text-slate-500 block">Đã hết hạn</span>
-            <div className="text-2xl font-bold text-rose-600 tracking-tight">
-              {policyMetrics.expiredCount}
-            </div>
-            <span className="text-[11px] text-slate-400 block">Hết thời hạn hiệu lực</span>
-          </div>
-          <div className="h-10 w-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-            <Clock className="w-5 h-5" />
-          </div>
-        </div>
+        {/* Nút Thêm mới chính sách chuẩn UI_GUIDELINES: h-[38px] rounded-lg */}
+        {canManage && (
+          <button
+            type="button"
+            onClick={handleOpenCreateModal}
+            className="inline-flex items-center justify-center gap-1.5 h-[38px] px-4 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
+          >
+            <Plus className="w-4 h-4 shrink-0" />
+            <span>Thêm chính sách</span>
+          </button>
+        )}
       </div>
 
-      {/* 2. Filter Bar: rounded-xl theo UI_GUIDELINES */}
+      {/* 2. Filter Bar: rounded-xl theo UI_GUIDELINES, đã bỏ nút Làm mới, xóa text hiển thị số lượng */}
       <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
           {/* Ô Tìm kiếm */}
@@ -500,7 +431,7 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Tìm theo mã chính sách, tên hoặc đối tượng áp dụng..."
-              className="w-full h-[38px] pl-9.5 pr-8 text-xs rounded-lg border border-slate-200 bg-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 font-medium"
+              className="w-full h-[38px] pl-9.5 pr-8 text-xs rounded-lg border border-slate-200 bg-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-medium"
             />
             {searchInput && (
               <button
@@ -524,7 +455,7 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
             <select
               value={selectedStatus}
               onChange={(e) => handleStatusFilterChange(e.target.value)}
-              className="w-full h-[38px] px-3 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer shadow-2xs"
+              className="w-full h-[38px] px-3 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer shadow-2xs"
             >
               <option value="ALL">Tất cả Trạng thái</option>
               <option value="ACTIVE">Đang hiệu lực</option>
@@ -545,23 +476,11 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
               <span>Bỏ lọc</span>
             </button>
           )}
-
-          {/* Nút Thêm mới chính sách chuẩn UI_GUIDELINES: h-[38px] rounded-lg đặt chung hàng toolbar */}
-          {canManage && (
-            <button
-              type="button"
-              onClick={handleOpenCreateModal}
-              className="inline-flex items-center justify-center gap-1.5 h-[38px] px-4 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] rounded-lg transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
-            >
-              <Plus className="w-4 h-4 shrink-0" />
-              <span>Thêm chính sách</span>
-            </button>
-          )}
         </div>
 
-        {/* Thông tin bộ lọc đang áp dụng */}
+        {/* Thông tin bộ lọc đang áp dụng (Việt hóa hoàn toàn, đã xóa dòng "Hiển thị ... / ...") */}
         {(searchTerm || selectedStatus !== 'ALL') && (
-          <div className="flex items-center text-xs text-indigo-600 font-medium pt-2 border-t border-slate-100 gap-1.5">
+          <div className="flex items-center text-xs text-blue-600 font-medium pt-2 border-t border-slate-100 gap-1.5">
             <span>Đang lọc:</span>
             {selectedStatus !== 'ALL' && (
               <span>Trạng thái: {getStatusLabel(selectedStatus)} • </span>

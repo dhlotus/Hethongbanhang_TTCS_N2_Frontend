@@ -154,19 +154,31 @@ export const LoginPage: React.FC = () => {
     };
   }, []);
 
+  const rememberedEmail = tokenStorage.getRememberedEmail();
+  const [rememberMe, setRememberMe] = useState<boolean>(() => {
+    return Boolean(rememberedEmail) || tokenStorage.getRememberMePreference();
+  });
+
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
+      email: rememberedEmail || '',
       password: '',
     },
     mode: 'onTouched',
   });
+
+  useEffect(() => {
+    if (rememberedEmail) {
+      setValue('email', rememberedEmail);
+    }
+  }, [rememberedEmail, setValue]);
 
   const [hasPassword, setHasPassword] = useState(false);
   const [isNavigatingAway, setIsNavigatingAway] = useState(false);
@@ -222,9 +234,17 @@ export const LoginPage: React.FC = () => {
     try {
       const response = await authService.login(data);
 
-      // Lưu trữ Token an toàn qua tokenStorage (hỗ trợ cả access_token và refresh_token)
-      tokenStorage.setTokens(response.accessToken, response.refreshToken);
-      tokenStorage.setUser(response.user);
+      // Cập nhật tùy chọn ghi nhớ đăng nhập và lưu email nếu được chọn
+      tokenStorage.setRememberMePreference(rememberMe);
+      if (rememberMe) {
+        tokenStorage.setRememberedEmail(data.email.trim());
+      } else {
+        tokenStorage.clearRememberedEmail();
+      }
+
+      // Lưu trữ Token an toàn qua tokenStorage (hỗ trợ cả access_token và refresh_token theo chế độ rememberMe)
+      tokenStorage.setTokens(response.accessToken, response.refreshToken, rememberMe);
+      tokenStorage.setUser(response.user, rememberMe);
 
       // Kích hoạt hiệu ứng chuyển cảnh đăng nhập mượt mà (Login Success Transition & Splash Screen)
       setTransitionUser(response.user);
@@ -462,10 +482,22 @@ export const LoginPage: React.FC = () => {
 
           {/* Tùy chọn Ghi nhớ đăng nhập & Quên mật khẩu? */}
           <div className="flex items-center justify-between text-xs sm:text-sm pt-2.5 sm:pt-3.5 px-1 sm:px-2">
-            <label className="flex items-center gap-2 cursor-pointer text-white/80 hover:text-white select-none transition-colors">
+            <label
+              htmlFor="login-remember-me"
+              className="flex items-center gap-2 cursor-pointer text-white/80 hover:text-white select-none transition-colors"
+            >
               <input
+                id="login-remember-me"
                 type="checkbox"
-                defaultChecked
+                checked={rememberMe}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setRememberMe(checked);
+                  tokenStorage.setRememberMePreference(checked);
+                  if (!checked) {
+                    tokenStorage.clearRememberedEmail();
+                  }
+                }}
                 disabled={isSubmitting}
                 className="w-4 h-4 sm:w-4.5 sm:h-4.5 rounded border-white/40 bg-white/10 text-indigo-600 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-indigo-500"
               />
