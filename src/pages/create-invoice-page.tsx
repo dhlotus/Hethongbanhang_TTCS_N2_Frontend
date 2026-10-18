@@ -369,9 +369,6 @@ export const CreateInvoicePage: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-medium">
-                {customers.length} đại lý trong hệ thống
-              </span>
               <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
                 {slipsForCurrentCustomer.length} phiếu chờ gộp
               </span>
@@ -390,9 +387,6 @@ export const CreateInvoicePage: React.FC = () => {
                   <span>Chọn đại lý phát hành hóa đơn</span>
                   <span className="text-rose-500">*</span>
                 </label>
-                <span className="text-[11px] text-slate-400 font-medium">
-                  {filteredCustomers.length} đại lý khớp tìm kiếm
-                </span>
               </div>
 
               {/* Khung tìm kiếm tích hợp nút bấm sổ danh sách option */}
@@ -581,14 +575,10 @@ export const CreateInvoicePage: React.FC = () => {
                     : 'border-slate-200 hover:border-slate-300 focus:ring-indigo-100 focus:border-indigo-500'
                 }`}
               />
-              {dueDate && dueDate < todayStr ? (
+              {dueDate && dueDate < todayStr && (
                 <p className="text-[11px] font-semibold text-rose-600 flex items-center gap-1">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   Hạn thanh toán không được trước ngày tạo hóa đơn ({formatDate(todayStr)})
-                </p>
-              ) : (
-                <p className="text-[11px] text-slate-400">
-                  Thời hạn kế toán công nợ (Tối thiểu từ ngày hôm nay trở đi)
                 </p>
               )}
             </div>
@@ -749,45 +739,39 @@ export const CreateInvoicePage: React.FC = () => {
         </div>
 
         {/* =================================================================== */}
-        {/* KHỐI 3: BẢNG CHI TIẾT DÒNG HÀNG HÓA ĐƠN (CĂN CỨ TÍNH TIỀN: SL THỰC GIAO) */}
+        {/* KHỐI 3: BẢNG CHI TIẾT DÒNG HÀNG HÓA ĐƠN (Chỉ hiện khi thêm phiếu giao hàng) */}
         {/* =================================================================== */}
-        <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3.5">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <Receipt className="w-5 h-5 text-indigo-600" />
-              <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                Chi tiết dòng hàng hoá đơn (Căn cứ tính tiền: SL Thực Giao)
-              </h2>
+        {previewLines.length > 0 && (
+          <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3.5 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-indigo-600" />
+                <h2 className="text-sm sm:text-base font-bold text-slate-900">
+                  Chi tiết dòng hàng hoá đơn (Căn cứ tính tiền: SL Thực Giao)
+                </h2>
+              </div>
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                {previewLines.length} dòng sản phẩm
+              </span>
             </div>
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
-              {previewLines.length} dòng sản phẩm
-            </span>
-          </div>
 
-          <div className="overflow-x-auto rounded-xl border border-slate-200/80">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200">
-                  <th className="py-2.5 px-3">SKU & SẢN PHẨM</th>
-                  <th className="py-2.5 px-3 text-center w-16">ĐVT</th>
-                  <th className="py-2.5 px-3 w-28">PHIẾU GIAO</th>
-                  <th className="py-2.5 px-3 text-right w-20">SL ĐẶT</th>
-                  <th className="py-2.5 px-3 text-right w-24 bg-indigo-50/70 text-indigo-900 font-extrabold">
-                    SL THỰC GIAO
-                  </th>
-                  <th className="py-2.5 px-3 text-right w-28">ĐƠN GIÁ</th>
-                  <th className="py-2.5 px-3 text-right w-32">THÀNH TIỀN</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {previewLines.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-8 text-center text-slate-400">
-                      Chưa chọn phiếu giao hàng nào. Vui lòng tick chọn phiếu giao ở danh sách phía trên.
-                    </td>
+            <div className="overflow-x-auto rounded-xl border border-slate-200/80">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/90 text-slate-600 font-bold border-b border-slate-200">
+                    <th className="py-2.5 px-3">SKU & SẢN PHẨM</th>
+                    <th className="py-2.5 px-3 text-center w-16">ĐVT</th>
+                    <th className="py-2.5 px-3 w-28">PHIẾU GIAO</th>
+                    <th className="py-2.5 px-3 text-right w-20">SL ĐẶT</th>
+                    <th className="py-2.5 px-3 text-right w-24 bg-indigo-50/70 text-indigo-900 font-extrabold">
+                      SL THỰC GIAO
+                    </th>
+                    <th className="py-2.5 px-3 text-right w-28">ĐƠN GIÁ</th>
+                    <th className="py-2.5 px-3 text-right w-32">THÀNH TIỀN</th>
                   </tr>
-                ) : (
-                  previewLines.map((line, idx) => (
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {previewLines.map((line, idx) => (
                     <tr key={`${line.slipId}-${line.productSku}-${idx}`} className="hover:bg-slate-50/70">
                       <td className="py-2.5 px-3">
                         <div className="font-mono text-[11px] text-slate-400">{line.productSku}</div>
@@ -804,12 +788,12 @@ export const CreateInvoicePage: React.FC = () => {
                         {formatCurrency(line.lineTotal)}
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* =================================================================== */}
         {/* KHỐI 4: GHI CHÚ & TỔNG TIỀN HÓA ĐƠN (XẾP THÀNH 1 HÀNG DỌC)        */}
