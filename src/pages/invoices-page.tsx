@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Search,
   ScrollText,
@@ -13,7 +13,6 @@ import type { InvoiceItem } from '../services/invoices.service';
 import { invoicesService } from '../services/invoices.service';
 import { InvoiceDetailModal } from '../components/invoice-detail-modal';
 import { RecordPaymentModal } from '../components/record-payment-modal';
-import { IssueInvoiceModal } from '../components/issue-invoice-modal';
 import { Pagination } from '../components/pagination';
 import { showToast } from '../components/toast';
 
@@ -60,6 +59,7 @@ const INVOICE_STATUS_BADGES: Record<
 };
 
 export const InvoicesPage: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [page, setPage] = useState<number>(() => {
@@ -82,7 +82,6 @@ export const InvoicesPage: React.FC = () => {
   const [totalInvoicePages, setTotalInvoicePages] = useState<number>(1);
   const [selectedInvoiceForDetail, setSelectedInvoiceForDetail] = useState<InvoiceItem | null>(null);
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<InvoiceItem | null>(null);
-  const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
 
   // Loading state
   const [loading, setLoading] = useState(false);
@@ -280,7 +279,7 @@ export const InvoicesPage: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setIsIssueModalOpen(true)}
+            onClick={() => navigate('/accounting/invoices/create')}
             className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-lg shadow-xs transition-all cursor-pointer shrink-0"
             title="Phát hành hóa đơn bán hàng từ phiếu thực giao"
           >
@@ -531,16 +530,6 @@ export const InvoicesPage: React.FC = () => {
         onClose={() => setSelectedInvoiceForPayment(null)}
         onSuccess={() => {
           void fetchInvoices();
-        }}
-      />
-
-      {/* Modal phát hành hóa đơn mới từ phiếu thực giao (SN-200) */}
-      <IssueInvoiceModal
-        isOpen={isIssueModalOpen}
-        onClose={() => setIsIssueModalOpen(false)}
-        onSuccess={(newInvoice) => {
-          void fetchInvoices();
-          setSelectedInvoiceForDetail(newInvoice);
         }}
       />
     </div>

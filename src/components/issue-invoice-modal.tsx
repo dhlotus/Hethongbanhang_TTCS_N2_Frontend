@@ -23,6 +23,7 @@ import {
 import { customerService } from '../services/customer.service';
 import { type Customer } from '../types/customer.types';
 import { showToast } from './toast';
+import { matchesSearchTerm } from '../utils/vietnamese';
 
 interface IssueInvoiceModalProps {
   isOpen: boolean;
@@ -223,15 +224,15 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
     };
   }, [selectedCustomer]);
 
-  // Lọc danh sách đại lý theo từ khóa tìm kiếm
+  // Lọc danh sách đại lý theo từ khóa tìm kiếm (hỗ trợ tiếng Việt không dấu)
   const filteredCustomers = useMemo(() => {
-    const q = customerSearchTerm.trim().toLowerCase();
-    if (!q) return customers;
+    if (!customerSearchTerm.trim()) return customers;
     return customers.filter(
       (c) =>
-        c.name.toLowerCase().includes(q) ||
-        (c.code && c.code.toLowerCase().includes(q)) ||
-        c.id.toLowerCase().includes(q),
+        matchesSearchTerm(c.name, customerSearchTerm) ||
+        matchesSearchTerm(c.code, customerSearchTerm) ||
+        (c.address && matchesSearchTerm(c.address, customerSearchTerm)) ||
+        (c.taxCode && matchesSearchTerm(c.taxCode, customerSearchTerm)),
     );
   }, [customers, customerSearchTerm]);
 

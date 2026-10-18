@@ -5,6 +5,7 @@ import { ForgotPasswordPage } from '../pages/forgot-password-page';
 import { ResetPasswordPage } from '../pages/reset-password-page';
 import { ChangePasswordPage } from '../pages/change-password-page';
 import { InvoicesPage } from '../pages/invoices-page';
+import { CreateInvoicePage } from '../pages/create-invoice-page';
 import { ReceiptsPage } from '../pages/receipts-page';
 import { ProductsPage } from '../pages/products-page';
 import { ProductEditPage } from '../pages/product-edit-page';
@@ -419,6 +420,18 @@ export const AppRoutes: React.FC = () => {
               <Route
                 path="/accounting/invoices"
                 element={<InvoicesPage />}
+              />
+              <Route
+                path="/accounting/invoices/create"
+                element={<CreateInvoicePage />}
+              />
+              <Route
+                path="/invoices/create"
+                element={<Navigate to="/accounting/invoices/create" replace />}
+              />
+              <Route
+                path="/invoices"
+                element={<Navigate to="/accounting/invoices" replace />}
               />
               <Route
                 path="/accounting/payments"
