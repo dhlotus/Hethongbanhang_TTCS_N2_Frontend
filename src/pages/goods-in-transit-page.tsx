@@ -4,6 +4,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  X,
 } from 'lucide-react';
 import { deliveryTripsService } from '../services/delivery-trips.service';
 import type {
@@ -204,202 +205,206 @@ export const GoodsInTransitPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-3.5 pb-12">
-      {/* ================================================================= */}
-      {/* 1. HEADER CHUẨN LOHA SALES                                        */}
-      {/* ================================================================= */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <main className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
+      {/* 1. PAGE HEADER (CHUẨN THIẾT KẾ QUẢN LÝ KHO) */}
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 mb-0.5">
-            <span>Quản lý Kho vận</span>
-            <span>/</span>
-            <span className="text-slate-800 font-medium">Hàng xuất trên đường</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Truck className="w-6 h-6 text-indigo-600 shrink-0" />
-            <span>Theo dõi hàng đã xuất trên đường</span>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Theo dõi hàng đã xuất trên đường
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Theo dõi tiền hàng luân chuyển, giám sát điểm đã giao và cảnh báo chuyến đi quá thời gian dự kiến (ETA).
+          <p className="mt-1 text-sm text-slate-500">
+            Theo dõi tiền hàng luân chuyển, giám sát điểm đã giao và đối soát chuyến đi giao hàng.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => fetchData(true)}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 shadow-xs transition-all cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-600' : ''}`} />
+            <RefreshCw size={16} className={loading ? 'animate-spin text-[#371cdb]' : ''} />
             <span>Làm mới</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-2xs cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#371cdb] hover:bg-[#2d14b8] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-all cursor-pointer active:scale-95"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus size={16} />
             <span>Lập chuyến đi mới</span>
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* ================================================================= */}
-      {/* 3. THẺ THỐNG KÊ KPI TIỀN HÀNG TRÊN ĐƯỜNG                          */}
-      {/* ================================================================= */}
+      {/* 2. THỐNG KÊ TỔNG QUAN (KPI SUMMARY) */}
       <TripStatsCards stats={stats} loading={loading} />
 
-      {/* ================================================================= */}
-      {/* 4. BỘ LỌC VÀ THANH TÌM KIẾM CHUẨN LOHA SALES                      */}
-      {/* ================================================================= */}
-      <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-3.5 shadow-2xs space-y-3">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* Tabs bộ lọc */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-            <button
-              type="button"
-              onClick={() => setActiveTab('ALL')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'ALL'
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              Tất cả ({counts.all})
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('IN_TRANSIT_ON_TIME')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'IN_TRANSIT_ON_TIME'
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              Đang chạy đúng giờ ({counts.onTime})
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('OVERDUE')}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'OVERDUE'
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <span>Quá hạn dự kiến</span>
-              <span
-                className={`ml-1 px-1.5 py-0.2 rounded text-3xs font-semibold ${
-                  activeTab === 'OVERDUE'
-                    ? 'bg-rose-500 text-white'
-                    : counts.overdue > 0
-                    ? 'bg-rose-100 text-rose-700'
-                    : 'bg-slate-100 text-slate-600'
-                }`}
-              >
-                {counts.overdue}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('COMPLETED')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'COMPLETED'
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              Đã hoàn tất ({counts.completed})
-            </button>
+      {/* 3. DANH SÁCH CHUYẾN XE (CONTAINER CHUẨN QUẢN LÝ KHO) */}
+      <section className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
+        {/* THANH TÌM KIẾM & BỘ LỌC TRẠNG THÁI */}
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eff2fe] text-[#371cdb]">
+              <Truck size={20} />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                Danh sách chuyến xe
+                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                  {filteredTrips.length}
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500">
+                Giám sát lộ trình, tiến độ giao điểm dừng và đối soát hàng chưa giao về kho
+              </p>
+            </div>
           </div>
 
-          {/* Ô tìm kiếm & Chọn kho */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* Thanh tìm kiếm */}
+            <div className="relative min-w-[260px] lg:min-w-[320px]">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <Search size={16} />
+              </div>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Mã chuyến, biển số, tài xế..."
-                className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none bg-slate-50/60 hover:bg-white focus:bg-white"
+                placeholder="Tìm theo mã chuyến, biển số, tài xế..."
+                className="w-full h-10.5 pl-10 pr-8 rounded-xl text-xs sm:text-sm bg-slate-50/80 border border-slate-200 text-slate-900 placeholder-slate-400 transition-all outline-none focus:bg-white focus:ring-4 focus:ring-[#371cdb]/10 focus:border-[#371cdb]"
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
 
+            {/* Select kho xuất phát */}
             <select
               value={selectedWarehouseId}
               onChange={(e) => setSelectedWarehouseId(e.target.value)}
-              className="py-1.5 px-2.5 rounded-lg border border-slate-200 text-xs bg-white text-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+              className="h-10.5 px-3 rounded-xl border border-slate-200 text-xs sm:text-sm bg-slate-50/80 text-slate-700 outline-none focus:bg-white focus:border-[#371cdb]"
             >
               <option value="ALL">Tất cả kho xuất</option>
               <option value="wh-001">Kho Tổng Miền Bắc - LOHA WH01</option>
               <option value="wh-002">Kho Tổng Miền Nam - LOHA WH02</option>
             </select>
-          </div>
-        </div>
-      </div>
 
-      {/* ================================================================= */}
-      {/* 5. DANH SÁCH CÁC CHUYẾN ĐI (GRID CARDS)                           */}
-      {/* ================================================================= */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((n) => (
-            <div
-              key={n}
-              className="h-72 rounded-xl bg-white border border-slate-200 p-4 animate-pulse space-y-3"
-            >
-              <div className="h-5 w-1/2 bg-slate-200 rounded" />
-              <div className="h-4 w-3/4 bg-slate-100 rounded" />
-              <div className="h-16 bg-slate-50 rounded" />
-              <div className="h-8 bg-slate-100 rounded" />
+            {/* Bộ lọc trạng thái dạng Pills */}
+            <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveTab('ALL')}
+                className={`rounded-lg px-3 py-2 font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === 'ALL'
+                    ? 'bg-[#371cdb] text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+              >
+                Tất cả ({counts.all})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('IN_TRANSIT_ON_TIME')}
+                className={`rounded-lg px-3 py-2 font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === 'IN_TRANSIT_ON_TIME'
+                    ? 'bg-[#371cdb] text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+              >
+                Đúng giờ ({counts.onTime})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('OVERDUE')}
+                className={`rounded-lg px-3 py-2 font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === 'OVERDUE'
+                    ? 'bg-[#371cdb] text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+              >
+                Quá hạn ({counts.overdue})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('COMPLETED')}
+                className={`rounded-lg px-3 py-2 font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === 'COMPLETED'
+                    ? 'bg-[#371cdb] text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+              >
+                Đã hoàn tất ({counts.completed})
+              </button>
             </div>
-          ))}
-        </div>
-      ) : filteredTrips.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center space-y-2.5">
-          <div className="w-11 h-11 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center mx-auto">
-            <Truck className="w-5 h-5" />
           </div>
-          <h3 className="font-semibold text-slate-800 text-sm">Không tìm thấy chuyến đi nào</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Không có chuyến xe nào khớp với điều kiện lọc hiện tại.
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('ALL');
-              setSearchTerm('');
-              setSelectedWarehouseId('ALL');
-            }}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
-          >
-            Đặt lại bộ lọc
-          </button>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTrips.map((trip) => (
-            <TripCard
-              key={trip.id}
-              trip={trip}
-              onOpenDetails={(t) => {
-                setSelectedTripForDetail(t);
-                setIsDetailModalOpen(true);
-              }}
-              onOpenReturnCheckin={(t) => {
-                setSelectedTripForCheckin(t);
-                setIsCheckinModalOpen(true);
-              }}
-            />
-          ))}
+
+        {/* Danh sách các chuyến đi dạng Grid */}
+        <div className="p-4 sm:p-5 bg-slate-50/50">
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+              {[1, 2, 3].map((n) => (
+                <div
+                  key={n}
+                  className="h-72 rounded-2xl bg-white border border-slate-200/90 p-5 animate-pulse space-y-3"
+                >
+                  <div className="h-5 w-1/2 bg-slate-200 rounded" />
+                  <div className="h-4 w-3/4 bg-slate-100 rounded" />
+                  <div className="h-16 bg-slate-50 rounded" />
+                  <div className="h-8 bg-slate-100 rounded" />
+                </div>
+              ))}
+            </div>
+          ) : filteredTrips.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center space-y-3">
+              <div className="w-12 h-12 rounded-xl bg-[#eff2fe] text-[#371cdb] flex items-center justify-center mx-auto ring-1 ring-[#371cdb]/20">
+                <Truck size={24} />
+              </div>
+              <h3 className="font-bold text-slate-800 text-base">Không tìm thấy chuyến đi nào</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Không có chuyến xe nào khớp với điều kiện lọc hiện tại.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('ALL');
+                  setSearchTerm('');
+                  setSelectedWarehouseId('ALL');
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs"
+              >
+                Đặt lại bộ lọc
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+              {filteredTrips.map((trip) => (
+                <TripCard
+                  key={trip.id}
+                  trip={trip}
+                  onOpenDetails={(t) => {
+                    setSelectedTripForDetail(t);
+                    setIsDetailModalOpen(true);
+                  }}
+                  onOpenReturnCheckin={(t) => {
+                    setSelectedTripForCheckin(t);
+                    setIsCheckinModalOpen(true);
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </section>
 
       {/* Modal chi tiết điểm dừng */}
       <TripDetailModal
@@ -434,6 +439,6 @@ export const GoodsInTransitPage: React.FC = () => {
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateTrip}
       />
-    </div>
+    </main>
   );
 };

@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Truck,
-  AlertTriangle,
+  Clock,
   RotateCcw,
   CheckCircle2,
 } from 'lucide-react';
@@ -14,132 +14,102 @@ interface TripStatsCardsProps {
 }
 
 /**
- * Thẻ thống kê KPI Tiền hàng trên đường chuẩn LOHA SALES (Thiết kế nhỏ gọn, rõ ràng, không bị tràn chữ)
+ * Thẻ thống kê KPI Tiền hàng trên đường chuẩn thiết kế Quản lý kho (LOHA SALES)
  */
 export const TripStatsCards: React.FC<TripStatsCardsProps> = ({ stats, loading = false }) => {
   const isOverdue = (stats?.overdueTripsCount || 0) > 0;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* 1. Tiền hàng trên đường */}
-      <div className="bg-white p-3 rounded-lg border border-slate-200/90 shadow-2xs hover:border-slate-300 transition-colors">
-        <div className="flex items-center justify-between gap-1.5 mb-1.5">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <div className="w-6 h-6 rounded-md bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-              <Truck className="w-3.5 h-3.5" />
-            </div>
-            <span className="text-xs font-semibold text-slate-600 truncate">Tiền trên đường</span>
-          </div>
-          <span className="text-3xs font-semibold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
-            {stats?.activeTripsCount || 0} xe
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-4.5 shadow-2xs flex items-center justify-between">
+        <div className="min-w-0 pr-2">
+          <span className="text-xs font-medium text-slate-500 block mb-1">Tiền trên đường</span>
+          <span className="text-2xl font-extrabold font-mono tracking-tight text-slate-900 block truncate">
+            {loading ? (
+              <span className="inline-block h-7 w-28 bg-slate-200 animate-pulse rounded" />
+            ) : (
+              formatVndCurrency(stats?.totalGoodsValueInTransit || 0)
+            )}
+          </span>
+          <span className="text-[11px] text-slate-400 block mt-0.5 truncate">
+            Đang luân chuyển ({stats?.activeTripsCount || 0} xe)
           </span>
         </div>
-
-        <div className="text-lg font-bold font-mono tracking-tight text-slate-900 truncate">
-          {loading ? (
-            <div className="h-6 w-24 bg-slate-200 animate-pulse rounded" />
-          ) : (
-            formatVndCurrency(stats?.totalGoodsValueInTransit || 0)
-          )}
-        </div>
-
-        <div className="text-2xs text-slate-400 mt-1 truncate">
-          Đang luân chuyển giao hàng
+        <div className="h-11 w-11 rounded-xl bg-[#eff2fe] text-[#371cdb] flex items-center justify-center shrink-0 ring-1 ring-[#371cdb]/20">
+          <Truck size={22} />
         </div>
       </div>
 
-      {/* 2. Chuyến quá hạn ETA */}
-      <div className="bg-white p-3 rounded-lg border border-slate-200/90 shadow-2xs hover:border-slate-300 transition-colors">
-        <div className="flex items-center justify-between gap-1.5 mb-1.5">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <div
-              className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
-                isOverdue
-                  ? 'bg-rose-50 text-rose-600'
-                  : 'bg-slate-100 text-slate-500'
-              }`}
-            >
-              <AlertTriangle className="w-3.5 h-3.5" />
-            </div>
-            <span className="text-xs font-semibold text-slate-600 truncate">Quá hạn ETA</span>
-          </div>
-          {isOverdue ? (
-            <span className="text-3xs font-medium px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200/70 shrink-0">
-              Cần xử lý
-            </span>
-          ) : (
-            <span className="text-3xs font-medium px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-              Đúng giờ
-            </span>
-          )}
-        </div>
-
-        <div className="text-lg font-bold font-mono tracking-tight text-slate-900 truncate">
-          {loading ? (
-            <div className="h-6 w-16 bg-slate-200 animate-pulse rounded" />
-          ) : (
-            `${stats?.overdueTripsCount || 0} chuyến`
-          )}
-        </div>
-
-        <div className="text-2xs text-slate-400 mt-1 truncate">
-          {isOverdue ? 'Vượt mốc cam kết' : 'Đúng tiến độ cam kết'}
-        </div>
-      </div>
-
-      {/* 3. Hàng giữ trên xe (Chưa về kho) */}
-      <div className="bg-white p-3 rounded-lg border border-slate-200/90 shadow-2xs hover:border-slate-300 transition-colors">
-        <div className="flex items-center justify-between gap-1.5 mb-1.5">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <div className="w-6 h-6 rounded-md bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-              <RotateCcw className="w-3.5 h-3.5" />
-            </div>
-            <span className="text-xs font-semibold text-slate-600 truncate">Hàng giữ trên xe</span>
-          </div>
-          <span className="text-3xs font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
-            Chưa về kho
+      {/* 2. Quá hạn ETA */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-4.5 shadow-2xs flex items-center justify-between">
+        <div className="min-w-0 pr-2">
+          <span className="text-xs font-medium text-slate-500 block mb-1">Quá hạn ETA</span>
+          <span
+            className={`text-2xl font-extrabold font-mono tracking-tight block truncate ${
+              isOverdue ? 'text-rose-600' : 'text-slate-900'
+            }`}
+          >
+            {loading ? (
+              <span className="inline-block h-7 w-20 bg-slate-200 animate-pulse rounded" />
+            ) : (
+              `${stats?.overdueTripsCount || 0} chuyến`
+            )}
+          </span>
+          <span className="text-[11px] text-slate-400 block mt-0.5 truncate">
+            {isOverdue ? 'Vượt mốc cam kết' : 'Đúng tiến độ cam kết'}
           </span>
         </div>
-
-        <div className="text-lg font-bold font-mono tracking-tight text-slate-900 truncate">
-          {loading ? (
-            <div className="h-6 w-24 bg-slate-200 animate-pulse rounded" />
-          ) : (
-            formatVndCurrency(stats?.totalRetainedUndeliveredValue || 0)
-          )}
-        </div>
-
-        <div className="text-2xs text-amber-700 font-medium mt-1 truncate">
-          Chờ đối soát về kho
+        <div
+          className={`h-11 w-11 rounded-xl flex items-center justify-center shrink-0 ring-1 ${
+            isOverdue
+              ? 'bg-rose-50 text-rose-600 ring-rose-500/20'
+              : 'bg-emerald-50 text-emerald-600 ring-emerald-500/20'
+          }`}
+        >
+          <Clock size={22} />
         </div>
       </div>
 
-      {/* 4. Điểm dừng chờ giao */}
-      <div className="bg-white p-3 rounded-lg border border-slate-200/90 shadow-2xs hover:border-slate-300 transition-colors">
-        <div className="flex items-center justify-between gap-1.5 mb-1.5">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <div className="w-6 h-6 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-            </div>
-            <span className="text-xs font-semibold text-slate-600 truncate">Điểm chờ giao</span>
-          </div>
-          <span className="text-3xs font-semibold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-            Chưa bàn giao
+      {/* 3. Hàng giữ trên xe */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-4.5 shadow-2xs flex items-center justify-between">
+        <div className="min-w-0 pr-2">
+          <span className="text-xs font-medium text-slate-500 block mb-1">Hàng giữ trên xe</span>
+          <span className="text-2xl font-extrabold font-mono tracking-tight text-slate-900 block truncate">
+            {loading ? (
+              <span className="inline-block h-7 w-28 bg-slate-200 animate-pulse rounded" />
+            ) : (
+              formatVndCurrency(stats?.totalRetainedUndeliveredValue || 0)
+            )}
+          </span>
+          <span className="text-[11px] text-slate-400 block mt-0.5 truncate">
+            Chờ đối soát về kho
           </span>
         </div>
-
-        <div className="text-lg font-bold font-mono tracking-tight text-slate-900 truncate">
-          {loading ? (
-            <div className="h-6 w-16 bg-slate-200 animate-pulse rounded" />
-          ) : (
-            `${stats?.totalRemainingStops || 0} điểm dừng`
-          )}
-        </div>
-
-        <div className="text-2xs text-slate-400 mt-1 truncate">
-          Hôm nay xong {stats?.completedTripsToday || 0} chuyến
+        <div className="h-11 w-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 ring-1 ring-amber-500/20">
+          <RotateCcw size={22} />
         </div>
       </div>
-    </div>
+
+      {/* 4. Điểm chờ giao */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-4.5 shadow-2xs flex items-center justify-between">
+        <div className="min-w-0 pr-2">
+          <span className="text-xs font-medium text-slate-500 block mb-1">Điểm chờ giao</span>
+          <span className="text-2xl font-extrabold font-mono tracking-tight text-slate-900 block truncate">
+            {loading ? (
+              <span className="inline-block h-7 w-20 bg-slate-200 animate-pulse rounded" />
+            ) : (
+              `${stats?.totalRemainingStops || 0} điểm`
+            )}
+          </span>
+          <span className="text-[11px] text-slate-400 block mt-0.5 truncate">
+            Hôm nay xong {stats?.completedTripsToday || 0} chuyến
+          </span>
+        </div>
+        <div className="h-11 w-11 rounded-xl bg-[#eff2fe] text-[#371cdb] flex items-center justify-center shrink-0 ring-1 ring-[#371cdb]/20">
+          <CheckCircle2 size={22} />
+        </div>
+      </div>
+    </section>
   );
 };
