@@ -96,6 +96,16 @@ const getPageHeaderInfo = (
       ],
     };
   }
+  if (pathname === '/accounting/invoices/create' || pathname === '/invoices/create') {
+    return {
+      title: 'Phát hành Hóa đơn Bán hàng',
+      category: 'Hóa đơn & Chứng từ',
+      breadcrumbs: [
+        { label: 'Hóa đơn & Chứng từ', path: '/accounting/invoices' },
+        { label: 'Phát hành Hóa đơn Bán hàng' },
+      ],
+    };
+  }
   if (pathname === '/portal/orders/confirm' || pathname === '/portal/orders/create') {
     return {
       title: 'Xác nhận đơn hàng',

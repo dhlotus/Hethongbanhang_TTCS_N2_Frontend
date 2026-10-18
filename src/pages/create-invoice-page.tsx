@@ -47,6 +47,38 @@ const formatDate = (dateStr?: string): string => {
   }
 };
 
+const getCustomerGroupBadge = (group?: string) => {
+  const normalized = (group || '').toUpperCase();
+  if (normalized === 'AGENT_LEVEL_1') {
+    return {
+      label: 'Đại lý Cấp 1',
+      badgeClass: 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold shadow-xs',
+    };
+  }
+  if (normalized === 'AGENT_LEVEL_2') {
+    return {
+      label: 'Đại lý Cấp 2',
+      badgeClass: 'bg-sky-100 text-sky-800 border border-sky-300 font-semibold shadow-xs',
+    };
+  }
+  if (normalized === 'WHOLESALE') {
+    return {
+      label: 'Bán buôn',
+      badgeClass: 'bg-teal-100 text-teal-800 border border-teal-300 font-semibold shadow-xs',
+    };
+  }
+  if (normalized === 'RETAIL') {
+    return {
+      label: 'Bán lẻ',
+      badgeClass: 'bg-amber-100 text-amber-800 border border-amber-300 font-semibold shadow-xs',
+    };
+  }
+  return {
+    label: group || 'Đại lý',
+    badgeClass: 'bg-slate-100 text-slate-800 border border-slate-300 font-semibold shadow-xs',
+  };
+};
+
 export const CreateInvoicePage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -89,11 +121,12 @@ export const CreateInvoicePage: React.FC = () => {
         setUnbilledSlips(slipsRes);
 
         // Khởi tạo chọn đại lý: ưu tiên theo query param, hoặc đại lý đầu tiên có phiếu giao
+        // Để trống customerSearchTerm để ô input hiển thị placeholder mờ như trang tạo đơn hàng
         if (initialCustomerId) {
           const found = customerList.find((c: Customer) => c.id === initialCustomerId || c.code === initialCustomerId);
           if (found) {
             setSelectedCustomerId(found.id);
-            setCustomerSearchTerm(found.name);
+            setCustomerSearchTerm('');
             const matching = slipsRes.filter((s: UnbilledDeliverySlip) => isMatchingCustomer(s, found.id, found));
             setSelectedSlipIds(matching.map((s: UnbilledDeliverySlip) => s.id));
             return;
@@ -104,11 +137,10 @@ export const CreateInvoicePage: React.FC = () => {
           const firstCustomerId = slipsRes[0].customerId;
           setSelectedCustomerId(firstCustomerId);
           setSelectedSlipIds([slipsRes[0].id]);
-          const found = customerList.find((c: Customer) => c.id === firstCustomerId);
-          if (found) setCustomerSearchTerm(found.name);
+          setCustomerSearchTerm('');
         } else if (customerList.length > 0) {
           setSelectedCustomerId(customerList[0].id);
-          setCustomerSearchTerm(customerList[0].name);
+          setCustomerSearchTerm('');
         }
       } catch {
         showToast('error', 'Không thể tải danh sách phiếu giao hàng chờ lập hóa đơn');
@@ -129,11 +161,13 @@ export const CreateInvoicePage: React.FC = () => {
     const handleDocumentClick = (e: MouseEvent) => {
       if (customerDropdownRef.current && !customerDropdownRef.current.contains(e.target as Node)) {
         setIsCustomerDropdownOpen(false);
+        setCustomerSearchTerm('');
       }
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsCustomerDropdownOpen(false);
+        setCustomerSearchTerm('');
       }
     };
     document.addEventListener('mousedown', handleDocumentClick);
@@ -199,7 +233,7 @@ export const CreateInvoicePage: React.FC = () => {
   // Xử lý khi chọn một đại lý từ danh sách tìm kiếm
   const handleSelectCustomer = (customer: Customer) => {
     setSelectedCustomerId(customer.id);
-    setCustomerSearchTerm(customer.name);
+    setCustomerSearchTerm('');
     setIsCustomerDropdownOpen(false);
 
     // Mặc định chọn tất cả phiếu giao của đại lý này để hỗ trợ gộp nhanh
@@ -310,42 +344,6 @@ export const CreateInvoicePage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto space-y-5 p-3 sm:p-6 pb-24">
-      {/* =================================================================== */}
-      {/* 1. THANH HEADER ĐIỀU HƯỚNG & TIÊU ĐỀ TRANG CON                      */}
-      {/* =================================================================== */}
-      <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <Link
-            to="/accounting/invoices"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shrink-0 shadow-2xs"
-            title="Quay lại danh sách hóa đơn"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Quay lại</span>
-          </Link>
-          <div className="h-4 w-px bg-slate-200 hidden sm:block" />
-          <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
-              <Receipt className="h-5 w-5" />
-            </div>
-            <div>
-              <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
-                Phát hành Hóa đơn Bán hàng
-              </h1>
-              <p className="text-xs text-slate-500">
-                Lập hóa đơn tài chính theo số lượng hàng THỰC GIAO từ phiếu giao đã ký nhận
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200">
-            {slipsForCurrentCustomer.length} phiếu khả dụng
-          </span>
-        </div>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* =================================================================== */}
         {/* KHỐI 1: THÔNG TIN ĐẠI LÝ & HẠN THANH TOÁN                           */}
@@ -353,15 +351,31 @@ export const CreateInvoicePage: React.FC = () => {
         {/* =================================================================== */}
         <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-indigo-600" />
-              <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                Thông tin đại lý & Hạn thanh toán
-              </h2>
+            <div className="flex items-center gap-2.5">
+              <Link
+                to="/accounting/invoices"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shrink-0 shadow-2xs"
+                title="Quay lại danh sách hóa đơn"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Quay lại</span>
+              </Link>
+              <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-indigo-600" />
+                <h2 className="text-base font-bold text-slate-900">
+                  Thông tin đại lý & Hạn thanh toán
+                </h2>
+              </div>
             </div>
-            <span className="text-xs text-slate-400 font-medium">
-              {customers.length} đại lý trong hệ thống
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400 font-medium">
+                {customers.length} đại lý trong hệ thống
+              </span>
+              <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
+                {slipsForCurrentCustomer.length} phiếu chờ gộp
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -487,6 +501,7 @@ export const CreateInvoicePage: React.FC = () => {
                         filteredCustomers.map((c) => {
                           const isSelected = selectedCustomer?.id === c.id;
                           const slipCount = getSlipCountForCustomer(c);
+                          const groupBadge = getCustomerGroupBadge(c.customerGroup || (c as { group?: string }).group);
 
                           return (
                             <div
@@ -520,14 +535,17 @@ export const CreateInvoicePage: React.FC = () => {
 
                               <div className="flex items-center gap-2 shrink-0 pt-0.5 sm:pt-0">
                                 <span
-                                  className={`text-[10px] px-2.5 py-1 rounded-full font-semibold border ${
-                                    slipCount > 0
-                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                      : 'bg-slate-100 text-slate-500 border-slate-200'
-                                  }`}
+                                  className={`text-[10px] px-2.5 py-1 rounded-full font-semibold shadow-2xs ${groupBadge.badgeClass}`}
                                 >
-                                  {slipCount} phiếu chờ
+                                  {groupBadge.label}
                                 </span>
+                                {slipCount > 0 && (
+                                  <span
+                                    className="text-[10px] px-2 py-0.5 rounded-full font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  >
+                                    {slipCount} phiếu chờ
+                                  </span>
+                                )}
                                 {isSelected && (
                                   <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                                     <Check className="w-3.5 h-3.5" />
