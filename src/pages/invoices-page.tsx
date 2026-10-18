@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Search,
   FileSpreadsheet,
@@ -143,17 +143,10 @@ const RECEIPT_METHOD_BADGES: Record<
 };
 
 export const InvoicesPage: React.FC = () => {
-  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Khôi phục giá trị ban đầu từ URL Query Parameters
-  const initialTab: TabKey = useMemo(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam === 'receipts' || location.pathname.includes('payments')) {
-      return 'RECEIPTS';
-    }
-    return 'INVOICES';
-  }, [location.pathname, searchParams]);
+  // Cố định tab Hóa đơn bán hàng
+  const initialTab: TabKey = 'INVOICES';
 
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [page, setPage] = useState<number>(() => {
@@ -168,10 +161,6 @@ export const InvoicesPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>(() => {
     const s = searchParams.get('status') || 'ALL';
     return s === 'PARTIAL' ? 'PARTIALLY_PAID' : s;
-  });
-  const [methodFilter, setMethodFilter] = useState<'ALL' | 'CASH' | 'BANK_TRANSFER'>(() => {
-    const m = searchParams.get('method');
-    return m === 'CASH' || m === 'BANK_TRANSFER' ? m : 'ALL';
   });
 
   // State Hóa đơn bán hàng
@@ -200,7 +189,6 @@ export const InvoicesPage: React.FC = () => {
       limit?: number;
       search?: string;
       status?: string;
-      method?: string;
     }) => {
       setSearchParams(
         (prev) => {
@@ -242,43 +230,28 @@ export const InvoicesPage: React.FC = () => {
             next.delete('status');
           }
 
-          const nextMethod =
-            newParams.method !== undefined ? newParams.method : methodFilter;
-          if (nextMethod && nextMethod !== 'ALL') {
-            next.set('method', nextMethod);
-          } else {
-            next.delete('method');
-          }
-
           return next;
         },
         { replace: true }
       );
     },
-    [activeTab, page, limit, searchTerm, statusFilter, methodFilter, setSearchParams]
+    [activeTab, page, limit, searchTerm, statusFilter, setSearchParams]
   );
 
   // Lắng nghe thay đổi query params trên URL (hỗ trợ nút Back / Forward trình duyệt)
   useEffect(() => {
-    const tabParam = searchParams.get('tab');
-    const newTab: TabKey =
-      tabParam === 'receipts' || location.pathname.includes('payments')
-        ? 'RECEIPTS'
-        : 'INVOICES';
     const newPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
     const newLimit = Math.max(1, parseInt(searchParams.get('limit') || '10', 10) || 10);
     const newSearch = searchParams.get('search') || '';
     const rawStatus = searchParams.get('status') || 'ALL';
     const newStatus = rawStatus === 'PARTIAL' ? 'PARTIALLY_PAID' : rawStatus;
-    const newMethod = (searchParams.get('method') as 'ALL' | 'CASH' | 'BANK_TRANSFER') || 'ALL';
 
-    setActiveTab(newTab);
+    setActiveTab('INVOICES');
     setPage(newPage);
     setLimit(newLimit);
     setSearchTerm(newSearch);
     setStatusFilter(newStatus);
-    setMethodFilter(newMethod);
-  }, [searchParams, location.pathname]);
+  }, [searchParams]);
 
   // Tải danh sách Hóa đơn từ Backend với phân trang
   const fetchInvoices = useCallback(async () => {
@@ -308,7 +281,6 @@ export const InvoicesPage: React.FC = () => {
         page,
         limit,
         search: searchTerm.trim() || undefined,
-        paymentMethod: methodFilter !== 'ALL' ? methodFilter : undefined,
       });
       setReceipts(res.data);
       setTotalReceipts(res.total);
@@ -325,9 +297,6 @@ export const InvoicesPage: React.FC = () => {
             r.customerCode.toLowerCase().includes(q),
         );
       }
-      if (methodFilter !== 'ALL') {
-        demoList = demoList.filter((r) => r.paymentMethod === methodFilter);
-      }
       const total = demoList.length;
       const totalPages = Math.ceil(total / limit) || 1;
       const offset = (page - 1) * limit;
@@ -337,34 +306,22 @@ export const InvoicesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, searchTerm, methodFilter]);
+  }, [page, limit, searchTerm]);
 
-  // Đồng bộ số lượng hóa đơn và phiếu thu cho các tab badge
+  // Đồng bộ số lượng hóa đơn cho badge
   const refreshBadgeCounts = useCallback(async () => {
     try {
-      const [invRes, rcptRes] = await Promise.allSettled([
-        invoicesService.getPaginatedInvoices({ page: 1, limit: 1 }),
-        receiptsService.getPaginatedReceipts({ page: 1, limit: 1 }),
-      ]);
-      if (invRes.status === 'fulfilled') {
-        setTotalInvoices(invRes.value.total);
-      }
-      if (rcptRes.status === 'fulfilled') {
-        setTotalReceipts(rcptRes.value.total);
-      }
+      const invRes = await invoicesService.getPaginatedInvoices({ page: 1, limit: 1 });
+      setTotalInvoices(invRes.total);
     } catch {
       // Bỏ qua lỗi ngầm
     }
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'INVOICES') {
-      void fetchInvoices();
-    } else {
-      void reloadReceipts();
-    }
+    void fetchInvoices();
     void refreshBadgeCounts();
-  }, [activeTab, fetchInvoices, reloadReceipts, refreshBadgeCounts]);
+  }, [fetchInvoices, refreshBadgeCounts]);
 
   // In hóa đơn bán hàng (SN-200 ý 5 & SN-207)
   const handlePrintInvoice = async (invoiceId: string) => {
@@ -386,14 +343,6 @@ export const InvoicesPage: React.FC = () => {
     }
   };
 
-  // Xử lý chuyển tab
-  const handleTabChange = (newTab: TabKey) => {
-    if (newTab === activeTab) return;
-    setActiveTab(newTab);
-    setPage(1);
-    updateUrlParams({ tab: newTab, page: 1 });
-  };
-
   // Xử lý thay đổi tìm kiếm
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
@@ -408,20 +357,12 @@ export const InvoicesPage: React.FC = () => {
     updateUrlParams({ status: value, page: 1 });
   };
 
-  // Xử lý thay đổi bộ lọc hình thức phiếu thu
-  const handleMethodChange = (value: 'ALL' | 'CASH' | 'BANK_TRANSFER') => {
-    setMethodFilter(value);
-    setPage(1);
-    updateUrlParams({ method: value, page: 1 });
-  };
-
   // Đặt lại toàn bộ bộ lọc
   const handleResetFilters = () => {
     setSearchTerm('');
     setStatusFilter('ALL');
-    setMethodFilter('ALL');
     setPage(1);
-    updateUrlParams({ search: '', status: 'ALL', method: 'ALL', page: 1 });
+    updateUrlParams({ search: '', status: 'ALL', page: 1 });
   };
 
   // Xử lý chuyển trang
@@ -518,64 +459,27 @@ export const InvoicesPage: React.FC = () => {
     <div className="space-y-4 w-full">
       {/* ── THANH ĐIỀU HƯỚNG TABS & NÚT HÀNH ĐỘNG GỌN GÀNG ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        {/* Nhóm Tabs chuyển đổi Segmented Control */}
+        {/* Nhãn Hóa đơn bán hàng */}
         <div className="inline-flex p-1 rounded-xl bg-slate-100/90 border border-slate-200/80 shadow-2xs max-w-fit">
-          <button
-            type="button"
-            onClick={() => handleTabChange('INVOICES')}
-            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer outline-none focus:outline-none ${
-              activeTab === 'INVOICES'
-                ? 'bg-white text-[var(--color-primary)] shadow-2xs border border-[var(--color-primary)]/20 font-semibold'
-                : 'text-slate-600 hover:text-slate-900 font-medium hover:bg-white/50'
-            }`}
-          >
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs bg-white text-[var(--color-primary)] shadow-2xs border border-[var(--color-primary)]/20 font-semibold select-none">
             <span>Hóa đơn bán hàng</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[11px] ${
-                activeTab === 'INVOICES'
-                  ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-semibold border border-[var(--color-primary-subtle)]'
-                  : 'bg-slate-200/70 text-slate-600 font-medium'
-              }`}
-            >
+            <span className="px-2 py-0.5 rounded-full text-[11px] bg-[var(--color-primary-light)] text-[var(--color-primary)] font-semibold border border-[var(--color-primary-subtle)]">
               {totalInvoices}
             </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleTabChange('RECEIPTS')}
-            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer outline-none focus:outline-none ${
-              activeTab === 'RECEIPTS'
-                ? 'bg-white text-[var(--color-primary)] shadow-2xs border border-[var(--color-primary)]/20 font-semibold'
-                : 'text-slate-600 hover:text-slate-900 font-medium hover:bg-white/50'
-            }`}
-          >
-            <span>Phiếu thu tiền & Đối trừ</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[11px] ${
-                activeTab === 'RECEIPTS'
-                  ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-semibold border border-[var(--color-primary-subtle)]'
-                  : 'bg-slate-200/70 text-slate-600 font-medium'
-              }`}
-            >
-              {totalReceipts}
-            </span>
-          </button>
+          </div>
         </div>
 
         {/* Nhóm nút chức năng bên phải */}
         <div className="flex items-center gap-2">
-          {activeTab === 'INVOICES' && (
-            <button
-              type="button"
-              onClick={() => setIsIssueModalOpen(true)}
-              className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-lg shadow-xs transition-all cursor-pointer"
-              title="Phát hành hóa đơn bán hàng từ phiếu thực giao (SN-200)"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Phát hành hóa đơn</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setIsIssueModalOpen(true)}
+            className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-lg shadow-xs transition-all cursor-pointer"
+            title="Phát hành hóa đơn bán hàng từ phiếu thực giao (SN-200)"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Phát hành hóa đơn</span>
+          </button>
 
           <button
             type="button"
@@ -596,11 +500,7 @@ export const InvoicesPage: React.FC = () => {
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            placeholder={
-              activeTab === 'RECEIPTS'
-                ? 'Tìm kiếm theo mã phiếu, tên đại lý...'
-                : 'Tìm kiếm theo số hóa đơn, tên đại lý...'
-            }
+            placeholder="Tìm kiếm theo số hóa đơn, tên đại lý..."
             value={searchTerm}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-9 pr-8 py-2 text-xs rounded-lg border border-slate-200 bg-slate-50/50 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] focus:bg-white transition-all font-medium"
@@ -617,34 +517,22 @@ export const InvoicesPage: React.FC = () => {
           )}
         </div>
 
-        {/* Lọc dropdown theo Tab */}
+        {/* Lọc trạng thái hóa đơn */}
         <div className="flex items-center gap-2 shrink-0">
-          {activeTab === 'INVOICES' ? (
-            <select
-              value={statusFilter}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              className="h-9 px-3 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] cursor-pointer shadow-2xs transition-all"
-            >
-              <option value="ALL">Tất cả trạng thái</option>
-              <option value="UNPAID">Chưa thanh toán</option>
-              <option value="PARTIALLY_PAID">Thanh toán một phần</option>
-              <option value="OVERDUE">Quá hạn nợ</option>
-              <option value="PAID">Đã thanh toán</option>
-            </select>
-          ) : (
-            <select
-              value={methodFilter}
-              onChange={(e) => handleMethodChange(e.target.value as 'ALL' | 'CASH' | 'BANK_TRANSFER')}
-              className="h-9 px-3 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] cursor-pointer shadow-2xs transition-all"
-            >
-              <option value="ALL">Tất cả hình thức</option>
-              <option value="CASH">Tiền mặt</option>
-              <option value="BANK_TRANSFER">Chuyển khoản</option>
-            </select>
-          )}
+          <select
+            value={statusFilter}
+            onChange={(e) => handleStatusChange(e.target.value)}
+            className="h-9 px-3 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] cursor-pointer shadow-2xs transition-all"
+          >
+            <option value="ALL">Tất cả trạng thái</option>
+            <option value="UNPAID">Chưa thanh toán</option>
+            <option value="PARTIALLY_PAID">Thanh toán một phần</option>
+            <option value="OVERDUE">Quá hạn nợ</option>
+            <option value="PAID">Đã thanh toán</option>
+          </select>
 
           {/* Nút đặt lại bộ lọc */}
-          {(searchTerm || (activeTab === 'INVOICES' ? statusFilter !== 'ALL' : methodFilter !== 'ALL')) && (
+          {(searchTerm || statusFilter !== 'ALL') && (
             <button
               type="button"
               onClick={handleResetFilters}
