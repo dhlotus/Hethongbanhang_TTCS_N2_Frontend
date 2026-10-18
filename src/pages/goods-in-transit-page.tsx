@@ -4,8 +4,6 @@ import {
   Plus,
   RefreshCw,
   Search,
-  AlertTriangle,
-  ChevronRight,
 } from 'lucide-react';
 import { deliveryTripsService } from '../services/delivery-trips.service';
 import type {
@@ -247,28 +245,6 @@ export const GoodsInTransitPage: React.FC = () => {
           </button>
         </div>
       </div>
-
-      {/* ================================================================= */}
-      {/* 2. CẢNH BÁO TIẾN ĐỘ QUÁ HẠN (THIẾT KẾ NHỎ GỌN, DỄ NHÌN)          */}
-      {/* ================================================================= */}
-      {counts.overdue > 0 && (
-        <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-rose-50/70 border border-rose-200/80 text-xs shadow-2xs">
-          <div className="flex items-center gap-2 min-w-0">
-            <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-            <span className="text-2xs sm:text-xs text-rose-800 truncate">
-              Có <strong>{counts.overdue}</strong> chuyến xe quá hạn dự kiến (ETA)
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActiveTab('OVERDUE')}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium text-rose-700 bg-white hover:bg-rose-50 border border-rose-200/80 transition-colors shrink-0 cursor-pointer shadow-2xs"
-          >
-            <span>Xem {counts.overdue} chuyến</span>
-            <ChevronRight className="w-3 h-3" />
-          </button>
-        </div>
-      )}
 
       {/* ================================================================= */}
       {/* 3. THẺ THỐNG KÊ KPI TIỀN HÀNG TRÊN ĐƯỜNG                          */}
