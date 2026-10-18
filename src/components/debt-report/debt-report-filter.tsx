@@ -1,12 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import {
   Search,
   FileSpreadsheet,
-  AlertCircle,
-  CheckCircle2,
-  Filter,
-  ChevronDown,
-  Check,
 } from 'lucide-react';
 import { showToast } from '../toast';
 import {
@@ -27,35 +22,11 @@ interface DebtReportFilterProps {
   criticalOverdueCount?: number;
 }
 
-/**
- * Các tùy chọn trạng thái nợ bên trong menu dropdown
- */
-const MENU_STATUS_OPTIONS = [
-  {
-    value: 'ALL' as const,
-    label: 'Tất cả trạng thái',
-    iconColor: 'text-slate-400',
-    icon: Filter,
-  },
-  {
-    value: 'CURRENT' as const,
-    label: 'Nợ trong hạn',
-    iconColor: 'text-emerald-500',
-    icon: CheckCircle2,
-  },
-  {
-    value: 'OVERDUE' as const,
-    label: 'Nợ quá hạn',
-    iconColor: 'text-rose-500',
-    icon: AlertCircle,
-  },
-];
-
 const TOAST_SESSION_KEY = 'debt_warning_90d_shown';
 
 /**
  * Thanh công cụ tìm kiếm và lọc dữ liệu Sổ công nợ (SN-203)
- * Giữ nguyên Layout 1 dòng duy nhất (Single Row), chặn dứt điểm Spam Toast và nảy giao diện.
+ * Giữ nguyên Layout 1 dòng duy nhất (Single Row), đồng bộ các dropdown lọc (bỏ icon và màu).
  */
 export const DebtReportFilter: React.FC<DebtReportFilterProps> = ({
   params,
@@ -65,8 +36,6 @@ export const DebtReportFilter: React.FC<DebtReportFilterProps> = ({
   loading,
   criticalOverdueCount = 0,
 }) => {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const hasShownToastRef = useRef<boolean>(false);
 
   // Xác định trạng thái active hiện tại dựa vào params
@@ -86,25 +55,6 @@ export const DebtReportFilter: React.FC<DebtReportFilterProps> = ({
 
   const activeStatus = getActiveStatus();
 
-  // Đóng dropdown khi click ra ngoài hoặc bấm Escape
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false);
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
-
   // Hàm bắn Toast cảnh báo ĐÚNG 1 LẦN DUY NHẤT dựa trên thao tác người dùng
   const triggerToastOnce = () => {
     try {
@@ -113,24 +63,26 @@ export const DebtReportFilter: React.FC<DebtReportFilterProps> = ({
 
       sessionStorage.setItem(TOAST_SESSION_KEY, 'true');
       hasShownToastRef.current = true;
-      const count = criticalOverdueCount > 0 ? criticalOverdueCount : 2;
+
+      const count = criticalOverdueCount > 0 ? criticalOverdueCount : 'nhiều';
       showToast(
-        'error',
+        'warning',
         `⚠️ Cảnh báo: Phát hiện ${count} đại lý có khoản nợ quá hạn trên 90 ngày. Cần ưu tiên xử lý thu hồi nợ khẩn cấp!`,
       );
     } catch {
-      if (hasShownToastRef.current) return;
-      hasShownToastRef.current = true;
-      const count = criticalOverdueCount > 0 ? criticalOverdueCount : 2;
+      const count = criticalOverdueCount > 0 ? criticalOverdueCount : 'nhiều';
       showToast(
-        'error',
+        'warning',
         `⚠️ Cảnh báo: Phát hiện ${count} đại lý có khoản nợ quá hạn trên 90 ngày. Cần ưu tiên xử lý thu hồi nợ khẩn cấp!`,
       );
     }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onFilterChange({ search: e.target.value });
+    onFilterChange({
+      search: e.target.value,
+      page: 1,
+    });
   };
 
   const handleAgingGroupChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -152,11 +104,8 @@ export const DebtReportFilter: React.FC<DebtReportFilterProps> = ({
     });
   };
 
-  const handleStatusSelect = (opt: DebtStatusFilterType) => {
-    setIsOpen(false);
-    // Nhấp vào tùy chọn đang chọn sẽ reset về 'ALL'
-    const nextOpt = activeStatus === opt ? 'ALL' : opt;
-
+  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextOpt = e.target.value as DebtStatusFilterType;
     if (nextOpt === 'ALL') {
       onFilterChange({
         debtStatus: 'ALL',
@@ -182,43 +131,9 @@ export const DebtReportFilter: React.FC<DebtReportFilterProps> = ({
     }
   };
 
-  // Xác định cấu hình button kích hoạt bên ngoài
-  const getButtonConfig = () => {
-    switch (activeStatus) {
-      case 'OVERDUE':
-        return {
-          label: 'Nợ quá hạn',
-          className:
-            'text-rose-700 bg-rose-50/80 border-rose-300 hover:bg-rose-100/80 font-medium',
-          icon: AlertCircle,
-          iconColor: 'text-rose-500',
-        };
-      case 'CURRENT':
-        return {
-          label: 'Nợ trong hạn',
-          className:
-            'text-emerald-700 bg-emerald-50/80 border-emerald-300 hover:bg-emerald-100/80 font-medium',
-          icon: CheckCircle2,
-          iconColor: 'text-emerald-500',
-        };
-      case 'ALL':
-      default:
-        return {
-          label: 'Tất cả trạng thái',
-          className:
-            'text-slate-600 bg-slate-50 border-slate-200 hover:bg-slate-100/80',
-          icon: Filter,
-          iconColor: 'text-slate-400',
-        };
-    }
-  };
-
-  const btnConfig = getButtonConfig();
-  const ButtonIcon = btnConfig.icon;
-
   return (
     <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs font-sans antialiased relative z-30 overflow-visible">
-      {/* CÙNG 1 DÒNG DUY NHẤT (Single Row) - Chống rớt dòng & overflow-visible cho menu dropdown nổi lên */}
+      {/* CÙNG 1 DÒNG DUY NHẤT (Single Row) - Chống rớt dòng */}
       <div className="flex items-center gap-2.5 flex-nowrap w-full overflow-visible">
         {/* 1. Ô tìm kiếm */}
         <div className="relative min-w-[160px] max-w-[240px] flex-1 shrink-0">
@@ -255,63 +170,30 @@ export const DebtReportFilter: React.FC<DebtReportFilterProps> = ({
           </select>
         </div>
 
-        {/* 3. Lọc theo Cấp đại lý */}
+        {/* 3. Lọc theo Cấp đại lý / Nhóm đại lý */}
         <div className="shrink-0">
           <select
             value={params.customerGroup || ''}
             onChange={handleCustomerGroupChange}
             className="py-2 px-3 font-sans text-sm font-medium antialiased bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors cursor-pointer"
           >
-            <option value="">Tất cả cấp đại lý</option>
+            <option value="">Tất cả nhóm đại lý</option>
             <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
             <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
           </select>
         </div>
 
-        {/* 4. Dropdown chọn trạng thái (chỉ 2 tùy chọn cốt lõi bên trong) */}
-        <div className="relative shrink-0" ref={dropdownRef}>
-          <button
-            type="button"
-            onClick={() => setIsOpen((prev) => !prev)}
-            className={`font-sans text-sm font-medium antialiased inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer select-none transition-all shadow-2xs whitespace-nowrap ${btnConfig.className}`}
-            title="Lọc theo trạng thái nợ"
+        {/* 4. Lọc theo Trạng thái nợ - Bỏ icon và màu để đồng bộ giống nhóm tuổi nợ và nhóm đại lý */}
+        <div className="shrink-0">
+          <select
+            value={activeStatus}
+            onChange={handleStatusChange}
+            className="py-2 px-3 font-sans text-sm font-medium antialiased bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors cursor-pointer"
           >
-            <ButtonIcon className={`w-4 h-4 shrink-0 ${btnConfig.iconColor}`} />
-            <span>{btnConfig.label}</span>
-            <ChevronDown
-              className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-150 ${
-                isOpen ? 'rotate-180' : ''
-              }`}
-            />
-          </button>
-
-          {/* Menu thả xuống chỉ đúng 2 tùy chọn cốt lõi (🟢 Nợ trong hạn & 🔴 Nợ quá hạn) */}
-          {isOpen && (
-            <div className="absolute left-0 top-full mt-1.5 w-52 bg-white rounded-xl border border-slate-200/90 shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95">
-              {MENU_STATUS_OPTIONS.map((opt) => {
-                const Icon = opt.icon;
-                const isSelected = activeStatus === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => handleStatusSelect(opt.value)}
-                    className={`w-full text-left px-3.5 py-2.5 font-sans text-xs antialiased flex items-center justify-between transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-blue-50 text-blue-700 font-semibold'
-                        : 'text-slate-700 hover:bg-slate-50 font-medium'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Icon className={`w-4 h-4 shrink-0 ${opt.iconColor}`} />
-                      <span>{opt.label}</span>
-                    </div>
-                    {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0" />}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+            <option value="ALL">Tất cả trạng thái</option>
+            <option value="CURRENT">Nợ trong hạn</option>
+            <option value="OVERDUE">Nợ quá hạn</option>
+          </select>
         </div>
 
         {/* Khoảng giãn tự động đẩy nút xuất Excel sang phải */}

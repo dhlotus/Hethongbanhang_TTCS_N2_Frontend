@@ -958,7 +958,7 @@ export const OrdersPage: React.FC = () => {
                   title="Soạn hàng theo vị trí kho từ đơn đã duyệt"
                 >
                   <PackageCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                  <span>Soạn hàng (Picking)</span>
+                  <span>Phiếu soạn hàng</span>
                 </button>
               )}
 

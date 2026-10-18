@@ -83,6 +83,42 @@ const getPageHeaderInfo = (
       ],
     };
   }
+  if (
+    pathname === '/route-collections/create' ||
+    pathname === '/app/route-collections/create'
+  ) {
+    return {
+      title: 'Tạo phiếu thu mới',
+      category: 'Tài chính & Thu chi',
+      breadcrumbs: [
+        { label: 'Quản lý ngân sách', path: '/route-collections' },
+        { label: 'Tạo phiếu thu mới' },
+      ],
+    };
+  }
+  if (pathname === '/accounting/invoices/create' || pathname === '/invoices/create') {
+    return {
+      title: 'Phát hành Hóa đơn Bán hàng',
+      category: 'Hóa đơn & Chứng từ',
+      breadcrumbs: [
+        { label: 'Hóa đơn & Chứng từ', path: '/accounting/invoices' },
+        { label: 'Phát hành Hóa đơn Bán hàng' },
+      ],
+    };
+  }
+  if (
+    (pathname.startsWith('/accounting/invoices/') && pathname !== '/accounting/invoices' && pathname !== '/accounting/invoices/create') ||
+    (pathname.startsWith('/invoices/') && pathname !== '/invoices' && pathname !== '/invoices/create')
+  ) {
+    return {
+      title: 'Chi tiết Hóa đơn Bán hàng',
+      category: 'Hóa đơn & Chứng từ',
+      breadcrumbs: [
+        { label: 'Hóa đơn & Chứng từ', path: '/accounting/invoices' },
+        { label: 'Chi tiết Hóa đơn' },
+      ],
+    };
+  }
   if (pathname === '/portal/orders/confirm' || pathname === '/portal/orders/create') {
     return {
       title: 'Xác nhận đơn hàng',
@@ -167,6 +203,20 @@ const getPageHeaderInfo = (
     return {
       title: 'Soạn hàng & Xuất kho',
       category: 'Nhập / Xuất kho',
+    };
+  }
+
+  if (
+    pathname === '/warehouse/picking/create' ||
+    pathname === '/inventory/picking/create'
+  ) {
+    return {
+      title: 'Tạo phiếu soạn hàng',
+      category: 'Kho & Vận hành',
+      breadcrumbs: [
+        { label: 'Phiếu soạn hàng', path: '/warehouse/picking' },
+        { label: 'Tạo phiếu mới' },
+      ],
     };
   }
 

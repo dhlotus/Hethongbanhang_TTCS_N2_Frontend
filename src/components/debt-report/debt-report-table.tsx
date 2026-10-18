@@ -1,10 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
-  ChevronDown,
   Inbox,
   Eye,
-  Copy,
-  Check,
 } from 'lucide-react';
 import { Pagination } from '../pagination';
 import { DebtDetailModal } from './debt-detail-modal';
@@ -67,41 +64,6 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
   onPageSizeChange,
 }) => {
   const [selectedAgency, setSelectedAgency] = useState<AgentDebtReport | null>(null);
-  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const actionMenuRef = useRef<HTMLDivElement | null>(null);
-
-  // Đóng Action Menu khi click ra ngoài hoặc ấn phím Escape
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        actionMenuRef.current &&
-        !actionMenuRef.current.contains(e.target as Node)
-      ) {
-        setOpenActionMenuId(null);
-      }
-    };
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpenActionMenuId(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
-
-  const handleCopyCode = (code: string) => {
-    if (navigator.clipboard) {
-      void navigator.clipboard.writeText(code);
-      setCopiedCode(code);
-      setTimeout(() => setCopiedCode(null), 1500);
-    }
-  };
 
   /**
    * Render Cột 5: [Tuổi nợ & Trạng thái]
@@ -265,7 +227,6 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
             {/* Dữ liệu từng dòng đại lý: Hover đẹp, padding chuẩn giống Quản lý đơn hàng */}
             <tbody className="divide-y divide-slate-100/90">
               {data.map((item) => {
-                const isMenuOpen = openActionMenuId === item.agencyId;
 
                 return (
                   <tr
@@ -328,65 +289,17 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
                       {renderAgingAndStatusCell(item)}
                     </td>
 
-                    {/* CỘT 6 (12%): [THAO TÁC] - Căn phải, chuẩn theo table quản lý đơn hàng */}
+                    {/* CỘT 6 (12%): [THAO TÁC] - Nút Xem chi tiết trực tiếp */}
                     <td className="px-2 sm:px-2.5 py-3 text-right whitespace-nowrap">
-                      <div className="relative inline-flex items-center justify-end">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenActionMenuId(isMenuOpen ? null : item.agencyId);
-                          }}
-                          className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none whitespace-nowrap shrink-0 ${
-                            isMenuOpen
-                              ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs ring-2 ring-indigo-500/10'
-                              : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300'
-                          }`}
-                          title="Thao tác"
-                        >
-                          <span className="whitespace-nowrap">Thao tác</span>
-                          <ChevronDown
-                            className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${
-                              isMenuOpen ? 'rotate-180 text-indigo-600' : ''
-                            }`}
-                          />
-                        </button>
-
-                        {/* Dropdown Menu Thao tác */}
-                        {isMenuOpen && (
-                          <div
-                            ref={actionMenuRef}
-                            className="absolute right-0 top-full mt-1 z-30 w-44 bg-white rounded-lg border border-slate-200 shadow-lg py-1 text-left text-xs animate-in fade-in zoom-in-95 duration-100"
-                          >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedAgency(item);
-                                setOpenActionMenuId(null);
-                              }}
-                              className="w-full px-3 py-2 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2 font-medium transition-colors cursor-pointer"
-                            >
-                              <Eye className="w-4 h-4 text-indigo-600" />
-                              <span>Xem sổ chi tiết</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleCopyCode(item.agencyCode);
-                                setOpenActionMenuId(null);
-                              }}
-                              className="w-full px-3 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-medium transition-colors cursor-pointer"
-                            >
-                              {copiedCode === item.agencyCode ? (
-                                <Check className="w-4 h-4 text-emerald-600" />
-                              ) : (
-                                <Copy className="w-4 h-4 text-slate-400" />
-                              )}
-                              <span>Sao chép mã</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAgency(item)}
+                        className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200/90 bg-white text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 text-xs font-semibold transition-all cursor-pointer shadow-2xs whitespace-nowrap"
+                        title="Xem chi tiết sổ công nợ"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-current shrink-0" />
+                        <span>Xem chi tiết</span>
+                      </button>
                     </td>
                   </tr>
                 );

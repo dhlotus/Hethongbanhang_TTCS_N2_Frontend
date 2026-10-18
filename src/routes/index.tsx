@@ -4,8 +4,10 @@ import { LoginPage } from '../pages/login-page';
 import { ForgotPasswordPage } from '../pages/forgot-password-page';
 import { ResetPasswordPage } from '../pages/reset-password-page';
 import { ChangePasswordPage } from '../pages/change-password-page';
-import { RoleModulePage } from '../pages/role-module-page';
 import { InvoicesPage } from '../pages/invoices-page';
+import { CreateInvoicePage } from '../pages/create-invoice-page';
+import { InvoiceDetailPage } from '../pages/invoice-detail-page';
+import { ReceiptsPage } from '../pages/receipts-page';
 import { ProductsPage } from '../pages/products-page';
 import { ProductEditPage } from '../pages/product-edit-page';
 import { ProductEditPricePage } from '../pages/product-edit-price-page';
@@ -43,12 +45,16 @@ import { NetworkStatusIndicator } from '../components/network-status-indicator';
 import { AdminLayout } from '../layouts/admin-layout';
 import { getRedirectPathByUser, getStoredUser } from '../utils/navigation';
 import { tokenStorage } from '../utils/token-storage';
+import { RoleModulePage } from '../pages/role-module-page';
 import { WarehousesPage } from '../pages/warehouses-page';
 import { InternalTransfersPage } from '../pages/inventory/internal-transfers-page';
 import { OrderPickingPage } from '../pages/order-picking-page';
+import { CreatePickingSheetPage } from '../pages/create-picking-sheet-page';
 import { InventoryBatchesPage } from '../pages/inventory-batches-page';
 import { GoodsInTransitPage } from '../pages/goods-in-transit-page';
 import { StockCardPage } from '../pages/inventory/stock-card-page';
+import { RouteCollectionsPage } from '../pages/route-collections-page';
+import { CreateRouteCollectionPage } from '../pages/create-route-collection-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -333,7 +339,9 @@ export const AppRoutes: React.FC = () => {
               <Route path="/warehouse/orders" element={<OrdersPage />} />
               {/* Route phiếu soạn hàng theo vị trí & đường đi trong kho (Wave Picking) */}
               <Route path="/inventory/picking" element={<OrderPickingPage />} />
+              <Route path="/inventory/picking/create" element={<CreatePickingSheetPage />} />
               <Route path="/warehouse/picking" element={<OrderPickingPage />} />
+              <Route path="/warehouse/picking/create" element={<CreatePickingSheetPage />} />
               {/* Route Quản lý Lô & Gợi ý xuất FEFO (SN-187) */}
               <Route path="/warehouse/batches" element={<InventoryBatchesPage />} />
               {/* Route Theo dõi hàng đã xuất trên đường & Chuyến đi (SN-194 / SN-197) */}
@@ -424,8 +432,28 @@ export const AppRoutes: React.FC = () => {
                 element={<InvoicesPage />}
               />
               <Route
+                path="/accounting/invoices/create"
+                element={<CreateInvoicePage />}
+              />
+              <Route
+                path="/accounting/invoices/:id"
+                element={<InvoiceDetailPage />}
+              />
+              <Route
+                path="/invoices/create"
+                element={<Navigate to="/accounting/invoices/create" replace />}
+              />
+              <Route
+                path="/invoices/:id"
+                element={<InvoiceDetailPage />}
+              />
+              <Route
+                path="/invoices"
+                element={<Navigate to="/accounting/invoices" replace />}
+              />
+              <Route
                 path="/accounting/payments"
-                element={<InvoicesPage />}
+                element={<ReceiptsPage />}
               />
             </Route>
 
@@ -474,6 +502,42 @@ export const AppRoutes: React.FC = () => {
               <Route
                 path="/reports/debt"
                 element={<DebtReportPage />}
+              />
+            </Route>
+
+            {/* ------------------------------------------------------------- */}
+            {/* PHÂN HỆ THU TIỀN TUYẾN & ĐỐI CHIẾU (SN-205)                   */}
+            {/* ------------------------------------------------------------- */}
+            <Route
+              element={
+                <RoleGuard
+                  allowedRoles={[
+                    'ADMIN',
+                    'SALES_REP',
+                    'ACCOUNTANT',
+                    'ACCOUNTANT_DEBT',
+                    'SALES_MANAGER',
+                    'BUSINESS_MANAGER',
+                  ]}
+                  moduleName="Quản lý ngân sách"
+                />
+              }
+            >
+              <Route
+                path="/route-collections"
+                element={<RouteCollectionsPage />}
+              />
+              <Route
+                path="/route-collections/create"
+                element={<CreateRouteCollectionPage />}
+              />
+              <Route
+                path="/app/route-collections"
+                element={<RouteCollectionsPage />}
+              />
+              <Route
+                path="/app/route-collections/create"
+                element={<CreateRouteCollectionPage />}
               />
             </Route>
 

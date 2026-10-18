@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Package,
   Plus,
@@ -7,6 +8,8 @@ import {
   Check,
   Building2,
   Layers,
+  Filter,
+  X,
 } from 'lucide-react';
 import { orderPickingService } from '../services/order-picking.service';
 import type {
@@ -17,14 +20,12 @@ import type {
 } from '../types/order-picking.types';
 import { PickingLineItemCard } from '../components/picking/picking-line-item-card';
 import { ShortPickReasonModal } from '../components/picking/short-pick-reason-modal';
-import { CreatePickingSheetModal } from '../components/picking/create-picking-sheet-modal';
 import { FefoBatchSelectorModal } from '../components/picking/fefo-batch-selector-modal';
 import { fefoPickingService } from '../services/fefo-picking.service';
 import type { SelectedBatchAllocation } from '../types/fefo-picking.types';
 import { showToast } from '../components/toast';
 
 export const OrderPickingPage: React.FC = () => {
-
   // Danh sách phiếu soạn hàng
   const [sheets, setSheets] = useState<PickingSheet[]>([]);
   const [activeSheetId, setActiveSheetId] = useState<string | null>(null);
@@ -34,8 +35,7 @@ export const OrderPickingPage: React.FC = () => {
   const [itemStatusFilter, setItemStatusFilter] = useState<'ALL' | PickingItemStatus>('ALL');
   const [itemSearchTerm, setItemSearchTerm] = useState('');
 
-  // Modals
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  // Modal báo lý do soạn thiếu
   const [reasonModalItem, setReasonModalItem] = useState<{
     item: PickingLineItem;
     pickedQuantity: number;
@@ -79,7 +79,10 @@ export const OrderPickingPage: React.FC = () => {
         !q ||
         item.productSku.toLowerCase().includes(q) ||
         item.productName.toLowerCase().includes(q) ||
-        item.location.formattedCode.toLowerCase().includes(q);
+        item.location.formattedCode.toLowerCase().includes(q) ||
+        item.location.zone.toLowerCase().includes(q) ||
+        item.location.aisle.toLowerCase().includes(q) ||
+        item.location.rack.toLowerCase().includes(q);
       return matchStatus && matchSearch;
     });
   }, [activeSheet, itemStatusFilter, itemSearchTerm]);
@@ -226,93 +229,72 @@ export const OrderPickingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50/60 pb-24 sm:pb-12 text-slate-900">
-      {/* ── 1. HEADER CHÍNH CỦA TRANG ── */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-600/30">
-              <Package className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg sm:text-xl font-bold text-slate-900">
-                  Soạn hàng theo vị trí kho (Picking)
-                </h1>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  Lộ trình S-Shape tối ưu
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Nhặt hàng theo đường đi một chiều trong kho • Hỗ trợ gộp nhiều đơn đã duyệt
-              </p>
-            </div>
+      {/* ── NỘI DUNG CHÍNH (PRINT:HIDDEN ĐỂ KHÔNG BỊ TRỘN LẪN GIAO DIỆN KHI IN) ── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-4 print:hidden">
+        {/* A. Thanh điều khiển trên cùng: Bộ chọn lượt soạn + Nút thao tác (In phiếu, Tạo mới) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+          {/* Bộ chọn phiếu soạn hàng */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
+              <Layers className="w-3.5 h-3.5" />
+              Lượt soạn:
+            </span>
+            {sheets.map((sheet) => {
+              const isActive = sheet.id === activeSheetId;
+              const isDone = sheet.status === 'COMPLETED' || sheet.status === 'PARTIALLY_COMPLETED';
+              return (
+                <button
+                  key={sheet.id}
+                  type="button"
+                  onClick={() => setActiveSheetId(sheet.id)}
+                  className={`h-[38px] px-3.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 border ${
+                    isActive
+                      ? 'bg-slate-900 border-slate-900 text-white shadow-2xs'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+                  }`}
+                >
+                  <span>{sheet.sheetCode}</span>
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                      isDone
+                        ? 'bg-emerald-500 text-white'
+                        : isActive
+                        ? 'bg-slate-700 text-white'
+                        : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {sheet.orderCount} đơn
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Nút hành động đầu trang */}
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          {/* Cặp nút hành động: In phiếu & Tạo phiếu soạn mới (Chuyển trang chuyên biệt) */}
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
             <button
               type="button"
               onClick={handlePrintSheet}
-              className="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="In phiếu soạn hàng dạng giấy"
+              className="h-[38px] px-3.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              title="In phiếu soạn hàng A4 cho thủ kho"
             >
               <Printer className="w-4 h-4 text-slate-500" />
-              <span className="hidden sm:inline">In phiếu</span>
+              <span>In phiếu</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setIsCreateModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer"
+            <Link
+              to="/warehouse/picking/create"
+              className="h-[38px] px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer"
+              title="Chuyển đến trang tạo phiếu soạn hàng mới"
             >
               <Plus className="w-4 h-4" />
               <span>Tạo phiếu soạn mới</span>
-            </button>
+            </Link>
           </div>
-        </div>
-      </div>
-
-      {/* ── 2. NỘI DUNG CHÍNH ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-5">
-        {/* A. Bộ chọn phiếu soạn hàng (Horizontal Tabs / Dropdown) */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
-            <Layers className="w-3.5 h-3.5" />
-            Lượt soạn:
-          </span>
-          {sheets.map((sheet) => {
-            const isActive = sheet.id === activeSheetId;
-            const isDone = sheet.status === 'COMPLETED' || sheet.status === 'PARTIALLY_COMPLETED';
-            return (
-              <button
-                key={sheet.id}
-                type="button"
-                onClick={() => setActiveSheetId(sheet.id)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 border ${
-                  isActive
-                    ? 'bg-slate-900 border-slate-900 text-white shadow-xs ring-2 ring-slate-900/10'
-                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <span>{sheet.sheetCode}</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded-md text-[10px] ${
-                    isDone
-                      ? 'bg-emerald-500 text-white'
-                      : isActive
-                      ? 'bg-amber-400 text-slate-900 font-extrabold'
-                      : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  {sheet.orderCount} đơn
-                </span>
-              </button>
-            );
-          })}
         </div>
 
         {/* B. Nếu không có phiếu nào */}
         {!activeSheet && !loading && (
-          <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center space-y-3">
+          <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center space-y-3">
             <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
               <Package className="w-6 h-6" />
             </div>
@@ -320,19 +302,18 @@ export const OrderPickingPage: React.FC = () => {
             <p className="text-xs text-slate-500 max-w-md mx-auto">
               Hãy tạo phiếu soạn hàng từ các đơn đã duyệt để hệ thống gom hàng và sắp xếp lộ trình đi lại trong kho tối ưu nhất.
             </p>
-            <button
-              type="button"
-              onClick={() => setIsCreateModalOpen(true)}
-              className="mt-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 cursor-pointer"
+            <Link
+              to="/warehouse/picking/create"
+              className="mt-2 h-[38px] px-4 rounded-lg bg-indigo-600 text-white font-semibold text-xs inline-flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Tạo phiếu soạn đầu tiên
-            </button>
+            </Link>
           </div>
         )}
 
         {/* C. Thẻ Thông tin tóm tắt & Thanh tiến độ của Phiếu đang mở */}
         {activeSheet && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4">
+          <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -340,12 +321,12 @@ export const OrderPickingPage: React.FC = () => {
                     {activeSheet.sheetCode}
                   </span>
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                       activeSheet.status === 'COMPLETED'
-                        ? 'bg-emerald-100 text-emerald-800'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : activeSheet.status === 'PARTIALLY_COMPLETED'
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-sky-100 text-sky-800'
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                        : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                     }`}
                   >
                     {activeSheet.status === 'COMPLETED'
@@ -374,14 +355,14 @@ export const OrderPickingPage: React.FC = () => {
                 type="button"
                 onClick={handleCompletePickingSheet}
                 disabled={activeSheet.status === 'COMPLETED' || activeSheet.status === 'PARTIALLY_COMPLETED'}
-                className="hidden sm:inline-flex px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm items-center gap-2 shadow-sm shadow-emerald-600/20 transition-all cursor-pointer shrink-0"
+                className="hidden sm:inline-flex h-[38px] px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs sm:text-sm items-center gap-2 shadow-sm shadow-emerald-600/20 transition-all cursor-pointer shrink-0"
               >
                 <Check className="w-4 h-4 stroke-[3]" />
                 Hoàn tất lượt soạn
               </button>
             </div>
 
-            {/* Thanh tiến độ trực quan */}
+            {/* Thanh tiến độ chuẩn hóa màu sắc (Solid Blue/Green, không gradient lòe loẹt) */}
             <div>
               <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
                 <span className="text-slate-600 flex items-center gap-1.5">
@@ -397,9 +378,11 @@ export const OrderPickingPage: React.FC = () => {
                   {progressStats.percent}%
                 </span>
               </div>
-              <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden p-0.5">
+              <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-linear-to-r from-indigo-500 via-sky-500 to-emerald-500 transition-all duration-300"
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    progressStats.percent === 100 ? 'bg-emerald-600' : 'bg-indigo-600'
+                  }`}
                   style={{ width: `${progressStats.percent}%` }}
                 />
               </div>
@@ -407,67 +390,47 @@ export const OrderPickingPage: React.FC = () => {
           </div>
         )}
 
-        {/* D. Thanh tìm kiếm & Bộ lọc nhanh dòng hàng */}
+        {/* D. Thanh tìm kiếm & Dropdown bộ lọc gộp cùng 1 hàng ngang */}
         {activeSheet && (
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            {/* Bộ lọc trạng thái (Pills) */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-              <button
-                type="button"
-                onClick={() => setItemStatusFilter('ALL')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                  itemStatusFilter === 'ALL'
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                Tất cả ({activeSheet.items.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setItemStatusFilter('PENDING')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                  itemStatusFilter === 'PENDING'
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                Chưa soạn ({activeSheet.items.filter((i) => i.status === 'PENDING').length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setItemStatusFilter('PICKED')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                  itemStatusFilter === 'PICKED'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-white border border-slate-200 text-emerald-700 hover:bg-emerald-50'
-                }`}
-              >
-                Đã xong ({activeSheet.items.filter((i) => i.status === 'PICKED').length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setItemStatusFilter('SHORT_PICKED')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                  itemStatusFilter === 'SHORT_PICKED'
-                    ? 'bg-amber-600 text-white'
-                    : 'bg-white border border-slate-200 text-amber-700 hover:bg-amber-50'
-                }`}
-              >
-                Soạn thiếu ({activeSheet.items.filter((i) => i.status === 'SHORT_PICKED').length})
-              </button>
+            {/* Bộ lọc trạng thái dạng Dropdown Select */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex items-center">
+                <Filter className="w-3.5 h-3.5 text-slate-400 absolute left-3 pointer-events-none" />
+                <select
+                  id="item-status-filter"
+                  value={itemStatusFilter}
+                  onChange={(e) => setItemStatusFilter(e.target.value as 'ALL' | PickingItemStatus)}
+                  className="h-[38px] pl-8 pr-8 py-1.5 text-xs sm:text-sm bg-white border border-slate-300 rounded-lg text-slate-700 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer shadow-2xs"
+                >
+                  <option value="ALL">Tất cả trạng thái ({activeSheet.items.length})</option>
+                  <option value="PENDING">Chưa soạn ({activeSheet.items.filter((i) => i.status === 'PENDING').length})</option>
+                  <option value="PICKED">Đã xong ({activeSheet.items.filter((i) => i.status === 'PICKED').length})</option>
+                  <option value="SHORT_PICKED">Soạn thiếu ({activeSheet.items.filter((i) => i.status === 'SHORT_PICKED').length})</option>
+                </select>
+              </div>
             </div>
 
-            {/* Input tìm kiếm mặt hàng */}
-            <div className="relative w-full sm:w-72">
+            {/* Input tìm kiếm mặt hàng (Cùng hàng ngang h-[38px]) */}
+            <div className="relative w-full sm:w-80">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 placeholder="Tìm mã SKU, tên SP, vị trí kệ..."
                 value={itemSearchTerm}
                 onChange={(e) => setItemSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className="w-full h-[38px] pl-9 pr-8 text-xs sm:text-sm bg-white border border-slate-300 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-2xs transition-colors"
               />
+              {itemSearchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setItemSearchTerm('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  title="Xóa tìm kiếm"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -476,7 +439,7 @@ export const OrderPickingPage: React.FC = () => {
         {activeSheet && (
           <div className="space-y-3">
             {filteredItems.length === 0 ? (
-              <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-xs text-slate-500">
+              <div className="p-8 text-center bg-white rounded-xl border border-slate-200 text-xs text-slate-500">
                 Không tìm thấy dòng hàng nào phù hợp với bộ lọc
               </div>
             ) : (
@@ -497,7 +460,7 @@ export const OrderPickingPage: React.FC = () => {
 
       {/* ── 3. STICKY BOTTOM BAR TRÊN MOBILE (TỐI ƯU CẦM ĐIỆN THOẠI 1 TAY) ── */}
       {activeSheet && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 sm:hidden shadow-lg flex items-center justify-between gap-3">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 sm:hidden shadow-lg flex items-center justify-between gap-3 print:hidden">
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
               <span>Tiến độ: {progressStats.percent}%</span>
@@ -505,7 +468,9 @@ export const OrderPickingPage: React.FC = () => {
             </div>
             <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-emerald-500 transition-all duration-300"
+                className={`h-full transition-all duration-300 ${
+                  progressStats.percent === 100 ? 'bg-emerald-600' : 'bg-indigo-600'
+                }`}
                 style={{ width: `${progressStats.percent}%` }}
               />
             </div>
@@ -515,7 +480,7 @@ export const OrderPickingPage: React.FC = () => {
             type="button"
             onClick={handleCompletePickingSheet}
             disabled={activeSheet.status === 'COMPLETED' || activeSheet.status === 'PARTIALLY_COMPLETED'}
-            className="h-11 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 whitespace-nowrap cursor-pointer shrink-0"
+            className="h-[38px] px-3.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm shadow-emerald-600/30 whitespace-nowrap cursor-pointer shrink-0"
           >
             <Check className="w-4 h-4 stroke-[3]" />
             Hoàn tất lượt
@@ -523,16 +488,126 @@ export const OrderPickingPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── 4. CÁC MODAL ĐIỀU KHIỂN ── */}
-      <CreatePickingSheetModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={(newSheetId) => {
-          loadSheets();
-          setActiveSheetId(newSheetId);
-        }}
-      />
+      {/* ── 4. PHIẾU IN SOẠN HÀNG CHUẨN A4 ĐEN TRẮNG CHO THỦ KHO (PRINT:BLOCK) ── */}
+      {activeSheet && (
+        <div id="picking-print-document" className="hidden print:block p-6 text-black bg-white">
+          {/* Header phiếu in */}
+          <div className="border-b-2 border-black pb-3 mb-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-lg font-black tracking-tight uppercase">
+                  LOHA SALES - HỆ THỐNG QUẢN LÝ KHO & BÁN HÀNG
+                </h1>
+                <p className="text-xs text-gray-700 mt-0.5">
+                  Kho hàng: <strong>{activeSheet.warehouseName}</strong>
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="text-lg font-mono font-black">{activeSheet.sheetCode}</div>
+                <p className="text-[11px] text-gray-600">
+                  Ngày in: {new Date().toLocaleDateString('vi-VN')} {new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            </div>
 
+            <div className="mt-3 pt-2.5 border-t border-gray-300 grid grid-cols-3 gap-2 text-xs">
+              <div>
+                Người soạn: <strong>{activeSheet.pickerName}</strong>
+              </div>
+              <div>
+                Gộp <strong>{activeSheet.orderCount} đơn</strong>: {activeSheet.sourceOrderCodes.join(', ')}
+              </div>
+              <div className="text-right">
+                Tổng cộng: <strong>{activeSheet.items.length} dòng</strong> ({progressStats.totalQty} món)
+              </div>
+            </div>
+          </div>
+
+          {/* Tiêu đề phiếu */}
+          <div className="text-center my-4">
+            <h2 className="text-base font-black uppercase tracking-wider">
+              PHIẾU SOẠN HÀNG THEO VỊ TRÍ
+            </h2>
+            <p className="text-[11px] text-gray-600 italic mt-0.5">
+              * Thứ tự sắp xếp theo lộ trình di chuyển một chiều (S-Shape) tối ưu trong kho
+            </p>
+          </div>
+
+          {/* Bảng danh sách sản phẩm theo thứ tự đường đi */}
+          <table className="w-full text-xs border-collapse border border-black mb-6">
+            <thead>
+              <tr className="bg-gray-100 text-center font-bold">
+                <th className="border border-black p-2 w-10">Bước</th>
+                <th className="border border-black p-2 w-10">[✓]</th>
+                <th className="border border-black p-2 text-left w-36">Vị trí kệ kho</th>
+                <th className="border border-black p-2 text-left w-28">Mã SKU</th>
+                <th className="border border-black p-2 text-left">Tên sản phẩm</th>
+                <th className="border border-black p-2 text-center w-16">SL cần</th>
+                <th className="border border-black p-2 text-center w-16">SL nhặt</th>
+                <th className="border border-black p-2 text-left w-36">Đơn phân bổ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeSheet.items.map((item, index) => (
+                <tr key={item.id} className="border border-black">
+                  <td className="border border-black p-2 text-center font-mono font-bold">
+                    #{item.stepNumber || index + 1}
+                  </td>
+                  <td className="border border-black p-2 text-center">
+                    <div className="w-4 h-4 border border-black mx-auto" />
+                  </td>
+                  <td className="border border-black p-2 font-mono font-bold">
+                    {item.location.formattedCode}
+                    <div className="text-[10px] font-normal text-gray-700">
+                      Khu {item.location.zone} - Kệ {item.location.rack}
+                    </div>
+                  </td>
+                  <td className="border border-black p-2 font-mono font-semibold">
+                    {item.productSku}
+                  </td>
+                  <td className="border border-black p-2">
+                    <div className="font-semibold text-slate-900">{item.productName}</div>
+                    {item.category && (
+                      <span className="text-[10px] text-gray-600">Nhóm: {item.category}</span>
+                    )}
+                  </td>
+                  <td className="border border-black p-2 text-center font-bold font-mono text-sm">
+                    {item.totalRequiredQuantity} {item.unit}
+                  </td>
+                  <td className="border border-black p-2 text-center font-mono">
+                    {/* Ô trống để nhân viên kho tích hoặc ghi số lượng thực nhặt bằng bút */}
+                  </td>
+                  <td className="border border-black p-2 text-[10px] text-gray-700">
+                    {item.orders.map((o) => `${o.orderCode} (${o.requiredQuantity})`).join(', ')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Chữ ký xác nhận 3 bên */}
+          <div className="grid grid-cols-3 gap-4 text-center text-xs mt-8 pt-4">
+            <div>
+              <p className="font-bold">Người soạn hàng</p>
+              <p className="text-[10px] text-gray-500 italic mt-0.5">(Ký và ghi rõ họ tên)</p>
+              <div className="h-16" />
+              <p className="font-semibold">{activeSheet.pickerName}</p>
+            </div>
+            <div>
+              <p className="font-bold">Nhân viên kiểm tra & đóng gói</p>
+              <p className="text-[10px] text-gray-500 italic mt-0.5">(Ký và ghi rõ họ tên)</p>
+              <div className="h-16" />
+            </div>
+            <div>
+              <p className="font-bold">Thủ kho / Quản lý kho</p>
+              <p className="text-[10px] text-gray-500 italic mt-0.5">(Ký và ghi rõ họ tên)</p>
+              <div className="h-16" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 5. MODAL BÁO THIẾU KHO ── */}
       <ShortPickReasonModal
         isOpen={Boolean(reasonModalItem)}
         item={reasonModalItem?.item || null}

@@ -21,6 +21,7 @@ import { invoicesService } from '../services/invoices.service';
 import { InvoiceDetailModal } from '../components/invoice-detail-modal';
 import { RecordPaymentModal } from '../components/record-payment-modal';
 import { ReminderTestModal } from '../components/reminder-test-modal';
+import { ConfirmActionModal } from '../components/confirm-action-modal';
 import { showToast } from '../components/toast';
 
 const formatCurrency = (val?: number): string => {
@@ -55,10 +56,11 @@ export const PortalDebtPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<string>('DUE_DATE_ASC');
 
-  // Modals
   const [selectedInvoiceForDetail, setSelectedInvoiceForDetail] = useState<InvoiceItem | null>(null);
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<InvoiceItem | null>(null);
   const [isReminderTestOpen, setIsReminderTestOpen] = useState<boolean>(false);
+  const [confirmInvoicePdf, setConfirmInvoicePdf] = useState<InvoiceItem | null>(null);
+  const [isPdfDownloading, setIsPdfDownloading] = useState<boolean>(false);
 
   // Tải dữ liệu từ backend
   const fetchData = useCallback(async () => {
@@ -193,13 +195,22 @@ export const PortalDebtPage: React.FC = () => {
     );
   };
 
-  const handleDownloadPdf = async (inv: InvoiceItem) => {
+  const handleOpenDownloadConfirm = (inv: InvoiceItem) => {
+    setConfirmInvoicePdf(inv);
+  };
+
+  const handleExecuteDownloadPdf = async () => {
+    if (!confirmInvoicePdf) return;
     try {
-      showToast('info', `Đang xuất bản in hóa đơn ${inv.invoiceCode}...`);
-      await invoicesService.downloadInvoicePdf(inv.id, inv.invoiceCode);
-      showToast('success', 'Đã mở bản in hóa đơn thành công');
+      setIsPdfDownloading(true);
+      const target = confirmInvoicePdf;
+      setConfirmInvoicePdf(null);
+      // Tải trực tiếp không hiển thị thông báo popup theo yêu cầu
+      await invoicesService.downloadInvoicePdf(target.id, target.invoiceCode);
     } catch {
-      showToast('error', 'Không thể tải hóa đơn');
+      showToast('error', 'Không thể tải hóa đơn. Vui lòng thử lại sau.');
+    } finally {
+      setIsPdfDownloading(false);
     }
   };
 
@@ -580,7 +591,7 @@ export const PortalDebtPage: React.FC = () => {
 
                       <button
                         type="button"
-                        onClick={() => handleDownloadPdf(inv)}
+                        onClick={() => handleOpenDownloadConfirm(inv)}
                         className="flex-1 py-1.5 px-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors flex items-center justify-center gap-1 shadow-2xs"
                       >
                         <Download className="h-3.5 w-3.5 text-slate-500" />
@@ -712,8 +723,8 @@ export const PortalDebtPage: React.FC = () => {
 
                             <button
                               type="button"
-                              onClick={() => handleDownloadPdf(inv)}
-                              className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                              onClick={() => handleOpenDownloadConfirm(inv)}
+                              className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
                               title="Tải hóa đơn PDF chuẩn VAT"
                             >
                               <Download className="h-4 w-4" />
@@ -766,6 +777,22 @@ export const PortalDebtPage: React.FC = () => {
         isOpen={isReminderTestOpen}
         onClose={() => setIsReminderTestOpen(false)}
         onRefreshDebt={fetchData}
+      />
+
+      {/* Modal xác nhận trước khi Tải PDF */}
+      <ConfirmActionModal
+        isOpen={Boolean(confirmInvoicePdf)}
+        actionType="download"
+        title="Xác nhận tải hóa đơn PDF"
+        message={
+          confirmInvoicePdf
+            ? `Bạn có chắc chắn muốn tải file PDF hóa đơn ${confirmInvoicePdf.invoiceCode} về thiết bị không?`
+            : ''
+        }
+        confirmText="Xác nhận tải"
+        onClose={() => setConfirmInvoicePdf(null)}
+        onConfirm={handleExecuteDownloadPdf}
+        isLoading={isPdfDownloading}
       />
     </div>
   );

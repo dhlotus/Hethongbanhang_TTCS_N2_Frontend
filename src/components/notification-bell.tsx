@@ -10,6 +10,7 @@ import {
   Clock,
   Sparkles,
   PackageCheck,
+  HandCoins,
 } from 'lucide-react';
 import { invoicesService } from '../services/invoices.service';
 import { notificationsService } from '../services/notifications.service';
@@ -18,7 +19,7 @@ import { getStoredUser } from '../utils/navigation';
 
 export interface SystemNotification {
   id: string;
-  type: 'STOCK_ALERT' | 'ORDER' | 'DELIVERY' | 'PRICING' | 'CREDIT' | 'SHIPMENT';
+  type: 'STOCK_ALERT' | 'ORDER' | 'DELIVERY' | 'PRICING' | 'CREDIT' | 'SHIPMENT' | 'COLLECTION';
   title: string;
   message: string;
   timestamp: string;
@@ -290,6 +291,30 @@ export const NotificationBell: React.FC = () => {
     window.addEventListener('loha_orders_updated', handleOrdersUpdatedEvent);
     window.addEventListener('loha_shipment_created', handleShipmentCreatedEvent);
 
+    // Lắng nghe sự kiện khi tạo phiếu thu tiền mới (nhảy chuông tức thì)
+    const handleCollectionCreatedEvent = (e: Event) => {
+      const colData = (e as CustomEvent).detail;
+      if (colData && (colData.code || colData.id)) {
+        const formattedAmount = colData.amount
+          ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(colData.amount)
+          : '';
+        const optNotif: SystemNotification = {
+          id: `col-notif-${colData.id || Date.now()}`,
+          type: 'COLLECTION',
+          title: `Phiếu thu mới [${colData.code}]`,
+          message: `Đã ghi nhận khoản thu ${formattedAmount} từ đại lý "${colData.agencyName || ''}". Đang chờ đối chiếu và duyệt gạch nợ.`,
+          timestamp: 'Vừa xong',
+          link: '/route-collections',
+          isRead: false,
+          priority: 'high',
+        };
+        setNotifications((prev) => [optNotif, ...prev.filter((p) => p.id !== optNotif.id)]);
+      }
+      void loadNotifications();
+    };
+
+    window.addEventListener('loha_collection_created', handleCollectionCreatedEvent);
+
     // Polling nhẹ mỗi 10 giây để cập nhật chuông realtime
     const timer = setInterval(() => {
       void loadNotifications();
@@ -299,6 +324,7 @@ export const NotificationBell: React.FC = () => {
       window.removeEventListener('loha_order_created', handleOrderCreatedEvent);
       window.removeEventListener('loha_orders_updated', handleOrdersUpdatedEvent);
       window.removeEventListener('loha_shipment_created', handleShipmentCreatedEvent);
+      window.removeEventListener('loha_collection_created', handleCollectionCreatedEvent);
       clearInterval(timer);
     };
   }, [loadNotifications]);
@@ -360,6 +386,12 @@ export const NotificationBell: React.FC = () => {
         return (
           <div className="p-2 rounded-xl bg-blue-50 text-blue-600 shrink-0">
             <CreditCard className="w-4 h-4" />
+          </div>
+        );
+      case 'COLLECTION':
+        return (
+          <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+            <HandCoins className="w-4 h-4" />
           </div>
         );
       default:
