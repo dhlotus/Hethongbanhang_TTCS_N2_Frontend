@@ -5,6 +5,11 @@ import {
   RefreshCw,
   Search,
   X,
+  Building2,
+  Filter,
+  Sliders,
+  RotateCcw,
+  ChevronDown,
 } from 'lucide-react';
 import { deliveryTripsService } from '../services/delivery-trips.service';
 import type {
@@ -13,6 +18,7 @@ import type {
   GoodsInTransitStats,
   StopDeliveryStatus,
 } from '../types/delivery-trip';
+import { STANDARD_WAREHOUSES } from '../constants/warehouse.constants';
 import { TripStatsCards } from '../components/delivery-trips/trip-stats-cards';
 import { TripCard } from '../components/delivery-trips/trip-card';
 import { TripDetailModal } from '../components/delivery-trips/trip-detail-modal';
@@ -74,11 +80,39 @@ export const GoodsInTransitPage: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
+  // Danh sách kho lưu trữ / kho xuất
+  const availableWarehouses = useMemo(() => {
+    const list: { id: string; name: string }[] = [];
+    const seen = new Set<string>();
+
+    trips.forEach((t) => {
+      if (t.warehouseId && !seen.has(t.warehouseId)) {
+        seen.add(t.warehouseId);
+        list.push({ id: t.warehouseId, name: t.warehouseName || t.warehouseId });
+      }
+    });
+
+    STANDARD_WAREHOUSES.forEach((wh) => {
+      if (!seen.has(wh.id) && !seen.has(wh.code)) {
+        seen.add(wh.id);
+        list.push({ id: wh.id, name: wh.name });
+      }
+    });
+
+    return list;
+  }, [trips]);
+
   // Bộ lọc danh sách chuyến đi
   const filteredTrips = useMemo(() => {
     return trips.filter((trip) => {
-      if (selectedWarehouseId !== 'ALL' && trip.warehouseId !== selectedWarehouseId) {
-        return false;
+      if (selectedWarehouseId !== 'ALL') {
+        const targetWh = availableWarehouses.find((w) => w.id === selectedWarehouseId);
+        const matchesId = trip.warehouseId === selectedWarehouseId;
+        const matchesName =
+          targetWh && trip.warehouseName?.toLowerCase() === targetWh.name.toLowerCase();
+        if (!matchesId && !matchesName) {
+          return false;
+        }
       }
 
       if (activeTab === 'OVERDUE') {
@@ -95,20 +129,21 @@ export const GoodsInTransitPage: React.FC = () => {
         const matchName = trip.tripName.toLowerCase().includes(term);
         const matchDriver = trip.driverName.toLowerCase().includes(term);
         const matchVehicle = trip.vehicleNumber.toLowerCase().includes(term);
+        const matchWh = trip.warehouseName?.toLowerCase().includes(term);
         const matchStop = trip.stops.some(
           (s) =>
             s.orderCode.toLowerCase().includes(term) ||
             s.customerName.toLowerCase().includes(term),
         );
 
-        if (!matchCode && !matchName && !matchDriver && !matchVehicle && !matchStop) {
+        if (!matchCode && !matchName && !matchDriver && !matchVehicle && !matchStop && !matchWh) {
           return false;
         }
       }
 
       return true;
     });
-  }, [trips, selectedWarehouseId, activeTab, searchTerm]);
+  }, [trips, selectedWarehouseId, activeTab, searchTerm, availableWarehouses]);
 
   // Số lượng đếm cho từng Tab
   const counts = useMemo(() => {
@@ -122,6 +157,17 @@ export const GoodsInTransitPage: React.FC = () => {
       completed,
     };
   }, [trips]);
+
+  // Kiểm tra trạng thái đang có lọc & đặt lại
+  const hasActiveFilter = Boolean(
+    searchTerm.trim() || selectedWarehouseId !== 'ALL' || activeTab !== 'ALL',
+  );
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setSelectedWarehouseId('ALL');
+    setActiveTab('ALL');
+  };
 
   // Cập nhật trạng thái điểm dừng
   const handleUpdateStopStatus = async (
@@ -242,10 +288,142 @@ export const GoodsInTransitPage: React.FC = () => {
       {/* 2. THỐNG KÊ TỔNG QUAN (KPI SUMMARY) */}
       <TripStatsCards stats={stats} loading={loading} />
 
-      {/* 3. DANH SÁCH CHUYẾN XE (CONTAINER CHUẨN QUẢN LÝ KHO) */}
-      <section className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
-        {/* THANH TÌM KIẾM & BỘ LỌC TRẠNG THÁI */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* 3. KHUNG BỘ LỌC & TÌM KIẾM (ĐỒNG BỘ 100% THEO CHUẨN THIẾT KẾ QUẢN LÝ KHO/LÔ HÀNG) */}
+      <div className="bg-white rounded-xl border border-slate-200/90 p-4 shadow-xs space-y-3.5">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          {/* Ô tìm kiếm */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Tìm theo mã chuyến, biển số xe, tài xế, mã đơn, khách hàng..."
+              className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 focus:border-[#371cdb] transition-all placeholder:text-slate-400"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Lọc theo Kho hàng */}
+          <div className="relative w-full lg:w-56">
+            <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select
+              value={selectedWarehouseId}
+              onChange={(e) => setSelectedWarehouseId(e.target.value)}
+              className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 focus:border-[#371cdb] transition-all appearance-none cursor-pointer truncate"
+            >
+              <option value="ALL">Tất cả kho lưu trữ</option>
+              {availableWarehouses.map((wh) => (
+                <option key={wh.id} value={wh.id}>
+                  {wh.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Lọc theo Trạng thái chuyến đi */}
+          <div className="relative w-full lg:w-56">
+            <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as FilterTab)}
+              className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 focus:border-[#371cdb] transition-all appearance-none cursor-pointer truncate"
+            >
+              <option value="ALL">Tất cả trạng thái lô</option>
+              <option value="IN_TRANSIT_ON_TIME">Đúng giờ ({counts.onTime})</option>
+              <option value="OVERDUE">⚠️ Quá hạn ETA ({counts.overdue})</option>
+              <option value="COMPLETED">✅ Đã hoàn tất ({counts.completed})</option>
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Nút Đặt lại bộ lọc (khi có lọc) */}
+          {hasActiveFilter && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-xl transition-all cursor-pointer shadow-2xs shrink-0"
+              title="Đặt lại toàn bộ bộ lọc về mặc định"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Đặt lại</span>
+            </button>
+          )}
+        </div>
+
+        {/* Cấu hình Lọc nhanh trạng thái (Pills) */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+          <div className="flex flex-wrap items-center gap-2">
+            <Sliders className="w-3.5 h-3.5 text-[#371cdb] shrink-0" />
+            <span className="text-xs font-bold text-slate-700">Trạng thái vận chuyển:</span>
+
+            {/* Các nút bấm chọn nhanh */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setActiveTab('ALL')}
+                className={`h-7 px-2.5 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
+                  activeTab === 'ALL'
+                    ? 'bg-[#371cdb] text-white border-[#371cdb] shadow-2xs'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-[#371cdb]/40 hover:text-[#371cdb]'
+                }`}
+              >
+                Tất cả ({counts.all})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('IN_TRANSIT_ON_TIME')}
+                className={`h-7 px-2.5 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
+                  activeTab === 'IN_TRANSIT_ON_TIME'
+                    ? 'bg-[#371cdb] text-white border-[#371cdb] shadow-2xs'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-[#371cdb]/40 hover:text-[#371cdb]'
+                }`}
+              >
+                Đúng giờ ({counts.onTime})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('OVERDUE')}
+                className={`h-7 px-2.5 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
+                  activeTab === 'OVERDUE'
+                    ? 'bg-[#371cdb] text-white border-[#371cdb] shadow-2xs'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-[#371cdb]/40 hover:text-[#371cdb]'
+                }`}
+              >
+                Quá hạn ({counts.overdue})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('COMPLETED')}
+                className={`h-7 px-2.5 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
+                  activeTab === 'COMPLETED'
+                    ? 'bg-[#371cdb] text-white border-[#371cdb] shadow-2xs'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-[#371cdb]/40 hover:text-[#371cdb]'
+                }`}
+              >
+                Đã hoàn tất ({counts.completed})
+              </button>
+            </div>
+          </div>
+
+          <div className="text-xs text-slate-500">
+            Hiển thị <span className="font-bold text-slate-800">{filteredTrips.length}</span> chuyến xe
+          </div>
+        </div>
+      </div>
+
+      {/* 4. DANH SÁCH CHUYẾN XE */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eff2fe] text-[#371cdb]">
               <Truck size={20} />
@@ -262,148 +440,58 @@ export const GoodsInTransitPage: React.FC = () => {
               </p>
             </div>
           </div>
-
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            {/* Thanh tìm kiếm */}
-            <div className="relative min-w-[260px] lg:min-w-[320px]">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <Search size={16} />
-              </div>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Tìm theo mã chuyến, biển số, tài xế..."
-                className="w-full h-10.5 pl-10 pr-8 rounded-xl text-xs sm:text-sm bg-slate-50/80 border border-slate-200 text-slate-900 placeholder-slate-400 transition-all outline-none focus:bg-white focus:ring-4 focus:ring-[#371cdb]/10 focus:border-[#371cdb]"
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm('')}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-
-            {/* Select kho xuất phát */}
-            <select
-              value={selectedWarehouseId}
-              onChange={(e) => setSelectedWarehouseId(e.target.value)}
-              className="h-10.5 px-3 rounded-xl border border-slate-200 text-xs sm:text-sm bg-slate-50/80 text-slate-700 outline-none focus:bg-white focus:border-[#371cdb]"
-            >
-              <option value="ALL">Tất cả kho xuất</option>
-              <option value="wh-001">Kho Tổng Miền Bắc - LOHA WH01</option>
-              <option value="wh-002">Kho Tổng Miền Nam - LOHA WH02</option>
-            </select>
-
-            {/* Bộ lọc trạng thái dạng Pills */}
-            <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl text-xs">
-              <button
-                type="button"
-                onClick={() => setActiveTab('ALL')}
-                className={`rounded-lg px-3 py-2 font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'ALL'
-                    ? 'bg-[#371cdb] text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
-              >
-                Tất cả ({counts.all})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('IN_TRANSIT_ON_TIME')}
-                className={`rounded-lg px-3 py-2 font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'IN_TRANSIT_ON_TIME'
-                    ? 'bg-[#371cdb] text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
-              >
-                Đúng giờ ({counts.onTime})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('OVERDUE')}
-                className={`rounded-lg px-3 py-2 font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'OVERDUE'
-                    ? 'bg-[#371cdb] text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
-              >
-                Quá hạn ({counts.overdue})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('COMPLETED')}
-                className={`rounded-lg px-3 py-2 font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'COMPLETED'
-                    ? 'bg-[#371cdb] text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
-              >
-                Đã hoàn tất ({counts.completed})
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Danh sách các chuyến đi dạng Grid */}
-        <div className="p-4 sm:p-5 bg-slate-50/50">
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-              {[1, 2, 3].map((n) => (
-                <div
-                  key={n}
-                  className="h-72 rounded-2xl bg-white border border-slate-200/90 p-5 animate-pulse space-y-3"
-                >
-                  <div className="h-5 w-1/2 bg-slate-200 rounded" />
-                  <div className="h-4 w-3/4 bg-slate-100 rounded" />
-                  <div className="h-16 bg-slate-50 rounded" />
-                  <div className="h-8 bg-slate-100 rounded" />
-                </div>
-              ))}
-            </div>
-          ) : filteredTrips.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-[#eff2fe] text-[#371cdb] flex items-center justify-center mx-auto ring-1 ring-[#371cdb]/20">
-                <Truck size={24} />
-              </div>
-              <h3 className="font-bold text-slate-800 text-base">Không tìm thấy chuyến đi nào</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Không có chuyến xe nào khớp với điều kiện lọc hiện tại.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('ALL');
-                  setSearchTerm('');
-                  setSelectedWarehouseId('ALL');
-                }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs"
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            {[1, 2, 3].map((n) => (
+              <div
+                key={n}
+                className="h-72 rounded-2xl bg-white border border-slate-200/90 p-5 animate-pulse space-y-3"
               >
-                Đặt lại bộ lọc
-              </button>
+                <div className="h-5 w-1/2 bg-slate-200 rounded" />
+                <div className="h-4 w-3/4 bg-slate-100 rounded" />
+                <div className="h-16 bg-slate-50 rounded" />
+                <div className="h-8 bg-slate-100 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : filteredTrips.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center space-y-3">
+            <div className="w-12 h-12 rounded-xl bg-[#eff2fe] text-[#371cdb] flex items-center justify-center mx-auto ring-1 ring-[#371cdb]/20">
+              <Truck size={24} />
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-              {filteredTrips.map((trip) => (
-                <TripCard
-                  key={trip.id}
-                  trip={trip}
-                  onOpenDetails={(t) => {
-                    setSelectedTripForDetail(t);
-                    setIsDetailModalOpen(true);
-                  }}
-                  onOpenReturnCheckin={(t) => {
-                    setSelectedTripForCheckin(t);
-                    setIsCheckinModalOpen(true);
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+            <h3 className="font-bold text-slate-800 text-base">Không tìm thấy chuyến đi nào</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              Không có chuyến xe nào khớp với điều kiện lọc hiện tại.
+            </p>
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs"
+            >
+              Đặt lại bộ lọc
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            {filteredTrips.map((trip) => (
+              <TripCard
+                key={trip.id}
+                trip={trip}
+                onOpenDetails={(t) => {
+                  setSelectedTripForDetail(t);
+                  setIsDetailModalOpen(true);
+                }}
+                onOpenReturnCheckin={(t) => {
+                  setSelectedTripForCheckin(t);
+                  setIsCheckinModalOpen(true);
+                }}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Modal chi tiết điểm dừng */}
