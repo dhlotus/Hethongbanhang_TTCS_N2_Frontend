@@ -146,7 +146,7 @@ export const CreatePickingSheetPage: React.FC = () => {
             <div>
               <div className="flex items-center gap-2 text-xs text-slate-500 mb-0.5">
                 <Link to="/warehouse/picking" className="hover:text-indigo-600 font-medium">
-                  Phiếu soạn hàng (Picking)
+                  Phiếu soạn hàng
                 </Link>
                 <span>/</span>
                 <span className="font-semibold text-slate-800">Tạo phiếu mới</span>

@@ -475,7 +475,7 @@ export const OrderPickingPage: React.FC = () => {
           {/* Tiêu đề phiếu */}
           <div className="text-center my-4">
             <h2 className="text-base font-black uppercase tracking-wider">
-              PHIẾU SOẠN HÀNG THEO VỊ TRÍ (PICKING LIST)
+              PHIẾU SOẠN HÀNG THEO VỊ TRÍ
             </h2>
             <p className="text-[11px] text-gray-600 italic mt-0.5">
               * Thứ tự sắp xếp theo lộ trình di chuyển một chiều (S-Shape) tối ưu trong kho
