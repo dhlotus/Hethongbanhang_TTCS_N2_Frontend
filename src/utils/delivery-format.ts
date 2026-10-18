@@ -67,22 +67,22 @@ export function getTripTimingStatus(
   if (diffMinutes > 0) {
     const hours = Math.floor(diffMinutes / 60);
     const mins = diffMinutes % 60;
-    const timeStr = hours > 0 ? `${hours}h ${mins}p` : `${mins} phút`;
+    const timeStr = hours > 0 ? `${hours}h ${mins}p` : `${mins}p`;
     return {
       isOverdue: true,
-      text: `Quá hạn ${timeStr}`,
-      badgeClass: 'bg-rose-50 text-rose-700 ring-rose-600/30 animate-pulse font-bold',
+      text: `Trễ ${timeStr}`,
+      badgeClass: 'bg-rose-50 text-rose-700 border-rose-200',
     };
   }
 
   const remainingMins = Math.abs(diffMinutes);
   const remainingHours = Math.floor(remainingMins / 60);
   const minsLeft = remainingMins % 60;
-  const timeStr = remainingHours > 0 ? `${remainingHours}h ${minsLeft}p` : `${minsLeft} phút`;
+  const timeStr = remainingHours > 0 ? `${remainingHours}h ${minsLeft}p` : `${minsLeft}p`;
 
   return {
     isOverdue: false,
     text: `Còn ${timeStr}`,
-    badgeClass: 'bg-blue-50 text-blue-700 ring-blue-600/20',
+    badgeClass: 'bg-sky-50 text-sky-700 border-sky-200',
   };
 }

@@ -49,19 +49,13 @@ export const TripStatsCards: React.FC<TripStatsCardsProps> = ({ stats, loading =
       </div>
 
       {/* 2. Chuyến quá hạn ETA */}
-      <div
-        className={`p-3 rounded-lg border transition-colors ${
-          isOverdue
-            ? 'bg-rose-50/30 border-rose-200 shadow-2xs'
-            : 'bg-white border-slate-200/90 shadow-2xs hover:border-slate-300'
-        }`}
-      >
+      <div className="bg-white p-3 rounded-lg border border-slate-200/90 shadow-2xs hover:border-slate-300 transition-colors">
         <div className="flex items-center justify-between gap-1.5 mb-1.5">
           <div className="flex items-center gap-1.5 min-w-0">
             <div
               className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
                 isOverdue
-                  ? 'bg-rose-100 text-rose-600'
+                  ? 'bg-rose-50 text-rose-600'
                   : 'bg-slate-100 text-slate-500'
               }`}
             >
@@ -70,21 +64,17 @@ export const TripStatsCards: React.FC<TripStatsCardsProps> = ({ stats, loading =
             <span className="text-xs font-semibold text-slate-600 truncate">Quá hạn ETA</span>
           </div>
           {isOverdue ? (
-            <span className="text-3xs font-semibold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200 shrink-0">
+            <span className="text-3xs font-medium px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200/70 shrink-0">
               Cần xử lý
             </span>
           ) : (
-            <span className="text-3xs font-semibold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+            <span className="text-3xs font-medium px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
               Đúng giờ
             </span>
           )}
         </div>
 
-        <div
-          className={`text-lg font-bold font-mono tracking-tight truncate ${
-            isOverdue ? 'text-rose-600' : 'text-slate-900'
-          }`}
-        >
+        <div className="text-lg font-bold font-mono tracking-tight text-slate-900 truncate">
           {loading ? (
             <div className="h-6 w-16 bg-slate-200 animate-pulse rounded" />
           ) : (
@@ -92,12 +82,8 @@ export const TripStatsCards: React.FC<TripStatsCardsProps> = ({ stats, loading =
           )}
         </div>
 
-        <div
-          className={`text-2xs mt-1 truncate ${
-            isOverdue ? 'text-rose-600 font-medium' : 'text-slate-400'
-          }`}
-        >
-          {isOverdue ? 'Vượt mốc thời gian cam kết' : 'Đúng tiến độ cam kết'}
+        <div className="text-2xs text-slate-400 mt-1 truncate">
+          {isOverdue ? 'Vượt mốc cam kết' : 'Đúng tiến độ cam kết'}
         </div>
       </div>
 

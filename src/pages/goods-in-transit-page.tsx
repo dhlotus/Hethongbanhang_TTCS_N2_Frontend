@@ -252,19 +252,19 @@ export const GoodsInTransitPage: React.FC = () => {
       {/* 2. CẢNH BÁO TIẾN ĐỘ QUÁ HẠN (THIẾT KẾ NHỎ GỌN, DỄ NHÌN)          */}
       {/* ================================================================= */}
       {counts.overdue > 0 && (
-        <div className="flex items-center justify-between gap-3 px-3.5 py-2 rounded-lg bg-rose-50/90 border border-rose-200 text-rose-950 text-xs shadow-2xs">
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-rose-50/70 border border-rose-200/80 text-xs shadow-2xs">
           <div className="flex items-center gap-2 min-w-0">
-            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-            <span className="font-medium text-rose-900 truncate">
-              <strong className="font-semibold text-rose-950">Cảnh báo:</strong> Có {counts.overdue} chuyến xe quá hạn thời gian giao dự kiến (ETA)
+            <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+            <span className="text-2xs sm:text-xs text-rose-800 truncate">
+              Có <strong>{counts.overdue}</strong> chuyến xe quá hạn dự kiến (ETA)
             </span>
           </div>
           <button
             type="button"
             onClick={() => setActiveTab('OVERDUE')}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-600 hover:bg-rose-700 text-white text-2xs font-semibold transition-colors shrink-0 cursor-pointer shadow-2xs"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium text-rose-700 bg-white hover:bg-rose-50 border border-rose-200/80 transition-colors shrink-0 cursor-pointer shadow-2xs"
           >
-            <span>Xem chuyến quá hạn ({counts.overdue})</span>
+            <span>Xem {counts.overdue} chuyến</span>
             <ChevronRight className="w-3 h-3" />
           </button>
         </div>
@@ -311,14 +311,22 @@ export const GoodsInTransitPage: React.FC = () => {
               onClick={() => setActiveTab('OVERDUE')}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'OVERDUE'
-                  ? 'bg-rose-600 text-white'
-                  : counts.overdue > 0
-                  ? 'bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 font-semibold'
+                  ? 'bg-slate-900 text-white'
                   : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
-              <AlertTriangle className="w-3 h-3" />
-              <span>Quá hạn dự kiến ({counts.overdue})</span>
+              <span>Quá hạn dự kiến</span>
+              <span
+                className={`ml-1 px-1.5 py-0.2 rounded text-3xs font-semibold ${
+                  activeTab === 'OVERDUE'
+                    ? 'bg-rose-500 text-white'
+                    : counts.overdue > 0
+                    ? 'bg-rose-100 text-rose-700'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                {counts.overdue}
+              </span>
             </button>
 
             <button

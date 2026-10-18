@@ -3,7 +3,6 @@ import {
   Truck,
   Phone,
   Clock,
-  AlertTriangle,
   RotateCcw,
   ChevronRight,
   Warehouse,
@@ -46,16 +45,16 @@ export const TripCard: React.FC<TripCardProps> = ({
 
   return (
     <div
-      className={`rounded-xl border bg-white p-4.5 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between ${
+      className={`rounded-xl border bg-white p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between ${
         trip.isOverdue && trip.status === 'IN_TRANSIT'
-          ? 'border-rose-300 ring-1 ring-rose-200'
-          : 'border-slate-200'
+          ? 'border-rose-200/90 hover:border-rose-300'
+          : 'border-slate-200/90 hover:border-slate-300'
       }`}
     >
       <div>
         {/* Header: Mã chuyến, Biển số xe, Cảnh báo quá hạn */}
-        <div className="flex items-start justify-between gap-2 pb-3 border-b border-slate-100">
-          <div>
+        <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                 {trip.tripCode}
@@ -63,20 +62,14 @@ export const TripCard: React.FC<TripCardProps> = ({
               <span className="font-mono text-xs font-semibold text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
                 {trip.vehicleNumber}
               </span>
-              {trip.isOverdue && trip.status === 'IN_TRANSIT' && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                  <AlertTriangle className="w-3 h-3 text-rose-600" />
-                  Trễ {trip.overdueMinutes > 60 ? `${Math.floor(trip.overdueMinutes / 60)}h ${trip.overdueMinutes % 60}p` : `${trip.overdueMinutes}p`}
-                </span>
-              )}
             </div>
-            <h3 className="font-bold text-slate-900 text-sm mt-1.5 line-clamp-1">
+            <h3 className="font-bold text-slate-900 text-sm mt-1 line-clamp-1">
               {trip.tripName}
             </h3>
           </div>
 
           <span
-            className={`inline-flex items-center px-2 py-0.5 rounded text-2xs font-semibold border ${timingStatus.badgeClass}`}
+            className={`inline-flex items-center px-2 py-0.5 rounded text-2xs font-semibold border shrink-0 whitespace-nowrap ${timingStatus.badgeClass}`}
           >
             <Clock className="w-3 h-3 mr-1 shrink-0" />
             {timingStatus.text}
@@ -120,9 +113,9 @@ export const TripCard: React.FC<TripCardProps> = ({
           <div>
             <span className="text-slate-400 block text-2xs">Dự kiến hoàn thành (ETA):</span>
             <span
-              className={`font-mono text-2xs font-semibold ${
+              className={`font-mono text-2xs ${
                 trip.isOverdue && trip.status === 'IN_TRANSIT'
-                  ? 'text-rose-600'
+                  ? 'text-rose-700 font-medium'
                   : 'text-slate-700'
               }`}
             >
@@ -156,7 +149,7 @@ export const TripCard: React.FC<TripCardProps> = ({
           <div className="flex items-center justify-between mt-1.5 text-2xs text-slate-500">
             <span>🟢 {trip.deliveredStops} đã giao</span>
             {trip.failedStops > 0 && (
-              <span className="text-rose-600 font-semibold">
+              <span className="text-rose-600 font-medium">
                 🔴 {trip.failedStops} giữ trên xe
               </span>
             )}
@@ -166,16 +159,14 @@ export const TripCard: React.FC<TripCardProps> = ({
 
         {/* Cảnh báo hàng chưa giao giữ trên xe */}
         {trip.failedStops > 0 && (
-          <div className="my-2 p-2 rounded-lg bg-amber-50/60 border border-amber-200 text-xs text-amber-900">
-            <div className="font-semibold text-2xs uppercase text-amber-800">
-              Hàng chưa giao thuộc trách nhiệm xe:
+          <div className="my-2 px-2.5 py-1.5 rounded-md bg-amber-50/60 border border-amber-200/70 text-2xs flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-amber-800 min-w-0">
+              <RotateCcw className="w-3 h-3 text-amber-600 shrink-0" />
+              <span className="truncate">Giữ trên xe:</span>
             </div>
-            <div className="font-mono font-bold text-amber-950 mt-0.5">
+            <span className="font-mono font-bold text-amber-900 shrink-0">
               {formatVndCurrency(trip.retainedGoodsValue)}
-            </div>
-            <p className="text-3xs text-amber-700 mt-0.5">
-              Hàng không tự về kho mà chờ xe quay lại đối soát.
-            </p>
+            </span>
           </div>
         )}
 

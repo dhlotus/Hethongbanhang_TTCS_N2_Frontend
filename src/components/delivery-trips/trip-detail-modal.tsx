@@ -97,9 +97,9 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
                   {trip.vehicleNumber}
                 </span>
                 {trip.isOverdue && trip.status === 'IN_TRANSIT' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                    <AlertTriangle className="w-3 h-3 text-rose-600" />
-                    Trễ {trip.overdueMinutes}p
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs font-medium bg-rose-50 text-rose-700 border border-rose-200/70">
+                    <AlertTriangle className="w-2.5 h-2.5 text-rose-500" />
+                    Trễ {trip.overdueMinutes > 60 ? `${Math.floor(trip.overdueMinutes / 60)}h ${trip.overdueMinutes % 60}p` : `${trip.overdueMinutes}p`}
                   </span>
                 )}
               </div>
@@ -120,16 +120,19 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
 
         {/* Cảnh báo quá hạn nếu có */}
         {trip.isOverdue && trip.status === 'IN_TRANSIT' && (
-          <div className="bg-rose-50 border-b border-rose-200 px-5 py-3 text-xs text-rose-800 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
-            <span>
-              <strong>Cảnh báo quá thời gian dự kiến:</strong> Chuyến xe này đã trễ hạn{' '}
-              <strong className="font-mono font-bold text-rose-950">
-                {trip.overdueMinutes} phút
-              </strong>{' '}
-              so với ETA dự kiến. Quản lý kho nên liên hệ ngay tài xế ({trip.driverPhone}) để kiểm
-              tra tình hình giao hàng.
-            </span>
+          <div className="bg-rose-50/70 border-b border-rose-200/70 px-4 py-2 text-2xs text-rose-800 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <AlertTriangle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+              <span className="truncate">
+                Chuyến trễ <strong>{trip.overdueMinutes > 60 ? `${Math.floor(trip.overdueMinutes / 60)}h ${trip.overdueMinutes % 60}p` : `${trip.overdueMinutes}p`}</strong> so với ETA.
+              </span>
+            </div>
+            <a
+              href={`tel:${trip.driverPhone}`}
+              className="text-rose-700 hover:text-rose-900 font-semibold underline shrink-0"
+            >
+              Gọi tài xế ({trip.driverPhone})
+            </a>
           </div>
         )}
 
@@ -375,9 +378,8 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
                   Đại lý: <strong>{selectedStopForFailure.customerName}</strong> (
                   <span className="font-mono">{selectedStopForFailure.orderCode}</span>)
                 </p>
-                <p className="text-amber-800 bg-amber-50 p-2 rounded border border-amber-200 text-2xs">
-                  ⚠️ Hàng của điểm này sẽ tiếp tục giữ trên xe theo trách nhiệm của chuyến đi, không
-                  tự động về kho.
+                <p className="text-amber-800 bg-amber-50/80 px-2.5 py-1.5 rounded border border-amber-200/70 text-2xs">
+                  Hàng của điểm này sẽ giữ trên xe và cần đối soát khi về kho.
                 </p>
 
                 <div>
