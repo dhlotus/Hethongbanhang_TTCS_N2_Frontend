@@ -78,24 +78,122 @@ const createInitialItem = (_seq = 1, dateStr?: string): ReceiptItemForm => {
   };
 };
 
+const DEFAULT_INITIAL_WAREHOUSES: Warehouse[] = [
+  {
+    id: "11111111-0000-0000-0000-000000000001",
+    code: "KHO-MN-01",
+    name: "Kho Miền Nam (TP. Hồ Chí Minh)",
+    status: "ACTIVE",
+  } as Warehouse,
+  {
+    id: "11111111-0000-0000-0000-000000000002",
+    code: "KHO-MB-01",
+    name: "Kho Miền Bắc (Hà Nội)",
+    status: "ACTIVE",
+  } as Warehouse,
+  {
+    id: "11111111-0000-0000-0000-000000000003",
+    code: "KHO-WEST-01",
+    name: "Kho Miền Tây (Cần Thơ)",
+    status: "ACTIVE",
+  } as Warehouse,
+  {
+    id: "11111111-0000-0000-0000-000000000004",
+    code: "KHO-MT-01",
+    name: "Kho Miền Trung (Đà Nẵng)",
+    status: "ACTIVE",
+  } as Warehouse,
+];
+
+const DEFAULT_INITIAL_SUPPLIERS: Supplier[] = [
+  {
+    id: "22222222-0000-0000-0000-000000000001",
+    code: "NCC-BEV-01",
+    name: "Công ty Cổ phần Nước giải khát LOHA Quốc Tế",
+    status: "ACTIVE",
+  } as Supplier,
+  {
+    id: "22222222-0000-0000-0000-000000000002",
+    code: "NCC-AQUA-02",
+    name: "Công ty TNHH Khai Thác Khoáng Tinh Khiết Aqua Life",
+    status: "ACTIVE",
+  } as Supplier,
+  {
+    id: "22222222-0000-0000-0000-000000000003",
+    code: "NCC-DAIRY-03",
+    name: "Công ty Cổ phần Sữa & Dinh Dưỡng Quốc Tế NutriPlus",
+    status: "ACTIVE",
+  } as Supplier,
+  {
+    id: "22222222-0000-0000-0000-000000000004",
+    code: "NCC-PACK-04",
+    name: "Nhà máy Bao Bì & Đóng Gói Tân Tiến Phát",
+    status: "ACTIVE",
+  } as Supplier,
+  {
+    id: "22222222-0000-0000-0000-000000000005",
+    code: "NCC-OLD-05",
+    name: "Hợp tác xã Nông Sản Hữu Cơ Sạch Thảo Mộc Xanh",
+    status: "ACTIVE",
+  } as Supplier,
+];
+
+const DEFAULT_INITIAL_PRODUCTS: Product[] = [
+  {
+    id: "33333333-0000-0000-0000-000000000001",
+    sku: "LH-MILK-900G",
+    name: "Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g",
+    baseUnit: "Lon",
+    isBatchManaged: true,
+    costPrice: 480000,
+    units: [
+      { id: "u1", unitName: "Lon", conversionRate: 1, isBaseUnit: true },
+      { id: "u2", unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+    ],
+  } as Product,
+  {
+    id: "33333333-0000-0000-0000-000000000002",
+    sku: "LH-NUT-180ML",
+    name: "Sữa Hạt Óc Chó Hạnh Nhân Organic 180ml",
+    baseUnit: "Hộp",
+    isBatchManaged: true,
+    costPrice: 15000,
+    units: [
+      { id: "u3", unitName: "Hộp", conversionRate: 1, isBaseUnit: true },
+      { id: "u4", unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
+    ],
+  } as Product,
+  {
+    id: "33333333-0000-0000-0000-000000000003",
+    sku: "LH-NEST-70ML",
+    name: "Nước Yến Sào Chưng Đường Phèn Loha 70ml",
+    baseUnit: "Hũ",
+    isBatchManaged: true,
+    costPrice: 42000,
+    units: [
+      { id: "u5", unitName: "Hũ", conversionRate: 1, isBaseUnit: true },
+      { id: "u6", unitName: "Lốc", conversionRate: 6, isBaseUnit: false },
+    ],
+  } as Product,
+];
+
 /**
- * Màn hình Lập phiếu nhập kho từ nhà cung cấp (SN-178)
- * - Khối 1: Header Section 100% width dạng responsive grid 5 cột
+ * Màn hình Lập phiếu nhập mới (SN-178)
+ * - Khối 1: Header Section 100% width dạng responsive grid 4 cột
  * - Khối 2: Bảng chi tiết mặt hàng 100% width với nút "+ Thêm dòng hàng" ở header card
  * - Khối 3: Cố định Bottom Action Bar (Sticky Footer) với tóm tắt và hành động
  * - Hỗ trợ resetForm toàn diện khi mount/unmount hoặc bấm Hủy bỏ
  */
 export const CreateInventoryReceiptPage: React.FC = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [activeErrorKey, setActiveErrorKey] = useState<string | null>(null);
 
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>(DEFAULT_INITIAL_WAREHOUSES);
   const [warehouseId, setWarehouseId] = useState("");
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>(DEFAULT_INITIAL_SUPPLIERS);
+  const [products, setProducts] = useState<Product[]>(DEFAULT_INITIAL_PRODUCTS);
 
   const [supplierId, setSupplierId] = useState("");
   const supplierSelectRef = useRef<HTMLSelectElement>(null);
@@ -155,79 +253,34 @@ export const CreateInventoryReceiptPage: React.FC = () => {
   }, [products]);
 
   useEffect(() => {
+    let isMounted = true;
     const loadData = async () => {
-      setLoading(true);
       try {
-        let supList: Supplier[] = [];
-        let prodList: Product[] = [];
-        let whList: Warehouse[] = [];
+        const [supRes, prodRes, whRes] = await Promise.allSettled([
+          suppliersService.getSuppliers({ limit: 100 }),
+          productsService.getProducts({ limit: 500, status: "ACTIVE" }),
+          warehouseService.getWarehouses(),
+        ]);
 
-        try {
-          const supRes = await suppliersService.getSuppliers({ limit: 100 });
-          supList = supRes.data || [];
-        } catch {
-          supList = [
-            { id: "22222222-0000-0000-0000-000000000001", code: "NCC-IDP", name: "Công ty Cổ phần Sữa Quốc Tế (IDP)", status: "ACTIVE" } as Supplier,
-            { id: "22222222-0000-0000-0000-000000000002", code: "NCC-NSX", name: "Công ty TNHH Nông Sản Xanh Loha", status: "ACTIVE" } as Supplier,
-          ];
+        if (!isMounted) return;
+
+        if (supRes.status === "fulfilled" && supRes.value?.data && supRes.value.data.length > 0) {
+          setSuppliers(supRes.value.data);
         }
-
-        try {
-          const prodRes = await productsService.getProducts({ limit: 500, status: "ACTIVE" });
-          prodList = prodRes.data || [];
-        } catch {
-          prodList = [
-            {
-              id: "33333333-0000-0000-0000-000000000001",
-              sku: "LH-MILK-900G",
-              name: "Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g",
-              baseUnit: "Lon",
-              isBatchManaged: true,
-              costPrice: 480000,
-              units: [
-                { id: "u1", unitName: "Lon", conversionRate: 1, isBaseUnit: true },
-                { id: "u2", unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
-              ],
-            } as Product,
-            {
-              id: "33333333-0000-0000-0000-000000000002",
-              sku: "LH-NUT-180ML",
-              name: "Sữa Hạt Óc Chó Hạnh Nhân Organic 180ml",
-              baseUnit: "Hộp",
-              isBatchManaged: true,
-              costPrice: 15000,
-              units: [
-                { id: "u3", unitName: "Hộp", conversionRate: 1, isBaseUnit: true },
-                { id: "u4", unitName: "Thùng", conversionRate: 24, isBaseUnit: false },
-              ],
-            } as Product,
-          ];
+        if (prodRes.status === "fulfilled" && prodRes.value?.data && prodRes.value.data.length > 0) {
+          setProducts(prodRes.value.data);
         }
-
-        try {
-          whList = (await warehouseService.getWarehouses()) || [];
-        } catch {
-          whList = [
-            {
-              id: "11111111-0000-0000-0000-000000000001",
-              code: "WH01",
-              name: "Kho Tổng Miền Nam - LOHA WH01",
-              status: "ACTIVE",
-            } as Warehouse,
-          ];
+        if (whRes.status === "fulfilled" && whRes.value && whRes.value.length > 0) {
+          setWarehouses(whRes.value);
         }
-
-        setSuppliers(supList);
-        setProducts(prodList);
-        setWarehouses(whList);
-
       } catch {
-        showToast("error", "Lỗi khi tải dữ liệu khởi tạo");
-      } finally {
-        setLoading(false);
+        // Tải ngầm trong nền, không chặn giao diện và không báo lỗi
       }
     };
     loadData();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleGenerateBatch = useCallback(
@@ -524,14 +577,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
     0,
   );
 
-  if (loading) {
-    return (
-      <div className="p-12 text-center text-slate-500 flex flex-col items-center justify-center min-h-[400px]">
-        <RefreshCw className="w-8 h-8 animate-spin text-indigo-600 mb-3" />
-        <p className="font-medium">Đang tải dữ liệu khởi tạo...</p>
-      </div>
-    );
-  }
+
 
   return (
     <form
@@ -546,7 +592,7 @@ export const CreateInventoryReceiptPage: React.FC = () => {
           Thông tin phiếu nhập
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
           {/* Cột 1: Kho nhập hàng */}
           <div>
             <label className="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1">
@@ -681,20 +727,6 @@ export const CreateInventoryReceiptPage: React.FC = () => {
                 <span>{receiptDateError}</span>
               </p>
             )}
-          </div>
-
-          {/* Cột 5: Ghi chú */}
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Ghi chú
-            </label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Nhập ghi chú..."
-              className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-xs text-slate-800 transition-all"
-            />
           </div>
         </div>
       </div>
