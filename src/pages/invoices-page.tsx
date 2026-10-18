@@ -11,8 +11,6 @@ import {
 } from 'lucide-react';
 import type { InvoiceItem } from '../services/invoices.service';
 import { invoicesService } from '../services/invoices.service';
-import { InvoiceDetailModal } from '../components/invoice-detail-modal';
-import { RecordPaymentModal } from '../components/record-payment-modal';
 import { Pagination } from '../components/pagination';
 import { showToast } from '../components/toast';
 
@@ -80,8 +78,7 @@ export const InvoicesPage: React.FC = () => {
   const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
   const [totalInvoices, setTotalInvoices] = useState<number>(0);
   const [totalInvoicePages, setTotalInvoicePages] = useState<number>(1);
-  const [selectedInvoiceForDetail, setSelectedInvoiceForDetail] = useState<InvoiceItem | null>(null);
-  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<InvoiceItem | null>(null);
+
 
   // Loading state
   const [loading, setLoading] = useState(false);
@@ -340,7 +337,7 @@ export const InvoicesPage: React.FC = () => {
                     <td className="px-5 py-4 text-left whitespace-nowrap text-sm font-semibold text-slate-900">
                       <button
                         type="button"
-                        onClick={() => setSelectedInvoiceForDetail(inv)}
+                        onClick={() => navigate(`/accounting/invoices/${inv.id}`)}
                         className="text-[var(--color-primary)] hover:underline font-semibold transition-colors cursor-pointer text-left"
                         title="Xem chi tiết hóa đơn"
                       >
@@ -374,12 +371,12 @@ export const InvoicesPage: React.FC = () => {
                       </span>
                     </td>
 
-                    {/* 6. Thao tác: Chỉ để nút Chi tiết ở ngoài (In và PDF đã có sẵn trong modal Chi tiết) */}
+                    {/* 6. Thao tác: Chỉ để nút Chi tiết ở ngoài (In và PDF có sẵn trong trang Chi tiết) */}
                     <td className="px-3 py-4 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center">
                         <button
                           type="button"
-                          onClick={() => setSelectedInvoiceForDetail(inv)}
+                          onClick={() => navigate(`/accounting/invoices/${inv.id}`)}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-primary)]/25 bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
                           title="Xem chi tiết hóa đơn"
                           aria-label="Xem chi tiết"
@@ -436,7 +433,7 @@ export const InvoicesPage: React.FC = () => {
               return (
                 <div
                   key={inv.id}
-                  onClick={() => setSelectedInvoiceForDetail(inv)}
+                  onClick={() => navigate(`/accounting/invoices/${inv.id}`)}
                   className="rounded-xl bg-white border border-slate-200/80 p-3.5 shadow-xs hover:border-slate-300 active:scale-[0.99] transition-all cursor-pointer select-none space-y-2 w-full"
                 >
                       {/* Hàng 1: Mã hóa đơn & Trạng thái (Pastel Badge) */}
@@ -475,7 +472,7 @@ export const InvoicesPage: React.FC = () => {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedInvoiceForDetail(inv);
+                                navigate(`/accounting/invoices/${inv.id}`);
                               }}
                               className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[var(--color-primary)]/25 bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
                               title="Xem chi tiết"
@@ -511,27 +508,6 @@ export const InvoicesPage: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* Modal chi tiết hóa đơn */}
-      <InvoiceDetailModal
-        invoice={selectedInvoiceForDetail}
-        isOpen={Boolean(selectedInvoiceForDetail)}
-        onClose={() => setSelectedInvoiceForDetail(null)}
-        onOpenPayment={(inv) => {
-          setSelectedInvoiceForDetail(null);
-          setSelectedInvoiceForPayment(inv);
-        }}
-      />
-
-      {/* Modal ghi nhận thanh toán hóa đơn */}
-      <RecordPaymentModal
-        invoice={selectedInvoiceForPayment}
-        isOpen={Boolean(selectedInvoiceForPayment)}
-        onClose={() => setSelectedInvoiceForPayment(null)}
-        onSuccess={() => {
-          void fetchInvoices();
-        }}
-      />
     </div>
   );
 };

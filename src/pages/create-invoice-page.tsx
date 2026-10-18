@@ -47,38 +47,6 @@ const formatDate = (dateStr?: string): string => {
   }
 };
 
-const getCustomerGroupBadge = (group?: string) => {
-  const normalized = (group || '').toUpperCase();
-  if (normalized === 'AGENT_LEVEL_1') {
-    return {
-      label: 'Đại lý Cấp 1',
-      badgeClass: 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold shadow-xs',
-    };
-  }
-  if (normalized === 'AGENT_LEVEL_2') {
-    return {
-      label: 'Đại lý Cấp 2',
-      badgeClass: 'bg-sky-100 text-sky-800 border border-sky-300 font-semibold shadow-xs',
-    };
-  }
-  if (normalized === 'WHOLESALE') {
-    return {
-      label: 'Bán buôn',
-      badgeClass: 'bg-teal-100 text-teal-800 border border-teal-300 font-semibold shadow-xs',
-    };
-  }
-  if (normalized === 'RETAIL') {
-    return {
-      label: 'Bán lẻ',
-      badgeClass: 'bg-amber-100 text-amber-800 border border-amber-300 font-semibold shadow-xs',
-    };
-  }
-  return {
-    label: group || 'Đại lý',
-    badgeClass: 'bg-slate-100 text-slate-800 border border-slate-300 font-semibold shadow-xs',
-  };
-};
-
 export const CreateInvoicePage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -495,7 +463,6 @@ export const CreateInvoicePage: React.FC = () => {
                         filteredCustomers.map((c) => {
                           const isSelected = selectedCustomer?.id === c.id;
                           const slipCount = getSlipCountForCustomer(c);
-                          const groupBadge = getCustomerGroupBadge(c.customerGroup || (c as { group?: string }).group);
 
                           return (
                             <div
@@ -529,17 +496,14 @@ export const CreateInvoicePage: React.FC = () => {
 
                               <div className="flex items-center gap-2 shrink-0 pt-0.5 sm:pt-0">
                                 <span
-                                  className={`text-[10px] px-2.5 py-1 rounded-full font-semibold shadow-2xs ${groupBadge.badgeClass}`}
+                                  className={`text-[11px] px-2.5 py-1 rounded-full font-semibold border ${
+                                    slipCount > 0
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-2xs'
+                                      : 'bg-slate-100 text-slate-500 border-slate-200'
+                                  }`}
                                 >
-                                  {groupBadge.label}
+                                  {slipCount} phiếu chờ
                                 </span>
-                                {slipCount > 0 && (
-                                  <span
-                                    className="text-[10px] px-2 py-0.5 rounded-full font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200"
-                                  >
-                                    {slipCount} phiếu chờ
-                                  </span>
-                                )}
                                 {isSelected && (
                                   <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                                     <Check className="w-3.5 h-3.5" />
