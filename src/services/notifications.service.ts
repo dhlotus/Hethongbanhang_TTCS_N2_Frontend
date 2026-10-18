@@ -8,7 +8,7 @@ export interface SystemNotification {
   orderId?: string;
   orderCode?: string;
   customerName?: string;
-  type: 'ORDER' | 'STOCK_ALERT' | 'DELIVERY' | 'PRICING' | 'CREDIT';
+  type: 'ORDER' | 'STOCK_ALERT' | 'DELIVERY' | 'PRICING' | 'CREDIT' | 'COLLECTION';
   title: string;
   message: string;
   amount?: number;

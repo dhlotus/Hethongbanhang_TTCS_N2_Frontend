@@ -83,6 +83,19 @@ const getPageHeaderInfo = (
       ],
     };
   }
+  if (
+    pathname === '/route-collections/create' ||
+    pathname === '/app/route-collections/create'
+  ) {
+    return {
+      title: 'Tạo phiếu thu mới',
+      category: 'Tài chính & Thu chi',
+      breadcrumbs: [
+        { label: 'Quản lý ngân sách', path: '/route-collections' },
+        { label: 'Tạo phiếu thu mới' },
+      ],
+    };
+  }
   if (pathname === '/portal/orders/confirm' || pathname === '/portal/orders/create') {
     return {
       title: 'Xác nhận đơn hàng',

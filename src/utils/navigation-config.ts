@@ -24,6 +24,7 @@ import {
   CreditCard,
   RotateCcw,
   Building2,
+  HandCoins,
 } from 'lucide-react';
 import { USER_ROLES, type UserRoleType, type AuthUser } from '../types/auth';
 
@@ -209,6 +210,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       icon: Receipt,
       category: 'Tài chính',
     },
+    {
+      id: 'route-collections',
+      name: 'Quản lý ngân sách',
+      path: '/route-collections',
+      icon: HandCoins,
+      category: 'Tài chính',
+    },
   ],
 
   // 3. Quản lý kinh doanh (SALES_MANAGER)
@@ -281,6 +289,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Theo dõi công nợ',
       path: '/accounting/debt',
       icon: Receipt,
+      category: 'Tài chính',
+    },
+    {
+      id: 'route-collections',
+      name: 'Quản lý ngân sách',
+      path: '/route-collections',
+      icon: HandCoins,
       category: 'Tài chính',
     },
     {
@@ -520,6 +535,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Thu chi & Thanh toán',
     },
     {
+      id: 'route-collections',
+      name: 'Quản lý ngân sách',
+      path: '/route-collections',
+      icon: HandCoins,
+      category: 'Thu chi & Thanh toán',
+    },
+    {
       id: 'accounting-debt',
       name: 'Sổ chi tiết công nợ',
       path: '/accounting/debt',
@@ -555,13 +577,6 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Quản lý Đại lý',
     },
     {
-      id: 'catalog-pricing',
-      name: 'Bảng giá & Chiết khấu',
-      path: '/catalog/pricing',
-      icon: BadgePercent,
-      category: 'Tra cứu',
-    },
-    {
       id: 'catalog-products',
       name: 'Danh mục sản phẩm',
       path: '/catalog/products',
@@ -573,13 +588,6 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Tra cứu tồn kho',
       path: '/inventory/stock',
       icon: Warehouse,
-      category: 'Tra cứu',
-    },
-    {
-      id: 'inventory-receipts',
-      name: 'Phiếu nhập kho',
-      path: '/inventory/receipts',
-      icon: PackagePlus,
       category: 'Tra cứu',
     },
   ],
@@ -682,6 +690,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Hóa đơn & Công nợ',
       path: '/accounting/invoices',
       icon: Receipt,
+      category: 'Tài chính & Kế toán',
+    },
+    {
+      id: 'route-collections',
+      name: 'Quản lý ngân sách',
+      path: '/route-collections',
+      icon: HandCoins,
       category: 'Tài chính & Kế toán',
     },
   ],

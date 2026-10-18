@@ -48,6 +48,8 @@ import { InternalTransfersPage } from '../pages/inventory/internal-transfers-pag
 import { OrderPickingPage } from '../pages/order-picking-page';
 import { InventoryBatchesPage } from '../pages/inventory-batches-page';
 import { StockCardPage } from '../pages/inventory/stock-card-page';
+import { RouteCollectionsPage } from '../pages/route-collections-page';
+import { CreateRouteCollectionPage } from '../pages/create-route-collection-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -468,6 +470,42 @@ export const AppRoutes: React.FC = () => {
               <Route
                 path="/reports/debt"
                 element={<DebtReportPage />}
+              />
+            </Route>
+
+            {/* ------------------------------------------------------------- */}
+            {/* PHÂN HỆ THU TIỀN TUYẾN & ĐỐI CHIẾU (SN-205)                   */}
+            {/* ------------------------------------------------------------- */}
+            <Route
+              element={
+                <RoleGuard
+                  allowedRoles={[
+                    'ADMIN',
+                    'SALES_REP',
+                    'ACCOUNTANT',
+                    'ACCOUNTANT_DEBT',
+                    'SALES_MANAGER',
+                    'BUSINESS_MANAGER',
+                  ]}
+                  moduleName="Quản lý ngân sách"
+                />
+              }
+            >
+              <Route
+                path="/route-collections"
+                element={<RouteCollectionsPage />}
+              />
+              <Route
+                path="/route-collections/create"
+                element={<CreateRouteCollectionPage />}
+              />
+              <Route
+                path="/app/route-collections"
+                element={<RouteCollectionsPage />}
+              />
+              <Route
+                path="/app/route-collections/create"
+                element={<CreateRouteCollectionPage />}
               />
             </Route>
 
