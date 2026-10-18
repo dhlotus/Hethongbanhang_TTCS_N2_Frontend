@@ -227,20 +227,7 @@ export const InvoicesPage: React.FC = () => {
 
   return (
     <div className="space-y-4 w-full">
-      {/* ── NÚT HÀNH ĐỘNG GỌN GÀNG ── */}
-      <div className="flex items-center justify-end">
-        <button
-          type="button"
-          onClick={() => setIsIssueModalOpen(true)}
-          className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-lg shadow-xs transition-all cursor-pointer"
-          title="Phát hành hóa đơn bán hàng từ phiếu thực giao (SN-200)"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Phát hành hóa đơn</span>
-        </button>
-      </div>
-
-      {/* ── THANH BỘ LỌC TÌM KIẾM TINH GỌN ── */}
+      {/* ── THANH BỘ LỌC TÌM KIẾM & NÚT PHÁT HÀNH HÓA ĐƠN ── */}
       <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         {/* Ô tìm kiếm */}
         <div className="relative flex-1">
@@ -264,7 +251,7 @@ export const InvoicesPage: React.FC = () => {
           )}
         </div>
 
-        {/* Lọc trạng thái hóa đơn */}
+        {/* Lọc trạng thái hóa đơn & Nút phát hành hóa đơn */}
         <div className="flex items-center gap-2 shrink-0">
           <select
             value={statusFilter}
@@ -290,6 +277,16 @@ export const InvoicesPage: React.FC = () => {
               <span>Đặt lại</span>
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={() => setIsIssueModalOpen(true)}
+            className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-lg shadow-xs transition-all cursor-pointer shrink-0"
+            title="Phát hành hóa đơn bán hàng từ phiếu thực giao"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Phát hành hóa đơn</span>
+          </button>
         </div>
       </div>
 

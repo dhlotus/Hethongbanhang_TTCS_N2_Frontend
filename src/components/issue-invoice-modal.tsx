@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   X,
   FileCheck2,
@@ -11,7 +11,8 @@ import {
   Receipt,
   Check,
   RefreshCw,
-  Info,
+  Search,
+  ChevronDown,
 } from 'lucide-react';
 import {
   invoicesService,
@@ -57,8 +58,12 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
+  const customerDropdownRef = useRef<HTMLDivElement>(null);
   const [unbilledSlips, setUnbilledSlips] = useState<UnbilledDeliverySlip[]>([]);
   const [selectedSlipIds, setSelectedSlipIds] = useState<string[]>([]);
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   const [dueDate, setDueDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
@@ -90,8 +95,11 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
           const firstCustomerId = slipsRes[0].customerId;
           setSelectedCustomerId(firstCustomerId);
           setSelectedSlipIds([slipsRes[0].id]);
+          const found = customerList.find((c: Customer) => c.id === firstCustomerId);
+          if (found) setCustomerSearchTerm(found.name);
         } else if (customerList.length > 0) {
           setSelectedCustomerId(customerList[0].id);
+          setCustomerSearchTerm(customerList[0].name);
         }
       } catch {
         showToast('error', 'Không thể tải danh sách phiếu giao hàng chờ lập hóa đơn');
@@ -195,11 +203,48 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
       (selectedCustomerId === 'cust-001' && c.id === '55555555-0000-0000-0000-000000000001'),
   );
 
+  // Xử lý đóng dropdown đại lý khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        customerDropdownRef.current &&
+        !customerDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsCustomerDropdownOpen(false);
+        if (selectedCustomer) {
+          setCustomerSearchTerm(selectedCustomer.name);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [selectedCustomer]);
+
+  // Lọc danh sách đại lý theo từ khóa tìm kiếm
+  const filteredCustomers = useMemo(() => {
+    const q = customerSearchTerm.trim().toLowerCase();
+    if (!q) return customers;
+    return customers.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.code && c.code.toLowerCase().includes(q)) ||
+        c.id.toLowerCase().includes(q),
+    );
+  }, [customers, customerSearchTerm]);
+
   // Xử lý gửi API phát hành hoá đơn
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedSlipIds.length === 0) {
       showToast('warning', 'Vui lòng chọn ít nhất một phiếu giao hàng để lập hóa đơn.');
+      return;
+    }
+
+    if (dueDate && dueDate < todayStr) {
+      showToast('warning', `Hạn thanh toán không được trước ngày lập hóa đơn (${formatDate(todayStr)}).`);
       return;
     }
 
@@ -242,15 +287,9 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
               <Receipt className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <span>Phát hành Hóa đơn Bán hàng</span>
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  SN-200
-                </span>
+              <h2 className="text-base font-bold text-slate-900">
+                Phát hành Hóa đơn Bán hàng
               </h2>
-              <p className="text-xs text-slate-500 font-medium">
-                Tự động lập hóa đơn theo số lượng hàng THỰC GIAO từ phiếu giao đã ký nhận
-              </p>
             </div>
           </div>
 
@@ -268,44 +307,92 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
         {/* 2. BODY CONTENT                                                   */}
         {/* ================================================================= */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-5">
-          {/* Cảnh báo quy chuẩn 5 ràng buộc cốt lõi */}
-          <div className="p-3.5 rounded-lg bg-indigo-50/70 border border-indigo-100 flex items-start gap-2.5 text-xs text-indigo-900">
-            <Info className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-semibold text-indigo-950">
-                Quy tắc nghiệp vụ Kế toán công nợ (Ràng buộc bất biến):
-              </p>
-              <ul className="list-disc list-inside space-y-0.5 text-indigo-800">
-                <li>Tiền hoá đơn sinh từ <strong>Số lượng thực giao</strong>, bỏ qua số lượng đặt ban đầu.</li>
-                <li>Số hoá đơn tự sinh theo dãy số liên tục, không trùng lặp và không nhảy cóc.</li>
-                <li>Hỗ trợ gộp nhiều phiếu giao của cùng một đại lý vào chung một hóa đơn.</li>
-                <li>Hóa đơn đã phát hành tuyệt đối không sửa và không xóa.</li>
-              </ul>
-            </div>
-          </div>
-
           {/* Dòng 1: Chọn Đại lý & Hạn thanh toán */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
+            {/* Searchable Combobox chọn Đại lý */}
+            <div className="space-y-1.5 relative" ref={customerDropdownRef}>
               <label className="text-xs font-bold text-slate-700 flex items-center gap-1 h-5">
                 <Building2 className="h-3.5 w-3.5 text-slate-500" />
                 <span>Chọn Đại lý phát hành hóa đơn</span>
                 <span className="text-rose-500">*</span>
               </label>
-              <select
-                value={selectedCustomerId}
-                onChange={(e) => handleCustomerChange(e.target.value)}
-                className="w-full h-[38px] px-3 text-xs border border-slate-200 rounded-lg bg-slate-50/60 hover:bg-white focus:bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium cursor-pointer"
-              >
-                {customers.map((c) => {
-                  const slipCount = unbilledSlips.filter((s) => isMatchingCustomer(s, c.id, c)).length;
-                  return (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.code || c.id}) {slipCount > 0 ? `— [${slipCount} phiếu chờ xuất HĐ]` : '— [0 phiếu]'}
-                    </option>
-                  );
-                })}
-              </select>
+
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm hoặc chọn đại lý..."
+                  value={customerSearchTerm}
+                  onFocus={() => setIsCustomerDropdownOpen(true)}
+                  onClick={() => setIsCustomerDropdownOpen(true)}
+                  onChange={(e) => {
+                    setCustomerSearchTerm(e.target.value);
+                    setIsCustomerDropdownOpen(true);
+                  }}
+                  className="w-full h-[38px] pl-9 pr-8 text-xs border border-slate-200 rounded-lg bg-slate-50/60 hover:bg-white focus:bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium cursor-pointer"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsCustomerDropdownOpen((prev) => !prev)}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title="Mở danh sách đại lý"
+                >
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isCustomerDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+
+              {/* Danh sách đại lý sổ xuống */}
+              {isCustomerDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-slate-100 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {filteredCustomers.length === 0 ? (
+                    <div className="p-3 text-center text-xs text-slate-400">
+                      Không tìm thấy đại lý phù hợp
+                    </div>
+                  ) : (
+                    filteredCustomers.map((c) => {
+                      const slipCount = unbilledSlips.filter((s) => isMatchingCustomer(s, c.id, c)).length;
+                      const isSelected = c.id === selectedCustomerId;
+
+                      return (
+                        <div
+                          key={c.id}
+                          onClick={() => {
+                            handleCustomerChange(c.id);
+                            setCustomerSearchTerm(c.name);
+                            setIsCustomerDropdownOpen(false);
+                          }}
+                          className={`p-2.5 text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                            isSelected
+                              ? 'bg-indigo-50/80 text-indigo-950 font-semibold'
+                              : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex flex-col min-w-0 pr-2">
+                            <span className="truncate font-medium">{c.name}</span>
+                            <span className="text-[11px] text-slate-400 font-mono">
+                              Mã: {c.code || c.id}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+                                slipCount > 0
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-slate-100 text-slate-500 border-slate-200'
+                              }`}
+                            >
+                              {slipCount} phiếu chờ
+                            </span>
+                            {isSelected && <Check className="h-4 w-4 text-indigo-600" />}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
               {selectedCustomer && (
                 <div className="text-[11px] text-slate-500 flex items-center justify-between pt-0.5 px-0.5">
                   <span>MST: <strong className="text-slate-700">{selectedCustomer.taxCode || 'Chưa cập nhật'}</strong></span>
@@ -316,6 +403,7 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
               )}
             </div>
 
+            {/* Hạn thanh toán hóa đơn: Không được trước ngày tạo */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 flex items-center gap-1 h-5">
                 <Calendar className="h-3.5 w-3.5 text-slate-500" />
@@ -325,10 +413,24 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
               <input
                 type="date"
                 required
+                min={todayStr}
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full h-[38px] px-3 text-xs border border-slate-200 rounded-lg bg-slate-50/60 hover:bg-white focus:bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium"
+                className={`w-full h-[38px] px-3 text-xs border rounded-lg bg-slate-50/60 hover:bg-white focus:bg-white text-slate-800 focus:outline-none focus:ring-2 transition-all font-medium ${
+                  dueDate < todayStr
+                    ? 'border-rose-400 focus:ring-rose-500/10 focus:border-rose-500'
+                    : 'border-slate-200 focus:ring-indigo-500/10 focus:border-indigo-500'
+                }`}
               />
+              {dueDate < todayStr ? (
+                <p className="text-[11px] text-rose-500 font-medium">
+                  Hạn thanh toán không được trước ngày lập hóa đơn ({formatDate(todayStr)})
+                </p>
+              ) : (
+                <p className="text-[11px] text-slate-400">
+                  Thời hạn thanh toán từ ngày lập hóa đơn ({formatDate(todayStr)}) trở đi
+                </p>
+              )}
             </div>
           </div>
 
@@ -337,7 +439,7 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <Truck className="h-4 w-4 text-indigo-600" />
-                <span>Phiếu giao hàng đã giao thành công (DELIVERED)</span>
+                <span>Phiếu giao hàng đã giao thành công</span>
                 <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700">
                   {slipsForCurrentCustomer.length} phiếu
                 </span>
@@ -503,12 +605,12 @@ export const IssueInvoiceModal: React.FC<IssueInvoiceModalProps> = ({
             </div>
           </div>
 
-          {/* Dòng 4: Ghi chú & Khối Tổng kết tiền */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+          {/* Dòng 4: Ghi chú & Khối Tổng kết tiền (Hiển thị 1 hàng dọc theo yêu cầu) */}
+          <div className="flex flex-col gap-3.5">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700">Ghi chú phát hành hóa đơn</label>
               <textarea
-                rows={3}
+                rows={2}
                 placeholder="Ví dụ: Gộp phiếu giao PGH-001 và PGH-002 theo thỏa thuận kỳ thanh toán tháng 10..."
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
