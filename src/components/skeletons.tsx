@@ -12,9 +12,12 @@ export const ProductsTableSkeleton: React.FC<{
     <>
       {Array.from({ length: count }).map((_, idx) => (
         <tr key={idx} className="animate-pulse">
-          {/* Cột 1: Mã SKU */}
+          {/* Cột 1: Mã SKU kèm dấu chỉ báo trạng thái */}
           <td className="border-b border-slate-100 px-5 py-4 whitespace-nowrap">
-            <div className="h-4 w-20 bg-slate-200 rounded-md" />
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-slate-200 shrink-0" />
+              <div className="h-4 w-20 bg-slate-200 rounded-md" />
+            </div>
           </td>
 
           {/* Cột 2: Tên sản phẩm */}
@@ -38,12 +41,7 @@ export const ProductsTableSkeleton: React.FC<{
             <div className="h-4 w-20 ml-auto bg-slate-200 rounded-md" />
           </td>
 
-          {/* Cột 5: Trạng thái */}
-          <td className="border-b border-slate-100 px-3 py-4 text-center whitespace-nowrap">
-            <div className="h-6 w-20 mx-auto bg-slate-100 rounded-full" />
-          </td>
-
-          {/* Cột 6: Thao tác */}
+          {/* Cột 5: Thao tác */}
           <td className="border-b border-slate-100 px-3 py-4 text-center whitespace-nowrap">
             <div className="h-7 w-14 mx-auto bg-slate-100 rounded-xl" />
           </td>

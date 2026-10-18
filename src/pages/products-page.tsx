@@ -1069,12 +1069,11 @@ export const ProductsPage: React.FC = () => {
             <div className="hidden sm:block overflow-hidden min-h-[360px]">
               <table className="w-full table-fixed border-collapse">
                 <colgroup>
-                  <col className="w-[15%]" /> {/* Mã SKU */}
-                  <col className="w-[39%]" /> {/* Tên sản phẩm */}
+                  <col className="w-[18%]" /> {/* Mã SKU kèm trạng thái */}
+                  <col className="w-[45%]" /> {/* Tên sản phẩm */}
                   <col className="w-[12%]" /> {/* Tồn kho */}
                   <col className="w-[14%]" /> {/* Giá niêm yết */}
-                  <col className="w-[10%]" /> {/* Trạng thái */}
-                  <col className="w-[10%]" /> {/* Thao tác */}
+                  <col className="w-[11%]" /> {/* Thao tác */}
                 </colgroup>
                 <thead className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">
                   <tr>
@@ -1082,7 +1081,6 @@ export const ProductsPage: React.FC = () => {
                     <th className="px-4 py-3.5 text-left whitespace-nowrap">Tên sản phẩm</th>
                     <th className="px-4 py-3.5 text-center whitespace-nowrap">Tồn kho</th>
                     <th className="px-4 py-3.5 text-right whitespace-nowrap">Giá niêm yết</th>
-                    <th className="px-3 py-3.5 text-center whitespace-nowrap">Trạng thái</th>
                     <th className="px-3 py-3.5 text-center whitespace-nowrap">Thao tác</th>
                   </tr>
                 </thead>
@@ -1091,7 +1089,7 @@ export const ProductsPage: React.FC = () => {
                     <ProductsTableSkeleton count={6} />
                   ) : products.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-14 text-center text-slate-400">
+                      <td colSpan={5} className="py-14 text-center text-slate-400">
                         <Package className="h-8 w-8 mx-auto mb-2 text-slate-300" />
                         <p className="font-semibold text-slate-600 text-sm">
                           Không tìm thấy sản phẩm nào
@@ -1121,11 +1119,24 @@ export const ProductsPage: React.FC = () => {
                           key={p.id}
                           className="hover:bg-slate-50/70 transition-colors border-b border-slate-100"
                         >
-                          {/* Cột 1: Mã SKU */}
+                          {/* Cột 1: Mã SKU kèm dấu chỉ báo trạng thái */}
                           <td className="px-5 py-4 whitespace-nowrap text-left">
-                            <span className="font-mono font-bold text-slate-900 tracking-wider text-xs">
-                              {p.sku}
-                            </span>
+                            <div className="flex items-center gap-2.5">
+                              {p.status === 'ACTIVE' ? (
+                                <span
+                                  className="h-2 w-2 rounded-full bg-emerald-500 ring-4 ring-emerald-100 shrink-0"
+                                  title="Đang hoạt động"
+                                />
+                              ) : (
+                                <span
+                                  className="h-2 w-2 rounded-full bg-slate-400 ring-4 ring-slate-100 shrink-0"
+                                  title="Ngừng hoạt động"
+                                />
+                              )}
+                              <span className="font-mono font-bold text-slate-900 tracking-wider text-xs">
+                                {p.sku}
+                              </span>
+                            </div>
                           </td>
 
                           {/* Cột 2: Tên sản phẩm (Chỉ Ảnh + Tên) */}
@@ -1176,26 +1187,7 @@ export const ProductsPage: React.FC = () => {
                             {formatCurrency(p.price)}
                           </td>
 
-                          {/* Cột 5: Trạng thái (Chỉ xem - Xanh: Hoạt động, Xám: Ngừng) */}
-                          <td className="px-3 py-4 text-center whitespace-nowrap">
-                            {p.status === 'ACTIVE' ? (
-                              <span
-                                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 whitespace-nowrap select-none"
-                              >
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                <span>Hoạt động</span>
-                              </span>
-                            ) : (
-                              <span
-                                className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-inset ring-slate-500/20 whitespace-nowrap select-none"
-                              >
-                                <span className="h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
-                                <span>Ngừng</span>
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Cột 6: Thao tác */}
+                          {/* Cột 5: Thao tác */}
                           <td className="px-3 py-4 text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-1.5">
                               {canManageProducts ? (
@@ -1287,15 +1279,15 @@ export const ProductsPage: React.FC = () => {
                           {p.sku}
                         </span>
                         {p.status === 'ACTIVE' ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 whitespace-nowrap select-none">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                            <span>Hoạt động</span>
-                          </span>
+                          <span
+                            className="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100 shrink-0 select-none"
+                            title="Đang hoạt động"
+                          />
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-500/20 whitespace-nowrap select-none">
-                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
-                            <span>Ngừng</span>
-                          </span>
+                          <span
+                            className="h-2.5 w-2.5 rounded-full bg-slate-400 ring-4 ring-slate-100 shrink-0 select-none"
+                            title="Ngừng hoạt động"
+                          />
                         )}
                       </div>
 
