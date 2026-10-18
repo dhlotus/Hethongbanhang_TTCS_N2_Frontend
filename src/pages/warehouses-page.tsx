@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   Building2,
   Check,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Edit3,
   Eye,
   Layers,
@@ -19,6 +18,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { ModalLayout } from '../components/modal-layout';
+import { Pagination } from '../components/pagination';
 import { showToast } from '../components/toast';
 import { getFriendlyErrorMessage } from '../utils/error-handler';
 import { customerService } from '../services/customer.service';
@@ -189,9 +189,9 @@ function SearchableManagerSelect({
             setIsOpen(!isOpen);
           }
         }}
-        className={`w-full h-10 px-3 rounded-lg border text-sm flex items-center justify-between gap-2 transition-all bg-white text-left ${
+        className={`w-full h-[38px] px-3 rounded-lg border text-xs flex items-center justify-between gap-2 transition-all bg-white text-left ${
           isOpen
-            ? 'border-[#371cdb] ring-4 ring-[#371cdb]/10'
+            ? 'border-indigo-500 ring-1 ring-indigo-500'
             : 'border-slate-200 hover:border-slate-300'
         } ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-50' : 'cursor-pointer'}`}
       >
@@ -407,13 +407,58 @@ export function WarehousesPage(): React.ReactElement {
   const [agencies, setAgencies] = useState<Customer[]>([]);
   const [agencyDefaults, setAgencyDefaults] = useState<Record<string, string>>({});
 
-  // Search & Filter state for warehouses table
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const limit = Math.max(1, Number(searchParams.get('limit')) || 10);
+  const searchParam = searchParams.get('search') || '';
+  const statusParam = (searchParams.get('status') as 'ALL' | 'ACTIVE' | 'INACTIVE') || 'ALL';
 
-  // Pagination state (Image 2 style)
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  // Local state for debounced search input
+  const [searchInput, setSearchInput] = useState(searchParam);
+  useEffect(() => {
+    setSearchInput(searchParam);
+  }, [searchParam]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchInput !== searchParam) {
+        const next = new URLSearchParams(searchParams);
+        if (searchInput.trim()) next.set('search', searchInput.trim());
+        else next.delete('search');
+        next.set('page', '1');
+        setSearchParams(next, { replace: true });
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchInput, searchParam, searchParams, setSearchParams]);
+
+  const updateFilter = useCallback(
+    (updates: { search?: string; status?: string; page?: number; limit?: number }) => {
+      const next = new URLSearchParams(searchParams);
+      if (updates.search !== undefined) {
+        if (updates.search.trim()) next.set('search', updates.search.trim());
+        else next.delete('search');
+      }
+      if (updates.status !== undefined) {
+        if (updates.status && updates.status !== 'ALL') next.set('status', updates.status);
+        else next.delete('status');
+      }
+      if (updates.page !== undefined) {
+        next.set('page', String(updates.page));
+      }
+      if (updates.limit !== undefined) {
+        next.set('limit', String(updates.limit));
+      }
+      setSearchParams(next);
+    },
+    [searchParams, setSearchParams]
+  );
+
+  // Table data state from backend
+  const [tableWarehouses, setTableWarehouses] = useState<Warehouse[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoadingTable, setIsLoadingTable] = useState(false);
 
   // Modals state
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -454,14 +499,44 @@ export function WarehousesPage(): React.ReactElement {
 
   const [busy, setBusy] = useState(false);
 
-  // Load all initial data
+  // Load backend paginated table data
+  const loadTableWarehouses = useCallback(async () => {
+    setIsLoadingTable(true);
+    try {
+      const res = await warehouseService.getWarehouses({
+        search: searchParam || undefined,
+        status: statusParam !== 'ALL' ? statusParam : undefined,
+        page,
+        limit,
+      });
+      if (Array.isArray(res)) {
+        setTableWarehouses(res);
+        setTotalItems(res.length);
+        setTotalPages(Math.max(1, Math.ceil(res.length / limit)));
+      } else if (res && Array.isArray(res.data)) {
+        setTableWarehouses(res.data);
+        setTotalItems(res.total ?? 0);
+        setTotalPages(res.totalPages ?? 1);
+      }
+    } catch (error: unknown) {
+      showToast('error', getFriendlyErrorMessage(error, 'Không thể tải danh sách kho'));
+    } finally {
+      setIsLoadingTable(false);
+    }
+  }, [searchParam, statusParam, page, limit]);
+
+  useEffect(() => {
+    void loadTableWarehouses();
+  }, [loadTableWarehouses]);
+
+  // Load all initial data (for KPIs, assignments, managers)
   const reload = useCallback(async (): Promise<void> => {
     try {
       const [rows, agencyRows, assignments, managerRows] = await Promise.all([
         warehouseService.getWarehouses(),
-        customerService.getCustomers({ limit: 100 }).then((result) => result.data),
-        warehouseService.getAgencyDefaults(),
-        warehouseService.getManagers(),
+        customerService.getCustomers({ limit: 100 }).then((result) => result.data).catch(() => []),
+        warehouseService.getAgencyDefaults().catch(() => []),
+        warehouseService.getManagers().catch(() => []),
       ]);
       setWarehouses(rows);
       setAgencies(agencyRows);
@@ -471,8 +546,8 @@ export function WarehousesPage(): React.ReactElement {
       );
 
       const savedSelectedId = sessionStorage.getItem(SELECTED_WAREHOUSE_STORAGE_KEY);
-      if (savedSelectedId && rows.some((r) => r.id === savedSelectedId)) {
-        const selected = rows.find((r) => r.id === savedSelectedId);
+      if (savedSelectedId && (rows as Warehouse[]).some((r: Warehouse) => r.id === savedSelectedId)) {
+        const selected = (rows as Warehouse[]).find((r: Warehouse) => r.id === savedSelectedId);
         if (selected) setEditForm(getWarehouseEditForm(selected));
       }
     } catch (error: unknown) {
@@ -578,38 +653,7 @@ export function WarehousesPage(): React.ReactElement {
     return warehouses;
   }, [warehouses, isKeeper, user]);
 
-  // Filtered warehouses based on search query and status filter
-  const filteredWarehouses = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    return visibleWarehouses.filter((item) => {
-      // Filter by status
-      if (statusFilter !== 'ALL' && item.status !== statusFilter) {
-        return false;
-      }
-      // Filter by search query
-      if (!query) return true;
-      const managerName = managers.find((m) => m.id === item.managerId)?.name || '';
-      return (
-        item.name.toLowerCase().includes(query) ||
-        item.code.toLowerCase().includes(query) ||
-        item.address.toLowerCase().includes(query) ||
-        (item.phone && item.phone.toLowerCase().includes(query)) ||
-        managerName.toLowerCase().includes(query)
-      );
-    });
-  }, [visibleWarehouses, searchQuery, statusFilter, managers]);
-
-  // Reset page to 1 when search or filter changes
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery, statusFilter]);
-
-  // Pagination calculation
-  const totalPages = Math.ceil(filteredWarehouses.length / limit) || 1;
-  const paginatedWarehouses = useMemo(() => {
-    const start = (page - 1) * limit;
-    return filteredWarehouses.slice(start, start + limit);
-  }, [filteredWarehouses, page, limit]);
+  const paginatedWarehouses = tableWarehouses;
 
   // Agencies assigned to the currently selected warehouse
   const assignedAgencies = useMemo(
@@ -693,6 +737,7 @@ export function WarehousesPage(): React.ReactElement {
       setIsCreateModalOpen(false);
       selectWarehouse(created.id);
       await reload();
+      await loadTableWarehouses();
       showToast('success', 'Đã tạo kho hàng mới thành công');
     } catch (error: unknown) {
       showToast('error', getFriendlyErrorMessage(error, 'Không thể tạo kho hàng'));
@@ -728,6 +773,7 @@ export function WarehousesPage(): React.ReactElement {
       });
       setIsEditModalOpen(false);
       await reload();
+      await loadTableWarehouses();
       try {
         const updatedLocations = await warehouseService.getLocations(targetId);
         setLocations(updatedLocations);
@@ -904,6 +950,7 @@ export function WarehousesPage(): React.ReactElement {
 
       // Tải lại dữ liệu hệ thống
       await reload();
+      await loadTableWarehouses();
     } catch (error: unknown) {
       showToast('error', getFriendlyErrorMessage(error, 'Không thể xóa kho hàng'));
     } finally {
@@ -913,188 +960,150 @@ export function WarehousesPage(): React.ReactElement {
 
   return (
     <main className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
-      {/* 1. PAGE HEADER */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Quản lý kho & vị trí</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Khai báo nhiều kho, kiểm soát vị trí lưu hàng và phân bổ kho phục vụ mặc định cho từng đại lý.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {(isAdmin || isManager) && (
-            <button
-              type="button"
-              onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#371cdb] hover:bg-[#2d14b8] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-all cursor-pointer active:scale-95"
-            >
-              <Plus size={16} /> Tạo kho mới
-            </button>
-          )}
-        </div>
-      </header>
-
-      {/* 2. THỐNG KÊ TỔNG QUAN (KPI SUMMARY) */}
+      {/* 1. THỐNG KÊ TỔNG QUAN (KPI SUMMARY) */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4.5 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-xs font-medium text-slate-500 block mb-1">Tổng số kho hàng</span>
-            <span className="text-2xl font-extrabold text-slate-900 tracking-tight">{visibleWarehouses.length}</span>
-            <span className="text-[11px] text-slate-400 block mt-0.5">
+        <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-slate-500 block">Tổng số kho hàng</span>
+            <div className="text-2xl font-bold text-slate-900 tracking-tight">{visibleWarehouses.length}</div>
+            <span className="text-[11px] text-slate-400 block">
               {isKeeper ? 'Kho được phân công' : 'Kho trên toàn hệ thống'}
             </span>
           </div>
-          <div className="h-11 w-11 rounded-xl bg-[#eff2fe] text-[#371cdb] flex items-center justify-center ring-1 ring-[#371cdb]/20">
-            <WarehouseIcon size={22} />
+          <div className="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <WarehouseIcon size={20} />
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4.5 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-xs font-medium text-slate-500 block mb-1">Đang hoạt động</span>
-            <span className="text-2xl font-extrabold text-emerald-600 tracking-tight">{activeCount}</span>
-            <span className="text-[11px] text-slate-400 block mt-0.5">Sẵn sàng xuất / nhập</span>
+        <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-slate-500 block">Đang hoạt động</span>
+            <div className="text-2xl font-bold text-emerald-600 tracking-tight">{activeCount}</div>
+            <span className="text-[11px] text-slate-400 block">Sẵn sàng xuất / nhập</span>
           </div>
-          <div className="h-11 w-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center ring-1 ring-emerald-500/20">
-            <CheckCircle2 size={22} />
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4.5 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-xs font-medium text-slate-500 block mb-1">Vị trí lưu kho</span>
-            <span className="text-2xl font-extrabold text-[#371cdb] tracking-tight">{totalLocations}</span>
-            <span className="text-[11px] text-slate-400 block mt-0.5">Khu / Dãy / Kệ / Tầng</span>
-          </div>
-          <div className="h-11 w-11 rounded-xl bg-[#eff2fe] text-[#371cdb] flex items-center justify-center ring-1 ring-[#371cdb]/20">
-            <Layers size={22} />
+          <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <CheckCircle2 size={20} />
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4.5 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-xs font-medium text-slate-500 block mb-1">Đại lý đã liên kết</span>
-            <span className="text-2xl font-extrabold text-slate-900 tracking-tight">{totalAssignedAgencies}</span>
-            <span className="text-[11px] text-slate-400 block mt-0.5">Đã phân bổ kho phục vụ</span>
+        <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-slate-500 block">Vị trí lưu kho</span>
+            <div className="text-2xl font-bold text-indigo-600 tracking-tight">{totalLocations}</div>
+            <span className="text-[11px] text-slate-400 block">Khu / Dãy / Kệ / Tầng</span>
           </div>
-          <div className="h-11 w-11 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center ring-1 ring-slate-300/40">
-            <Building2 size={22} />
+          <div className="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <Layers size={20} />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-slate-500 block">Đại lý đã liên kết</span>
+            <div className="text-2xl font-bold text-slate-900 tracking-tight">{totalAssignedAgencies}</div>
+            <span className="text-[11px] text-slate-400 block">Đã phân bổ kho phục vụ</span>
+          </div>
+          <div className="h-10 w-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+            <Building2 size={20} />
           </div>
         </div>
       </section>
 
-      {/* ========================================================================= */}
-      {/* 3. BẢNG DANH SÁCH KHO TO & RỘNG (EXPANDED FULL-WIDTH DATA TABLE)          */}
-      {/* ========================================================================= */}
-      <section className="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
-        {/* THANH TÌM KIẾM & BỘ LỌC TRẠNG THÁI */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eff2fe] text-[#371cdb]">
-              <WarehouseIcon size={20} />
-            </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                Danh sách kho hàng
-                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                  {visibleWarehouses.length}
-                </span>
-              </h2>
-              <p className="text-xs text-slate-500">
-                Bấm nút Chi tiết để xem thông tin, chỉnh sửa, quản lý vị trí và gán đại lý cho kho
-              </p>
-            </div>
+      {/* 2. BỘ LỌC TÌM KIẾM (FILTER CARD) */}
+      <section className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          {/* Ô tìm kiếm */}
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Tìm theo mã kho, tên kho, địa chỉ, số điện thoại..."
+              className="w-full h-[38px] pl-9 pr-8 rounded-lg border border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput('');
+                  updateFilter({ search: undefined, page: 1 });
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                title="Xóa tìm kiếm"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            {/* Thanh tìm kiếm */}
-            <div className="relative min-w-[280px] lg:min-w-[360px]">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <Search size={16} />
-              </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm theo mã kho, tên kho, địa chỉ, người quản lý..."
-                className="w-full h-10.5 pl-10 pr-8 rounded-xl text-xs sm:text-sm bg-slate-50/80 border border-slate-200 text-slate-900 placeholder-slate-400 transition-all outline-none focus:bg-white focus:ring-4 focus:ring-[#371cdb]/10 focus:border-[#371cdb]"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-
-            {/* Bộ lọc trạng thái dạng Pills */}
-            <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl text-xs">
-              {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((filter) => {
-                const count =
-                  filter === 'ALL'
-                    ? visibleWarehouses.length
-                    : filter === 'ACTIVE'
-                    ? activeCount
-                    : inactiveCount;
-                const isActive = statusFilter === filter;
-                return (
-                  <button
-                    key={filter}
-                    type="button"
-                    onClick={() => setStatusFilter(filter)}
-                    className={`rounded-lg px-3 py-2 font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                      isActive
-                        ? 'bg-[#371cdb] text-white shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                    }`}
-                  >
-                    {filter === 'ALL'
-                      ? 'Tất cả'
-                      : filter === 'ACTIVE'
-                      ? 'Đang hoạt động'
-                      : 'Ngưng hoạt động'}{' '}
-                    ({count})
-                  </button>
-                );
-              })}
-            </div>
+          {/* Select trạng thái */}
+          <div className="sm:w-56">
+            <select
+              value={statusParam}
+              onChange={(e) => updateFilter({ status: e.target.value, page: 1 })}
+              className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+            >
+              <option value="ALL">Tất cả trạng thái ({visibleWarehouses.length})</option>
+              <option value="ACTIVE">Đang hoạt động ({activeCount})</option>
+              <option value="INACTIVE">Ngưng hoạt động ({inactiveCount})</option>
+            </select>
           </div>
+
+          {/* Nút Tạo kho mới */}
+          {(isAdmin || isManager) && (
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+            >
+              <Plus size={15} /> Tạo kho mới
+            </button>
+          )}
         </div>
+      </section>
 
-        {/* BẢNG DỮ LIỆU KHO (TABLE TO VÀ RỘNG HƠN) */}
-        <div className="overflow-x-auto min-h-[300px]">
-          <table className="w-full text-left text-xs sm:text-sm text-slate-600">
+      {/* 4. BẢNG DANH SÁCH KHO HÀNG */}
+      <section className="rounded-xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
+        <div className="w-full overflow-hidden">
+          <table className="table-fixed w-full text-left text-xs text-slate-600 divide-y divide-slate-100">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/80">
-                <th className="px-5 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-40">
+              <tr className="border-b border-slate-200/80 bg-slate-50/80">
+                <th className="w-[16%] px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   Mã kho
                 </th>
-                <th className="px-5 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[32%] px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   Tên kho
                 </th>
-                <th className="px-5 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-64">
-                  Thủ kho phụ trách (1-1)
+                <th className="w-[26%] px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Thủ kho phụ trách
                 </th>
-                <th className="px-5 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-44">
+                <th className="w-[14%] px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   Trạng thái
                 </th>
-                <th className="px-5 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider w-44">
+                <th className="w-[12%] px-4 py-3 text-right pr-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   Thao tác
                 </th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-slate-100 bg-white">
-              {paginatedWarehouses.length === 0 ? (
+              {isLoadingTable ? (
                 <tr>
-                  <td colSpan={5} className="py-14 text-center text-slate-400">
-                    <WarehouseIcon className="mx-auto h-10 w-10 text-slate-300 mb-2" />
+                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                      <span>Đang tải danh sách kho...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : paginatedWarehouses.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                    <WarehouseIcon className="mx-auto h-8 w-8 text-slate-300 mb-2" />
                     <p className="text-sm font-semibold text-slate-700">Không tìm thấy kho hàng nào</p>
                     <p className="text-xs text-slate-400 mt-1">
-                      {searchQuery
+                      {searchParam || statusParam !== 'ALL'
                         ? 'Thử thay đổi từ khóa tìm kiếm hoặc bỏ bộ lọc trạng thái'
                         : 'Chưa có kho hàng nào được khai báo trong hệ thống.'}
                     </p>
@@ -1105,62 +1114,60 @@ export function WarehousesPage(): React.ReactElement {
                   const manager = managers.find((m) => m.id === item.managerId);
 
                   return (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-slate-50/80 transition-colors"
-                    >
+                    <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
                       {/* Mã kho */}
-                      <td className="px-5 py-4 font-mono text-xs font-bold text-slate-800">
-                        <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-slate-700 border border-slate-200">
+                      <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-800">
+                        <span className="rounded bg-slate-100 px-2 py-0.5 border border-slate-200">
                           {item.code}
                         </span>
                       </td>
 
                       {/* Tên kho */}
-                      <td className="px-5 py-4">
-                        <div className="font-bold text-slate-900 text-sm">
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-slate-900 text-xs truncate" title={item.name}>
                           {item.name}
                         </div>
+                        {item.address && (
+                          <div className="text-[11px] text-slate-400 truncate mt-0.5" title={item.address}>
+                            {item.address}
+                          </div>
+                        )}
                       </td>
 
                       {/* Người phụ trách */}
-                      <td className="px-5 py-4">
-                        <div className="font-semibold text-slate-800 flex items-center gap-1.5 text-xs">
+                      <td className="px-4 py-3">
+                        <div className="text-xs text-slate-700 truncate">
                           {manager?.name ? (
                             <span>
-                              {manager.name}
+                              <span className="font-medium text-slate-800">{manager.name}</span>
                               {(manager.roleName || manager.roleCode) && (
-                                <span className="text-slate-400 font-normal ml-1">
+                                <span className="text-slate-400 text-[11px] ml-1">
                                   ({manager.roleName || manager.roleCode})
                                 </span>
                               )}
                             </span>
                           ) : (
-                            <span className="text-slate-400 font-normal">Chưa phân công</span>
+                            <span className="text-slate-400">Chưa phân công</span>
                           )}
                         </div>
                       </td>
 
-                      {/* Trạng thái */}
-                      <td className="px-5 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-                            item.status === 'ACTIVE'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
-                              : 'bg-slate-100 text-slate-600 border border-slate-200'
-                          }`}
-                        >
+                      {/* Trạng thái: Dấu chấm xanh (active), xám (inactive) */}
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center">
                           <span
-                            className={`h-1.5 w-1.5 rounded-full ${
-                              item.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-slate-400'
+                            className={`inline-block h-2.5 w-2.5 rounded-full ${
+                              item.status === 'ACTIVE'
+                                ? 'bg-emerald-500 ring-2 ring-emerald-500/20'
+                                : 'bg-slate-300'
                             }`}
+                            title={item.status === 'ACTIVE' ? 'Đang hoạt động' : 'Ngưng hoạt động'}
                           />
-                          {item.status === 'ACTIVE' ? 'Đang hoạt động' : 'Ngưng hoạt động'}
-                        </span>
+                        </div>
                       </td>
 
-                      {/* Thao tác: Nút bấm Dropdown chuẩn (Hình 2) */}
-                      <td className="px-5 py-4 text-center whitespace-nowrap">
+                      {/* Thao tác: Nút bấm Dropdown chuẩn */}
+                      <td className="px-4 py-3 text-right pr-4 whitespace-nowrap">
                         <div className="warehouse-action-dropdown-container inline-block">
                           <button
                             type="button"
@@ -1171,23 +1178,23 @@ export function WarehousesPage(): React.ReactElement {
                                 setActionMenuAnchor(null);
                               } else {
                                 const rect = e.currentTarget.getBoundingClientRect();
-                                const isDropUp = window.innerHeight - rect.bottom < 240;
+                                const isDropUp = window.innerHeight - rect.bottom < 180;
                                 setActionMenuAnchor({
-                                  top: isDropUp ? rect.top : rect.bottom + 6,
+                                  top: isDropUp ? rect.top : rect.bottom + 4,
                                   right: window.innerWidth - rect.right,
                                   isDropUp,
                                 });
                                 setOpenActionMenuId(item.id);
                               }
                             }}
-                            className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none whitespace-nowrap ${
+                            className={`inline-flex items-center justify-center gap-1.5 h-8 px-2.5 rounded-lg border text-xs font-medium transition-colors cursor-pointer shadow-2xs select-none whitespace-nowrap ${
                               openActionMenuId === item.id
-                                ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs ring-2 ring-indigo-500/10'
-                                : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300'
+                                ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-indigo-600'
                             }`}
                             title="Thao tác"
                           >
-                            <span className="whitespace-nowrap">Thao tác</span>
+                            <span>Thao tác</span>
                             <ChevronDown
                               className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${
                                 openActionMenuId === item.id ? 'rotate-180 text-indigo-600' : ''
@@ -1262,100 +1269,29 @@ export function WarehousesPage(): React.ReactElement {
                     <span>Gán đại lý phục vụ</span>
                   </button>
                 )}
-
-                {/* 4. Chỉnh sửa thông tin kho (Chỉ Admin và Quản lý kho) */}
-                {(isAdmin || isManager) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpenActionMenuId(null);
-                      setActionMenuAnchor(null);
-                      handleOpenEditModal(warehouse);
-                    }}
-                    className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-amber-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                  >
-                    <Edit3 className="w-4 h-4 text-amber-500" />
-                    <span>Chỉnh sửa thông tin kho</span>
-                  </button>
-                )}
               </div>
-
-              {/* 5. Xóa kho hàng (Chỉ Quản trị viên ADMIN và Quản lý kho) */}
-              {(isAdmin || isManager) && (
-                <div className="py-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpenActionMenuId(null);
-                      setActionMenuAnchor(null);
-                      void handleOpenDeleteModal(warehouse);
-                    }}
-                    className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
-                  >
-                    <Trash2 className="w-4 h-4 text-rose-500" />
-                    <span>Xóa kho</span>
-                  </button>
-                </div>
-              )}
             </div>,
             document.body
           );
         })()}
 
-        {/* THANH PHÂN TRANG (PAGINATION BAR CHUẨN HÌNH 2) */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/70 text-xs sm:text-sm text-slate-500">
-          <div>
-            Hiển thị <strong>{paginatedWarehouses.length}</strong> trên tổng số{' '}
-            <strong>{filteredWarehouses.length}</strong> kho hàng
+        {/* Phân trang chuẩn hệ thống */}
+        {totalItems > 0 && (
+          <div className="border-t border-slate-100 bg-white px-4 py-3">
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={limit}
+              pageSizeOptions={[10, 20, 50]}
+              itemLabel="kho hàng"
+              showRecordRange={false}
+              showFirstLast={false}
+              onPageChange={(newPage) => updateFilter({ page: newPage })}
+              onPageSizeChange={(newSize) => updateFilter({ limit: newSize, page: 1 })}
+            />
           </div>
-
-          <div className="flex items-center gap-4">
-            {/* Chọn số dòng/trang */}
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500 text-xs">Số dòng/trang:</span>
-              <select
-                value={limit}
-                onChange={(e) => {
-                  setLimit(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium outline-none focus:border-[#371cdb] cursor-pointer"
-              >
-                <option value={5}>5 dòng/trang</option>
-                <option value={10}>10 dòng/trang</option>
-                <option value={20}>20 dòng/trang</option>
-                <option value={50}>50 dòng/trang</option>
-              </select>
-            </div>
-
-            {/* Nút chuyển trang */}
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
-                title="Trang trước"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              <span className="px-2 font-medium text-xs">
-                Trang {page}/{totalPages || 1}
-              </span>
-
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
-                title="Trang sau"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
+        )}
       </section>
 
       {/* ========================================================================= */}
@@ -1370,8 +1306,8 @@ export function WarehousesPage(): React.ReactElement {
         maxWidth="max-w-lg"
         bodyClassName="p-5 sm:p-6 space-y-4 bg-slate-50/60"
         footer={
-          <div className="flex items-center justify-between gap-2.5 w-full">
-            {(isAdmin || isManager) && (
+          <div className="flex items-center justify-between w-full">
+            {(isAdmin || isManager) ? (
               <button
                 type="button"
                 onClick={() => {
@@ -1381,12 +1317,12 @@ export function WarehousesPage(): React.ReactElement {
                     void handleOpenDeleteModal(target);
                   }
                 }}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/50 px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-100/70 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 h-[38px] px-3.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 text-xs font-semibold transition-colors cursor-pointer"
               >
                 <Trash2 size={14} /> Xóa kho
               </button>
-            )}
-            <div className="flex items-center gap-2.5">
+            ) : <div />}
+            {(isAdmin || isManager) && (
               <button
                 type="button"
                 onClick={() => {
@@ -1395,18 +1331,11 @@ export function WarehousesPage(): React.ReactElement {
                     handleOpenEditModal(selectedWarehouse);
                   }
                 }}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 h-[38px] px-3.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
               >
                 <Edit3 size={14} /> Sửa thông tin
               </button>
-              <button
-                type="button"
-                onClick={() => setIsDetailModalOpen(false)}
-                className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-xs font-semibold text-white transition-colors cursor-pointer"
-              >
-                Đóng
-              </button>
-            </div>
+            )}
           </div>
         }
       >
@@ -1499,14 +1428,14 @@ export function WarehousesPage(): React.ReactElement {
               type="submit"
               disabled={busy}
               onClick={(e) => void handleCreateWarehouse(e)}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#371cdb] hover:bg-[#2d14b8] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 h-[38px] px-3.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
             >
-              <Plus size={16} /> Tạo kho
+              <Plus size={15} /> Tạo kho
             </button>
           </div>
         }
       >
-        <div className="space-y-4 pb-28">
+        <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -1517,7 +1446,7 @@ export function WarehousesPage(): React.ReactElement {
                 placeholder="VD: KHO-MB-02"
                 value={warehouseForm.code}
                 onChange={(e) => setWarehouseForm({ ...warehouseForm, code: e.target.value })}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#371cdb] focus:ring-4 focus:ring-[#371cdb]/10"
+                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 text-xs outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
               />
             </div>
             <div>
@@ -1529,7 +1458,7 @@ export function WarehousesPage(): React.ReactElement {
                 placeholder="VD: Kho Phân Phối Hà Nội"
                 value={warehouseForm.name}
                 onChange={(e) => setWarehouseForm({ ...warehouseForm, name: e.target.value })}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#371cdb] focus:ring-4 focus:ring-[#371cdb]/10"
+                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 text-xs outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
               />
             </div>
           </div>
@@ -1543,7 +1472,7 @@ export function WarehousesPage(): React.ReactElement {
               placeholder="VD: Lô CN-05 KCN Ninh Hiệp, Gia Lâm, Hà Nội"
               value={warehouseForm.address}
               onChange={(e) => setWarehouseForm({ ...warehouseForm, address: e.target.value })}
-              className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#371cdb] focus:ring-4 focus:ring-[#371cdb]/10"
+              className="w-full h-[38px] px-3 rounded-lg border border-slate-200 text-xs outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
             />
           </div>
 
@@ -1566,7 +1495,7 @@ export function WarehousesPage(): React.ReactElement {
                     phone: sanitizePhoneNumber(e.target.value),
                   })
                 }
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#371cdb] focus:ring-4 focus:ring-[#371cdb]/10"
+                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 text-xs outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
               />
               {warehouseForm.phone && warehouseForm.phone.length > 0 && !VIETNAM_PHONE_REGEX.test(warehouseForm.phone) && (
                 <p className="text-[11px] text-rose-500 mt-1 font-medium">
@@ -1601,31 +1530,24 @@ export function WarehousesPage(): React.ReactElement {
         onClose={() => setIsEditModalOpen(false)}
         title="Chỉnh sửa thông tin kho"
         subtitle={selectedWarehouse ? `${selectedWarehouse.code} · ${selectedWarehouse.name}` : ''}
-        icon={<Edit3 size={20} className="text-[#371cdb]" />}
-        maxWidth="max-w-3xl"
+        icon={<Edit3 size={20} className="text-indigo-600" />}
+        maxWidth="max-w-2xl"
         bodyAs="form"
         onFormSubmit={(e) => void handleUpdateWarehouse(e)}
         footer={
-          <div className="flex items-center justify-end gap-2.5 w-full">
-            <button
-              type="button"
-              onClick={() => setIsEditModalOpen(false)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-            >
-              Hủy
-            </button>
+          <div className="flex items-center justify-end w-full">
             <button
               type="submit"
               disabled={busy}
               onClick={(e) => void handleUpdateWarehouse(e)}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#371cdb] hover:bg-[#2d14b8] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 h-[38px] px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
             >
-              <Check size={16} /> Lưu thay đổi
+              <Check size={15} /> Lưu thay đổi
             </button>
           </div>
         }
       >
-        <div className="space-y-4 pb-28">
+        <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -1634,7 +1556,7 @@ export function WarehousesPage(): React.ReactElement {
               <input
                 disabled
                 value={selectedWarehouse?.code || ''}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-slate-100 text-slate-500 text-sm cursor-not-allowed"
+                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 font-mono text-xs cursor-not-allowed"
               />
             </div>
             <div>
@@ -1645,7 +1567,7 @@ export function WarehousesPage(): React.ReactElement {
                 required
                 value={editForm.name}
                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#371cdb] focus:ring-4 focus:ring-[#371cdb]/10"
+                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
               />
             </div>
           </div>
@@ -1658,7 +1580,7 @@ export function WarehousesPage(): React.ReactElement {
               required
               value={editForm.address}
               onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-              className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#371cdb] focus:ring-4 focus:ring-[#371cdb]/10"
+              className="w-full h-[38px] px-3 rounded-lg border border-slate-200 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
             />
           </div>
 
@@ -1681,7 +1603,7 @@ export function WarehousesPage(): React.ReactElement {
                     phone: sanitizePhoneNumber(e.target.value),
                   })
                 }
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#371cdb] focus:ring-4 focus:ring-[#371cdb]/10"
+                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white"
               />
               {editForm.phone && editForm.phone.length > 0 && !VIETNAM_PHONE_REGEX.test(editForm.phone) && (
                 <p className="text-[11px] text-rose-500 mt-1 font-medium">
@@ -1714,7 +1636,7 @@ export function WarehousesPage(): React.ReactElement {
                 onChange={(e) =>
                   setEditForm({ ...editForm, status: e.target.value as Warehouse['status'] })
                 }
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#371cdb] focus:ring-4 focus:ring-[#371cdb]/10 bg-white"
+                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white cursor-pointer"
               >
                 <option value="ACTIVE">Đang hoạt động</option>
                 <option value="INACTIVE">Ngưng hoạt động</option>
@@ -1734,17 +1656,6 @@ export function WarehousesPage(): React.ReactElement {
         subtitle={`Mã kho: ${selectedWarehouse?.code || ''} · ${locations.length} vị trí đã khai báo`}
         icon={<MapPin size={20} className="text-[#371cdb]" />}
         maxWidth="max-w-2xl"
-        footer={
-          <div className="flex items-center justify-end w-full">
-            <button
-              type="button"
-              onClick={() => setIsLocationModalOpen(false)}
-              className="rounded-xl bg-slate-800 hover:bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors cursor-pointer"
-            >
-              Đóng
-            </button>
-          </div>
-        }
       >
         <div className="space-y-6">
           {/* Form thêm vị trí mới */}
