@@ -18,11 +18,8 @@ import { invoicesService } from '../services/invoices.service';
 import { InvoiceDetailModal } from '../components/invoice-detail-modal';
 import { RecordPaymentModal } from '../components/record-payment-modal';
 import { IssueInvoiceModal } from '../components/issue-invoice-modal';
-import { receiptsService } from '../services/receipts.service';
-import { ReceiptPrintTemplate } from '../components/receipt-print-template';
 import { Pagination } from '../components/pagination';
 import { showToast } from '../components/toast';
-import type { Receipt as ReceiptType } from '../types/receipt';
 
 const formatCurrency = (val?: number): string => {
   return new Intl.NumberFormat('vi-VN', {
@@ -42,68 +39,6 @@ const formatDate = (dateStr?: string): string => {
     return dateStr;
   }
 };
-
-const INITIAL_DEMO_RECEIPTS: ReceiptType[] = [
-  {
-    id: 'rcpt-001',
-    code: 'PT2610-0001',
-    customerId: 'cust-001',
-    customerCode: 'DL-0001',
-    customerName: 'Đại lý Sữa & Bánh kẹo Miền Bắc',
-    customerPhone: '0988 123 456',
-    customerAddress: 'Số 123 Phố Vọng, P. Đồng Tâm, Q. Hai Bà Trưng, Hà Nội',
-    amount: 25000000,
-    amountInWords: 'Hai mươi lăm triệu đồng chẵn',
-    paymentMethod: 'CASH',
-    paymentDate: '2026-10-15T09:30:00Z',
-    referenceCode: 'HD2609-001',
-    notes: 'Thu tiền mặt đợt 1 cho hóa đơn bán buôn HD2609-001',
-    status: 'CONFIRMED',
-    collectorId: 'usr-acc-01',
-    collectorName: 'Nguyễn Thị Mai',
-    createdAt: '2026-10-15T09:30:00Z',
-  },
-  {
-    id: 'rcpt-002',
-    code: 'PT2610-0002',
-    customerId: 'cust-002',
-    customerCode: 'DL-0002',
-    customerName: 'Đại lý Tạp hóa Hưng Yên',
-    customerPhone: '0912 345 678',
-    customerAddress: 'Xã Dân Tiến, Huyện Khoái Châu, Tỉnh Hưng Yên',
-    amount: 18000000,
-    amountInWords: 'Mười tám triệu đồng chẵn',
-    paymentMethod: 'BANK_TRANSFER',
-    paymentDate: '2026-10-14T14:15:00Z',
-    referenceCode: 'HD2609-002',
-    notes: 'Chuyển khoản thanh toán toàn bộ công nợ qua Vietcombank',
-    status: 'CONFIRMED',
-    collectorId: 'usr-acc-02',
-    collectorName: 'Trần Văn Kế Toán',
-    createdAt: '2026-10-14T14:15:00Z',
-  },
-  {
-    id: 'rcpt-003',
-    code: 'PT2610-0003',
-    customerId: 'cust-008',
-    customerCode: 'DL-0008',
-    customerName: 'Đại Lý Tiêu Dùng Nhanh Thịnh Vượng',
-    customerPhone: '0977 889 900',
-    customerAddress: 'Số 45 Lê Lợi, P. Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-    amount: 51300000,
-    amountInWords: 'Năm mươi mốt triệu ba trăm nghìn đồng chẵn',
-    paymentMethod: 'BANK_TRANSFER',
-    paymentDate: '2026-10-15T15:45:00Z',
-    referenceCode: 'DH2610-10156',
-    notes: 'Thu tiền thanh toán đơn hàng bán buôn DH2610-10156',
-    status: 'CONFIRMED',
-    collectorId: 'usr-acc-01',
-    collectorName: 'Nguyễn Thị Mai',
-    createdAt: '2026-10-15T15:45:00Z',
-  },
-];
-
-type TabKey = 'INVOICES' | 'RECEIPTS';
 
 // Cấu hình nhãn và màu sắc Badge Pastel mềm mại, đồng bộ chuẩn xác với trang trước
 const INVOICE_STATUS_BADGES: Record<
@@ -128,27 +63,9 @@ const INVOICE_STATUS_BADGES: Record<
   },
 };
 
-const RECEIPT_METHOD_BADGES: Record<
-  string,
-  { label: string; badgeClass: string }
-> = {
-  CASH: {
-    label: 'Tiền mặt',
-    badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/60',
-  },
-  BANK_TRANSFER: {
-    label: 'Chuyển khoản',
-    badgeClass: 'bg-sky-50 text-sky-700 border border-sky-200/60',
-  },
-};
-
 export const InvoicesPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Cố định tab Hóa đơn bán hàng
-  const initialTab: TabKey = 'INVOICES';
-
-  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [page, setPage] = useState<number>(() => {
     return Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
   });
@@ -171,20 +88,12 @@ export const InvoicesPage: React.FC = () => {
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<InvoiceItem | null>(null);
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
 
-  // State Phiếu thu tiền
-  const [receipts, setReceipts] = useState<ReceiptType[]>(INITIAL_DEMO_RECEIPTS);
-  const [totalReceipts, setTotalReceipts] = useState<number>(INITIAL_DEMO_RECEIPTS.length);
-  const [totalReceiptPages, setTotalReceiptPages] = useState<number>(1);
-  const [selectedReceiptForPrint, setSelectedReceiptForPrint] = useState<ReceiptType | null>(null);
-  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
-
   // Loading state
   const [loading, setLoading] = useState(false);
 
   // Hàm cập nhật URL Search Parameters an toàn
   const updateUrlParams = useCallback(
     (newParams: {
-      tab?: TabKey;
       page?: number;
       limit?: number;
       search?: string;
@@ -193,12 +102,6 @@ export const InvoicesPage: React.FC = () => {
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
-          const nextTab = newParams.tab !== undefined ? newParams.tab : activeTab;
-          if (nextTab === 'RECEIPTS') {
-            next.set('tab', 'receipts');
-          } else {
-            next.delete('tab');
-          }
 
           const nextPage = newParams.page !== undefined ? newParams.page : page;
           if (nextPage > 1) {
@@ -235,7 +138,7 @@ export const InvoicesPage: React.FC = () => {
         { replace: true }
       );
     },
-    [activeTab, page, limit, searchTerm, statusFilter, setSearchParams]
+    [page, limit, searchTerm, statusFilter, setSearchParams]
   );
 
   // Lắng nghe thay đổi query params trên URL (hỗ trợ nút Back / Forward trình duyệt)
@@ -246,7 +149,6 @@ export const InvoicesPage: React.FC = () => {
     const rawStatus = searchParams.get('status') || 'ALL';
     const newStatus = rawStatus === 'PARTIAL' ? 'PARTIALLY_PAID' : rawStatus;
 
-    setActiveTab('INVOICES');
     setPage(newPage);
     setLimit(newLimit);
     setSearchTerm(newSearch);
@@ -272,41 +174,6 @@ export const InvoicesPage: React.FC = () => {
       setLoading(false);
     }
   }, [page, limit, searchTerm, statusFilter]);
-
-  // Tải danh sách Phiếu thu từ Backend (kèm phân trang, tìm kiếm & lọc hình thức chuẩn Backend)
-  const reloadReceipts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await receiptsService.getPaginatedReceipts({
-        page,
-        limit,
-        search: searchTerm.trim() || undefined,
-      });
-      setReceipts(res.data);
-      setTotalReceipts(res.total);
-      setTotalReceiptPages(res.totalPages);
-    } catch {
-      // Fallback demo nếu mất kết nối
-      let demoList = INITIAL_DEMO_RECEIPTS;
-      if (searchTerm.trim()) {
-        const q = searchTerm.toLowerCase().trim();
-        demoList = demoList.filter(
-          (r) =>
-            r.code.toLowerCase().includes(q) ||
-            r.customerName.toLowerCase().includes(q) ||
-            r.customerCode.toLowerCase().includes(q),
-        );
-      }
-      const total = demoList.length;
-      const totalPages = Math.ceil(total / limit) || 1;
-      const offset = (page - 1) * limit;
-      setReceipts(demoList.slice(offset, offset + limit));
-      setTotalReceipts(total);
-      setTotalReceiptPages(totalPages);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, limit, searchTerm]);
 
   // Đồng bộ số lượng hóa đơn cho badge
   const refreshBadgeCounts = useCallback(async () => {
@@ -381,52 +248,31 @@ export const InvoicesPage: React.FC = () => {
   // Xuất file Excel dữ liệu sạch
   const handleExportExcel = () => {
     try {
-      if (activeTab === 'INVOICES') {
-        const rows = invoices.map((inv) => ({
-          'Số hóa đơn': inv.invoiceCode,
-          'Tên đại lý': inv.customerName,
-          'Mã đại lý': inv.customerId === '55555555-0000-0000-0000-000000000001' ? 'DL-MK-001' : inv.customerId === '55555555-0000-0000-0000-000000000002' ? 'DL-AB-002' : inv.orderCode,
-          'Hạn thanh toán': formatDate(inv.dueDate),
-          'Tổng tiền': inv.amount,
-          'Đã thanh toán': inv.paidAmount,
-          'Còn nợ': inv.remainingAmount,
-          'Trạng thái':
-            inv.status === 'PAID'
-              ? 'Đã thanh toán'
-              : inv.remainingAmount > 0 && new Date(inv.dueDate) < new Date()
-              ? 'Quá hạn'
-              : inv.status === 'PARTIALLY_PAID'
-              ? 'Một phần'
-              : 'Chưa thanh toán',
-        }));
-        const ws = XLSX.utils.json_to_sheet(rows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'HoaDon');
-        XLSX.writeFile(wb, `Danh_sach_hoa_don_${new Date().toISOString().slice(0, 10)}.xlsx`);
-      } else {
-        const rows = receipts.map((r) => ({
-          'Mã phiếu thu': r.code,
-          'Tên đại lý': r.customerName,
-          'Mã đại lý': r.customerCode || '—',
-          'Ngày thu': formatDate(r.paymentDate),
-          'Số tiền': r.amount,
-          'Hình thức': r.paymentMethod === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản',
-          'Người thu': r.collectorName || '—',
-        }));
-        const ws = XLSX.utils.json_to_sheet(rows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'PhieuThu');
-        XLSX.writeFile(wb, `Danh_sach_phieu_thu_${new Date().toISOString().slice(0, 10)}.xlsx`);
-      }
+      const rows = invoices.map((inv) => ({
+        'Số hóa đơn': inv.invoiceCode,
+        'Tên đại lý': inv.customerName,
+        'Mã đại lý': inv.customerId === '55555555-0000-0000-0000-000000000001' ? 'DL-MK-001' : inv.customerId === '55555555-0000-0000-0000-000000000002' ? 'DL-AB-002' : inv.orderCode,
+        'Hạn thanh toán': formatDate(inv.dueDate),
+        'Tổng tiền': inv.amount,
+        'Đã thanh toán': inv.paidAmount,
+        'Còn nợ': inv.remainingAmount,
+        'Trạng thái':
+          inv.status === 'PAID'
+            ? 'Đã thanh toán'
+            : inv.remainingAmount > 0 && new Date(inv.dueDate) < new Date()
+            ? 'Quá hạn'
+            : inv.status === 'PARTIALLY_PAID'
+            ? 'Một phần'
+            : 'Chưa thanh toán',
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'HoaDon');
+      XLSX.writeFile(wb, `Danh_sach_hoa_don_${new Date().toISOString().slice(0, 10)}.xlsx`);
       showToast('success', 'Xuất file Excel thành công');
     } catch {
       showToast('error', 'Không thể xuất file Excel');
     }
-  };
-
-  const handleOpenPrint = (receipt: ReceiptType) => {
-    setSelectedReceiptForPrint(receipt);
-    setIsPrintModalOpen(true);
   };
 
   // Xác định thông tin Badge Pastel cho từng Hóa đơn
@@ -442,17 +288,6 @@ export const InvoicesPage: React.FC = () => {
       return INVOICE_STATUS_BADGES.PARTIALLY_PAID;
     }
     return INVOICE_STATUS_BADGES.UNPAID;
-  };
-
-  // Xác định thông tin Badge Pastel cho hình thức thu tiền
-  const getReceiptMethodBadge = (method?: string) => {
-    if (method && RECEIPT_METHOD_BADGES[method]) {
-      return RECEIPT_METHOD_BADGES[method];
-    }
-    return {
-      label: method || 'Khác',
-      badgeClass: 'bg-slate-100 text-slate-700 border border-slate-200/60',
-    };
   };
 
   return (
@@ -550,246 +385,141 @@ export const InvoicesPage: React.FC = () => {
       {/* 1. BẢNG DỮ LIỆU DESKTOP (>= 640px) - ĐỒNG BỘ 100% STYLE AUDIT LOG   */}
       {/* =================================================================== */}
       <div className="hidden sm:block rounded-xl bg-white border border-slate-200/80 shadow-xs overflow-hidden w-full">
-        {activeTab === 'INVOICES' ? (
-          /* ── BẢNG HÓA ĐƠN BÁN HÀNG (6 CỘT) ── */
-          <table className="w-full table-fixed border-collapse">
-            <colgroup>
-              <col className="w-[15%]" />
-              <col className="w-[23%]" />
-              <col className="w-[14%]" />
-              <col className="w-[16%]" />
-              <col className="w-[18%]" />
-              <col className="w-[14%]" />
-            </colgroup>
+        {/* ── BẢNG HÓA ĐƠN BÁN HÀNG (6 CỘT) ── */}
+        <table className="w-full table-fixed border-collapse">
+          <colgroup>
+            <col className="w-[15%]" />
+            <col className="w-[23%]" />
+            <col className="w-[14%]" />
+            <col className="w-[16%]" />
+            <col className="w-[18%]" />
+            <col className="w-[14%]" />
+          </colgroup>
 
-            <thead>
-              <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">
-                <th className="px-5 py-3.5 text-left whitespace-nowrap">Số hóa đơn</th>
-                <th className="px-5 py-3.5 text-left whitespace-nowrap">Đại lý</th>
-                <th className="px-5 py-3.5 text-center whitespace-nowrap">Hạn thanh toán</th>
-                <th className="px-5 py-3.5 text-right whitespace-nowrap">Tổng tiền</th>
-                <th className="px-3 py-3.5 text-center whitespace-nowrap">Trạng thái</th>
-                <th className="px-3 py-3.5 text-center whitespace-nowrap">Thao tác</th>
+          <thead>
+            <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <th className="px-5 py-3.5 text-left whitespace-nowrap">Số hóa đơn</th>
+              <th className="px-5 py-3.5 text-left whitespace-nowrap">Đại lý</th>
+              <th className="px-5 py-3.5 text-center whitespace-nowrap">Hạn thanh toán</th>
+              <th className="px-5 py-3.5 text-right whitespace-nowrap">Tổng tiền</th>
+              <th className="px-3 py-3.5 text-center whitespace-nowrap">Trạng thái</th>
+              <th className="px-3 py-3.5 text-center whitespace-nowrap">Thao tác</th>
+            </tr>
+          </thead>
+
+          <tbody className="divide-y divide-slate-100 text-sm">
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="py-[4.5rem] text-center text-slate-400">
+                  <RefreshCw className="h-[1.5rem] w-[1.5rem] animate-spin mx-auto mb-[0.5rem] text-[var(--color-primary)]" />
+                  <span className="font-medium text-sm">Đang tải dữ liệu hóa đơn...</span>
+                </td>
               </tr>
-            </thead>
+            ) : invoices.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-[4.5rem] text-center text-slate-400">
+                  <ScrollText className="h-[2rem] w-[2rem] mx-auto mb-[0.5rem] text-slate-300" />
+                  <p className="text-sm text-slate-400 font-normal">Không tìm thấy</p>
+                </td>
+              </tr>
+            ) : (
+              invoices.map((inv) => {
+                const statusBadge = getInvoiceStatusBadge(inv);
 
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="py-[4.5rem] text-center text-slate-400">
-                    <RefreshCw className="h-[1.5rem] w-[1.5rem] animate-spin mx-auto mb-[0.5rem] text-[var(--color-primary)]" />
-                    <span className="font-medium text-sm">Đang tải dữ liệu hóa đơn...</span>
-                  </td>
-                </tr>
-              ) : invoices.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-[4.5rem] text-center text-slate-400">
-                    <ScrollText className="h-[2rem] w-[2rem] mx-auto mb-[0.5rem] text-slate-300" />
-                    <p className="text-sm text-slate-400 font-normal">Không tìm thấy</p>
-                  </td>
-                </tr>
-              ) : (
-                invoices.map((inv) => {
-                  const statusBadge = getInvoiceStatusBadge(inv);
+                return (
+                  <tr key={inv.id} className="hover:bg-slate-50/70 transition-colors group">
+                    {/* 1. Số hóa đơn (Link bấm rõ ràng) */}
+                    <td className="px-5 py-4 text-left whitespace-nowrap text-sm font-semibold text-slate-900">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedInvoiceForDetail(inv)}
+                        className="text-[var(--color-primary)] hover:underline font-semibold transition-colors cursor-pointer text-left"
+                        title="Xem chi tiết hóa đơn"
+                      >
+                        {inv.invoiceCode}
+                      </button>
+                    </td>
 
-                  return (
-                    <tr key={inv.id} className="hover:bg-slate-50/70 transition-colors group">
-                      {/* 1. Số hóa đơn (Link bấm rõ ràng) */}
-                      <td className="px-5 py-4 text-left whitespace-nowrap text-sm font-semibold text-slate-900">
+                    {/* 2. Đại lý (chỉ hiển thị tên theo yêu cầu) */}
+                    <td className="px-5 py-4 text-left whitespace-nowrap">
+                      <span className="text-sm font-medium text-slate-900 truncate block max-w-full" title={inv.customerName}>
+                        {inv.customerName}
+                      </span>
+                    </td>
+
+                    {/* 3. Hạn thanh toán (căn giữa) */}
+                    <td className="px-5 py-4 text-center whitespace-nowrap text-sm font-medium text-slate-600">
+                      {formatDate(inv.dueDate)}
+                    </td>
+
+                    {/* 4. Tổng tiền (căn phải, số đậm rõ ràng) */}
+                    <td className="px-5 py-4 text-right whitespace-nowrap text-sm font-semibold text-slate-900 tabular-nums">
+                      {formatCurrency(inv.amount)}
+                    </td>
+
+                    {/* 5. Trạng thái (Badge Pastel mềm mại, rộng rãi không bao giờ vỡ chữ) */}
+                    <td className="px-3 py-4 text-center whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap shrink-0 ${statusBadge.badgeClass}`}
+                      >
+                        {statusBadge.label}
+                      </span>
+                    </td>
+
+                    {/* 6. Thao tác: Không có sửa/xóa; hỗ trợ Chi tiết, In và Tải PDF (SN-200) */}
+                    <td className="px-3 py-4 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => setSelectedInvoiceForDetail(inv)}
-                          className="text-[var(--color-primary)] hover:underline font-semibold transition-colors cursor-pointer text-left"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-primary)]/25 bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
                           title="Xem chi tiết hóa đơn"
+                          aria-label="Xem chi tiết"
                         >
-                          {inv.invoiceCode}
+                          <Eye className="h-3.5 w-3.5 text-[var(--color-primary)] shrink-0" />
+                          <span>Chi tiết</span>
                         </button>
-                      </td>
 
-                      {/* 2. Đại lý (chỉ hiển thị tên theo yêu cầu) */}
-                      <td className="px-5 py-4 text-left whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-900 truncate block max-w-full" title={inv.customerName}>
-                          {inv.customerName}
-                        </span>
-                      </td>
-
-                      {/* 3. Hạn thanh toán (căn giữa) */}
-                      <td className="px-5 py-4 text-center whitespace-nowrap text-sm font-medium text-slate-600">
-                        {formatDate(inv.dueDate)}
-                      </td>
-
-                      {/* 4. Tổng tiền (căn phải, số đậm rõ ràng) */}
-                      <td className="px-5 py-4 text-right whitespace-nowrap text-sm font-semibold text-slate-900 tabular-nums">
-                        {formatCurrency(inv.amount)}
-                      </td>
-
-                      {/* 5. Trạng thái (Badge Pastel mềm mại, rộng rãi không bao giờ vỡ chữ) */}
-                      <td className="px-3 py-4 text-center whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap shrink-0 ${statusBadge.badgeClass}`}
-                        >
-                          {statusBadge.label}
-                        </span>
-                      </td>
-
-                      {/* 6. Thao tác: Không có sửa/xóa; hỗ trợ Chi tiết, In và Tải PDF (SN-200) */}
-                      <td className="px-3 py-4 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedInvoiceForDetail(inv)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--color-primary)]/25 bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
-                            title="Xem chi tiết hóa đơn"
-                            aria-label="Xem chi tiết"
-                          >
-                            <Eye className="h-3.5 w-3.5 text-[var(--color-primary)] shrink-0" />
-                            <span>Chi tiết</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => void handlePrintInvoice(inv.id)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
-                            title="In hóa đơn (window.print)"
-                            aria-label="In hóa đơn"
-                          >
-                            <Printer className="h-3.5 w-3.5 text-slate-600 shrink-0" />
-                            <span className="hidden lg:inline">In</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => void handleDownloadInvoicePdf(inv.id, inv.invoiceCode)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
-                            title="Tải hóa đơn PDF"
-                            aria-label="Tải PDF"
-                          >
-                            <Download className="h-3.5 w-3.5 text-slate-600 shrink-0" />
-                            <span className="hidden lg:inline">PDF</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        ) : (
-          /* ── BẢNG PHIẾU THU TIỀN & ĐỐI TRỪ (6 CỘT) ── */
-          <table className="w-full table-fixed border-collapse">
-            <colgroup>
-              <col className="w-[15%]" />
-              <col className="w-[23%]" />
-              <col className="w-[14%]" />
-              <col className="w-[16%]" />
-              <col className="w-[18%]" />
-              <col className="w-[14%]" />
-            </colgroup>
-
-            <thead>
-              <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">
-                <th className="px-5 py-3.5 text-left whitespace-nowrap">Mã phiếu thu</th>
-                <th className="px-5 py-3.5 text-left whitespace-nowrap">Đại lý</th>
-                <th className="px-5 py-3.5 text-center whitespace-nowrap">Ngày thu</th>
-                <th className="px-5 py-3.5 text-right whitespace-nowrap">Số tiền</th>
-                <th className="px-3 py-3.5 text-center whitespace-nowrap">Hình thức</th>
-                <th className="px-3 py-3.5 text-center whitespace-nowrap">Thao tác</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="py-[4.5rem] text-center text-slate-400">
-                    <RefreshCw className="h-[1.5rem] w-[1.5rem] animate-spin mx-auto mb-[0.5rem] text-[var(--color-primary)]" />
-                    <span className="font-medium text-sm">Đang tải dữ liệu phiếu thu...</span>
-                  </td>
-                </tr>
-              ) : receipts.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-[4.5rem] text-center text-slate-400">
-                    <ScrollText className="h-[2rem] w-[2rem] mx-auto mb-[0.5rem] text-slate-300" />
-                    <p className="text-sm text-slate-400 font-normal">Không tìm thấy</p>
-                  </td>
-                </tr>
-              ) : (
-                receipts.map((r) => {
-                  const methodBadge = getReceiptMethodBadge(r.paymentMethod);
-
-                  return (
-                    <tr key={r.id} className="hover:bg-slate-50/70 transition-colors group">
-                      {/* 1. Mã phiếu thu (Link bấm rõ ràng) */}
-                      <td className="px-5 py-4 text-left whitespace-nowrap text-sm font-semibold text-slate-900">
                         <button
                           type="button"
-                          onClick={() => handleOpenPrint(r)}
-                          className="text-[var(--color-primary)] hover:underline font-semibold transition-colors cursor-pointer text-left"
-                          title="In / Xem phiếu thu"
+                          onClick={() => void handlePrintInvoice(inv.id)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
+                          title="In hóa đơn (window.print)"
+                          aria-label="In hóa đơn"
                         >
-                          {r.code}
+                          <Printer className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+                          <span className="hidden lg:inline">In</span>
                         </button>
-                      </td>
 
-                      {/* 2. Đại lý (chỉ hiển thị tên theo yêu cầu) */}
-                      <td className="px-5 py-4 text-left whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-900 truncate block max-w-full" title={r.customerName}>
-                          {r.customerName}
-                        </span>
-                      </td>
-
-                      {/* 3. Ngày thu (căn giữa) */}
-                      <td className="px-5 py-4 text-center whitespace-nowrap text-sm font-medium text-slate-600">
-                        {formatDate(r.paymentDate)}
-                      </td>
-
-                      {/* 4. Số tiền (căn phải, số đậm rõ ràng) */}
-                      <td className="px-5 py-4 text-right whitespace-nowrap text-sm font-semibold text-slate-900 tabular-nums">
-                        {formatCurrency(r.amount)}
-                      </td>
-
-                      {/* 5. Hình thức (Badge Pastel mềm mại, rộng rãi không bao giờ vỡ chữ) */}
-                      <td className="px-3 py-4 text-center whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap shrink-0 ${methodBadge.badgeClass}`}
+                        <button
+                          type="button"
+                          onClick={() => void handleDownloadInvoicePdf(inv.id, inv.invoiceCode)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
+                          title="Tải hóa đơn PDF"
+                          aria-label="Tải PDF"
                         >
-                          {methodBadge.label}
-                        </span>
-                      </td>
-
-                      {/* 6. Thao tác (Nút In phiếu có màu và style rõ ràng nhận biết được) */}
-                      <td className="px-3 py-4 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenPrint(r)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-primary)]/25 bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
-                            title="In phiếu thu"
-                            aria-label="In phiếu thu"
-                          >
-                            <Printer className="h-3.5 w-3.5 text-[var(--color-primary)] shrink-0" />
-                            <span>In phiếu</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        )}
+                          <Download className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+                          <span className="hidden lg:inline">PDF</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
 
         {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN BẢNG DESKTOP (KẾT NỐI BACKEND) ── */}
-        {(activeTab === 'INVOICES' ? totalInvoices : totalReceipts) > 0 && (
+        {totalInvoices > 0 && (
           <Pagination
             variant="default"
             currentPage={page}
-            totalPages={activeTab === 'INVOICES' ? totalInvoicePages : totalReceiptPages}
-            totalItems={activeTab === 'INVOICES' ? totalInvoices : totalReceipts}
+            totalPages={totalInvoicePages}
+            totalItems={totalInvoices}
             pageSize={limit}
             pageSizeOptions={[10, 20, 50]}
-            itemLabel={activeTab === 'INVOICES' ? 'hóa đơn' : 'phiếu thu'}
+            itemLabel="hóa đơn"
             showRecordRange={false}
             showFirstLast={false}
             onPageChange={handlePageChange}
@@ -807,23 +537,22 @@ export const InvoicesPage: React.FC = () => {
             <RefreshCw className="h-[1.5rem] w-[1.5rem] animate-spin mx-auto mb-[0.5rem] text-[var(--color-primary)]" />
             <span className="font-medium text-xs">Đang tải dữ liệu...</span>
           </div>
-        ) : (activeTab === 'INVOICES' ? invoices.length : receipts.length) === 0 ? (
+        ) : invoices.length === 0 ? (
           <div className="rounded-xl bg-white border border-slate-200/80 p-8 text-center text-slate-400">
             <ScrollText className="h-[2rem] w-[2rem] mx-auto mb-[0.5rem] text-slate-300" />
             <p className="text-sm text-slate-400 font-normal">Không tìm thấy</p>
           </div>
         ) : (
           <div className="space-y-2.5">
-            {activeTab === 'INVOICES'
-              ? invoices.map((inv) => {
-                  const statusBadge = getInvoiceStatusBadge(inv);
+            {invoices.map((inv) => {
+              const statusBadge = getInvoiceStatusBadge(inv);
 
-                  return (
-                    <div
-                      key={inv.id}
-                      onClick={() => setSelectedInvoiceForDetail(inv)}
-                      className="rounded-xl bg-white border border-slate-200/80 p-3.5 shadow-xs hover:border-slate-300 active:scale-[0.99] transition-all cursor-pointer select-none space-y-2 w-full"
-                    >
+              return (
+                <div
+                  key={inv.id}
+                  onClick={() => setSelectedInvoiceForDetail(inv)}
+                  className="rounded-xl bg-white border border-slate-200/80 p-3.5 shadow-xs hover:border-slate-300 active:scale-[0.99] transition-all cursor-pointer select-none space-y-2 w-full"
+                >
                       {/* Hàng 1: Mã hóa đơn & Trạng thái (Pastel Badge) */}
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-bold text-[var(--color-primary)]">
@@ -897,76 +626,21 @@ export const InvoicesPage: React.FC = () => {
                       </div>
                     </div>
                   );
-                })
-              : receipts.map((r) => {
-                  const methodBadge = getReceiptMethodBadge(r.paymentMethod);
-
-                  return (
-                    <div
-                      key={r.id}
-                      onClick={() => handleOpenPrint(r)}
-                      className="rounded-xl bg-white border border-slate-200/80 p-3.5 shadow-xs hover:border-slate-300 active:scale-[0.99] transition-all cursor-pointer select-none space-y-2 w-full"
-                    >
-                      {/* Hàng 1: Mã phiếu thu & Hình thức (Pastel Badge) */}
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-[var(--color-primary)]">{r.code}</span>
-                        <span
-                          className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-[11px] font-medium shrink-0 ${methodBadge.badgeClass}`}
-                        >
-                          {methodBadge.label}
-                        </span>
-                      </div>
-
-                      {/* Hàng 2: Đại lý (chỉ tên theo yêu cầu) */}
-                      <div className="text-xs font-medium text-slate-900 truncate" title={r.customerName}>
-                        {r.customerName}
-                      </div>
-
-                      {/* Hàng 3: Ngày thu, Số tiền & Nút In phiếu */}
-                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                        <div className="flex flex-col">
-                          <span className="text-[11px] text-slate-500">Ngày thu</span>
-                          <span className="text-xs font-medium text-slate-700">{formatDate(r.paymentDate)}</span>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <span className="text-xs font-bold text-slate-900 tabular-nums">
-                              {formatCurrency(r.amount)}
-                            </span>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenPrint(r);
-                            }}
-                            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[var(--color-primary)]/25 bg-[var(--color-primary-light)] hover:bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer"
-                            title="In phiếu"
-                          >
-                            <Printer className="h-3.5 w-3.5 text-[var(--color-primary)]" />
-                            <span>In phiếu</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
                 })}
           </div>
         )}
 
         {/* Phân trang cho Mobile */}
-        {(activeTab === 'INVOICES' ? totalInvoices : totalReceipts) > 0 && (
+        {totalInvoices > 0 && (
           <div className="rounded-xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden w-full">
             <Pagination
               variant="default"
               currentPage={page}
-              totalPages={activeTab === 'INVOICES' ? totalInvoicePages : totalReceiptPages}
-              totalItems={activeTab === 'INVOICES' ? totalInvoices : totalReceipts}
+              totalPages={totalInvoicePages}
+              totalItems={totalInvoices}
               pageSize={limit}
               pageSizeOptions={[10, 20, 50]}
-              itemLabel={activeTab === 'INVOICES' ? 'hóa đơn' : 'phiếu thu'}
+              itemLabel="hóa đơn"
               showRecordRange={false}
               showFirstLast={false}
               onPageChange={handlePageChange}
@@ -994,7 +668,6 @@ export const InvoicesPage: React.FC = () => {
         onClose={() => setSelectedInvoiceForPayment(null)}
         onSuccess={() => {
           void fetchInvoices();
-          void reloadReceipts();
           void refreshBadgeCounts();
         }}
       />
@@ -1005,19 +678,8 @@ export const InvoicesPage: React.FC = () => {
         onClose={() => setIsIssueModalOpen(false)}
         onSuccess={(newInvoice) => {
           void fetchInvoices();
-          void reloadReceipts();
           void refreshBadgeCounts();
           setSelectedInvoiceForDetail(newInvoice);
-        }}
-      />
-
-      {/* Modal In & Tải PDF Phiếu Thu (SN-209) */}
-      <ReceiptPrintTemplate
-        receipt={selectedReceiptForPrint}
-        isOpen={isPrintModalOpen}
-        onClose={() => {
-          setIsPrintModalOpen(false);
-          setSelectedReceiptForPrint(null);
         }}
       />
     </div>
