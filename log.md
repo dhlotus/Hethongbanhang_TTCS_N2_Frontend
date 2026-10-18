@@ -320,3 +320,23 @@ pm run build (	sc -b && vite build) -> 0 lỗi, compile thành công 100%.
   - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
   - Backend Build: `npm run build` (`nest build`) -> 0 lỗi, compile thành công 100%.
 
+---
+
+### [Sprint 6/7] - [SN-200]: Giao Diện Phát Hành Hoá Đơn Bán Hàng Từ Phiếu Thực Giao & In/Xuất PDF (Kế Toán Công Nợ)
+- **Thời gian hoàn thành:** 2026-10-18
+- **Mã Jira / Task:** SN-200 (Parent Story: SN-201 / Phân hệ Hóa đơn & Thu nợ)
+- **Tiêu đề:** "Là Kế toán công nợ, tôi muốn phát hành hoá đơn bán hàng từ phiếu đã giao, để xuất hoá đơn đúng số hàng thực giao thay vì số hàng đặt."
+- **5 Ràng buộc nghiệp vụ hoàn thành 100%:**
+  1. **Tính tiền theo số lượng thực giao:** Bảng preview và dữ liệu hóa đơn tính thành tiền dựa trên `deliveredQuantity` từ các phiếu giao hàng đã ký nhận, loại bỏ số lượng đặt ban đầu.
+  2. **Số hóa đơn liên tục không trùng và không nhảy cóc:** BE sử dụng cơ chế PostgreSQL Sequence Atomic Upsert + In-memory Mutex Locking. Dãy số hiển thị trên FE luôn tăng tuần tự dạng `HD{YY}{MM}-0001`, `HD{YY}{MM}-0002`...
+  3. **Gộp nhiều phiếu giao cùng đại lý:** Modal hỗ trợ Kế toán chọn 1 Đại lý, tự động lọc các phiếu giao đã hoàn tất (`DELIVERED`) chưa xuất hóa đơn, cho phép tick chọn một hoặc nhiều phiếu để gộp chung vào 1 hóa đơn bán hàng.
+  4. **Không sửa và không xóa:** Danh sách hóa đơn (cả Desktop Table và Mobile Card) **tuyệt đối không hiển thị nút Sửa hoặc Xóa**. Backend khóa cứng bằng mã lỗi `MethodNotAllowedException` khi gọi PUT/PATCH/DELETE.
+  5. **In hoặc xuất PDF:** Trang bị nút "In" (gọi `window.print()` qua bản in HTML chuẩn VAT) và nút "Tải PDF" (gọi API tải trực tiếp file `.pdf` chất lượng cao xuất từ PDFKit).
+- **Danh sách file thay đổi & tạo mới:**
+  - `src/services/invoices.service.ts`: Khai báo Interface `UnbilledDeliverySlipItem`, `UnbilledDeliverySlip`, `IssueInvoicePayload`; triển khai API tập trung `getUnbilledDeliveries` và `issueInvoice`.
+  - `src/components/issue-invoice-modal.tsx`: Component Modal phát hành hóa đơn theo quy chuẩn `UI_GUIDELINES.md` (`rounded-xl`, màu chủ đạo `indigo-600`, không dùng gradient đại trà, responsive).
+  - `src/pages/invoices-page.tsx`: Bổ sung nút CTA "Phát hành hóa đơn", tích hợp `IssueInvoiceModal`, bổ sung nút "In" và "Tải PDF" trên từng dòng hóa đơn và mobile card view.
+  - `src/hooks/use-debt-report.ts`: Chuẩn hóa kiểu `debounceTimerRef` sang `ReturnType<typeof setTimeout>`.
+- **Trạng thái kiểm thử:**
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
+

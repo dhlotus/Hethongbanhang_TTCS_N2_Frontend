@@ -4,8 +4,10 @@ import { LoginPage } from '../pages/login-page';
 import { ForgotPasswordPage } from '../pages/forgot-password-page';
 import { ResetPasswordPage } from '../pages/reset-password-page';
 import { ChangePasswordPage } from '../pages/change-password-page';
-import { RoleModulePage } from '../pages/role-module-page';
 import { InvoicesPage } from '../pages/invoices-page';
+import { CreateInvoicePage } from '../pages/create-invoice-page';
+import { InvoiceDetailPage } from '../pages/invoice-detail-page';
+import { ReceiptsPage } from '../pages/receipts-page';
 import { ProductsPage } from '../pages/products-page';
 import { ProductEditPage } from '../pages/product-edit-page';
 import { ProductEditPricePage } from '../pages/product-edit-price-page';
@@ -43,6 +45,7 @@ import { NetworkStatusIndicator } from '../components/network-status-indicator';
 import { AdminLayout } from '../layouts/admin-layout';
 import { getRedirectPathByUser, getStoredUser } from '../utils/navigation';
 import { tokenStorage } from '../utils/token-storage';
+import { RoleModulePage } from '../pages/role-module-page';
 import { WarehousesPage } from '../pages/warehouses-page';
 import { InternalTransfersPage } from '../pages/inventory/internal-transfers-page';
 import { OrderPickingPage } from '../pages/order-picking-page';
@@ -420,8 +423,28 @@ export const AppRoutes: React.FC = () => {
                 element={<InvoicesPage />}
               />
               <Route
+                path="/accounting/invoices/create"
+                element={<CreateInvoicePage />}
+              />
+              <Route
+                path="/accounting/invoices/:id"
+                element={<InvoiceDetailPage />}
+              />
+              <Route
+                path="/invoices/create"
+                element={<Navigate to="/accounting/invoices/create" replace />}
+              />
+              <Route
+                path="/invoices/:id"
+                element={<InvoiceDetailPage />}
+              />
+              <Route
+                path="/invoices"
+                element={<Navigate to="/accounting/invoices" replace />}
+              />
+              <Route
                 path="/accounting/payments"
-                element={<InvoicesPage />}
+                element={<ReceiptsPage />}
               />
             </Route>
 
