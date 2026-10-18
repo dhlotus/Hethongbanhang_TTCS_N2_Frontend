@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Truck,
   Plus,
@@ -21,6 +22,8 @@ import {
   Send,
   Eye,
   Calendar,
+  X,
+  ChevronDown,
 } from 'lucide-react';
 import { shipmentsService, type Shipment } from '../services/shipments.service';
 import { deliveryTripsService } from '../services/delivery-trips.service';
@@ -34,6 +37,7 @@ import { ConfirmDeliveryModal, ViewDeliveryProofModal } from '../components/conf
 import { CreateDeliveryTripModal } from '../components/create-delivery-trip-modal';
 import { DeliveryTripDetailModal } from '../components/delivery-trip-detail-modal';
 import { PrintTripManifestModal } from '../components/print-trip-manifest-modal';
+import { Pagination } from '../components/pagination';
 
 const STATUS_CONFIG: Record<
   Shipment['status'],
@@ -130,11 +134,31 @@ export const ShipmentsPage: React.FC = () => {
   // Active view tab: 'SHIPMENTS' (Phiếu xuất kho lẻ) | 'TRIPS' (Chuyến giao hàng & Phân tuyến SN-196)
   const [activeTab, setActiveTab] = useState<'SHIPMENTS' | 'TRIPS'>('SHIPMENTS');
 
-  // Dữ liệu Phiếu xuất kho
+  // URL Search Parameters
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlPage = parseInt(searchParams.get('page') || '1', 10);
+  const urlLimit = parseInt(searchParams.get('limit') || '10', 10);
+  const urlSearch = searchParams.get('search') || '';
+  const urlStatus = searchParams.get('status') || 'ALL';
+
+  // Dữ liệu Phiếu xuất kho & Phân trang backend
   const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [allShipments, setAllShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [searchTerm, setSearchTerm] = useState<string>(urlSearch);
+  const [searchInput, setSearchInput] = useState<string>(urlSearch);
+  const [statusFilter, setStatusFilter] = useState<string>(urlStatus);
+  const [page, setPage] = useState<number>(urlPage > 0 ? urlPage : 1);
+  const [limit, setLimit] = useState<number>(urlLimit > 0 ? urlLimit : 10);
+  const [totalItems, setTotalItems] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(1);
+
+  // Thống kê tổng quan cho 3 KPI Cards
+  const [overviewStats, setOverviewStats] = useState({
+    total: 0,
+    pending: 0,
+    shipping: 0,
+  });
 
   // Dữ liệu Chuyến giao hàng (SN-196)
   const [trips, setTrips] = useState<DeliveryTrip[]>([]);
@@ -301,18 +325,156 @@ export const ShipmentsPage: React.FC = () => {
   // Modal Xem chứng từ giao hàng POD
   const [viewProofShipment, setViewProofShipment] = useState<Shipment | null>(null);
 
+  // Dropdown Thao tác trên từng dòng (Portal pattern đồng bộ hệ thống)
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+  const [actionMenuAnchor, setActionMenuAnchor] = useState<{
+    top: number;
+    right: number;
+    isDropUp?: boolean;
+  } | null>(null);
+
+  // Đóng dropdown thao tác khi click ra ngoài, cuộn trang hoặc nhấn phím Escape
+  useEffect(() => {
+    const handleDocClick = (e: MouseEvent) => {
+      if (
+        !(e.target as HTMLElement).closest('.shipment-action-dropdown-container') &&
+        !(e.target as HTMLElement).closest('.shipment-action-portal-menu')
+      ) {
+        setOpenActionMenuId(null);
+        setActionMenuAnchor(null);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpenActionMenuId(null);
+        setActionMenuAnchor(null);
+      }
+    };
+    const handleScrollOrResize = () => {
+      setOpenActionMenuId(null);
+      setActionMenuAnchor(null);
+    };
+
+    document.addEventListener('click', handleDocClick);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      document.removeEventListener('click', handleDocClick);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, []);
+
+  // Đồng bộ searchParams từ URL (hỗ trợ nút Back/Forward của trình duyệt)
+  useEffect(() => {
+    const p = parseInt(searchParams.get('page') || '1', 10);
+    const l = parseInt(searchParams.get('limit') || '10', 10);
+    const s = searchParams.get('search') || '';
+    const st = searchParams.get('status') || 'ALL';
+
+    const safeP = p > 0 ? p : 1;
+    const safeL = l > 0 ? l : 10;
+
+    setPage((prev) => (prev !== safeP ? safeP : prev));
+    setLimit((prev) => (prev !== safeL ? safeL : prev));
+    setStatusFilter((prev) => (prev !== st ? st : prev));
+    setSearchTerm((prev) => (prev !== s ? s : prev));
+    setSearchInput((prev) => (prev !== s ? s : prev));
+  }, [searchParams]);
+
+  // Cập nhật Query Parameters trên URL
+  const updateQueryParams = useCallback(
+    (newParams: { page?: number; limit?: number; search?: string; status?: string }) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (newParams.page !== undefined) {
+          if (newParams.page > 1) next.set('page', String(newParams.page));
+          else next.delete('page');
+        }
+        if (newParams.limit !== undefined) {
+          if (newParams.limit !== 10) next.set('limit', String(newParams.limit));
+          else next.delete('limit');
+        }
+        if (newParams.search !== undefined) {
+          const val = newParams.search.trim();
+          if (val) next.set('search', val);
+          else next.delete('search');
+        }
+        if (newParams.status !== undefined) {
+          if (newParams.status && newParams.status !== 'ALL') next.set('status', newParams.status);
+          else next.delete('status');
+        }
+        return next;
+      }, { replace: true });
+    },
+    [setSearchParams],
+  );
+
+  // Debounce tìm kiếm backend thật (350ms)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (searchInput.trim() !== searchTerm.trim()) {
+        updateQueryParams({ search: searchInput, page: 1 });
+      }
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [searchInput, searchTerm, updateQueryParams]);
+
+  const handleStatusChange = (newStatus: string) => {
+    setStatusFilter(newStatus);
+    updateQueryParams({ status: newStatus, page: 1 });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    updateQueryParams({ page: newPage });
+  };
+
+  const handlePageSizeChange = (newLimit: number) => {
+    setLimit(newLimit);
+    updateQueryParams({ limit: newLimit, page: 1 });
+  };
+
+  // 1. Tải toàn bộ danh sách để tính thống kê 3 KPI cards & tab counter
+  const fetchOverviewStats = useCallback(async () => {
+    try {
+      const all = await shipmentsService.getShipments();
+      const list = all || [];
+      setAllShipments(list);
+      const pending = list.filter((s) => ['PENDING', 'PICKING', 'PACKED'].includes(s.status)).length;
+      const shipping = list.filter((s) => s.status === 'SHIPPED').length;
+      setOverviewStats({
+        total: list.length,
+        pending,
+        shipping,
+      });
+    } catch {
+      // Bỏ qua lỗi mạng nền
+    }
+  }, []);
+
+  // 2. Tải danh sách phiếu xuất kho phân trang thực tế từ backend
   const fetchShipments = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await shipmentsService.getShipments();
-      setShipments(data || []);
+      const res = await shipmentsService.getPaginatedShipments({
+        page,
+        limit,
+        search: searchTerm || undefined,
+        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+      });
+      setShipments(res.data || []);
+      setTotalItems(res.total ?? (res.data ? res.data.length : 0));
+      setTotalPages(res.totalPages || Math.max(1, Math.ceil((res.total || 0) / limit)));
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       showToast('error', msg || 'Không thể tải danh sách phiếu xuất kho');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, limit, searchTerm, statusFilter]);
 
   const fetchTrips = useCallback(async () => {
     try {
@@ -329,8 +491,12 @@ export const ShipmentsPage: React.FC = () => {
 
   useEffect(() => {
     fetchShipments();
+  }, [fetchShipments]);
+
+  useEffect(() => {
+    fetchOverviewStats();
     fetchTrips();
-  }, [fetchShipments, fetchTrips]);
+  }, [fetchOverviewStats, fetchTrips]);
 
   // Xử lý tạo phiếu xuất với đầy đủ validation logic
   const handleCreateShipment = async (e: React.FormEvent) => {
@@ -389,6 +555,7 @@ export const ShipmentsPage: React.FC = () => {
       setCustomerNameError(null);
       setAddressError(null);
       fetchShipments();
+      fetchOverviewStats();
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       showToast('error', msg || 'Lỗi khi tạo phiếu xuất kho');
@@ -428,6 +595,7 @@ export const ShipmentsPage: React.FC = () => {
       } catch {}
       setSelectedShipment(null);
       fetchShipments();
+      fetchOverviewStats();
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       showToast('error', msg || 'Lỗi khi cập nhật trạng thái');
@@ -443,6 +611,7 @@ export const ShipmentsPage: React.FC = () => {
       await shipmentsService.deleteShipment(id);
       showToast('success', 'Đã xóa phiếu xuất kho');
       fetchShipments();
+      fetchOverviewStats();
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       showToast('error', msg || 'Lỗi khi xóa phiếu xuất kho');
@@ -464,6 +633,7 @@ export const ShipmentsPage: React.FC = () => {
       } catch {}
       fetchTrips();
       fetchShipments();
+      fetchOverviewStats();
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       showToast('error', msg || 'Không thể xuất phát chuyến giao');
@@ -481,24 +651,12 @@ export const ShipmentsPage: React.FC = () => {
       showToast('success', `Đã xóa chuyến giao ${code}`);
       fetchTrips();
       fetchShipments();
+      fetchOverviewStats();
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       showToast('error', msg || 'Lỗi khi xóa chuyến giao');
     }
   };
-
-  // Lọc danh sách phiếu xuất kho
-  const filteredShipments = shipments.filter((item) => {
-    const matchStatus = statusFilter === 'ALL' || item.status === statusFilter;
-    const matchSearch =
-      !searchTerm ||
-      item.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.orderCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.trackingNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.tripCode?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchStatus && matchSearch;
-  });
 
   // Lọc danh sách chuyến giao hàng
   const filteredTrips = useMemo(() => {
@@ -527,11 +685,6 @@ export const ShipmentsPage: React.FC = () => {
     return Array.from(set);
   }, [trips]);
 
-  // Thống kê nhanh Phiếu xuất kho
-  const totalDelivered = shipments.filter((s) => s.status === 'DELIVERED').length;
-  const totalShipping = shipments.filter((s) => s.status === 'SHIPPED').length;
-  const totalPending = shipments.filter((s) => ['PENDING', 'PICKING', 'PACKED'].includes(s.status)).length;
-
   // Thống kê nhanh Chuyến giao hàng (SN-196)
   const totalDraftTrips = trips.filter((t) => t.status === 'DRAFT').length;
   const totalAssignedTrips = trips.filter((t) => t.status === 'ASSIGNED').length;
@@ -539,36 +692,55 @@ export const ShipmentsPage: React.FC = () => {
   const totalCompletedTrips = trips.filter((t) => t.status === 'COMPLETED').length;
 
   return (
-    <div className="space-y-6">
-      {/* Tiêu đề & Nút hành động */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Truck className="w-6 h-6 text-indigo-600" />
-            Quản lý Xuất kho & Giao hàng
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Soạn hàng xuất kho chuẩn FEFO, phân tuyến giao hàng đa điểm và bàn giao phương tiện vận chuyển
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
+    <div className="space-y-4">
+      {/* Thanh Điều hướng Tabs & Nút Hành động */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2 sm:pb-0">
+        <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto">
           <button
-            onClick={() => {
-              fetchShipments();
-              fetchTrips();
-            }}
-            className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-all shadow-2xs cursor-pointer"
-            title="Tải lại dữ liệu"
+            onClick={() => setActiveTab('SHIPMENTS')}
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'SHIPMENTS'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+            }`}
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading || loadingTrips ? 'animate-spin' : ''}`} />
-            <span>Làm mới</span>
+            <Truck className="w-4 h-4" />
+            <span>Danh sách phiếu xuất</span>
+            <span
+              className={`px-2 py-0.5 text-xs rounded-full font-bold ${
+                activeTab === 'SHIPMENTS' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              {overviewStats.total}
+            </span>
           </button>
 
+          <button
+            onClick={() => setActiveTab('TRIPS')}
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'TRIPS'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+            }`}
+          >
+            <Route className="w-4 h-4" />
+            <span>Chuyến giao hàng & Phân tuyến (SN-196)</span>
+            <span
+              className={`px-2 py-0.5 text-xs rounded-full font-bold ${
+                activeTab === 'TRIPS' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              {trips.length}
+            </span>
+          </button>
+        </div>
+
+        {/* 2 Nút thao tác đưa lên ngang hàng thanh Tab để tiết kiệm diện tích */}
+        <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
           {canManageTrips && (
             <button
               onClick={() => setIsCreateTripOpen(true)}
-              className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 h-[36px] px-3 sm:px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer"
               title="Gom nhiều phiếu xuất vào một chuyến xe phân theo khu vực (SN-196)"
             >
               <Route className="w-3.5 h-3.5" />
@@ -579,7 +751,7 @@ export const ShipmentsPage: React.FC = () => {
           {canCreate && (
             <button
               onClick={() => navigate('/inventory/shipments/create')}
-              className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 h-[36px] px-3 sm:px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Tạo Phiếu Lẻ</span>
@@ -588,61 +760,20 @@ export const ShipmentsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Navigation Tabs: Phiếu xuất kho vs Chuyến giao hàng SN-196 */}
-      <div className="flex items-center gap-2 border-b border-slate-200">
-        <button
-          onClick={() => setActiveTab('SHIPMENTS')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'SHIPMENTS'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
-          }`}
-        >
-          <Truck className="w-4 h-4" />
-          <span>Danh sách phiếu xuất</span>
-          <span
-            className={`px-2 py-0.5 text-xs rounded-full font-bold ${
-              activeTab === 'SHIPMENTS' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'
-            }`}
-          >
-            {shipments.length}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('TRIPS')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'TRIPS'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
-          }`}
-        >
-          <Route className="w-4 h-4" />
-          <span>Chuyến giao hàng & Phân tuyến (SN-196)</span>
-          <span
-            className={`px-2 py-0.5 text-xs rounded-full font-bold ${
-              activeTab === 'TRIPS' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'
-            }`}
-          >
-            {trips.length}
-          </span>
-        </button>
-      </div>
-
       {/* ========================================================================= */}
       {/* TAB 1: DANH SÁCH PHIẾU XUẤT KHO                                           */}
       {/* ========================================================================= */}
       {activeTab === 'SHIPMENTS' && (
         <div className="space-y-4">
-          {/* Thống kê nhanh Phiếu xuất kho */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Thống kê 3 Card (Ẩn card Đã giao thành công) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs flex items-center gap-3.5">
               <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
                 <FileText className="w-5 h-5" />
               </div>
               <div>
                 <p className="text-xs font-medium text-slate-500">Tổng phiếu xuất</p>
-                <p className="text-xl font-bold text-slate-900 mt-0.5">{shipments.length}</p>
+                <p className="text-xl font-bold text-slate-900 mt-0.5">{overviewStats.total}</p>
               </div>
             </div>
 
@@ -652,7 +783,7 @@ export const ShipmentsPage: React.FC = () => {
               </div>
               <div>
                 <p className="text-xs font-medium text-slate-500">Chờ xuất / Soạn hàng</p>
-                <p className="text-xl font-bold text-amber-700 mt-0.5">{totalPending}</p>
+                <p className="text-xl font-bold text-amber-700 mt-0.5">{overviewStats.pending}</p>
               </div>
             </div>
 
@@ -662,242 +793,172 @@ export const ShipmentsPage: React.FC = () => {
               </div>
               <div>
                 <p className="text-xs font-medium text-slate-500">Đang giao hàng</p>
-                <p className="text-xl font-bold text-sky-700 mt-0.5">{totalShipping}</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-slate-500">Đã giao thành công</p>
-                <p className="text-xl font-bold text-emerald-700 mt-0.5">{totalDelivered}</p>
+                <p className="text-xl font-bold text-sky-700 mt-0.5">{overviewStats.shipping}</p>
               </div>
             </div>
           </div>
 
-          {/* Bộ lọc & Tìm kiếm Phiếu xuất */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3.5 shadow-xs">
-            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-              <div className="relative w-full sm:w-80">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          {/* Bộ lọc & Tìm kiếm Phiếu xuất: Search Input + Select Trạng thái */}
+          <div className="bg-white rounded-xl border border-slate-200/90 p-3 sm:p-4 shadow-xs">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              {/* Ô tìm kiếm Backend thật */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 <input
                   type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Tìm theo mã phiếu, mã đơn, đại lý, mã chuyến..."
-                  className="w-full pl-10 pr-4 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-slate-50/50 hover:bg-white transition-colors"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Tìm theo mã phiếu, mã đơn, đại lý, mã chuyến, số điện thoại..."
+                  className="w-full h-[38px] pl-9 pr-8 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-slate-50/50 hover:bg-white transition-colors"
                 />
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchInput('');
+                      updateQueryParams({ search: '', page: 1 });
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
+                    title="Xóa tìm kiếm"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
-              <div className="flex flex-wrap gap-1.5 w-full sm:w-auto">
-                {['ALL', 'PENDING', 'PICKING', 'PACKED', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((st) => (
-                  <button
-                    key={st}
-                    onClick={() => setStatusFilter(st)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                      statusFilter === st
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {st === 'ALL' ? 'Tất cả' : STATUS_CONFIG[st as Shipment['status']]?.label || st}
-                  </button>
-                ))}
+              {/* Dropdown Lọc trạng thái (chuyển từ các nút pill thành Select để gọn gàng) */}
+              <div className="w-full sm:w-56 shrink-0">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  className="w-full h-[38px] px-3 text-xs font-medium border border-slate-200 rounded-lg bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer shadow-2xs hover:border-slate-300 transition-all"
+                  aria-label="Lọc theo trạng thái xuất kho"
+                >
+                  <option value="ALL">Tất cả trạng thái</option>
+                  <option value="PENDING">Chờ soạn hàng</option>
+                  <option value="PICKING">Đang soạn hàng</option>
+                  <option value="PACKED">Đã đóng gói</option>
+                  <option value="SHIPPED">Đang giao hàng</option>
+                  <option value="DELIVERED">Giao thành công</option>
+                  <option value="CANCELLED">Đã hủy</option>
+                </select>
               </div>
             </div>
           </div>
 
-          {/* Bảng danh sách phiếu xuất kho */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
+          {/* Bảng danh sách phiếu xuất kho đồng bộ quy tắc bảng LOHA */}
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div className="w-full overflow-hidden">
+              <table className="w-full table-fixed text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold text-xs uppercase tracking-wider">
-                    <th className="py-3 px-4">Mã phiếu</th>
-                    <th className="py-3 px-4">Mã đơn hàng</th>
-                    <th className="py-3 px-4">Đại lý & Địa chỉ giao</th>
-                    <th className="py-3 px-4">Đơn vị vận chuyển & Tuyến</th>
-                    <th className="py-3 px-4 text-center">Trạng thái</th>
-                    <th className="py-3 px-4 text-right">Thao tác</th>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold text-[11px] uppercase tracking-wider">
+                    <th className="py-3 px-3 sm:px-4 w-[20%]">Mã phiếu</th>
+                    <th className="py-3 px-3 sm:px-4 w-[18%]">Mã đơn hàng</th>
+                    <th className="py-3 px-3 sm:px-4 w-[32%]">Đại lý</th>
+                    <th className="py-3 px-3 sm:px-4 w-[18%] text-center">Trạng thái</th>
+                    <th className="py-3 px-3 sm:px-4 w-[12%] text-right">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-10 text-slate-400">
+                      <td colSpan={5} className="text-center py-12 text-slate-400">
                         <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-500" />
-                        Đang tải danh sách phiếu xuất kho...
+                        <span className="text-xs">Đang tải danh sách phiếu xuất kho...</span>
                       </td>
                     </tr>
-                  ) : filteredShipments.length === 0 ? (
+                  ) : shipments.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-12 text-slate-400">
-                        <Truck className="w-10 h-10 mx-auto mb-2 text-slate-300" />
-                        Không tìm thấy phiếu xuất kho nào
+                      <td colSpan={5} className="text-center py-12 text-slate-400">
+                        <Truck className="w-10 h-10 mx-auto mb-2 text-slate-300 stroke-[1.5]" />
+                        <p className="font-semibold text-slate-700 text-sm">Không tìm thấy phiếu xuất kho nào</p>
+                        {(searchTerm || statusFilter !== 'ALL') && (
+                          <p className="text-xs text-slate-400 mt-1">
+                            Thử điều chỉnh từ khóa tìm kiếm hoặc chọn "Tất cả trạng thái"
+                          </p>
+                        )}
                       </td>
                     </tr>
                   ) : (
-                    filteredShipments.map((item) => {
+                    shipments.map((item) => {
                       const statusInfo = STATUS_CONFIG[item.status] || STATUS_CONFIG.PENDING;
                       const StatusIcon = statusInfo.icon;
 
                       return (
                         <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
-                          <td className="py-3.5 px-4">
+                          {/* Mã phiếu: Chỉ hiển thị mã phiếu */}
+                          <td className="py-3.5 px-3 sm:px-4">
                             <button
                               type="button"
                               onClick={() => navigate(`/inventory/shipments/${item.id}`)}
-                              className="font-semibold text-indigo-600 hover:text-indigo-800 hover:underline font-mono cursor-pointer text-left block"
-                              title="Xem chi tiết phiếu xuất kho và lô hàng"
+                              className="font-semibold text-indigo-600 hover:text-indigo-800 hover:underline font-mono cursor-pointer text-left truncate block w-full text-xs"
+                              title={`Mã phiếu: ${item.id}`}
                             >
                               {item.id}
                             </button>
-                            <div className="text-[11px] text-slate-400 mt-0.5">
-                              {new Date(item.createdAt).toLocaleDateString('vi-VN')}
-                            </div>
                           </td>
 
-                          <td className="py-3.5 px-4">
-                            <span className="font-semibold text-slate-800 font-mono">{item.orderCode}</span>
-                          </td>
-
-                          <td className="py-3.5 px-4 max-w-xs">
-                            <p className="font-medium text-slate-800">{item.customerName}</p>
-                            {item.receiverName && (
-                              <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                                <User className="w-3 h-3 text-slate-400 shrink-0" />
-                                {item.receiverName} {item.phone && `(${item.phone})`}
-                              </p>
-                            )}
-                            {item.deliveryAddress && (
-                              <p
-                                className="text-xs text-slate-400 flex items-center gap-1 mt-0.5 truncate"
-                                title={item.deliveryAddress}
-                              >
-                                <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                                {item.deliveryAddress}
-                              </p>
-                            )}
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            <p className="text-xs font-semibold text-slate-700">
-                              {item.carrierName || 'Tự vận chuyển'}
-                            </p>
-                            {item.trackingNumber && (
-                              <span className="inline-block text-[11px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded mt-0.5">
-                                Mã: {item.trackingNumber}
-                              </span>
-                            )}
-                            {/* SN-196: Badge hiển thị chuyến giao hàng nếu đã được gom */}
-                            {item.tripCode ? (
-                              <div className="mt-1">
-                                <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
-                                  <Route className="w-3 h-3 text-indigo-600 shrink-0" />
-                                  Chuyến: {item.tripCode}
-                                </span>
-                              </div>
-                            ) : ['PENDING', 'PICKING', 'PACKED'].includes(item.status) ? (
-                              <div className="mt-1">
-                                <span className="inline-block text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                                  Chưa gom chuyến xe
-                                </span>
-                              </div>
-                            ) : null}
-                          </td>
-
-                          <td className="py-3.5 px-4 text-center">
-                            <span
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusInfo.bg} ${statusInfo.text}`}
-                            >
-                              <StatusIcon className="w-3.5 h-3.5" />
-                              {statusInfo.label}
+                          {/* Mã đơn hàng: Chỉ hiển thị mã đơn */}
+                          <td className="py-3.5 px-3 sm:px-4">
+                            <span className="font-semibold text-slate-800 font-mono text-xs truncate block" title={item.orderCode || '—'}>
+                              {item.orderCode || '—'}
                             </span>
-                            {item.status === 'DELIVERED' && item.deliveredAt && (
-                              <div className="text-[10px] text-emerald-600 mt-1 font-medium">
-                                {new Date(item.deliveredAt).toLocaleDateString('vi-VN')}{' '}
-                                {new Date(item.deliveredAt).toLocaleTimeString('vi-VN', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </div>
-                            )}
-                            {item.failureReason && item.status === 'PACKED' && (
-                              <div
-                                className="mt-1 flex items-center justify-center gap-1 text-[11px] text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-1.5 py-0.5"
-                                title={item.failureReason}
-                              >
-                                <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
-                                <span className="truncate max-w-[130px]">Quay về kho: {item.failureReason}</span>
-                              </div>
-                            )}
                           </td>
 
-                          <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {/* Nút Xem chi tiết phiếu xuất kho */}
+                          {/* Đại lý: Chỉ hiển thị tên đại lý */}
+                          <td className="py-3.5 px-3 sm:px-4">
+                            <span className="font-medium text-slate-800 text-xs truncate block" title={item.customerName || 'Khách lẻ'}>
+                              {item.customerName || 'Khách lẻ'}
+                            </span>
+                          </td>
+
+                          {/* Trạng thái: Chỉ hiển thị badge trạng thái */}
+                          <td className="py-3.5 px-3 sm:px-4 text-center">
+                            <span
+                              className={`inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold border max-w-full ${statusInfo.bg} ${statusInfo.text}`}
+                              title={statusInfo.label}
+                            >
+                              <StatusIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                              <span className="truncate">{statusInfo.label}</span>
+                            </span>
+                          </td>
+
+                          {/* Thao tác: Chỉ 1 nút bấm mở dropdown */}
+                          <td className="py-3.5 px-3 sm:px-4 text-right">
+                            <div className="relative inline-flex items-center justify-end shipment-action-dropdown-container">
                               <button
                                 type="button"
-                                onClick={() => navigate(`/inventory/shipments/${item.id}`)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors cursor-pointer shadow-2xs"
-                                title="Xem chi tiết phiếu xuất kho & lô hàng FEFO"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (openActionMenuId === item.id) {
+                                    setOpenActionMenuId(null);
+                                    setActionMenuAnchor(null);
+                                  } else {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    const shouldDropUp = spaceBelow < 250 && rect.top > 250;
+                                    setActionMenuAnchor({
+                                      top: shouldDropUp ? rect.top - 4 : rect.bottom + 4,
+                                      right: window.innerWidth - rect.right,
+                                      isDropUp: shouldDropUp,
+                                    });
+                                    setOpenActionMenuId(item.id);
+                                  }
+                                }}
+                                className={`inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none shrink-0 ${
+                                  openActionMenuId === item.id
+                                    ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs ring-2 ring-indigo-500/10'
+                                    : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300'
+                                }`}
+                                title="Thao tác"
                               >
-                                <Eye className="w-3.5 h-3.5 text-slate-500" />
-                                Chi tiết
+                                <span className="hidden sm:inline">Thao tác</span>
+                                <ChevronDown
+                                  className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${
+                                    openActionMenuId === item.id ? 'rotate-180 text-indigo-600' : ''
+                                  }`}
+                                />
                               </button>
-                              {/* SN-198: Nút Xác nhận giao hàng khi đơn đang giao */}
-                              {canUpdateStatus && item.status === 'SHIPPED' && (
-                                <button
-                                  onClick={() => setDeliveryConfirmShipment(item)}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer shadow-2xs"
-                                  title="Xác nhận kết quả giao hàng (kèm ảnh chứng từ)"
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                  Xác nhận giao
-                                </button>
-                              )}
-
-                              {/* Nút Xem chứng từ khi đã giao thành công */}
-                              {item.status === 'DELIVERED' && (
-                                <button
-                                  onClick={() => setViewProofShipment(item)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer"
-                                  title="Xem biên bản giao nhận & ảnh chứng từ"
-                                >
-                                  <FileImage className="w-3.5 h-3.5 text-slate-500" />
-                                  Chứng từ
-                                </button>
-                              )}
-
-                              {/* Nút Cập nhật trạng thái (Thủ kho / Quản lý kho / Admin) */}
-                              {canUpdateStatus && item.status !== 'DELIVERED' && item.status !== 'CANCELLED' && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedShipment(item);
-                                    setUpdateStatusVal(item.status);
-                                    setUpdateCarrierVal(item.carrierName || '');
-                                    setUpdateTrackingVal(item.trackingNumber || '');
-                                  }}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer"
-                                  title="Cập nhật trạng thái vận chuyển"
-                                >
-                                  <RefreshCw className="w-3.5 h-3.5" />
-                                  Cập nhật
-                                </button>
-                              )}
-
-                              {/* Nút Hủy / Xóa */}
-                              {canDelete && (
-                                <button
-                                  onClick={() => handleDelete(item.id)}
-                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                                  title="Xóa phiếu"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
                             </div>
                           </td>
                         </tr>
@@ -907,6 +968,126 @@ export const ShipmentsPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Dropdown Menu Portal Thao tác */}
+            {openActionMenuId && actionMenuAnchor && typeof document !== 'undefined' && (() => {
+              const item = shipments.find((s) => s.id === openActionMenuId);
+              if (!item) return null;
+              return createPortal(
+                <div
+                  className="shipment-action-portal-menu fixed w-48 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-[9999] animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100"
+                  style={{
+                    top: actionMenuAnchor.isDropUp ? undefined : `${actionMenuAnchor.top}px`,
+                    bottom: actionMenuAnchor.isDropUp ? `${window.innerHeight - actionMenuAnchor.top}px` : undefined,
+                    right: `${actionMenuAnchor.right}px`,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="py-1">
+                    {/* 1. Xem chi tiết */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenActionMenuId(null);
+                        setActionMenuAnchor(null);
+                        navigate(`/inventory/shipments/${item.id}`);
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                    >
+                      <Eye className="w-4 h-4 text-slate-400" />
+                      <span>Xem chi tiết</span>
+                    </button>
+
+                    {/* 2. Xác nhận giao hàng (khi SHIPPED) */}
+                    {canUpdateStatus && item.status === 'SHIPPED' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionMenuId(null);
+                          setActionMenuAnchor(null);
+                          setDeliveryConfirmShipment(item);
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>Xác nhận giao</span>
+                      </button>
+                    )}
+
+                    {/* 3. Xem chứng từ (khi DELIVERED) */}
+                    {item.status === 'DELIVERED' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionMenuId(null);
+                          setActionMenuAnchor(null);
+                          setViewProofShipment(item);
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                      >
+                        <FileImage className="w-4 h-4 text-slate-400" />
+                        <span>Xem chứng từ</span>
+                      </button>
+                    )}
+
+                    {/* 4. Cập nhật trạng thái */}
+                    {canUpdateStatus && item.status !== 'DELIVERED' && item.status !== 'CANCELLED' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionMenuId(null);
+                          setActionMenuAnchor(null);
+                          setSelectedShipment(item);
+                          setUpdateStatusVal(item.status);
+                          setUpdateCarrierVal(item.carrierName || '');
+                          setUpdateTrackingVal(item.trackingNumber || '');
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                      >
+                        <RefreshCw className="w-4 h-4 text-indigo-500" />
+                        <span>Cập nhật trạng thái</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 5. Xóa phiếu (nếu Admin) */}
+                  {canDelete && (
+                    <div className="py-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionMenuId(null);
+                          setActionMenuAnchor(null);
+                          handleDelete(item.id);
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-500" />
+                        <span>Xóa phiếu</span>
+                      </button>
+                    </div>
+                  )}
+                </div>,
+                document.body,
+              );
+            })()}
+
+            {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN BẢNG (CHUẨN LOHA SALES) ── */}
+            {totalItems > 0 && (
+              <Pagination
+                variant="default"
+                currentPage={page}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                pageSize={limit}
+                pageSizeOptions={[10, 20, 50]}
+                itemLabel="phiếu xuất"
+                showRecordRange={false}
+                showFirstLast={false}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+              />
+            )}
           </div>
         </div>
       )}
@@ -1523,6 +1704,7 @@ export const ShipmentsPage: React.FC = () => {
           onDone={(_updated) => {
             setDeliveryConfirmShipment(null);
             fetchShipments();
+            fetchOverviewStats();
           }}
         />
       )}
@@ -1538,12 +1720,13 @@ export const ShipmentsPage: React.FC = () => {
       {/* SN-196: Modal Lập chuyến giao hàng mới gom nhiều phiếu xuất (AC 1 & 2) */}
       {isCreateTripOpen && (
         <CreateDeliveryTripModal
-          availableShipments={shipments}
+          availableShipments={allShipments}
           onClose={() => setIsCreateTripOpen(false)}
           onCreated={() => {
             setIsCreateTripOpen(false);
             fetchTrips();
             fetchShipments();
+            fetchOverviewStats();
           }}
         />
       )}
@@ -1558,6 +1741,7 @@ export const ShipmentsPage: React.FC = () => {
             setSelectedTripForDetail(updated);
             fetchTrips();
             fetchShipments();
+            fetchOverviewStats();
           }}
         />
       )}

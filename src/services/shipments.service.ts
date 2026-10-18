@@ -124,10 +124,52 @@ const notifyOrderSync = (shipment: Partial<Shipment>) => {
   syncDemoOrderStatus(targetCode, orderStatus);
 };
 
+export interface PaginatedShipmentsResponse {
+  data: Shipment[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface ShipmentQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+  orderId?: string;
+  orderCode?: string;
+}
+
 export const shipmentsService = {
   async getShipments(params?: Record<string, string | number>): Promise<Shipment[]> {
-    const res = await apiClient.get<Shipment[]>('/shipments', { params });
-    return res.data;
+    const res = await apiClient.get<any>('/shipments', { params });
+    if (Array.isArray(res.data)) return res.data;
+    if (res.data && Array.isArray(res.data.data)) return res.data.data;
+    return [];
+  },
+
+  async getPaginatedShipments(params?: ShipmentQueryParams | Record<string, string | number>): Promise<PaginatedShipmentsResponse> {
+    const res = await apiClient.get<any>('/shipments', { params });
+    if (Array.isArray(res.data)) {
+      const page = Number(params?.page) || 1;
+      const limit = Number(params?.limit) || 10;
+      const total = res.data.length;
+      return {
+        data: res.data.slice((page - 1) * limit, page * limit),
+        total,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      };
+    }
+    return {
+      data: res.data?.data || [],
+      total: typeof res.data?.total === 'number' ? res.data.total : (res.data?.data?.length || 0),
+      page: Number(res.data?.page) || Number(params?.page) || 1,
+      limit: Number(res.data?.limit) || Number(params?.limit) || 10,
+      totalPages: Number(res.data?.totalPages) || 1,
+    };
   },
 
   async getShipmentById(id: string): Promise<Shipment> {
