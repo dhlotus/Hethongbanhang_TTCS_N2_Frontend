@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { X, ChevronRight, ChevronLeft } from 'lucide-react';
@@ -41,6 +41,17 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
     left: number;
   } | null>(null);
 
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+
+  const checkScroll = () => {
+    const el = scrollRef.current;
+    if (el) {
+      const hasMore = el.scrollHeight - el.scrollTop - el.clientHeight > 8;
+      setCanScrollDown(hasMore);
+    }
+  };
+
   // Tự động ẩn tooltip khi chuyển trang hoặc bung mở menu
   useEffect(() => {
     setHoveredTooltip(null);
@@ -64,8 +75,18 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
 
   const menuItems: MenuItem[] = getNavigationItems(currentUser?.roles || currentUser?.role);
 
+  useEffect(() => {
+    checkScroll();
+    const timer = setTimeout(checkScroll, 120);
+    window.addEventListener('resize', checkScroll);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [menuItems, isCollapsed]);
+
   return (
-    <div className="flex h-full flex-col justify-between p-3 sm:p-4 bg-white select-none">
+    <div className="flex h-full flex-col justify-between py-3 pl-3 pr-1.5 sm:py-4 sm:pl-4 sm:pr-2 bg-white select-none">
       {/* ===================================================================== */}
       {/* PHẦN 1: LOGO & BRAND IDENTITY KÈM NÚT ĐÓNG/MỞ THU GỌN                 */}
       {/* ===================================================================== */}
@@ -153,12 +174,17 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
         {/* ===================================================================== */}
         {/* PHẦN 2: DANH MỤC MENU ĐIỀU HƯỚNG THEO VAI TRÒ (DYNAMIC NAVIGATION)    */}
         {/* ===================================================================== */}
-        <div 
-          onScroll={() => setHoveredTooltip(null)}
-          className="mt-3 flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar pr-0"
-        >
-          <div onClick={(e) => isCollapsed && e.stopPropagation()}>
-            <nav className="space-y-1">
+        <div className="relative mt-3 flex-1 flex flex-col min-h-0">
+          <div 
+            ref={scrollRef}
+            onScroll={() => {
+              setHoveredTooltip(null);
+              checkScroll();
+            }}
+            className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden sidebar-scrollbar pr-1 sm:pr-1.5"
+          >
+            <div onClick={(e) => isCollapsed && e.stopPropagation()}>
+              <nav className="space-y-1 pb-6">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isItemActive =
@@ -249,23 +275,32 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
             </nav>
           </div>
 
-          {/* Vùng khoảng trống bên dưới các icon khi thu gọn: Click để mở rộng navbar */}
-          {isCollapsed && onToggleCollapse && (
-            <div
-              onClick={onToggleCollapse}
-              className="flex-1 min-h-[2.5rem] w-full cursor-ew-resize select-none"
-              title="Bấm để mở rộng thanh điều hướng"
-              aria-label="Mở rộng thanh điều hướng"
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onToggleCollapse();
-                }
-              }}
-            />
-          )}
+            {/* Vùng khoảng trống bên dưới các icon khi thu gọn: Click để mở rộng navbar */}
+            {isCollapsed && onToggleCollapse && (
+              <div
+                onClick={onToggleCollapse}
+                className="flex-1 min-h-[2.5rem] w-full cursor-ew-resize select-none"
+                title="Bấm để mở rộng thanh điều hướng"
+                aria-label="Mở rộng thanh điều hướng"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onToggleCollapse();
+                  }
+                }}
+              />
+            )}
+          </div>
+
+          {/* Chỉ báo còn nội dung cuộn bên dưới (Hiệu ứng mờ tinh tế) */}
+          <div
+            className={`pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white via-white/80 to-transparent transition-opacity duration-200 z-10 ${
+              canScrollDown ? 'opacity-100' : 'opacity-0'
+            }`}
+            aria-hidden="true"
+          />
         </div>
       </div>
 
@@ -295,7 +330,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
 /**
  * Component Sidebar chính cho AppLayout:
  * - Desktop: Tùy biến thu gọn (w-20 / 5rem) hoặc mở rộng (w-[18.25rem]) mượt mà
- * - Mobile (< 1024px): Drawer trượt off-canvas mượt mà với lớp phủ mờ dạng Floating Card
+ * - Mobile (< 1024px): Drawer trượt off-canvas với animation mượt mà và thanh cuộn mảnh tinh tế
  */
 export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
@@ -303,6 +338,49 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed = false,
   onToggleCollapse,
 }) => {
+  const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setMounted(true);
+      const raf = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setVisible(true);
+        });
+      });
+      return () => cancelAnimationFrame(raf);
+    } else {
+      setVisible(false);
+      const timer = setTimeout(() => {
+        setMounted(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  // Khóa cuộn trang nền khi mở mobile drawer
+  useEffect(() => {
+    if (mounted) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [mounted]);
+
+  // Hỗ trợ phím Escape đóng drawer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   return (
     <>
       {/* 1. Desktop Sidebar: Liền mạch chuẩn Enterprise B2B */}
@@ -314,34 +392,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <SidebarNavContent isCollapsed={isCollapsed} onToggleCollapse={onToggleCollapse} />
       </aside>
 
-      {/* 2. Mobile Drawer */}
-      {isOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          {/* Lớp nền mờ */}
-          <div
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-200"
-            onClick={onClose}
-            aria-hidden="true"
-          />
+      {/* 2. Mobile Drawer với Animation trượt mượt mà (Slide-in / Slide-out) */}
+      {mounted &&
+        createPortal(
+          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+            {/* Lớp nền mờ (Backdrop Overlay) có animation Fade in/out */}
+            <div
+              className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300 ease-out cursor-pointer ${
+                visible ? 'opacity-100' : 'opacity-0'
+              }`}
+              onClick={onClose}
+              aria-hidden="true"
+            />
 
-          {/* Khung Drawer trượt từ bên trái */}
-          <div className="fixed inset-y-0 left-0 z-50 flex w-[18.25rem] max-w-[calc(100vw-2rem)] flex-col border-r border-slate-200/80 bg-white shadow-2xl overflow-hidden transition-transform duration-200">
-            {/* Nút đóng Drawer */}
-            <div className="absolute top-3.5 right-3 z-10">
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-10 h-10 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus:outline-none transition-colors cursor-pointer"
-                aria-label="Đóng thanh điều hướng"
-              >
-                <X className="h-5 w-5" />
-              </button>
+            {/* Khung Drawer trượt mượt mà từ bên trái (Slide-in / Slide-out) */}
+            <div
+              className={`fixed inset-y-0 left-0 z-50 flex w-[18.25rem] max-w-[calc(100vw-2.5rem)] flex-col border-r border-slate-200/80 bg-white shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] transform ${
+                visible ? 'translate-x-0' : '-translate-x-full'
+              }`}
+            >
+              {/* Nút đóng Drawer */}
+              <div className="absolute top-3.5 right-3 z-20">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 active:scale-95 focus:outline-none transition-all cursor-pointer"
+                  aria-label="Đóng thanh điều hướng"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <SidebarNavContent onItemClick={onClose} isCollapsed={false} />
             </div>
-
-            <SidebarNavContent onItemClick={onClose} isCollapsed={false} />
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </>
   );
 };

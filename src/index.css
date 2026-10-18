@@ -1205,6 +1205,41 @@ input.glass-input:-webkit-autofill:active {
 }
 
 /* ========================================================================== */
+/* SIDEBAR SLIM SCROLLBAR (THANH CUỘN DỌC MỎNG TINH TẾ CHO SIDEBAR)            */
+/* ========================================================================== */
+.sidebar-scrollbar {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 2px;
+  height: 2px;
+  display: block;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 9999px;
+  margin: 4px 0;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.28);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.5);
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:active {
+  background: rgba(79, 70, 229, 0.5);
+}
+
+/* ========================================================================== */
 /* PRINT STYLES - HỖ TRỢ IN ẤN VÀ XUẤT PDF CHUẨN A4 ĐỘC LẬP                    */
 /* ========================================================================== */
 @media print {
