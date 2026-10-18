@@ -2,18 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Search,
-  FileSpreadsheet,
   ScrollText,
   RefreshCw,
   Printer,
   X,
   RotateCcw,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import { receiptsService } from '../services/receipts.service';
 import { ReceiptPrintTemplate } from '../components/receipt-print-template';
 import { Pagination } from '../components/pagination';
-import { showToast } from '../components/toast';
 import type { Receipt as ReceiptType } from '../types/receipt';
 
 // Dữ liệu mẫu Fallback khi mất kết nối Backend
@@ -243,37 +240,6 @@ export const ReceiptsPage: React.FC = () => {
     setIsPrintModalOpen(true);
   };
 
-  // Xuất Excel danh sách phiếu thu
-  const handleExportExcel = () => {
-    try {
-      const dataToExport = receipts.map((r, index) => ({
-        STT: index + 1,
-        'Mã phiếu thu': r.code,
-        'Mã đại lý': r.customerCode || r.customerId,
-        'Tên đại lý': r.customerName,
-        'Ngày thu': formatDate(r.paymentDate),
-        'Số tiền (VND)': r.amount,
-        'Số tiền bằng chữ': r.amountInWords,
-        'Hình thức':
-          RECEIPT_METHOD_BADGES[r.paymentMethod]?.label || r.paymentMethod,
-        'Chứng từ gốc': r.referenceCode || '-',
-        'Người thu': r.collectorName || 'Kế toán công nợ',
-        'Ghi chú': r.notes || '',
-      }));
-
-      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'PhieuThuTien');
-
-      const now = new Date();
-      const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-      XLSX.writeFile(workbook, `Danh_sach_phieu_thu_${dateStr}.xlsx`);
-      showToast('success', 'Xuất file Excel danh sách phiếu thu thành công.');
-    } catch {
-      showToast('error', 'Có lỗi xảy ra khi xuất file Excel.');
-    }
-  };
-
   // Xác định thông tin Badge Pastel cho hình thức thu tiền
   const getReceiptMethodBadge = (method?: string) => {
     if (method && RECEIPT_METHOD_BADGES[method]) {
@@ -287,32 +253,6 @@ export const ReceiptsPage: React.FC = () => {
 
   return (
     <div className="space-y-4 w-full">
-      {/* ── THANH TIÊU ĐỀ & NÚT HÀNH ĐỘNG GỌN GÀNG ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        {/* Nhãn Phiếu thu tiền & Đối trừ */}
-        <div className="inline-flex p-1 rounded-xl bg-slate-100/90 border border-slate-200/80 shadow-2xs max-w-fit">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs bg-white text-[var(--color-primary)] shadow-2xs border border-[var(--color-primary)]/20 font-semibold select-none">
-            <span>Phiếu thu tiền & Đối trừ</span>
-            <span className="px-2 py-0.5 rounded-full text-[11px] bg-[var(--color-primary-light)] text-[var(--color-primary)] font-semibold border border-[var(--color-primary-subtle)]">
-              {totalReceipts}
-            </span>
-          </div>
-        </div>
-
-        {/* Nhóm nút chức năng bên phải */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            className="inline-flex items-center gap-2 h-9 px-3.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100/90 border border-emerald-200/90 hover:border-emerald-300 rounded-lg shadow-2xs active:scale-95 transition-all cursor-pointer"
-            title="Xuất file Excel phiếu thu"
-          >
-            <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-            <span>Xuất Excel</span>
-          </button>
-        </div>
-      </div>
-
       {/* ── THANH BỘ LỌC TÌM KIẾM TINH GỌN ── */}
       <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         {/* Ô tìm kiếm */}
