@@ -230,8 +230,15 @@ export const AuditTable: React.FC<AuditTableProps> = ({
                     </td>
 
                     {/* Cột 4: Đối tượng - Left-aligned text */}
-                    <td className="px-5 py-4 text-left whitespace-nowrap text-sm font-medium text-slate-800" title={displayEntityName}>
-                      {displayEntityName}
+                    <td className="px-5 py-4 text-left whitespace-nowrap">
+                      <span className="text-sm font-medium text-slate-800 block" title={displayEntityName}>
+                        {displayEntityName}
+                      </span>
+                      {log.entity_id && !['SYSTEM', 'UNKNOWN', 'SYS-OP-01'].includes(log.entity_id) && (
+                        <span className="text-xs text-slate-400 font-mono block mt-0.5" title={log.entity_id}>
+                          {log.entity_id}
+                        </span>
+                      )}
                     </td>
 
                     {/* Cột 5: Thao tác - Centered action button */}
@@ -334,8 +341,15 @@ export const AuditTable: React.FC<AuditTableProps> = ({
 
                     {/* HÀNG 2: Phân hệ đối tượng + Nút Chi tiết */}
                     <div className="flex items-center justify-between gap-[0.5rem] pt-[0.375rem] border-t border-slate-100">
-                      <div className="min-w-0 flex-1 pr-[0.5rem] text-xs font-medium text-slate-700 truncate">
-                        {displayEntityName}
+                      <div className="min-w-0 flex-1 pr-[0.5rem]">
+                        <span className="text-xs font-medium text-slate-700 truncate block">
+                          {displayEntityName}
+                        </span>
+                        {log.entity_id && !['SYSTEM', 'UNKNOWN', 'SYS-OP-01'].includes(log.entity_id) && (
+                          <span className="text-[11px] text-slate-400 font-mono truncate block mt-0.5">
+                            {log.entity_id}
+                          </span>
+                        )}
                       </div>
 
                       <button
