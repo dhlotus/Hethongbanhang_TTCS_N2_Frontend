@@ -7,9 +7,11 @@ import {
   Printer,
   X,
   RotateCcw,
+  Plus,
 } from 'lucide-react';
 import { receiptsService } from '../services/receipts.service';
 import { ReceiptPrintTemplate } from '../components/receipt-print-template';
+import { RecordPaymentModal } from '../components/record-payment-modal';
 import { Pagination } from '../components/pagination';
 import type { Receipt as ReceiptType } from '../types/receipt';
 
@@ -127,6 +129,7 @@ export const ReceiptsPage: React.FC = () => {
   const [totalReceiptPages, setTotalReceiptPages] = useState<number>(1);
   const [selectedReceiptForPrint, setSelectedReceiptForPrint] = useState<ReceiptType | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Cập nhật URL Parameters an toàn
@@ -319,6 +322,16 @@ export const ReceiptsPage: React.FC = () => {
               <span>Đặt lại</span>
             </button>
           )}
+
+          {/* Nút Ghi nhận thanh toán & Đối trừ công nợ (SN-202) */}
+          <button
+            type="button"
+            onClick={() => setIsRecordPaymentOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer shrink-0 ml-auto sm:ml-0"
+          >
+            <Plus className="w-3.5 h-3.5 shrink-0" />
+            <span>Ghi nhận thanh toán & Đối trừ</span>
+          </button>
         </div>
       </div>
 
@@ -570,6 +583,15 @@ export const ReceiptsPage: React.FC = () => {
         onClose={() => {
           setIsPrintModalOpen(false);
           setSelectedReceiptForPrint(null);
+        }}
+      />
+
+      {/* Modal Ghi nhận thanh toán & Đối trừ công nợ (SN-202) */}
+      <RecordPaymentModal
+        isOpen={isRecordPaymentOpen}
+        onClose={() => setIsRecordPaymentOpen(false)}
+        onSuccess={() => {
+          void reloadReceipts();
         }}
       />
     </div>
