@@ -338,6 +338,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Soạn hàng & Giao nhận',
     },
     {
+      id: 'warehouse-goods-in-transit',
+      name: 'Hàng xuất trên đường',
+      path: '/warehouse/goods-in-transit',
+      icon: Truck,
+      category: 'Soạn hàng & Giao nhận',
+    },
+    {
       id: 'inventory-receipts',
       name: 'Nhập kho hàng hóa',
       path: '/inventory/receipts',
@@ -430,6 +437,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Phiếu soạn hàng',
       path: '/warehouse/picking',
       icon: PackageCheck,
+      category: 'Soạn hàng & Giao nhận',
+    },
+    {
+      id: 'warehouse-goods-in-transit',
+      name: 'Hàng xuất trên đường',
+      path: '/warehouse/goods-in-transit',
+      icon: Truck,
       category: 'Soạn hàng & Giao nhận',
     },
     {
@@ -669,6 +683,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Phiếu soạn hàng',
       path: '/warehouse/picking',
       icon: PackageCheck,
+      category: 'Kho vận & Hàng hóa',
+    },
+    {
+      id: 'warehouse-goods-in-transit',
+      name: 'Hàng xuất trên đường',
+      path: '/warehouse/goods-in-transit',
+      icon: Truck,
       category: 'Kho vận & Hàng hóa',
     },
     {

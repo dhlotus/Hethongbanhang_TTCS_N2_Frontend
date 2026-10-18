@@ -51,6 +51,7 @@ import { InternalTransfersPage } from '../pages/inventory/internal-transfers-pag
 import { OrderPickingPage } from '../pages/order-picking-page';
 import { CreatePickingSheetPage } from '../pages/create-picking-sheet-page';
 import { InventoryBatchesPage } from '../pages/inventory-batches-page';
+import { GoodsInTransitPage } from '../pages/goods-in-transit-page';
 import { StockCardPage } from '../pages/inventory/stock-card-page';
 import { RouteCollectionsPage } from '../pages/route-collections-page';
 import { CreateRouteCollectionPage } from '../pages/create-route-collection-page';
@@ -341,6 +342,11 @@ export const AppRoutes: React.FC = () => {
               <Route path="/inventory/picking/create" element={<CreatePickingSheetPage />} />
               <Route path="/warehouse/picking" element={<OrderPickingPage />} />
               <Route path="/warehouse/picking/create" element={<CreatePickingSheetPage />} />
+              {/* Route Quản lý Lô & Gợi ý xuất FEFO (SN-187) */}
+              <Route path="/warehouse/batches" element={<InventoryBatchesPage />} />
+              {/* Route Theo dõi hàng đã xuất trên đường & Chuyến đi (SN-194 / SN-197) */}
+              <Route path="/warehouse/goods-in-transit" element={<GoodsInTransitPage />} />
+              <Route path="/inventory/goods-in-transit" element={<GoodsInTransitPage />} />
             </Route>
 
             <Route

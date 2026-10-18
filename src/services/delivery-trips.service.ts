@@ -1,8 +1,12 @@
 import { apiClient } from './api';
 import type {
+  CreateDeliveryTripPayload,
   DeliveryTrip,
   DeliveryTripStatus,
-  CreateDeliveryTripPayload,
+  GoodsInTransitStats,
+  QueryDeliveryTripsParams,
+  TripCheckinReturnPayload,
+  UpdateStopStatusPayload,
   UpdateDeliveryTripPayload,
   AssignDriverPayload,
   DeliveryTripStop,
@@ -15,39 +19,108 @@ export interface TripManifestResponse {
 }
 
 /**
- * SN-196: Service Quản lý Chuyến giao hàng và Phân tuyến
+ * Service gọi API quản lý Chuyến đi Giao hàng, Phân tuyến & Theo dõi Hàng trên đường (SN-194 / SN-196 / SN-197)
+ * Tuân thủ CODE_CONVENTION.docx:
+ * - Không sử dụng `any`
+ * - Gửi request qua Axios apiClient chuẩn
+ * - Error handling an toàn
  */
 export const deliveryTripsService = {
   /**
-   * Lấy danh sách chuyến giao hàng (kèm bộ lọc)
+   * Lấy thống kê tiền hàng đang nằm trên đường & cảnh báo (SN-194 / SN-197)
    */
-  async getTrips(params?: {
-    routeArea?: string;
-    status?: DeliveryTripStatus;
-    search?: string;
-  }): Promise<DeliveryTrip[]> {
-    const res = await apiClient.get<DeliveryTrip[]>('/shipments/trips', { params });
-    return res.data;
+  async getGoodsInTransitStats(warehouseId?: string): Promise<GoodsInTransitStats> {
+    const response = await apiClient.get<GoodsInTransitStats>(
+      '/delivery-trips/stats/goods-in-transit',
+      {
+        params: warehouseId ? { warehouseId } : undefined,
+      },
+    );
+    return response.data;
   },
 
   /**
-   * Chi tiết chuyến giao hàng
+   * Lấy danh sách chuyến đi giao hàng (lọc theo kho, trạng thái, quá hạn hoặc phân tuyến)
+   */
+  async getTrips(
+    params?: QueryDeliveryTripsParams | { routeArea?: string; status?: DeliveryTripStatus; search?: string },
+  ): Promise<DeliveryTrip[]> {
+    if (params && 'routeArea' in params) {
+      const res = await apiClient.get<DeliveryTrip[]>('/shipments/trips', { params });
+      return res.data;
+    }
+    const response = await apiClient.get<DeliveryTrip[]>('/delivery-trips', {
+      params,
+    });
+    return response.data;
+  },
+
+  /**
+   * Lấy chi tiết một chuyến đi
    */
   async getTripById(id: string): Promise<DeliveryTrip> {
-    const res = await apiClient.get<DeliveryTrip>(`/shipments/trips/${id}`);
-    return res.data;
+    try {
+      const response = await apiClient.get<DeliveryTrip>(`/delivery-trips/${id}`);
+      return response.data;
+    } catch {
+      const res = await apiClient.get<DeliveryTrip>(`/shipments/trips/${id}`);
+      return res.data;
+    }
   },
 
   /**
-   * Tạo chuyến giao hàng mới gom nhiều phiếu xuất (SN-196 AC 1 & 2)
+   * Tạo chuyến đi giao hàng mới
    */
   async createTrip(payload: CreateDeliveryTripPayload): Promise<DeliveryTrip> {
-    const res = await apiClient.post<DeliveryTrip>('/shipments/trips', payload);
-    return res.data;
+    if (payload.shipmentIds && payload.shipmentIds.length > 0) {
+      const res = await apiClient.post<DeliveryTrip>('/shipments/trips', payload);
+      return res.data;
+    }
+    const response = await apiClient.post<DeliveryTrip>('/delivery-trips', payload);
+    return response.data;
   },
 
   /**
-   * Cập nhật thông tin chuyến giao hàng
+   * Bắt đầu chuyến đi giao hàng (SN-194 / SN-197)
+   */
+  async startTrip(id: string): Promise<DeliveryTrip> {
+    const response = await apiClient.patch<DeliveryTrip>(`/delivery-trips/${id}/start`);
+    return response.data;
+  },
+
+  /**
+   * Cập nhật trạng thái một điểm giao hàng trên chuyến (SN-194 / SN-197)
+   * - DELIVERED: Giao thành công
+   * - FAILED: Giao thất bại kèm lý do (Hàng vẫn thuộc trách nhiệm chuyến đi, KHÔNG tự về kho)
+   */
+  async updateStopStatus(
+    tripId: string,
+    stopId: string,
+    payload: UpdateStopStatusPayload,
+  ): Promise<DeliveryTrip> {
+    const response = await apiClient.patch<DeliveryTrip>(
+      `/delivery-trips/${tripId}/stops/${stopId}`,
+      payload,
+    );
+    return response.data;
+  },
+
+  /**
+   * Quản lý kho xác nhận xe về kho & kiểm đếm đối soát hàng chưa giao nhập lại kho (SN-194 / SN-197)
+   */
+  async checkinTripReturn(
+    id: string,
+    payload: TripCheckinReturnPayload,
+  ): Promise<DeliveryTrip> {
+    const response = await apiClient.post<DeliveryTrip>(
+      `/delivery-trips/${id}/return-checkin`,
+      payload,
+    );
+    return response.data;
+  },
+
+  /**
+   * Cập nhật thông tin chuyến giao hàng (SN-196)
    */
   async updateTrip(id: string, payload: UpdateDeliveryTripPayload): Promise<DeliveryTrip> {
     const res = await apiClient.patch<DeliveryTrip>(`/shipments/trips/${id}`, payload);
@@ -63,7 +136,7 @@ export const deliveryTripsService = {
   },
 
   /**
-   * Xuất phát chuyến giao hàng (chuyển sang IN_TRANSIT và đổi các phiếu sang SHIPPED)
+   * Xuất phát chuyến giao hàng (SN-196)
    */
   async dispatchTrip(id: string): Promise<DeliveryTrip> {
     const res = await apiClient.post<DeliveryTrip>(`/shipments/trips/${id}/dispatch`);
@@ -71,7 +144,7 @@ export const deliveryTripsService = {
   },
 
   /**
-   * Hoàn thành chuyến giao hàng
+   * Hoàn thành chuyến giao hàng (SN-196)
    */
   async completeTrip(id: string): Promise<DeliveryTrip> {
     const res = await apiClient.post<DeliveryTrip>(`/shipments/trips/${id}/complete`);
@@ -79,7 +152,7 @@ export const deliveryTripsService = {
   },
 
   /**
-   * Hủy chuyến giao hàng
+   * Hủy chuyến giao hàng (SN-196)
    */
   async cancelTrip(id: string, reason?: string): Promise<DeliveryTrip> {
     const res = await apiClient.post<DeliveryTrip>(`/shipments/trips/${id}/cancel`, { reason });
@@ -87,7 +160,7 @@ export const deliveryTripsService = {
   },
 
   /**
-   * Xóa chuyến giao hàng
+   * Xóa chuyến giao hàng (SN-196)
    */
   async deleteTrip(id: string): Promise<{ success: boolean; message: string }> {
     const res = await apiClient.delete<{ success: boolean; message: string }>(`/shipments/trips/${id}`);
