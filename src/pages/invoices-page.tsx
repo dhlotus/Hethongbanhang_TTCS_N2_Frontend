@@ -339,13 +339,32 @@ export const InvoicesPage: React.FC = () => {
     }
   }, [page, limit, searchTerm, methodFilter]);
 
+  // Đồng bộ số lượng hóa đơn và phiếu thu cho các tab badge
+  const refreshBadgeCounts = useCallback(async () => {
+    try {
+      const [invRes, rcptRes] = await Promise.allSettled([
+        invoicesService.getPaginatedInvoices({ page: 1, limit: 1 }),
+        receiptsService.getPaginatedReceipts({ page: 1, limit: 1 }),
+      ]);
+      if (invRes.status === 'fulfilled') {
+        setTotalInvoices(invRes.value.total);
+      }
+      if (rcptRes.status === 'fulfilled') {
+        setTotalReceipts(rcptRes.value.total);
+      }
+    } catch {
+      // Bỏ qua lỗi ngầm
+    }
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'INVOICES') {
       void fetchInvoices();
     } else {
       void reloadReceipts();
     }
-  }, [activeTab, fetchInvoices, reloadReceipts]);
+    void refreshBadgeCounts();
+  }, [activeTab, fetchInvoices, reloadReceipts, refreshBadgeCounts]);
 
   // In hóa đơn bán hàng (SN-200 ý 5 & SN-207)
   const handlePrintInvoice = async (invoiceId: string) => {
@@ -539,7 +558,7 @@ export const InvoicesPage: React.FC = () => {
                   : 'bg-slate-200/70 text-slate-600 font-medium'
               }`}
             >
-              {receipts.length}
+              {totalReceipts}
             </span>
           </button>
         </div>
@@ -1087,6 +1106,8 @@ export const InvoicesPage: React.FC = () => {
         onClose={() => setSelectedInvoiceForPayment(null)}
         onSuccess={() => {
           void fetchInvoices();
+          void reloadReceipts();
+          void refreshBadgeCounts();
         }}
       />
 
@@ -1096,6 +1117,8 @@ export const InvoicesPage: React.FC = () => {
         onClose={() => setIsIssueModalOpen(false)}
         onSuccess={(newInvoice) => {
           void fetchInvoices();
+          void reloadReceipts();
+          void refreshBadgeCounts();
           setSelectedInvoiceForDetail(newInvoice);
         }}
       />
