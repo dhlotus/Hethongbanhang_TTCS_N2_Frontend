@@ -243,13 +243,14 @@ export const GoodsInTransitPage: React.FC = () => {
         returnedNotes: notes,
       });
 
-      setTrips((prev) => prev.map((t) => (t.id === tripId ? updatedTrip : t)));
-      if (selectedTripForDetail?.id === tripId) {
+      setTrips((prev) => prev.map((t) => (t.id === tripId || t.tripCode === tripId ? updatedTrip : t)));
+      if (selectedTripForDetail?.id === tripId || selectedTripForDetail?.tripCode === tripId) {
         setSelectedTripForDetail(updatedTrip);
       }
 
-      const newStats = await deliveryTripsService.getGoodsInTransitStats();
+      const newStats = await deliveryTripsService.getGoodsInTransitStats(selectedWarehouseId);
       setStats(newStats);
+      await fetchData();
 
       showToast(
         'success',

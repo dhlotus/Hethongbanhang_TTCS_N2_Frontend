@@ -156,9 +156,13 @@ export const TripTableView: React.FC<TripTableViewProps> = ({
                       <div className="flex items-center gap-1 text-[10px]">
                         <span className="text-emerald-700 font-medium">🟢{trip.deliveredStops}</span>
                         {trip.failedStops > 0 && (
-                          <span className="text-rose-600 font-bold">🔴{trip.failedStops}</span>
+                          <span className={trip.returnedToWarehouse ? 'text-amber-700 font-medium' : 'text-rose-600 font-bold'}>
+                            {trip.returnedToWarehouse ? `📦${trip.failedStops}` : `🔴${trip.failedStops}`}
+                          </span>
                         )}
-                        <span className="text-slate-400">⚪{trip.remainingStops - trip.failedStops}</span>
+                        {trip.remainingStops > 0 && (
+                          <span className="text-slate-400">⚪{trip.remainingStops}</span>
+                        )}
                       </div>
                     </div>
                     <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden flex">

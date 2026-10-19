@@ -325,7 +325,7 @@ export const getStoredDemoOrders = (): Order[] => {
   return INITIAL_DEMO_ORDERS;
 };
 
-const saveStoredDemoOrders = (list: Order[]): void => {
+export const saveStoredDemoOrders = (list: Order[]): void => {
   try {
     localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(list));
   } catch (e) {

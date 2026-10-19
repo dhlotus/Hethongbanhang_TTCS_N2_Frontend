@@ -1,5 +1,5 @@
 import { apiClient } from './api';
-import { ordersService, getStoredDemoOrders, syncDemoOrderStatus } from './orders.service';
+import { ordersService, getStoredDemoOrders, syncDemoOrderStatus, saveStoredDemoOrders } from './orders.service';
 import type { Order } from '../types/order';
 import type {
   CreateDeliveryTripPayload,
@@ -265,12 +265,21 @@ export const deliveryTripsService = {
       const deliveredGoodsValue = stops
         .filter((s) => s.status === 'DELIVERED')
         .reduce((sum, s) => sum + (s.orderAmount || s.codAmount || 0), 0);
-      const retainedGoodsValue = stops
-        .filter((s) => s.status === 'FAILED')
-        .reduce((sum, s) => sum + (s.orderAmount || s.codAmount || 0), 0);
-      const inTransitGoodsValue = stops
-        .filter((s) => s.status === 'PENDING')
-        .reduce((sum, s) => sum + (s.orderAmount || s.codAmount || 0), 0);
+      // Kiểm tra nếu chuyến xe đã hoàn tất hoặc đã được Quản lý kho xác nhận về kho
+      const isReturnedOrCompleted = trip.status === 'COMPLETED' || Boolean(trip.returnedToWarehouse);
+
+      // Hàng giữ trên xe chỉ tính khi chuyến xe ĐANG DI CHUYỂN TRÊN ĐƯỜNG và CHƯA VỀ KHO
+      const retainedGoodsValue = isReturnedOrCompleted
+        ? 0
+        : stops
+            .filter((s) => s.status === 'FAILED')
+            .reduce((sum, s) => sum + (s.orderAmount || s.codAmount || 0), 0);
+
+      const inTransitGoodsValue = isReturnedOrCompleted
+        ? 0
+        : stops
+            .filter((s) => s.status === 'PENDING')
+            .reduce((sum, s) => sum + (s.orderAmount || s.codAmount || 0), 0);
 
       // Đảm bảo estimatedCompletionTime luôn là chuỗi thời gian hợp lệ (không bao giờ ra NaN)
       const depDate = trip.departureDate || trip.departedAt || new Date().toISOString();
@@ -280,9 +289,9 @@ export const deliveryTripsService = {
         estTime = new Date((!isNaN(depTimestamp) ? depTimestamp : Date.now()) + 4 * 3600 * 1000).toISOString();
       }
 
-      // Xác định trạng thái chuyến: nếu toàn bộ điểm giao đã xong thì chuyến là COMPLETED
+      // Xác định trạng thái chuyến: giữ nguyên COMPLETED nếu đã đối soát về kho hoặc toàn bộ điểm giao DELIVERED
       const allDelivered = stops.length > 0 && stops.every((s) => s.status === 'DELIVERED');
-      const tripStatus: DeliveryTripStatus = allDelivered
+      const tripStatus: DeliveryTripStatus = isReturnedOrCompleted || allDelivered
         ? 'COMPLETED'
         : trip.status === 'DRAFT'
         ? 'DRAFT'
@@ -299,6 +308,7 @@ export const deliveryTripsService = {
       return {
         ...trip,
         status: tripStatus,
+        returnedToWarehouse: isReturnedOrCompleted,
         departureDate: depDate,
         estimatedCompletionTime: estTime,
         stops,
@@ -306,7 +316,7 @@ export const deliveryTripsService = {
         stopsCount: stops.length,
         deliveredStops,
         failedStops,
-        remainingStops,
+        remainingStops: isReturnedOrCompleted ? 0 : remainingStops,
         totalGoodsValue,
         deliveredGoodsValue,
         retainedGoodsValue,
@@ -376,7 +386,7 @@ export const deliveryTripsService = {
     const todayStr = new Date().toISOString().slice(0, 10);
 
     for (const trip of filtered) {
-      if (trip.status === 'IN_TRANSIT') {
+      if (trip.status === 'IN_TRANSIT' && !trip.returnedToWarehouse) {
         activeTripsCount++;
         totalGoodsValueInTransit += trip.inTransitGoodsValue;
         totalRemainingStops += trip.remainingStops;
@@ -384,7 +394,7 @@ export const deliveryTripsService = {
         if (trip.isOverdue) {
           overdueTripsCount++;
         }
-      } else if (trip.status === 'COMPLETED') {
+      } else if (trip.status === 'COMPLETED' || trip.returnedToWarehouse) {
         if (trip.completedAt?.startsWith(todayStr) || trip.updatedAt?.startsWith(todayStr)) {
           completedTripsToday++;
         }
@@ -639,6 +649,13 @@ export const deliveryTripsService = {
     id: string,
     payload: TripCheckinReturnPayload,
   ): Promise<DeliveryTrip> {
+    // 1. Thử gọi API backend nếu có
+    try {
+      await apiClient.post(`/delivery-trips/${id}/return-checkin`, payload);
+    } catch {
+      // Tiếp tục cập nhật local
+    }
+
     const allTrips = await this.getTrips();
     const trip = allTrips.find((t) => t.id === id || t.tripCode === id);
     if (!trip) {
@@ -652,8 +669,40 @@ export const deliveryTripsService = {
     trip.returnedAt = now;
     trip.returnedNotes = payload.returnedNotes;
     trip.inTransitGoodsValue = 0;
+    trip.retainedGoodsValue = 0; // Hàng giữ trên xe đã kiểm đếm và hoàn nhập kho, chuyển về 0
     trip.remainingStops = 0;
+    trip.isOverdue = false;
+    trip.overdueMinutes = 0;
     trip.updatedAt = now;
+
+    // Đánh dấu các stop FAILED là đã về kho
+    (trip.stops || []).forEach((s) => {
+      if (s.status === 'FAILED') {
+        (s as any).returnedToWarehouse = true;
+        (s as any).returnedAt = now;
+      }
+    });
+
+    // Đồng bộ đơn hàng tương ứng trong storage
+    try {
+      const allOrders = getStoredDemoOrders();
+      let hasOrderChange = false;
+      trip.stops.forEach((s) => {
+        const o = allOrders.find(
+          (item) => item.orderCode === s.orderCode || item.id === s.orderId,
+        );
+        if (o && s.status === 'FAILED') {
+          (o as any).returnedToWarehouse = true;
+          (o as any).returnedAt = now;
+          (o as any).deliveryFailureReason = s.failureReason || payload.returnedNotes;
+          hasOrderChange = true;
+        }
+      });
+      if (hasOrderChange) {
+        saveStoredDemoOrders(allOrders);
+        window.dispatchEvent(new CustomEvent('loha_orders_updated'));
+      }
+    } catch {}
 
     const stored = getStoredTrips().filter((t) => t.id !== trip.id && t.tripCode !== trip.tripCode);
     saveStoredTrips([trip, ...stored]);

@@ -151,9 +151,13 @@ export const TripCard: React.FC<TripCardProps> = ({
             <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
               <span className="text-emerald-700 font-medium">🟢 {trip.deliveredStops}</span>
               {trip.failedStops > 0 && (
-                <span className="text-rose-600 font-bold">🔴 {trip.failedStops} giữ xe</span>
+                <span className={trip.returnedToWarehouse ? 'text-amber-700 font-medium' : 'text-rose-600 font-bold'}>
+                  {trip.returnedToWarehouse ? `📦 ${trip.failedStops} đã về kho` : `🔴 ${trip.failedStops} giữ xe`}
+                </span>
               )}
-              <span className="text-slate-400">⚪ {trip.remainingStops - trip.failedStops}</span>
+              {trip.remainingStops > 0 && (
+                <span className="text-slate-400">⚪ {trip.remainingStops}</span>
+              )}
             </div>
           </div>
 
@@ -185,6 +189,13 @@ export const TripCard: React.FC<TripCardProps> = ({
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
                 <RotateCcw className="w-2.5 h-2.5" />
                 Giữ xe: {formatVndCurrency(trip.retainedGoodsValue)}
+              </span>
+            </div>
+          ) : trip.returnedToWarehouse ? (
+            <div className="text-right">
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                <RotateCcw className="w-2.5 h-2.5 text-emerald-600" />
+                Đã nhập lại kho
               </span>
             </div>
           ) : (
