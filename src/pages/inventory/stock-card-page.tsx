@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   FileSpreadsheet,
-  ArrowLeft,
   Building2,
   Package,
   ArrowUpRight,
@@ -13,10 +12,11 @@ import {
   Eye,
   ChevronLeft,
   ChevronRight,
-  X,
   RotateCcw,
   User,
   AlertTriangle,
+  FileText,
+  CheckCircle2,
 } from 'lucide-react';
 import { inventoryService } from '../../services/inventory.service';
 import { productsService } from '../../services/products.service';
@@ -54,6 +54,9 @@ export const StockCardPage: React.FC = () => {
 
   // Modal xem chi tiết giao dịch
   const [selectedTxForDetail, setSelectedTxForDetail] = useState<InventoryTransaction | null>(null);
+
+  // Modal xem chi tiết chứng từ gốc trực tiếp
+  const [documentDetailTx, setDocumentDetailTx] = useState<InventoryTransaction | null>(null);
 
   // Xác định thông tin vai trò người dùng
   const userRoles = user?.roles || [];
@@ -187,8 +190,42 @@ export const StockCardPage: React.FC = () => {
     return transactions.slice(start, start + pageSize);
   }, [transactions, currentPage, pageSize]);
 
-  // Điều hướng tới chứng từ gốc tương ứng (AC2)
-  const handleNavigateToDocument = (referenceCode: string) => {
+  // Xử lý thay đổi khoảng thời gian đảm bảo logic: Từ ngày <= Đến ngày (Chặn tuyệt đối ngày sai logic)
+  const handleStartDateChange = (val: string) => {
+    if (!val) {
+      setStartDate('');
+      setCurrentPage(1);
+      return;
+    }
+    if (endDate && val > endDate) {
+      showToast('error', 'Khoảng thời gian không hợp lệ: "Từ ngày" không được sau "Đến ngày".');
+      return;
+    }
+    setStartDate(val);
+    setCurrentPage(1);
+  };
+
+  const handleEndDateChange = (val: string) => {
+    if (!val) {
+      setEndDate('');
+      setCurrentPage(1);
+      return;
+    }
+    if (startDate && val < startDate) {
+      showToast('error', 'Khoảng thời gian không hợp lệ: "Đến ngày" phải từ "Từ ngày" trở về sau.');
+      return;
+    }
+    setEndDate(val);
+    setCurrentPage(1);
+  };
+
+  // Xem chi tiết chứng từ gốc trực tiếp
+  const handleOpenDocumentDetail = (tx: InventoryTransaction) => {
+    setDocumentDetailTx(tx);
+  };
+
+  // Điều hướng tới trang phân hệ quản lý của chứng từ gốc
+  const handleNavigateToDocumentModule = (referenceCode: string) => {
     if (!referenceCode) return;
     const code = referenceCode.trim().toUpperCase();
 
@@ -250,40 +287,7 @@ export const StockCardPage: React.FC = () => {
 
   return (
     <div className="p-4 sm:p-5 space-y-4 max-w-[1600px] mx-auto">
-      {/* 1. Header Bar: Tiêu đề gọn gàng, tối ưu không chiếm diện tích */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => navigate('/inventory/stock')}
-            className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
-            title="Quay lại Sổ tồn kho"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div className="p-1.5 bg-indigo-50 text-indigo-700 rounded-lg">
-            <FileSpreadsheet className="w-5 h-5" />
-          </div>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-            Thẻ kho hàng hóa
-          </h1>
-        </div>
-
-        {/* Nút đặt lại bộ lọc nếu có lọc */}
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={handleResetFilters}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-            title="Đặt lại các bộ lọc"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Đặt lại bộ lọc</span>
-          </button>
-        )}
-      </div>
-
-      {/* 2. Khối Bộ Lọc: Tối ưu trực quan - chỉ lọc theo Kho hàng và Khoảng thời gian */}
+      {/* 1. Khối Bộ Lọc: Tối ưu trực quan - chỉ lọc theo Kho hàng và Khoảng thời gian */}
       <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs p-3.5">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-end">
           {/* Lọc 1: Sản Phẩm */}
@@ -350,42 +354,51 @@ export const StockCardPage: React.FC = () => {
               <label className="block text-xs font-semibold text-slate-600">
                 Khoảng thời gian
               </label>
-              {(startDate || endDate) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStartDate('');
-                    setEndDate('');
-                    setCurrentPage(1);
-                  }}
-                  className="text-[11px] text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                  title="Xóa khoảng ngày"
-                >
-                  (Xóa ngày)
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
+                    title="Đặt lại các bộ lọc"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Đặt lại</span>
+                  </button>
+                )}
+                {(startDate || endDate) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartDate('');
+                      setEndDate('');
+                      setCurrentPage(1);
+                    }}
+                    className="text-[11px] text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                    title="Xóa khoảng ngày"
+                  >
+                    (Xóa ngày)
+                  </button>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-1.5">
               <input
                 type="date"
                 value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
-                  setCurrentPage(1);
-                }}
+                max={endDate || undefined}
+                onChange={(e) => handleStartDateChange(e.target.value)}
                 className="w-full px-2 py-1.5 bg-slate-50 hover:bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer transition-all"
-                title="Từ ngày"
+                title="Từ ngày (Phải nhỏ hơn hoặc bằng Đến ngày)"
               />
               <span className="text-slate-400 font-medium text-xs">→</span>
               <input
                 type="date"
                 value={endDate}
-                onChange={(e) => {
-                  setEndDate(e.target.value);
-                  setCurrentPage(1);
-                }}
+                min={startDate || undefined}
+                onChange={(e) => handleEndDateChange(e.target.value)}
                 className="w-full px-2 py-1.5 bg-slate-50 hover:bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer transition-all"
-                title="Đến ngày"
+                title="Đến ngày (Phải lớn hơn hoặc bằng Từ ngày)"
               />
             </div>
           </div>
@@ -452,17 +465,11 @@ export const StockCardPage: React.FC = () => {
                       key={tx.id}
                       className="hover:bg-slate-50/80 transition-colors text-xs sm:text-sm"
                     >
-                      {/* 1. Thời gian: Gọn gàng */}
+                      {/* 1. Thời gian: Ngày ghi nhận */}
                       <td className="py-2.5 px-3.5 whitespace-nowrap text-slate-600">
-                        <div className="font-semibold text-slate-800">
+                        <span className="font-semibold text-slate-800">
                           {new Date(tx.createdAt).toLocaleDateString('vi-VN')}
-                        </div>
-                        <div className="text-[11px] text-slate-400 font-mono">
-                          {new Date(tx.createdAt).toLocaleTimeString('vi-VN', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </div>
+                        </span>
                       </td>
 
                       {/* 2. Chứng từ gốc (Clickable Link - AC2) */}
@@ -470,9 +477,9 @@ export const StockCardPage: React.FC = () => {
                         {tx.referenceCode ? (
                           <button
                             type="button"
-                            onClick={() => handleNavigateToDocument(tx.referenceCode)}
+                            onClick={() => handleOpenDocumentDetail(tx)}
                             className="inline-flex items-center gap-1 font-mono text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline bg-indigo-50/70 border border-indigo-200/80 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
-                            title={`Mở chứng từ gốc: ${tx.referenceCode}`}
+                            title={`Xem chi tiết chứng từ gốc: ${tx.referenceCode}`}
                           >
                             <span>{tx.referenceCode}</span>
                             <ExternalLink className="w-3 h-3 text-indigo-400" />
@@ -632,13 +639,6 @@ export const StockCardPage: React.FC = () => {
                   </strong>
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedTxForDetail(null)}
-                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
 
             {/* Thống kê 3 chỉ số tồn & biến động */}
@@ -703,7 +703,7 @@ export const StockCardPage: React.FC = () => {
               <div className="flex justify-between py-1.5 border-b border-slate-100">
                 <span className="text-slate-500">Thời gian ghi nhận:</span>
                 <span className="font-medium text-slate-800">
-                  {new Date(selectedTxForDetail.createdAt).toLocaleString('vi-VN')}
+                  {new Date(selectedTxForDetail.createdAt).toLocaleDateString('vi-VN')}
                 </span>
               </div>
 
@@ -715,13 +715,6 @@ export const StockCardPage: React.FC = () => {
                     <span>{selectedTxForDetail.performedBy || 'Hệ thống'}</span>
                   </div>
                 </span>
-              </div>
-
-              <div className="py-1.5">
-                <span className="text-slate-500 block mb-1 font-medium">Nguyên nhân:</span>
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium leading-relaxed">
-                  {selectedTxForDetail.reason || 'Không có ghi chú thêm.'}
-                </div>
               </div>
             </div>
 
@@ -739,9 +732,9 @@ export const StockCardPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    const code = selectedTxForDetail.referenceCode;
+                    const tx = selectedTxForDetail;
                     setSelectedTxForDetail(null);
-                    handleNavigateToDocument(code);
+                    handleOpenDocumentDetail(tx);
                   }}
                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                 >
@@ -749,6 +742,146 @@ export const StockCardPage: React.FC = () => {
                   <ExternalLink className="w-3.5 h-3.5" />
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Modal Xem Chi Tiết Chứng Từ Gốc: Mở xem trực tiếp thông tin chứng từ */}
+      {documentDetailTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/50 p-4 backdrop-blur-xs animate-in fade-in">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xl transition-all">
+            {/* Header Modal */}
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3.5">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                    <FileText className="w-5 h-5" />
+                  </span>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Chi tiết chứng từ gốc: {documentDetailTx.referenceCode}
+                  </h3>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  {documentDetailTx.referenceCode?.startsWith('PNK')
+                    ? 'Phiếu Nhập Kho Hàng Hóa'
+                    : documentDetailTx.referenceCode?.startsWith('PKK')
+                    ? 'Phiếu Kiểm Kê & Điều Chỉnh Kho'
+                    : documentDetailTx.referenceCode?.startsWith('PCK')
+                    ? 'Phiếu Điều Chuyển Kho Nội Bộ'
+                    : documentDetailTx.referenceCode?.startsWith('PXK')
+                    ? 'Phiếu Xuất Kho Hàng Hóa'
+                    : 'Đơn Hàng / Chứng Từ Xuất Kho'}
+                </p>
+              </div>
+            </div>
+
+            {/* Thông tin chứng từ */}
+            <div className="my-3.5 grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs">
+              <div>
+                <div className="text-slate-400 text-[11px]">Mã chứng từ</div>
+                <div className="font-mono font-bold text-indigo-700 mt-0.5 truncate" title={documentDetailTx.referenceCode}>
+                  {documentDetailTx.referenceCode}
+                </div>
+              </div>
+              <div>
+                <div className="text-slate-400 text-[11px]">Kho hàng</div>
+                <div className="font-semibold text-slate-800 mt-0.5 truncate" title={documentDetailTx.warehouse}>
+                  {documentDetailTx.warehouse}
+                </div>
+              </div>
+              <div>
+                <div className="text-slate-400 text-[11px]">Người lập phiếu</div>
+                <div className="font-semibold text-slate-800 mt-0.5 truncate" title={documentDetailTx.performedBy || 'Hệ thống'}>
+                  {documentDetailTx.performedBy || 'Hệ thống'}
+                </div>
+              </div>
+              <div>
+                <div className="text-slate-400 text-[11px]">Trạng thái</div>
+                <div className="inline-flex items-center gap-1 text-emerald-700 font-bold mt-0.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Đã ghi sổ</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Mặt hàng trong chứng từ */}
+            <div className="space-y-2 text-xs">
+              <div className="font-bold text-slate-800 text-xs">
+                Mặt hàng ghi nhận trong chứng từ:
+              </div>
+              <div className="overflow-hidden rounded-lg border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 text-slate-600 font-semibold">
+                    <tr>
+                      <th className="py-2 px-3">Sản phẩm</th>
+                      <th className="py-2 px-3 text-right">Tồn trước</th>
+                      <th className="py-2 px-3 text-right">Số lượng ghi nhận</th>
+                      <th className="py-2 px-3 text-right">Tồn sau</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    <tr>
+                      <td className="py-2.5 px-3">
+                        <div className="font-semibold text-slate-900">
+                          {documentDetailTx.productName}
+                        </div>
+                        <div className="font-mono text-slate-400 text-[11px]">
+                          SKU: {documentDetailTx.sku}
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 text-right tabular-nums text-slate-600">
+                        {documentDetailTx.previousStock.toLocaleString('vi-VN')} {documentDetailTx.baseUnit}
+                      </td>
+                      <td className="py-2.5 px-3 text-right tabular-nums">
+                        <span
+                          className={`font-bold ${
+                            documentDetailTx.baseQuantityChange >= 0
+                              ? 'text-emerald-600'
+                              : 'text-rose-600'
+                          }`}
+                        >
+                          {documentDetailTx.baseQuantityChange >= 0
+                            ? `+${documentDetailTx.baseQuantityChange}`
+                            : documentDetailTx.baseQuantityChange}{' '}
+                          {documentDetailTx.baseUnit}
+                        </span>
+                        {documentDetailTx.inputUnit && documentDetailTx.inputUnit !== documentDetailTx.baseUnit && (
+                          <div className="text-[11px] text-slate-400">
+                            ({documentDetailTx.inputQuantity} {documentDetailTx.inputUnit})
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-right tabular-nums font-extrabold text-indigo-700 bg-indigo-50/30">
+                        {documentDetailTx.newStock.toLocaleString('vi-VN')} {documentDetailTx.baseUnit}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Footer Modal: Nút Đóng & Nút Chuyển đến phân hệ gốc */}
+            <div className="mt-4 flex items-center justify-end gap-2 border-t border-slate-100 pt-3.5">
+              <button
+                type="button"
+                onClick={() => setDocumentDetailTx(null)}
+                className="px-3.5 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const code = documentDetailTx.referenceCode;
+                  setDocumentDetailTx(null);
+                  handleNavigateToDocumentModule(code);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              >
+                <span>Mở trong phân hệ</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         </div>
