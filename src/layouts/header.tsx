@@ -107,6 +107,31 @@ const getPageHeaderInfo = (
     };
   }
   if (
+    pathname === '/accounting/debt-reconciliations/create' ||
+    pathname === '/debt-reconciliations/create'
+  ) {
+    return {
+      title: 'Lập biên bản',
+      category: 'Đối chiếu công nợ',
+      breadcrumbs: [
+        { label: 'Đối chiếu công nợ', path: '/accounting/debt-reconciliations' },
+        { label: 'Lập biên bản' },
+      ],
+    };
+  }
+  if (
+    pathname === '/accounting/debt-reconciliations' ||
+    pathname === '/debt-reconciliations'
+  ) {
+    return {
+      title: 'Đối chiếu công nợ',
+      category: 'Kế toán & Công nợ',
+      breadcrumbs: [
+        { label: 'Đối chiếu công nợ' },
+      ],
+    };
+  }
+  if (
     (pathname.startsWith('/accounting/invoices/') && pathname !== '/accounting/invoices' && pathname !== '/accounting/invoices/create') ||
     (pathname.startsWith('/invoices/') && pathname !== '/invoices' && pathname !== '/invoices/create')
   ) {

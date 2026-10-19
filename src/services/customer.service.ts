@@ -30,7 +30,7 @@ export const DEMO_CUSTOMERS_DATA: Customer[] = [
     salesRepName: 'Trần Văn Long',
     salesRep: { id: 'usr-sale-01', name: 'Trần Văn Long' },
     creditLimit: 500000000,
-    currentDebt: 45000000,
+    currentDebt: 29388790,
     maxDebtDays: 45,
     phone: '0901234561',
     email: 'minhkhang.dist@lohasales.vn',
@@ -367,16 +367,37 @@ export function getStoredCustomers(): Customer[] {
   try {
     const raw = localStorage.getItem(CUSTOMERS_STORAGE_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw);
+      let parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Đảm bảo các đại lý chuẩn (DL-0001, DL-0002) luôn có mặt
+        // Lọc bỏ triệt để các đại lý test / rác đã bị xóa
+        const isJunkCustomer = (c: Customer) => {
+          const name = (c.name || '').toLowerCase();
+          const code = (c.code || '').toUpperCase();
+          return (
+            name.includes('hưởng') ||
+            name.includes('872') ||
+            name.trim() === 'test' ||
+            code.includes('DL-0030') ||
+            code.includes('DL-0031') ||
+            code.includes('DL-0032') ||
+            code.includes('SEC-')
+          );
+        };
+        const beforeFilterLen = parsed.length;
+        parsed = parsed.filter((c: Customer) => !isJunkCustomer(c));
+        let hasNew = parsed.length !== beforeFilterLen;
+
+        // Đảm bảo các đại lý chuẩn (DL-0001, DL-0002) luôn có mặt và đồng bộ dư nợ chuẩn
         const existingIds = new Set(parsed.map((c: Customer) => c.id));
-        let hasNew = false;
         for (const demo of DEMO_CUSTOMERS_DATA) {
           const idx = parsed.findIndex((c: Customer) => c.id === demo.id);
           if (idx >= 0) {
             if (demo.id === 'cust-dl-0002' && parsed[idx].email !== demo.email) {
               parsed[idx] = { ...parsed[idx], ...demo };
+              hasNew = true;
+            }
+            if (demo.id === 'cust-dl-0001' && (parsed[idx].currentDebt === 13877990 || parsed[idx].currentDebt === 45000000)) {
+              parsed[idx].currentDebt = 29388790;
               hasNew = true;
             }
           } else {
@@ -540,6 +561,48 @@ export function updateStoredCustomerDebt(customerId: string, deltaAmount: number
 
   const current = typeof customers[idx].currentDebt === 'number' ? customers[idx].currentDebt : 0;
   const newDebt = Math.max(0, current + deltaAmount);
+  customers[idx] = {
+    ...customers[idx],
+    currentDebt: newDebt,
+  };
+
+  saveStoredCustomers(customers);
+
+  try {
+    window.dispatchEvent(
+      new CustomEvent('loha_debt_updated', {
+        detail: {
+          customerId: customers[idx].id,
+          customerCode: customers[idx].code,
+          newDebt,
+          creditLimit: customers[idx].creditLimit,
+          availableLimit: Math.max(0, (customers[idx].creditLimit || 0) - newDebt),
+        },
+      })
+    );
+  } catch {
+    // ignore
+  }
+
+  return customers[idx];
+}
+
+/**
+ * Đồng bộ chính xác Dư nợ hiện tại theo số Dư nợ cuối kỳ của Biên bản đối chiếu (SN-206)
+ */
+export function setStoredCustomerDebt(customerId: string, exactDebt: number): Customer | null {
+  const customers = getStoredCustomers();
+  const targetId = String(customerId).toLowerCase().trim();
+  const idx = customers.findIndex(
+    (c) =>
+      c.id.toLowerCase() === targetId ||
+      c.code.toLowerCase() === targetId ||
+      (c.phone && targetId.includes(c.phone))
+  );
+
+  if (idx === -1) return null;
+
+  const newDebt = Math.max(0, Math.round(Number(exactDebt) || 0));
   customers[idx] = {
     ...customers[idx],
     currentDebt: newDebt,
@@ -987,17 +1050,20 @@ export const customerService = {
   async deleteCustomer(id: string): Promise<{ success: boolean; message: string }> {
     try {
       const res = await apiClient.delete<{ success: boolean; message: string }>(`/customers/${id}`);
+      const list = getStoredCustomers();
+      const filtered = list.filter((c) => c.id !== id && c.code !== id);
+      saveStoredCustomers(filtered);
       return res.data;
     } catch (err: unknown) {
       const list = getStoredCustomers();
-      const target = list.find((c) => c.id === id);
+      const target = list.find((c) => c.id === id || c.code === id);
       if (target) {
         if ((target.currentDebt || 0) > 0) {
           throw new Error(
             `Đại lý "${target.name}" đã phát sinh giao dịch hoặc còn công nợ (${(target.currentDebt || 0).toLocaleString('vi-VN')} đ), không thể xóa. Chỉ được phép chuyển sang trạng thái Ngừng giao dịch.`
           );
         }
-        const filtered = list.filter((c) => c.id !== id);
+        const filtered = list.filter((c) => c.id !== id && c.code !== id);
         saveStoredCustomers(filtered);
         return { success: true, message: `Đã xóa đại lý "${target.name}" thành công.` };
       }

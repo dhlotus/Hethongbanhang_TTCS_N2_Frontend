@@ -22,6 +22,7 @@ import { InvoiceDetailModal } from '../components/invoice-detail-modal';
 import { RecordPaymentModal } from '../components/record-payment-modal';
 import { ReminderTestModal } from '../components/reminder-test-modal';
 import { ConfirmActionModal } from '../components/confirm-action-modal';
+import { PortalReconciliationTab } from '../components/portal-reconciliation-tab';
 import { showToast } from '../components/toast';
 
 const formatCurrency = (val?: number): string => {
@@ -50,6 +51,7 @@ export const PortalDebtPage: React.FC = () => {
   const [summary, setSummary] = useState<DealerDebtSummary | null>(null);
   const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<'INVOICES' | 'RECONCILIATION'>('INVOICES');
 
   // Bộ lọc & Tìm kiếm
   const [search, setSearch] = useState<string>('');
@@ -422,19 +424,49 @@ export const PortalDebtPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. Toolbar: Tìm kiếm, Lọc trạng thái, Sắp xếp */}
-      <div className="p-3 sm:p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-        {/* Tìm kiếm */}
-        <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Tìm theo số hóa đơn (HD...), mã đơn (DH...)..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-slate-50/50"
-          />
-        </div>
+      {/* 4. Thanh chuyển Tab giữa Danh sách hóa đơn và Biên bản đối chiếu */}
+      <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-2 pt-2 rounded-t-xl">
+        <button
+          type="button"
+          onClick={() => setActiveTab('INVOICES')}
+          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
+            activeTab === 'INVOICES'
+              ? 'border-indigo-600 text-indigo-600 bg-indigo-50/30'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          Hóa đơn & Theo dõi công nợ
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('RECONCILIATION')}
+          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center gap-1.5 ${
+            activeTab === 'RECONCILIATION'
+              ? 'border-indigo-600 text-indigo-600 bg-indigo-50/30'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <span>Biên bản đối chiếu định kỳ</span>
+        </button>
+      </div>
+
+      {activeTab === 'RECONCILIATION' ? (
+        <PortalReconciliationTab />
+      ) : (
+        <>
+          {/* 5. Toolbar: Tìm kiếm, Lọc trạng thái, Sắp xếp */}
+          <div className="p-3 sm:p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* Tìm kiếm */}
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Tìm theo số hóa đơn (HD...), mã đơn (DH...)..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-slate-50/50"
+              />
+            </div>
 
         {/* Lọc trạng thái & Sắp xếp */}
         <div className="flex flex-col xs:flex-row sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
@@ -752,6 +784,8 @@ export const PortalDebtPage: React.FC = () => {
           </>
         )}
       </div>
+      </>
+      )}
 
       {/* Modals */}
       <InvoiceDetailModal
