@@ -1412,13 +1412,6 @@ export const CustomersPage: React.FC = () => {
                             className={`font-bold tabular-nums text-sm ${
                               isOverLimit ? 'text-rose-600' : 'text-slate-900'
                             }`}
-                            title={
-                              customer.creditLimit
-                                ? `Dư nợ: ${formatVnd(customer.currentDebt || 0)} / Hạn mức: ${formatVnd(
-                                    customer.creditLimit
-                                  )}`
-                                : undefined
-                            }
                           >
                             {formatVnd(customer.currentDebt || 0)}
                           </span>
