@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Package,
   Calendar,
@@ -48,6 +48,10 @@ export const CreateShipmentPage: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
   const isDetailMode = Boolean(id && id !== 'create');
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const isIssuesContext = location.pathname.includes('/issues');
+  const backListUrl = isIssuesContext ? '/inventory/issues' : '/inventory/shipments';
+  const getDetailUrl = (resId: string) => isIssuesContext ? `/inventory/issues/shipments/${resId}` : `/inventory/shipments/${resId}`;
   const preselectedOrderId = searchParams.get('orderId') || searchParams.get('orderCode') || '';
 
   // Dữ liệu chi tiết phiếu khi ở chế độ view
@@ -58,6 +62,9 @@ export const CreateShipmentPage: React.FC = () => {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [agencyDefaults, setAgencyDefaults] = useState<AgencyWarehouseAssignment[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
+
+  // Danh sách các orderId/orderCode đã được tạo phiếu xuất kho (để loại trừ không cho tạo trùng lặp)
+  const [shippedOrderKeys, setShippedOrderKeys] = useState<Set<string>>(new Set());
 
   // Form Thông tin chung
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
@@ -99,22 +106,35 @@ export const CreateShipmentPage: React.FC = () => {
     async function loadData() {
       try {
         setLoadingInitial(true);
-        const [ordersRes, whsRes, agencyDefaultsRes] = await Promise.all([
+        const [ordersRes, whsRes, agencyDefaultsRes, shipmentsRes] = await Promise.all([
           ordersService.getOrdersForShipment({ limit: 100 }),
           warehouseService.getWarehouses(),
           warehouseService.getAgencyDefaults().catch(() => []),
+          shipmentsService.getShipments().catch(() => []),
         ]);
 
         if (!mounted) return;
+
+        // Tập hợp các đơn hàng đã có phiếu xuất kho đang hoạt động
+        const shippedKeys = new Set<string>();
+        if (Array.isArray(shipmentsRes)) {
+          shipmentsRes.forEach((s: Shipment) => {
+            if (s.status !== 'CANCELLED') {
+              if (s.orderId) shippedKeys.add(String(s.orderId).trim().toUpperCase());
+              if (s.orderCode) shippedKeys.add(String(s.orderCode).trim().toUpperCase());
+            }
+          });
+        }
+        setShippedOrderKeys(shippedKeys);
 
         if (agencyDefaultsRes && Array.isArray(agencyDefaultsRes)) {
           setAgencyDefaults(agencyDefaultsRes);
         }
 
         if (ordersRes?.data) {
-          // Chuẩn ERP xuất kho: Chỉ hiển thị các đơn hàng đã được duyệt (APPROVED, READY_TO_SHIP, PROCESSING)
-          // Tuyệt đối loại bỏ đơn CANCELLED, DRAFT, PENDING*
-          const VALID_STATUSES = new Set(['APPROVED', 'READY_TO_SHIP', 'PROCESSING']);
+          // Chuẩn ERP xuất kho: Chỉ hiển thị các đơn hàng đã được duyệt (APPROVED, READY_TO_SHIP)
+          // Tuyệt đối loại bỏ đơn CANCELLED, DRAFT, PENDING* hoặc đơn ĐÃ CÓ PHIẾU XUẤT KHO
+          const VALID_STATUSES = new Set(['APPROVED', 'READY_TO_SHIP']);
           const FORBIDDEN_STATUSES = new Set([
             'CANCELLED',
             'DRAFT',
@@ -127,9 +147,21 @@ export const CreateShipmentPage: React.FC = () => {
             'CLOSED',
             'COMPLETED',
             'DISPATCHED',
+            'PACKED',
+            'SHIPPED',
+            'DELIVERED',
+            'PROCESSING',
           ]);
           const validOrders = ordersRes.data.filter((ord) => {
             const st = String(ord.status || '').toUpperCase().trim();
+            const idKey = String(ord.id || '').trim().toUpperCase();
+            const codeKey = String(ord.orderCode || '').trim().toUpperCase();
+
+            // Nếu đơn hàng đã có phiếu xuất kho đang hoạt động -> Không hiển thị
+            if (shippedKeys.has(idKey) || (codeKey && shippedKeys.has(codeKey))) {
+              return false;
+            }
+
             return VALID_STATUSES.has(st) && !FORBIDDEN_STATUSES.has(st);
           });
           setOrders(validOrders);
@@ -422,9 +454,16 @@ export const CreateShipmentPage: React.FC = () => {
   const currentWhCode = (targetWarehouse?.code || '').toUpperCase().trim();
 
   const filteredOrdersForWarehouse = orders.filter((ord) => {
-    // 1. Phải là đơn hàng đã được duyệt cho phép xuất kho
+    // 0. Đơn hàng đã được lập phiếu xuất kho -> Tuyệt đối không hiển thị để tạo trùng lặp
+    const ordIdKey = String(ord.id || '').trim().toUpperCase();
+    const ordCodeKey = String(ord.orderCode || '').trim().toUpperCase();
+    if (shippedOrderKeys.has(ordIdKey) || (ordCodeKey && shippedOrderKeys.has(ordCodeKey))) {
+      return false;
+    }
+
+    // 1. Phải là đơn hàng đã được duyệt cho phép xuất kho (APPROVED / READY_TO_SHIP)
     const st = String(ord.status || '').toUpperCase().trim();
-    if (st !== 'APPROVED' && st !== 'READY_TO_SHIP' && st !== 'PROCESSING') return false;
+    if (st !== 'APPROVED' && st !== 'READY_TO_SHIP') return false;
 
     // 2. Nếu đơn hàng có chỉ định trực tiếp warehouseId hoặc warehouseCode
     const ordWhId = (ord as any).warehouseId ? String((ord as any).warehouseId).toLowerCase().trim() : '';
@@ -631,6 +670,16 @@ export const CreateShipmentPage: React.FC = () => {
       showToast('error', 'Vui lòng chọn Đơn hàng cần xuất kho');
       return;
     }
+    const idKey = String(selectedOrderId || '').trim().toUpperCase();
+    const codeKey = String(selectedOrder?.orderCode || '').trim().toUpperCase();
+    if (shippedOrderKeys.has(idKey) || (codeKey && shippedOrderKeys.has(codeKey))) {
+      showToast(
+        'error',
+        'Đơn hàng đã được tạo phiếu xuất kho',
+        `Đơn hàng "${selectedOrder?.orderCode || selectedOrderId}" đã có phiếu xuất kho trong hệ thống, không thể tạo thêm lần nữa!`
+      );
+      return;
+    }
     if (!warehouseId) {
       showToast('error', 'Vui lòng chọn Kho xuất hàng');
       return;
@@ -710,8 +759,21 @@ export const CreateShipmentPage: React.FC = () => {
         `Mã phiếu: ${res.id}. Hàng đã được trừ tồn kho theo lô chỉ định.`
       );
 
+      // Cập nhật trạng thái để loại trừ đơn hàng này ngay lập tức
+      setShippedOrderKeys((prev) => {
+        const next = new Set(prev);
+        if (idKey) next.add(idKey);
+        if (codeKey) next.add(codeKey);
+        return next;
+      });
+      setOrders((prev) => prev.filter((o) => {
+        const oId = String(o.id || '').trim().toUpperCase();
+        const oCode = String(o.orderCode || '').trim().toUpperCase();
+        return oId !== idKey && oCode !== codeKey;
+      }));
+
       // Chuyển hướng tới trang chi tiết phiếu xuất kho
-      navigate(`/inventory/shipments/${res.id}`);
+      navigate(getDetailUrl(res.id));
     } catch (err: any) {
       console.error('Lỗi tạo phiếu xuất kho:', err);
       const msg = err?.response?.data?.message || err?.message || 'Không thể tạo phiếu xuất kho';
@@ -1131,7 +1193,7 @@ export const CreateShipmentPage: React.FC = () => {
               <>
                 <button
                   type="button"
-                  onClick={() => navigate('/inventory/shipments')}
+                  onClick={() => navigate(backListUrl)}
                   className="h-[38px] px-4 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
                 >
                   Quay lại danh sách
@@ -1149,7 +1211,7 @@ export const CreateShipmentPage: React.FC = () => {
               <>
                 <button
                   type="button"
-                  onClick={() => navigate('/inventory/shipments')}
+                  onClick={() => navigate(backListUrl)}
                   className="h-[38px] px-5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
                 >
                   Hủy

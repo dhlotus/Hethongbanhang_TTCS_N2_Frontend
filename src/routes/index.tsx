@@ -305,8 +305,28 @@ export const AppRoutes: React.FC = () => {
                 element={<CreateShipmentPage />}
               />
               <Route
+                path="/inventory/issues/shipments/create"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/inventory/issues/shipments/:id"
+                element={<CreateShipmentPage />}
+              />
+              <Route
                 path="/inventory/issues/:id"
                 element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/issues/shipments/create"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/issues/shipments/:id"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/issues"
+                element={<Navigate to="/inventory/issues" replace />}
               />
               {/* SN-188: Route chuẩn phân hệ Soạn hàng & Xuất kho */}
               <Route

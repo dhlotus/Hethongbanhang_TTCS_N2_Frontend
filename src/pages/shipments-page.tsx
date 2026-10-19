@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Truck,
   Plus,
@@ -131,6 +131,11 @@ export const ShipmentsPage: React.FC = () => {
   const canCancel = isAdmin; // Chỉ Admin mới được hủy phiếu
   const canDelete = isAdmin; // Chỉ Admin mới được xóa phiếu
 
+  const location = useLocation();
+  const isIssuesPath = location.pathname.includes('/issues');
+  const createShipmentUrl = isIssuesPath ? '/inventory/issues/shipments/create' : '/inventory/shipments/create';
+  const getShipmentDetailUrl = (id: string) => isIssuesPath ? `/inventory/issues/shipments/${id}` : `/inventory/shipments/${id}`;
+
   // Active view tab: 'SHIPMENTS' (Phiếu xuất kho lẻ) | 'TRIPS' (Chuyến giao hàng & Phân tuyến SN-196)
   const [activeTab, setActiveTab] = useState<'SHIPMENTS' | 'TRIPS'>('SHIPMENTS');
 
@@ -203,7 +208,20 @@ export const ShipmentsPage: React.FC = () => {
         .getOrders({ limit: 100 })
         .then((res) => {
           if (res?.data) {
-            setReadyOrders(res.data);
+            // Lọc chỉ các đơn APPROVED / READY_TO_SHIP và CHƯA CÓ PHIẾU XUẤT KHO
+            const activeShippedKeys = new Set(
+              allShipments
+                .filter((s) => s.status !== 'CANCELLED')
+                .flatMap((s) => [s.orderCode?.toUpperCase(), s.orderId?.toUpperCase()])
+                .filter(Boolean) as string[]
+            );
+            const valid = res.data.filter((o) => {
+              const oId = (o.id || '').toUpperCase();
+              const oCode = (o.orderCode || '').toUpperCase();
+              const isValidStatus = (o.status as string) === 'APPROVED' || (o.status as string) === 'READY_TO_SHIP';
+              return isValidStatus && !activeShippedKeys.has(oId) && !activeShippedKeys.has(oCode);
+            });
+            setReadyOrders(valid);
           }
         })
         .catch(() => {
@@ -483,7 +501,9 @@ export const ShipmentsPage: React.FC = () => {
       setTrips(data || []);
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      showToast('error', msg || 'Không thể tải danh sách chuyến giao hàng');
+      if (msg && !msg.includes('Cannot GET')) {
+        showToast('error', msg);
+      }
     } finally {
       setLoadingTrips(false);
     }
@@ -527,6 +547,20 @@ export const ShipmentsPage: React.FC = () => {
 
     if (orderErr || custErr || phoneErr || addrErr) {
       showToast('warning', phoneErr || orderErr || custErr || addrErr || 'Vui lòng kiểm tra lại thông tin');
+      return;
+    }
+
+    const targetKey = trimmedOrderCode.toUpperCase();
+    const existing = allShipments.find(
+      (s) =>
+        (s.orderCode?.toUpperCase() === targetKey || s.orderId?.toUpperCase() === targetKey) &&
+        s.status !== 'CANCELLED'
+    );
+    if (existing) {
+      showToast(
+        'error',
+        `Đơn hàng "${trimmedOrderCode}" đã được lập phiếu xuất kho (${existing.id}). Không thể tạo thêm trùng lặp!`
+      );
       return;
     }
 
@@ -751,7 +785,7 @@ export const ShipmentsPage: React.FC = () => {
 
           {canCreate && (
             <button
-              onClick={() => navigate('/inventory/shipments/create')}
+              onClick={() => navigate(createShipmentUrl)}
               className="inline-flex items-center justify-center gap-1.5 h-[36px] px-3 sm:px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -891,7 +925,7 @@ export const ShipmentsPage: React.FC = () => {
                           <td className="py-3.5 px-3 sm:px-4">
                             <button
                               type="button"
-                              onClick={() => navigate(`/inventory/shipments/${item.id}`)}
+                              onClick={() => navigate(getShipmentDetailUrl(item.id))}
                               className="font-semibold text-indigo-600 hover:text-indigo-800 hover:underline font-mono cursor-pointer text-left truncate block w-full text-xs"
                               title={`Mã phiếu: ${item.id}`}
                             >
@@ -991,7 +1025,7 @@ export const ShipmentsPage: React.FC = () => {
                       onClick={() => {
                         setOpenActionMenuId(null);
                         setActionMenuAnchor(null);
-                        navigate(`/inventory/shipments/${item.id}`);
+                        navigate(getShipmentDetailUrl(item.id));
                       }}
                       className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
                     >

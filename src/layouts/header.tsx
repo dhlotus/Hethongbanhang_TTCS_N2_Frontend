@@ -193,13 +193,16 @@ const getPageHeaderInfo = (
   if (
     pathname === '/inventory/shipments/create' ||
     pathname === '/app/inventory/shipments/create' ||
-    pathname === '/inventory/issues/create'
+    pathname === '/inventory/issues/create' ||
+    pathname === '/inventory/issues/shipments/create' ||
+    pathname === '/issues/shipments/create'
   ) {
+    const parentPath = pathname.includes('/issues') ? '/inventory/issues' : '/inventory/shipments';
     return {
       title: 'Tạo phiếu xuất kho',
       category: 'Nhập / Xuất kho',
       breadcrumbs: [
-        { label: 'Soạn hàng & Xuất kho', path: '/inventory/shipments' },
+        { label: 'Soạn hàng & Xuất kho', path: parentPath },
         { label: 'Tạo phiếu xuất kho' },
       ],
     };
@@ -208,13 +211,15 @@ const getPageHeaderInfo = (
   if (
     (pathname.startsWith('/inventory/shipments/') && pathname !== '/inventory/shipments') ||
     (pathname.startsWith('/app/inventory/shipments/') && pathname !== '/app/inventory/shipments') ||
-    (pathname.startsWith('/inventory/issues/') && pathname !== '/inventory/issues')
+    (pathname.startsWith('/inventory/issues/') && pathname !== '/inventory/issues') ||
+    (pathname.startsWith('/issues/shipments/') && pathname !== '/issues')
   ) {
+    const parentPath = pathname.includes('/issues') ? '/inventory/issues' : '/inventory/shipments';
     return {
       title: 'Chi tiết phiếu xuất kho',
       category: 'Nhập / Xuất kho',
       breadcrumbs: [
-        { label: 'Soạn hàng & Xuất kho', path: '/inventory/shipments' },
+        { label: 'Soạn hàng & Xuất kho', path: parentPath },
         { label: 'Chi tiết phiếu xuất kho' },
       ],
     };
