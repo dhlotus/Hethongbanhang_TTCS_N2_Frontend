@@ -25,7 +25,9 @@ export interface PaginatedResponse<T> {
 
 export interface UpdateGoodsReceiptDto {
   warehouseId?: string;
+  warehouseName?: string;
   supplierId?: string;
+  supplierName?: string;
   referenceDocument?: string;
   receiptDate?: string;
   notes?: string;
@@ -58,6 +60,8 @@ export const goodsReceiptService = {
       ...data,
       warehouseId: normalizeWarehouseIdToUuid(data.warehouseId),
       supplierId: normalizeSupplierIdToUuid(data.supplierId),
+      warehouseName: data.warehouseName,
+      supplierName: data.supplierName,
       items: (data.items || []).map((item) => ({
         ...item,
         productId: normalizeProductIdToUuid(item.productId),
@@ -74,7 +78,9 @@ export const goodsReceiptService = {
     const payload: UpdateGoodsReceiptDto = {
       ...data,
       warehouseId: data.warehouseId ? normalizeWarehouseIdToUuid(data.warehouseId) : undefined,
+      warehouseName: data.warehouseName,
       supplierId: normalizeSupplierIdToUuid(data.supplierId),
+      supplierName: data.supplierName,
       items: data.items?.map((item) => ({
         ...item,
         productId: normalizeProductIdToUuid(item.productId),

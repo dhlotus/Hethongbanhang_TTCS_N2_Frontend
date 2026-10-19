@@ -170,11 +170,11 @@ const getPageHeaderInfo = (
     pathname.startsWith('/inventory/receipts/create/')
   ) {
     return {
-      title: 'Lập phiếu nhập kho từ Nhà cung cấp',
+      title: 'Lập phiếu nhập mới',
       category: 'Nhập / Xuất kho',
       breadcrumbs: [
         { label: 'Nhập kho hàng hóa', path: '/inventory/receipts' },
-        { label: 'Lập phiếu nhập kho từ Nhà cung cấp' },
+        { label: 'Lập phiếu nhập mới' },
       ],
     };
   }
