@@ -612,7 +612,7 @@ export const InventoryBatchesPage: React.FC = () => {
                     Kiểm tra điều kiện xuất kho
                   </h3>
                   <p className="text-xs text-slate-500 font-mono">
-                    Lô: {selectedBatchForDispatch.batchNumber} • {selectedBatchForDispatch.productSku}
+                    Lô: {selectedBatchForDispatch.batchNumber}
                   </p>
                 </div>
               </div>
