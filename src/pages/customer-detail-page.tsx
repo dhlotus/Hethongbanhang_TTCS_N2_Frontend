@@ -157,6 +157,26 @@ export const CustomerDetailPage: React.FC = () => {
     fetchCustomerDetail();
   }, [fetchCustomerDetail]);
 
+  // Lắng nghe sự kiện đồng bộ dư nợ thời gian thực từ đối chiếu công nợ (SN-206)
+  useEffect(() => {
+    const handleDebtUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ customerId: string; customerCode?: string; newDebt: number }>;
+      if (!customEvent.detail || !customer) return;
+      const targetId = customEvent.detail.customerId;
+      const targetCode = customEvent.detail.customerCode;
+      if (
+        customer.id === targetId ||
+        customer.code === targetId ||
+        (targetCode && customer.code === targetCode)
+      ) {
+        setCustomer((prev) => (prev ? { ...prev, currentDebt: customEvent.detail.newDebt } : prev));
+      }
+    };
+
+    window.addEventListener('loha_debt_updated', handleDebtUpdate);
+    return () => window.removeEventListener('loha_debt_updated', handleDebtUpdate);
+  }, [customer]);
+
   // Xử lý cập nhật hạn mức tín dụng
   const handleSubmitCreditLimit = async (
     agencyId: string,
