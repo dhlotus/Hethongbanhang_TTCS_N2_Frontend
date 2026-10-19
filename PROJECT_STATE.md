@@ -105,4 +105,15 @@
 
 ## 8. Kiểm Tra Chất Lượng Mã Nguồn
 - `npm run build`: Thành công (**0 lỗi**).
-- `npm run lint`: Thành công (**0 lỗi, 0 cảnh báo**).
+- `tsc -b`: Thành công (**0 lỗi**).
+
+---
+
+## 9. Tối Ưu Giao Diện Danh Mục Sản Phẩm & Trang Chỉnh Sửa Sản Phẩm Riêng Biệt (100% Hoàn Thành)
+| Hạng mục cải tiến | Trạng thái | Chi tiết kỹ thuật & Giải pháp |
+| :--- | :---: | :--- |
+| **Bảng 5 cột chuẩn tối ưu (Dấu trạng thái cạnh mã SKU)** | ✅ Đạt | Loại bỏ hoàn toàn cột Trạng thái riêng biệt để tránh tình trạng chật chội và đè chữ ở tiêu đề. Bố cục cố định `table-fixed w-full` gồm 5 cột chuẩn: `Mã SKU kèm trạng thái (18%)`, `Tên sản phẩm (45%)`, `Tồn kho (12%)`, `Giá niêm yết (14%)`, `Thao tác (11%)`. Dấu chấm tròn trạng thái (xanh `emerald` = Đang hoạt động, xám `slate` = Ngừng) được đặt ngay cạnh mã SKU, giúp cột Tên sản phẩm có diện tích rộng rãi (45%), không bao giờ bị vỡ giao diện. |
+| **Trang chỉnh sửa riêng biệt (`ProductEditPage`)** | ✅ Đạt | Thay thế toàn bộ popup modal cũ bằng trang chỉnh sửa chuyên biệt responsive tại route `/catalog/products/:id/edit`. Hỗ trợ chọn danh mục phân cấp Cấp 1 & Cấp 2, quản lý bảng quy đổi đơn vị phụ, giá niêm yết & giá vốn bảo mật, upload ảnh xem trước, tùy chọn chuyển đổi trạng thái Hoạt động / Ngừng, và thanh điều hướng dính ở chân trang. |
+| **Footer & Phân trang Backend chuẩn SaaS** | ✅ Đạt | Gắn liền component `<Pagination>` chuẩn LOHA SALES vào chân bảng, loại bỏ viền/padding kép, kết nối trực tiếp với API backend `productsService.getProducts` với `page`, `limit`, `search`, `parentCategory`, `status`. |
+| **Giao diện Thẻ thích ứng (Mobile Card View)** | ✅ Đạt | Tối ưu hiển thị cho thiết bị di động (< 640px) dạng thẻ dọc, huy hiệu trạng thái chỉ xem, giữ lại các nút chính: "Chi tiết", "Sửa", "Kho", "Xóa". |
+

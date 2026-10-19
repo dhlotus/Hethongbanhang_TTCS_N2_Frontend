@@ -34,6 +34,20 @@ const getPageHeaderInfo = (
 ): PageHeaderInfo => {
   // 0. Trang con phân cấp (Breadcrumbs)
   if (
+    pathname.startsWith('/catalog/products/edit/') ||
+    pathname.startsWith('/products/edit/') ||
+    pathname.includes('/edit') && pathname.includes('/products')
+  ) {
+    return {
+      title: 'Chỉnh sửa sản phẩm',
+      category: 'Sản phẩm & Chính sách',
+      breadcrumbs: [
+        { label: 'Danh mục sản phẩm', path: '/catalog/products' },
+        { label: 'Chỉnh sửa sản phẩm' },
+      ],
+    };
+  }
+  if (
     pathname.startsWith('/catalog/products/edit-price/') ||
     pathname.startsWith('/products/edit-price/')
   ) {
@@ -66,6 +80,42 @@ const getPageHeaderInfo = (
       breadcrumbs: [
         { label: 'Quản lý đơn hàng', path: '/sales/orders' },
         { label: 'Tạo đơn hàng mới' },
+      ],
+    };
+  }
+  if (
+    pathname === '/route-collections/create' ||
+    pathname === '/app/route-collections/create'
+  ) {
+    return {
+      title: 'Tạo phiếu thu mới',
+      category: 'Tài chính & Thu chi',
+      breadcrumbs: [
+        { label: 'Quản lý ngân sách', path: '/route-collections' },
+        { label: 'Tạo phiếu thu mới' },
+      ],
+    };
+  }
+  if (pathname === '/accounting/invoices/create' || pathname === '/invoices/create') {
+    return {
+      title: 'Phát hành Hóa đơn Bán hàng',
+      category: 'Hóa đơn & Chứng từ',
+      breadcrumbs: [
+        { label: 'Hóa đơn & Chứng từ', path: '/accounting/invoices' },
+        { label: 'Phát hành Hóa đơn Bán hàng' },
+      ],
+    };
+  }
+  if (
+    (pathname.startsWith('/accounting/invoices/') && pathname !== '/accounting/invoices' && pathname !== '/accounting/invoices/create') ||
+    (pathname.startsWith('/invoices/') && pathname !== '/invoices' && pathname !== '/invoices/create')
+  ) {
+    return {
+      title: 'Chi tiết Hóa đơn Bán hàng',
+      category: 'Hóa đơn & Chứng từ',
+      breadcrumbs: [
+        { label: 'Hóa đơn & Chứng từ', path: '/accounting/invoices' },
+        { label: 'Chi tiết Hóa đơn' },
       ],
     };
   }
@@ -110,6 +160,62 @@ const getPageHeaderInfo = (
       breadcrumbs: [
         { label: 'Nhập kho hàng hóa', path: '/inventory/receipts' },
         { label: 'Chỉnh sửa phiếu nhập kho' },
+      ],
+    };
+  }
+
+  // SN-188: Phân hệ Soạn hàng & Xuất kho (FEFO)
+  if (
+    pathname === '/inventory/shipments/create' ||
+    pathname === '/app/inventory/shipments/create' ||
+    pathname === '/inventory/issues/create'
+  ) {
+    return {
+      title: 'Tạo phiếu xuất kho',
+      category: 'Nhập / Xuất kho',
+      breadcrumbs: [
+        { label: 'Soạn hàng & Xuất kho', path: '/inventory/shipments' },
+        { label: 'Tạo phiếu xuất kho' },
+      ],
+    };
+  }
+
+  if (
+    (pathname.startsWith('/inventory/shipments/') && pathname !== '/inventory/shipments') ||
+    (pathname.startsWith('/app/inventory/shipments/') && pathname !== '/app/inventory/shipments') ||
+    (pathname.startsWith('/inventory/issues/') && pathname !== '/inventory/issues')
+  ) {
+    return {
+      title: 'Chi tiết phiếu xuất kho',
+      category: 'Nhập / Xuất kho',
+      breadcrumbs: [
+        { label: 'Soạn hàng & Xuất kho', path: '/inventory/shipments' },
+        { label: 'Chi tiết phiếu xuất kho' },
+      ],
+    };
+  }
+
+  if (
+    pathname === '/inventory/shipments' ||
+    pathname === '/app/inventory/shipments' ||
+    pathname === '/inventory/issues'
+  ) {
+    return {
+      title: 'Soạn hàng & Xuất kho',
+      category: 'Nhập / Xuất kho',
+    };
+  }
+
+  if (
+    pathname === '/warehouse/picking/create' ||
+    pathname === '/inventory/picking/create'
+  ) {
+    return {
+      title: 'Tạo phiếu soạn hàng',
+      category: 'Kho & Vận hành',
+      breadcrumbs: [
+        { label: 'Phiếu soạn hàng', path: '/warehouse/picking' },
+        { label: 'Tạo phiếu mới' },
       ],
     };
   }

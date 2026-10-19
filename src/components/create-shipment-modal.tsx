@@ -42,13 +42,19 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({
     return `TRK-${year}-${randomSuffix}`;
   };
 
-  // Tải danh sách đơn hàng để tra cứu và gợi ý khi người dùng nhập mã đơn
+  // Tải danh sách đơn hàng để tra cứu và gợi ý khi người dùng nhập mã đơn (chỉ lấy đơn đã duyệt chuẩn ERP)
   useEffect(() => {
     if (isOpen) {
-      ordersService.getOrders({ limit: 100 })
+      ordersService.getOrdersForShipment({ limit: 100 })
         .then((res) => {
           if (res?.data) {
-            setReadyOrders(res.data);
+            const VALID_STATUSES = new Set(['APPROVED', 'READY_TO_SHIP', 'PROCESSING']);
+            const FORBIDDEN_STATUSES = new Set(['CANCELLED', 'DRAFT', 'PENDING', 'PENDING_APPROVAL', 'PENDING_INVENTORY_APPROVAL', 'REJECTED']);
+            const valid = res.data.filter((o) => {
+              const st = String(o.status || '').toUpperCase().trim();
+              return VALID_STATUSES.has(st) && !FORBIDDEN_STATUSES.has(st);
+            });
+            setReadyOrders(valid);
           }
         })
         .catch(() => {});

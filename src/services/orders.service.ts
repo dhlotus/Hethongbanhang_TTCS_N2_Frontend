@@ -547,9 +547,16 @@ export const ordersService = {
     if (params.dateType) {
       cleanParams.dateType = params.dateType;
     }
+    if (params.forShipment !== undefined) {
+      cleanParams.forShipment = String(params.forShipment);
+    }
+    if (params.warehouseId && params.warehouseId !== 'ALL') {
+      cleanParams.warehouseId = params.warehouseId;
+    }
 
     try {
-      const res = await apiClient.get<PaginatedOrdersResponse | Order[]>('/orders', {
+      const endpoint = params.forShipment ? '/orders/for-shipment' : '/orders';
+      const res = await apiClient.get<PaginatedOrdersResponse | Order[]>(endpoint, {
         params: cleanParams,
       });
 
@@ -598,9 +605,106 @@ export const ordersService = {
       };
 
       let list = getStoredDemoOrders();
-      if (params.status && params.status !== 'ALL') {
+      if (params.forShipment) {
+        // Chuẩn ERP xuất kho: Chỉ lọc đơn đã duyệt (APPROVED, READY_TO_SHIP, PROCESSING)
+        // Tuyệt đối loại bỏ: CANCELLED, DRAFT, PENDING*
+        const VALID_SHIPMENT_STATUSES = new Set(['APPROVED', 'READY_TO_SHIP', 'PROCESSING']);
+        const FORBIDDEN_STATUSES = new Set([
+          'CANCELLED',
+          'DRAFT',
+          'PENDING',
+          'PENDING_APPROVAL',
+          'PENDING_INVENTORY_APPROVAL',
+          'REJECTED',
+          'RETURNED_FOR_UPDATE',
+          'RETURNED',
+          'CLOSED',
+          'COMPLETED',
+          'DISPATCHED',
+        ]);
+        list = list.filter((o) => {
+          const st = String(o.status || '').toUpperCase().trim();
+          return VALID_SHIPMENT_STATUSES.has(st) && !FORBIDDEN_STATUSES.has(st);
+        });
+      } else if (params.status && params.status !== 'ALL') {
         const st = String(params.status).toUpperCase();
         list = list.filter((o) => o.status?.toUpperCase() === st);
+      }
+
+      // Lọc theo kho xuất hàng (warehouseId)
+      const targetWh = params.warehouseId ? String(params.warehouseId).toLowerCase() : '';
+      if (targetWh && targetWh !== 'all') {
+        const isMb = targetWh.includes('mb') || targetWh.includes('bắc') || targetWh === '11111111-0000-0000-0000-000000000002';
+        const isMt = targetWh.includes('mt') || targetWh.includes('trung') || targetWh === '11111111-0000-0000-0000-000000000003';
+        const isMn = targetWh.includes('mn') || targetWh.includes('nam') || targetWh === '11111111-0000-0000-0000-000000000001';
+
+        list = list.filter((o) => {
+          if ((o as any).warehouseId && String((o as any).warehouseId).toLowerCase() === targetWh) return true;
+          if ((o as any).warehouseCode && String((o as any).warehouseCode).toLowerCase() === targetWh) return true;
+
+          const reg = String(o.region || '').toLowerCase();
+          const addr = String(o.deliveryPoint?.address || '').toLowerCase();
+          const cCode = String(o.customerCode || '').toUpperCase();
+          const cName = String(o.customerName || '').toLowerCase();
+
+          if (isMb) {
+            const isNorth =
+              reg.includes('bắc') ||
+              reg.includes('north') ||
+              addr.includes('hà nội') ||
+              addr.includes('bắc') ||
+              cCode.includes('HN') ||
+              cName.includes('thăng long') ||
+              cName.includes('hà nội') ||
+              cName.includes('cầu giấy');
+            const isOther =
+              reg.includes('trung') ||
+              reg.includes('nam') ||
+              addr.includes('đà nẵng') ||
+              addr.includes('hồ chí minh') ||
+              addr.includes('tp.hcm') ||
+              cCode.includes('DN');
+            return isNorth && !isOther;
+          }
+
+          if (isMt) {
+            const isCentral =
+              reg.includes('trung') ||
+              reg.includes('central') ||
+              addr.includes('đà nẵng') ||
+              cCode.includes('DN') ||
+              cName.includes('miền trung') ||
+              cName.includes('đà nẵng');
+            const isOther =
+              reg.includes('bắc') ||
+              reg.includes('nam') ||
+              addr.includes('hà nội') ||
+              addr.includes('hồ chí minh') ||
+              cCode.includes('HN');
+            return isCentral && !isOther;
+          }
+
+          if (isMn) {
+            const isSouth =
+              reg.includes('nam') ||
+              reg.includes('south') ||
+              addr.includes('hồ chí minh') ||
+              addr.includes('tp.hcm') ||
+              addr.includes('bình dương') ||
+              cName.includes('minh khang') ||
+              cName.includes('thịnh vượng');
+            const isOther =
+              reg.includes('bắc') ||
+              reg.includes('trung') ||
+              addr.includes('hà nội') ||
+              addr.includes('đà nẵng') ||
+              cCode.includes('HN') ||
+              cCode.includes('DN');
+            return isSouth && !isOther;
+          }
+
+          return false;
+        });
       }
       if (params.customerId && params.customerId !== 'ALL') {
         const qCust = String(params.customerId).toLowerCase().trim();
@@ -676,6 +780,18 @@ export const ordersService = {
         totalPages,
       };
     }
+  },
+
+  /**
+   * Lấy danh sách đơn hàng cho phép xuất kho chuẩn ERP (SN-188)
+   * Chỉ lấy các đơn đã duyệt (APPROVED, READY_TO_SHIP, PROCESSING)
+   * Tuyệt đối loại bỏ các đơn CANCELLED, DRAFT, PENDING
+   */
+  async getOrdersForShipment(params: OrderQueryParams = {}): Promise<PaginatedOrdersResponse> {
+    return this.getOrders({
+      ...params,
+      forShipment: true,
+    });
   },
 
   /**

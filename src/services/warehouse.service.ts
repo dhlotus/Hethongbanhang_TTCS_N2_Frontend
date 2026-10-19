@@ -12,14 +12,19 @@ import type {
 const agencyDefaultCache = new Map<string, { data: AgencyWarehouseDetail; expiresAt: number }>();
 
 export const warehouseService = {
-  async getWarehouses(): Promise<Warehouse[]> {
+  async getWarehouses(params?: {
+    search?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<any> {
     try {
-      const response = await apiClient.get<Warehouse[]>('/warehouses');
-      if (Array.isArray(response.data) && response.data.length > 0) {
+      const response = await apiClient.get('/warehouses', { params });
+      if (response.data) {
         return response.data;
       }
     } catch {}
-    return [
+    const fallbackList: Warehouse[] = [
       {
         id: '11111111-0000-0000-0000-000000000002',
         code: 'KHO-MB-01',
@@ -57,6 +62,29 @@ export const warehouseService = {
         locationCount: 1,
       },
     ];
+
+    if (params?.page !== undefined || params?.limit !== undefined) {
+      let filtered = fallbackList;
+      if (params.search) {
+        const q = params.search.toLowerCase();
+        filtered = filtered.filter(
+          (w) => w.name.toLowerCase().includes(q) || w.code.toLowerCase().includes(q)
+        );
+      }
+      if (params.status && params.status !== 'ALL') {
+        filtered = filtered.filter((w) => w.status === params.status);
+      }
+      const page = params.page || 1;
+      const limit = params.limit || 10;
+      return {
+        data: filtered.slice((page - 1) * limit, page * limit),
+        total: filtered.length,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(filtered.length / limit)),
+      };
+    }
+    return fallbackList;
   },
   async createWarehouse(payload: CreateWarehousePayload): Promise<Warehouse> {
     const response = await apiClient.post<Warehouse>('/warehouses', payload);

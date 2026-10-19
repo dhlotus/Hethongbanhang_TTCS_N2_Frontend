@@ -517,18 +517,17 @@ export const orderPickingService = {
     const currentItem = targetSheet.items[itemIndex];
     const validQty = Math.max(0, Number(payload.pickedQuantity) || 0);
 
-    // Kiểm tra quy tắc nghiệp vụ: Soạn thiếu bắt buộc nhập lý do
-    if (validQty < currentItem.totalRequiredQuantity) {
-      if (!payload.shortPickReason || !payload.shortPickReason.trim()) {
-        throw new Error('Soạn thiếu bắt buộc phải nhập lý do giải trình');
-      }
-    }
+    // Xác định lý do giải trình (nếu có truyền mới hoặc giữ lý do hiện có)
+    const effectiveReason = payload.shortPickReason?.trim() || currentItem.shortPickReason?.trim();
+    const effectiveReasonCode = payload.shortPickReasonCode || currentItem.shortPickReasonCode;
 
     let nextStatus: PickingItemStatus = 'PENDING';
     if (validQty >= currentItem.totalRequiredQuantity) {
       nextStatus = 'PICKED';
-    } else if (validQty < currentItem.totalRequiredQuantity && payload.shortPickReason?.trim()) {
+    } else if (effectiveReason) {
       nextStatus = 'SHORT_PICKED';
+    } else {
+      nextStatus = 'PENDING';
     }
 
     // Phân bổ số lượng nhặt cho từng đơn hàng thành phần
@@ -538,9 +537,9 @@ export const orderPickingService = {
       ...currentItem,
       totalPickedQuantity: validQty,
       status: nextStatus,
-      shortPickReason: validQty < currentItem.totalRequiredQuantity ? payload.shortPickReason?.trim() : undefined,
-      shortPickReasonCode: validQty < currentItem.totalRequiredQuantity ? payload.shortPickReasonCode : undefined,
-      notes: payload.notes?.trim() || undefined,
+      shortPickReason: validQty < currentItem.totalRequiredQuantity ? effectiveReason : undefined,
+      shortPickReasonCode: validQty < currentItem.totalRequiredQuantity ? effectiveReasonCode : undefined,
+      notes: payload.notes?.trim() || currentItem.notes,
       orders: updatedOrders,
       completedAt: nextStatus !== 'PENDING' ? new Date().toISOString() : undefined,
     };
@@ -600,6 +599,52 @@ export const orderPickingService = {
     saveStoredSheets(list);
 
     return finalizedSheet;
+  },
+
+  /**
+   * Cập nhật phân bổ lô xuất FEFO cho dòng hàng (SN-187)
+   */
+  async updateLineItemBatches(
+    sheetId: string,
+    itemId: string,
+    selectedBatches: import('../types/fefo-picking.types').SelectedBatchAllocation[],
+    isOverride: boolean,
+    overrideReason?: string,
+    overrideReasonCode?: string,
+  ): Promise<PickingSheet> {
+    const list = getStoredSheets();
+    const sheetIndex = list.findIndex((s) => s.id === sheetId);
+    if (sheetIndex === -1) {
+      throw new Error(`Không tìm thấy phiếu soạn hàng với ID: ${sheetId}`);
+    }
+
+    const targetSheet = list[sheetIndex];
+    const itemIndex = targetSheet.items.findIndex((it) => it.id === itemId);
+    if (itemIndex === -1) {
+      throw new Error(`Không tìm thấy dòng hàng với ID: ${itemId}`);
+    }
+
+    const currentItem = targetSheet.items[itemIndex];
+    const totalBatchQty = selectedBatches.reduce((sum, b) => sum + b.quantity, 0);
+
+    const updatedItem: PickingLineItem = {
+      ...currentItem,
+      totalPickedQuantity: totalBatchQty,
+      status: totalBatchQty >= currentItem.totalRequiredQuantity ? 'PICKED' : totalBatchQty > 0 ? 'SHORT_PICKED' : currentItem.status,
+      selectedBatches,
+      isOverrideBatch: isOverride,
+      batchOverrideReason: overrideReason,
+      batchOverrideReasonCode: overrideReasonCode,
+      orders: allocateQuantityAcrossOrders(currentItem.orders, totalBatchQty),
+      completedAt: totalBatchQty > 0 ? new Date().toISOString() : undefined,
+    };
+
+    targetSheet.items[itemIndex] = updatedItem;
+    const finalSheet = recalculateSheetSummary(targetSheet);
+    list[sheetIndex] = finalSheet;
+    saveStoredSheets(list);
+
+    return finalSheet;
   },
 
   /**

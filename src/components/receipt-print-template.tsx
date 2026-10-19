@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { numberToVietnameseWords } from '../utils/number-to-words';
 import { receiptsService } from '../services/receipts.service';
+import { ConfirmActionModal } from './confirm-action-modal';
 import type { Receipt, ReceiptPrintData, PaymentMethod } from '../types/receipt';
 
 interface ReceiptPrintTemplateProps {
@@ -57,14 +58,34 @@ const getPaymentMethodMeta = (
   }
 };
 
+// Hàm chuẩn hóa mã đại lý, loại bỏ chuỗi UUID mã hóa thô
+const cleanCustomerCode = (code?: string, name?: string): string => {
+  if (!code) return '';
+  // Nếu là mã UUID dạng 55555555-0000-0000-0000-000000000002 thì chuyển về mã đại lý thân thiện
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code)) {
+    if (code === '55555555-0000-0000-0000-000000000002' || name?.includes('An Bình')) {
+      return 'DL-0002';
+    }
+    if (code === '55555555-0000-0000-0000-000000000001' || name?.includes('Minh Khang')) {
+      return 'DL-0001';
+    }
+    return '';
+  }
+  return code;
+};
+
 const extractCustomerInfo = (item: Receipt | ReceiptPrintData) => {
   if ('customerInfo' in item && item.customerInfo) {
-    return item.customerInfo;
+    const info = item.customerInfo;
+    return {
+      ...info,
+      code: cleanCustomerCode(info.code, info.name),
+    };
   }
   const r = item as Receipt;
   return {
     id: r.customerId || '',
-    code: r.customerCode || '---',
+    code: cleanCustomerCode(r.customerCode, r.customerName) || '---',
     name: r.customerName || 'Đại lý B2B',
     phone: r.customerPhone || '---',
     address: r.customerAddress || '---',
@@ -90,6 +111,17 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
 }) => {
   const printContentRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'download' | 'print';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'download',
+    title: '',
+    message: '',
+  });
 
   // Xử lý phím ESC để đóng modal
   useEffect(() => {
@@ -131,8 +163,11 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
   const paymentDate = receipt.paymentDate || new Date().toISOString();
   const referenceCode = receipt.referenceCode || '---';
   const notes =
-    receipt.notes ||
-    `Thu tiền cấn trừ công nợ khách hàng ${customerName} (${customerCode})`;
+    receipt.notes?.replace(
+      /\(55555555-0000-0000-0000-000000000002\)/g,
+      customerCode && customerCode !== '---' ? `(${customerCode})` : '',
+    ) ||
+    `Thu tiền cấn trừ công nợ khách hàng ${customerName}${customerCode && customerCode !== '---' ? ` (${customerCode})` : ''}`;
 
   const d = new Date(paymentDate);
   const dayStr = isNaN(d.getTime()) ? '15' : d.getDate().toString().padStart(2, '0');
@@ -287,6 +322,34 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
     }
   };
 
+  const handleOpenPrintConfirm = () => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'print',
+      title: 'Xác nhận in phiếu thu',
+      message: `Bạn có chắc chắn muốn thực hiện in phiếu thu ${receiptCode} không?`,
+    });
+  };
+
+  const handleOpenDownloadConfirm = () => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'download',
+      title: 'Xác nhận tải phiếu thu PDF',
+      message: `Bạn có chắc chắn muốn tải file PDF cho phiếu thu ${receiptCode} về thiết bị không?`,
+    });
+  };
+
+  const handleExecuteConfirmedAction = async () => {
+    if (confirmModal.type === 'download') {
+      setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      await handleDownloadPdf();
+    } else {
+      setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      handlePrint();
+    }
+  };
+
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs overflow-y-auto">
       <div className="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] animate-in fade-in zoom-in-95 duration-200">
@@ -300,7 +363,7 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
             </div>
             <div className="min-w-0">
               <h2 className="text-sm sm:text-base font-bold text-slate-900 truncate">
-                In Phiếu Thu Tiền (Biên Lai)
+                In Phiếu Thu Tiền
               </h2>
             </div>
           </div>
@@ -309,7 +372,7 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
             {/* Nút 1: Tải PDF */}
             <button
               type="button"
-              onClick={() => void handleDownloadPdf()}
+              onClick={handleOpenDownloadConfirm}
               disabled={isDownloading}
               className="inline-flex items-center justify-center gap-1.5 h-[36px] px-3 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-all shadow-2xs cursor-pointer disabled:opacity-50"
               title="Tải file PDF phiếu thu về máy"
@@ -321,7 +384,7 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
             {/* Nút 2: In phiếu trực tiếp */}
             <button
               type="button"
-              onClick={handlePrint}
+              onClick={handleOpenPrintConfirm}
               className="inline-flex items-center justify-center gap-1.5 h-[36px] px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all shadow-xs cursor-pointer"
               title="In trực tiếp phiếu thu (A4/A5)"
             >
@@ -377,10 +440,12 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
                 <span className="font-semibold text-slate-600">Đại lý / Người nộp:</span>
                 <div className="sm:col-span-3 space-y-0.5">
                   <div className="font-bold text-slate-900 text-sm">
-                    {customerName}{' '}
-                    <span className="font-mono text-xs font-semibold text-slate-500">
-                      ({customerCode})
-                    </span>
+                    {customerName}
+                    {customerCode && customerCode !== '---' && (
+                      <span className="font-mono text-xs font-semibold text-slate-500 ml-1.5">
+                        ({customerCode})
+                      </span>
+                    )}
                   </div>
                   <div className="text-slate-600 flex flex-wrap gap-x-4 gap-y-0.5 text-[11px]">
                     <span>
@@ -472,6 +537,18 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Modal xác nhận trước khi In / Tải PDF */}
+      <ConfirmActionModal
+        isOpen={confirmModal.isOpen}
+        actionType={confirmModal.type}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.type === 'download' ? 'Xác nhận tải' : 'Xác nhận in'}
+        onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={handleExecuteConfirmedAction}
+        isLoading={isDownloading}
+      />
     </div>,
     document.body,
   );

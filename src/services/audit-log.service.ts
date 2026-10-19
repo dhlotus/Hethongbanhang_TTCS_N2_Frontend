@@ -11,9 +11,11 @@ import type {
  */
 export const AUDIT_ENTITIES: { value: AuditEntityType; label: string }[] = [
   { value: 'INVENTORY', label: 'Tồn kho & Lô hàng' },
-  { value: 'PRICING', label: 'Giá bán & Chiết khấu' },
-  { value: 'DEBT', label: 'Hạn mức công nợ' },
-  { value: 'ORDER', label: 'Đơn hàng & Hóa đơn' },
+  { value: 'PRICING', label: 'Sản phẩm & Giá niêm yết' },
+  { value: 'ORDER', label: 'Đơn hàng Bán buôn' },
+  { value: 'INVOICE', label: 'Hóa đơn bán buôn' },
+  { value: 'DEBT', label: 'Công nợ & Hạn mức' },
+  { value: 'CUSTOMER', label: 'Đại lý / Khách hàng' },
   { value: 'USER', label: 'Tài khoản & Phân quyền' },
 ];
 

@@ -4,9 +4,12 @@ import { LoginPage } from '../pages/login-page';
 import { ForgotPasswordPage } from '../pages/forgot-password-page';
 import { ResetPasswordPage } from '../pages/reset-password-page';
 import { ChangePasswordPage } from '../pages/change-password-page';
-import { RoleModulePage } from '../pages/role-module-page';
 import { InvoicesPage } from '../pages/invoices-page';
+import { CreateInvoicePage } from '../pages/create-invoice-page';
+import { InvoiceDetailPage } from '../pages/invoice-detail-page';
+import { ReceiptsPage } from '../pages/receipts-page';
 import { ProductsPage } from '../pages/products-page';
+import { ProductEditPage } from '../pages/product-edit-page';
 import { ProductEditPricePage } from '../pages/product-edit-price-page';
 import { PriceListsPage } from '../pages/price-lists-page';
 import { SuppliersPage } from '../pages/suppliers-page';
@@ -28,6 +31,7 @@ import { InventoryReceiptsPage } from '../pages/inventory-receipts-page';
 import { CreateInventoryReceiptPage } from '../pages/create-inventory-receipt-page';
 import { PortalOrdersPage } from '../pages/portal-orders-page';
 import { ShipmentsPage } from '../pages/shipments-page';
+import { CreateShipmentPage } from '../pages/create-shipment-page';
 import { ReturnsPage } from '../pages/returns-page';
 import { DashboardPage } from '../pages/dashboard-page';
 import { AgencyPortalPage } from '../pages/agency-portal-page';
@@ -41,11 +45,16 @@ import { NetworkStatusIndicator } from '../components/network-status-indicator';
 import { AdminLayout } from '../layouts/admin-layout';
 import { getRedirectPathByUser, getStoredUser } from '../utils/navigation';
 import { tokenStorage } from '../utils/token-storage';
+import { RoleModulePage } from '../pages/role-module-page';
 import { WarehousesPage } from '../pages/warehouses-page';
 import { InternalTransfersPage } from '../pages/inventory/internal-transfers-page';
 import { OrderPickingPage } from '../pages/order-picking-page';
+import { CreatePickingSheetPage } from '../pages/create-picking-sheet-page';
 import { InventoryBatchesPage } from '../pages/inventory-batches-page';
+import { GoodsInTransitPage } from '../pages/goods-in-transit-page';
 import { StockCardPage } from '../pages/inventory/stock-card-page';
+import { RouteCollectionsPage } from '../pages/route-collections-page';
+import { CreateRouteCollectionPage } from '../pages/create-route-collection-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -290,6 +299,39 @@ export const AppRoutes: React.FC = () => {
                 element={<ShipmentsPage />}
               />
               <Route
+                path="/inventory/issues/create"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/inventory/issues/:id"
+                element={<CreateShipmentPage />}
+              />
+              {/* SN-188: Route chuẩn phân hệ Soạn hàng & Xuất kho */}
+              <Route
+                path="/inventory/shipments"
+                element={<ShipmentsPage />}
+              />
+              <Route
+                path="/inventory/shipments/create"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/inventory/shipments/:id"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/app/inventory/shipments"
+                element={<ShipmentsPage />}
+              />
+              <Route
+                path="/app/inventory/shipments/create"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/app/inventory/shipments/:id"
+                element={<CreateShipmentPage />}
+              />
+              <Route
                 path="/inventory/audits"
                 element={<InventoryAuditsPage />}
               />
@@ -297,7 +339,14 @@ export const AppRoutes: React.FC = () => {
               <Route path="/warehouse/orders" element={<OrdersPage />} />
               {/* Route phiếu soạn hàng theo vị trí & đường đi trong kho (Wave Picking) */}
               <Route path="/inventory/picking" element={<OrderPickingPage />} />
+              <Route path="/inventory/picking/create" element={<CreatePickingSheetPage />} />
               <Route path="/warehouse/picking" element={<OrderPickingPage />} />
+              <Route path="/warehouse/picking/create" element={<CreatePickingSheetPage />} />
+              {/* Route Quản lý Lô & Gợi ý xuất FEFO (SN-187) */}
+              <Route path="/warehouse/batches" element={<InventoryBatchesPage />} />
+              {/* Route Theo dõi hàng đã xuất trên đường & Chuyến đi (SN-194 / SN-197) */}
+              <Route path="/warehouse/goods-in-transit" element={<GoodsInTransitPage />} />
+              <Route path="/inventory/goods-in-transit" element={<GoodsInTransitPage />} />
             </Route>
 
             <Route
@@ -383,8 +432,28 @@ export const AppRoutes: React.FC = () => {
                 element={<InvoicesPage />}
               />
               <Route
+                path="/accounting/invoices/create"
+                element={<CreateInvoicePage />}
+              />
+              <Route
+                path="/accounting/invoices/:id"
+                element={<InvoiceDetailPage />}
+              />
+              <Route
+                path="/invoices/create"
+                element={<Navigate to="/accounting/invoices/create" replace />}
+              />
+              <Route
+                path="/invoices/:id"
+                element={<InvoiceDetailPage />}
+              />
+              <Route
+                path="/invoices"
+                element={<Navigate to="/accounting/invoices" replace />}
+              />
+              <Route
                 path="/accounting/payments"
-                element={<InvoicesPage />}
+                element={<ReceiptsPage />}
               />
             </Route>
 
@@ -437,6 +506,42 @@ export const AppRoutes: React.FC = () => {
             </Route>
 
             {/* ------------------------------------------------------------- */}
+            {/* PHÂN HỆ THU TIỀN TUYẾN & ĐỐI CHIẾU (SN-205)                   */}
+            {/* ------------------------------------------------------------- */}
+            <Route
+              element={
+                <RoleGuard
+                  allowedRoles={[
+                    'ADMIN',
+                    'SALES_REP',
+                    'ACCOUNTANT',
+                    'ACCOUNTANT_DEBT',
+                    'SALES_MANAGER',
+                    'BUSINESS_MANAGER',
+                  ]}
+                  moduleName="Quản lý ngân sách"
+                />
+              }
+            >
+              <Route
+                path="/route-collections"
+                element={<RouteCollectionsPage />}
+              />
+              <Route
+                path="/route-collections/create"
+                element={<CreateRouteCollectionPage />}
+              />
+              <Route
+                path="/app/route-collections"
+                element={<RouteCollectionsPage />}
+              />
+              <Route
+                path="/app/route-collections/create"
+                element={<CreateRouteCollectionPage />}
+              />
+            </Route>
+
+            {/* ------------------------------------------------------------- */}
             {/* PHÂN HỆ 7: QUẢN TRỊ HỆ THỐNG (ADMIN & QUẢN LÝ KD)             */}
             {/* ------------------------------------------------------------- */}
             <Route
@@ -485,6 +590,10 @@ export const AppRoutes: React.FC = () => {
             {/* Danh mục sản phẩm (giá vốn tự động ẩn trên server theo SN-10) */}
             <Route path="/catalog/products" element={<ProductsPage />} />
             <Route path="/products" element={<ProductsPage />} />
+            <Route path="/catalog/products/:id/edit" element={<ProductEditPage />} />
+            <Route path="/catalog/products/edit/:id" element={<ProductEditPage />} />
+            <Route path="/products/:id/edit" element={<ProductEditPage />} />
+            <Route path="/products/edit/:id" element={<ProductEditPage />} />
             <Route path="/catalog/products/edit-price/:id" element={<ProductEditPricePage />} />
             <Route path="/products/edit-price/:id" element={<ProductEditPricePage />} />
             {/* Quản lý Cây nhóm hàng đa cấp (Tree Structure - SN-150 / SN-22) */}

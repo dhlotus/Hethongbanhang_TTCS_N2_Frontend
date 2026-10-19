@@ -5,10 +5,13 @@ export interface InvoiceLineItem {
   productSku: string;
   productName: string;
   unit: string;
-  quantity: number;
+  quantity: number; // Số lượng thực tế đã giao nhận (căn cứ tính tiền)
+  orderedQuantity?: number; // Số lượng đặt ban đầu
   unitPrice: number;
   discountPercent?: number;
   lineTotal: number;
+  deliverySlipId?: string;
+  deliverySlipCode?: string;
 }
 
 export interface InvoicePaymentRecord {
@@ -37,10 +40,45 @@ export interface InvoiceItem {
   issueDate: string;
   dueDate: string;
   note?: string;
+  deliverySlipIds?: string[];
+  deliverySlipCodes?: string[];
   items?: InvoiceLineItem[];
   paymentHistory?: InvoicePaymentRecord[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UnbilledDeliverySlipItem {
+  productSku: string;
+  productName: string;
+  unit: string;
+  orderedQuantity: number;
+  deliveredQuantity: number;
+  unitPrice: number;
+  discountPercent: number;
+  lineTotal: number;
+}
+
+export interface UnbilledDeliverySlip {
+  id: string;
+  trackingNumber: string;
+  orderId: string;
+  orderCode: string;
+  customerId: string;
+  customerName: string;
+  warehouseId?: string;
+  warehouseName?: string;
+  status: string;
+  deliveredAt?: string;
+  createdAt: string;
+  items: UnbilledDeliverySlipItem[];
+  totalAmount: number;
+}
+
+export interface IssueInvoicePayload {
+  deliverySlipIds: string[];
+  dueDate?: string;
+  note?: string;
 }
 
 export interface DealerDebtSummary {
@@ -129,8 +167,8 @@ export const invoicesService = {
    * GET /api/invoices
    */
   async getPaginatedInvoices(params?: QueryInvoicesParams): Promise<PaginatedInvoicesResponse> {
-    const res = await apiClient.get<any>('/invoices', { params });
-    if (res.data && Array.isArray(res.data.data)) {
+    const res = await apiClient.get<PaginatedInvoicesResponse | InvoiceItem[]>('/invoices', { params });
+    if (res.data && 'data' in res.data && Array.isArray(res.data.data)) {
       return res.data;
     }
     const list = Array.isArray(res.data) ? res.data : [];
@@ -150,8 +188,8 @@ export const invoicesService = {
    * GET /api/invoices
    */
   async getInvoices(params?: QueryInvoicesParams): Promise<InvoiceItem[]> {
-    const res = await apiClient.get<any>('/invoices', { params });
-    if (res.data && Array.isArray(res.data.data)) {
+    const res = await apiClient.get<PaginatedInvoicesResponse | InvoiceItem[]>('/invoices', { params });
+    if (res.data && 'data' in res.data && Array.isArray(res.data.data)) {
       return res.data.data;
     }
     return Array.isArray(res.data) ? res.data : [];
@@ -283,5 +321,25 @@ export const invoicesService = {
       console.error('Lỗi khi mở bản in hóa đơn:', err);
       throw err;
     }
+  },
+
+  /**
+   * Lấy danh sách phiếu giao hàng đã giao thành công chưa lập hoá đơn (SN-200)
+   * GET /api/invoices/unbilled-deliveries
+   */
+  async getUnbilledDeliveries(customerId?: string): Promise<UnbilledDeliverySlip[]> {
+    const res = await apiClient.get<UnbilledDeliverySlip[]>('/invoices/unbilled-deliveries', {
+      params: customerId ? { customerId } : undefined,
+    });
+    return res.data;
+  },
+
+  /**
+   * Phát hành hoá đơn bán hàng từ các phiếu đã giao (SN-200)
+   * POST /api/invoices
+   */
+  async issueInvoice(payload: IssueInvoicePayload): Promise<InvoiceItem> {
+    const res = await apiClient.post<InvoiceItem>('/invoices', payload);
+    return res.data;
   },
 };

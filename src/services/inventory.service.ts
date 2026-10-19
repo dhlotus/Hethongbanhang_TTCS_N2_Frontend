@@ -785,8 +785,20 @@ export const inventoryService = {
       }
 
       if (q.warehouse && q.warehouse.trim() !== '' && q.warehouse.toUpperCase() !== 'ALL') {
-        const whLower = q.warehouse.trim().toLowerCase();
-        all = all.filter((t) => (t.warehouse || '').toLowerCase().includes(whLower));
+        const whQuery = q.warehouse.trim().toLowerCase();
+        all = all.filter((t) => {
+          const tWh = (t.warehouse || '').toLowerCase();
+          if (tWh.includes(whQuery) || whQuery.includes(tWh)) return true;
+          const isSouth = (s: string) => s.includes('nam') || s.includes('mn') || s.includes('wh01') || s.includes('hồ chí minh');
+          const isNorth = (s: string) => s.includes('bắc') || s.includes('bac') || s.includes('mb') || s.includes('wh02') || s.includes('hà nội');
+          const isCentral = (s: string) => s.includes('trung') || s.includes('mt') || s.includes('wh03') || s.includes('đà nẵng');
+          const isWest = (s: string) => s.includes('tây') || s.includes('tay') || s.includes('west') || s.includes('cần thơ');
+          if (isSouth(whQuery) && isSouth(tWh)) return true;
+          if (isNorth(whQuery) && isNorth(tWh)) return true;
+          if (isCentral(whQuery) && isCentral(tWh)) return true;
+          if (isWest(whQuery) && isWest(tWh)) return true;
+          return false;
+        });
       }
 
       if (q.type && q.type.trim() !== '' && q.type.toUpperCase() !== 'ALL') {

@@ -247,3 +247,147 @@ pm run build (	sc -b && vite build) -> 0 lỗi, compile thành công 100%.
   - ✅ ESLint: `npx eslint src/types/receipt.ts src/services/receipts.service.ts src/components/receipt-print-template.tsx src/pages/invoices-page.tsx` -> 0 lỗi, 0 warnings.
   - ✅ Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
 
+---
+
+### [Sprint 5] - [SN-188]: Trang Con Tạo Phiếu Xuất Kho, Gợi Ý Lô FEFO & Popup Đổi Lô Kèm Lý Do Ghi Đè
+- **Thời gian hoàn thành:** 2026-10-17
+- **Mã Jira / Task:** SN-188 (Sprint 5 - Soạn hàng & Xuất kho FEFO)
+- **Tiêu đề:** "Giao diện trang con Tạo phiếu xuất kho & Chi tiết phiếu xuất, hiển thị lô gợi ý FEFO, popup đổi lô bắt buộc lý do ghi đè, và router chuẩn theo UI_GUIDELINES.md"
+- **Danh sách file thay đổi:**
+  - `src/services/shipments.service.ts`: Cập nhật hàm `getBatchesBySku` xử lý response đa dạng, `createFefoShipment`, `suggestFefo` và bổ sung fallback cho `getShipmentById`.
+  - `src/pages/create-shipment-page.tsx`: Tối giản giao diện trang tạo phiếu: loại bỏ hoàn toàn khối sub-header trùng lặp và banner FEFO; vào thẳng Khu vực 1 (Thông tin chung đơn hàng & vận chuyển) và Khu vực 2 (Bảng sản phẩm & phân bổ lô FEFO); toàn bộ nút hành động tập trung ở chân trang cố định.
+  - `src/pages/shipments-page.tsx`: Điều hướng nút `[+ Tạo Phiếu Lẻ]` và click mã phiếu / nút `[Chi tiết]` trực tiếp sang trang con `/inventory/shipments/create` và `/inventory/shipments/:id` (không dùng modal inline nhỏ).
+  - `src/routes/index.tsx`: Đăng ký toàn bộ các route chuẩn: `/inventory/shipments/create`, `/inventory/shipments/:id`, `/app/inventory/shipments/create`, `/app/inventory/shipments/:id`.
+  - `src/layouts/header.tsx`: Bổ sung cấu hình breadcrumbs cho phân hệ Soạn hàng & Xuất kho (`getPageHeaderInfo`), đưa breadcrumb phân cấp `Soạn hàng & Xuất kho > Tạo phiếu xuất kho` lên Header cố định và loại bỏ chữ mặc định "Hệ thống LOHA SALES".
+- **Trạng thái kiểm thử:**
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
+
+---
+
+### [Sprint 5] - [SN-188-FIX]: Sửa Lỗi Nghiệp Vụ Dropdown 'Chọn Đơn Hàng Cần Xuất Kho'
+- **Thời gian hoàn thành:** 2026-10-17
+- **Mã Jira / Task:** SN-188-FIX (Nghiệp vụ Xuất kho ERP)
+- **Vấn đề đã khắc phục:** Khắc phục lỗi dropdown hiển thị tất cả các trạng thái đơn hàng (cho phép chọn cả đơn CANCELLED, DRAFT, PENDING).
+- **Danh sách file thay đổi:**
+  - `src/types/order.ts`: Bổ sung `forShipment?: boolean | string` vào `OrderQueryParams`.
+  - `src/services/orders.service.ts`: Thêm method `getOrdersForShipment(params)` kết nối `/orders/for-shipment`, bổ sung xử lý fallback lọc chặt chẽ chuẩn ERP.
+  - `src/pages/create-shipment-page.tsx`:
+    - Gọi API `ordersService.getOrdersForShipment({ limit: 100 })`.
+    - Thiết lập bộ lọc an toàn 2 lớp tại client: Chỉ nhận các đơn có trạng thái `APPROVED`, `READY_TO_SHIP`, `PROCESSING`; loại trừ triệt để `CANCELLED`, `DRAFT`, `PENDING*`.
+    - Bổ sung xác thực kiểm tra trạng thái trong `handleSelectOrder` chặn chọn đơn chưa duyệt hoặc đã hủy.
+    - Cập nhật text option rõ ràng: `-- Chọn đơn hàng cần xuất kho (Đã duyệt) --` và hiển thị nhãn `[Mã đơn] Tên KH - Số lượng SP (Đã duyệt)`.
+  - `src/components/create-shipment-modal.tsx`: Đồng bộ gọi `getOrdersForShipment` và lọc bỏ các đơn không hợp lệ.
+- **Trạng thái kiểm thử:**
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
+
+---
+
+### [Sprint 5] - [SN-188-RBAC]: Quản Lý Đơn Hàng Phát Sinh Theo Gán Đại Lý Cho Kho (Chuẩn Nghiệp Vụ Thủ Kho Miền Bắc)
+- **Thời gian hoàn thành:** 2026-10-17
+- **Mã Jira / Task:** SN-188-RBAC (Quản lý đơn hàng phát sinh theo cấu hình Gán đại lý cho kho)
+- **Bản chất nghiệp vụ:**
+  - Thủ kho đăng nhập tài khoản Hoàng Minh Tuấn (Thủ kho Miền Bắc - `KHO-MB-01`).
+  - Trong phân hệ "Gán đại lý cho kho" (`app_agency_default_warehouses`), Kho Miền Bắc được gán các đại lý (Minh Khang, Toàn Cầu, Hoàng Gia, An Phát, Phương Đông, Bảo Châu...). Khi tạo đơn cho các đại lý này thì hàng trừ ở Kho Miền Bắc.
+  - Do đó, Thủ kho Miền Bắc chỉ quản lý các đơn hàng phát sinh từ Kho Miền Bắc (đơn hàng của các đại lý được gán cho kho Miền Bắc hoặc đơn có `warehouseId` chỉ định Kho Miền Bắc).
+  - Tuyệt đối KHÔNG lọc theo chuỗi vùng miền địa chỉ (khu vực hay tỉnh thành), mà lọc trực tiếp theo bảng cấu hình Gán đại lý cho kho (`agencyDefaults` / `app_agency_default_warehouses`).
+- **Danh sách file thay đổi:**
+  - `src/types/order.ts`: Bổ sung `warehouseId?: string` vào `OrderQueryParams`.
+  - `src/services/orders.service.ts`: Truyền `warehouseId` trong `getOrders`, cập nhật fallback lọc đơn hàng theo kho.
+  - `src/pages/create-shipment-page.tsx`:
+    - Tải bảng phân công đại lý cho kho qua `warehouseService.getAgencyDefaults()`.
+    - Tự động nhận diện tài khoản nhân viên kho và gán đúng kho phụ trách (Thủ kho Hoàng Minh Tuấn cố định vào Kho Miền Bắc).
+    - Khóa trường chọn kho đối với nhân viên kho để tránh xuất nhầm kho khác.
+    - Bộ lọc dropdown "Chọn Đơn hàng cần xuất kho": Lọc chuẩn 100% theo các đại lý được gán cho kho trong `agencyDefaults` (`filteredOrdersForWarehouse`). Đơn hàng của các đại lý gán cho Kho Miền Bắc (Minh Khang, Toàn Cầu, Hoàng Gia, An Phát, Phương Đông, Bảo Châu...) được hiển thị; các đơn hàng của đại lý gán cho Kho Miền Trung (Đà Nẵng `cust-dl-dn-001`,...) hay Kho Miền Nam bị loại bỏ hoàn toàn.
+- **Trạng thái kiểm thử:**
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
+  - Backend Build: `npm run build` (`nest build`) -> 0 lỗi, compile thành công 100%.
+
+---
+
+### [Sprint 5] - [SN-188-NOTIF]: Thông Báo Cá Nhân Tức Thì Cho Thủ Kho Khi Tạo Phiếu Xuất Kho
+- **Thời gian hoàn thành:** 2026-10-17
+- **Mã Jira / Task:** SN-188-NOTIF (Personal Notification for Shipment Creation)
+- **Nghiệp vụ:**
+  - Sau khi thủ kho xác nhận tạo phiếu xuất kho thành công, ngoài việc hệ thống gửi thông báo cho Quản lý kho, hệ thống **tự động lưu và phát thông báo cá nhân cho chính tài khoản thủ kho tạo phiếu** lên chuông thông báo Header.
+  - Thông báo hiển thị rõ ràng: *"Bạn đã tạo thành công phiếu xuất kho [Mã phiếu] cho đơn hàng [Mã đơn]. Hàng hóa đã được phân bổ và trừ tồn theo chuẩn FEFO."*
+  - Bấm vào thông báo sẽ mở ngay màn hình chi tiết phiếu xuất kho để kiểm tra lại bất cứ lúc nào.
+- **Danh sách file thay đổi:**
+  - `HTBH_Backend/src/modules/shipments/shipments.service.ts`: Truyền thông tin người tạo (`creatorId`, `creatorName`, `creatorUsername`) sang notification service.
+  - `HTBH_Backend/src/modules/notifications/notifications.service.ts`: Gửi thông báo cá nhân cho chính người tạo phiếu xuất trong `notifyShipmentFefoCreated` và `notifyShipmentBatchOverridden`.
+  - `HTBH_Frontend/src/pages/create-shipment-page.tsx`: Bắn sự kiện `loha_shipment_created` khi tạo phiếu thành công.
+  - `HTBH_Frontend/src/components/notification-bell.tsx`: Lắng nghe sự kiện `loha_shipment_created`, lưu thông báo cá nhân vào danh sách thông báo và LocalStorage, hiển thị icon `PackageCheck` màu xanh ngọc/tím.
+- **Trạng thái kiểm thử:**
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
+  - Backend Build: `npm run build` (`nest build`) -> 0 lỗi, compile thành công 100%.
+
+---
+
+### [Sprint 6/7] - [SN-200]: Giao Diện Phát Hành Hoá Đơn Bán Hàng Từ Phiếu Thực Giao & In/Xuất PDF (Kế Toán Công Nợ)
+- **Thời gian hoàn thành:** 2026-10-18
+- **Mã Jira / Task:** SN-200 (Parent Story: SN-201 / Phân hệ Hóa đơn & Thu nợ)
+- **Tiêu đề:** "Là Kế toán công nợ, tôi muốn phát hành hoá đơn bán hàng từ phiếu đã giao, để xuất hoá đơn đúng số hàng thực giao thay vì số hàng đặt."
+- **5 Ràng buộc nghiệp vụ hoàn thành 100%:**
+  1. **Tính tiền theo số lượng thực giao:** Bảng preview và dữ liệu hóa đơn tính thành tiền dựa trên `deliveredQuantity` từ các phiếu giao hàng đã ký nhận, loại bỏ số lượng đặt ban đầu.
+  2. **Số hóa đơn liên tục không trùng và không nhảy cóc:** BE sử dụng cơ chế PostgreSQL Sequence Atomic Upsert + In-memory Mutex Locking. Dãy số hiển thị trên FE luôn tăng tuần tự dạng `HD{YY}{MM}-0001`, `HD{YY}{MM}-0002`...
+  3. **Gộp nhiều phiếu giao cùng đại lý:** Modal hỗ trợ Kế toán chọn 1 Đại lý, tự động lọc các phiếu giao đã hoàn tất (`DELIVERED`) chưa xuất hóa đơn, cho phép tick chọn một hoặc nhiều phiếu để gộp chung vào 1 hóa đơn bán hàng.
+  4. **Không sửa và không xóa:** Danh sách hóa đơn (cả Desktop Table và Mobile Card) **tuyệt đối không hiển thị nút Sửa hoặc Xóa**. Backend khóa cứng bằng mã lỗi `MethodNotAllowedException` khi gọi PUT/PATCH/DELETE.
+  5. **In hoặc xuất PDF:** Trang bị nút "In" (gọi `window.print()` qua bản in HTML chuẩn VAT) và nút "Tải PDF" (gọi API tải trực tiếp file `.pdf` chất lượng cao xuất từ PDFKit).
+- **Danh sách file thay đổi & tạo mới:**
+  - `src/services/invoices.service.ts`: Khai báo Interface `UnbilledDeliverySlipItem`, `UnbilledDeliverySlip`, `IssueInvoicePayload`; triển khai API tập trung `getUnbilledDeliveries` và `issueInvoice`.
+  - `src/components/issue-invoice-modal.tsx`: Component Modal phát hành hóa đơn theo quy chuẩn `UI_GUIDELINES.md` (`rounded-xl`, màu chủ đạo `indigo-600`, không dùng gradient đại trà, responsive).
+  - `src/pages/invoices-page.tsx`: Bổ sung nút CTA "Phát hành hóa đơn", tích hợp `IssueInvoiceModal`, bổ sung nút "In" và "Tải PDF" trên từng dòng hóa đơn và mobile card view.
+  - `src/hooks/use-debt-report.ts`: Chuẩn hóa kiểu `debounceTimerRef` sang `ReturnType<typeof setTimeout>`.
+- **Trạng thái kiểm thử:**
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
+
+---
+
+### [Sprint 7] - [SN-202]: Giao Diện Ghi Nhận Thanh Toán & Đối Trừ Công Nợ Vào Hóa Đơn (Kế Toán Công Nợ)
+- **Thời gian hoàn thành:** 2026-10-18
+- **Mã Jira / Task:** SN-202 (Parent Story: SN-201 / Phân hệ Kế toán công nợ)
+- **Tiêu đề:** "Là Kế toán công nợ, tôi muốn ghi nhận thanh toán và đối trừ vào công nợ, để biết chính xác đại lý còn nợ hoá đơn nào."
+- **5 Ràng buộc nghiệp vụ hoàn thành 100% (Strict AC):**
+  1. **Nhập đủ 5 trường thông tin cốt lõi:**
+     - Số tiền thu (VND): Tích hợp kiểm tra không vượt quá tổng nợ hiển thị.
+     - Hình thức thu: Dropdown đầy đủ hình thức: Tiền mặt (`CASH`), Chuyển khoản ngân hàng (`BANK_TRANSFER`), Thẻ tín dụng/ghi nợ (`CREDIT_CARD`), Séc ngân hàng (`CHECK`).
+     - Ngày thu: Datepicker chuẩn HTML5 `type="date"`, tự động khởi tạo mặc định là ngày hôm nay.
+     - Người thu: Ô nhập Read-only, tự động trích xuất từ thông tin phiên đăng nhập (`tokenStorage.getUser()?.fullName`).
+     - Ghi chú: Textarea nhập lý do thu, số tham chiếu ủy nhiệm chi (UNC).
+  2. **Cơ chế đối trừ linh hoạt:**
+     - Radio 1: "Tự động đối trừ theo thứ tự hoá đơn cũ nhất trước (FIFO)" -> Hệ thống gửi `autoOffsetOldest: true`.
+     - Radio 2: "Chọn hoá đơn cụ thể để đối trừ" -> Hiển thị danh sách hóa đơn còn nợ kèm ô checkbox để Kế toán tick chọn từng hóa đơn cần cấn trừ.
+  3. **Thu một phần & Cập nhật trạng thái:**
+     - Cho phép nhập số tiền thanh toán nhỏ hơn tổng nợ.
+     - Giao diện hóa đơn cập nhật trạng thái rõ ràng thành "Thanh toán một phần" (`PARTIALLY_PAID`) với Pastel Badge màu hổ phách/vàng `amber-50` viền `amber-200/60`, và "Đã thanh toán" (`PAID`) với Pastel Badge xanh ngọc `emerald-50` viền `emerald-200/60`.
+  4. **Chặn thu vượt tổng công nợ còn lại:**
+     - Validate real-time: Nếu người dùng nhập số tiền lớn hơn tổng dư nợ khả dụng, hiển thị thông báo lỗi màu đỏ rõ ràng và vô hiệu hóa (`disabled`) nút gửi biểu mẫu.
+  5. **Chặn xóa phiếu thu:**
+     - Không hiển thị bất kỳ nút Xóa nào tại màn hình danh sách phiếu thu `/accounting/payments` hay chi tiết hóa đơn.
+- **Danh sách file tạo mới & thay đổi:**
+  - `src/types/payment.ts` (Tạo mới: Interface `Payment`, `PaymentAllocation`, `CreatePaymentPayload`, `PaginatedPaymentsResponse`, `PaymentMethod`).
+  - `src/services/payments.service.ts` (Tạo mới: API client `createPayment`, `getPayments`, `getPaymentById`).
+  - `src/components/record-payment-modal.tsx` (Tạo mới & nâng cấp: Modal ghi nhận thanh toán & đối trừ công nợ theo chuẩn `UI_GUIDELINES.md`, container `rounded-xl`, controls `rounded-lg`, soft shadow `shadow-xl`, hỗ trợ chọn đại lý hoặc nhận preselected invoice, chuyển đổi chế độ FIFO / chọn cụ thể).
+  - `src/pages/receipts-page.tsx` (Cập nhật: Bổ sung nút CTA `[+ Ghi nhận thanh toán & Đối trừ]`, tích hợp `RecordPaymentModal`, tự động reload dữ liệu sau khi ghi nhận).
+  - `src/pages/invoices-page.tsx` (Cập nhật: Cập nhật nhãn trạng thái `PARTIALLY_PAID` thành "Thanh toán một phần").
+  - `src/services/invoices.service.ts` (Cập nhật: Loại bỏ triệt để kiểu `any` trong API gọi danh sách hóa đơn).
+- **Trạng thái kiểm thử:**
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
+
+---
+
+### [Sprint 7] - [SN-202-ENHANCE]: Tinh Chỉnh Giao Diện Tìm Kiếm Đại Lý, Định Dạng Tiền Tệ & Làm Sạch Mẫu In Phiếu Thu
+- **Thời gian hoàn thành:** 2026-10-18
+- **Danh sách file thay đổi:**
+  - `src/components/record-payment-modal.tsx`:
+    - Thiết kế ô tìm kiếm đại lý đồng bộ 100% với trang Phát hành hóa đơn: input tích hợp icon kính lúp tím, placeholder hiển thị `Đang chọn: [Mã DL] - [Tên Đại Lý]`, nút tím thương hiệu `[ Tìm kiếm v ]`, dropdown popover hỗ trợ phân trang cuộn (scroll pagination 8 items/lần).
+    - Định dạng số tiền nhập ngăn cách 3 chữ số bằng dấu chấm (.), giới hạn tối đa hàng chục nghìn tỷ (`99.999.999.999.999 đ` - 14 chữ số), đọc tiền tự động bằng chữ Tiếng Việt theo thời gian thực.
+    - Xóa bỏ nút X ở góc trên cùng modal, xóa mô tả phụ, xóa tiền tố "Nguyên tắc FIFO:", xóa dòng cảnh báo AC 5 ở footer.
+    - Truyền kèm `customerCode` và `customerName` lên API `createPayment`.
+  - `src/components/receipt-print-template.tsx`:
+    - Tiêu đề modal đổi thành: **"In Phiếu Thu Tiền"** (loại bỏ chữ *(Biên Lai)*).
+    - Chuẩn hóa mã đại lý: thay thế chuỗi mã hóa UUID thô (`55555555-0000-0000-0000-000000000002`) thành mã đại lý thân thiện `(DL-0002)`, làm sạch cả phần ghi chú chứng từ.
+  - `src/types/payment.ts`: Bổ sung `customerCode` và `customerName` vào `CreatePaymentPayload`.
+- **Trạng thái kiểm thử:**
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
+
+
