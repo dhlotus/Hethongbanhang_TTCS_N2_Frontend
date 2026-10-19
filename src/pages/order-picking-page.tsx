@@ -28,6 +28,7 @@ import { ShortPickReasonModal } from '../components/picking/short-pick-reason-mo
 import { FefoBatchSelectorModal } from '../components/picking/fefo-batch-selector-modal';
 import { CreatePickingSheetModal } from '../components/picking/create-picking-sheet-modal';
 import { fefoPickingService } from '../services/fefo-picking.service';
+import { matchesSearchTerm } from '../utils/vietnamese';
 import type { SelectedBatchAllocation } from '../types/fefo-picking.types';
 import { showToast } from '../components/toast';
 
@@ -110,10 +111,10 @@ export const OrderPickingPage: React.FC = () => {
   const filteredOrders = useMemo(() => {
     return allOrders.filter((ord) => {
       if (orderSearchTerm.trim()) {
-        const q = orderSearchTerm.toLowerCase().trim();
-        const matchCode = ord.orderCode?.toLowerCase().includes(q);
-        const matchCust = ord.customerName?.toLowerCase().includes(q);
-        const matchRep = ord.salesRepName?.toLowerCase().includes(q);
+        const q = orderSearchTerm.trim();
+        const matchCode = matchesSearchTerm(ord.orderCode, q);
+        const matchCust = matchesSearchTerm(ord.customerName, q);
+        const matchRep = matchesSearchTerm(ord.salesRepName, q);
         if (!matchCode && !matchCust && !matchRep) return false;
       }
 

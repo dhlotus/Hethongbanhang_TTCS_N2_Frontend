@@ -15,6 +15,7 @@ import { returnsService, type ReturnRequest } from '../services/returns.service'
 import { showToast } from '../components/toast';
 import { getStoredUser } from '../utils/navigation';
 import { USER_ROLES } from '../types/auth';
+import { matchesSearchTerm } from '../utils/vietnamese';
 
 const STATUS_CONFIG: Record<
   ReturnRequest['status'],
@@ -209,13 +210,15 @@ export const ReturnsPage: React.FC = () => {
   // Lọc dữ liệu
   const filtered = returns.filter((item) => {
     const matchStatus = statusFilter === 'ALL' || item.status === statusFilter;
-    const matchSearch =
-      !searchTerm ||
-      item.requestCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.orderCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.reason?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchStatus && matchSearch;
+    if (!matchStatus) return false;
+    const term = searchTerm.trim();
+    if (!term) return true;
+    return (
+      matchesSearchTerm(item.requestCode, term) ||
+      matchesSearchTerm(item.orderCode, term) ||
+      matchesSearchTerm(item.customerName, term) ||
+      matchesSearchTerm(item.reason, term)
+    );
   });
 
   const totalPending = returns.filter((r) => r.status === 'PENDING').length;

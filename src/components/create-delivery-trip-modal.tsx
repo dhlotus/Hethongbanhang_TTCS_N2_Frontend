@@ -13,6 +13,7 @@ import type { Shipment } from '../services/shipments.service';
 import type { DeliveryTrip, CreateDeliveryTripPayload } from '../types/delivery-trip';
 import { deliveryTripsService } from '../services/delivery-trips.service';
 import { showToast } from './toast';
+import { matchesSearchTerm } from '../utils/vietnamese';
 
 interface Props {
   availableShipments: Shipment[];
@@ -74,14 +75,15 @@ export const CreateDeliveryTripModal: React.FC<Props> = ({
 
   const filteredShipments = useMemo(() => {
     if (!searchShipment.trim()) return eligibleShipments;
-    const q = searchShipment.toLowerCase().trim();
+    const q = searchShipment.trim();
     return eligibleShipments.filter(
       (s) =>
-        s.id.toLowerCase().includes(q) ||
-        s.orderCode.toLowerCase().includes(q) ||
-        s.customerName.toLowerCase().includes(q) ||
-        s.deliveryAddress?.toLowerCase().includes(q) ||
-        s.receiverName?.toLowerCase().includes(q),
+        matchesSearchTerm(s.id, q) ||
+        matchesSearchTerm(s.orderCode, q) ||
+        matchesSearchTerm(s.customerName, q) ||
+        matchesSearchTerm(s.deliveryAddress, q) ||
+        matchesSearchTerm(s.receiverName, q) ||
+        matchesSearchTerm(s.phone, q),
     );
   }, [eligibleShipments, searchShipment]);
 

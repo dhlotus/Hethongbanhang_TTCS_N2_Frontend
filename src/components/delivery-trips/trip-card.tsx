@@ -31,6 +31,7 @@ export const TripCard: React.FC<TripCardProps> = ({
   const timingStatus = getTripTimingStatus(
     trip.status,
     trip.estimatedCompletionTime,
+    trip.departureDate || trip.departedAt,
   );
 
   const deliveredPercent =
@@ -75,6 +76,26 @@ export const TripCard: React.FC<TripCardProps> = ({
         <h3 className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-1" title={trip.tripName}>
           {trip.tripName}
         </h3>
+
+        {/* Danh sách mã đơn hàng trong chuyến */}
+        {trip.stops && trip.stops.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {trip.stops.slice(0, 3).map((s) => (
+              <span
+                key={s.id}
+                className="font-mono text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200/70"
+                title={`${s.orderCode} - ${s.customerName}`}
+              >
+                {s.orderCode}
+              </span>
+            ))}
+            {trip.stops.length > 3 && (
+              <span className="text-[10px] text-slate-400">
+                +{trip.stops.length - 3} đơn
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Thông tin tài xế & Kho xuất */}
         <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100">

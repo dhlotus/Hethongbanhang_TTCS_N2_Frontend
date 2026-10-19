@@ -1,6 +1,6 @@
 import { apiClient } from './api';
-import { syncDemoOrderStatus } from './orders.service';
-import type { OrderStatus } from '../types/order';
+import { syncDemoOrderStatus, getStoredDemoOrders } from './orders.service';
+import type { Order, OrderStatus } from '../types/order';
 
 export interface Shipment {
   id: string;
@@ -141,8 +141,66 @@ export const saveStoredLocalShipments = (list: Shipment[]) => {
   } catch {}
 };
 
+/**
+ * Chuyển một Đơn hàng trong "Quản lý đơn hàng" thành một Phiếu xuất kho đồng bộ
+ */
+export function buildShipmentFromOrder(order: Order): Shipment {
+  let status: Shipment['status'] = 'PENDING';
+  if (order.status === 'SHIPPED' || order.status === 'DISPATCHED') {
+    status = 'SHIPPED';
+  } else if (order.status === 'PACKED') {
+    status = 'PACKED';
+  } else if (order.status === 'DELIVERED') {
+    status = 'DELIVERED';
+  } else if (order.status === 'PROCESSING') {
+    status = 'PICKING';
+  } else if (order.status === 'CANCELLED') {
+    status = 'CANCELLED';
+  }
+
+  const numPart = (order.orderCode || '').replace(/^[^\d]+/, '') || '10088';
+  return {
+    id: `shp-${order.id || order.orderCode}`,
+    orderId: order.id || '',
+    orderCode: order.orderCode || order.id || '',
+    customerId: order.customerId,
+    customerName: order.customerName || '',
+    salesRepId: order.salesRepId,
+    warehouseId: (order as any).warehouseId || 'wh-002',
+    status,
+    deliveryAddress: order.deliveryPoint?.address || 'Kho nhận hàng chính',
+    receiverName: order.deliveryPoint?.receiverName || order.customerName || '',
+    phone: order.deliveryPoint?.phone || (order as any).phone || '0901234561',
+    trackingNumber: (order as any).trackingNumber || `TRK-2026-${numPart}`,
+    carrierName: (order as any).carrierName || 'LOHA Fleet Logistics',
+    tripCode: (order as any).tripCode || `TRIP-${numPart}`,
+    shippedAt: (order as any).shippedAt || (order as any).dispatchedAt || order.createdAt,
+    deliveredAt: (order as any).deliveredAt,
+    createdAt: order.createdAt || new Date().toISOString(),
+    updatedAt: order.updatedAt || order.createdAt || new Date().toISOString(),
+    items: (order.lines || []).map((l, i) => ({
+      id: l.id || `line-${i}`,
+      skuCode: l.productSku,
+      productName: l.productName,
+      quantity: l.quantity,
+      selectedBatchNo: `BATCH-2026-${100 + i}`,
+      fefoSuggestedBatchNo: `BATCH-2026-${100 + i}`,
+      isOverridden: false,
+    })),
+  };
+}
+
 export const shipmentsService = {
   async getShipments(params?: Record<string, string | number>): Promise<Shipment[]> {
+    // 1. Lấy dữ liệu đơn hàng chính thức từ "Quản lý đơn hàng"
+    const allOrders = getStoredDemoOrders();
+    const orderMap = new Map<string, Order>();
+    allOrders.forEach((o) => {
+      if (o.orderCode) orderMap.set(o.orderCode.toUpperCase(), o);
+      if (o.id) orderMap.set(o.id.toUpperCase(), o);
+    });
+
+    // 2. Thử lấy danh sách phiếu từ server
     let serverList: Shipment[] = [];
     try {
       const res = await apiClient.get<Shipment[]>('/shipments', { params });
@@ -153,27 +211,71 @@ export const shipmentsService = {
       serverList = [];
     }
 
-    // Kết hợp cùng các phiếu xuất kho được chuyển từ luồng soạn hàng (Local / Synced)
+    // 3. Kết hợp cùng các phiếu xuất kho lưu cục bộ
     const localList = getStoredLocalShipments();
     const map = new Map<string, Shipment>();
 
-    // Đưa server items vào map trước
+    // Đưa server items vào map (chỉ giữ các đơn tồn tại trong Quản lý đơn hàng)
     for (const s of serverList) {
-      const key = s.orderCode || s.orderId || s.id;
-      map.set(key, s);
+      const key = (s.orderCode || s.orderId || s.id).toUpperCase();
+      if (orderMap.has(key)) {
+        map.set(key, s);
+      }
     }
 
-    // Đưa local items vào map (nếu chưa có hoặc để đảm bảo trạng thái mới nhất từ kho)
+    // Đưa local items vào map
     for (const ls of localList) {
-      const key = ls.orderCode || ls.orderId || ls.id;
-      if (!map.has(key)) {
-        map.set(key, ls);
-      } else {
-        map.set(key, { ...map.get(key)!, ...ls });
+      const key = (ls.orderCode || ls.orderId || ls.id).toUpperCase();
+      if (orderMap.has(key)) {
+        if (!map.has(key)) {
+          map.set(key, ls);
+        } else {
+          map.set(key, { ...map.get(key)!, ...ls });
+        }
+      }
+    }
+
+    // 4. Đồng bộ hóa với tất cả đơn hàng từ "Quản lý đơn hàng"
+    for (const order of allOrders) {
+      const key = (order.orderCode || order.id || '').toUpperCase();
+      // Tạo phiếu xuất cho các đơn đã qua xét duyệt hoặc đang xử lý kho / giao hàng
+      if (['APPROVED', 'PROCESSING', 'PACKED', 'SHIPPED', 'DISPATCHED', 'DELIVERED', 'CANCELLED'].includes(order.status)) {
+        if (!map.has(key)) {
+          map.set(key, buildShipmentFromOrder(order));
+        } else {
+          // Đồng bộ trạng thái đơn hàng và thông tin khách hàng từ orderMap
+          const existing = map.get(key)!;
+          let syncedStatus = existing.status;
+          if (order.status === 'SHIPPED' || order.status === 'DISPATCHED') {
+            syncedStatus = 'SHIPPED';
+          } else if (order.status === 'PACKED') {
+            syncedStatus = 'PACKED';
+          } else if (order.status === 'DELIVERED') {
+            syncedStatus = 'DELIVERED';
+          } else if (order.status === 'PROCESSING') {
+            syncedStatus = existing.status === 'PENDING' ? 'PICKING' : existing.status;
+          } else if (order.status === 'CANCELLED') {
+            syncedStatus = 'CANCELLED';
+          }
+
+          map.set(key, {
+            ...existing,
+            orderCode: order.orderCode || existing.orderCode,
+            customerId: order.customerId || existing.customerId,
+            customerName: order.customerName || existing.customerName,
+            receiverName: order.deliveryPoint?.receiverName || existing.receiverName,
+            phone: order.deliveryPoint?.phone || existing.phone,
+            deliveryAddress: order.deliveryPoint?.address || existing.deliveryAddress,
+            status: syncedStatus,
+          });
+        }
       }
     }
 
     const merged = Array.from(map.values());
+    // Sắp xếp các phiếu mới nhất lên đầu
+    merged.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
+
     if (params?.status && params.status !== 'ALL') {
       return merged.filter((s) => s.status === params.status);
     }

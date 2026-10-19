@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
-import { X, Truck } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Truck, Search, Package, MapPin } from 'lucide-react';
 import type { CreateDeliveryTripPayload } from '../../types/delivery-trip';
+import { ordersService, getStoredDemoOrders } from '../../services/orders.service';
+import type { Order } from '../../types/order';
+import { formatVndCurrency } from '../../utils/delivery-format';
+import { matchesSearchTerm } from '../../utils/vietnamese';
 
 interface CreateTripModalProps {
   isOpen: boolean;
@@ -10,6 +14,7 @@ interface CreateTripModalProps {
 
 /**
  * Modal tạo chuyến đi giao hàng mới (SN-194 / SN-197)
+ * Tích hợp trực tiếp dữ liệu danh sách đơn hàng từ bên "Theo dõi đơn hàng & Giao vận"
  */
 export const CreateTripModal: React.FC<CreateTripModalProps> = ({
   isOpen,
@@ -17,19 +22,71 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
   onSubmit,
 }) => {
   const [tripName, setTripName] = useState('');
-  const [warehouseId, setWarehouseId] = useState('wh-001');
-  const [warehouseName, setWarehouseName] = useState('Kho Tổng Miền Bắc - LOHA WH01');
-  const [driverName, setDriverName] = useState('');
-  const [driverPhone, setDriverPhone] = useState('');
-  const [vehicleNumber, setVehicleNumber] = useState('');
-  const [carrierName, setCarrierName] = useState('Đội xe nội bộ LOHA');
+  const [warehouseId, setWarehouseId] = useState('wh-002');
+  const [warehouseName, setWarehouseName] = useState('Kho Tổng Miền Nam - LOHA WH02');
+  const [driverName, setDriverName] = useState('Nguyễn Văn Thắng');
+  const [driverPhone, setDriverPhone] = useState('0988123456');
+  const [vehicleNumber, setVehicleNumber] = useState('29H-868.99');
+  const [carrierName, setCarrierName] = useState('LOHA Fleet Logistics');
   const [estimatedHours, setEstimatedHours] = useState('4');
-  const [orderIdsText, setOrderIdsText] = useState('DH2609-09920, DH2609-09921, DH2609-09922');
   const [startImmediately, setStartImmediately] = useState(true);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!isOpen) return null;
+  // Danh sách đơn hàng từ bên "Theo dõi đơn hàng"
+  const [candidateOrders, setCandidateOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [orderSearch, setOrderSearch] = useState('');
+  const [selectedOrderCodes, setSelectedOrderCodes] = useState<string[]>([]);
+
+  // Tải danh sách đơn hàng thực tế khi mở modal
+  useEffect(() => {
+    if (isOpen) {
+      setLoadingOrders(true);
+      const demoList = getStoredDemoOrders();
+
+      ordersService
+        .getOrders({ limit: 100 })
+        .then((res) => {
+          const list = res?.data && res.data.length > 0 ? res.data : demoList;
+          // Lọc các đơn hàng chưa giao xong hoặc chưa hủy để có thể xuất giao
+          const available = list.filter(
+            (o) => o.status !== 'DELIVERED' && o.status !== 'CANCELLED',
+          );
+          setCandidateOrders(available);
+
+          // Mặc định chọn trước đơn đã xuất kho (DISPATCHED) hoặc đang soạn nếu có
+          const defaultDispatched = available.find((o) => o.status === 'DISPATCHED');
+          if (defaultDispatched) {
+            const defCode = defaultDispatched.orderCode || defaultDispatched.id || '';
+            if (defCode) setSelectedOrderCodes([defCode]);
+            setTripName(`Tuyến giao ${defaultDispatched.orderCode || defCode} - ${defaultDispatched.customerName || ''}`);
+            if ((defaultDispatched as any).driverName) setDriverName((defaultDispatched as any).driverName);
+            if ((defaultDispatched as any).driverPhone) setDriverPhone((defaultDispatched as any).driverPhone);
+            if ((defaultDispatched as any).licensePlate) setVehicleNumber((defaultDispatched as any).licensePlate);
+            if ((defaultDispatched as any).carrierName) setCarrierName((defaultDispatched as any).carrierName);
+          } else if (available.length > 0) {
+            const firstCode = available[0].orderCode || available[0].id || '';
+            if (firstCode) setSelectedOrderCodes([firstCode]);
+            setTripName(`Tuyến giao ${available[0].orderCode || firstCode} - ${available[0].customerName || ''}`);
+          }
+        })
+        .catch(() => {
+          const available = demoList.filter(
+            (o) => o.status !== 'DELIVERED' && o.status !== 'CANCELLED',
+          );
+          setCandidateOrders(available);
+          if (available.length > 0) {
+            const firstCode = available[0].orderCode || available[0].id || '';
+            if (firstCode) setSelectedOrderCodes([firstCode]);
+            setTripName(`Tuyến giao ${available[0].orderCode || firstCode} - ${available[0].customerName || ''}`);
+          }
+        })
+        .finally(() => {
+          setLoadingOrders(false);
+        });
+    }
+  }, [isOpen]);
 
   const handleWarehouseChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
@@ -40,6 +97,48 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
       setWarehouseName('Kho Tổng Miền Nam - LOHA WH02');
     }
   };
+
+  // Đơn hàng khớp từ khóa tìm kiếm
+  const filteredOrders = useMemo(() => {
+    if (!orderSearch.trim()) return candidateOrders;
+    const q = orderSearch.trim();
+    return candidateOrders.filter(
+      (o) =>
+        matchesSearchTerm(o.orderCode, q) ||
+        matchesSearchTerm(o.customerName, q) ||
+        matchesSearchTerm(o.deliveryPoint?.address, q) ||
+        matchesSearchTerm(o.deliveryPoint?.receiverName, q) ||
+        matchesSearchTerm(o.deliveryPoint?.phone, q),
+    );
+  }, [candidateOrders, orderSearch]);
+
+  const toggleSelectOrder = (code: string) => {
+    setSelectedOrderCodes((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedOrderCodes.length === filteredOrders.length && filteredOrders.length > 0) {
+      setSelectedOrderCodes([]);
+    } else {
+      setSelectedOrderCodes(
+        filteredOrders
+          .map((o) => o.orderCode || o.id || '')
+          .filter((c): c is string => Boolean(c)),
+      );
+    }
+  };
+
+  // Tổng tiền hàng của các đơn đã chọn
+  const selectedTotalAmount = useMemo(() => {
+    return candidateOrders
+      .filter((o) => {
+        const code = o.orderCode || o.id || '';
+        return code ? selectedOrderCodes.includes(code) : false;
+      })
+      .reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+  }, [candidateOrders, selectedOrderCodes]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,13 +159,8 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
       return;
     }
 
-    const orderIds = orderIdsText
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    if (orderIds.length === 0) {
-      alert('Vui lòng nhập ít nhất một mã đơn hàng cần giao');
+    if (selectedOrderCodes.length === 0) {
+      alert('Vui lòng chọn ít nhất một đơn hàng bên Theo dõi đơn hàng để giao');
       return;
     }
 
@@ -75,6 +169,7 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
 
     const payload: CreateDeliveryTripPayload = {
       tripName: tripName.trim(),
+      name: tripName.trim(),
       warehouseId,
       warehouseName,
       driverName: driverName.trim(),
@@ -82,7 +177,7 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
       vehicleNumber: vehicleNumber.trim().toUpperCase(),
       carrierName: carrierName.trim(),
       estimatedCompletionTime,
-      orderIds,
+      orderIds: selectedOrderCodes,
       startImmediately,
       notes: notes.trim() || undefined,
     };
@@ -96,9 +191,11 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
+      <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 bg-slate-50/80">
           <div className="flex items-center gap-3">
@@ -110,7 +207,7 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
                 Lập chuyến đi giao hàng mới
               </h2>
               <p className="text-xs text-slate-500">
-                Gán phương tiện, tài xế và thiết lập mốc thời gian dự kiến (ETA)
+                Lấy dữ liệu đơn hàng từ bên Theo dõi đơn hàng & Giao vận để xếp xe
               </p>
             </div>
           </div>
@@ -135,7 +232,7 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
               required
               value={tripName}
               onChange={(e) => setTripName(e.target.value)}
-              placeholder="VD: Tuyến Ba Đình - Hoàn Kiếm (Chuyến chiều)"
+              placeholder="VD: Tuyến Phú Nhuận - Giao các đơn chiều"
               className="w-full rounded-lg border border-slate-300 p-2 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
             />
           </div>
@@ -150,14 +247,14 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
                 onChange={handleWarehouseChange}
                 className="w-full rounded-lg border border-slate-300 p-2 text-xs bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
               >
-                <option value="wh-001">Kho Tổng Miền Bắc - LOHA WH01</option>
                 <option value="wh-002">Kho Tổng Miền Nam - LOHA WH02</option>
+                <option value="wh-001">Kho Tổng Miền Bắc - LOHA WH01</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-                Thời gian dự kiến chạy (Giờ):
+                Thời gian dự kiến chạy (ETA):
               </label>
               <select
                 value={estimatedHours}
@@ -182,7 +279,7 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
                 required
                 value={driverName}
                 onChange={(e) => setDriverName(e.target.value)}
-                placeholder="VD: Nguyễn Văn Nam"
+                placeholder="VD: Nguyễn Văn Thắng"
                 className="w-full rounded-lg border border-slate-300 p-2 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
               />
             </div>
@@ -196,7 +293,7 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
                 required
                 value={driverPhone}
                 onChange={(e) => setDriverPhone(e.target.value)}
-                placeholder="09xxxxxxxx"
+                placeholder="0988123456"
                 className="w-full rounded-lg border border-slate-300 p-2 text-xs font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
               />
             </div>
@@ -210,40 +307,123 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
                 required
                 value={vehicleNumber}
                 onChange={(e) => setVehicleNumber(e.target.value)}
-                placeholder="29C-123.45"
+                placeholder="29H-868.99"
                 className="w-full rounded-lg border border-slate-300 p-2 text-xs font-mono uppercase focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-                Đơn vị vận chuyển:
-              </label>
-              <input
-                type="text"
-                value={carrierName}
-                onChange={(e) => setCarrierName(e.target.value)}
-                placeholder="VD: Đội xe nội bộ LOHA"
-                className="w-full rounded-lg border border-slate-300 p-2 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
               />
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-              Danh sách Mã Đơn hàng gom theo xe <span className="text-rose-500">*</span>:
+              Đơn vị vận chuyển:
             </label>
             <input
               type="text"
-              required
-              value={orderIdsText}
-              onChange={(e) => setOrderIdsText(e.target.value)}
-              placeholder="VD: DH2609-09920, DH2609-09921, DH2609-09922 (ngăn cách bằng dấu phẩy)"
-              className="w-full rounded-lg border border-slate-300 p-2 text-xs font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+              value={carrierName}
+              onChange={(e) => setCarrierName(e.target.value)}
+              placeholder="VD: LOHA Fleet Logistics"
+              className="w-full rounded-lg border border-slate-300 p-2 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
             />
-            <p className="text-2xs text-slate-400 mt-1">
-              Nhập các mã đơn hàng đã đóng gói/xuất kho cần giao trong chuyến xe này
-            </p>
+          </div>
+
+          {/* CHỌN ĐƠN HÀNG TỪ BÊN THEO DÕI ĐƠN HÀNG */}
+          <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/50 space-y-2.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <label className="text-xs font-bold text-slate-900 uppercase flex items-center gap-1.5">
+                  <Package className="w-4 h-4 text-indigo-600" />
+                  Chọn Đơn hàng cần gom xuất phát trên đường <span className="text-rose-500">*</span>
+                </label>
+                <p className="text-[11px] text-slate-500">
+                  Dữ liệu đồng bộ trực tiếp từ bên Theo dõi đơn hàng & Giao vận
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
+                >
+                  {selectedOrderCodes.length === filteredOrders.length && filteredOrders.length > 0
+                    ? 'Bỏ chọn tất cả'
+                    : 'Chọn tất cả'}
+                </button>
+              </div>
+            </div>
+
+            {/* Tìm kiếm đơn */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={orderSearch}
+                onChange={(e) => setOrderSearch(e.target.value)}
+                placeholder="Tìm mã đơn, tên đại lý, địa chỉ giao..."
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            {/* Danh sách các đơn hàng */}
+            <div className="max-h-52 overflow-y-auto space-y-1.5 border border-slate-200 rounded-lg p-1.5 bg-white divide-y divide-slate-100">
+              {loadingOrders ? (
+                <div className="text-center py-4 text-xs text-slate-400">
+                  Đang tải danh sách đơn hàng...
+                </div>
+              ) : filteredOrders.length === 0 ? (
+                <div className="text-center py-4 text-xs text-slate-400">
+                  Không tìm thấy đơn hàng nào phù hợp
+                </div>
+              ) : (
+                filteredOrders.map((ord) => {
+                  const code = (ord.orderCode || ord.id || '') as string;
+                  const isChecked = selectedOrderCodes.includes(code);
+                  return (
+                    <div
+                      key={ord.id || ord.orderCode}
+                      onClick={() => toggleSelectOrder(code)}
+                      className={`flex items-start gap-2.5 p-2 rounded-lg cursor-pointer transition-colors ${
+                        isChecked ? 'bg-indigo-50/70 border border-indigo-200' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {}} // handled by parent onClick
+                        className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                      />
+                      <div className="min-w-0 flex-1 text-xs">
+                        <div className="flex items-center justify-between gap-1 flex-wrap">
+                          <span className="font-mono font-bold text-indigo-700 bg-white px-1.5 py-0.5 rounded border border-indigo-100">
+                            {code}
+                          </span>
+                          <span className="font-bold text-slate-900 font-mono">
+                            {formatVndCurrency(ord.grandTotal || 0)}
+                          </span>
+                        </div>
+                        <div className="font-medium text-slate-800 truncate mt-0.5">
+                          {ord.customerName}
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="truncate">{ord.deliveryPoint?.address || 'Tại kho đại lý'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Thanh tổng kết các đơn đã chọn */}
+            <div className="flex items-center justify-between bg-indigo-50/80 border border-indigo-100 px-3 py-2 rounded-lg text-xs">
+              <span className="text-indigo-900 font-medium">
+                Đã chọn: <strong>{selectedOrderCodes.length}</strong> đơn hàng
+              </span>
+              <span className="text-indigo-900 font-bold font-mono">
+                Tổng tiền: {formatVndCurrency(selectedTotalAmount)}
+              </span>
+            </div>
           </div>
 
           <div>
@@ -267,7 +447,7 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
               className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4"
             />
             <span className="font-medium">
-              Xuất phát ngay (Chuyển trạng thái sang <strong>Đang chạy trên đường</strong>)
+              Xuất phát ngay (Chuyển trạng thái các đơn sang <strong>Đang giao xe</strong> trên đường)
             </span>
           </label>
 
@@ -283,8 +463,8 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+              disabled={isSubmitting || selectedOrderCodes.length === 0}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-[#371cdb] text-white hover:bg-[#2d14b8] transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
             >
               <Truck className="h-4 w-4" />
               <span>{isSubmitting ? 'Đang tạo...' : 'Tạo chuyến đi & Bàn giao'}</span>

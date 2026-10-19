@@ -14,6 +14,7 @@ import type {
   FefoDispatchPayload,
   BatchExpiryStatus,
 } from '../types/fefo-picking.types';
+import { matchesSearchTerm } from '../utils/vietnamese';
 
 const BATCHES_CACHE_KEY = 'loha_warehouse_batches_cache';
 
@@ -312,13 +313,13 @@ export const fefoPickingService = {
       saveStoredBatches(list);
       return generated;
     }
-    if (params?.search) {
-      const q = params.search.toLowerCase().trim();
+    if (params?.search && params.search.trim()) {
+      const q = params.search.trim();
       list = list.filter(
         (b) =>
-          b.batchNumber.toLowerCase().includes(q) ||
-          b.productName?.toLowerCase().includes(q) ||
-          b.locationCode?.toLowerCase().includes(q),
+          matchesSearchTerm(b.batchNumber, q) ||
+          matchesSearchTerm(b.productName, q) ||
+          matchesSearchTerm(b.locationCode, q),
       );
     }
 

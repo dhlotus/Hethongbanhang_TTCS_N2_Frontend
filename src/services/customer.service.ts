@@ -1244,16 +1244,16 @@ export const customerService = {
         }
       }
       if (params?.search && params.search.trim()) {
-        const s = params.search.trim().toLowerCase();
+        const s = params.search.trim();
         list = list.filter(
           (h) =>
-            h.customerName?.toLowerCase().includes(s) ||
-            h.customerCode?.toLowerCase().includes(s) ||
-            h.reason?.toLowerCase().includes(s) ||
-            h.fromSalesRepName?.toLowerCase().includes(s) ||
-            h.toSalesRepName?.toLowerCase().includes(s) ||
-            (h.transferBatchId && h.transferBatchId.toLowerCase().includes(s)) ||
-            (h.performedByName && h.performedByName.toLowerCase().includes(s)),
+            matchesSearchTerm(h.customerName, s) ||
+            matchesSearchTerm(h.customerCode, s) ||
+            matchesSearchTerm(h.reason, s) ||
+            matchesSearchTerm(h.fromSalesRepName, s) ||
+            matchesSearchTerm(h.toSalesRepName, s) ||
+            matchesSearchTerm(h.transferBatchId, s) ||
+            matchesSearchTerm(h.performedByName, s),
         );
       }
       return { data: list, total: list.length };

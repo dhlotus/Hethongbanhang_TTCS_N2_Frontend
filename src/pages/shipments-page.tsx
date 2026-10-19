@@ -34,6 +34,7 @@ import { ConfirmDeliveryModal, ViewDeliveryProofModal } from '../components/conf
 import { CreateDeliveryTripModal } from '../components/create-delivery-trip-modal';
 import { DeliveryTripDetailModal } from '../components/delivery-trip-detail-modal';
 import { PrintTripManifestModal } from '../components/print-trip-manifest-modal';
+import { matchesSearchTerm } from '../utils/vietnamese';
 
 const STATUS_CONFIG: Record<
   Shipment['status'],
@@ -331,12 +332,15 @@ export const ShipmentsPage: React.FC = () => {
     fetchShipments();
     fetchTrips();
 
-    const handleShipmentUpdate = () => {
+    const handleDataUpdate = () => {
       fetchShipments();
+      fetchTrips();
     };
-    window.addEventListener('loha_shipments_updated', handleShipmentUpdate);
+    window.addEventListener('loha_shipments_updated', handleDataUpdate);
+    window.addEventListener('loha_orders_updated', handleDataUpdate);
     return () => {
-      window.removeEventListener('loha_shipments_updated', handleShipmentUpdate);
+      window.removeEventListener('loha_shipments_updated', handleDataUpdate);
+      window.removeEventListener('loha_orders_updated', handleDataUpdate);
     };
   }, [fetchShipments, fetchTrips]);
 
@@ -496,34 +500,64 @@ export const ShipmentsPage: React.FC = () => {
   };
 
   // Lọc danh sách phiếu xuất kho
-  const filteredShipments = shipments.filter((item) => {
-    const matchStatus = statusFilter === 'ALL' || item.status === statusFilter;
-    const matchSearch =
-      !searchTerm ||
-      item.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.orderCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.trackingNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.tripCode?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchStatus && matchSearch;
-  });
+  const filteredShipments = useMemo(() => {
+    const term = searchTerm.trim();
+    return shipments.filter((item) => {
+      const matchStatus = statusFilter === 'ALL' || item.status === statusFilter;
+      if (!matchStatus) return false;
+      if (!term) return true;
+      return (
+        matchesSearchTerm(item.id, term) ||
+        matchesSearchTerm(item.orderCode, term) ||
+        matchesSearchTerm(item.customerName, term) ||
+        matchesSearchTerm(item.receiverName, term) ||
+        matchesSearchTerm(item.phone, term) ||
+        matchesSearchTerm(item.deliveryAddress, term) ||
+        matchesSearchTerm(item.trackingNumber, term) ||
+        matchesSearchTerm(item.carrierName, term) ||
+        matchesSearchTerm(item.tripCode, term)
+      );
+    });
+  }, [shipments, statusFilter, searchTerm]);
 
   // Lọc danh sách chuyến giao hàng
   const filteredTrips = useMemo(() => {
+    const term = tripSearch.trim();
     return trips.filter((t) => {
       const matchStatus = tripStatusFilter === 'ALL' || t.status === tripStatusFilter;
-      const matchArea = tripAreaFilter === 'ALL' || (t.routeArea || '').toLowerCase().includes(tripAreaFilter.toLowerCase());
+      if (!matchStatus) return false;
+
+      const matchArea =
+        tripAreaFilter === 'ALL' ||
+        matchesSearchTerm(t.routeArea, tripAreaFilter);
+      if (!matchArea) return false;
+
+      if (!term) return true;
+
       const tripCode = t.tripCode || t.code || '';
       const plate = t.vehicleNumber || t.licensePlate || '';
       const tripName = t.name || t.tripName || '';
-      const matchSearch =
-        !tripSearch ||
-        tripCode.toLowerCase().includes(tripSearch.toLowerCase()) ||
-        tripName.toLowerCase().includes(tripSearch.toLowerCase()) ||
-        (t.routeArea || '').toLowerCase().includes(tripSearch.toLowerCase()) ||
-        t.driverName?.toLowerCase().includes(tripSearch.toLowerCase()) ||
-        plate.toLowerCase().includes(tripSearch.toLowerCase());
-      return matchStatus && matchArea && matchSearch;
+
+      const matchTripInfo =
+        matchesSearchTerm(tripCode, term) ||
+        matchesSearchTerm(tripName, term) ||
+        matchesSearchTerm(t.routeArea, term) ||
+        matchesSearchTerm(t.driverName, term) ||
+        matchesSearchTerm(t.driverPhone, term) ||
+        matchesSearchTerm(plate, term) ||
+        matchesSearchTerm(t.carrierName, term);
+
+      if (matchTripInfo) return true;
+
+      // Tìm kiếm trong các điểm giao / đơn hàng của chuyến
+      return (t.stops || []).some(
+        (s) =>
+          matchesSearchTerm(s.orderCode, term) ||
+          matchesSearchTerm(s.customerName, term) ||
+          matchesSearchTerm(s.receiverName, term) ||
+          matchesSearchTerm(s.receiverPhone, term) ||
+          matchesSearchTerm(s.deliveryAddress, term),
+      );
     });
   }, [trips, tripStatusFilter, tripAreaFilter, tripSearch]);
 

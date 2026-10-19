@@ -23,6 +23,7 @@ import { RecordPaymentModal } from '../components/record-payment-modal';
 import { ReminderTestModal } from '../components/reminder-test-modal';
 import { ConfirmActionModal } from '../components/confirm-action-modal';
 import { showToast } from '../components/toast';
+import { matchesSearchTerm } from '../utils/vietnamese';
 
 const formatCurrency = (val?: number): string => {
   return new Intl.NumberFormat('vi-VN', {
@@ -91,13 +92,13 @@ export const PortalDebtPage: React.FC = () => {
 
     // 1. Tìm kiếm
     if (search.trim()) {
-      const q = search.toLowerCase().trim();
+      const q = search.trim();
       result = result.filter(
         (inv) =>
-          inv.invoiceCode.toLowerCase().includes(q) ||
-          inv.orderCode.toLowerCase().includes(q) ||
-          inv.customerName.toLowerCase().includes(q) ||
-          inv.note?.toLowerCase().includes(q)
+          matchesSearchTerm(inv.invoiceCode, q) ||
+          matchesSearchTerm(inv.orderCode, q) ||
+          matchesSearchTerm(inv.customerName, q) ||
+          matchesSearchTerm(inv.note, q)
       );
     }
 

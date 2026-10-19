@@ -49,6 +49,7 @@ export const TripTableView: React.FC<TripTableViewProps> = ({
               const timingStatus = getTripTimingStatus(
                 trip.status,
                 trip.estimatedCompletionTime,
+                trip.departureDate || trip.departedAt,
               );
               const deliveredPercent =
                 trip.totalStops > 0
@@ -87,10 +88,28 @@ export const TripTableView: React.FC<TripTableViewProps> = ({
                   </td>
 
                   {/* Cột 2: Tuyến đường & Kho xuất */}
-                  <td className="py-2.5 px-3 max-w-[220px]">
+                  <td className="py-2.5 px-3 max-w-[240px]">
                     <div className="font-semibold text-slate-800 truncate" title={trip.tripName}>
                       {trip.tripName}
                     </div>
+                    {trip.stops && trip.stops.length > 0 && (
+                      <div className="flex items-center gap-1 flex-wrap mt-0.5">
+                        {trip.stops.slice(0, 2).map((s) => (
+                          <span
+                            key={s.id}
+                            className="font-mono text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1 py-0.2 rounded border border-indigo-200/60"
+                            title={`${s.orderCode} - ${s.customerName}`}
+                          >
+                            {s.orderCode}
+                          </span>
+                        ))}
+                        {trip.stops.length > 2 && (
+                          <span className="text-[10px] text-slate-400">
+                            +{trip.stops.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5 truncate" title={trip.warehouseName}>
                       <Warehouse className="w-3 h-3 text-slate-400 shrink-0" />
                       <span className="truncate">{trip.warehouseName}</span>

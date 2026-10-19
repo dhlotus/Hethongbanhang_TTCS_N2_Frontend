@@ -27,6 +27,7 @@ import { TripReturnCheckinModal } from '../components/delivery-trips/trip-return
 import { CreateTripModal } from '../components/delivery-trips/create-trip-modal';
 import { showToast } from '../components/toast';
 import { getFriendlyErrorMessage } from '../utils/error-handler';
+import { matchesSearchTerm } from '../utils/vietnamese';
 
 type FilterTab = 'ALL' | 'IN_TRANSIT_ON_TIME' | 'OVERDUE' | 'COMPLETED';
 type ViewMode = 'GRID' | 'TABLE';
@@ -81,6 +82,17 @@ export const GoodsInTransitPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+
+    const handleDataUpdate = () => {
+      fetchData();
+    };
+
+    window.addEventListener('loha_orders_updated', handleDataUpdate);
+    window.addEventListener('loha_shipments_updated', handleDataUpdate);
+    return () => {
+      window.removeEventListener('loha_orders_updated', handleDataUpdate);
+      window.removeEventListener('loha_shipments_updated', handleDataUpdate);
+    };
   }, [fetchData]);
 
   // Danh sách kho lưu trữ / kho xuất
@@ -112,7 +124,7 @@ export const GoodsInTransitPage: React.FC = () => {
         const targetWh = availableWarehouses.find((w) => w.id === selectedWarehouseId);
         const matchesId = trip.warehouseId === selectedWarehouseId;
         const matchesName =
-          targetWh && trip.warehouseName?.toLowerCase() === targetWh.name.toLowerCase();
+          Boolean(targetWh && trip.warehouseName && targetWh.name && trip.warehouseName.toLowerCase() === targetWh.name.toLowerCase());
         if (!matchesId && !matchesName) {
           return false;
         }
@@ -127,19 +139,31 @@ export const GoodsInTransitPage: React.FC = () => {
       }
 
       if (searchTerm.trim()) {
-        const term = searchTerm.trim().toLowerCase();
-        const matchCode = trip.tripCode.toLowerCase().includes(term);
-        const matchName = trip.tripName.toLowerCase().includes(term);
-        const matchDriver = trip.driverName.toLowerCase().includes(term);
-        const matchVehicle = trip.vehicleNumber.toLowerCase().includes(term);
-        const matchWh = trip.warehouseName?.toLowerCase().includes(term);
-        const matchStop = trip.stops.some(
+        const term = searchTerm.trim();
+        const tripCode = trip.tripCode || (trip as any).code || '';
+        const tripName = trip.tripName || (trip as any).name || '';
+        const plate = trip.vehicleNumber || (trip as any).licensePlate || '';
+
+        const matchTrip =
+          matchesSearchTerm(tripCode, term) ||
+          matchesSearchTerm(tripName, term) ||
+          matchesSearchTerm(trip.driverName, term) ||
+          matchesSearchTerm(trip.driverPhone, term) ||
+          matchesSearchTerm(plate, term) ||
+          matchesSearchTerm(trip.warehouseName, term) ||
+          matchesSearchTerm(trip.routeArea, term) ||
+          matchesSearchTerm(trip.carrierName, term);
+
+        const matchStop = (trip.stops || []).some(
           (s) =>
-            s.orderCode.toLowerCase().includes(term) ||
-            s.customerName.toLowerCase().includes(term),
+            matchesSearchTerm(s.orderCode, term) ||
+            matchesSearchTerm(s.customerName, term) ||
+            matchesSearchTerm(s.receiverName, term) ||
+            matchesSearchTerm(s.receiverPhone, term) ||
+            matchesSearchTerm(s.deliveryAddress, term),
         );
 
-        if (!matchCode && !matchName && !matchDriver && !matchVehicle && !matchStop && !matchWh) {
+        if (!matchTrip && !matchStop) {
           return false;
         }
       }
@@ -328,7 +352,7 @@ export const GoodsInTransitPage: React.FC = () => {
                   : 'bg-slate-50 text-slate-600 hover:bg-rose-50 hover:text-rose-700'
               }`}
             >
-              ⚠️ Quá hạn ({counts.overdue})
+              Quá hạn ({counts.overdue})
             </button>
             <button
               type="button"
@@ -339,7 +363,7 @@ export const GoodsInTransitPage: React.FC = () => {
                   : 'bg-slate-50 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
               }`}
             >
-              ✅ Hoàn tất ({counts.completed})
+              Hoàn tất ({counts.completed})
             </button>
           </div>
 

@@ -38,7 +38,8 @@ export function formatTripDateTime(dateStr?: string | Date | null): string {
  */
 export function getTripTimingStatus(
   status: string,
-  estimatedCompletionTime: string,
+  estimatedCompletionTime?: string | null,
+  departureDate?: string | Date | null,
 ): {
   isOverdue: boolean;
   text: string;
@@ -60,9 +61,30 @@ export function getTripTimingStatus(
     };
   }
 
+  let est = estimatedCompletionTime ? new Date(estimatedCompletionTime).getTime() : NaN;
+  if (isNaN(est)) {
+    const dep = departureDate ? new Date(departureDate).getTime() : NaN;
+    if (!isNaN(dep)) {
+      est = dep + 4 * 3600000;
+    } else {
+      return {
+        isOverdue: false,
+        text: 'Đang di chuyển',
+        badgeClass: 'bg-sky-50 text-sky-700 border-sky-200',
+      };
+    }
+  }
+
   const now = Date.now();
-  const est = new Date(estimatedCompletionTime).getTime();
   const diffMinutes = Math.floor((now - est) / (1000 * 60));
+
+  if (isNaN(diffMinutes)) {
+    return {
+      isOverdue: false,
+      text: 'Đang di chuyển',
+      badgeClass: 'bg-sky-50 text-sky-700 border-sky-200',
+    };
+  }
 
   if (diffMinutes > 0) {
     const hours = Math.floor(diffMinutes / 60);

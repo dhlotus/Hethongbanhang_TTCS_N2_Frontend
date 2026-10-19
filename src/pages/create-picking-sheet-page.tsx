@@ -18,6 +18,7 @@ import { STANDARD_WAREHOUSES } from '../constants/warehouse.constants';
 import type { Order } from '../types/order';
 import type { CreatePickingSheetPayload } from '../types/order-picking.types';
 import { showToast } from '../components/toast';
+import { matchesSearchTerm } from '../utils/vietnamese';
 
 /**
  * Trang Gộp đơn hàng (Wave Picking) thiết kế lại hiện đại, trực quan, hỗ trợ xem trước sản phẩm gom
@@ -67,10 +68,10 @@ export const CreatePickingSheetPage: React.FC = () => {
       if (statusFilter !== 'ALL' && o.status !== statusFilter) return false;
 
       if (searchTerm.trim()) {
-        const q = searchTerm.toLowerCase().trim();
-        const matchCode = o.orderCode?.toLowerCase().includes(q);
-        const matchCust = o.customerName?.toLowerCase().includes(q);
-        const matchRep = o.salesRepName?.toLowerCase().includes(q);
+        const q = searchTerm.trim();
+        const matchCode = matchesSearchTerm(o.orderCode, q);
+        const matchCust = matchesSearchTerm(o.customerName, q);
+        const matchRep = matchesSearchTerm(o.salesRepName, q);
         if (!matchCode && !matchCust && !matchRep) return false;
       }
 

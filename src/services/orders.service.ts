@@ -297,7 +297,7 @@ export const MOCK_CUSTOMERS = DEMO_CUSTOMERS;
 
 // INITIAL_DEMO_ORDERS được import từ ./demo-orders.data (20 đơn hàng đầy đủ)
 const DEMO_ORDERS_VERSION_KEY = 'loha_demo_orders_version';
-const CURRENT_DEMO_ORDERS_VERSION = 'v2_stock_approval_tests';
+const CURRENT_DEMO_ORDERS_VERSION = 'v3_tracking_transit_sync';
 
 export const resetDemoOrdersToDefault = (): Order[] => {
   try {
@@ -314,7 +314,7 @@ export const getStoredDemoOrders = (): Order[] => {
     const raw = localStorage.getItem(DEMO_ORDERS_KEY);
     if (raw && version === CURRENT_DEMO_ORDERS_VERSION) {
       const parsed = JSON.parse(raw) as Order[];
-      if (parsed.length >= 20) {
+      if (parsed.length >= 25) {
         return parsed;
       }
     }
@@ -354,6 +354,7 @@ export const syncDemoOrderStatus = (orderCodeOrId: string, status: OrderStatus):
       saveStoredDemoOrders(all);
     }
     window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: { orderCode: orderCodeOrId, status } }));
+    window.dispatchEvent(new CustomEvent('loha_shipments_updated', { detail: { orderCode: orderCodeOrId, status } }));
   } catch (e) {
     void e;
   }
@@ -736,12 +737,12 @@ export const ordersService = {
         });
       }
       if (params.salesRepId && params.salesRepId !== 'ALL') {
-        const rep = params.salesRepId.toLowerCase();
-        list = list.filter((o) => o.salesRepId === params.salesRepId || o.salesRepName?.toLowerCase().includes(rep));
+        const rep = params.salesRepId.trim();
+        list = list.filter((o) => o.salesRepId === params.salesRepId || matchesSearchTerm(o.salesRepName, rep));
       }
       if (params.region && params.region !== 'ALL') {
-        const reg = params.region.toLowerCase();
-        list = list.filter((o) => o.region?.toLowerCase().includes(reg) || o.deliveryPoint?.address?.toLowerCase().includes(reg));
+        const reg = params.region.trim();
+        list = list.filter((o) => matchesSearchTerm(o.region, reg) || matchesSearchTerm(o.deliveryPoint?.address, reg));
       }
       const fromKey = params.fromDate?.trim();
       const toKey = params.toDate?.trim();
@@ -758,11 +759,14 @@ export const ordersService = {
         });
       }
       if (params.search && params.search.trim()) {
-        const q = params.search.toLowerCase().trim();
+        const q = params.search.trim();
         list = list.filter((o) =>
-          o.orderCode?.toLowerCase().includes(q) ||
-          o.customerName?.toLowerCase().includes(q) ||
-          o.salesRepName?.toLowerCase().includes(q)
+          matchesSearchTerm(o.orderCode, q) ||
+          matchesSearchTerm(o.customerName, q) ||
+          matchesSearchTerm(o.salesRepName, q) ||
+          matchesSearchTerm(o.deliveryPoint?.receiverName, q) ||
+          matchesSearchTerm(o.deliveryPoint?.phone, q) ||
+          matchesSearchTerm(o.deliveryPoint?.address, q)
         );
       }
 
@@ -1067,6 +1071,10 @@ export const ordersService = {
             updateStoredCustomerDebt(all[idx].customerId, -rollbackAmt);
           }
         }
+        try {
+          window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: all[idx] }));
+          window.dispatchEvent(new CustomEvent('loha_shipments_updated', { detail: all[idx] }));
+        } catch {}
       }
       return res.data;
     } catch (err) {
@@ -1087,6 +1095,7 @@ export const ordersService = {
         }
         try {
           window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: all[idx] }));
+          window.dispatchEvent(new CustomEvent('loha_shipments_updated', { detail: all[idx] }));
         } catch {}
         return all[idx];
       }
@@ -1643,17 +1652,18 @@ export const ordersService = {
       customerOrders = customerOrders.filter((o) => o.status === params.status);
     }
 
-    if (params.search) {
-      const q = params.search.toLowerCase().trim();
+    if (params.search && params.search.trim()) {
+      const q = params.search.trim();
       customerOrders = customerOrders.filter(
         (o) =>
-          o.orderCode?.toLowerCase().includes(q) ||
-          o.lines.some(
+          matchesSearchTerm(o.orderCode, q) ||
+          (o.lines || []).some(
             (l) =>
-              l.productName.toLowerCase().includes(q) ||
-              l.productSku.toLowerCase().includes(q)
+              matchesSearchTerm(l.productName, q) ||
+              matchesSearchTerm(l.productSku, q)
           ) ||
-          o.deliveryPoint?.receiverName?.toLowerCase().includes(q)
+          matchesSearchTerm(o.deliveryPoint?.receiverName, q) ||
+          matchesSearchTerm(o.deliveryPoint?.address, q)
       );
     }
 
