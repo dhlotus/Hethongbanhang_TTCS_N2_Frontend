@@ -98,6 +98,7 @@ export interface DealerDebtSummary {
   maxDebtDays: number;
   paymentTerms: string;
   creditStatus: string;
+  isCreditLimitConfigured?: boolean;
 }
 
 export interface DebtReminderLog {
@@ -314,8 +315,7 @@ export const invoicesService = {
         printWindow.document.close();
         setTimeout(() => {
           printWindow.focus();
-          printWindow.print();
-        }, 300);
+        }, 200);
       }
     } catch (err) {
       console.error('Lỗi khi mở bản in hóa đơn:', err);
