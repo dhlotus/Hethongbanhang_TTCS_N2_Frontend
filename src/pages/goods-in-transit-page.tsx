@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Truck,
-  Plus,
   RefreshCw,
   Search,
   X,
@@ -13,7 +12,6 @@ import {
 } from 'lucide-react';
 import { deliveryTripsService } from '../services/delivery-trips.service';
 import type {
-  CreateDeliveryTripPayload,
   DeliveryTrip,
   GoodsInTransitStats,
   StopDeliveryStatus,
@@ -24,7 +22,6 @@ import { TripCard } from '../components/delivery-trips/trip-card';
 import { TripTableView } from '../components/delivery-trips/trip-table-view';
 import { TripDetailModal } from '../components/delivery-trips/trip-detail-modal';
 import { TripReturnCheckinModal } from '../components/delivery-trips/trip-return-checkin-modal';
-import { CreateTripModal } from '../components/delivery-trips/create-trip-modal';
 import { showToast } from '../components/toast';
 import { getFriendlyErrorMessage } from '../utils/error-handler';
 import { matchesSearchTerm } from '../utils/vietnamese';
@@ -51,8 +48,6 @@ export const GoodsInTransitPage: React.FC = () => {
 
   const [selectedTripForCheckin, setSelectedTripForCheckin] = useState<DeliveryTrip | null>(null);
   const [isCheckinModalOpen, setIsCheckinModalOpen] = useState(false);
-
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Tải dữ liệu từ API
   const fetchData = useCallback(async (showNotification = false) => {
@@ -262,22 +257,6 @@ export const GoodsInTransitPage: React.FC = () => {
     }
   };
 
-  // Tạo chuyến đi mới
-  const handleCreateTrip = async (payload: CreateDeliveryTripPayload) => {
-    try {
-      const newTrip = await deliveryTripsService.createTrip(payload);
-      setTrips((prev) => [newTrip, ...prev]);
-
-      const newStats = await deliveryTripsService.getGoodsInTransitStats();
-      setStats(newStats);
-
-      showToast('success', `Đã tạo thành công chuyến xe giao hàng ${newTrip.tripCode}`);
-    } catch (err: unknown) {
-      showToast('error', getFriendlyErrorMessage(err, 'Lỗi khi tạo chuyến đi giao hàng'));
-      throw err;
-    }
-  };
-
   return (
     <main className="mx-auto w-full max-w-[1600px] space-y-3.5 p-3.5 sm:p-5 lg:p-6">
       {/* 1. PAGE HEADER (GỌN GÀNG, NHỎ NHẮN) */}
@@ -300,15 +279,6 @@ export const GoodsInTransitPage: React.FC = () => {
           >
             <RefreshCw size={13} className={loading ? 'animate-spin text-[#371cdb]' : ''} />
             <span>Làm mới</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#371cdb] hover:bg-[#2d14b8] px-3 py-1.5 text-xs font-semibold text-white shadow-2xs transition-all cursor-pointer active:scale-95"
-          >
-            <Plus size={14} />
-            <span>Lập chuyến đi mới</span>
           </button>
         </div>
       </header>
@@ -561,13 +531,6 @@ export const GoodsInTransitPage: React.FC = () => {
           setSelectedTripForCheckin(null);
         }}
         onConfirmCheckin={handleConfirmReturnCheckin}
-      />
-
-      {/* Modal tạo chuyến đi */}
-      <CreateTripModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateTrip}
       />
     </main>
   );
