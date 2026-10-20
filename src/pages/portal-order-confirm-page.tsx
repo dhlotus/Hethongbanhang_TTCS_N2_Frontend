@@ -796,26 +796,6 @@ export const PortalOrderConfirmPage: React.FC = () => {
                 </div>
               </div>
             </div>
-
-            {/* Thanh tiến trình tỷ lệ sử dụng hạn mức */}
-            {cartTotals.creditLimit > 0 && (
-              <div className="space-y-1.5 pt-1">
-                <div className="flex justify-between text-xs text-slate-500">
-                  <span>Tỷ lệ sử dụng hạn mức trước đơn:</span>
-                  <span className="font-bold text-slate-800">
-                    {Math.round((cartTotals.currentDebt / cartTotals.creditLimit) * 100)}%
-                  </span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      cartTotals.currentDebt >= cartTotals.creditLimit ? 'bg-rose-500' : 'bg-indigo-600'
-                    }`}
-                    style={{ width: `${Math.min(100, Math.round((cartTotals.currentDebt / cartTotals.creditLimit) * 100))}%` }}
-                  />
-                </div>
-              </div>
-            )}
           </div>
 
           {/* ── GIAO DIỆN MOBILE: 1 KHUNG CHIA 6 Ô (2 CỘT X 3 HÀNG), GÓC BO TRÒN, KHÔNG CÓ THANH TIẾN TRÌNH ── */}
@@ -1150,7 +1130,7 @@ export const PortalOrderConfirmPage: React.FC = () => {
                       <td className="py-3 px-2 text-center whitespace-nowrap">
                         {calc.isFixed ? (
                           <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
-                            -{formatVND(calc.discountAmountPerUnit)}
+                            -{formatVND(calc.discountAmountPerUnit)}{item.unit ? ` / ${item.unit}` : ''}
                           </span>
                         ) : effectiveDiscountPercent > 0 ? (
                           <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">

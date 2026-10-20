@@ -2399,25 +2399,6 @@ export const AgencyPortalPage: React.FC = () => {
                         </div>
                       </div>
                     </div>
-
-                    {cartTotals.creditLimit > 0 && (
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] text-slate-500 font-medium">
-                          <span>Tỷ lệ sử dụng hạn mức</span>
-                          <span className="font-semibold text-slate-700">
-                            {Math.round((cartTotals.currentDebt / cartTotals.creditLimit) * 100)}%
-                          </span>
-                        </div>
-                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-300 ${
-                              cartTotals.currentDebt >= cartTotals.creditLimit ? 'bg-rose-500' : 'bg-indigo-500'
-                            }`}
-                            style={{ width: `${Math.min(100, Math.round((cartTotals.currentDebt / cartTotals.creditLimit) * 100))}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   {/* 3 Ô INPUT ĐƯỢC MỞ TRẠNG THÁI EDITABLE HOÀN TOÀN (CONTROLLED COMPONENT) */}
@@ -2544,7 +2525,7 @@ export const AgencyPortalPage: React.FC = () => {
                                 <span className="text-[10px] font-mono text-slate-400 uppercase">{item.product.sku}</span>
                                 {calc.isFixed ? (
                                   <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                    -{formatVND(calc.discountAmountPerUnit)}
+                                    -{formatVND(calc.discountAmountPerUnit)}{item.unit ? ` / ${item.unit}` : ''}
                                   </span>
                                 ) : effectiveDiscountPercent > 0 ? (
                                   <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
@@ -2574,7 +2555,7 @@ export const AgencyPortalPage: React.FC = () => {
                                 )}
                                 {calc.isFixed ? (
                                   <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                    -{formatVND(calc.discountAmountPerUnit)}
+                                    -{formatVND(calc.discountAmountPerUnit)}{item.unit ? ` / ${item.unit}` : ''}
                                   </span>
                                 ) : effectiveDiscountPercent > 0 ? (
                                   <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
@@ -2726,7 +2707,7 @@ export const AgencyPortalPage: React.FC = () => {
                               <td className="py-2.5 px-2 text-center font-bold">
                                 {calc.isFixed ? (
                                   <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold">
-                                    -{formatVND(calc.discountAmountPerUnit)}
+                                    -{formatVND(calc.discountAmountPerUnit)}{item.unit ? ` / ${item.unit}` : ''}
                                   </span>
                                 ) : effectiveDiscountPercent > 0 ? (
                                   <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold">
