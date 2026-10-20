@@ -193,6 +193,7 @@ export const AppRoutes: React.FC = () => {
               <Route path="/sales/orders/edit/:id" element={<CreateOrderPage />} />
               <Route path="/system/orders" element={<Navigate to="/sales/orders" replace />} />
               <Route path="/orders" element={<Navigate to="/sales/orders" replace />} />
+              <Route path="/app/orders" element={<Navigate to="/sales/orders" replace />} />
               <Route path="/orders/create" element={<Navigate to="/sales/orders/create" replace />} />
             </Route>
 
