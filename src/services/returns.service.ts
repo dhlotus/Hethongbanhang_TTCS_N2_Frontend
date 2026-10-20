@@ -41,6 +41,7 @@ export interface ReturnReceipt {
   approvalNote?: string | null;
   createdAt: string;
   updatedAt: string;
+  debtAdjustmentCode?: string;
   items?: ReturnReceiptItem[];
 }
 

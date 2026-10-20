@@ -27,6 +27,7 @@ import {
   HandCoins,
   Scale,
   Target,
+  FileCheck2,
 } from 'lucide-react';
 import { USER_ROLES, type UserRoleType, type AuthUser } from '../types/auth';
 
@@ -238,6 +239,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Quản lý ngân sách',
       path: '/route-collections',
       icon: HandCoins,
+      category: 'Tài chính',
+    },
+    {
+      id: 'accounting-debt-adjustments',
+      name: 'Giảm trừ nợ trả hàng',
+      path: '/accounting/debt-adjustments',
+      icon: FileCheck2,
       category: 'Tài chính',
     },
   ],
@@ -597,6 +605,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Phiếu thu & Đối trừ công nợ',
       path: '/accounting/payments',
       icon: CreditCard,
+      category: 'Thu chi & Thanh toán',
+    },
+    {
+      id: 'accounting-debt-adjustments',
+      name: 'Giảm trừ nợ trả hàng',
+      path: '/accounting/debt-adjustments',
+      icon: FileCheck2,
       category: 'Thu chi & Thanh toán',
     },
     {
