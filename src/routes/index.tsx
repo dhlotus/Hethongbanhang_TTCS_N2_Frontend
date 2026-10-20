@@ -61,6 +61,7 @@ import { DebtReconciliationsPage } from '../pages/debt-reconciliations-page';
 import { CreateDebtReconciliationPage } from '../pages/create-debt-reconciliation-page';
 import { SalesTargetsPage } from '../pages/sales-targets-page';
 import { SalesReportPage } from '../pages/sales-report-page';
+import { DebtAdjustmentsPage } from '../pages/debt-adjustments-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -483,6 +484,15 @@ export const AppRoutes: React.FC = () => {
               <Route
                 path="/accounting/payments"
                 element={<ReceiptsPage />}
+              />
+              {/* SN-212: Chứng từ điều chỉnh giảm trừ công nợ khi trả hàng */}
+              <Route
+                path="/accounting/debt-adjustments"
+                element={<DebtAdjustmentsPage />}
+              />
+              <Route
+                path="/accounting/debt-adjustments/:id"
+                element={<DebtAdjustmentsPage />}
               />
             </Route>
 

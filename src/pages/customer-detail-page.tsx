@@ -157,25 +157,42 @@ export const CustomerDetailPage: React.FC = () => {
     fetchCustomerDetail();
   }, [fetchCustomerDetail]);
 
-  // Lắng nghe sự kiện đồng bộ dư nợ thời gian thực từ đối chiếu công nợ (SN-206)
+  // Lắng nghe sự kiện đồng bộ dư nợ thời gian thực từ đối chiếu công nợ (SN-206) & giảm trừ trả hàng (SN-212)
   useEffect(() => {
     const handleDebtUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<{ customerId: string; customerCode?: string; newDebt: number }>;
+      const customEvent = e as CustomEvent<{
+        customerId: string;
+        customerCode?: string;
+        newDebt?: number;
+        adjustmentAmount?: number;
+      }>;
       if (!customEvent.detail || !customer) return;
       const targetId = customEvent.detail.customerId;
       const targetCode = customEvent.detail.customerCode;
       if (
         customer.id === targetId ||
         customer.code === targetId ||
-        (targetCode && customer.code === targetCode)
+        (targetCode && (customer.code === targetCode || customer.id === targetCode))
       ) {
-        setCustomer((prev) => (prev ? { ...prev, currentDebt: customEvent.detail.newDebt } : prev));
+        if (typeof customEvent.detail.newDebt === 'number') {
+          setCustomer((prev) => (prev ? { ...prev, currentDebt: customEvent.detail.newDebt! } : prev));
+        } else if (typeof customEvent.detail.adjustmentAmount === 'number') {
+          setCustomer((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  currentDebt: Math.max(0, (prev.currentDebt || 0) - customEvent.detail.adjustmentAmount!),
+                }
+              : prev,
+          );
+        }
+        void fetchCustomerDetail();
       }
     };
 
     window.addEventListener('loha_debt_updated', handleDebtUpdate);
     return () => window.removeEventListener('loha_debt_updated', handleDebtUpdate);
-  }, [customer]);
+  }, [customer, fetchCustomerDetail]);
 
   // Xử lý cập nhật hạn mức tín dụng
   const handleSubmitCreditLimit = async (

@@ -70,7 +70,7 @@ const STATUS_CONFIG: Record<
     icon: Clock,
   },
   APPROVED: {
-    label: 'Đã nhập kho & Giảm nợ',
+    label: 'Đã nhập kho',
     bg: 'bg-emerald-50 border-emerald-200',
     text: 'text-emerald-700',
     icon: CheckCircle2,
@@ -109,9 +109,16 @@ export const ReturnsPage: React.FC = () => {
   const isWarehouseKeeper =
     rawRoles.includes(USER_ROLES.WAREHOUSE_KEEPER) || rawRoles.includes('WAREHOUSE');
 
+  const isAccountant =
+    rawRoles.includes(USER_ROLES.ACCOUNTANT) ||
+    rawRoles.includes('ACCOUNTANT') ||
+    rawRoles.includes('ACCOUNTANT_DEBT') ||
+    rawRoles.includes('KETOAN') ||
+    Boolean(user?.fullName && user.fullName.toLowerCase().includes('kế toán'));
+
   // Phân quyền theo SN-210:
-  // - Tạo phiếu: NVKD, Đại lý, Sales Manager, Admin
-  const canCreate = true;
+  // - Tạo phiếu: NVKD, Đại lý, Sales Manager, Admin (Ẩn hoàn toàn khi đứng ở vai trò Kế toán)
+  const canCreate = !isAccountant && (isAdmin || isSalesManager || rawRoles.includes(USER_ROLES.SALES_REP) || rawRoles.includes(USER_ROLES.CUSTOMER));
   // - Quản lý kho duyệt nhận hàng: Quản lý kho, Thủ kho, Admin, Sales Manager
   const canApprove = isAdmin || isWarehouseManager || isWarehouseKeeper || isSalesManager;
   // - Xóa phiếu: Admin, Sales Manager
@@ -523,7 +530,7 @@ export const ReturnsPage: React.FC = () => {
 
         <div className="p-3 bg-white rounded-xl border border-slate-200/90 shadow-2xs">
           <span className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider block">
-            Đã nhập & Giảm nợ
+            Đã nhập kho
           </span>
           <div className="text-lg sm:text-xl font-bold font-mono text-emerald-700 mt-1">
             {totalApproved}
@@ -651,12 +658,31 @@ export const ReturnsPage: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusConf.bg} ${statusConf.text}`}
-                        >
-                          <StatusIcon className="w-3.5 h-3.5" />
-                          {statusConf.label}
-                        </span>
+                        <div className="flex flex-col items-center gap-1">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusConf.bg} ${statusConf.text}`}
+                          >
+                            <StatusIcon className="w-3.5 h-3.5" />
+                            {statusConf.label}
+                          </span>
+                          {item.status === 'APPROVED' && (
+                            item.debtAdjustmentCode ? (
+                              <Link
+                                to="/accounting/debt-adjustments"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                                title={`Chứng từ: ${item.debtAdjustmentCode}`}
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Đã hạch toán</span>
+                              </Link>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border bg-amber-50 border-amber-200 text-amber-700">
+                                <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Chờ hạch toán</span>
+                              </span>
+                            )
+                          )}
+                        </div>
                       </td>
 
                       <td className="py-3.5 px-4 text-xs text-slate-500 whitespace-nowrap">
@@ -1144,9 +1170,28 @@ export const ReturnsPage: React.FC = () => {
               {/* Thông tin duyệt nếu đã duyệt */}
               {detailReceipt.status === 'APPROVED' && (
                 <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-1.5 text-xs text-emerald-900">
-                  <div className="flex items-center gap-2 font-bold text-emerald-800">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    ĐÃ HOÀN TẤT NHẬP KHO & ĐIỀU CHỈNH CÔNG NỢ ĐẠI LÝ
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex items-center gap-2 font-bold text-emerald-800">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      ĐÃ HOÀN TẤT NHẬP KHO & ĐIỀU CHỈNH CÔNG NỢ ĐẠI LÝ
+                    </div>
+                    {detailReceipt.debtAdjustmentCode ? (
+                      <Link
+                        to="/accounting/debt-adjustments"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold text-indigo-700 bg-white border border-indigo-200 hover:bg-indigo-50 shadow-2xs transition-all shrink-0"
+                      >
+                        <FileCheck className="w-3.5 h-3.5" />
+                        <span>Chứng từ: {detailReceipt.debtAdjustmentCode}</span>
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/accounting/debt-adjustments"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold text-indigo-700 bg-white border border-indigo-200 hover:bg-indigo-50 shadow-2xs transition-all shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Lập chứng từ giảm nợ</span>
+                      </Link>
+                    )}
                   </div>
                   <div>
                     Người duyệt kho:{' '}
