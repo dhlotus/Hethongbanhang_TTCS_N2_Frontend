@@ -9,6 +9,7 @@ import type {
   StockAdjustmentResponse,
   StockOverviewItem,
 } from '../types/products';
+import { STANDARD_WAREHOUSES } from '../constants/warehouse.constants';
 import type { LowStockAlert, StockBalance, StockItem, StockReservation } from '../types/inventory.types';
 
 const DEMO_TRANSACTIONS_KEY = 'loha_inventory_transactions';
@@ -907,13 +908,19 @@ export const inventoryService = {
         responseType: 'blob',
       });
 
-      const disposition = response.headers['content-disposition'] || '';
+      const headers = (response.headers || {}) as any;
+      const disposition =
+        headers['content-disposition'] ||
+        (typeof headers.get === 'function' ? headers.get('content-disposition') || headers.get('Content-Disposition') : '') ||
+        '';
       let fileName = '';
       const match = disposition.match(/filename="?([^";]+)"?/);
       if (match && match[1]) {
         fileName = decodeURIComponent(match[1]);
       } else {
-        const whCode = cleanParams.warehouse || cleanParams.warehouseId || 'ALL';
+        const rawWh = cleanParams.warehouse || cleanParams.warehouseId || 'ALL';
+        const matchedWh = STANDARD_WAREHOUSES.find((w) => w.id === rawWh || w.code === rawWh);
+        const whCode = matchedWh ? matchedWh.code : (rawWh === 'ALL' ? 'ALL' : rawWh.slice(0, 8));
         const today = new Date().toISOString().slice(0, 10);
         fileName = `TonKho_${whCode}_${today}.xlsx`;
       }
