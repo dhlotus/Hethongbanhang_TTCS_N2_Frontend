@@ -5,7 +5,6 @@ import {
   FileText,
   Printer,
   Download,
-  Building2,
   Calendar,
   AlertTriangle,
   CheckCircle2,
@@ -285,18 +284,11 @@ export const InvoiceDetailPage: React.FC = () => {
       {/* =================================================================== */}
       <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-          {/* Cột 1: Đại lý nhận hóa đơn */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5 text-slate-500 font-medium">
-              <Building2 className="w-4 h-4 text-slate-400" />
-              <span>Đại lý nhận hóa đơn</span>
-            </div>
-            <p className="font-bold text-slate-900 text-sm truncate" title={invoice.customerName}>
+          {/* Cột 1: Đại lý */}
+          <div className="flex flex-col justify-center">
+            <p className="font-bold text-slate-900 text-base leading-snug" title={invoice.customerName}>
               {invoice.customerName}
             </p>
-            {invoice.customerEmail && (
-              <p className="text-[11px] text-slate-400 truncate">{invoice.customerEmail}</p>
-            )}
           </div>
 
           {/* Cột 2: Đơn hàng & Phiếu giao liên kết */}
@@ -305,9 +297,20 @@ export const InvoiceDetailPage: React.FC = () => {
               <FileText className="w-4 h-4 text-slate-400" />
               <span>Đơn hàng liên kết</span>
             </div>
-            <p className="font-mono font-bold text-indigo-600 text-sm">
-              {invoice.orderCode || '—'}
-            </p>
+            {invoice.orderCode ? (
+              <Link
+                to={`/sales/orders?search=${encodeURIComponent(invoice.orderCode)}`}
+                className="inline-flex items-center gap-1.5 font-mono font-bold text-indigo-600 hover:text-indigo-800 hover:underline text-sm"
+                title="Bấm để đối chiếu đơn hàng tại trang Đơn hàng"
+              >
+                <span>{invoice.orderCode}</span>
+                <span className="text-[11px] font-normal text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 hover:bg-indigo-100">
+                  Đối chiếu
+                </span>
+              </Link>
+            ) : (
+              <p className="font-mono font-bold text-slate-400 text-sm">—</p>
+            )}
             {invoice.deliverySlipCodes && invoice.deliverySlipCodes.length > 0 && (
               <p className="text-[11px] text-slate-500 font-mono">
                 Phiếu giao: {invoice.deliverySlipCodes.join(', ')}
