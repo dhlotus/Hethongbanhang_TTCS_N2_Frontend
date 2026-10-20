@@ -118,7 +118,7 @@ export type UpdateProductPayload = Partial<CreateProductPayload>;
 
 import type { StockBalance, StockUnit } from './inventory.types';
 
-export type StockStatusType = 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | 'BELOW_MIN_STOCK';
+export type StockStatusType = 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | 'BELOW_MIN_STOCK' | 'DAMAGED';
 
 export interface StockOverviewItem extends StockBalance {
   id: string;
@@ -131,6 +131,11 @@ export interface StockOverviewItem extends StockBalance {
   units: StockUnit[];
   status: StockStatusType;
   imageUrl?: string;
+  damagedQuantity?: number;
+  damagedStock?: number;
+  batchNumber?: string;
+  expiryDate?: string;
+  mfgDate?: string;
 }
 
 export interface AdjustStockPayload {

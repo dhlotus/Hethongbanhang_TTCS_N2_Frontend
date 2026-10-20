@@ -34,6 +34,7 @@ import { PortalOrdersPage } from '../pages/portal-orders-page';
 import { ShipmentsPage } from '../pages/shipments-page';
 import { CreateShipmentPage } from '../pages/create-shipment-page';
 import { ReturnsPage } from '../pages/returns-page';
+import { CreateReturnReceiptPage } from '../pages/create-return-receipt-page';
 import { DashboardPage } from '../pages/dashboard-page';
 import { AgencyPortalPage } from '../pages/agency-portal-page';
 import { PortalOrderConfirmPage } from '../pages/portal-order-confirm-page';
@@ -492,6 +493,7 @@ export const AppRoutes: React.FC = () => {
                     'ADMIN',
                     'ACCOUNTANT',
                     'ACCOUNTANT_DEBT',
+                    'SALES_REP',
                     'SALES_MANAGER',
                     'BUSINESS_MANAGER',
                     'WAREHOUSE_MANAGER',
@@ -505,6 +507,22 @@ export const AppRoutes: React.FC = () => {
               <Route
                 path="/accounting/returns"
                 element={<ReturnsPage />}
+              />
+              <Route
+                path="/accounting/returns/create"
+                element={<CreateReturnReceiptPage />}
+              />
+              <Route
+                path="/returns/create"
+                element={<Navigate to="/accounting/returns/create" replace />}
+              />
+              <Route
+                path="/sales/returns"
+                element={<Navigate to="/accounting/returns" replace />}
+              />
+              <Route
+                path="/sales/orders/accounting/returns"
+                element={<Navigate to="/accounting/returns" replace />}
               />
             </Route>
 

@@ -358,6 +358,48 @@ export const NotificationBell: React.FC = () => {
 
     window.addEventListener('loha_reconciliation_created', handleReconciliationCreatedEvent);
 
+    // Lắng nghe sự kiện khi có phiếu trả hàng mới được lập (nhảy chuông cho các tài khoản quản lý)
+    const handleReturnCreatedEvent = (e: Event) => {
+      const retData = (e as CustomEvent).detail;
+      if (retData && (retData.code || retData.id)) {
+        const user = tokenStorage.getUser() || getStoredUser();
+        const userRoles = (user?.roles || (user?.role ? [user.role] : [])).map((r) =>
+          String(r).toUpperCase(),
+        );
+        const isManager =
+          userRoles.includes('ADMIN') ||
+          userRoles.includes('SALES_MANAGER') ||
+          userRoles.includes('WAREHOUSE_MANAGER') ||
+          userRoles.includes('WH_MANAGER') ||
+          userRoles.includes('WAREHOUSE_KEEPER') ||
+          userRoles.includes('WAREHOUSE') ||
+          userRoles.includes('ACCOUNTANT') ||
+          userRoles.includes('ACCOUNTANT_DEBT');
+
+        if (isManager) {
+          const formattedAmount = retData.totalRefundAmount
+            ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                retData.totalRefundAmount,
+              )
+            : '';
+          const optNotif: SystemNotification = {
+            id: `ret-notif-${retData.id || Date.now()}`,
+            type: 'ORDER',
+            title: `Phiếu trả hàng mới: ${retData.code}`,
+            message: `Đại lý ${retData.agencyName || 'Đại lý'} vừa lập phiếu trả hàng [${retData.code}] cho HĐ ${retData.originalInvoiceId || retData.originalInvoiceCode || ''} (${formattedAmount ? `hoàn tiền: ${formattedAmount}` : ''}). Đang chờ Quản lý kho duyệt.`,
+            timestamp: 'Vừa xong',
+            link: '/accounting/returns',
+            isRead: false,
+            priority: 'high',
+          };
+          setNotifications((prev) => [optNotif, ...prev.filter((p) => p.id !== optNotif.id)]);
+        }
+      }
+      void loadNotifications();
+    };
+
+    window.addEventListener('loha_return_created', handleReturnCreatedEvent);
+
     // Polling nhẹ mỗi 10 giây để cập nhật chuông realtime
     const timer = setInterval(() => {
       void loadNotifications();
@@ -369,6 +411,7 @@ export const NotificationBell: React.FC = () => {
       window.removeEventListener('loha_shipment_created', handleShipmentCreatedEvent);
       window.removeEventListener('loha_collection_created', handleCollectionCreatedEvent);
       window.removeEventListener('loha_reconciliation_created', handleReconciliationCreatedEvent);
+      window.removeEventListener('loha_return_created', handleReturnCreatedEvent);
       clearInterval(timer);
     };
   }, [loadNotifications]);
