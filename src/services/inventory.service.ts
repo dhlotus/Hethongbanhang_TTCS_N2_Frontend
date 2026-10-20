@@ -419,6 +419,9 @@ export const inventoryService = {
       } else {
         items = items.filter((i) => i.status === params.status);
       }
+    } else {
+      // Hàng lỗi chỉ hiển thị khi chọn lọc 'Sản phẩm lỗi', không hiển thị ở bất kỳ trạng thái nào khác
+      items = items.filter((i) => i.status !== 'DAMAGED');
     }
 
     const warehouseFilter = params?.warehouseId || params?.warehouse;
@@ -942,5 +945,26 @@ export const inventoryService = {
       }
       throw err instanceof Error ? err : new Error('Không thể xuất báo cáo tồn kho ra Excel');
     }
+  },
+
+  /**
+   * Xử lý sản phẩm lỗi (Đưa sang tồn kho hoặc Tiêu hủy)
+   * POST /inventory/damaged/process
+   */
+  async processDamagedStock(payload: {
+    warehouseId: string;
+    productId: string;
+    productSku: string;
+    batchNumber?: string;
+    expiryDate?: string;
+    action: 'TO_STOCK' | 'DESTROY';
+    quantity: number;
+    reason: string;
+  }): Promise<{ success: boolean; message: string; remainingQuantity?: number }> {
+    const response = await apiClient.post<{ success: boolean; message: string; remainingQuantity?: number }>(
+      '/inventory/damaged/process',
+      payload,
+    );
+    return response.data;
   },
 };

@@ -192,6 +192,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Kinh doanh & Bán hàng',
     },
     {
+      id: 'sales-returns',
+      name: 'Phiếu trả hàng',
+      path: '/accounting/returns',
+      icon: RotateCcw,
+      category: 'Kinh doanh & Bán hàng',
+    },
+    {
       id: 'sales-customers',
       name: 'Quản lý đại lý',
       path: '/sales/customers',
@@ -270,6 +277,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Quản lý đơn hàng',
       path: '/sales/orders',
       icon: ShoppingCart,
+      category: 'Kinh doanh',
+    },
+    {
+      id: 'sales-returns',
+      name: 'Phiếu trả hàng',
+      path: '/accounting/returns',
+      icon: RotateCcw,
       category: 'Kinh doanh',
     },
     {
@@ -382,6 +396,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Nhập / Xuất kho',
     },
     {
+      id: 'warehouse-returns',
+      name: 'Nhập kho hàng trả',
+      path: '/accounting/returns',
+      icon: RotateCcw,
+      category: 'Nhập / Xuất kho',
+    },
+    {
       id: 'inventory-transfers',
       name: 'Chuyển kho nội bộ',
       path: '/inventory/transfers',
@@ -481,6 +502,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Xuất kho giao hàng',
       path: '/inventory/issues',
       icon: PackageMinus,
+      category: 'Lịch sử Nhập / Xuất',
+    },
+    {
+      id: 'warehouse-returns',
+      name: 'Nhập kho hàng trả',
+      path: '/accounting/returns',
+      icon: RotateCcw,
       category: 'Lịch sử Nhập / Xuất',
     },
     {
@@ -678,6 +706,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Quản lý đơn hàng',
       path: '/sales/orders',
       icon: ShoppingCart,
+      category: 'Nghiệp vụ Kinh doanh',
+    },
+    {
+      id: 'sales-returns',
+      name: 'Phiếu trả hàng',
+      path: '/accounting/returns',
+      icon: RotateCcw,
       category: 'Nghiệp vụ Kinh doanh',
     },
     {
