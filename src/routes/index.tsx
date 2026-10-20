@@ -27,6 +27,7 @@ import { CustomersPage } from '../pages/customers-page';
 import { CustomerDetailPage } from '../pages/customer-detail-page';
 import { InventoryStockPage } from '../pages/inventory-stock-page';
 import { InventoryAuditsPage } from '../pages/inventory-audits-page';
+import { InventoryAdjustmentsPage } from '../pages/inventory-adjustments-page';
 import { InventoryReceiptsPage } from '../pages/inventory-receipts-page';
 import { CreateInventoryReceiptPage } from '../pages/create-inventory-receipt-page';
 import { PortalOrdersPage } from '../pages/portal-orders-page';
@@ -418,7 +419,7 @@ export const AppRoutes: React.FC = () => {
             >
               <Route
                 path="/inventory/adjustments"
-                element={<InventoryAuditsPage />}
+                element={<InventoryAdjustmentsPage />}
               />
               <Route
                 path="/reports/inventory"
