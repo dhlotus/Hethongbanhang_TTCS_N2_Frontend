@@ -1298,8 +1298,8 @@ export const AgencyPortalPage: React.FC = () => {
   const groupBadge = getGroupBadgeMeta(currentCustomer?.customerGroup || (currentCustomer as unknown as { group?: string })?.group);
 
   return (
-    <div className={`min-h-screen bg-slate-50/60 ${cartTotals.totalItems > 0 ? 'pb-24 sm:pb-20' : 'pb-8 sm:pb-10'}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4">
+    <div className={`min-h-screen bg-slate-50/60 ${cartTotals.totalItems > 0 ? 'pb-28 sm:pb-24' : 'pb-8 sm:pb-10'}`}>
+      <div className="w-full max-w-7xl mx-auto pt-1 sm:pt-2">
         
         {/* ===================================================================== */}
         {/* 1. THẺ THÔNG TIN HẠN MỨC & CÔNG NỢ ĐẠI LÝ REAL-TIME                  */}
@@ -2259,7 +2259,7 @@ export const AgencyPortalPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/portal/orders/confirm')}
-              className="py-2.5 px-5 sm:px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
+              className="py-2.5 px-3.5 sm:px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 shadow-lg shadow-indigo-600/30 transition-all cursor-pointer shrink-0"
             >
               <span>Xem giỏ hàng</span>
               <ArrowRight className="w-4 h-4" />

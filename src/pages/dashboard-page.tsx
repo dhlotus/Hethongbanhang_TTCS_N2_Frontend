@@ -347,7 +347,7 @@ export const DashboardPage: React.FC = () => {
               <div
                 role="dialog"
                 aria-label="Khoảng thời gian báo cáo"
-                className="absolute right-0 top-full mt-2 z-50 w-72 rounded-xl border border-slate-200/90 bg-white p-2.5 shadow-2xl animate-in fade-in zoom-in-95 select-none"
+                className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 z-50 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200/90 bg-white p-2.5 shadow-2xl animate-in fade-in zoom-in-95 select-none"
               >
                 {/* 2 lựa chọn nhanh: Hôm nay / Tháng này (Hiển thị gọn gàng 1 dòng) */}
                 <div className="space-y-1">

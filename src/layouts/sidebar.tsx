@@ -407,7 +407,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {/* Khung Drawer trượt mượt mà từ bên trái (Slide-in / Slide-out) */}
             <div
-              className={`fixed inset-y-0 left-0 z-50 flex w-[18.25rem] max-w-[calc(100vw-2.5rem)] flex-col border-r border-slate-200/80 bg-white shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] transform ${
+              className={`fixed inset-y-0 left-0 z-50 flex w-72 sm:w-[18.25rem] max-w-[calc(100vw-3rem)] flex-col border-r border-slate-200/80 bg-white shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] transform ${
                 visible ? 'translate-x-0' : '-translate-x-full'
               }`}
             >

@@ -849,8 +849,8 @@ export const ShipmentsPage: React.FC = () => {
 
           {/* Bảng danh sách phiếu xuất kho đồng bộ quy tắc bảng LOHA */}
           <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
-            <div className="w-full overflow-hidden">
-              <table className="w-full table-fixed text-left border-collapse text-xs">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-[650px] table-fixed text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold text-[11px] uppercase tracking-wider">
                     <th className="py-3 px-3 sm:px-4 w-[20%]">Mã phiếu</th>

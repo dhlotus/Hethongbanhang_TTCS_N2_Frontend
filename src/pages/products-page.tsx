@@ -1008,7 +1008,7 @@ export const ProductsPage: React.FC = () => {
           </div>
 
           {/* Bên phải: 5 nút chức năng chính */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap ml-auto">
+          <div className="flex items-center gap-2 flex-wrap ml-auto">
             <button
               type="button"
               onClick={loadProducts}
@@ -1066,8 +1066,8 @@ export const ProductsPage: React.FC = () => {
           {/* 3. Dữ liệu Sản phẩm (Data Table cho Desktop & Card View thích ứng cho Mobile) */}
           <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
             {/* A. BẢNG DỮ LIỆU CHO TABLET & DESKTOP (>=640px) */}
-            <div className="hidden sm:block overflow-hidden min-h-[360px]">
-              <table className="w-full table-fixed border-collapse">
+            <div className="hidden sm:block overflow-x-auto min-h-[360px]">
+              <table className="w-full min-w-[680px] table-fixed border-collapse">
                 <colgroup>
                   <col className="w-[18%]" /> {/* Mã SKU kèm trạng thái */}
                   <col className="w-[45%]" /> {/* Tên sản phẩm */}

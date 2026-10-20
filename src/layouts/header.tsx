@@ -450,7 +450,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       {/* =================================================================== */}
       {/* 2. BÊN PHẢI: CHUÔNG THÔNG BÁO & NÚT HỒ SƠ CÁ NHÂN                   */}
       {/* =================================================================== */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         {/* Chuông thông báo hiển thị cho tất cả vai trò trên hệ thống (ẩn trên mobile khi ở trang Xác nhận đơn hàng) */}
         <div className={isOrderConfirm ? 'hidden sm:block' : 'block'}>
           <NotificationBell />
@@ -475,7 +475,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         <button
           type="button"
           onClick={() => setIsDropdownOpen((prev) => !prev)}
-          className={`flex items-center gap-2 sm:gap-3 p-1.5 sm:px-3 sm:py-2 rounded-lg border transition-all duration-200 cursor-pointer select-none group focus:outline-none ${
+          className={`flex items-center gap-1.5 sm:gap-3 p-1 sm:px-3 sm:py-2 rounded-lg border transition-all duration-200 cursor-pointer select-none group focus:outline-none ${
             isDropdownOpen
               ? 'bg-slate-50 border-slate-300 shadow-2xs'
               : 'bg-white border-slate-200/80 hover:bg-slate-50 hover:border-slate-300/90'
@@ -485,7 +485,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           title={`Tài khoản: ${cleanFullName}`}
         >
           {/* Avatar: Ảnh hoặc Chữ cái viết tắt (radius-full) */}
-          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-xs sm:text-sm font-bold text-white shadow-2xs group-hover:scale-105 transition-transform duration-200">
+          <div className="relative flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-xs sm:text-sm font-bold text-white shadow-2xs group-hover:scale-105 transition-transform duration-200">
             {avatarUrl ? (
               <img
                 src={resolveAvatarUrl(avatarUrl)}
@@ -525,7 +525,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         {/* Menu Dropdown xổ xuống (radius-lg: 12px) - Có cầu đệm trước khoảng trống để hover di chuyển mượt mà */}
         {isDropdownOpen && (
           <div
-            className="absolute right-0 top-full mt-2 w-80 rounded-xl bg-white shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-2 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3"
+            className="absolute right-0 top-full mt-2 w-72 sm:w-80 max-w-[calc(100vw-1.5rem)] rounded-xl bg-white shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-2 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3"
             role="menu"
             aria-orientation="vertical"
           >

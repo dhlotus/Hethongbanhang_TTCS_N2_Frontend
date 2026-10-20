@@ -503,6 +503,10 @@ export const AppRoutes: React.FC = () => {
                 path="/reports/debt"
                 element={<DebtReportPage />}
               />
+              <Route
+                path="/debt-report"
+                element={<DebtReportPage />}
+              />
             </Route>
 
             {/* ------------------------------------------------------------- */}

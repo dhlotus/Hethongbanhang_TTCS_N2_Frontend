@@ -878,7 +878,7 @@ export const UsersPage: React.FC = () => {
       {/* ========================================================================= */}
       {/* 3. TOOLBAR: TÌM KIẾM, BỘ LỌC & THAO TÁC HỆ THỐNG                          */}
       {/* ========================================================================= */}
-      <div className="-mx-4 sm:mx-0 rounded-none sm:rounded-xl bg-white p-3.5 sm:p-4 border-y sm:border border-slate-100 shadow-2xs space-y-3">
+      <div className="rounded-xl bg-white p-3.5 sm:p-4 border border-slate-100 shadow-2xs space-y-3">
         {/* HÀNG TRÊN: Ô TÌM KIẾM BÊN TRÁI & BỘ 3 NÚT THAO TÁC BÊN PHẢI (TỰ ĐỘNG THÍCH ỨNG) */}
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
           {/* Ô tìm kiếm Search bar co giãn theo % tương đối - Chiều cao chuẩn h-10.5, font chữ text-sm rõ nét */}
@@ -1025,7 +1025,7 @@ export const UsersPage: React.FC = () => {
       {/* A. BẢNG DỮ LIỆU GỌN GÀNG CHO TABLET & DESKTOP (>=640px) */}
       <div className="hidden sm:block rounded-xl bg-white border border-slate-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[32rem]">
+          <table className="w-full text-left border-collapse min-w-[550px]">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 <th className="px-3.5 md:px-5 py-3.5 whitespace-nowrap">Nhân sự</th>

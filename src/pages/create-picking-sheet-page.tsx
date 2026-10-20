@@ -273,7 +273,7 @@ export const CreatePickingSheetPage: React.FC = () => {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left divide-y divide-slate-100">
+                <table className="w-full min-w-[650px] text-xs text-left divide-y divide-slate-100">
                   <thead className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     <tr>
                       <th className="w-12 px-4 py-3 text-center">Chọn</th>

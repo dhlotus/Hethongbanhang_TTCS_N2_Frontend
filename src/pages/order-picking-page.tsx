@@ -437,7 +437,7 @@ export const OrderPickingPage: React.FC = () => {
 
         {/* E. Danh sách các thẻ dòng hàng theo thứ tự đường đi tối ưu */}
         {activeSheet && (
-          <div className="space-y-3">
+          <div className="space-y-3 pb-24 sm:pb-0">
             {filteredItems.length === 0 ? (
               <div className="p-8 text-center bg-white rounded-xl border border-slate-200 text-xs text-slate-500">
                 Không tìm thấy dòng hàng nào phù hợp với bộ lọc

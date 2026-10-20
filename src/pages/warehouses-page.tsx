@@ -1065,8 +1065,8 @@ export function WarehousesPage(): React.ReactElement {
 
       {/* 4. BẢNG DANH SÁCH KHO HÀNG */}
       <section className="rounded-xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
-        <div className="w-full overflow-hidden">
-          <table className="table-fixed w-full text-left text-xs text-slate-600 divide-y divide-slate-100">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full min-w-[650px] table-fixed text-left text-xs text-slate-600 divide-y divide-slate-100">
             <thead>
               <tr className="border-b border-slate-200/80 bg-slate-50/80">
                 <th className="w-[16%] px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">

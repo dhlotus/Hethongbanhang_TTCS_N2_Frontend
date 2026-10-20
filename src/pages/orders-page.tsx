@@ -1125,9 +1125,9 @@ export const OrdersPage: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* Desktop Table: Tối ưu chuẩn 6 cột, không ép min-width cứng, hiển thị linh hoạt không bị thanh kéo ngang */}
+              {/* Desktop Table: Tối ưu chuẩn 6 cột, cuộn ngang mượt mà trên tablet */}
               <div className="hidden sm:block overflow-x-auto">
-                <table className="w-full text-sm divide-y divide-slate-100">
+                <table className="w-full min-w-[700px] text-sm divide-y divide-slate-100">
                   <thead>
                     <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                       <th className="px-4 py-3 text-left w-[18%]">

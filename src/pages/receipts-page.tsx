@@ -325,8 +325,8 @@ export const ReceiptsPage: React.FC = () => {
       {/* =================================================================== */}
       {/* 1. BẢNG DỮ LIỆU DESKTOP (>= 640px)                                  */}
       {/* =================================================================== */}
-      <div className="hidden sm:block rounded-xl bg-white border border-slate-200/80 shadow-xs overflow-hidden w-full">
-        <table className="w-full table-fixed border-collapse">
+      <div className="hidden sm:block rounded-xl bg-white border border-slate-200/80 shadow-xs overflow-x-auto w-full">
+        <table className="w-full min-w-[680px] table-fixed border-collapse">
           <colgroup>
             <col className="w-[18%]" />
             <col className="w-[28%]" />

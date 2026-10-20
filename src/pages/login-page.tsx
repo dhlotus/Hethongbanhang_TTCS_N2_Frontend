@@ -313,7 +313,7 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="login-glass-container relative w-full min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-slate-950 text-white antialiased overflow-hidden select-none">
+    <div className="login-glass-container relative w-full min-h-screen min-h-[100dvh] flex items-center justify-center p-4 sm:p-6 lg:p-8 py-8 sm:py-12 md:py-16 bg-slate-950 text-white antialiased overflow-y-auto select-none">
       {/* ===================================================================== */}
       {/* 1. BACKGROUND WALLPAPER: Kho hàng thông minh & Cực quang ban đêm      */}
       {/* ===================================================================== */}
@@ -369,11 +369,9 @@ export const LoginPage: React.FC = () => {
       {/* 2. THẺ KÍNH CHÍNH (Siêu Trong Suốt Pha Lê - Bố Cục Cân Đối Hoàn Mỹ)       */}
       {/* ========================================================================= */}
       {/* ========================================================================= */}
-      {/* 2. THẺ KÍNH CHÍNH (Siêu Trong Suốt Pha Lê - Chiều Cao Thoáng Đãng Cân Đối)  */}
-      {/* ========================================================================= */}
-      <div className={`relative z-10 w-full max-w-[92vw] sm:max-w-[450px] md:max-w-[470px] lg:max-w-[480px] bg-white/[0.06] backdrop-blur-xl rounded-[36px] sm:rounded-[42px] border border-white/15 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.18)] py-11 sm:py-14 md:py-16 px-6 sm:px-10 md:px-12 text-center my-auto transition-all duration-300 ${isNavigatingAway ? 'animate-glass-card-exit' : 'animate-glass-card-enter'}`}>
+      <div className={`relative z-10 w-full max-w-[92vw] sm:max-w-[450px] md:max-w-[470px] lg:max-w-[480px] bg-white/[0.06] backdrop-blur-xl rounded-[32px] sm:rounded-[42px] border border-white/15 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.18)] py-8 sm:py-12 md:py-16 px-5 sm:px-10 md:px-12 text-center my-auto transition-all duration-300 ${isNavigatingAway ? 'animate-glass-card-exit' : 'animate-glass-card-enter'}`}>
         {/* Header: Logo & Title - Khoảng cách thoáng đãng */}
-        <div className="flex flex-col items-center justify-center mb-8 sm:mb-10 md:mb-12">
+        <div className="flex flex-col items-center justify-center mb-6 sm:mb-8 md:mb-10">
           <div className="p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl bg-white/[0.08] backdrop-blur-xl border border-white/20 shadow-[0_8px_25px_rgba(0,0,0,0.25)] mb-4 sm:mb-5">
             <img
               src={logoImg}
