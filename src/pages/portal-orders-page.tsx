@@ -1002,7 +1002,8 @@ export const PortalOrdersPage: React.FC = () => {
             pageSize={limit}
             pageSizeOptions={[10, 20, 50]}
             itemLabel="đơn hàng"
-            showRecordRange={true}
+            showRecordRange={false}
+            showFirstLast={false}
             onPageChange={(newPage) => setPage(newPage)}
             onPageSizeChange={(newLimit) => {
               setLimit(newLimit);
