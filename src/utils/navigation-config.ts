@@ -26,6 +26,7 @@ import {
   Building2,
   HandCoins,
   Scale,
+  Target,
 } from 'lucide-react';
 import { USER_ROLES, type UserRoleType, type AuthUser } from '../types/auth';
 
@@ -170,6 +171,20 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Kinh doanh & Bán hàng',
     },
     {
+      id: 'sales-targets',
+      name: 'Chỉ tiêu & Tiến độ',
+      path: '/sales/targets',
+      icon: Target,
+      category: 'Kinh doanh & Bán hàng',
+    },
+    {
+      id: 'reports-sales',
+      name: 'Báo cáo doanh số',
+      path: '/reports/sales',
+      icon: BarChart3,
+      category: 'Kinh doanh & Bán hàng',
+    },
+    {
       id: 'sales-orders',
       name: 'Quản lý đơn hàng',
       path: '/sales/orders',
@@ -227,6 +242,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Dashboard điều hành',
       path: '/dashboard',
       icon: LayoutDashboard,
+      category: 'Báo cáo & Phân tích',
+    },
+    {
+      id: 'sales-targets',
+      name: 'Chỉ tiêu doanh số',
+      path: '/sales/targets',
+      icon: Target,
       category: 'Báo cáo & Phân tích',
     },
     {
@@ -622,6 +644,20 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       path: '/dashboard',
       icon: LayoutDashboard,
       category: 'Quản trị Hệ thống',
+    },
+    {
+      id: 'sales-targets',
+      name: 'Chỉ tiêu doanh số',
+      path: '/sales/targets',
+      icon: Target,
+      category: 'Nghiệp vụ Kinh doanh',
+    },
+    {
+      id: 'reports-sales',
+      name: 'Báo cáo doanh số',
+      path: '/reports/sales',
+      icon: BarChart3,
+      category: 'Nghiệp vụ Kinh doanh',
     },
     {
       id: 'system-users',

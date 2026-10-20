@@ -58,6 +58,8 @@ import { RouteCollectionsPage } from '../pages/route-collections-page';
 import { CreateRouteCollectionPage } from '../pages/create-route-collection-page';
 import { DebtReconciliationsPage } from '../pages/debt-reconciliations-page';
 import { CreateDebtReconciliationPage } from '../pages/create-debt-reconciliation-page';
+import { SalesTargetsPage } from '../pages/sales-targets-page';
+import { SalesReportPage } from '../pages/sales-report-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -196,12 +198,12 @@ export const AppRoutes: React.FC = () => {
             </Route>
 
             {/* ------------------------------------------------------------- */}
-            {/* PHÂN HỆ 3: QUẢN LÝ KINH DOANH (SALES_MANAGER)                 */}
+            {/* PHÂN HỆ 3: QUẢN LÝ KINH DOANH & BÁO CÁO (SN-215, SN-218)      */}
             {/* ------------------------------------------------------------- */}
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={['SALES_MANAGER', 'ADMIN']}
+                  allowedRoles={['SALES_MANAGER', 'ADMIN', 'SALES_REP']}
                   moduleName="Quản lý & Điều hành Kinh doanh"
                 />
               }
@@ -210,15 +212,15 @@ export const AppRoutes: React.FC = () => {
                 path="/sales/approvals"
                 element={<OrderApprovalsPage />}
               />
+              {/* SN-215: Đặt chỉ tiêu doanh số và theo dõi tiến độ thực tế */}
+              <Route
+                path="/sales/targets"
+                element={<SalesTargetsPage />}
+              />
+              {/* SN-218: Báo cáo Doanh số Bán hàng nhiều chiều */}
               <Route
                 path="/reports/sales"
-                element={
-                  <RoleModulePage
-                    title="Báo cáo Doanh số Bán buôn"
-                    subtitle="Phân tích tăng trưởng doanh số theo nhân viên thị trường, nhóm đại lý và sản phẩm chủ lực"
-                    requiredRole="Quản lý kinh doanh"
-                  />
-                }
+                element={<SalesReportPage />}
               />
             </Route>
 
@@ -256,6 +258,8 @@ export const AppRoutes: React.FC = () => {
               }
             >
               <Route path="/inventory/stock" element={<InventoryStockPage />} />
+              <Route path="/warehouse/stock" element={<Navigate to="/inventory/stock" replace />} />
+              <Route path="/warehouse/stocks" element={<Navigate to="/inventory/stock" replace />} />
               <Route path="/inventory/stock-list" element={<StockListPage />} />
               <Route path="/inventory/stocks" element={<StockListPage />} />
               <Route path="/inventory/stock-card" element={<StockCardPage />} />
