@@ -11,13 +11,29 @@ import { formatVndCurrency } from '../../utils/delivery-format';
 interface TripStatsCardsProps {
   stats: GoodsInTransitStats | null;
   loading?: boolean;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 /**
  * Thẻ thống kê KPI Tiền hàng trên đường - Thiết kế nhỏ gọn, dễ nhìn chuẩn Quản lý kho (LOHA SALES)
  */
-export const TripStatsCards: React.FC<TripStatsCardsProps> = ({ stats, loading = false }) => {
+export const TripStatsCards: React.FC<TripStatsCardsProps> = ({
+  stats,
+  loading = false,
+  onRefresh,
+  isRefreshing = false,
+}) => {
+  const [localSpinning, setLocalSpinning] = React.useState(false);
   const isOverdue = (stats?.overdueTripsCount || 0) > 0;
+
+  const handleRefreshClick = () => {
+    if (onRefresh && !loading && !isRefreshing && !localSpinning) {
+      setLocalSpinning(true);
+      onRefresh();
+      setTimeout(() => setLocalSpinning(false), 800);
+    }
+  };
 
   return (
     <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
@@ -90,9 +106,22 @@ export const TripStatsCards: React.FC<TripStatsCardsProps> = ({ stats, loading =
             Chờ đối soát về kho
           </span>
         </div>
-        <div className="h-8 w-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 ring-1 ring-amber-500/20">
-          <RotateCcw size={16} />
-        </div>
+        <button
+          type="button"
+          onClick={handleRefreshClick}
+          disabled={loading || isRefreshing || localSpinning}
+          title="Bấm để xoay làm mới và cập nhật dữ liệu đơn hàng"
+          className="h-8 w-8 rounded-lg bg-amber-50 hover:bg-amber-100/90 active:scale-90 text-amber-600 flex items-center justify-center shrink-0 ring-1 ring-amber-500/20 transition-all cursor-pointer disabled:opacity-70 group shadow-2xs"
+        >
+          <RotateCcw
+            size={16}
+            className={`transition-all duration-700 ${
+              loading || isRefreshing || localSpinning
+                ? 'animate-spin text-amber-700'
+                : 'group-hover:rotate-180 text-amber-600'
+            }`}
+          />
+        </button>
       </div>
 
       {/* 4. Điểm chờ giao */}

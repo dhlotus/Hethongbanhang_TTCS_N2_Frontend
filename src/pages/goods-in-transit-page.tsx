@@ -314,7 +314,12 @@ export const GoodsInTransitPage: React.FC = () => {
       </header>
 
       {/* 2. THỐNG KÊ TỔNG QUAN (COMPACT KPI CARDS) */}
-      <TripStatsCards stats={stats} loading={loading} />
+      <TripStatsCards
+        stats={stats}
+        loading={loading}
+        onRefresh={() => fetchData(true)}
+        isRefreshing={loading}
+      />
 
       {/* 3. THANH CÔNG CỤ TÍCH HỢP: TÌM KIẾM, BỘ LỌC & CHẾ ĐỘ XEM (SIÊU GỌN) */}
       <div className="bg-white rounded-xl border border-slate-200/90 p-2.5 sm:p-3 shadow-2xs space-y-2.5">

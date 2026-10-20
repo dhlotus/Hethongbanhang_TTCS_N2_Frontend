@@ -183,7 +183,7 @@ export const TripReturnCheckinModal: React.FC<TripReturnCheckinModalProps> = ({
             </div>
             <div className="text-xs">
               <strong className="text-slate-900 block font-semibold">
-                Xác nhận đối soát của Quản lý kho (SN-194 / SN-197)
+                Xác nhận đối soát của Quản lý kho
               </strong>
               <p className="text-2xs text-slate-600 mt-0.5">
                 Tôi xác nhận xe đã về đến kho an toàn, đã kiểm đếm đầy đủ số hàng chưa giao được (nếu

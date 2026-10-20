@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Truck,
@@ -10,9 +10,21 @@ import {
   MapPin,
   RotateCcw,
   ShieldAlert,
+  Pencil,
+  Check,
+  User,
 } from 'lucide-react';
 import type { DeliveryStop, DeliveryTrip, StopDeliveryStatus } from '../../types/delivery-trip';
 import { formatTripDateTime, formatVndCurrency } from '../../utils/delivery-format';
+import { deliveryTripsService } from '../../services/delivery-trips.service';
+
+const COMMON_DRIVERS = [
+  { name: 'Nguyễn Văn Toàn', phone: '0988123456', vehicle: '29H-868.99' },
+  { name: 'Trần Minh Đức', phone: '0912888999', vehicle: '29C-456.78' },
+  { name: 'Lê Quốc Hưng', phone: '0903789012', vehicle: '51D-987.65' },
+  { name: 'Phạm Hồng Thái', phone: '0972111222', vehicle: '29C-333.44' },
+  { name: 'Nguyễn Văn Thắng', phone: '0988123456', vehicle: '29H-868.99' },
+];
 
 interface TripDetailModalProps {
   trip: DeliveryTrip | null;
@@ -25,10 +37,11 @@ interface TripDetailModalProps {
     failureReason?: string,
   ) => Promise<void>;
   onOpenReturnCheckin: (trip: DeliveryTrip) => void;
+  onTripUpdated?: (trip: DeliveryTrip) => void;
 }
 
 /**
- * Modal xem chi tiết chuyến đi & cập nhật kết quả từng điểm giao (SN-194 / SN-197)
+ * Modal xem chi tiết chuyến đi & cập nhật kết quả từng điểm giao
  */
 export const TripDetailModal: React.FC<TripDetailModalProps> = ({
   trip,
@@ -36,12 +49,90 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
   onClose,
   onUpdateStopStatus,
   onOpenReturnCheckin,
+  onTripUpdated,
 }) => {
+  const [localTrip, setLocalTrip] = useState<DeliveryTrip | null>(trip);
   const [selectedStopForFailure, setSelectedStopForFailure] = useState<DeliveryStop | null>(null);
   const [failureReasonInput, setFailureReasonInput] = useState('');
   const [updatingStopId, setUpdatingStopId] = useState<string | null>(null);
 
+  // Trạng thái sửa thông tin tài xế & số điện thoại
+  const [isEditingDriver, setIsEditingDriver] = useState(false);
+  const [editDriverName, setEditDriverName] = useState('');
+  const [editDriverPhone, setEditDriverPhone] = useState('');
+  const [editVehicleNumber, setEditVehicleNumber] = useState('');
+  const [driverError, setDriverError] = useState('');
+  const [savingDriver, setSavingDriver] = useState(false);
+  const [driverSaveSuccess, setDriverSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    setLocalTrip(trip);
+    if (trip) {
+      setEditDriverName(trip.driverName || '');
+      setEditDriverPhone(trip.driverPhone || '');
+      setEditVehicleNumber(trip.vehicleNumber || '');
+    }
+    setIsEditingDriver(false);
+    setDriverError('');
+    setDriverSaveSuccess(false);
+  }, [trip]);
+
   if (!isOpen || !trip) return null;
+
+  const displayTrip = localTrip || trip;
+
+  const handlePhoneChange = (newPhone: string) => {
+    setEditDriverPhone(newPhone);
+    setDriverError('');
+    // Khi thay đổi số điện thoại, nếu số khớp với danh sách tài xế quen thuộc thì tự điền tên và số xe tương ứng
+    const matched = COMMON_DRIVERS.find((d) => d.phone === newPhone.trim());
+    if (matched) {
+      setEditDriverName(matched.name);
+      setEditVehicleNumber(matched.vehicle);
+    }
+  };
+
+  const handleSelectPresetDriver = (preset: { name: string; phone: string; vehicle: string }) => {
+    setEditDriverName(preset.name);
+    setEditDriverPhone(preset.phone);
+    setEditVehicleNumber(preset.vehicle);
+    setDriverError('');
+  };
+
+  const handleSaveDriver = async () => {
+    if (!editDriverName.trim()) {
+      setDriverError('Vui lòng nhập tên tài xế');
+      return;
+    }
+    const cleanPhone = editDriverPhone.trim();
+    if (!/^0[0-9]{9}$/.test(cleanPhone)) {
+      setDriverError('Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0');
+      return;
+    }
+    if (!editVehicleNumber.trim()) {
+      setDriverError('Vui lòng nhập biển số xe');
+      return;
+    }
+
+    try {
+      setSavingDriver(true);
+      setDriverError('');
+      const updated = await deliveryTripsService.updateDriver(displayTrip.id, {
+        driverName: editDriverName.trim(),
+        driverPhone: cleanPhone,
+        vehicleNumber: editVehicleNumber.trim(),
+      });
+      setLocalTrip(updated);
+      setIsEditingDriver(false);
+      setDriverSaveSuccess(true);
+      setTimeout(() => setDriverSaveSuccess(false), 3000);
+      onTripUpdated?.(updated);
+    } catch (err) {
+      setDriverError((err as Error).message || 'Lỗi khi cập nhật tài xế');
+    } finally {
+      setSavingDriver(false);
+    }
+  };
 
   const allStopsResolved = trip.stops.every(
     (s) => s.status === 'DELIVERED' || s.status === 'FAILED',
@@ -141,54 +232,190 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
           {/* Grid thông tin nhanh */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200/80 text-xs">
             <div>
-              <span className="text-slate-400 block text-2xs uppercase">Tài xế & Số xe</span>
-              <p className="font-semibold text-slate-800 mt-0.5">{trip.driverName}</p>
-              <a
-                href={`tel:${trip.driverPhone}`}
-                className="text-indigo-600 font-mono text-2xs flex items-center gap-1 mt-0.5"
-              >
-                <Phone className="h-3 w-3" />
-                {trip.driverPhone}
-              </a>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 block text-2xs uppercase">Tài xế & Số xe</span>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingDriver(!isEditingDriver)}
+                  className="text-indigo-600 hover:text-indigo-800 p-0.5 rounded hover:bg-indigo-50 inline-flex items-center gap-0.5 text-2xs font-semibold cursor-pointer"
+                  title="Sửa thông tin tài xế & số điện thoại"
+                >
+                  <Pencil className="w-3 h-3" />
+                  <span>{isEditingDriver ? 'Đóng' : 'Sửa'}</span>
+                </button>
+              </div>
+              <p className="font-semibold text-slate-800 mt-0.5">{displayTrip.driverName}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <a
+                  href={`tel:${displayTrip.driverPhone}`}
+                  className="text-indigo-600 font-mono text-2xs flex items-center gap-1"
+                >
+                  <Phone className="h-3 w-3" />
+                  {displayTrip.driverPhone}
+                </a>
+                <span className="text-slate-400 text-2xs font-mono">• {displayTrip.vehicleNumber}</span>
+              </div>
             </div>
 
             <div>
               <span className="text-slate-400 block text-2xs uppercase">Kho xuất</span>
-              <p className="font-semibold text-slate-800 mt-0.5 truncate">{trip.warehouseName}</p>
-              <span className="text-slate-500 text-2xs">Đơn vị: {trip.carrierName}</span>
+              <p className="font-semibold text-slate-800 mt-0.5 truncate">{displayTrip.warehouseName}</p>
+              <span className="text-slate-500 text-2xs">Đơn vị: {displayTrip.carrierName}</span>
             </div>
 
             <div>
               <span className="text-slate-400 block text-2xs uppercase">Thời gian</span>
               <p className="text-slate-700 mt-0.5">
-                Xuất phát: <span className="font-mono">{formatTripDateTime(trip.departedAt)}</span>
+                Xuất phát: <span className="font-mono">{formatTripDateTime(displayTrip.departedAt)}</span>
               </p>
               <p
                 className={`text-2xs font-mono font-semibold ${
-                  trip.isOverdue && trip.status === 'IN_TRANSIT' ? 'text-rose-600' : 'text-slate-600'
+                  displayTrip.isOverdue && displayTrip.status === 'IN_TRANSIT' ? 'text-rose-600' : 'text-slate-600'
                 }`}
               >
-                ETA: {formatTripDateTime(trip.estimatedCompletionTime)}
+                ETA: {formatTripDateTime(displayTrip.estimatedCompletionTime)}
               </p>
             </div>
 
             <div>
               <span className="text-slate-400 block text-2xs uppercase">Tiền hàng trên đường</span>
               <p className="text-sm font-bold text-indigo-700 font-mono mt-0.5">
-                {formatVndCurrency(trip.inTransitGoodsValue)}
+                {formatVndCurrency(displayTrip.inTransitGoodsValue)}
               </p>
               <span className="text-2xs text-slate-500">
-                Tổng xuất: {formatVndCurrency(trip.totalGoodsValue)}
+                Tổng xuất: {formatVndCurrency(displayTrip.totalGoodsValue)}
               </span>
             </div>
           </div>
 
-          {/* Quy định nghiệp vụ SN-194 / SN-197 */}
+          {/* Form sửa thông tin tài xế & liên hệ */}
+          {isEditingDriver && (
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 space-y-3 transition-all">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-indigo-600" />
+                  <h4 className="font-bold text-xs text-slate-900 uppercase">Cập nhật tài xế & Liên hệ</h4>
+                </div>
+                <span className="text-2xs text-slate-500">
+                  Nhập SĐT để tự động nhận diện tài xế quen thuộc
+                </span>
+              </div>
+
+              {/* Gợi ý chọn nhanh */}
+              <div>
+                <label className="block text-2xs font-semibold text-slate-600 mb-1">
+                  Chọn nhanh tài xế:
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {COMMON_DRIVERS.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSelectPresetDriver(preset)}
+                      className={`text-2xs px-2 py-1 rounded-md border font-medium transition-colors cursor-pointer ${
+                        editDriverPhone === preset.phone && editDriverName === preset.name
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'
+                      }`}
+                    >
+                      {preset.name} - {preset.phone} ({preset.vehicle})
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3 Trường nhập liệu */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-2xs font-semibold text-slate-700 mb-1">
+                    Số điện thoại tài xế <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editDriverPhone}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    placeholder="VD: 0988123456"
+                    className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-2xs font-semibold text-slate-700 mb-1">
+                    Họ & tên tài xế <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editDriverName}
+                    onChange={(e) => {
+                      setEditDriverName(e.target.value);
+                      setDriverError('');
+                    }}
+                    placeholder="VD: Nguyễn Văn Toàn"
+                    className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-2xs font-semibold text-slate-700 mb-1">
+                    Biển số xe giao <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editVehicleNumber}
+                    onChange={(e) => {
+                      setEditVehicleNumber(e.target.value);
+                      setDriverError('');
+                    }}
+                    placeholder="VD: 29H-868.99"
+                    className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white font-mono uppercase focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {driverError && (
+                <div className="text-2xs text-rose-600 bg-rose-50 p-2 rounded-lg border border-rose-200">
+                  {driverError}
+                </div>
+              )}
+
+              {/* Nút hành động */}
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingDriver(false);
+                    setDriverError('');
+                  }}
+                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-200/60 rounded-lg cursor-pointer transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  disabled={savingDriver}
+                  onClick={handleSaveDriver}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{savingDriver ? 'Đang lưu...' : 'Lưu tài xế'}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {driverSaveSuccess && (
+            <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
+              <Check className="w-4 h-4 text-emerald-600" />
+              <span>Đã cập nhật thông tin tài xế và số xe thành công!</span>
+            </div>
+          )}
+
+          {/* Quy định nghiệp vụ kiểm soát hàng chưa giao xong */}
           <div className="rounded-xl bg-blue-50/80 border border-blue-200/90 p-3.5 text-xs text-blue-900 flex items-start gap-2.5">
             <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
             <div>
               <strong className="block font-semibold">
-                Quy định kiểm soát hàng chưa giao xong (SN-194 / SN-197):
+                Quy định kiểm soát hàng chưa giao xong:
               </strong>
               <p className="text-2xs text-blue-800 mt-1 leading-relaxed">
                 Khi ghi nhận một điểm giao <em>Chưa giao được</em>, số hàng đó{' '}
@@ -262,9 +489,21 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
                             </span>
                           )}
                           {isFailed && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                              <XCircle className="h-3 w-3" />
-                              Chưa giao được (Giữ trên xe)
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold ${
+                                displayTrip.returnedToWarehouse
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                  : 'bg-rose-100 text-rose-800 border border-rose-300'
+                              }`}
+                            >
+                              {displayTrip.returnedToWarehouse ? (
+                                <RotateCcw className="h-3 w-3 text-amber-600" />
+                              ) : (
+                                <XCircle className="h-3 w-3" />
+                              )}
+                              {displayTrip.returnedToWarehouse
+                                ? 'Chưa giao được (Đã nhập lại kho)'
+                                : 'Chưa giao được (Giữ trên xe)'}
                             </span>
                           )}
                           {isPending && (

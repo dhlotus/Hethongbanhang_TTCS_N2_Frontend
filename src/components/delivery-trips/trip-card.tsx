@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Warehouse,
   FileText,
+  CheckCircle2,
 } from 'lucide-react';
 import type { DeliveryTrip } from '../../types/delivery-trip';
 import {
@@ -186,16 +187,23 @@ export const TripCard: React.FC<TripCardProps> = ({
 
           {trip.retainedGoodsValue > 0 ? (
             <div className="text-right">
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                <RotateCcw className="w-2.5 h-2.5" />
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                <RotateCcw className="w-2.5 h-2.5 text-rose-600" />
                 Giữ xe: {formatVndCurrency(trip.retainedGoodsValue)}
               </span>
             </div>
-          ) : trip.returnedToWarehouse ? (
+          ) : trip.failedStops > 0 && trip.returnedToWarehouse ? (
             <div className="text-right">
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                <RotateCcw className="w-2.5 h-2.5 text-emerald-600" />
-                Đã nhập lại kho
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                <RotateCcw className="w-2.5 h-2.5 text-amber-600" />
+                {trip.deliveredStops > 0 ? `Đã nhập lại kho (${trip.failedStops} điểm)` : 'Đã nhập lại kho'}
+              </span>
+            </div>
+          ) : (trip.status === 'COMPLETED' || (trip.totalStops > 0 && trip.deliveredStops === trip.totalStops)) && trip.failedStops === 0 ? (
+            <div className="text-right">
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                Giao thành công
               </span>
             </div>
           ) : (

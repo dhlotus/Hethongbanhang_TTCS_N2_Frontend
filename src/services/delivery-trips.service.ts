@@ -308,7 +308,7 @@ export const deliveryTripsService = {
       return {
         ...trip,
         status: tripStatus,
-        returnedToWarehouse: isReturnedOrCompleted,
+        returnedToWarehouse: Boolean(trip.returnedToWarehouse) || (trip.status === 'COMPLETED' && failedStops > 0),
         departureDate: depDate,
         estimatedCompletionTime: estTime,
         stops,
@@ -731,10 +731,52 @@ export const deliveryTripsService = {
     if (payload.status) trip.status = payload.status;
     trip.updatedAt = new Date().toISOString();
 
+    // Đồng bộ thông tin tài xế mới sang danh sách đơn hàng tương ứng
+    if (payload.driverName || payload.driverPhone || payload.vehicleNumber) {
+      try {
+        const allOrders = getStoredDemoOrders();
+        let hasOrderChange = false;
+        trip.stops.forEach((s) => {
+          const ord = allOrders.find(
+            (o) => (o.orderCode && o.orderCode === s.orderCode) || o.id === s.orderId,
+          );
+          if (ord) {
+            if (payload.driverName) (ord as any).driverName = payload.driverName;
+            if (payload.driverPhone) (ord as any).driverPhone = payload.driverPhone;
+            if (payload.vehicleNumber) (ord as any).licensePlate = payload.vehicleNumber;
+            hasOrderChange = true;
+          }
+        });
+        if (hasOrderChange) {
+          saveStoredDemoOrders(allOrders);
+          window.dispatchEvent(new CustomEvent('loha_orders_updated'));
+        }
+      } catch {}
+    }
+
     const stored = getStoredTrips().filter((t) => t.id !== trip.id && t.tripCode !== trip.tripCode);
     saveStoredTrips([trip, ...stored]);
 
+    // Đồng bộ lên backend nếu có kết nối
+    try {
+      await apiClient.patch(`/delivery-trips/${trip.id}/driver`, {
+        driverName: trip.driverName,
+        driverPhone: trip.driverPhone,
+        vehicleNumber: trip.vehicleNumber,
+      });
+    } catch {}
+
     return trip;
+  },
+
+  /**
+   * Cập nhật thông tin tài xế & số điện thoại
+   */
+  async updateDriver(
+    id: string,
+    driverInfo: { driverName?: string; driverPhone?: string; vehicleNumber?: string },
+  ): Promise<DeliveryTrip> {
+    return this.updateTrip(id, driverInfo);
   },
 
   /**

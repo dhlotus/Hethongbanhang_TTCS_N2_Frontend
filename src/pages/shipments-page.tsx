@@ -612,7 +612,7 @@ export const ShipmentsPage: React.FC = () => {
             <button
               onClick={() => setIsCreateTripOpen(true)}
               className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer"
-              title="Gom nhiều phiếu xuất vào một chuyến xe phân theo khu vực (SN-196)"
+              title="Gom nhiều phiếu xuất vào một chuyến xe phân theo khu vực"
             >
               <Route className="w-3.5 h-3.5" />
               <span>Lập Chuyến Giao Mới</span>
@@ -661,7 +661,7 @@ export const ShipmentsPage: React.FC = () => {
           }`}
         >
           <Route className="w-4 h-4" />
-          <span>Chuyến giao hàng & Phân tuyến (SN-196)</span>
+          <span>Chuyến giao hàng & Phân tuyến</span>
           <span
             className={`px-2 py-0.5 text-xs rounded-full font-bold ${
               activeTab === 'TRIPS' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'
@@ -1231,7 +1231,7 @@ export const ShipmentsPage: React.FC = () => {
                               <button
                                 onClick={() => setSelectedTripForPrint(trip)}
                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer"
-                                title="In Bảng kê lộ trình & Lệnh điều xe cho tài xế (SN-196 AC 3)"
+                                title="In Bảng kê lộ trình & Lệnh điều xe cho tài xế"
                               >
                                 <Printer className="w-3.5 h-3.5 text-slate-500" />
                                 <span>In Bảng kê</span>

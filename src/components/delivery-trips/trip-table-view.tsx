@@ -5,6 +5,7 @@ import {
   RotateCcw,
   Warehouse,
   FileText,
+  CheckCircle2,
 } from 'lucide-react';
 import type { DeliveryTrip } from '../../types/delivery-trip';
 import {
@@ -182,12 +183,22 @@ export const TripTableView: React.FC<TripTableViewProps> = ({
                     <div className="font-mono font-bold text-slate-900 text-xs">
                       {formatVndCurrency(trip.inTransitGoodsValue)}
                     </div>
-                    {trip.retainedGoodsValue > 0 && (
-                      <div className="inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 mt-0.5">
-                        <RotateCcw className="w-2.5 h-2.5" />
+                    {trip.retainedGoodsValue > 0 ? (
+                      <div className="inline-flex items-center gap-1 text-[10px] text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200 mt-0.5">
+                        <RotateCcw className="w-2.5 h-2.5 text-rose-600" />
                         Giữ xe: {formatVndCurrency(trip.retainedGoodsValue)}
                       </div>
-                    )}
+                    ) : trip.failedStops > 0 && trip.returnedToWarehouse ? (
+                      <div className="inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 mt-0.5">
+                        <RotateCcw className="w-2.5 h-2.5 text-amber-600" />
+                        {trip.deliveredStops > 0 ? `Đã nhập lại kho (${trip.failedStops})` : 'Đã nhập lại kho'}
+                      </div>
+                    ) : (trip.status === 'COMPLETED' || (trip.totalStops > 0 && trip.deliveredStops === trip.totalStops)) && trip.failedStops === 0 ? (
+                      <div className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 mt-0.5">
+                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                        Giao thành công
+                      </div>
+                    ) : null}
                   </td>
 
                   {/* Cột 7: Trạng thái ETA */}
