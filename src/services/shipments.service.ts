@@ -118,7 +118,7 @@ const mapShipmentToOrderStatus = (shipmentStatus: Shipment['status']): OrderStat
 };
 
 const notifyOrderSync = (shipment: Partial<Shipment>) => {
-  const targetCode = shipment.orderCode || shipment.orderId;
+  const targetCode = shipment.orderCode || shipment.orderId || shipment.id;
   if (!targetCode) return;
   const orderStatus = shipment.status ? mapShipmentToOrderStatus(shipment.status) : 'PROCESSING';
   syncDemoOrderStatus(targetCode, orderStatus);
@@ -381,9 +381,36 @@ export const shipmentsService = {
   },
 
   async updateStatus(id: string, status: Shipment['status'], data?: Partial<Shipment>): Promise<Shipment> {
-    const res = await apiClient.patch<Shipment>(`/shipments/${id}/status`, { status, ...data });
-    notifyOrderSync(res.data);
-    return res.data;
+    let result: Shipment;
+    try {
+      const res = await apiClient.patch<Shipment>(`/shipments/${id}/status`, { status, ...data });
+      result = res.data;
+    } catch {
+      const current = getStoredLocalShipments();
+      let found = current.find((s) => s.id === id);
+      if (found) {
+        found = { ...found, status, ...data, updatedAt: new Date().toISOString() };
+        result = found;
+      } else {
+        result = { id, status, ...data, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as Shipment;
+      }
+    }
+
+    const current = getStoredLocalShipments();
+    const exists = current.some((s) => s.id === id || s.id === result.id);
+    const updated = exists
+      ? current.map((s) => (s.id === id || s.id === result.id ? { ...s, ...result, status } : s))
+      : [result, ...current];
+    saveStoredLocalShipments(updated);
+
+    notifyOrderSync(result);
+
+    try {
+      window.dispatchEvent(new CustomEvent('loha_shipments_updated', { detail: { id, status } }));
+      window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: { orderCode: result.orderCode, status } }));
+    } catch {}
+
+    return result;
   },
 
   /** SN-198: Xác nhận giao hàng thành công kèm ảnh chứng từ */

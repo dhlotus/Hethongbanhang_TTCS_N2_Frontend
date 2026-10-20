@@ -1,5 +1,6 @@
 import { apiClient } from './api';
 import { ordersService, getStoredDemoOrders, syncDemoOrderStatus, saveStoredDemoOrders } from './orders.service';
+import { getStoredLocalShipments, saveStoredLocalShipments, type Shipment } from './shipments.service';
 import type { Order } from '../types/order';
 import type {
   CreateDeliveryTripPayload,
@@ -133,6 +134,83 @@ function buildTripFromOrder(order: Order, index = 1): DeliveryTrip {
 }
 
 /**
+ * Chuyển một Phiếu xuất kho đang xuất phát trên đường (SHIPPED) thành một Chuyến xe DeliveryTrip
+ */
+function buildTripFromShipment(shipment: Shipment, matchedOrder?: Order, index = 1): DeliveryTrip {
+  const numPart = (shipment.orderCode || shipment.id || '').replace(/^[^\d]+/, '') || `${10450 + index}`;
+  const tripCode = shipment.tripCode || `TRIP-${new Date().toISOString().slice(2, 4)}${String(new Date().getMonth() + 1).padStart(2, '0')}-${numPart}`;
+  const departureDate = shipment.shippedAt || (matchedOrder as any)?.shippedAt || shipment.createdAt || new Date().toISOString();
+  const depTime = new Date(departureDate).getTime();
+  const estimatedCompletionTime = new Date((!isNaN(depTime) ? depTime : Date.now()) + 4 * 3600 * 1000).toISOString();
+  const isOverdue = Date.now() > new Date(estimatedCompletionTime).getTime();
+
+  const orderAmount = matchedOrder?.grandTotal || 0;
+  const isDelivered = shipment.status === 'DELIVERED';
+
+  const stop: DeliveryStop = {
+    id: `stop-${shipment.id || shipment.orderCode}-${index}`,
+    tripId: tripCode,
+    stopOrder: 1,
+    orderId: shipment.orderId || shipment.id,
+    orderCode: shipment.orderCode || shipment.id,
+    customerId: shipment.customerId || matchedOrder?.customerId,
+    customerName: shipment.customerName || matchedOrder?.customerName || 'Đại lý khách hàng',
+    receiverName: shipment.receiverName || matchedOrder?.deliveryPoint?.receiverName || shipment.customerName || '',
+    receiverPhone: shipment.phone || matchedOrder?.deliveryPoint?.phone || '0901234561',
+    deliveryAddress: shipment.deliveryAddress || matchedOrder?.deliveryPoint?.address || 'Kho nhận hàng đại lý',
+    orderAmount,
+    codAmount: orderAmount,
+    packageCount: (shipment.items || []).reduce((sum, item) => sum + (item.quantity || 1), 0) || 1,
+    status: isDelivered ? 'DELIVERED' : 'PENDING',
+    items: (shipment.items || []).map((l, i) => ({
+      productId: l.id || `prod-${i}`,
+      sku: l.skuCode || 'SKU',
+      productName: l.productName || 'Sản phẩm',
+      quantity: l.quantity || 1,
+      unit: 'Thùng',
+      unitPrice: 0,
+      totalPrice: 0,
+    })),
+  };
+
+  return {
+    id: `trip-auto-shp-${shipment.id || shipment.orderCode}`,
+    tripCode,
+    code: tripCode,
+    tripName: `Tuyến giao đơn ${shipment.orderCode || shipment.id} - ${shipment.customerName}`,
+    name: `Tuyến giao đơn ${shipment.orderCode || shipment.id} - ${shipment.customerName}`,
+    routeArea: matchedOrder?.region || 'Nội thành TP. Hồ Chí Minh',
+    warehouseId: shipment.warehouseId || 'wh-002',
+    warehouseName: 'Kho Miền Nam (TP. Hồ Chí Minh)',
+    driverName: (matchedOrder as any)?.driverName || 'Nguyễn Văn Thắng',
+    driverPhone: (matchedOrder as any)?.driverPhone || '0988123456',
+    vehicleNumber: (matchedOrder as any)?.licensePlate || '29H-868.99',
+    licensePlate: (matchedOrder as any)?.licensePlate || '29H-868.99',
+    vehicleType: 'Xe tải 2.5T Thaco',
+    carrierName: shipment.carrierName || 'LOHA Fleet Logistics',
+    status: isDelivered ? 'COMPLETED' : 'IN_TRANSIT',
+    departedAt: departureDate,
+    departureDate,
+    estimatedCompletionTime,
+    stops: [stop],
+    totalStops: 1,
+    stopsCount: 1,
+    deliveredStops: isDelivered ? 1 : 0,
+    remainingStops: isDelivered ? 0 : 1,
+    failedStops: 0,
+    totalGoodsValue: orderAmount,
+    deliveredGoodsValue: isDelivered ? orderAmount : 0,
+    inTransitGoodsValue: isDelivered ? 0 : orderAmount,
+    retainedGoodsValue: 0,
+    isOverdue: isDelivered ? false : isOverdue,
+    overdueMinutes: isOverdue ? Math.round((Date.now() - new Date(estimatedCompletionTime).getTime()) / 60000) : 0,
+    totalCodAmount: orderAmount,
+    createdAt: departureDate,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
  * Service Quản lý Chuyến đi Giao hàng, Phân tuyến & Theo dõi Hàng trên đường (SN-194 / SN-196 / SN-197)
  * Tích hợp chặt chẽ với dữ liệu bên Theo dõi đơn hàng & Giao vận (SN-170 / SN-199)
  */
@@ -187,6 +265,9 @@ export const deliveryTripsService = {
       (o) => o.status === 'DISPATCHED' || o.status === 'SHIPPED',
     );
 
+    // 4. Lấy dữ liệu các phiếu xuất kho
+    const localShipments = getStoredLocalShipments();
+
     // Chuẩn hóa và làm sạch stops trong các chuyến đã có (storedTrips và apiTrips)
     const rawTrips = [...storedTrips, ...apiTrips];
     const cleanedTrips: DeliveryTrip[] = [];
@@ -196,13 +277,19 @@ export const deliveryTripsService = {
       const codeKey = trip.tripCode || (trip as any).code;
       if (!codeKey || seenTripCodes.has(codeKey)) continue;
 
-      // Lọc stops: CHỈ GIỮ LẠI các điểm giao có đơn hàng thực tế tồn tại trong Quản lý đơn hàng
       const validStops: DeliveryStop[] = [];
       for (const s of trip.stops || []) {
         const code = (s.orderCode || s.orderId || '').toUpperCase();
         const ord = orderMap.get(code);
+        const shp = localShipments.find(
+          (ls) =>
+            (ls.orderCode && ls.orderCode.toUpperCase() === code) ||
+            (ls.orderId && ls.orderId.toUpperCase() === code) ||
+            (ls.id && ls.id.toUpperCase() === code),
+        );
+
         if (ord) {
-          const isDelivered = ord.status === 'DELIVERED' || s.status === 'DELIVERED';
+          const isDelivered = ord.status === 'DELIVERED' || s.status === 'DELIVERED' || shp?.status === 'DELIVERED';
           const isFailed = ord.status === 'CANCELLED' || s.status === 'FAILED';
           validStops.push({
             ...s,
@@ -217,10 +304,28 @@ export const deliveryTripsService = {
             codAmount: ord.grandTotal || s.codAmount,
             status: isDelivered ? 'DELIVERED' : isFailed ? 'FAILED' : (s.status || 'PENDING'),
           });
+        } else if (shp) {
+          const isDelivered = shp.status === 'DELIVERED' || s.status === 'DELIVERED';
+          const isFailed = s.status === 'FAILED';
+          validStops.push({
+            ...s,
+            orderId: shp.orderId || s.orderId || shp.id,
+            orderCode: shp.orderCode || s.orderCode || shp.id,
+            customerId: shp.customerId || s.customerId,
+            customerName: shp.customerName || s.customerName || shp.receiverName || 'Đại lý khách hàng',
+            receiverName: shp.receiverName || s.receiverName || shp.customerName || '',
+            receiverPhone: shp.phone || s.receiverPhone || '0901234561',
+            deliveryAddress: shp.deliveryAddress || s.deliveryAddress || 'Kho nhận hàng đại lý',
+            orderAmount: s.orderAmount || 0,
+            codAmount: s.codAmount || s.orderAmount || 0,
+            status: isDelivered ? 'DELIVERED' : isFailed ? 'FAILED' : (s.status || 'PENDING'),
+          });
+        } else {
+          // Luôn giữ nguyên điểm giao đã có trên chuyến xe
+          validStops.push(s);
         }
       }
 
-      // Chỉ giữ chuyến nếu có ít nhất 1 điểm dừng thực tế trong Quản lý đơn hàng
       if (validStops.length > 0) {
         seenTripCodes.add(codeKey);
         cleanedTrips.push({
@@ -245,6 +350,19 @@ export const deliveryTripsService = {
       const codeUpper = (o.orderCode || o.id || '').toUpperCase();
       if (!assignedOrderCodes.has(codeUpper)) {
         orderTrips.push(buildTripFromOrder(o, idx + 1));
+        assignedOrderCodes.add(codeUpper);
+      }
+    });
+
+    // Tạo chuyến tự động cho các phiếu xuất kho SHIPPED (Đang giao hàng) mà chưa gom vào chuyến nào
+    localShipments.forEach((shp, idx) => {
+      if (shp.status === 'SHIPPED') {
+        const codeUpper = (shp.orderCode || shp.orderId || shp.id).toUpperCase();
+        if (!assignedOrderCodes.has(codeUpper)) {
+          const ord = orderMap.get(codeUpper) || orderMap.get((shp.orderCode || '').toUpperCase());
+          orderTrips.push(buildTripFromShipment(shp, ord, idx + 1));
+          assignedOrderCodes.add(codeUpper);
+        }
       }
     });
 
@@ -424,45 +542,124 @@ export const deliveryTripsService = {
   },
 
   /**
-   * Tạo chuyến đi giao hàng mới gom các đơn hàng từ "Theo dõi đơn hàng"
+   * Tạo chuyến đi giao hàng mới gom các đơn hàng / phiếu xuất kho (SN-196)
    */
   async createTrip(payload: CreateDeliveryTripPayload): Promise<DeliveryTrip> {
     const allOrders = getStoredDemoOrders();
-    const orderCodes = payload.orderIds || [];
+    const allShipments = getStoredLocalShipments();
 
-    // Tìm các đơn hàng được chọn
-    const selectedOrders = allOrders.filter((o) =>
-      orderCodes.some(
-        (c) => c.toUpperCase() === o.orderCode?.toUpperCase() || c.toUpperCase() === o.id?.toUpperCase(),
-      ),
+    const requestedIds = [...(payload.orderIds || []), ...(payload.shipmentIds || [])].map((id) =>
+      id.trim().toUpperCase(),
     );
 
-    // Tạo danh sách điểm giao (Stops) từ các đơn hàng thực tế
-    const stops: DeliveryStop[] = selectedOrders.map((ord, idx) => ({
-      id: `stop-${ord.orderCode || ord.id}-${idx + 1}`,
-      tripId: payload.tripCode || `TRIP-${Date.now()}`,
-      stopOrder: idx + 1,
-      orderId: ord.id,
-      orderCode: ord.orderCode || ord.id || '',
-      customerId: ord.customerId,
-      customerName: ord.customerName || '',
-      receiverName: ord.deliveryPoint?.receiverName || ord.customerName || '',
-      receiverPhone: ord.deliveryPoint?.phone || '0901234561',
-      deliveryAddress: ord.deliveryPoint?.address || 'Điểm giao đại lý',
-      orderAmount: ord.grandTotal,
-      codAmount: ord.grandTotal,
-      packageCount: (ord.lines || []).reduce((sum, l) => sum + (l.quantity || 1), 0),
-      status: 'PENDING',
-      items: (ord.lines || []).map((l, lIdx) => ({
-        productId: l.productId || `prod-${lIdx}`,
-        sku: l.productSku || 'SKU',
-        productName: l.productName || 'Sản phẩm',
-        quantity: l.quantity,
-        unit: l.unit || 'Thùng',
-        unitPrice: l.unitPrice,
-        totalPrice: l.lineTotal,
-      })),
-    }));
+    // Tìm các shipment tương ứng
+    const matchedShipments = allShipments.filter((s) => {
+      const sId = (s.id || '').toUpperCase();
+      const sOrderCode = (s.orderCode || '').toUpperCase();
+      const sOrderId = (s.orderId || '').toUpperCase();
+      return requestedIds.some((r) => r === sId || r === sOrderCode || r === sOrderId);
+    });
+
+    // Tìm các đơn hàng tương ứng
+    const selectedOrders = allOrders.filter((o) => {
+      const oCode = (o.orderCode || '').toUpperCase();
+      const oId = (o.id || '').toUpperCase();
+      return (
+        requestedIds.some((r) => r === oCode || r === oId) ||
+        matchedShipments.some(
+          (s) => (s.orderCode || '').toUpperCase() === oCode || (s.orderId || '').toUpperCase() === oId,
+        )
+      );
+    });
+
+    // Tạo danh sách điểm giao (Stops)
+    const stops: DeliveryStop[] = [];
+    const processedCodes = new Set<string>();
+
+    selectedOrders.forEach((ord, idx) => {
+      const code = (ord.orderCode || ord.id || '').toUpperCase();
+      processedCodes.add(code);
+      stops.push({
+        id: `stop-${ord.orderCode || ord.id}-${idx + 1}`,
+        tripId: payload.tripCode || `TRIP-${Date.now()}`,
+        stopOrder: stops.length + 1,
+        orderId: ord.id,
+        orderCode: ord.orderCode || ord.id || '',
+        customerId: ord.customerId,
+        customerName: ord.customerName || '',
+        receiverName: ord.deliveryPoint?.receiverName || ord.customerName || '',
+        receiverPhone: ord.deliveryPoint?.phone || (ord as any).phone || '0901234561',
+        deliveryAddress: ord.deliveryPoint?.address || 'Điểm giao đại lý',
+        orderAmount: ord.grandTotal,
+        codAmount: ord.grandTotal,
+        packageCount: (ord.lines || []).reduce((sum, l) => sum + (l.quantity || 1), 0),
+        status: 'PENDING',
+        items: (ord.lines || []).map((l, lIdx) => ({
+          productId: l.productId || `prod-${lIdx}`,
+          sku: l.productSku || 'SKU',
+          productName: l.productName || 'Sản phẩm',
+          quantity: l.quantity,
+          unit: l.unit || 'Thùng',
+          unitPrice: l.unitPrice,
+          totalPrice: l.lineTotal,
+        })),
+      });
+    });
+
+    // Bổ sung các shipment chưa có trong selectedOrders
+    matchedShipments.forEach((shp) => {
+      const code = (shp.orderCode || shp.orderId || shp.id).toUpperCase();
+      if (!processedCodes.has(code)) {
+        processedCodes.add(code);
+        stops.push({
+          id: `stop-${shp.id || shp.orderCode}-${stops.length + 1}`,
+          tripId: payload.tripCode || `TRIP-${Date.now()}`,
+          stopOrder: stops.length + 1,
+          orderId: shp.orderId || shp.id,
+          orderCode: shp.orderCode || shp.id,
+          customerId: shp.customerId,
+          customerName: shp.customerName || shp.receiverName || 'Đại lý khách hàng',
+          receiverName: shp.receiverName || shp.customerName || '',
+          receiverPhone: shp.phone || '0901234561',
+          deliveryAddress: shp.deliveryAddress || 'Điểm giao đại lý',
+          orderAmount: 0,
+          codAmount: 0,
+          packageCount: (shp.items || []).reduce((sum, item) => sum + (item.quantity || 1), 0) || 1,
+          status: 'PENDING',
+          items: (shp.items || []).map((l, i) => ({
+            productId: l.id || `prod-${i}`,
+            sku: l.skuCode || 'SKU',
+            productName: l.productName || 'Sản phẩm',
+            quantity: l.quantity || 1,
+            unit: 'Thùng',
+            unitPrice: 0,
+            totalPrice: 0,
+          })),
+        });
+      }
+    });
+
+    // Nếu vẫn chưa có stop nào (ví dụ requestedIds truyền mã đơn mới)
+    if (stops.length === 0 && requestedIds.length > 0) {
+      requestedIds.forEach((code, idx) => {
+        stops.push({
+          id: `stop-${code}-${idx + 1}`,
+          tripId: payload.tripCode || `TRIP-${Date.now()}`,
+          stopOrder: idx + 1,
+          orderId: code,
+          orderCode: code,
+          customerName: `Đại lý ${code}`,
+          receiverName: 'Người nhận hàng',
+          receiverPhone: '0901234561',
+          deliveryAddress: payload.routeArea || 'Điểm giao đại lý',
+          orderAmount: 0,
+          codAmount: 0,
+          packageCount: 1,
+          status: 'PENDING',
+          items: [],
+        });
+      });
+    }
 
     const totalGoodsValue = stops.reduce((sum, s) => sum + (s.orderAmount || 0), 0);
     const startImmediately = payload.startImmediately ?? true;
@@ -508,8 +705,29 @@ export const deliveryTripsService = {
       updatedAt: now,
     };
 
-    // Nếu "Xuất phát ngay", cập nhật trạng thái đơn hàng bên "Theo dõi đơn hàng" sang SHIPPED (Đang giao xe)
+    // Cập nhật trạng thái phiếu xuất kho sang SHIPPED (Đang giao hàng) và gán tripCode
     if (startImmediately) {
+      const currentShipments = getStoredLocalShipments();
+      const updatedShipments = currentShipments.map((shp) => {
+        const match = requestedIds.some(
+          (r) =>
+            r === (shp.id || '').toUpperCase() ||
+            r === (shp.orderCode || '').toUpperCase() ||
+            r === (shp.orderId || '').toUpperCase(),
+        );
+        if (match) {
+          return {
+            ...shp,
+            status: 'SHIPPED' as const,
+            tripCode: newTrip.tripCode,
+            carrierName: newTrip.carrierName,
+            shippedAt: now,
+          };
+        }
+        return shp;
+      });
+      saveStoredLocalShipments(updatedShipments);
+
       selectedOrders.forEach((o) => {
         (o as any).status = 'SHIPPED';
         (o as any).shippedAt = now;
@@ -521,14 +739,16 @@ export const deliveryTripsService = {
         (o as any).estimatedDeliveryWindow = '09:00 - 11:30, Hôm nay';
       });
 
-      // Lưu lại danh sách đơn hàng cập nhật
       try {
         localStorage.setItem('loha_demo_orders', JSON.stringify(allOrders));
-        window.dispatchEvent(new CustomEvent('loha_orders_updated'));
       } catch {}
     }
 
-    // Lưu chuyến mới
+    try {
+      window.dispatchEvent(new CustomEvent('loha_orders_updated'));
+      window.dispatchEvent(new CustomEvent('loha_shipments_updated'));
+    } catch {}
+
     const stored = getStoredTrips();
     saveStoredTrips([newTrip, ...stored]);
 
@@ -554,7 +774,8 @@ export const deliveryTripsService = {
     const allOrders = getStoredDemoOrders();
     trip.stops.forEach((s) => {
       const o = allOrders.find(
-        (item) => item.orderCode === s.orderCode || item.id === s.orderId,
+        (item) => item.orderCode?.toUpperCase() === (s.orderCode || '').toUpperCase() ||
+                  item.id?.toUpperCase() === (s.orderId || '').toUpperCase(),
       );
       if (o && o.status !== 'DELIVERED') {
         (o as any).status = 'SHIPPED';
@@ -563,12 +784,35 @@ export const deliveryTripsService = {
         (o as any).driverPhone = trip.driverPhone;
         (o as any).licensePlate = trip.vehicleNumber;
         (o as any).carrierName = trip.carrierName;
+        (o as any).tripCode = trip.tripCode;
       }
     });
+
+    // Cập nhật cả danh sách phiếu xuất kho con sang SHIPPED
+    const allShipments = getStoredLocalShipments();
+    let shpChanged = false;
+    trip.stops.forEach((s) => {
+      const shp = allShipments.find(
+        (item) => (item.orderCode && item.orderCode.toUpperCase() === (s.orderCode || '').toUpperCase()) ||
+                  (item.orderId && item.orderId.toUpperCase() === (s.orderId || '').toUpperCase()) ||
+                  (item.id && item.id.toUpperCase() === (s.orderId || '').toUpperCase()),
+      );
+      if (shp && shp.status !== 'DELIVERED') {
+        shp.status = 'SHIPPED';
+        shp.shippedAt = trip.departedAt;
+        shp.carrierName = trip.carrierName;
+        shp.tripCode = trip.tripCode;
+        shpChanged = true;
+      }
+    });
+    if (shpChanged) {
+      saveStoredLocalShipments(allShipments);
+    }
 
     try {
       localStorage.setItem('loha_demo_orders', JSON.stringify(allOrders));
       window.dispatchEvent(new CustomEvent('loha_orders_updated'));
+      window.dispatchEvent(new CustomEvent('loha_shipments_updated'));
     } catch {}
 
     saveStoredTrips(stored);
@@ -577,7 +821,7 @@ export const deliveryTripsService = {
 
   /**
    * Cập nhật trạng thái một điểm giao hàng trên chuyến (SN-194 / SN-197)
-   * - DELIVERED: Giao thành công (đồng bộ sang Theo dõi đơn hàng là DELIVERED)
+   * - DELIVERED: Giao thành công (đồng bộ sang Theo dõi đơn hàng & Xuất kho giao hàng là DELIVERED)
    * - FAILED: Giao thất bại kèm lý do (Hàng vẫn giữ trên xe, KHÔNG tự về kho)
    */
   async updateStopStatus(
@@ -608,12 +852,50 @@ export const deliveryTripsService = {
       if (targetCode) {
         syncDemoOrderStatus(targetCode, 'DELIVERED');
       }
+
+      // Cập nhật phiếu xuất kho tương ứng sang DELIVERED bên "Xuất kho giao hàng"
       try {
-        window.dispatchEvent(new CustomEvent('loha_shipments_updated'));
+        const currentShipments = getStoredLocalShipments();
+        let changed = false;
+        const updatedShipments = currentShipments.map((s) => {
+          const match = (s.orderCode && s.orderCode.toUpperCase() === (targetCode || '').toUpperCase()) ||
+                        (s.orderId && s.orderId.toUpperCase() === (targetCode || '').toUpperCase()) ||
+                        (s.id && s.id.toUpperCase() === (targetCode || '').toUpperCase());
+          if (match) {
+            changed = true;
+            return {
+              ...s,
+              status: 'DELIVERED' as const,
+              deliveredAt: now,
+            };
+          }
+          return s;
+        });
+        if (changed) {
+          saveStoredLocalShipments(updatedShipments);
+        }
       } catch {}
     } else if (payload.status === 'FAILED') {
       stop.failureReason = payload.failureReason;
       stop.failedAt = now;
+
+      // Cập nhật failureReason cho shipment
+      try {
+        const currentShipments = getStoredLocalShipments();
+        const targetCode = stop.orderCode || stop.orderId;
+        if (targetCode) {
+          const updatedShipments = currentShipments.map((s) => {
+            const match = (s.orderCode && s.orderCode.toUpperCase() === targetCode.toUpperCase()) ||
+                          (s.orderId && s.orderId.toUpperCase() === targetCode.toUpperCase()) ||
+                          (s.id && s.id.toUpperCase() === targetCode.toUpperCase());
+            if (match) {
+              return { ...s, failureReason: payload.failureReason };
+            }
+            return s;
+          });
+          saveStoredLocalShipments(updatedShipments);
+        }
+      } catch {}
     }
 
     // Tính lại tiến độ chuyến
@@ -638,6 +920,11 @@ export const deliveryTripsService = {
     // Lưu lại vào storedTrips
     const stored = getStoredTrips().filter((t) => t.id !== trip!.id && t.tripCode !== trip!.tripCode);
     saveStoredTrips([trip, ...stored]);
+
+    try {
+      window.dispatchEvent(new CustomEvent('loha_shipments_updated'));
+      window.dispatchEvent(new CustomEvent('loha_orders_updated'));
+    } catch {}
 
     return trip;
   },
@@ -689,7 +976,8 @@ export const deliveryTripsService = {
       let hasOrderChange = false;
       trip.stops.forEach((s) => {
         const o = allOrders.find(
-          (item) => item.orderCode === s.orderCode || item.id === s.orderId,
+          (item) => item.orderCode?.toUpperCase() === (s.orderCode || '').toUpperCase() ||
+                    item.id?.toUpperCase() === (s.orderId || '').toUpperCase(),
         );
         if (o && s.status === 'FAILED') {
           (o as any).returnedToWarehouse = true;
@@ -700,8 +988,40 @@ export const deliveryTripsService = {
       });
       if (hasOrderChange) {
         saveStoredDemoOrders(allOrders);
-        window.dispatchEvent(new CustomEvent('loha_orders_updated'));
       }
+    } catch {}
+
+    // Đồng bộ danh sách phiếu xuất kho
+    try {
+      const allShipments = getStoredLocalShipments();
+      let hasShipmentChange = false;
+      trip.stops.forEach((s) => {
+        const shp = allShipments.find(
+          (item) => (item.orderCode && item.orderCode.toUpperCase() === (s.orderCode || '').toUpperCase()) ||
+                    (item.orderId && item.orderId.toUpperCase() === (s.orderId || '').toUpperCase()) ||
+                    (item.id && item.id.toUpperCase() === (s.orderId || '').toUpperCase()),
+        );
+        if (shp) {
+          if (s.status === 'DELIVERED') {
+            shp.status = 'DELIVERED';
+            shp.deliveredAt = now;
+            hasShipmentChange = true;
+          } else if (s.status === 'FAILED') {
+            (shp as any).returnedToWarehouse = true;
+            (shp as any).returnedAt = now;
+            shp.failureReason = s.failureReason || payload.returnedNotes;
+            hasShipmentChange = true;
+          }
+        }
+      });
+      if (hasShipmentChange) {
+        saveStoredLocalShipments(allShipments);
+      }
+    } catch {}
+
+    try {
+      window.dispatchEvent(new CustomEvent('loha_orders_updated'));
+      window.dispatchEvent(new CustomEvent('loha_shipments_updated'));
     } catch {}
 
     const stored = getStoredTrips().filter((t) => t.id !== trip.id && t.tripCode !== trip.tripCode);

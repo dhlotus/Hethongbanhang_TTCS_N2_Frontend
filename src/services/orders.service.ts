@@ -337,7 +337,12 @@ export const saveStoredDemoOrders = (list: Order[]): void => {
 export const syncDemoOrderStatus = (orderCodeOrId: string, status: OrderStatus): void => {
   try {
     const all = getStoredDemoOrders();
-    const idx = all.findIndex((o) => o.id === orderCodeOrId || o.orderCode === orderCodeOrId);
+    const target = (orderCodeOrId || '').trim().toUpperCase();
+    const idx = all.findIndex((o) => {
+      const c = (o.orderCode || '').toUpperCase();
+      const id = (o.id || '').toUpperCase();
+      return c === target || id === target || (target && (c.includes(target) || target.includes(c)));
+    });
     if (idx !== -1) {
       // Không hạ cấp trạng thái nếu đơn đã được duyệt hoặc đang giao/hoàn tất
       if (
@@ -346,11 +351,18 @@ export const syncDemoOrderStatus = (orderCodeOrId: string, status: OrderStatus):
       ) {
         return;
       }
+      const now = new Date().toISOString();
       all[idx] = {
         ...all[idx],
         status,
-        updatedAt: new Date().toISOString(),
+        updatedAt: now,
       };
+      if (status === 'SHIPPED' && !all[idx].shippedAt) {
+        (all[idx] as any).shippedAt = now;
+      }
+      if (status === 'DELIVERED' && !all[idx].deliveredAt) {
+        (all[idx] as any).deliveredAt = now;
+      }
       saveStoredDemoOrders(all);
     }
     window.dispatchEvent(new CustomEvent('loha_orders_updated', { detail: { orderCode: orderCodeOrId, status } }));
