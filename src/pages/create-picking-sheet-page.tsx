@@ -19,6 +19,7 @@ import { STANDARD_WAREHOUSES } from '../constants/warehouse.constants';
 import type { Order } from '../types/order';
 import type { CreatePickingSheetPayload } from '../types/order-picking.types';
 import { showToast } from '../components/toast';
+import { getStoredUser } from '../utils/navigation';
 
 export const CreatePickingSheetPage: React.FC = () => {
   const navigate = useNavigate();
@@ -33,6 +34,35 @@ export const CreatePickingSheetPage: React.FC = () => {
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const user = getStoredUser();
+  const userRoles = user?.roles || [];
+  const isAdmin = userRoles.includes('ADMIN');
+  const isManager =
+    userRoles.includes('WAREHOUSE_MANAGER') ||
+    userRoles.includes('WH_MANAGER') ||
+    isAdmin;
+  const isKeeper =
+    !isManager &&
+    (userRoles.includes('WAREHOUSE_KEEPER') ||
+      userRoles.includes('WAREHOUSE') ||
+      userRoles.includes('WH_KEEPER'));
+
+  // Thủ kho bị khóa cố định vào kho công tác được phân công
+  useEffect(() => {
+    if (isKeeper && user) {
+      const rawWh = (user.warehouseId || user.warehouseCode || user.assignedWarehouse || '').toUpperCase();
+      const match = STANDARD_WAREHOUSES.find(
+        (w) =>
+          w.id.toUpperCase() === rawWh ||
+          w.code.toUpperCase() === rawWh ||
+          w.name.toUpperCase().includes(rawWh),
+      );
+      if (match) {
+        setSelectedWarehouseId(match.id);
+      }
+    }
+  }, [isKeeper, user]);
+
   // Tải danh sách đơn hàng đã duyệt sẵn sàng soạn
   useEffect(() => {
     const fetchOrders = async () => {
@@ -42,11 +72,16 @@ export const CreatePickingSheetPage: React.FC = () => {
         setOrders(data);
         // Tự động chọn 1-2 đơn đầu tiên nếu có để nhân viên kho thao tác nhanh
         if (data.length > 0 && selectedOrderIds.length === 0) {
-          const firstIds = data.slice(0, 2).map((o) => o.id || o.orderCode || '').filter(Boolean);
+          const firstIds = data
+            .filter((o: any) => !o.isCurrentlyPicking)
+            .slice(0, 2)
+            .map((o) => o.id || o.orderCode || '')
+            .filter(Boolean);
           setSelectedOrderIds(firstIds);
         }
-      } catch {
-        showToast('error', 'Không thể tải danh sách đơn hàng đã duyệt');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Không thể tải danh sách đơn hàng đã duyệt';
+        showToast('error', msg);
       } finally {
         setLoading(false);
       }
@@ -69,17 +104,26 @@ export const CreatePickingSheetPage: React.FC = () => {
 
   // Chọn / Bỏ chọn từng đơn hàng
   const handleToggleOrder = (orderId: string) => {
+    const targetOrder = orders.find((o: any) => (o.id === orderId || o.orderCode === orderId));
+    if ((targetOrder as any)?.isCurrentlyPicking) {
+      showToast(
+        'warning',
+        `Đơn hàng ${targetOrder?.orderCode} đang được xử lý trong phiếu ${(targetOrder as any).currentActivePickingSheet}. Vui lòng hoàn tất phiếu đó trước.`,
+      );
+      return;
+    }
     setSelectedOrderIds((prev) =>
       prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId],
     );
   };
 
-  // Chọn / Bỏ chọn tất cả đơn trong danh sách đã lọc
+  // Chọn / Bỏ chọn tất cả đơn trong danh sách đã lọc (loại trừ các đơn đang soạn)
   const handleSelectAll = () => {
-    if (selectedOrderIds.length === filteredOrders.length) {
+    const pickableOrders = filteredOrders.filter((o: any) => !o.isCurrentlyPicking);
+    if (selectedOrderIds.length >= pickableOrders.length && pickableOrders.length > 0) {
       setSelectedOrderIds([]);
     } else {
-      setSelectedOrderIds(filteredOrders.map((o) => o.id || o.orderCode || '').filter(Boolean));
+      setSelectedOrderIds(pickableOrders.map((o) => o.id || o.orderCode || '').filter(Boolean));
     }
   };
 
@@ -131,7 +175,7 @@ export const CreatePickingSheetPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/60 pb-28 text-slate-900">
+    <div className="min-h-screen bg-slate-50/60 pb-36 sm:pb-28 text-slate-900">
       {/* ── 1. HEADER & BREADCRUMB ── */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
@@ -171,18 +215,22 @@ export const CreatePickingSheetPage: React.FC = () => {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {STANDARD_WAREHOUSES.map((wh) => {
               const isSelected = selectedWarehouseId === wh.id;
+              const isDisabled = isKeeper && selectedWarehouseId !== wh.id;
               return (
                 <button
                   key={wh.id}
                   type="button"
+                  disabled={isDisabled}
                   onClick={() => setSelectedWarehouseId(wh.id)}
-                  className={`p-3.5 rounded-xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
-                    isSelected
-                      ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-2 ring-indigo-500/20 shadow-xs'
-                      : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                  className={`p-3.5 rounded-xl border text-left flex items-start gap-3 transition-all ${
+                    isDisabled
+                      ? 'opacity-40 cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
+                      : isSelected
+                      ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-2 ring-indigo-500/20 shadow-xs cursor-pointer'
+                      : 'border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer'
                   }`}
                 >
                   <Building2
@@ -272,79 +320,172 @@ export const CreatePickingSheetPage: React.FC = () => {
                 Không tìm thấy đơn hàng nào phù hợp với bộ lọc
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[650px] text-xs text-left divide-y divide-slate-100">
-                  <thead className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <tr>
-                      <th className="w-12 px-4 py-3 text-center">Chọn</th>
-                      <th className="px-4 py-3">Mã đơn hàng</th>
-                      <th className="px-4 py-3">Khách hàng / Đại lý</th>
-                      <th className="px-4 py-3">Ngày giao dự kiến</th>
-                      <th className="px-4 py-3 text-center">Số dòng</th>
-                      <th className="px-4 py-3 text-center">Tổng SL</th>
-                      <th className="px-4 py-3">NVKD phụ trách</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium bg-white">
-                    {filteredOrders.map((ord) => {
-                      const ordId = ord.id || ord.orderCode || '';
-                      const isSelected = selectedOrderIds.includes(ordId);
-                      const lineCount = ord.lines?.length || 0;
-                      const totalQty = (ord.lines || []).reduce((s, l) => s + l.quantity, 0);
+              <div>
+                {/* 1. Giao diện dạng THẺ (Cards) trên Mobile (< 768px) - Hoàn toàn không cuộn ngang */}
+                <div className="md:hidden divide-y divide-slate-100">
+                  {filteredOrders.map((ord) => {
+                    const ordId = ord.id || ord.orderCode || '';
+                    const isSelected = selectedOrderIds.includes(ordId);
+                    const isCurrentlyPicking = Boolean((ord as any)?.isCurrentlyPicking);
+                    const activeSheetCode = (ord as any)?.currentActivePickingSheet;
+                    const lineCount = ord.lines?.length || 0;
+                    const totalQty = (ord.lines || []).reduce((s, l) => s + l.quantity, 0);
 
-                      return (
-                        <tr
-                          key={ordId}
-                          onClick={() => handleToggleOrder(ordId)}
-                          className={`cursor-pointer transition-colors ${
-                            isSelected ? 'bg-indigo-50/50 hover:bg-indigo-50/70' : 'hover:bg-slate-50'
-                          }`}
-                        >
-                          <td className="px-4 py-3 text-center">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => handleToggleOrder(ordId)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
-                            />
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200/60">
-                              {ord.orderCode}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="font-semibold text-slate-900">{ord.customerName}</div>
-                            {ord.deliveryPoint?.name && (
-                              <div className="text-[11px] text-slate-500 truncate max-w-xs">
-                                {ord.deliveryPoint.name}
+                    return (
+                      <div
+                        key={ordId}
+                        onClick={() => handleToggleOrder(ordId)}
+                        className={`p-3.5 transition-colors ${
+                          isCurrentlyPicking
+                            ? 'bg-slate-50/70 opacity-60 cursor-not-allowed'
+                            : isSelected
+                            ? 'bg-indigo-50/60 ring-1 ring-indigo-500/20'
+                            : 'bg-white hover:bg-slate-50 cursor-pointer'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            disabled={isCurrentlyPicking}
+                            onChange={() => handleToggleOrder(ordId)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-5 h-5 mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 disabled:opacity-40 cursor-pointer shrink-0"
+                          />
+                          <div className="flex-1 min-w-0 space-y-1.5">
+                            <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                              <span className="font-mono font-bold text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200/60">
+                                {ord.orderCode}
+                              </span>
+                              {isCurrentlyPicking && (
+                                <span className="inline-flex items-center rounded-sm bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200">
+                                  Đang soạn: {activeSheetCode}
+                                </span>
+                              )}
+                              <span className="text-[11px] text-slate-500 flex items-center gap-1 shrink-0">
+                                <Calendar className="w-3 h-3 text-slate-400" />
+                                {ord.deliveryDate || '---'}
+                              </span>
+                            </div>
+
+                            <div>
+                              <p className="font-bold text-slate-900 text-xs sm:text-sm leading-snug break-words">
+                                {ord.customerName}
+                              </p>
+                              {ord.deliveryPoint?.name && (
+                                <p className="text-[11px] text-slate-500 break-words mt-0.5">
+                                  {ord.deliveryPoint.name}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-100 flex-wrap gap-2 text-slate-600">
+                              <span className="font-semibold text-slate-700">
+                                {lineCount} dòng • <strong className="text-indigo-600 font-mono">{totalQty}</strong> món
+                              </span>
+                              {ord.salesRepName && (
+                                <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                                  <User className="w-3 h-3 text-slate-400" />
+                                  {ord.salesRepName}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* 2. Bảng dạng Table trên Desktop (>= 768px) */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-xs text-left divide-y divide-slate-100">
+                    <thead className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <tr>
+                        <th className="w-12 px-4 py-3 text-center">Chọn</th>
+                        <th className="px-4 py-3">Mã đơn hàng</th>
+                        <th className="px-4 py-3">Khách hàng / Đại lý</th>
+                        <th className="px-4 py-3">Ngày giao dự kiến</th>
+                        <th className="px-4 py-3 text-center">Số dòng</th>
+                        <th className="px-4 py-3 text-center">Tổng SL</th>
+                        <th className="px-4 py-3">NVKD phụ trách</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium bg-white">
+                      {filteredOrders.map((ord) => {
+                        const ordId = ord.id || ord.orderCode || '';
+                        const isSelected = selectedOrderIds.includes(ordId);
+                        const isCurrentlyPicking = Boolean((ord as any)?.isCurrentlyPicking);
+                        const activeSheetCode = (ord as any)?.currentActivePickingSheet;
+                        const lineCount = ord.lines?.length || 0;
+                        const totalQty = (ord.lines || []).reduce((s, l) => s + l.quantity, 0);
+
+                        return (
+                          <tr
+                            key={ordId}
+                            onClick={() => handleToggleOrder(ordId)}
+                            className={`transition-colors ${
+                              isCurrentlyPicking
+                                ? 'bg-slate-50/70 opacity-60 cursor-not-allowed'
+                                : isSelected
+                                ? 'bg-indigo-50/50 hover:bg-indigo-50/70 cursor-pointer'
+                                : 'hover:bg-slate-50 cursor-pointer'
+                            }`}
+                          >
+                            <td className="px-4 py-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                disabled={isCurrentlyPicking}
+                                onChange={() => handleToggleOrder(ordId)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 disabled:opacity-40 cursor-pointer"
+                              />
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200/60">
+                                  {ord.orderCode}
+                                </span>
+                                {isCurrentlyPicking && (
+                                  <span className="inline-flex items-center rounded-sm bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200">
+                                    Đang soạn: {activeSheetCode}
+                                  </span>
+                                )}
                               </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-slate-600">
-                            <div className="flex items-center gap-1.5">
-                              <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                              <span>{ord.deliveryDate || '---'}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-center font-bold text-slate-700">
-                            {lineCount} dòng
-                          </td>
-                          <td className="px-4 py-3 text-center font-mono font-bold text-indigo-600">
-                            {totalQty}
-                          </td>
-                          <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <User className="w-3.5 h-3.5 text-slate-400" />
-                              <span>{ord.salesRepName || '---'}</span>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-semibold text-slate-900">{ord.customerName}</div>
+                              {ord.deliveryPoint?.name && (
+                                <div className="text-[11px] text-slate-500 truncate max-w-xs">
+                                  {ord.deliveryPoint.name}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-slate-600">
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                <span>{ord.deliveryDate || '---'}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-center font-bold text-slate-700">
+                              {lineCount} dòng
+                            </td>
+                            <td className="px-4 py-3 text-center font-mono font-bold text-indigo-600">
+                              {totalQty}
+                            </td>
+                            <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5">
+                                <User className="w-3.5 h-3.5 text-slate-400" />
+                                <span>{ord.salesRepName || '---'}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -366,13 +507,15 @@ export const CreatePickingSheetPage: React.FC = () => {
       </div>
 
       {/* ── 3. BOTTOM STICKY ACTION BAR ── */}
-      <div className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-4 sm:px-6 py-3">
+      <div className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-4 sm:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-700">
-            <Layers className="w-4 h-4 text-indigo-600 shrink-0" />
-            <span>
-              Đã chọn <strong className="text-indigo-700">{selectedOrderIds.length}</strong> đơn hàng
-            </span>
+          <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-700 flex-wrap">
+            <div className="flex items-center gap-1.5 font-medium">
+              <Layers className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span>
+                Đã chọn <strong className="text-indigo-700 font-bold">{selectedOrderIds.length}</strong> đơn hàng
+              </span>
+            </div>
             <span>•</span>
             <span className="font-semibold text-slate-800">
               {summaryStats.totalLines} dòng hàng
@@ -388,7 +531,7 @@ export const CreatePickingSheetPage: React.FC = () => {
               type="button"
               onClick={() => navigate('/warehouse/picking')}
               disabled={isSubmitting}
-              className="flex-1 sm:flex-initial h-[38px] px-4 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
+              className="flex-1 sm:flex-initial h-10 px-4 rounded-xl border border-slate-300 text-xs sm:text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
             >
               Hủy bỏ
             </button>
@@ -396,7 +539,7 @@ export const CreatePickingSheetPage: React.FC = () => {
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting || selectedOrderIds.length === 0}
-              className="flex-1 sm:flex-initial h-[38px] px-5 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer"
+              className="flex-1 sm:flex-initial h-10 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer"
             >
               {isSubmitting ? (
                 <span>Đang tạo phiếu...</span>

@@ -49,6 +49,7 @@ export const InventoryStockPage: React.FC = () => {
   const [warehousesList, setWarehousesList] = useState<StandardWarehouse[]>(STANDARD_WAREHOUSES);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [selectedProductSkuForAdjust, setSelectedProductSkuForAdjust] = useState<string>('');
+  const [exportingExcel, setExportingExcel] = useState<boolean>(false);
 
   useEffect(() => {
     productsService
@@ -556,6 +557,38 @@ export const InventoryStockPage: React.FC = () => {
     setAdjustModalOpen(true);
   };
 
+  // Xử lý xuất báo cáo tồn kho ra tệp Excel (.xlsx) gửi kế toán (SN-229 / SN-220)
+  const handleExportExcel = async () => {
+    if (exportingExcel) return;
+    try {
+      setExportingExcel(true);
+      showToast('info', 'Hệ thống đang trích xuất dữ liệu tồn kho ra Excel...');
+      const { blob, fileName } = await inventoryService.exportStockExcel({
+        warehouse: selectedWarehouse,
+        warehouseId: selectedWarehouse,
+        category: selectedCategory,
+        status: selectedStatus,
+        search: searchTerm,
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      showToast('success', `Đã xuất báo cáo tồn kho thành công: ${fileName}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Xuất Excel thất bại. Vui lòng thử lại sau.';
+      showToast('error', msg);
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   // Xử lý gửi yêu cầu điều chỉnh tồn kho
   const handleSubmitAdjustment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -611,7 +644,7 @@ export const InventoryStockPage: React.FC = () => {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+    <div className="p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
 
       {/* Thẻ Thống kê 3 Cột Tồn Kho Minh Bạch */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -766,6 +799,18 @@ export const InventoryStockPage: React.FC = () => {
               </button>
             )}
 
+            {/* Nút Xuất Excel gửi kế toán (SN-229 / SN-220) */}
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={exportingExcel || loading}
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 rounded-xl transition-all cursor-pointer shadow-2xs shadow-emerald-600/20"
+              title="Xuất báo cáo tồn kho ra tệp Excel (.xlsx) chuẩn gửi kế toán"
+            >
+              <FileSpreadsheet className={`w-4 h-4 ${exportingExcel ? 'animate-bounce' : ''}`} />
+              <span>{exportingExcel ? 'Đang xuất...' : 'Xuất Excel'}</span>
+            </button>
+
             <button
               type="button"
               onClick={fetchStockData}
@@ -780,9 +825,152 @@ export const InventoryStockPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Bảng Danh Sách Sổ Tồn Kho 6 Cột Chuẩn Hóa Theo UI Guidelines */}
+      {/* Bảng Danh Sách Sổ Tồn Kho: Dạng Thẻ trên Mobile, Dạng Bảng trên Desktop */}
       <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* 1. GIAO DIỆN MOBILE (< 768px): Card View trực quan, 0% cuộn ngang */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, idx) => (
+              <div key={idx} className="p-3.5 space-y-3 animate-pulse">
+                <div className="flex justify-between items-center">
+                  <div className="h-4 bg-slate-200 rounded w-24"></div>
+                  <div className="h-4 bg-slate-200 rounded w-28"></div>
+                </div>
+                <div className="h-5 bg-slate-200 rounded w-3/4"></div>
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  <div className="h-12 bg-slate-100 rounded-lg"></div>
+                  <div className="h-12 bg-slate-100 rounded-lg"></div>
+                  <div className="h-12 bg-slate-100 rounded-lg"></div>
+                </div>
+              </div>
+            ))
+          ) : stockItems.length === 0 ? (
+            <div className="p-8 text-center text-slate-400">
+              <Boxes className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+              <p className="font-semibold text-slate-700 text-sm">
+                {selectedWarehouse !== 'ALL'
+                  ? 'Kho hàng này hiện chưa có sản phẩm nào'
+                  : 'Không tìm thấy sản phẩm tồn kho nào'}
+              </p>
+            </div>
+          ) : (
+            paginatedItems.map((item) => {
+              const baseUnit = item.baseUnit;
+              const itemKey = `m-${item.sku}-${item.warehouseId || item.warehouse}`;
+              const isBelowMin = item.isBelowMinStock;
+              const isOutOfStock = item.availableStock <= 0;
+
+              return (
+                <div key={itemKey} className="p-3.5 space-y-3 bg-white hover:bg-slate-50/50 transition-colors">
+                  {/* Hàng 1: SKU badge + Kho bãi */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
+                      {item.sku}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md truncate max-w-[200px]">
+                      <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
+                      <span className="truncate">{item.warehouse || 'Kho hàng'}</span>
+                    </span>
+                  </div>
+
+                  {/* Hàng 2: Tên sản phẩm */}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenConversionModal(item)}
+                    className="text-left font-bold text-slate-900 text-base leading-snug hover:text-indigo-600 transition-colors block cursor-pointer break-words"
+                  >
+                    {item.name}
+                  </button>
+
+                  {/* Hàng 3: Khối 3 cột tồn kho trực quan */}
+                  <div className="grid grid-cols-3 gap-2 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 text-center">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Tồn thực tế</span>
+                      <span className="text-sm font-extrabold text-slate-800 font-mono block mt-0.5">
+                        {item.physicalStock.toLocaleString('vi-VN')}
+                      </span>
+                      <span className="text-[10px] text-slate-400 block">{baseUnit}</span>
+                    </div>
+
+                    <div className="border-x border-slate-200/80">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Tạm giữ</span>
+                      <span className="text-sm font-extrabold text-amber-700 font-mono block mt-0.5">
+                        {item.reservedStock.toLocaleString('vi-VN')}
+                      </span>
+                      <span className="text-[10px] text-slate-400 block">{baseUnit}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Khả dụng</span>
+                      <span
+                        className={`text-sm font-extrabold font-mono block mt-0.5 ${
+                          isOutOfStock ? 'text-rose-600' : 'text-emerald-700'
+                        }`}
+                      >
+                        {item.availableStock.toLocaleString('vi-VN')}
+                      </span>
+                      <span className="text-[10px] text-slate-400 block">{baseUnit}</span>
+                    </div>
+                  </div>
+
+                  {/* Cảnh báo dưới tồn tối thiểu nếu có */}
+                  {isBelowMin && (
+                    <div className="flex items-center gap-1.5 p-2 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 font-medium">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      <span>
+                        Dưới tồn tối thiểu: {item.availableStock.toLocaleString('vi-VN')} / {item.minStockLevel?.toLocaleString('vi-VN')} {baseUnit}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Hàng 4: Nhóm nút thao tác lớn (>= 44px touch target) */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/warehouse/cards?sku=${item.sku}&warehouseId=${item.warehouseId || ''}`)}
+                      className="min-h-[44px] px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:bg-slate-100 text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <Eye className="w-4 h-4 text-slate-500" />
+                      <span>Xem thẻ kho</span>
+                    </button>
+
+                    {canEditMinStock ? (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenMinStockModal(item)}
+                        className="min-h-[44px] px-3 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 active:bg-indigo-200 text-xs font-semibold text-indigo-700 flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                      >
+                        <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
+                        <span>Sửa tồn min</span>
+                      </button>
+                    ) : canAdjustStock ? (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAdjustModal(item)}
+                        className="min-h-[44px] px-3 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 active:bg-emerald-200 text-xs font-semibold text-emerald-700 flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                      >
+                        <ArrowRightLeft className="w-4 h-4 text-emerald-600" />
+                        <span>Điều chỉnh</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenConversionModal(item)}
+                        className="min-h-[44px] px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                      >
+                        <Layers className="w-4 h-4 text-slate-500" />
+                        <span>Quy đổi ĐVT</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* 2. GIAO DIỆN DESKTOP (>= 768px): Bảng Danh Sách 6 Cột */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm divide-y divide-slate-100">
             <thead>
               <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">

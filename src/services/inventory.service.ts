@@ -876,4 +876,64 @@ export const inventoryService = {
     );
     return response.data;
   },
+
+  /**
+   * SN-229 / SN-220: Xuất báo cáo tồn kho ra tệp Excel (.xlsx) chuẩn gửi kế toán
+   * Giữ nguyên ba cột tồn: Tồn Thực Tế, Tồn Tạm Giữ, Tồn Khả Dụng
+   * GET /api/inventory/stock/export-excel
+   */
+  async exportStockExcel(params?: {
+    warehouse?: string;
+    warehouseId?: string;
+    category?: string;
+    status?: string;
+    search?: string;
+  }): Promise<{ blob: Blob; fileName: string }> {
+    const cleanParams: Record<string, string> = {};
+    if (params) {
+      if (params.search?.trim()) cleanParams.search = params.search.trim();
+      if (params.category && params.category !== 'ALL') cleanParams.category = params.category;
+      if (params.status && params.status !== 'ALL') cleanParams.status = params.status;
+      const wh = params.warehouseId || params.warehouse;
+      if (wh && wh !== 'ALL') {
+        cleanParams.warehouse = wh;
+        cleanParams.warehouseId = wh;
+      }
+    }
+
+    try {
+      const response = await apiClient.get('/inventory/stock/export-excel', {
+        params: cleanParams,
+        responseType: 'blob',
+      });
+
+      const disposition = response.headers['content-disposition'] || '';
+      let fileName = '';
+      const match = disposition.match(/filename="?([^";]+)"?/);
+      if (match && match[1]) {
+        fileName = decodeURIComponent(match[1]);
+      } else {
+        const whCode = cleanParams.warehouse || cleanParams.warehouseId || 'ALL';
+        const today = new Date().toISOString().slice(0, 10);
+        fileName = `TonKho_${whCode}_${today}.xlsx`;
+      }
+
+      return { blob: response.data, fileName };
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: any } };
+        if (axiosErr.response?.data instanceof Blob) {
+          try {
+            const text = await axiosErr.response.data.text();
+            const parsed = JSON.parse(text);
+            const msg = Array.isArray(parsed.message) ? parsed.message.join(', ') : parsed.message;
+            if (msg) throw new Error(msg);
+          } catch (e: any) {
+            if (e?.message && !e.message.includes('JSON')) throw e;
+          }
+        }
+      }
+      throw err instanceof Error ? err : new Error('Không thể xuất báo cáo tồn kho ra Excel');
+    }
+  },
 };

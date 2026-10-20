@@ -95,13 +95,22 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
           <span className="px-2 py-0.5 rounded-md bg-slate-800 text-white font-mono font-bold text-[11px]">
             Bước #{item.stepNumber}
           </span>
-          <div className="flex items-center gap-1.5 font-mono font-bold text-slate-900 bg-white border border-slate-200/90 px-2.5 py-1 rounded-md text-xs sm:text-sm shadow-2xs">
-            <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-            <span className="tracking-wide">{item.location.formattedCode}</span>
-          </div>
-          <span className="text-[11px] text-slate-500 font-medium hidden md:inline-flex items-center gap-1">
-            Khu: <strong className="text-slate-700">{item.location.zone}</strong> • Dãy: <strong className="text-slate-700">{item.location.aisle}</strong> • Kệ: <strong className="text-slate-700">{item.location.rack}</strong> • Tầng: <strong className="text-slate-700">{item.location.shelf}</strong> • Ô: <strong className="text-slate-700">{item.location.bin}</strong>
-          </span>
+          {item.location.isConfigured === false || item.location.formattedCode === 'Chưa cấu hình' ? (
+            <div className="flex items-center gap-1.5 font-bold text-amber-800 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-md text-xs sm:text-sm shadow-2xs">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>Chưa cấu hình vị trí - Cần bổ sung</span>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-1.5 font-mono font-bold text-slate-900 bg-white border border-slate-200/90 px-2.5 py-1 rounded-md text-xs sm:text-sm shadow-2xs">
+                <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span className="tracking-wide">{item.location.formattedCode}</span>
+              </div>
+              <span className="text-[11px] text-slate-500 font-medium hidden md:inline-flex items-center gap-1">
+                Khu: <strong className="text-slate-700">{item.location.zone}</strong> • Dãy: <strong className="text-slate-700">{item.location.aisle}</strong> • Kệ: <strong className="text-slate-700">{item.location.rack}</strong> • Tầng: <strong className="text-slate-700">{item.location.shelf}</strong> • Ô: <strong className="text-slate-700">{item.location.bin}</strong>
+              </span>
+            </>
+          )}
         </div>
 
         {/* Trạng thái dòng */}
@@ -127,7 +136,7 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
       </div>
 
       {/* 2. Thân thẻ: Vị trí chi tiết (Mobile) -> SKU -> Tên SP -> Số lượng cần lấy */}
-      <div className="p-4 space-y-3">
+      <div className="p-3.5 sm:p-4 space-y-3">
         {/* Vị trí chi tiết trên mobile */}
         <div className="md:hidden flex items-center gap-1 flex-wrap text-[11px] text-slate-500 font-medium bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/60">
           <span>Khu: <strong className="text-slate-700">{item.location.zone}</strong></span>
@@ -196,14 +205,64 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
           </div>
         </div>
 
-        {/* Lý do soạn thiếu (Vùng viền mờ dịu mắt, không dùng box vàng chói) */}
-        {isShortPicked && item.shortPickReason && (
-          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <strong className="font-semibold text-slate-800">Lý do soạn thiếu: </strong>
-              <span className="text-slate-600">{item.shortPickReason}</span>
+        {/* Lý do soạn thiếu và Danh sách các đơn bị ảnh hưởng */}
+        {isShortPicked && (
+          <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 space-y-2">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <span className="font-bold text-amber-900">
+                    Soạn thiếu: {item.totalRequiredQuantity - item.totalPickedQuantity} {item.unit}
+                  </span>
+                  {item.shortPickReasonCode && (
+                    <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-amber-200/70 text-amber-800">
+                      {item.shortPickReasonCode}
+                    </span>
+                  )}
+                </div>
+                {item.shortPickReason && (
+                  <p className="text-slate-700 mt-1">
+                    <strong>Lý do giải trình:</strong> {item.shortPickReason}
+                  </p>
+                )}
+              </div>
             </div>
+
+            {/* Danh sách các đơn bị ảnh hưởng do thiếu hàng */}
+            {(() => {
+              const affectedOrders = (item.orders || []).filter(
+                (o) => o.pickedQuantity < o.requiredQuantity,
+              );
+              if (affectedOrders.length === 0) return null;
+              return (
+                <div className="pt-2 border-t border-amber-200/80">
+                  <span className="text-[11px] font-bold text-amber-900 block mb-1">
+                    Đơn hàng bị ảnh hưởng ({affectedOrders.length} đơn):
+                  </span>
+                  <div className="space-y-1">
+                    {affectedOrders.map((ord) => (
+                      <div
+                        key={ord.orderId}
+                        className="flex items-center justify-between bg-white/80 p-1.5 rounded-lg border border-amber-200/60 text-[11px]"
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-mono font-bold text-indigo-700">
+                            {ord.orderCode}
+                          </span>
+                          <span className="text-slate-500 truncate max-w-[140px]">
+                            ({ord.customerName})
+                          </span>
+                        </div>
+                        <span className="font-semibold text-rose-600 shrink-0">
+                          Thiếu {ord.requiredQuantity - ord.pickedQuantity} / {ord.requiredQuantity} {ord.unit}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -226,8 +285,8 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
           </div>
 
           {/* Cụm điều khiển: [- Qty +] [Soạn đủ] [Báo thiếu] */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-            <div className="flex items-center h-[38px] border border-slate-200 rounded-lg bg-white shadow-2xs overflow-hidden">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center h-10 border border-slate-300 rounded-xl bg-white shadow-2xs overflow-hidden">
               <button
                 type="button"
                 onClick={handleDecrement}
@@ -264,7 +323,7 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
                 setInputVal(String(item.totalRequiredQuantity));
                 onQuickPickAll(item.id);
               }}
-              className="h-[38px] px-3.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
+              className="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
             >
               <Check className="w-4 h-4 stroke-[3]" />
               <span>Soạn đủ</span>
@@ -275,7 +334,7 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenFefoSelector(item)}
-                className="h-10 px-3 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 text-indigo-900 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shadow-2xs"
+                className="h-10 px-3.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 text-indigo-900 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shadow-2xs"
                 title="Gợi ý và chọn Lô xuất theo nguyên tắc Hạn dùng gần nhất (FEFO)"
               >
                 <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
@@ -287,7 +346,7 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
             <button
               type="button"
               onClick={() => onRequestShortPickReason(item, item.totalPickedQuantity)}
-              className="h-[38px] px-3 rounded-lg border border-slate-200 hover:border-amber-300 bg-white hover:bg-amber-50 text-amber-700 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer whitespace-nowrap"
+              className="h-10 px-3.5 rounded-xl border border-slate-300 hover:border-amber-400 bg-white hover:bg-amber-50 active:bg-amber-100 text-amber-800 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer whitespace-nowrap"
               title="Ghi nhận lý do soạn thiếu"
             >
               <FileText className="w-3.5 h-3.5 text-amber-600" />

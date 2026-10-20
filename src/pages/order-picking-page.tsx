@@ -10,6 +10,7 @@ import {
   Layers,
   Filter,
   X,
+  Trash2,
 } from 'lucide-react';
 import { orderPickingService } from '../services/order-picking.service';
 import type {
@@ -227,8 +228,32 @@ export const OrderPickingPage: React.FC = () => {
     window.print();
   };
 
+  // Hủy/Xóa phiếu soạn hàng (hoàn trả đơn về danh sách chờ)
+  const handleDeleteSheet = async () => {
+    if (!activeSheet) return;
+    const confirmMsg =
+      activeSheet.status === 'IN_PROGRESS'
+        ? `Bạn có chắc muốn hủy phiếu soạn ${activeSheet.sheetCode}? Các đơn hàng đang gắn với phiếu sẽ được hoàn trả về danh sách chờ soạn.`
+        : `Bạn có chắc muốn xóa phiếu soạn ${activeSheet.sheetCode}?`;
+
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+
+    try {
+      await orderPickingService.deletePickingSheet(activeSheet.id);
+      showToast('success', `Đã xóa phiếu soạn hàng ${activeSheet.sheetCode}`);
+      const remaining = sheets.filter((s) => s.id !== activeSheet.id);
+      setSheets(remaining);
+      setActiveSheetId(remaining.length > 0 ? remaining[0].id : null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi xóa phiếu soạn hàng';
+      showToast('error', msg);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50/60 pb-24 sm:pb-12 text-slate-900">
+    <div className="min-h-screen bg-slate-50/60 pb-28 sm:pb-12 text-slate-900">
       {/* ── NỘI DUNG CHÍNH (PRINT:HIDDEN ĐỂ KHÔNG BỊ TRỘN LẪN GIAO DIỆN KHI IN) ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-4 print:hidden">
         {/* A. Thanh điều khiển trên cùng: Bộ chọn lượt soạn + Nút thao tác (In phiếu, Tạo mới) */}
@@ -270,8 +295,19 @@ export const OrderPickingPage: React.FC = () => {
             })}
           </div>
 
-          {/* Cặp nút hành động: In phiếu & Tạo phiếu soạn mới (Chuyển trang chuyên biệt) */}
-          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+          {/* Cụm nút hành động: In phiếu, Hủy phiếu & Tạo phiếu soạn mới */}
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
+            {activeSheet && (
+              <button
+                type="button"
+                onClick={handleDeleteSheet}
+                className="h-[38px] px-3 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 active:bg-rose-100 text-rose-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                title="Hủy phiếu soạn hàng này và hoàn trả các đơn về danh sách chờ"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                <span className="hidden sm:inline">Hủy phiếu</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={handlePrintSheet}
@@ -460,7 +496,7 @@ export const OrderPickingPage: React.FC = () => {
 
       {/* ── 3. STICKY BOTTOM BAR TRÊN MOBILE (TỐI ƯU CẦM ĐIỆN THOẠI 1 TAY) ── */}
       {activeSheet && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 sm:hidden shadow-lg flex items-center justify-between gap-3 print:hidden">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:hidden shadow-lg flex items-center justify-between gap-3 print:hidden">
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
               <span>Tiến độ: {progressStats.percent}%</span>
