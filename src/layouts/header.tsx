@@ -107,6 +107,31 @@ const getPageHeaderInfo = (
     };
   }
   if (
+    pathname === '/accounting/debt-reconciliations/create' ||
+    pathname === '/debt-reconciliations/create'
+  ) {
+    return {
+      title: 'Lập biên bản',
+      category: 'Đối chiếu công nợ',
+      breadcrumbs: [
+        { label: 'Đối chiếu công nợ', path: '/accounting/debt-reconciliations' },
+        { label: 'Lập biên bản' },
+      ],
+    };
+  }
+  if (
+    pathname === '/accounting/debt-reconciliations' ||
+    pathname === '/debt-reconciliations'
+  ) {
+    return {
+      title: 'Đối chiếu công nợ',
+      category: 'Kế toán & Công nợ',
+      breadcrumbs: [
+        { label: 'Đối chiếu công nợ' },
+      ],
+    };
+  }
+  if (
     (pathname.startsWith('/accounting/invoices/') && pathname !== '/accounting/invoices' && pathname !== '/accounting/invoices/create') ||
     (pathname.startsWith('/invoices/') && pathname !== '/invoices' && pathname !== '/invoices/create')
   ) {
@@ -145,11 +170,11 @@ const getPageHeaderInfo = (
     pathname.startsWith('/inventory/receipts/create/')
   ) {
     return {
-      title: 'Lập phiếu nhập kho từ Nhà cung cấp',
+      title: 'Lập phiếu nhập mới',
       category: 'Nhập / Xuất kho',
       breadcrumbs: [
         { label: 'Nhập kho hàng hóa', path: '/inventory/receipts' },
-        { label: 'Lập phiếu nhập kho từ Nhà cung cấp' },
+        { label: 'Lập phiếu nhập mới' },
       ],
     };
   }
@@ -168,13 +193,16 @@ const getPageHeaderInfo = (
   if (
     pathname === '/inventory/shipments/create' ||
     pathname === '/app/inventory/shipments/create' ||
-    pathname === '/inventory/issues/create'
+    pathname === '/inventory/issues/create' ||
+    pathname === '/inventory/issues/shipments/create' ||
+    pathname === '/issues/shipments/create'
   ) {
+    const parentPath = pathname.includes('/issues') ? '/inventory/issues' : '/inventory/shipments';
     return {
       title: 'Tạo phiếu xuất kho',
       category: 'Nhập / Xuất kho',
       breadcrumbs: [
-        { label: 'Soạn hàng & Xuất kho', path: '/inventory/shipments' },
+        { label: 'Soạn hàng & Xuất kho', path: parentPath },
         { label: 'Tạo phiếu xuất kho' },
       ],
     };
@@ -183,13 +211,15 @@ const getPageHeaderInfo = (
   if (
     (pathname.startsWith('/inventory/shipments/') && pathname !== '/inventory/shipments') ||
     (pathname.startsWith('/app/inventory/shipments/') && pathname !== '/app/inventory/shipments') ||
-    (pathname.startsWith('/inventory/issues/') && pathname !== '/inventory/issues')
+    (pathname.startsWith('/inventory/issues/') && pathname !== '/inventory/issues') ||
+    (pathname.startsWith('/issues/shipments/') && pathname !== '/issues')
   ) {
+    const parentPath = pathname.includes('/issues') ? '/inventory/issues' : '/inventory/shipments';
     return {
       title: 'Chi tiết phiếu xuất kho',
       category: 'Nhập / Xuất kho',
       breadcrumbs: [
-        { label: 'Soạn hàng & Xuất kho', path: '/inventory/shipments' },
+        { label: 'Soạn hàng & Xuất kho', path: parentPath },
         { label: 'Chi tiết phiếu xuất kho' },
       ],
     };

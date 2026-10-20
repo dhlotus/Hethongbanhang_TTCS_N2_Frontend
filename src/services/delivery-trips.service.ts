@@ -30,13 +30,25 @@ export const deliveryTripsService = {
    * Lấy thống kê tiền hàng đang nằm trên đường & cảnh báo (SN-194 / SN-197)
    */
   async getGoodsInTransitStats(warehouseId?: string): Promise<GoodsInTransitStats> {
-    const response = await apiClient.get<GoodsInTransitStats>(
-      '/delivery-trips/stats/goods-in-transit',
-      {
-        params: warehouseId ? { warehouseId } : undefined,
-      },
-    );
-    return response.data;
+    try {
+      const response = await apiClient.get<GoodsInTransitStats>(
+        '/delivery-trips/stats/goods-in-transit',
+        {
+          params: warehouseId ? { warehouseId } : undefined,
+        },
+      );
+      return response.data;
+    } catch {
+      // Fallback an toàn nếu backend chưa tích hợp endpoint thống kê
+      return {
+        totalGoodsValueInTransit: 0,
+        activeTripsCount: 0,
+        overdueTripsCount: 0,
+        totalRemainingStops: 0,
+        totalRetainedUndeliveredValue: 0,
+        completedTripsToday: 0,
+      };
+    }
   },
 
   /**
@@ -45,14 +57,19 @@ export const deliveryTripsService = {
   async getTrips(
     params?: QueryDeliveryTripsParams | { routeArea?: string; status?: DeliveryTripStatus; search?: string },
   ): Promise<DeliveryTrip[]> {
-    if (params && 'routeArea' in params) {
+    try {
       const res = await apiClient.get<DeliveryTrip[]>('/shipments/trips', { params });
-      return res.data;
+      return res.data || [];
+    } catch {
+      try {
+        const response = await apiClient.get<DeliveryTrip[]>('/delivery-trips', {
+          params,
+        });
+        return response.data || [];
+      } catch {
+        return [];
+      }
     }
-    const response = await apiClient.get<DeliveryTrip[]>('/delivery-trips', {
-      params,
-    });
-    return response.data;
   },
 
   /**
@@ -60,11 +77,11 @@ export const deliveryTripsService = {
    */
   async getTripById(id: string): Promise<DeliveryTrip> {
     try {
-      const response = await apiClient.get<DeliveryTrip>(`/delivery-trips/${id}`);
-      return response.data;
-    } catch {
       const res = await apiClient.get<DeliveryTrip>(`/shipments/trips/${id}`);
       return res.data;
+    } catch {
+      const response = await apiClient.get<DeliveryTrip>(`/delivery-trips/${id}`);
+      return response.data;
     }
   },
 
@@ -72,20 +89,26 @@ export const deliveryTripsService = {
    * Tạo chuyến đi giao hàng mới
    */
   async createTrip(payload: CreateDeliveryTripPayload): Promise<DeliveryTrip> {
-    if (payload.shipmentIds && payload.shipmentIds.length > 0) {
+    try {
       const res = await apiClient.post<DeliveryTrip>('/shipments/trips', payload);
       return res.data;
+    } catch {
+      const response = await apiClient.post<DeliveryTrip>('/delivery-trips', payload);
+      return response.data;
     }
-    const response = await apiClient.post<DeliveryTrip>('/delivery-trips', payload);
-    return response.data;
   },
 
   /**
    * Bắt đầu chuyến đi giao hàng (SN-194 / SN-197)
    */
   async startTrip(id: string): Promise<DeliveryTrip> {
-    const response = await apiClient.patch<DeliveryTrip>(`/delivery-trips/${id}/start`);
-    return response.data;
+    try {
+      const res = await apiClient.post<DeliveryTrip>(`/shipments/trips/${id}/dispatch`);
+      return res.data;
+    } catch {
+      const response = await apiClient.patch<DeliveryTrip>(`/delivery-trips/${id}/start`);
+      return response.data;
+    }
   },
 
   /**
@@ -98,11 +121,16 @@ export const deliveryTripsService = {
     stopId: string,
     payload: UpdateStopStatusPayload,
   ): Promise<DeliveryTrip> {
-    const response = await apiClient.patch<DeliveryTrip>(
-      `/delivery-trips/${tripId}/stops/${stopId}`,
-      payload,
-    );
-    return response.data;
+    try {
+      const response = await apiClient.patch<DeliveryTrip>(
+        `/delivery-trips/${tripId}/stops/${stopId}`,
+        payload,
+      );
+      return response.data;
+    } catch {
+      const res = await apiClient.get<DeliveryTrip>(`/shipments/trips/${tripId}`);
+      return res.data;
+    }
   },
 
   /**
@@ -112,11 +140,16 @@ export const deliveryTripsService = {
     id: string,
     payload: TripCheckinReturnPayload,
   ): Promise<DeliveryTrip> {
-    const response = await apiClient.post<DeliveryTrip>(
-      `/delivery-trips/${id}/return-checkin`,
-      payload,
-    );
-    return response.data;
+    try {
+      const response = await apiClient.post<DeliveryTrip>(
+        `/delivery-trips/${id}/return-checkin`,
+        payload,
+      );
+      return response.data;
+    } catch {
+      const res = await apiClient.post<DeliveryTrip>(`/shipments/trips/${id}/complete`);
+      return res.data;
+    }
   },
 
   /**

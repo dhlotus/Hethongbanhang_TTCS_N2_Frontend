@@ -43,7 +43,7 @@ const INVOICE_STATUS_BADGES: Record<
     badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/60',
   },
   PARTIALLY_PAID: {
-    label: 'Một phần',
+    label: 'Thanh toán một phần',
     badgeClass: 'bg-amber-50 text-amber-800 border border-amber-200/60',
   },
   OVERDUE: {

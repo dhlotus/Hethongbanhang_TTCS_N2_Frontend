@@ -25,6 +25,7 @@ import {
   RotateCcw,
   Building2,
   HandCoins,
+  Scale,
 } from 'lucide-react';
 import { USER_ROLES, type UserRoleType, type AuthUser } from '../types/auth';
 
@@ -563,6 +564,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Theo dõi Công nợ',
     },
     {
+      id: 'accounting-debt-reconciliations',
+      name: 'Đối chiếu công nợ',
+      path: '/accounting/debt-reconciliations',
+      icon: Scale,
+      category: 'Theo dõi Công nợ',
+    },
+    {
       id: 'accounting-returns',
       name: 'Xử lý phiếu trả hàng',
       path: '/accounting/returns',
@@ -718,6 +726,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Quản lý ngân sách',
       path: '/route-collections',
       icon: HandCoins,
+      category: 'Tài chính & Kế toán',
+    },
+    {
+      id: 'accounting-debt-reconciliations',
+      name: 'Đối chiếu công nợ',
+      path: '/accounting/debt-reconciliations',
+      icon: Scale,
       category: 'Tài chính & Kế toán',
     },
   ],

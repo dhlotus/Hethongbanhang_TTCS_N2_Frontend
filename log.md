@@ -340,3 +340,54 @@ pm run build (	sc -b && vite build) -> 0 lỗi, compile thành công 100%.
 - **Trạng thái kiểm thử:**
   - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
 
+---
+
+### [Sprint 7] - [SN-202]: Giao Diện Ghi Nhận Thanh Toán & Đối Trừ Công Nợ Vào Hóa Đơn (Kế Toán Công Nợ)
+- **Thời gian hoàn thành:** 2026-10-18
+- **Mã Jira / Task:** SN-202 (Parent Story: SN-201 / Phân hệ Kế toán công nợ)
+- **Tiêu đề:** "Là Kế toán công nợ, tôi muốn ghi nhận thanh toán và đối trừ vào công nợ, để biết chính xác đại lý còn nợ hoá đơn nào."
+- **5 Ràng buộc nghiệp vụ hoàn thành 100% (Strict AC):**
+  1. **Nhập đủ 5 trường thông tin cốt lõi:**
+     - Số tiền thu (VND): Tích hợp kiểm tra không vượt quá tổng nợ hiển thị.
+     - Hình thức thu: Dropdown đầy đủ hình thức: Tiền mặt (`CASH`), Chuyển khoản ngân hàng (`BANK_TRANSFER`), Thẻ tín dụng/ghi nợ (`CREDIT_CARD`), Séc ngân hàng (`CHECK`).
+     - Ngày thu: Datepicker chuẩn HTML5 `type="date"`, tự động khởi tạo mặc định là ngày hôm nay.
+     - Người thu: Ô nhập Read-only, tự động trích xuất từ thông tin phiên đăng nhập (`tokenStorage.getUser()?.fullName`).
+     - Ghi chú: Textarea nhập lý do thu, số tham chiếu ủy nhiệm chi (UNC).
+  2. **Cơ chế đối trừ linh hoạt:**
+     - Radio 1: "Tự động đối trừ theo thứ tự hoá đơn cũ nhất trước (FIFO)" -> Hệ thống gửi `autoOffsetOldest: true`.
+     - Radio 2: "Chọn hoá đơn cụ thể để đối trừ" -> Hiển thị danh sách hóa đơn còn nợ kèm ô checkbox để Kế toán tick chọn từng hóa đơn cần cấn trừ.
+  3. **Thu một phần & Cập nhật trạng thái:**
+     - Cho phép nhập số tiền thanh toán nhỏ hơn tổng nợ.
+     - Giao diện hóa đơn cập nhật trạng thái rõ ràng thành "Thanh toán một phần" (`PARTIALLY_PAID`) với Pastel Badge màu hổ phách/vàng `amber-50` viền `amber-200/60`, và "Đã thanh toán" (`PAID`) với Pastel Badge xanh ngọc `emerald-50` viền `emerald-200/60`.
+  4. **Chặn thu vượt tổng công nợ còn lại:**
+     - Validate real-time: Nếu người dùng nhập số tiền lớn hơn tổng dư nợ khả dụng, hiển thị thông báo lỗi màu đỏ rõ ràng và vô hiệu hóa (`disabled`) nút gửi biểu mẫu.
+  5. **Chặn xóa phiếu thu:**
+     - Không hiển thị bất kỳ nút Xóa nào tại màn hình danh sách phiếu thu `/accounting/payments` hay chi tiết hóa đơn.
+- **Danh sách file tạo mới & thay đổi:**
+  - `src/types/payment.ts` (Tạo mới: Interface `Payment`, `PaymentAllocation`, `CreatePaymentPayload`, `PaginatedPaymentsResponse`, `PaymentMethod`).
+  - `src/services/payments.service.ts` (Tạo mới: API client `createPayment`, `getPayments`, `getPaymentById`).
+  - `src/components/record-payment-modal.tsx` (Tạo mới & nâng cấp: Modal ghi nhận thanh toán & đối trừ công nợ theo chuẩn `UI_GUIDELINES.md`, container `rounded-xl`, controls `rounded-lg`, soft shadow `shadow-xl`, hỗ trợ chọn đại lý hoặc nhận preselected invoice, chuyển đổi chế độ FIFO / chọn cụ thể).
+  - `src/pages/receipts-page.tsx` (Cập nhật: Bổ sung nút CTA `[+ Ghi nhận thanh toán & Đối trừ]`, tích hợp `RecordPaymentModal`, tự động reload dữ liệu sau khi ghi nhận).
+  - `src/pages/invoices-page.tsx` (Cập nhật: Cập nhật nhãn trạng thái `PARTIALLY_PAID` thành "Thanh toán một phần").
+  - `src/services/invoices.service.ts` (Cập nhật: Loại bỏ triệt để kiểu `any` trong API gọi danh sách hóa đơn).
+- **Trạng thái kiểm thử:**
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
+
+---
+
+### [Sprint 7] - [SN-202-ENHANCE]: Tinh Chỉnh Giao Diện Tìm Kiếm Đại Lý, Định Dạng Tiền Tệ & Làm Sạch Mẫu In Phiếu Thu
+- **Thời gian hoàn thành:** 2026-10-18
+- **Danh sách file thay đổi:**
+  - `src/components/record-payment-modal.tsx`:
+    - Thiết kế ô tìm kiếm đại lý đồng bộ 100% với trang Phát hành hóa đơn: input tích hợp icon kính lúp tím, placeholder hiển thị `Đang chọn: [Mã DL] - [Tên Đại Lý]`, nút tím thương hiệu `[ Tìm kiếm v ]`, dropdown popover hỗ trợ phân trang cuộn (scroll pagination 8 items/lần).
+    - Định dạng số tiền nhập ngăn cách 3 chữ số bằng dấu chấm (.), giới hạn tối đa hàng chục nghìn tỷ (`99.999.999.999.999 đ` - 14 chữ số), đọc tiền tự động bằng chữ Tiếng Việt theo thời gian thực.
+    - Xóa bỏ nút X ở góc trên cùng modal, xóa mô tả phụ, xóa tiền tố "Nguyên tắc FIFO:", xóa dòng cảnh báo AC 5 ở footer.
+    - Truyền kèm `customerCode` và `customerName` lên API `createPayment`.
+  - `src/components/receipt-print-template.tsx`:
+    - Tiêu đề modal đổi thành: **"In Phiếu Thu Tiền"** (loại bỏ chữ *(Biên Lai)*).
+    - Chuẩn hóa mã đại lý: thay thế chuỗi mã hóa UUID thô (`55555555-0000-0000-0000-000000000002`) thành mã đại lý thân thiện `(DL-0002)`, làm sạch cả phần ghi chú chứng từ.
+  - `src/types/payment.ts`: Bổ sung `customerCode` và `customerName` vào `CreatePaymentPayload`.
+- **Trạng thái kiểm thử:**
+  - Frontend Build: `npm run build` (`tsc -b && vite build`) -> 0 lỗi, compile thành công 100%.
+
+

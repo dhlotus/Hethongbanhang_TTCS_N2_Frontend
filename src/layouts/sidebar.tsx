@@ -191,6 +191,11 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
                   item.path === '/catalog/products'
                     ? location.pathname === '/catalog/products' ||
                       location.pathname.startsWith('/catalog/categories')
+                    : item.path === '/inventory/issues'
+                    ? location.pathname === '/inventory/issues' ||
+                      location.pathname.startsWith('/inventory/issues/') ||
+                      location.pathname.startsWith('/inventory/shipments') ||
+                      location.pathname.startsWith('/issues')
                     : location.pathname === item.path ||
                       location.pathname.startsWith(item.path + '/');
 
