@@ -165,7 +165,9 @@ export const ShipmentsPage: React.FC = () => {
 
   const backordersCount = useMemo(() => {
     return allShipments.filter(
-      (s) => s.hasShortDelivery || (s.lines && s.lines.some((l) => l.remainingQuantity > 0)),
+      (s) =>
+        s.hasShortDelivery ||
+        (s.lines && s.lines.some((l) => (l.remainingQuantity || 0) > 0 || l.isShortDelivery)),
     ).length;
   }, [allShipments]);
 
@@ -492,15 +494,29 @@ export const ShipmentsPage: React.FC = () => {
   const fetchShipments = useCallback(async () => {
     try {
       setLoading(true);
+      const isBackorder = statusFilter === 'BACKORDERS';
       const res = await shipmentsService.getPaginatedShipments({
         page,
         limit,
         search: searchTerm || undefined,
-        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+        status: statusFilter !== 'ALL' && !isBackorder ? statusFilter : undefined,
+        hasShortDelivery: isBackorder ? true : undefined,
       });
-      setShipments(res.data || []);
-      setTotalItems(res.total ?? (res.data ? res.data.length : 0));
-      setTotalPages(res.totalPages || Math.max(1, Math.ceil((res.total || 0) / limit)));
+      let data = res.data || [];
+      if (isBackorder) {
+        data = data.filter(
+          (s) =>
+            s.hasShortDelivery ||
+            (s.lines && s.lines.some((l) => (l.remainingQuantity || 0) > 0 || l.isShortDelivery))
+        );
+      }
+      setShipments(data);
+      setTotalItems(isBackorder ? data.length : res.total ?? (res.data ? res.data.length : 0));
+      setTotalPages(
+        isBackorder
+          ? Math.max(1, Math.ceil(data.length / limit))
+          : res.totalPages || Math.max(1, Math.ceil((res.total || 0) / limit))
+      );
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       showToast('error', msg || 'Không thể tải danh sách phiếu xuất kho');
