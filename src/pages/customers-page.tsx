@@ -21,7 +21,6 @@ import {
   Trash2,
   Tag,
   ArrowRightLeft,
-  ArrowLeft,
   History,
   Pencil,
   ChevronDown,
@@ -240,8 +239,8 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
   // Quản lý Tab: 'list' (Danh sách đại lý) | 'create' (Thêm đại lý mới dạng Tab)
   const initialTab =
     searchParams.get('tab') === 'create' ||
-    defaultTab === 'create' ||
-    location.pathname.endsWith('/create')
+      defaultTab === 'create' ||
+      location.pathname.endsWith('/create')
       ? 'create'
       : 'list';
   const [activeTab, setActiveTab] = useState<'list' | 'create'>(initialTab);
@@ -298,6 +297,7 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
       receiverName: '',
       salesRepId: '',
     });
+    setCreditLimitDisplay('50.000.000');
     setFormErrors({});
     setFormBannerError(null);
     if (location.pathname.endsWith('/create')) {
@@ -353,6 +353,23 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
     receiverName: '',
     salesRepId: '',
   });
+
+  // Hiển thị và tự động thêm dấu chấm phân tách hàng nghìn cho ô hạn mức tín dụng (VD: 50.000.000)
+  const [creditLimitDisplay, setCreditLimitDisplay] = useState<string>('50.000.000');
+
+  const handleCreditLimitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    if (!raw) {
+      setCreditLimitDisplay('');
+      setFormData((prev) => ({ ...prev, creditLimit: 0 }));
+      return;
+    }
+    const cleanNumStr = raw.replace(/^0+/, '') || '0';
+    const num = parseInt(cleanNumStr, 10);
+    const formatted = cleanNumStr.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    setCreditLimitDisplay(formatted);
+    setFormData((prev) => ({ ...prev, creditLimit: num }));
+  };
 
   // Đồng bộ hóa URL Search Params an toàn, giữ nguyên các param khác và không reload trang
   const updateUrlParams = useCallback(
@@ -906,6 +923,7 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
         receiverName: '',
         salesRepId: '',
       });
+      setCreditLimitDisplay('50.000.000');
       setFormErrors({});
       setFormBannerError(null);
       handleSwitchToList();
@@ -1063,8 +1081,8 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
     const rawRoles: string[] = Array.isArray(currentUser?.roles)
       ? currentUser.roles
       : currentUser?.role
-      ? [currentUser.role]
-      : [];
+        ? [currentUser.role]
+        : [];
     const userRoles = rawRoles.map((r) => r.toUpperCase());
 
     const canEditCreditLimit =
@@ -1114,8 +1132,8 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
         err && typeof err === 'object' && 'response' in err
           ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Lỗi cập nhật hạn mức.')
           : err instanceof Error
-          ? err.message
-          : 'Không thể cập nhật hạn mức công nợ.';
+            ? err.message
+            : 'Không thể cập nhật hạn mức công nợ.';
       showToast('error', 'Lỗi cập nhật hạn mức', String(errMsg));
       throw err;
     } finally {
@@ -1152,11 +1170,10 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
           <button
             type="button"
             onClick={handleSwitchToList}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer select-none ${
-              activeTab === 'list'
-                ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-900/5 -translate-y-0.5'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer select-none ${activeTab === 'list'
+              ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-900/5 -translate-y-0.5'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+              }`}
           >
             <Building2 className={`h-4 w-4 transition-transform duration-200 ${activeTab === 'list' ? 'text-indigo-600 scale-110' : 'text-slate-400'}`} />
             <span>Danh sách đại lý</span>
@@ -1165,11 +1182,10 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
           <button
             type="button"
             onClick={handleGoToCreateTab}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer select-none ${
-              activeTab === 'create'
-                ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-900/5 -translate-y-0.5'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer select-none ${activeTab === 'create'
+              ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-900/5 -translate-y-0.5'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+              }`}
           >
             <Plus className={`h-4 w-4 transition-transform duration-200 ${activeTab === 'create' ? 'text-indigo-600 scale-110' : 'text-slate-400'}`} />
             <span>Thêm đại lý mới</span>
@@ -1182,35 +1198,15 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
           key="tab-create-customer"
           className="animate-in fade-in-0 zoom-in-99 slide-in-from-bottom-2 duration-200 ease-out w-full"
         >
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
-            {/* Header Form */}
-            <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-50/80 via-white to-indigo-50/30">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100/80 text-[var(--color-primary)] flex items-center justify-center shadow-2xs shrink-0">
-                  <Building2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <span>Thêm đại lý mới</span>
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200/60">
-                      Tạo mới
-                    </span>
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Dữ liệu sẽ đồng bộ ngay lập tức sang Quản lý đại lý, Bảng giá & Tạo đơn hàng B2B
-                  </p>
-                </div>
+          <div className="max-w-4xl mx-auto bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+            {/* Header Form tinh gọn: không nút quay lại, không tag tạo mới, không wrap text phụ */}
+            <div className="px-6 py-4.5 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <Building2 className="w-5 h-5" />
               </div>
-
-              <button
-                type="button"
-                onClick={handleSwitchToList}
-                disabled={submitting}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-all shadow-2xs cursor-pointer w-fit"
-              >
-                <ArrowLeft className="w-4 h-4 text-slate-500" />
-                <span>Quay lại danh sách</span>
-              </button>
+              <h2 className="text-base font-bold text-slate-900">
+                Thêm đại lý mới
+              </h2>
             </div>
 
             {/* Form Fields */}
@@ -1218,12 +1214,12 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
               id="create-customer-form"
               onSubmit={handleCreateCustomer}
               noValidate
-              className="p-6 sm:p-8 space-y-6"
+              className="p-5 sm:p-7 space-y-6"
             >
-              {/* Thông báo lỗi tổng quan */}
+              {/* Thông báo lỗi tổng quan nếu có */}
               {formBannerError && (
-                <div className="p-4 rounded-xl bg-rose-50 border border-rose-200/80 text-rose-800 text-xs sm:text-sm flex items-start gap-3 animate-in fade-in duration-200">
-                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200/80 text-rose-800 text-xs sm:text-sm flex items-start gap-2.5 animate-in fade-in duration-200">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <span className="font-semibold block text-rose-900 mb-0.5">Thông tin chưa hợp lệ</span>
                     <span className="text-rose-700 leading-relaxed">{formBannerError}</span>
@@ -1231,19 +1227,16 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
                 </div>
               )}
 
-              {/* Phần 1: Thông tin pháp lý & Nhận diện */}
+              {/* Nhóm 1: Thông tin đại lý & Pháp lý */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                  <div className="w-2 h-2 rounded-full bg-blue-600" />
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider">
-                    1. Thông tin pháp lý & Nhận diện đại lý
-                  </h3>
-                </div>
+                <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">
+                  Thông tin đại lý & Pháp lý
+                </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4.5">
+                <div className="space-y-4">
                   {/* Tên đại lý */}
-                  <div className="md:col-span-2 space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 mb-1.5 block">
                       Tên đại lý / Doanh nghiệp <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -1260,11 +1253,10 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
                           });
                         }
                       }}
-                      className={`w-full px-3.5 py-2.5 text-xs sm:text-sm border rounded-xl focus:outline-none transition-all shadow-2xs ${
-                        formErrors.name
-                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
-                          : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-white'
-                      }`}
+                      className={`w-full px-3.5 py-2.5 text-xs sm:text-sm border rounded-xl focus:outline-none transition-all shadow-2xs ${formErrors.name
+                        ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
+                        : 'border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white'
+                        }`}
                     />
                     {formErrors.name && (
                       <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
@@ -1274,345 +1266,314 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
                     )}
                   </div>
 
-                  {/* Mã đại lý: Tự động cấp */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-slate-700">
-                        Mã đại lý
-                      </label>
-                      <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60">
-                        Tự động sinh
-                      </span>
-                    </div>
-                    <input
-                      type="text"
-                      readOnly
-                      tabIndex={-1}
-                      value={formData.code ? formData.code : 'Hệ thống tự động cấp mã khi lưu'}
-                      placeholder="Hệ thống tự động cấp mã khi lưu"
-                      title="Mã đại lý do hệ thống tự động cấp khi tạo mới"
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl bg-slate-50 text-slate-500 font-mono select-none cursor-default focus:outline-none shadow-2xs"
-                    />
-                  </div>
-
-                  {/* Mã số thuế: 12 số */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Mã số thuế <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Nhập mã số thuế 12 chữ số (VD: 010987654321)"
-                      value={formData.taxCode}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setFormData((prev) => ({ ...prev, taxCode: val }));
-                        const warn = validateTaxCodeInput(val);
-                        setFormErrors((prev) => {
-                          const copy = { ...prev };
-                          if (warn) {
-                            copy.taxCode = warn;
-                          } else {
-                            delete copy.taxCode;
-                          }
-                          return copy;
-                        });
-                      }}
-                      className={`w-full px-3.5 py-2.5 text-xs sm:text-sm border rounded-xl focus:outline-none font-mono transition-all shadow-2xs ${
-                        formErrors.taxCode
-                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
-                          : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-white'
-                      }`}
-                    />
-                    {formErrors.taxCode && (
-                      <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
-                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                        <span>{formErrors.taxCode}</span>
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Phân nhóm đại lý */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Phân nhóm đại lý</label>
-                    <select
-                      value={formData.customerGroup}
-                      onChange={(e) => setFormData({ ...formData, customerGroup: e.target.value })}
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-white shadow-2xs cursor-pointer"
-                    >
-                      <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
-                      <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
-                      <option value="WHOLESALE">Bán buôn</option>
-                      <option value="RETAIL">Bán lẻ</option>
-                    </select>
-                  </div>
-
-                  {/* Người phụ trách */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Người phụ trách
-                    </label>
-                    <select
-                      value={formData.salesRepId || ''}
-                      onChange={(e) => setFormData({ ...formData, salesRepId: e.target.value })}
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-white shadow-2xs cursor-pointer"
-                    >
-                      {SALES_REPS.map((rep) => (
-                        <option key={rep.id} value={rep.id}>
-                          {rep.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Banner bảng giá áp dụng */}
-                  <div className="md:col-span-2 lg:col-span-3 p-3.5 rounded-xl border bg-blue-50/60 border-blue-100 flex items-start gap-2.5 text-xs sm:text-sm">
-                    <Tag className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  {/* Mã số thuế, Phân nhóm đại lý & Người phụ trách (Đã bỏ ô Mã đại lý và thẻ Bảng giá áp dụng) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                      <span className="font-semibold text-blue-900">
-                        Bảng giá áp dụng:{' '}
-                      </span>
-                      <span className="font-bold text-blue-700">
-                        {getPriceListInfo(formData.customerGroup || 'AGENT_LEVEL_2').title}
-                      </span>
-                      <span className="text-slate-500 ml-1.5">
-                        — {getPriceListInfo(formData.customerGroup || 'AGENT_LEVEL_2').desc}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Phần 2: Liên hệ & Tài khoản B2B */}
-              <div className="space-y-4 pt-2">
-                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                  <div className="w-2 h-2 rounded-full bg-emerald-600" />
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider">
-                    2. Liên hệ & Tài khoản Đại lý B2B
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4.5">
-                  {/* Số điện thoại */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Số điện thoại liên hệ <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      placeholder="VD: 0988776655"
-                      value={formData.phone}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setFormData((prev) => ({ ...prev, phone: val }));
-                        const warn = validatePhoneInput(val);
-                        setFormErrors((prev) => {
-                          const copy = { ...prev };
-                          if (warn) {
-                            copy.phone = warn;
-                          } else {
-                            delete copy.phone;
-                          }
-                          return copy;
-                        });
-                      }}
-                      className={`w-full px-3.5 py-2.5 text-xs sm:text-sm border rounded-xl focus:outline-none transition-all shadow-2xs ${
-                        formErrors.phone
-                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
-                          : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-white'
-                      }`}
-                    />
-                    {formErrors.phone && (
-                      <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
-                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                        <span>{formErrors.phone}</span>
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Email */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-slate-700">
-                        Email liên hệ <span className="text-rose-500">*</span>
+                      <label className="text-xs font-semibold text-slate-700 mb-1.5 block">
+                        Mã số thuế <span className="text-rose-500">*</span>
                       </label>
-                      <span className="text-[11px] font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200/60">
-                        Tự động cấp B2B
-                      </span>
+                      <input
+                        type="text"
+                        placeholder="Nhập 12 chữ số MST"
+                        value={formData.taxCode}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData((prev) => ({ ...prev, taxCode: val }));
+                          const warn = validateTaxCodeInput(val);
+                          setFormErrors((prev) => {
+                            const copy = { ...prev };
+                            if (warn) {
+                              copy.taxCode = warn;
+                            } else {
+                              delete copy.taxCode;
+                            }
+                            return copy;
+                          });
+                        }}
+                        className={`w-full px-3.5 py-2.5 text-xs sm:text-sm border rounded-xl focus:outline-none font-mono transition-all shadow-2xs ${formErrors.taxCode
+                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
+                          : 'border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white'
+                          }`}
+                      />
+                      {formErrors.taxCode && (
+                        <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{formErrors.taxCode}</span>
+                        </p>
+                      )}
                     </div>
-                    <input
-                      type="text"
-                      placeholder="VD: daily@gmail.com"
-                      value={formData.email}
-                      onChange={(e) => {
-                        setFormData({ ...formData, email: e.target.value });
-                        if (formErrors.email) {
-                          setFormErrors((prev) => {
-                            const copy = { ...prev };
-                            delete copy.email;
-                            return copy;
-                          });
-                        }
-                      }}
-                      className={`w-full px-3.5 py-2.5 text-xs sm:text-sm border rounded-xl focus:outline-none transition-all shadow-2xs ${
-                        formErrors.email
-                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
-                          : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-white'
-                      }`}
-                    />
-                    {formErrors.email && (
-                      <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
-                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                        <span>{formErrors.email}</span>
-                      </p>
-                    )}
-                  </div>
 
-                  {/* Khu vực */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Khu vực địa bàn</label>
-                    <select
-                      value={formData.region}
-                      onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-white shadow-2xs cursor-pointer"
-                    >
-                      <option value="Miền Nam">Miền Nam</option>
-                      <option value="Miền Trung">Miền Trung</option>
-                      <option value="Miền Bắc">Miền Bắc</option>
-                    </select>
-                  </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 mb-1.5 block">
+                        Phân nhóm đại lý
+                      </label>
+                      <select
+                        value={formData.customerGroup}
+                        onChange={(e) => setFormData({ ...formData, customerGroup: e.target.value })}
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white shadow-2xs cursor-pointer"
+                      >
+                        <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
+                        <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
+                        <option value="WHOLESALE">Bán buôn</option>
+                        <option value="RETAIL">Bán lẻ</option>
+                      </select>
+                    </div>
 
-                  {/* Địa chỉ trụ sở */}
-                  <div className="md:col-span-2 lg:col-span-3 space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Địa chỉ kinh doanh / trụ sở <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="VD: 123 Đường Nguyễn Trãi, Phường 2, Quận 5, TP.HCM"
-                      value={formData.address}
-                      onChange={(e) => {
-                        setFormData({ ...formData, address: e.target.value });
-                        if (formErrors.address) {
-                          setFormErrors((prev) => {
-                            const copy = { ...prev };
-                            delete copy.address;
-                            return copy;
-                          });
-                        }
-                      }}
-                      className={`w-full px-3.5 py-2.5 text-xs sm:text-sm border rounded-xl focus:outline-none transition-all shadow-2xs ${
-                        formErrors.address
-                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
-                          : 'border-slate-200 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-white'
-                      }`}
-                    />
-                    {formErrors.address && (
-                      <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
-                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                        <span>{formErrors.address}</span>
-                      </p>
-                    )}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 mb-1.5 block">
+                        Người phụ trách
+                      </label>
+                      <select
+                        value={formData.salesRepId || ''}
+                        onChange={(e) => setFormData({ ...formData, salesRepId: e.target.value })}
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white shadow-2xs cursor-pointer"
+                      >
+                        {SALES_REPS.map((rep) => (
+                          <option key={rep.id} value={rep.id}>
+                            {rep.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Phần 3: Chính sách tín dụng & Điểm giao ban đầu */}
+              {/* Nhóm 2: Thông tin liên hệ & Tài khoản B2B */}
               <div className="space-y-4 pt-2">
-                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                  <div className="w-2 h-2 rounded-full bg-amber-600" />
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider">
-                    3. Chính sách tín dụng & Điểm giao hàng mặc định
-                  </h3>
+                <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">
+                  Thông tin liên hệ & Tài khoản B2B
+                </h3>
+
+                <div className="space-y-4">
+                  {/* Số điện thoại & Email */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 mb-1.5 block">
+                        Số điện thoại <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="VD: 0988776655"
+                        value={formData.phone}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData((prev) => ({ ...prev, phone: val }));
+                          const warn = validatePhoneInput(val);
+                          setFormErrors((prev) => {
+                            const copy = { ...prev };
+                            if (warn) {
+                              copy.phone = warn;
+                            } else {
+                              delete copy.phone;
+                            }
+                            return copy;
+                          });
+                        }}
+                        className={`w-full px-3.5 py-2.5 text-xs sm:text-sm border rounded-xl focus:outline-none transition-all shadow-2xs ${formErrors.phone
+                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
+                          : 'border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white'
+                          }`}
+                      />
+                      {formErrors.phone && (
+                        <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{formErrors.phone}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 mb-1.5 block">
+                        Email<span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="VD: daily@gmail.com"
+                        value={formData.email}
+                        onChange={(e) => {
+                          setFormData({ ...formData, email: e.target.value });
+                          if (formErrors.email) {
+                            setFormErrors((prev) => {
+                              const copy = { ...prev };
+                              delete copy.email;
+                              return copy;
+                            });
+                          }
+                        }}
+                        className={`w-full px-3.5 py-2.5 text-xs sm:text-sm border rounded-xl focus:outline-none transition-all shadow-2xs ${formErrors.email
+                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
+                          : 'border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white'
+                          }`}
+                      />
+                      {formErrors.email && (
+                        <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{formErrors.email}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Địa chỉ trụ sở & Khu vực địa bàn */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="text-xs font-semibold text-slate-700 mb-1.5 block">
+                        Địa chỉ kinh doanh / trụ sở <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="VD: 123 Đường Nguyễn Trãi, Phường 2, Quận 5, TP.HCM"
+                        value={formData.address}
+                        onChange={(e) => {
+                          setFormData({ ...formData, address: e.target.value });
+                          if (formErrors.address) {
+                            setFormErrors((prev) => {
+                              const copy = { ...prev };
+                              delete copy.address;
+                              return copy;
+                            });
+                          }
+                        }}
+                        className={`w-full px-3.5 py-2.5 text-xs sm:text-sm border rounded-xl focus:outline-none transition-all shadow-2xs ${formErrors.address
+                          ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-200'
+                          : 'border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white'
+                          }`}
+                      />
+                      {formErrors.address && (
+                        <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{formErrors.address}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 mb-1.5 block">
+                        Khu vực địa bàn
+                      </label>
+                      <select
+                        value={formData.region}
+                        onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white shadow-2xs cursor-pointer"
+                      >
+                        <option value="Miền Nam">Miền Nam</option>
+                        <option value="Miền Trung">Miền Trung</option>
+                        <option value="Miền Bắc">Miền Bắc</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4.5">
-                  {/* Hạn mức tín dụng */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Hạn mức tín dụng (VNĐ)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1000000"
-                      value={formData.creditLimit}
-                      onChange={(e) =>
-                        setFormData({ ...formData, creditLimit: Number(e.target.value) })
-                      }
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-white shadow-2xs"
-                    />
+              {/* Nhóm 3: Chính sách công nợ & Điểm giao hàng */}
+              <div className="space-y-4 pt-2">
+                <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">
+                  Chính sách công nợ & Điểm giao hàng
+                </h3>
+
+                <div className="space-y-4">
+                  {/* Hạn mức tín dụng & Thời hạn nợ */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 mb-1.5 block">
+                        Hạn mức tín dụng
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="VD: 50.000.000"
+                          value={creditLimitDisplay}
+                          onChange={handleCreditLimitChange}
+                          className="w-full px-3.5 py-2.5 pr-14 text-xs sm:text-sm font-medium text-slate-900 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white shadow-2xs transition-all"
+                        />
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none select-none">
+                          VNĐ
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 mb-1.5 block">
+                        Thời hạn nợ tối đa
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          max="365"
+                          value={formData.maxDebtDays || 30}
+                          onChange={(e) =>
+                            setFormData({ ...formData, maxDebtDays: Number(e.target.value) })
+                          }
+                          className="w-full px-3.5 py-2.5 pr-14 text-xs sm:text-sm font-medium text-slate-900 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white shadow-2xs transition-all"
+                        />
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none select-none">
+                          ngày
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Thời hạn nợ tối đa */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Thời hạn nợ tối đa (ngày)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="365"
-                      value={formData.maxDebtDays || 30}
-                      onChange={(e) =>
-                        setFormData({ ...formData, maxDebtDays: Number(e.target.value) })
-                      }
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/15 bg-white shadow-2xs"
-                    />
-                  </div>
-
-                  {/* Điểm giao ban đầu */}
-                  <div className="md:col-span-2 lg:col-span-3 p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
+                  {/* Điểm giao hàng mặc định ban đầu */}
+                  <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-                      <MapPin className="w-3.5 h-3.5 text-[var(--color-primary)]" />
+                      <MapPin className="w-3.5 h-3.5 text-blue-600" />
                       <span>Điểm giao hàng mặc định ban đầu</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <input
-                        type="text"
-                        placeholder="Tên điểm giao (VD: Kho chính, Showroom)"
-                        value={formData.deliveryPointName}
-                        onChange={(e) =>
-                          setFormData({ ...formData, deliveryPointName: e.target.value })
-                        }
-                        className="px-3.5 py-2 text-xs border border-slate-200 rounded-lg bg-white shadow-2xs focus:outline-none focus:border-[var(--color-primary)]"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Người nhận (mặc định lấy theo tên đại lý)"
-                        value={formData.receiverName}
-                        onChange={(e) => setFormData({ ...formData, receiverName: e.target.value })}
-                        className="px-3.5 py-2 text-xs border border-slate-200 rounded-lg bg-white shadow-2xs focus:outline-none focus:border-[var(--color-primary)]"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-medium text-slate-600 mb-1 block">Tên điểm giao</label>
+                        <input
+                          type="text"
+                          placeholder="VD: Kho chính, Showroom..."
+                          value={formData.deliveryPointName}
+                          onChange={(e) =>
+                            setFormData({ ...formData, deliveryPointName: e.target.value })
+                          }
+                          className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white shadow-2xs focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-medium text-slate-600 mb-1 block">Người nhận hàng</label>
+                        <input
+                          type="text"
+                          placeholder="Mặc định lấy theo tên đại lý"
+                          value={formData.receiverName}
+                          onChange={(e) => setFormData({ ...formData, receiverName: e.target.value })}
+                          className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white shadow-2xs focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Footer Form Action Buttons */}
+              {/* Nút thao tác ở chân form: Hủy bỏ & Lưu */}
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={handleSwitchToList}
                   disabled={submitting}
-                  className="px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-2xs cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-2xs cursor-pointer disabled:opacity-50"
                 >
                   Hủy bỏ
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center gap-2 px-6 py-2.5 text-xs sm:text-sm font-semibold text-white bg-[var(--color-primary)] hover:opacity-90 rounded-xl shadow-xs transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                  className="flex items-center gap-2 px-6 py-2.5 text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.99] rounded-xl shadow-xs transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {submitting ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Đang lưu & Đồng bộ...</span>
+                      <span>Đang lưu...</span>
                     </>
                   ) : (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Lưu đại lý & Kích hoạt tài khoản</span>
+                      <span>Lưu & Kích hoạt tài khoản</span>
                     </>
                   )}
                 </button>
@@ -1622,478 +1583,463 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
         </div>
       ) : (
         <>
-      {/* ── THỐNG KÊ NHANH KPI (CARD-BASED UI) ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-blue-600 shrink-0">
-            <Building2 className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs text-slate-500 font-medium">Tổng số đại lý</p>
-            <p className="text-lg sm:text-xl font-bold text-slate-900">{stats.total}</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs text-slate-500 font-medium">Đang hoạt động</p>
-            <p className="text-lg sm:text-xl font-bold text-slate-900">{stats.active}</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-            <CreditCard className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 truncate">
-            <p className="text-xs text-slate-500 font-medium">Tổng hạn mức tín dụng</p>
-            <p className="text-base sm:text-lg font-bold text-slate-900 truncate">
-              {formatVnd(stats.totalCredit)}
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
-            <AlertCircle className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 truncate">
-            <p className="text-xs text-slate-500 font-medium">Tổng dư nợ hiện tại</p>
-            <p className="text-base sm:text-lg font-bold text-slate-900 truncate">
-              {formatVnd(stats.totalDebt)}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── THANH TÌM KIẾM & BỘ LỌC ĐA TIÊU CHÍ (SN-37) ── */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs space-y-3">
-        {/* Hàng 1: Ô tìm kiếm thông minh + Các nút hành động */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Ô input tìm kiếm & nút reset bộ lọc */}
-          <div className="flex items-center gap-2 flex-1 max-w-xl">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Tìm theo tên đại lý, mã hoặc số điện thoại..."
-                className="w-full pl-10 pr-9 py-2 text-xs font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-slate-50/60 hover:bg-white focus:bg-white transition-all placeholder-slate-400"
-              />
-              {searchInput && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchInput('');
-                    setSearchTerm('');
-                    setCurrentPage(1);
-                    updateUrlParams({ search: '', page: 1 });
-                    void loadCustomers({ search: '', page: 1 });
-                  }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
-                  title="Xóa từ khóa tìm kiếm"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
+          {/* ── THỐNG KÊ NHANH KPI (CARD-BASED UI) ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-blue-600 shrink-0">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500 font-medium">Tổng số đại lý</p>
+                <p className="text-lg sm:text-xl font-bold text-slate-900">{stats.total}</p>
+              </div>
             </div>
 
-            {/* Nút reset bộ lọc khi có điều kiện lọc đang kích hoạt */}
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-xl transition-all cursor-pointer shrink-0 shadow-2xs"
-                title="Đặt lại toàn bộ bộ lọc về mặc định"
-              >
-                <X className="w-3.5 h-3.5" />
-                <span>Xóa lọc</span>
-              </button>
-            )}
+            <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500 font-medium">Đang hoạt động</p>
+                <p className="text-lg sm:text-xl font-bold text-slate-900">{stats.active}</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 truncate">
+                <p className="text-xs text-slate-500 font-medium">Tổng hạn mức tín dụng</p>
+                <p className="text-base sm:text-lg font-bold text-slate-900 truncate">
+                  {formatVnd(stats.totalCredit)}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 truncate">
+                <p className="text-xs text-slate-500 font-medium">Tổng dư nợ hiện tại</p>
+                <p className="text-base sm:text-lg font-bold text-slate-900 truncate">
+                  {formatVnd(stats.totalDebt)}
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Nhóm nút hành động: Lịch sử, Chuyển giao địa bàn, Làm mới & Thêm đại lý mới */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0 sm:ml-auto">
-            {isManagerOrAdmin && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setIsHistoryModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-2xs cursor-pointer whitespace-nowrap"
-                  title="Xem lịch sử chuyển giao và phân công địa bàn (SN-35)"
-                >
-                  <History className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Lịch sử chuyển giao</span>
-                </button>
+          {/* ── THANH TÌM KIẾM & BỘ LỌC ĐA TIÊU CHÍ (SN-37) ── */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs space-y-3">
+            {/* Hàng 1: Ô tìm kiếm thông minh + Các nút hành động */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              {/* Ô input tìm kiếm & nút reset bộ lọc */}
+              <div className="flex items-center gap-2 flex-1 max-w-xl">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    placeholder="Tìm theo tên đại lý, mã hoặc số điện thoại..."
+                    className="w-full pl-10 pr-9 py-2 text-xs font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 bg-slate-50/60 hover:bg-white focus:bg-white transition-all placeholder-slate-400"
+                  />
+                  {searchInput && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchInput('');
+                        setSearchTerm('');
+                        setCurrentPage(1);
+                        updateUrlParams({ search: '', page: 1 });
+                        void loadCustomers({ search: '', page: 1 });
+                      }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
+                      title="Xóa từ khóa tìm kiếm"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
 
+                {/* Nút reset bộ lọc khi có điều kiện lọc đang kích hoạt */}
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-xl transition-all cursor-pointer shrink-0 shadow-2xs"
+                    title="Đặt lại toàn bộ bộ lọc về mặc định"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Xóa lọc</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Nhóm nút hành động: Lịch sử, Chuyển giao địa bàn, Làm mới & Thêm đại lý mới */}
+              <div className="flex flex-wrap items-center gap-2 shrink-0 sm:ml-auto">
+                {isManagerOrAdmin && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsHistoryModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-2xs cursor-pointer whitespace-nowrap"
+                      title="Xem lịch sử chuyển giao và phân công địa bàn (SN-35)"
+                    >
+                      <History className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Lịch sử chuyển giao</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsBulkTransferOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-all shadow-2xs cursor-pointer whitespace-nowrap"
+                      title="Chuyển giao địa bàn hàng loạt khi nhân sự nghỉ việc (SN-35)"
+                    >
+                      <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Chuyển giao địa bàn</span>
+                    </button>
+                  </>
+                )}
+
+              </div>
+            </div>
+
+            {/* Hàng 2: Grid 4 dropdown bộ lọc chia đều cân xứng, thẳng hàng tuyệt đối */}
+            <div className="pt-2.5 border-t border-slate-100 flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold shrink-0">
+                <Filter className="w-3.5 h-3.5 text-slate-400" />
+                <span className="hidden sm:inline">Bộ lọc:</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 flex-1">
+                {/* 1. Khu vực */}
+                <select
+                  value={selectedRegion}
+                  onChange={(e) => handleRegionChange(e.target.value)}
+                  aria-label="Lọc theo khu vực"
+                  className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
+                >
+                  <option value="ALL">Tất cả khu vực</option>
+                  <option value="Miền Nam">Miền Nam</option>
+                  <option value="Miền Trung">Miền Trung</option>
+                  <option value="Miền Bắc">Miền Bắc</option>
+                </select>
+
+                {/* 2. Phân nhóm */}
+                <select
+                  value={selectedGroup}
+                  onChange={(e) => handleGroupChange(e.target.value)}
+                  aria-label="Lọc theo nhóm đại lý"
+                  className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
+                >
+                  <option value="ALL">Tất cả phân nhóm</option>
+                  <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
+                  <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
+                  <option value="WHOLESALE">Bán buôn</option>
+                  <option value="RETAIL">Bán lẻ</option>
+                </select>
+
+                {/* 3. Người phụ trách */}
+                <select
+                  value={selectedSalesRep}
+                  onChange={(e) => handleSalesRepChange(e.target.value)}
+                  aria-label="Lọc theo người phụ trách"
+                  className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
+                >
+                  <option value="ALL">Tất cả người phụ trách</option>
+                  {SALES_REPS.filter((rep) => rep.id).map((rep) => (
+                    <option key={rep.id} value={rep.id}>
+                      {rep.shortName || rep.name}
+                    </option>
+                  ))}
+                  <option value="UNASSIGNED">Chưa phân công</option>
+                </select>
+
+                {/* 4. Trạng thái */}
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  aria-label="Lọc theo trạng thái hoạt động"
+                  className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
+                >
+                  <option value="ALL">Tất cả trạng thái</option>
+                  <option value="ACTIVE">Đang hoạt động</option>
+                  <option value="LOCKED">Tạm khóa giao dịch</option>
+                  <option value="INACTIVE">Ngừng hoạt động</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* ── BẢNG DANH SÁCH ĐẠI LÝ ── */}
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+            {loading ? (
+              <div className="py-16 text-center text-slate-400">
+                <RefreshCw className="w-7 h-7 animate-spin mx-auto mb-2 text-blue-600" />
+                <p className="text-sm font-medium">Đang tải danh sách đại lý...</p>
+              </div>
+            ) : customers.length === 0 ? (
+              <div className="py-16 text-center text-slate-400 space-y-3">
+                <Building2 className="w-10 h-10 mx-auto text-slate-300" />
+                <p className="text-sm font-medium">Không tìm thấy đại lý phù hợp với điều kiện lọc</p>
                 <button
                   type="button"
-                  onClick={() => setIsBulkTransferOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-all shadow-2xs cursor-pointer whitespace-nowrap"
-                  title="Chuyển giao địa bàn hàng loạt khi nhân sự nghỉ việc (SN-35)"
+                  onClick={handleResetFilters}
+                  className="text-xs text-blue-600 hover:underline font-medium cursor-pointer"
                 >
-                  <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Chuyển giao địa bàn</span>
+                  Xóa bộ lọc
                 </button>
+              </div>
+            ) : (
+              <>
+                {/* Desktop Table: Chuẩn 6 cột đồng bộ thiết kế Quản lý đơn hàng, không wrap dưới chân */}
+                <div className="overflow-x-auto min-h-[360px]">
+                  <table className="w-full min-w-[700px] text-sm divide-y divide-slate-100">
+                    <thead>
+                      <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left w-[15%]">Mã đại lý</th>
+                        <th className="px-4 py-3 text-left w-[35%]">Đại lý</th>
+                        <th className="px-4 py-3 text-left w-[15%]">Phân nhóm</th>
+                        <th className="px-4 py-3 text-right w-[15%]">Dư nợ hiện tại</th>
+                        <th className="px-4 py-3 text-center w-[10%]">Trạng thái</th>
+                        <th className="px-4 py-3 text-right w-[10%] min-w-[105px]">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody
+                      className={`divide-y divide-slate-100/90 transition-opacity duration-150 ${loading ? 'opacity-60 pointer-events-none' : 'opacity-100'
+                        }`}
+                    >
+                      {customers.map((customer) => {
+                        const isOverLimit =
+                          (customer.creditLimit || 0) > 0 &&
+                          (customer.currentDebt || 0) > (customer.creditLimit || 0);
+
+                        return (
+                          <tr key={customer.id} className="hover:bg-indigo-50/25 transition-colors group">
+                            {/* 1. Mã đại lý: Interactive monospace badge */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/sales/customers/${customer.id}`)}
+                                className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200/60 px-2.5 py-1 rounded-md transition-all cursor-pointer shadow-2xs group-hover:border-indigo-300"
+                                title={`Xem chi tiết đại lý ${customer.code}`}
+                              >
+                                <Building2 className="w-3 h-3 text-indigo-500 group-hover:text-indigo-700 transition-colors" />
+                                <span>{customer.code}</span>
+                              </button>
+                            </td>
+
+                            {/* 2. Tên đại lý: Typography sạch đẹp, 1 dòng, click xem chi tiết */}
+                            <td className="px-4 py-3.5">
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/sales/customers/${customer.id}`)}
+                                className="text-left font-semibold text-slate-800 hover:text-indigo-600 transition-colors line-clamp-1 text-sm cursor-pointer block max-w-full"
+                                title={customer.name}
+                              >
+                                {customer.name}
+                              </button>
+                              {(() => {
+                                const rawRep = customer.salesRepName || customer.salesRep?.name;
+                                const cleanRep = rawRep ? rawRep.replace(/\s*\([^)]*\)/g, '').trim() : null;
+                                return cleanRep ? (
+                                  <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-1">
+                                    <UserCheck className="w-3 h-3 text-slate-400 shrink-0" />
+                                    <span>Phụ trách: {cleanRep}</span>
+                                  </div>
+                                ) : null;
+                              })()}
+                            </td>
+
+                            {/* 3. Phân nhóm: Pill badge tinh tế, không wrap người phụ trách */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${customer.customerGroup === 'AGENT_LEVEL_1'
+                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200/60'
+                                  : customer.customerGroup === 'AGENT_LEVEL_2'
+                                    ? 'bg-sky-50 text-sky-700 border-sky-200/60'
+                                    : customer.customerGroup === 'WHOLESALE'
+                                      ? 'bg-teal-50 text-teal-700 border-teal-200/60'
+                                      : 'bg-amber-50 text-amber-700 border-amber-200/60'
+                                  }`}
+                              >
+                                {getGroupLabel(customer.customerGroup)}
+                              </span>
+                            </td>
+
+                            {/* 4. Dư nợ hiện tại: Số tiền tabular-nums rõ ràng */}
+                            <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                              <span
+                                className={`font-bold tabular-nums text-sm ${isOverLimit ? 'text-rose-600' : 'text-slate-900'
+                                  }`}
+                              >
+                                {formatVnd(customer.currentDebt || 0)}
+                              </span>
+                            </td>
+
+                            {/* 5. Trạng thái: Pill badge bo tròn đồng bộ kèm Cờ cảnh báo công nợ (SN-204) */}
+                            <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                              <div className="inline-flex flex-col items-center gap-1">
+                                {customer.status === 'LOCKED' ? (
+                                  <span
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200/60"
+                                    title={`Lý do khóa: ${customer.lockReason || 'Không xác định'}`}
+                                  >
+                                    <Lock className="w-3 h-3 text-rose-500" />
+                                    <span>Khóa giao dịch</span>
+                                  </span>
+                                ) : customer.status === 'ACTIVE' ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                    <span>Hoạt động</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200/60">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                    <span>Tạm dừng</span>
+                                  </span>
+                                )}
+                                <AgencyFlagBadge
+                                  agencyId={customer.id}
+                                  size="sm"
+                                  hideIfClear={true}
+                                />
+                              </div>
+                            </td>
+
+
+                            {/* 6. Thao tác */}
+                            <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                              <div className="relative inline-flex items-center justify-end customer-action-dropdown-container">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (openActionMenuId === customer.id) {
+                                      setOpenActionMenuId(null);
+                                      setActionMenuAnchor(null);
+                                    } else {
+                                      const rect = e.currentTarget.getBoundingClientRect();
+                                      const spaceBelow = window.innerHeight - rect.bottom;
+                                      const shouldDropUp = spaceBelow < 280 && rect.top > 280;
+                                      setActionMenuAnchor({
+                                        top: shouldDropUp ? rect.top - 4 : rect.bottom + 4,
+                                        right: window.innerWidth - rect.right,
+                                        isDropUp: shouldDropUp,
+                                      });
+                                      setOpenActionMenuId(customer.id ?? null);
+                                    }
+                                  }}
+                                  className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none whitespace-nowrap shrink-0 ${openActionMenuId === customer.id
+                                    ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs ring-2 ring-indigo-500/10'
+                                    : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300'
+                                    }`}
+                                  title="Thao tác"
+                                >
+                                  <span className="whitespace-nowrap">Thao tác</span>
+                                  <ChevronDown
+                                    className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${openActionMenuId === customer.id ? 'rotate-180 text-indigo-600' : ''
+                                      }`}
+                                  />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Dropdown Menu Portal Thao tác: không bị tràn hay cắt bởi container */}
+                {openActionMenuId && actionMenuAnchor && typeof document !== 'undefined' && (() => {
+                  const customer = customers.find((c) => c.id === openActionMenuId);
+                  if (!customer) return null;
+                  return createPortal(
+                    <div
+                      className="customer-action-portal-menu fixed w-52 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-[9999] animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100"
+                      style={{
+                        top: actionMenuAnchor.isDropUp ? undefined : `${actionMenuAnchor.top}px`,
+                        bottom: actionMenuAnchor.isDropUp ? `${window.innerHeight - actionMenuAnchor.top}px` : undefined,
+                        right: `${actionMenuAnchor.right}px`,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="py-1">
+                        {/* 1. Xem chi tiết đại lý */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenActionMenuId(null);
+                            setActionMenuAnchor(null);
+                            navigate(`/sales/customers/${customer.id}`);
+                          }}
+                          className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                        >
+                          <Eye className="w-4 h-4 text-slate-400" />
+                          <span>Xem chi tiết</span>
+                        </button>
+
+                        {/* 2. Phân công NVKD phụ trách (SN-35) */}
+                        {isManagerOrAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenActionMenuId(null);
+                              setActionMenuAnchor(null);
+                              handleOpenAssignModal(customer);
+                            }}
+                            className="w-full text-left px-3.5 py-2 text-xs text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                          >
+                            <UserCheck className="w-4 h-4 text-indigo-600" />
+                            <span>Phân công phụ trách</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="py-1">
+                        {/* 3. Xóa đại lý */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenActionMenuId(null);
+                            setActionMenuAnchor(null);
+                            handleOpenDeleteModal(customer);
+                          }}
+                          className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                        >
+                          <Trash2 className="w-4 h-4 text-rose-500" />
+                          <span>Xóa đại lý</span>
+                        </button>
+                      </div>
+                    </div>,
+                    document.body
+                  );
+                })()}
+
+                {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN BẢNG (CHUẨN HÌNH 2) ── */}
+                {totalItems > 0 && (
+                  <Pagination
+                    variant="default"
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    pageSize={pageSize}
+                    pageSizeOptions={[10, 20, 50]}
+                    itemLabel="đại lý"
+                    showRecordRange={false}
+                    showFirstLast={false}
+                    onPageChange={(page) => handlePageChange(page)}
+                    onPageSizeChange={handlePageSizeChange}
+                  />
+                )}
               </>
             )}
-
-
-
-            <button
-              type="button"
-              onClick={handleGoToCreateTab}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.99] rounded-xl transition-all shadow-xs cursor-pointer whitespace-nowrap"
-            >
-              <Plus className="w-3.5 h-3.5 shrink-0" />
-              <span>Thêm đại lý mới</span>
-            </button>
           </div>
-        </div>
-
-        {/* Hàng 2: Grid 4 dropdown bộ lọc chia đều cân xứng, thẳng hàng tuyệt đối */}
-        <div className="pt-2.5 border-t border-slate-100 flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold shrink-0">
-            <Filter className="w-3.5 h-3.5 text-slate-400" />
-            <span className="hidden sm:inline">Bộ lọc:</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 flex-1">
-            {/* 1. Khu vực */}
-            <select
-              value={selectedRegion}
-              onChange={(e) => handleRegionChange(e.target.value)}
-              aria-label="Lọc theo khu vực"
-              className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
-            >
-              <option value="ALL">Tất cả khu vực</option>
-              <option value="Miền Nam">Miền Nam</option>
-              <option value="Miền Trung">Miền Trung</option>
-              <option value="Miền Bắc">Miền Bắc</option>
-            </select>
-
-            {/* 2. Phân nhóm */}
-            <select
-              value={selectedGroup}
-              onChange={(e) => handleGroupChange(e.target.value)}
-              aria-label="Lọc theo nhóm đại lý"
-              className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
-            >
-              <option value="ALL">Tất cả phân nhóm</option>
-              <option value="AGENT_LEVEL_1">Đại lý Cấp 1</option>
-              <option value="AGENT_LEVEL_2">Đại lý Cấp 2</option>
-              <option value="WHOLESALE">Bán buôn</option>
-              <option value="RETAIL">Bán lẻ</option>
-            </select>
-
-            {/* 3. Người phụ trách */}
-            <select
-              value={selectedSalesRep}
-              onChange={(e) => handleSalesRepChange(e.target.value)}
-              aria-label="Lọc theo người phụ trách"
-              className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
-            >
-              <option value="ALL">Tất cả người phụ trách</option>
-              {SALES_REPS.filter((rep) => rep.id).map((rep) => (
-                <option key={rep.id} value={rep.id}>
-                  {rep.shortName || rep.name}
-                </option>
-              ))}
-              <option value="UNASSIGNED">Chưa phân công</option>
-            </select>
-
-            {/* 4. Trạng thái */}
-            <select
-              value={selectedStatus}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              aria-label="Lọc theo trạng thái hoạt động"
-              className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-[var(--color-primary)] cursor-pointer transition-all truncate shadow-2xs"
-            >
-              <option value="ALL">Tất cả trạng thái</option>
-              <option value="ACTIVE">Đang hoạt động</option>
-              <option value="LOCKED">Tạm khóa giao dịch</option>
-              <option value="INACTIVE">Ngừng hoạt động</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* ── BẢNG DANH SÁCH ĐẠI LÝ ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-        {loading ? (
-          <div className="py-16 text-center text-slate-400">
-            <RefreshCw className="w-7 h-7 animate-spin mx-auto mb-2 text-blue-600" />
-            <p className="text-sm font-medium">Đang tải danh sách đại lý...</p>
-          </div>
-        ) : customers.length === 0 ? (
-          <div className="py-16 text-center text-slate-400 space-y-3">
-            <Building2 className="w-10 h-10 mx-auto text-slate-300" />
-            <p className="text-sm font-medium">Không tìm thấy đại lý phù hợp với điều kiện lọc</p>
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="text-xs text-blue-600 hover:underline font-medium cursor-pointer"
-            >
-              Xóa bộ lọc
-            </button>
-          </div>
-        ) : (
-          <>
-            {/* Desktop Table: Chuẩn 6 cột đồng bộ thiết kế Quản lý đơn hàng, không wrap dưới chân */}
-            <div className="overflow-x-auto min-h-[360px]">
-              <table className="w-full min-w-[700px] text-sm divide-y divide-slate-100">
-                <thead>
-                  <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="px-4 py-3 text-left w-[15%]">Mã đại lý</th>
-                    <th className="px-4 py-3 text-left w-[35%]">Đại lý</th>
-                    <th className="px-4 py-3 text-left w-[15%]">Phân nhóm</th>
-                    <th className="px-4 py-3 text-right w-[15%]">Dư nợ hiện tại</th>
-                    <th className="px-4 py-3 text-center w-[10%]">Trạng thái</th>
-                    <th className="px-4 py-3 text-right w-[10%] min-w-[105px]">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody
-                  className={`divide-y divide-slate-100/90 transition-opacity duration-150 ${
-                    loading ? 'opacity-60 pointer-events-none' : 'opacity-100'
-                  }`}
-                >
-                  {customers.map((customer) => {
-                    const isOverLimit =
-                      (customer.creditLimit || 0) > 0 &&
-                      (customer.currentDebt || 0) > (customer.creditLimit || 0);
-
-                    return (
-                      <tr key={customer.id} className="hover:bg-indigo-50/25 transition-colors group">
-                        {/* 1. Mã đại lý: Interactive monospace badge */}
-                        <td className="px-4 py-3.5 whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/sales/customers/${customer.id}`)}
-                            className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200/60 px-2.5 py-1 rounded-md transition-all cursor-pointer shadow-2xs group-hover:border-indigo-300"
-                            title={`Xem chi tiết đại lý ${customer.code}`}
-                          >
-                            <Building2 className="w-3 h-3 text-indigo-500 group-hover:text-indigo-700 transition-colors" />
-                            <span>{customer.code}</span>
-                          </button>
-                        </td>
-
-                        {/* 2. Tên đại lý: Typography sạch đẹp, 1 dòng, click xem chi tiết */}
-                        <td className="px-4 py-3.5">
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/sales/customers/${customer.id}`)}
-                            className="text-left font-semibold text-slate-800 hover:text-indigo-600 transition-colors line-clamp-1 text-sm cursor-pointer block max-w-full"
-                            title={customer.name}
-                          >
-                            {customer.name}
-                          </button>
-                          {(() => {
-                            const rawRep = customer.salesRepName || customer.salesRep?.name;
-                            const cleanRep = rawRep ? rawRep.replace(/\s*\([^)]*\)/g, '').trim() : null;
-                            return cleanRep ? (
-                              <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-1">
-                                <UserCheck className="w-3 h-3 text-slate-400 shrink-0" />
-                                <span>Phụ trách: {cleanRep}</span>
-                              </div>
-                            ) : null;
-                          })()}
-                        </td>
-
-                        {/* 3. Phân nhóm: Pill badge tinh tế, không wrap người phụ trách */}
-                        <td className="px-4 py-3.5 whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${
-                              customer.customerGroup === 'AGENT_LEVEL_1'
-                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200/60'
-                                : customer.customerGroup === 'AGENT_LEVEL_2'
-                                ? 'bg-sky-50 text-sky-700 border-sky-200/60'
-                                : customer.customerGroup === 'WHOLESALE'
-                                ? 'bg-teal-50 text-teal-700 border-teal-200/60'
-                                : 'bg-amber-50 text-amber-700 border-amber-200/60'
-                            }`}
-                          >
-                            {getGroupLabel(customer.customerGroup)}
-                          </span>
-                        </td>
-
-                        {/* 4. Dư nợ hiện tại: Số tiền tabular-nums rõ ràng */}
-                        <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                          <span
-                            className={`font-bold tabular-nums text-sm ${
-                              isOverLimit ? 'text-rose-600' : 'text-slate-900'
-                            }`}
-                          >
-                            {formatVnd(customer.currentDebt || 0)}
-                          </span>
-                        </td>
-
-                        {/* 5. Trạng thái: Pill badge bo tròn đồng bộ kèm Cờ cảnh báo công nợ (SN-204) */}
-                        <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                          <div className="inline-flex flex-col items-center gap-1">
-                            {customer.status === 'LOCKED' ? (
-                              <span
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200/60"
-                                title={`Lý do khóa: ${customer.lockReason || 'Không xác định'}`}
-                              >
-                                <Lock className="w-3 h-3 text-rose-500" />
-                                <span>Khóa giao dịch</span>
-                              </span>
-                            ) : customer.status === 'ACTIVE' ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                <span>Hoạt động</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200/60">
-                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                                <span>Tạm dừng</span>
-                              </span>
-                            )}
-                            <AgencyFlagBadge
-                              agencyId={customer.id}
-                              size="sm"
-                              hideIfClear={true}
-                            />
-                          </div>
-                        </td>
-
-
-                        {/* 6. Thao tác */}
-                        <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                          <div className="relative inline-flex items-center justify-end customer-action-dropdown-container">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (openActionMenuId === customer.id) {
-                                  setOpenActionMenuId(null);
-                                  setActionMenuAnchor(null);
-                                } else {
-                                  const rect = e.currentTarget.getBoundingClientRect();
-                                  const spaceBelow = window.innerHeight - rect.bottom;
-                                  const shouldDropUp = spaceBelow < 280 && rect.top > 280;
-                                  setActionMenuAnchor({
-                                    top: shouldDropUp ? rect.top - 4 : rect.bottom + 4,
-                                    right: window.innerWidth - rect.right,
-                                    isDropUp: shouldDropUp,
-                                  });
-                                  setOpenActionMenuId(customer.id ?? null);
-                                }
-                              }}
-                              className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none whitespace-nowrap shrink-0 ${
-                                openActionMenuId === customer.id
-                                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs ring-2 ring-indigo-500/10'
-                                  : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300'
-                              }`}
-                              title="Thao tác"
-                            >
-                              <span className="whitespace-nowrap">Thao tác</span>
-                              <ChevronDown
-                                className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${
-                                  openActionMenuId === customer.id ? 'rotate-180 text-indigo-600' : ''
-                                }`}
-                              />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Dropdown Menu Portal Thao tác: không bị tràn hay cắt bởi container */}
-            {openActionMenuId && actionMenuAnchor && typeof document !== 'undefined' && (() => {
-              const customer = customers.find((c) => c.id === openActionMenuId);
-              if (!customer) return null;
-              return createPortal(
-                <div
-                  className="customer-action-portal-menu fixed w-52 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-[9999] animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100"
-                  style={{
-                    top: actionMenuAnchor.isDropUp ? undefined : `${actionMenuAnchor.top}px`,
-                    bottom: actionMenuAnchor.isDropUp ? `${window.innerHeight - actionMenuAnchor.top}px` : undefined,
-                    right: `${actionMenuAnchor.right}px`,
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="py-1">
-                    {/* 1. Xem chi tiết đại lý */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenActionMenuId(null);
-                        setActionMenuAnchor(null);
-                        navigate(`/sales/customers/${customer.id}`);
-                      }}
-                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
-                    >
-                      <Eye className="w-4 h-4 text-slate-400" />
-                      <span>Xem chi tiết</span>
-                    </button>
-
-                    {/* 2. Phân công NVKD phụ trách (SN-35) */}
-                    {isManagerOrAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenActionMenuId(null);
-                          setActionMenuAnchor(null);
-                          handleOpenAssignModal(customer);
-                        }}
-                        className="w-full text-left px-3.5 py-2 text-xs text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
-                      >
-                        <UserCheck className="w-4 h-4 text-indigo-600" />
-                        <span>Phân công phụ trách</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="py-1">
-                    {/* 3. Xóa đại lý */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenActionMenuId(null);
-                        setActionMenuAnchor(null);
-                        handleOpenDeleteModal(customer);
-                      }}
-                      className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
-                    >
-                      <Trash2 className="w-4 h-4 text-rose-500" />
-                      <span>Xóa đại lý</span>
-                    </button>
-                  </div>
-                </div>,
-                document.body
-              );
-            })()}
-
-          {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN BẢNG (CHUẨN HÌNH 2) ── */}
-          {totalItems > 0 && (
-            <Pagination
-              variant="default"
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={totalItems}
-              pageSize={pageSize}
-              pageSizeOptions={[10, 20, 50]}
-              itemLabel="đại lý"
-              showRecordRange={false}
-              showFirstLast={false}
-              onPageChange={(page) => handlePageChange(page)}
-              onPageSizeChange={handlePageSizeChange}
-            />
-          )}
         </>
       )}
-    </div>
-  </>
-)}
 
       {/* ── MODAL QUẢN LÝ ĐIỂM GIAO HÀNG CỦA ĐẠI LÝ (SN-31 & SN-32) ── */}
       {selectedCustomerForDelivery && isDeliveryModalOpen && (
@@ -2126,11 +2072,10 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
               <div className="p-5 space-y-4">
                 <div className="flex items-center gap-3">
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      (deleteModalCustomer.currentDebt || 0) > 0
-                        ? 'bg-amber-100 text-amber-600'
-                        : 'bg-rose-100 text-rose-600'
-                    }`}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${(deleteModalCustomer.currentDebt || 0) > 0
+                      ? 'bg-amber-100 text-amber-600'
+                      : 'bg-rose-100 text-rose-600'
+                      }`}
                   >
                     {(deleteModalCustomer.currentDebt || 0) > 0 ? (
                       <AlertCircle className="w-5 h-5" />
@@ -2301,13 +2246,12 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
                         {viewCustomer.code}
                       </span>
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          viewCustomer.customerGroup === 'AGENT_LEVEL_1'
-                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
-                            : viewCustomer.customerGroup === 'AGENT_LEVEL_2'
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${viewCustomer.customerGroup === 'AGENT_LEVEL_1'
+                          ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                          : viewCustomer.customerGroup === 'AGENT_LEVEL_2'
                             ? 'bg-sky-50 text-sky-700 border border-sky-100'
                             : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                        }`}
+                          }`}
                       >
                         {getGroupLabel(viewCustomer.customerGroup)}
                       </span>
@@ -2387,12 +2331,11 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
                     <div className="bg-white p-3 rounded-lg border border-slate-200/60 shadow-2xs">
                       <span className="text-[11px] text-slate-400 font-medium block">Dư nợ hiện tại</span>
                       <span
-                        className={`text-sm font-bold tabular-nums ${
-                          (viewCustomer.currentDebt || 0) > (viewCustomer.creditLimit || 0) &&
+                        className={`text-sm font-bold tabular-nums ${(viewCustomer.currentDebt || 0) > (viewCustomer.creditLimit || 0) &&
                           (viewCustomer.creditLimit || 0) > 0
-                            ? 'text-rose-600'
-                            : 'text-slate-900'
-                        }`}
+                          ? 'text-rose-600'
+                          : 'text-slate-900'
+                          }`}
                       >
                         {formatVnd(viewCustomer.currentDebt || 0)}
                       </span>
@@ -2424,8 +2367,8 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ defaultTab = 'list
                         isOver || rawPct >= 90
                           ? 'bg-rose-500'
                           : rawPct >= 70
-                          ? 'bg-amber-500'
-                          : 'bg-emerald-500';
+                            ? 'bg-amber-500'
+                            : 'bg-emerald-500';
                       return (
                         <div className="space-y-1.5 pt-1">
                           <div className="flex justify-between text-xs">
