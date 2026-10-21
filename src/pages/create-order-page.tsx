@@ -1347,7 +1347,7 @@ export const CreateOrderPage: React.FC = () => {
       </div>
 
       {/* ── BỐ CỤC HÀNG DỌC LIỀN MẠCH (VERTICAL SINGLE-COLUMN FLOW) ── */}
-      <div className="space-y-6">
+      <div className={`space-y-6 ${lines.length > 0 ? 'pb-36 sm:pb-28' : 'pb-6'}`}>
 
         {/* ================================================================= */}
         {/* KHỐI 1: THÔNG TIN ĐẠI LÝ & GIAO HÀNG (FULL-WIDTH CARD)           */}

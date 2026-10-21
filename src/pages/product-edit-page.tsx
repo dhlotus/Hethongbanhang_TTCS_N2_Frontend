@@ -467,11 +467,10 @@ export const ProductEditPage: React.FC = () => {
                           key={u}
                           type="button"
                           onClick={() => setBaseUnit(u)}
-                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border transition-all cursor-pointer ${
-                            baseUnit.toLowerCase() === u.toLowerCase()
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border transition-all cursor-pointer ${baseUnit.toLowerCase() === u.toLowerCase()
                               ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                          }`}
+                            }`}
                         >
                           {u}
                         </button>

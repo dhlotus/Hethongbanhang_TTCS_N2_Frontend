@@ -75,7 +75,7 @@ export const AdminLayout: React.FC = () => {
       style={{
         '--sidebar-width': isSidebarCollapsed ? '5rem' : '18.25rem',
       } as React.CSSProperties}
-      className="flex h-screen w-full overflow-hidden bg-slate-50/70 font-sans antialiased text-slate-900"
+      className="flex h-screen h-[100dvh] w-full overflow-hidden bg-slate-50/70 font-sans antialiased text-slate-900"
     >
       {/* 1. Sidebar điều hướng liền mạch chuẩn Enterprise B2B */}
       <Sidebar
@@ -91,8 +91,8 @@ export const AdminLayout: React.FC = () => {
         <Header onToggleMobileMenu={handleToggleMobileMenu} />
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto min-h-0 px-3 py-4 sm:px-6 sm:py-6 lg:px-8 xl:px-10">
-          <div className="mx-auto w-full max-w-7xl page-transition min-w-0">
+        <main className="flex-1 overflow-y-auto min-h-0 px-2 py-3 sm:px-4 sm:py-4 lg:px-6">
+          <div className="mx-auto w-full max-w-[1800px] page-transition min-w-0">
             <Outlet />
           </div>
         </main>

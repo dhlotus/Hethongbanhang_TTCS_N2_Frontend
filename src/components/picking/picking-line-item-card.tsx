@@ -10,17 +10,28 @@ import {
   ChevronUp,
   Layers,
   FileText,
-  Sparkles,
   AlertTriangle,
 } from 'lucide-react';
-import type { PickingLineItem } from '../../types/order-picking.types';
+import {
+  SHORT_PICK_REASONS,
+  type PickingLineItem,
+} from '../../types/order-picking.types';
+
+export const formatZoneName = (zone?: string): string => {
+  if (!zone) return 'Khu chung';
+  const z = zone.toUpperCase().trim();
+  if (z === 'KHU_KHO' || z === 'KHO_KHO') return 'Kho khô';
+  if (z === 'KHU_MAT' || z === 'KHO_MAT') return 'Kho mát';
+  if (z === 'KHU_LANH' || z === 'KHO_LANH') return 'Kho lạnh';
+  if (z === 'DEFAULT') return 'Khu lưu trữ';
+  return zone;
+};
 
 export interface PickingLineItemCardProps {
   item: PickingLineItem;
   onQuickPickAll: (itemId: string) => void;
   onRequestShortPickReason: (item: PickingLineItem, pickedQty: number) => void;
   onUpdateQuantityDirect: (itemId: string, pickedQty: number) => void;
-  onOpenFefoSelector?: (item: PickingLineItem) => void;
 }
 
 export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
@@ -28,7 +39,6 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
   onQuickPickAll,
   onRequestShortPickReason,
   onUpdateQuantityDirect,
-  onOpenFefoSelector,
 }) => {
   const [showOrderBreakdown, setShowOrderBreakdown] = useState(false);
   const [inputVal, setInputVal] = useState<string>(String(item.totalPickedQuantity));
@@ -93,15 +103,25 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
       <div className="px-4 py-2.5 bg-slate-50/80 border-b border-slate-200/80 flex items-center justify-between flex-wrap gap-2 text-xs">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="px-2 py-0.5 rounded-md bg-slate-800 text-white font-mono font-bold text-[11px]">
-            Đơn {item.stepNumber}
+            Bước {item.stepNumber}
           </span>
-          <div className="flex items-center gap-1.5 font-mono font-bold text-slate-900 bg-white border border-slate-200/90 px-2.5 py-1 rounded-md text-xs sm:text-sm shadow-2xs">
-            <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-            <span className="tracking-wide">{item.location.formattedCode}</span>
-          </div>
-          <span className="text-[11px] text-slate-500 font-medium hidden md:inline-flex items-center gap-1">
-            Khu: <strong className="text-slate-700">{item.location.zone}</strong> • Dãy: <strong className="text-slate-700">{item.location.aisle}</strong> • Kệ: <strong className="text-slate-700">{item.location.rack}</strong> • Tầng: <strong className="text-slate-700">{item.location.shelf}</strong> • Ô: <strong className="text-slate-700">{item.location.bin}</strong>
-          </span>
+          {item.location.isConfigured === false || item.location.formattedCode === 'Chưa cấu hình' ? (
+            <div className="flex items-center gap-1.5 font-bold text-amber-800 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-md text-xs sm:text-sm shadow-2xs">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>Chưa cấu hình vị trí - Cần bổ sung</span>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-1.5 font-medium text-slate-900 bg-white border border-slate-200/90 px-2.5 py-1 rounded-md text-xs sm:text-sm shadow-2xs">
+                <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span className="text-slate-600 text-xs">Vị trí lưu:</span>
+                <span className="font-mono font-bold text-slate-900">{item.location.formattedCode}</span>
+              </div>
+              <span className="text-[11px] text-slate-500 font-medium hidden md:inline-flex items-center gap-1">
+                Khu: <strong className="text-slate-700">{formatZoneName(item.location.zone)}</strong> • Dãy: <strong className="text-slate-700">{item.location.aisle}</strong> • Kệ: <strong className="text-slate-700">{item.location.rack}</strong> • Tầng: <strong className="text-slate-700">{item.location.shelf}</strong> • Ô: <strong className="text-slate-700">{item.location.bin}</strong>
+              </span>
+            </>
+          )}
         </div>
 
         {/* Trạng thái dòng */}
@@ -127,10 +147,11 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
       </div>
 
       {/* 2. Thân thẻ: Vị trí chi tiết (Mobile) -> SKU -> Tên SP -> Số lượng cần lấy */}
-      <div className="p-4 space-y-3">
+      <div className="p-3.5 sm:p-4 space-y-3">
         {/* Vị trí chi tiết trên mobile */}
         <div className="md:hidden flex items-center gap-1 flex-wrap text-[11px] text-slate-500 font-medium bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/60">
-          <span>Khu: <strong className="text-slate-700">{item.location.zone}</strong></span>
+          <span>Vị trí lưu kho:</span>
+          <span>Khu <strong className="text-slate-700">{formatZoneName(item.location.zone)}</strong></span>
           <span>•</span>
           <span>Dãy: <strong className="text-slate-700">{item.location.aisle}</strong></span>
           <span>•</span>
@@ -145,8 +166,8 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
           <div className="flex items-start justify-between gap-2">
             <div>
               {/* Mã SKU */}
-              <span className="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider block">
-                SKU: {item.productSku}
+              <span className="text-[11px] font-mono font-semibold text-slate-500 uppercase tracking-wider block">
+                Mã SKU: {item.productSku}
               </span>
               {/* Tên sản phẩm */}
               <h4 className="font-bold text-slate-900 text-sm sm:text-base leading-snug mt-0.5">
@@ -160,74 +181,92 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
             )}
           </div>
 
-          {/* Hiển thị phân bổ Lô xuất FEFO nếu đã được chọn (SN-187) */}
-          {item.selectedBatches && item.selectedBatches.length > 0 && (
-            <div className="mt-2.5 p-2 rounded-xl bg-indigo-50/70 border border-indigo-200/80 space-y-1">
-              <div className="flex items-center gap-1.5 text-xs text-indigo-950 font-bold">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                <span>Lô xuất:</span>
-                <span className="font-mono text-indigo-800">
-                  {item.selectedBatches.map((b) => `${b.batchNumber} (${b.quantity} ${item.unit})`).join(', ')}
-                </span>
-              </div>
-              {item.isOverrideBatch && item.batchOverrideReason && (
-                <div className="flex items-start gap-1 text-[11px] text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-md border border-amber-200">
-                  <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0 mt-0.5" />
-                  <span>
-                    <strong>Chọn khác FEFO:</strong> {item.batchOverrideReason}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Số lượng cần lấy */}
-          <div className="mt-2.5 flex items-center gap-2">
-            <span className="text-xs font-medium text-slate-500">Số lượng cần lấy:</span>
+          {/* Số lượng cần soạn (kèm thông tin Gộp đơn) */}
+          <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-slate-700">Số lượng cần soạn:</span>
             <span className="font-mono text-base sm:text-lg font-extrabold text-slate-900">
               {item.totalRequiredQuantity}
             </span>
             <span className="text-xs font-semibold text-slate-600">{item.unit}</span>
             {item.orders.length > 1 && (
-              <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-200/80">
-                Gộp {item.orders.length} đơn
+              <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[11px] font-bold border border-indigo-200/80">
+                Gộp {item.orders.length} đơn hàng
               </span>
             )}
           </div>
         </div>
 
-        {/* Lý do soạn thiếu (Vùng viền mờ dịu mắt, không dùng box vàng chói) */}
-        {isShortPicked && item.shortPickReason && (
-          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <strong className="font-semibold text-slate-800">Lý do soạn thiếu: </strong>
-              <span className="text-slate-600">{item.shortPickReason}</span>
+        {/* Lý do soạn thiếu và Danh sách các đơn bị ảnh hưởng */}
+        {isShortPicked && (
+          <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 space-y-2">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <span className="font-bold text-amber-900">
+                    Soạn thiếu: {item.totalRequiredQuantity - item.totalPickedQuantity} {item.unit}
+                  </span>
+                  {item.shortPickReasonCode && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-200/70 text-amber-900">
+                      {SHORT_PICK_REASONS.find((r) => r.code === item.shortPickReasonCode)?.label || item.shortPickReasonCode}
+                    </span>
+                  )}
+                </div>
+                {item.shortPickReason ? (
+                  <p className="text-slate-700 mt-1">
+                    <strong>Lý do bắt buộc:</strong> {item.shortPickReason}
+                  </p>
+                ) : (
+                  <p className="text-rose-600 font-bold mt-1">
+                    ⚠️ Bắt buộc phải nhập lý do giải trình khi soạn thiếu!
+                  </p>
+                )}
+              </div>
             </div>
+
+            {/* Danh sách các đơn bị ảnh hưởng do thiếu hàng */}
+            {(() => {
+              const affectedOrders = (item.orders || []).filter(
+                (o) => o.pickedQuantity < o.requiredQuantity,
+              );
+              if (affectedOrders.length === 0) return null;
+              return (
+                <div className="pt-2 border-t border-amber-200/80">
+                  <span className="text-[11px] font-bold text-amber-900 block mb-1">
+                    Đơn hàng bị ảnh hưởng ({affectedOrders.length} đơn):
+                  </span>
+                  <div className="space-y-1">
+                    {affectedOrders.map((ord) => (
+                      <div
+                        key={ord.orderId}
+                        className="flex items-center justify-between bg-white/80 p-1.5 rounded-lg border border-amber-200/60 text-[11px]"
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-mono font-bold text-indigo-700">
+                            {ord.orderCode}
+                          </span>
+                          <span className="text-slate-500 truncate max-w-[140px]">
+                            ({ord.customerName})
+                          </span>
+                        </div>
+                        <span className="font-semibold text-rose-600 shrink-0">
+                          Thiếu {ord.requiredQuantity - ord.pickedQuantity} / {ord.requiredQuantity} {ord.unit}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
-        {/* 3. Khu vực thao tác số lượng thực soạn (Touch-friendly 38px) */}
+        {/* 3. Khu vực ghi số lượng thực soạn & Đánh dấu đã soạn (Touch-friendly 40px) */}
         <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Thông tin số lượng thực soạn */}
-          <div className="text-xs text-slate-600 flex items-center gap-1.5 font-medium">
-            <span>Đã soạn:</span>
-            <span
-              className={`font-mono text-sm font-bold ${
-                item.totalPickedQuantity === item.totalRequiredQuantity
-                  ? 'text-emerald-600'
-                  : item.totalPickedQuantity > 0
-                  ? 'text-amber-600'
-                  : 'text-slate-400'
-              }`}
-            >
-              {item.totalPickedQuantity} / {item.totalRequiredQuantity} {item.unit}
-            </span>
-          </div>
-
-          {/* Cụm điều khiển: [- Qty +] [Soạn đủ] [Báo thiếu] */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-            <div className="flex items-center h-[38px] border border-slate-200 rounded-lg bg-white shadow-2xs overflow-hidden">
+          {/* Ô ghi số lượng thực soạn */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-700 shrink-0">Số lượng thực soạn:</span>
+            <div className="flex items-center h-10 border border-slate-300 rounded-xl bg-white shadow-2xs overflow-hidden">
               <button
                 type="button"
                 onClick={handleDecrement}
@@ -256,39 +295,33 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
                 <Plus className="w-4 h-4" />
               </button>
             </div>
+            <span className="text-xs font-medium text-slate-500 font-mono">
+              / {item.totalRequiredQuantity} {item.unit}
+            </span>
+          </div>
 
-            {/* Nút 1-chạm Soạn đủ */}
+          {/* Cụm nút: [Đánh dấu đã soạn] và [Báo thiếu (Bắt buộc lý do)] */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Nút Đánh dấu đã soạn */}
             <button
               type="button"
               onClick={() => {
                 setInputVal(String(item.totalRequiredQuantity));
                 onQuickPickAll(item.id);
               }}
-              className="h-[38px] px-3.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
+              className="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
+              title="Đánh dấu đã hoàn thành việc soạn dòng hàng này"
             >
               <Check className="w-4 h-4 stroke-[3]" />
-              <span>Soạn đủ</span>
+              <span>Đánh dấu đã soạn</span>
             </button>
-
-            {/* Nút Chọn Lô FEFO (SN-187) */}
-            {onOpenFefoSelector && (
-              <button
-                type="button"
-                onClick={() => onOpenFefoSelector(item)}
-                className="h-10 px-3 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 text-indigo-900 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shadow-2xs"
-                title="Gợi ý và chọn Lô xuất theo nguyên tắc Hạn dùng gần nhất (FEFO)"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                Lô FEFO
-              </button>
-            )}
 
             {/* Nút Báo thiếu */}
             <button
               type="button"
               onClick={() => onRequestShortPickReason(item, item.totalPickedQuantity)}
-              className="h-[38px] px-3 rounded-lg border border-slate-200 hover:border-amber-300 bg-white hover:bg-amber-50 text-amber-700 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer whitespace-nowrap"
-              title="Ghi nhận lý do soạn thiếu"
+              className="h-10 px-3.5 rounded-xl border border-slate-300 hover:border-amber-400 bg-white hover:bg-amber-50 active:bg-amber-100 text-amber-800 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer whitespace-nowrap"
+              title="Soạn thiếu bắt buộc nhập lý do"
             >
               <FileText className="w-3.5 h-3.5 text-amber-600" />
               <span>Báo thiếu</span>

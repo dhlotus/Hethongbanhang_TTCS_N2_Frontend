@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
   FileText,
   Printer,
   Download,
-  Building2,
   Calendar,
   AlertTriangle,
   CheckCircle2,
@@ -21,6 +20,7 @@ import { Pagination } from '../components/pagination';
 import { RecordPaymentModal } from '../components/record-payment-modal';
 import { ConfirmActionModal } from '../components/confirm-action-modal';
 import { showToast } from '../components/toast';
+import { getStoredUser } from '../utils/navigation';
 
 const formatCurrency = (val?: number): string => {
   return new Intl.NumberFormat('vi-VN', {
@@ -46,6 +46,20 @@ const formatDate = (dateStr?: string): string => {
 
 export const InvoiceDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
+  const handleBack = () => {
+    if (window.history.length > 1 && document.referrer) {
+      navigate(-1);
+    } else {
+      const user = getStoredUser();
+      if (user?.role === 'CUSTOMER') {
+        navigate('/portal/debt');
+      } else {
+        navigate('/accounting/invoices');
+      }
+    }
+  };
 
   const [invoice, setInvoice] = useState<InvoiceItem | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -175,18 +189,19 @@ export const InvoiceDetailPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto space-y-5 p-3 sm:p-6 pb-24">
       {/* =================================================================== */}
-      {/* 1. THANH HEADER ĐIỀU HƯỚNG & NÚT THAO TÁC                           */}
+      {/* 1. THANH HEADER ĐIỀU HƯỚNG & NÚT THAO TÁC (Ẩn khi in ấn)            */}
       {/* =================================================================== */}
-      <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex items-center justify-between flex-wrap gap-3">
+      <div className="no-print bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-          <Link
-            to="/accounting/invoices"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shrink-0 shadow-2xs"
-            title="Quay lại danh sách hóa đơn"
+          <button
+            type="button"
+            onClick={handleBack}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-indigo-600 hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shrink-0 shadow-2xs cursor-pointer active:scale-95"
+            title="Quay lại danh sách hoặc trang trước đó"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Quay lại</span>
-          </Link>
+          </button>
           <div className="h-4 w-px bg-slate-200 hidden sm:block" />
           <div className="flex items-center gap-2">
             <div className="h-9 w-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
@@ -269,18 +284,11 @@ export const InvoiceDetailPage: React.FC = () => {
       {/* =================================================================== */}
       <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-          {/* Cột 1: Đại lý nhận hóa đơn */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5 text-slate-500 font-medium">
-              <Building2 className="w-4 h-4 text-slate-400" />
-              <span>Đại lý nhận hóa đơn</span>
-            </div>
-            <p className="font-bold text-slate-900 text-sm truncate" title={invoice.customerName}>
+          {/* Cột 1: Đại lý */}
+          <div className="flex flex-col justify-center">
+            <p className="font-bold text-slate-900 text-base leading-snug" title={invoice.customerName}>
               {invoice.customerName}
             </p>
-            {invoice.customerEmail && (
-              <p className="text-[11px] text-slate-400 truncate">{invoice.customerEmail}</p>
-            )}
           </div>
 
           {/* Cột 2: Đơn hàng & Phiếu giao liên kết */}
@@ -289,9 +297,20 @@ export const InvoiceDetailPage: React.FC = () => {
               <FileText className="w-4 h-4 text-slate-400" />
               <span>Đơn hàng liên kết</span>
             </div>
-            <p className="font-mono font-bold text-indigo-600 text-sm">
-              {invoice.orderCode || '—'}
-            </p>
+            {invoice.orderCode ? (
+              <Link
+                to={`/sales/orders?search=${encodeURIComponent(invoice.orderCode)}`}
+                className="inline-flex items-center gap-1.5 font-mono font-bold text-indigo-600 hover:text-indigo-800 hover:underline text-sm"
+                title="Bấm để đối chiếu đơn hàng tại trang Đơn hàng"
+              >
+                <span>{invoice.orderCode}</span>
+                <span className="text-[11px] font-normal text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 hover:bg-indigo-100">
+                  Đối chiếu
+                </span>
+              </Link>
+            ) : (
+              <p className="font-mono font-bold text-slate-400 text-sm">—</p>
+            )}
             {invoice.deliverySlipCodes && invoice.deliverySlipCodes.length > 0 && (
               <p className="text-[11px] text-slate-500 font-mono">
                 Phiếu giao: {invoice.deliverySlipCodes.join(', ')}

@@ -11,6 +11,7 @@ import {
   Sparkles,
   PackageCheck,
   HandCoins,
+  FileText,
 } from 'lucide-react';
 import { invoicesService } from '../services/invoices.service';
 import { notificationsService } from '../services/notifications.service';
@@ -19,7 +20,7 @@ import { getStoredUser } from '../utils/navigation';
 
 export interface SystemNotification {
   id: string;
-  type: 'STOCK_ALERT' | 'ORDER' | 'DELIVERY' | 'PRICING' | 'CREDIT' | 'SHIPMENT' | 'COLLECTION';
+  type: 'STOCK_ALERT' | 'ORDER' | 'DELIVERY' | 'PRICING' | 'CREDIT' | 'SHIPMENT' | 'COLLECTION' | 'RECONCILIATION';
   title: string;
   message: string;
   timestamp: string;
@@ -315,6 +316,90 @@ export const NotificationBell: React.FC = () => {
 
     window.addEventListener('loha_collection_created', handleCollectionCreatedEvent);
 
+    // Lắng nghe sự kiện khi kế toán tạo biên bản đối chiếu công nợ (CHỈ hiện thông báo cho ĐÚNG đại lý đó)
+    const handleReconciliationCreatedEvent = (e: Event) => {
+      const report = (e as CustomEvent).detail;
+      if (!report) return;
+
+      const user = tokenStorage.getUser() || getStoredUser();
+      const userRoles = (user?.roles || (user?.role ? [user.role] : [])).map((r) =>
+        String(r).toUpperCase(),
+      );
+      const isAgency = userRoles.includes('AGENCY') || userRoles.includes('CUSTOMER');
+      const userAgencyId = user?.agencyId || user?.customerId || user?.id;
+      const userUsername = user?.username;
+
+      const isTargetAgency =
+        isAgency &&
+        (report.agencyId === userAgencyId ||
+          report.agencyCode === userAgencyId ||
+          report.agencyId === user?.id ||
+          report.agencyCode === userUsername ||
+          Boolean(userUsername && report.agencyCode && userUsername.toLowerCase().includes(String(report.agencyCode).toLowerCase())));
+
+      if (isTargetAgency) {
+        const formattedAmount = report.closingBalance
+          ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(report.closingBalance)
+          : '';
+        const optNotif: SystemNotification = {
+          id: `rec-notif-${report.id || Date.now()}`,
+          type: 'RECONCILIATION',
+          title: `Biên bản đối chiếu công nợ kỳ ${report.period}`,
+          message: `Kế toán đã phát hành biên bản đối chiếu công nợ [${report.code}]. Dư nợ chốt kỳ: ${formattedAmount}. Vui lòng kiểm tra và xác nhận.`,
+          timestamp: 'Vừa xong',
+          link: '/portal/debt',
+          isRead: false,
+          priority: 'high',
+        };
+        setNotifications((prev) => [optNotif, ...prev.filter((p) => p.id !== optNotif.id)]);
+      }
+      void loadNotifications();
+    };
+
+    window.addEventListener('loha_reconciliation_created', handleReconciliationCreatedEvent);
+
+    // Lắng nghe sự kiện khi có phiếu trả hàng mới được lập (nhảy chuông cho các tài khoản quản lý)
+    const handleReturnCreatedEvent = (e: Event) => {
+      const retData = (e as CustomEvent).detail;
+      if (retData && (retData.code || retData.id)) {
+        const user = tokenStorage.getUser() || getStoredUser();
+        const userRoles = (user?.roles || (user?.role ? [user.role] : [])).map((r) =>
+          String(r).toUpperCase(),
+        );
+        const isManager =
+          userRoles.includes('ADMIN') ||
+          userRoles.includes('SALES_MANAGER') ||
+          userRoles.includes('WAREHOUSE_MANAGER') ||
+          userRoles.includes('WH_MANAGER') ||
+          userRoles.includes('WAREHOUSE_KEEPER') ||
+          userRoles.includes('WAREHOUSE') ||
+          userRoles.includes('ACCOUNTANT') ||
+          userRoles.includes('ACCOUNTANT_DEBT');
+
+        if (isManager) {
+          const formattedAmount = retData.totalRefundAmount
+            ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                retData.totalRefundAmount,
+              )
+            : '';
+          const optNotif: SystemNotification = {
+            id: `ret-notif-${retData.id || Date.now()}`,
+            type: 'ORDER',
+            title: `Phiếu trả hàng mới: ${retData.code}`,
+            message: `Đại lý ${retData.agencyName || 'Đại lý'} vừa lập phiếu trả hàng [${retData.code}] cho HĐ ${retData.originalInvoiceId || retData.originalInvoiceCode || ''} (${formattedAmount ? `hoàn tiền: ${formattedAmount}` : ''}). Đang chờ Quản lý kho duyệt.`,
+            timestamp: 'Vừa xong',
+            link: '/accounting/returns',
+            isRead: false,
+            priority: 'high',
+          };
+          setNotifications((prev) => [optNotif, ...prev.filter((p) => p.id !== optNotif.id)]);
+        }
+      }
+      void loadNotifications();
+    };
+
+    window.addEventListener('loha_return_created', handleReturnCreatedEvent);
+
     // Polling nhẹ mỗi 10 giây để cập nhật chuông realtime
     const timer = setInterval(() => {
       void loadNotifications();
@@ -325,6 +410,8 @@ export const NotificationBell: React.FC = () => {
       window.removeEventListener('loha_orders_updated', handleOrdersUpdatedEvent);
       window.removeEventListener('loha_shipment_created', handleShipmentCreatedEvent);
       window.removeEventListener('loha_collection_created', handleCollectionCreatedEvent);
+      window.removeEventListener('loha_reconciliation_created', handleReconciliationCreatedEvent);
+      window.removeEventListener('loha_return_created', handleReturnCreatedEvent);
       clearInterval(timer);
     };
   }, [loadNotifications]);
@@ -392,6 +479,12 @@ export const NotificationBell: React.FC = () => {
         return (
           <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
             <HandCoins className="w-4 h-4" />
+          </div>
+        );
+      case 'RECONCILIATION':
+        return (
+          <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+            <FileText className="w-4 h-4" />
           </div>
         );
       default:

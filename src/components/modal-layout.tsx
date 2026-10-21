@@ -58,7 +58,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
   ariaLabelledBy = 'modal-title',
   bodyAs = 'div',
   onFormSubmit,
-  fullScreenOnMobile = true,
+  fullScreenOnMobile = false,
   isDirty = false,
   dirtyPromptMessage = 'Biểu mẫu đang có dữ liệu thay đổi chưa lưu. Bạn có chắc chắn muốn thoát mà không lưu?',
 }) => {
@@ -113,27 +113,18 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
           requestClose();
         }
       }}
-      className={`fixed inset-0 z-50 flex ${
-        fullScreenOnMobile
-          ? 'items-end md:items-center justify-center p-0 md:p-4'
-          : 'items-center justify-center p-3 sm:p-4'
-      } bg-slate-900/40 backdrop-blur-xs transition-all animate-modal-backdrop-in`}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-900/40 backdrop-blur-xs transition-all animate-modal-backdrop-in"
     >
       <div
         onClick={(e) => e.stopPropagation()}
         className={`relative w-full ${maxWidth} bg-white overflow-hidden ${
           fullScreenOnMobile
-            ? 'h-[100dvh] md:h-auto max-h-[100dvh] md:max-h-[calc(100dvh-3.5rem)] rounded-none md:rounded-xl border-0 md:border border-slate-200/90 shadow-lg flex flex-col'
-            : 'rounded-xl border border-slate-200/90 shadow-lg flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3.5rem)]'
-        } ${
-          fullScreenOnMobile ? 'animate-sheet-in md:animate-modal-in' : 'animate-modal-in'
-        } ${containerClassName}`}
+            ? 'h-[100dvh] sm:h-auto rounded-none sm:rounded-xl max-h-[100dvh] sm:max-h-[calc(100dvh-3rem)]'
+            : 'rounded-xl max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-3rem)]'
+        } border border-slate-200/90 shadow-xl flex flex-col animate-modal-in ${containerClassName}`}
       >
         {/* 1. Header cố định */}
-        <div className="sticky top-0 z-20 flex flex-col px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-t-none md:rounded-t-xl">
-          {fullScreenOnMobile && (
-            <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto md:hidden mb-2 -mt-0.5 shrink-0" />
-          )}
+        <div className="sticky top-0 z-20 flex flex-col px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-t-xl">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               {icon && (
@@ -186,7 +177,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
               {children}
             </div>
             {footer && (
-              <div className="sticky bottom-0 z-20 flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-b-none md:rounded-b-xl pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-4">
+              <div className="sticky bottom-0 z-20 flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-b-xl pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-4">
                 {footer}
               </div>
             )}
@@ -201,7 +192,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
               {children}
             </div>
             {footer && (
-              <div className="sticky bottom-0 z-20 flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-b-none md:rounded-b-xl pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-4">
+              <div className="sticky bottom-0 z-20 flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-b-xl pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-4">
                 {footer}
               </div>
             )}

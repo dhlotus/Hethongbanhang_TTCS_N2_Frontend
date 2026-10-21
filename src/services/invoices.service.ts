@@ -98,6 +98,7 @@ export interface DealerDebtSummary {
   maxDebtDays: number;
   paymentTerms: string;
   creditStatus: string;
+  isCreditLimitConfigured?: boolean;
 }
 
 export interface DebtReminderLog {
@@ -167,8 +168,8 @@ export const invoicesService = {
    * GET /api/invoices
    */
   async getPaginatedInvoices(params?: QueryInvoicesParams): Promise<PaginatedInvoicesResponse> {
-    const res = await apiClient.get<any>('/invoices', { params });
-    if (res.data && Array.isArray(res.data.data)) {
+    const res = await apiClient.get<PaginatedInvoicesResponse | InvoiceItem[]>('/invoices', { params });
+    if (res.data && 'data' in res.data && Array.isArray(res.data.data)) {
       return res.data;
     }
     const list = Array.isArray(res.data) ? res.data : [];
@@ -188,8 +189,8 @@ export const invoicesService = {
    * GET /api/invoices
    */
   async getInvoices(params?: QueryInvoicesParams): Promise<InvoiceItem[]> {
-    const res = await apiClient.get<any>('/invoices', { params });
-    if (res.data && Array.isArray(res.data.data)) {
+    const res = await apiClient.get<PaginatedInvoicesResponse | InvoiceItem[]>('/invoices', { params });
+    if (res.data && 'data' in res.data && Array.isArray(res.data.data)) {
       return res.data.data;
     }
     return Array.isArray(res.data) ? res.data : [];
@@ -314,8 +315,7 @@ export const invoicesService = {
         printWindow.document.close();
         setTimeout(() => {
           printWindow.focus();
-          printWindow.print();
-        }, 300);
+        }, 200);
       }
     } catch (err) {
       console.error('Lỗi khi mở bản in hóa đơn:', err);

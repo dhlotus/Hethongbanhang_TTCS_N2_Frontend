@@ -25,6 +25,9 @@ import {
   RotateCcw,
   Building2,
   HandCoins,
+  Scale,
+  Target,
+  FileCheck2,
 } from 'lucide-react';
 import { USER_ROLES, type UserRoleType, type AuthUser } from '../types/auth';
 
@@ -169,10 +172,31 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Kinh doanh & Bán hàng',
     },
     {
+      id: 'sales-targets',
+      name: 'Chỉ tiêu & Tiến độ',
+      path: '/sales/targets',
+      icon: Target,
+      category: 'Kinh doanh & Bán hàng',
+    },
+    {
+      id: 'reports-sales',
+      name: 'Báo cáo doanh số',
+      path: '/reports/sales',
+      icon: BarChart3,
+      category: 'Kinh doanh & Bán hàng',
+    },
+    {
       id: 'sales-orders',
       name: 'Quản lý đơn hàng',
       path: '/sales/orders',
       icon: ShoppingCart,
+      category: 'Kinh doanh & Bán hàng',
+    },
+    {
+      id: 'sales-returns',
+      name: 'Phiếu trả hàng',
+      path: '/accounting/returns',
+      icon: RotateCcw,
       category: 'Kinh doanh & Bán hàng',
     },
     {
@@ -217,6 +241,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       icon: HandCoins,
       category: 'Tài chính',
     },
+    {
+      id: 'accounting-debt-adjustments',
+      name: 'Giảm trừ nợ trả hàng',
+      path: '/accounting/debt-adjustments',
+      icon: FileCheck2,
+      category: 'Tài chính',
+    },
   ],
 
   // 3. Quản lý kinh doanh (SALES_MANAGER)
@@ -226,6 +257,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Dashboard điều hành',
       path: '/dashboard',
       icon: LayoutDashboard,
+      category: 'Báo cáo & Phân tích',
+    },
+    {
+      id: 'sales-targets',
+      name: 'Chỉ tiêu doanh số',
+      path: '/sales/targets',
+      icon: Target,
       category: 'Báo cáo & Phân tích',
     },
     {
@@ -247,6 +285,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Quản lý đơn hàng',
       path: '/sales/orders',
       icon: ShoppingCart,
+      category: 'Kinh doanh',
+    },
+    {
+      id: 'sales-returns',
+      name: 'Phiếu trả hàng',
+      path: '/accounting/returns',
+      icon: RotateCcw,
       category: 'Kinh doanh',
     },
     {
@@ -359,6 +404,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Nhập / Xuất kho',
     },
     {
+      id: 'warehouse-returns',
+      name: 'Nhập kho hàng trả',
+      path: '/accounting/returns',
+      icon: RotateCcw,
+      category: 'Nhập / Xuất kho',
+    },
+    {
       id: 'inventory-transfers',
       name: 'Chuyển kho nội bộ',
       path: '/inventory/transfers',
@@ -461,6 +513,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Lịch sử Nhập / Xuất',
     },
     {
+      id: 'warehouse-returns',
+      name: 'Nhập kho hàng trả',
+      path: '/accounting/returns',
+      icon: RotateCcw,
+      category: 'Lịch sử Nhập / Xuất',
+    },
+    {
       id: 'inventory-transfers',
       name: 'Chuyển kho nội bộ',
       path: '/inventory/transfers',
@@ -549,6 +608,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Thu chi & Thanh toán',
     },
     {
+      id: 'accounting-debt-adjustments',
+      name: 'Giảm trừ nợ trả hàng',
+      path: '/accounting/debt-adjustments',
+      icon: FileCheck2,
+      category: 'Thu chi & Thanh toán',
+    },
+    {
       id: 'route-collections',
       name: 'Quản lý ngân sách',
       path: '/route-collections',
@@ -560,6 +626,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Sổ chi tiết công nợ',
       path: '/accounting/debt',
       icon: Receipt,
+      category: 'Theo dõi Công nợ',
+    },
+    {
+      id: 'accounting-debt-reconciliations',
+      name: 'Đối chiếu công nợ',
+      path: '/accounting/debt-reconciliations',
+      icon: Scale,
       category: 'Theo dõi Công nợ',
     },
     {
@@ -616,6 +689,20 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Quản trị Hệ thống',
     },
     {
+      id: 'sales-targets',
+      name: 'Chỉ tiêu doanh số',
+      path: '/sales/targets',
+      icon: Target,
+      category: 'Nghiệp vụ Kinh doanh',
+    },
+    {
+      id: 'reports-sales',
+      name: 'Báo cáo doanh số',
+      path: '/reports/sales',
+      icon: BarChart3,
+      category: 'Nghiệp vụ Kinh doanh',
+    },
+    {
       id: 'system-users',
       name: 'Quản lý người dùng',
       path: '/system/users',
@@ -634,6 +721,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Quản lý đơn hàng',
       path: '/sales/orders',
       icon: ShoppingCart,
+      category: 'Nghiệp vụ Kinh doanh',
+    },
+    {
+      id: 'sales-returns',
+      name: 'Phiếu trả hàng',
+      path: '/accounting/returns',
+      icon: RotateCcw,
       category: 'Nghiệp vụ Kinh doanh',
     },
     {
@@ -718,6 +812,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Quản lý ngân sách',
       path: '/route-collections',
       icon: HandCoins,
+      category: 'Tài chính & Kế toán',
+    },
+    {
+      id: 'accounting-debt-reconciliations',
+      name: 'Đối chiếu công nợ',
+      path: '/accounting/debt-reconciliations',
+      icon: Scale,
       category: 'Tài chính & Kế toán',
     },
   ],

@@ -27,12 +27,14 @@ import { CustomersPage } from '../pages/customers-page';
 import { CustomerDetailPage } from '../pages/customer-detail-page';
 import { InventoryStockPage } from '../pages/inventory-stock-page';
 import { InventoryAuditsPage } from '../pages/inventory-audits-page';
+import { InventoryAdjustmentsPage } from '../pages/inventory-adjustments-page';
 import { InventoryReceiptsPage } from '../pages/inventory-receipts-page';
 import { CreateInventoryReceiptPage } from '../pages/create-inventory-receipt-page';
 import { PortalOrdersPage } from '../pages/portal-orders-page';
 import { ShipmentsPage } from '../pages/shipments-page';
 import { CreateShipmentPage } from '../pages/create-shipment-page';
 import { ReturnsPage } from '../pages/returns-page';
+import { CreateReturnReceiptPage } from '../pages/create-return-receipt-page';
 import { DashboardPage } from '../pages/dashboard-page';
 import { AgencyPortalPage } from '../pages/agency-portal-page';
 import { PortalOrderConfirmPage } from '../pages/portal-order-confirm-page';
@@ -55,6 +57,11 @@ import { GoodsInTransitPage } from '../pages/goods-in-transit-page';
 import { StockCardPage } from '../pages/inventory/stock-card-page';
 import { RouteCollectionsPage } from '../pages/route-collections-page';
 import { CreateRouteCollectionPage } from '../pages/create-route-collection-page';
+import { DebtReconciliationsPage } from '../pages/debt-reconciliations-page';
+import { CreateDebtReconciliationPage } from '../pages/create-debt-reconciliation-page';
+import { SalesTargetsPage } from '../pages/sales-targets-page';
+import { SalesReportPage } from '../pages/sales-report-page';
+import { DebtAdjustmentsPage } from '../pages/debt-adjustments-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -189,16 +196,17 @@ export const AppRoutes: React.FC = () => {
               <Route path="/sales/orders/edit/:id" element={<CreateOrderPage />} />
               <Route path="/system/orders" element={<Navigate to="/sales/orders" replace />} />
               <Route path="/orders" element={<Navigate to="/sales/orders" replace />} />
+              <Route path="/app/orders" element={<Navigate to="/sales/orders" replace />} />
               <Route path="/orders/create" element={<Navigate to="/sales/orders/create" replace />} />
             </Route>
 
             {/* ------------------------------------------------------------- */}
-            {/* PHÂN HỆ 3: QUẢN LÝ KINH DOANH (SALES_MANAGER)                 */}
+            {/* PHÂN HỆ 3: QUẢN LÝ KINH DOANH & BÁO CÁO (SN-215, SN-218)      */}
             {/* ------------------------------------------------------------- */}
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={['SALES_MANAGER', 'ADMIN']}
+                  allowedRoles={['SALES_MANAGER', 'ADMIN', 'SALES_REP']}
                   moduleName="Quản lý & Điều hành Kinh doanh"
                 />
               }
@@ -207,15 +215,15 @@ export const AppRoutes: React.FC = () => {
                 path="/sales/approvals"
                 element={<OrderApprovalsPage />}
               />
+              {/* SN-215: Đặt chỉ tiêu doanh số và theo dõi tiến độ thực tế */}
+              <Route
+                path="/sales/targets"
+                element={<SalesTargetsPage />}
+              />
+              {/* SN-218: Báo cáo Doanh số Bán hàng nhiều chiều */}
               <Route
                 path="/reports/sales"
-                element={
-                  <RoleModulePage
-                    title="Báo cáo Doanh số Bán buôn"
-                    subtitle="Phân tích tăng trưởng doanh số theo nhân viên thị trường, nhóm đại lý và sản phẩm chủ lực"
-                    requiredRole="Quản lý kinh doanh"
-                  />
-                }
+                element={<SalesReportPage />}
               />
             </Route>
 
@@ -253,6 +261,8 @@ export const AppRoutes: React.FC = () => {
               }
             >
               <Route path="/inventory/stock" element={<InventoryStockPage />} />
+              <Route path="/warehouse/stock" element={<Navigate to="/inventory/stock" replace />} />
+              <Route path="/warehouse/stocks" element={<Navigate to="/inventory/stock" replace />} />
               <Route path="/inventory/stock-list" element={<StockListPage />} />
               <Route path="/inventory/stocks" element={<StockListPage />} />
               <Route path="/inventory/stock-card" element={<StockCardPage />} />
@@ -303,8 +313,28 @@ export const AppRoutes: React.FC = () => {
                 element={<CreateShipmentPage />}
               />
               <Route
+                path="/inventory/issues/shipments/create"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/inventory/issues/shipments/:id"
+                element={<CreateShipmentPage />}
+              />
+              <Route
                 path="/inventory/issues/:id"
                 element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/issues/shipments/create"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/issues/shipments/:id"
+                element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/issues"
+                element={<Navigate to="/inventory/issues" replace />}
               />
               {/* SN-188: Route chuẩn phân hệ Soạn hàng & Xuất kho */}
               <Route
@@ -396,7 +426,7 @@ export const AppRoutes: React.FC = () => {
             >
               <Route
                 path="/inventory/adjustments"
-                element={<InventoryAuditsPage />}
+                element={<InventoryAdjustmentsPage />}
               />
               <Route
                 path="/reports/inventory"
@@ -455,6 +485,15 @@ export const AppRoutes: React.FC = () => {
                 path="/accounting/payments"
                 element={<ReceiptsPage />}
               />
+              {/* SN-212: Chứng từ điều chỉnh giảm trừ công nợ khi trả hàng */}
+              <Route
+                path="/accounting/debt-adjustments"
+                element={<DebtAdjustmentsPage />}
+              />
+              <Route
+                path="/accounting/debt-adjustments/:id"
+                element={<DebtAdjustmentsPage />}
+              />
             </Route>
 
             <Route
@@ -464,6 +503,7 @@ export const AppRoutes: React.FC = () => {
                     'ADMIN',
                     'ACCOUNTANT',
                     'ACCOUNTANT_DEBT',
+                    'SALES_REP',
                     'SALES_MANAGER',
                     'BUSINESS_MANAGER',
                     'WAREHOUSE_MANAGER',
@@ -477,6 +517,22 @@ export const AppRoutes: React.FC = () => {
               <Route
                 path="/accounting/returns"
                 element={<ReturnsPage />}
+              />
+              <Route
+                path="/accounting/returns/create"
+                element={<CreateReturnReceiptPage />}
+              />
+              <Route
+                path="/returns/create"
+                element={<Navigate to="/accounting/returns/create" replace />}
+              />
+              <Route
+                path="/sales/returns"
+                element={<Navigate to="/accounting/returns" replace />}
+              />
+              <Route
+                path="/sales/orders/accounting/returns"
+                element={<Navigate to="/accounting/returns" replace />}
               />
             </Route>
 
@@ -502,6 +558,37 @@ export const AppRoutes: React.FC = () => {
               <Route
                 path="/reports/debt"
                 element={<DebtReportPage />}
+              />
+              <Route
+                path="/debt-report"
+                element={<DebtReportPage />}
+              />
+            </Route>
+
+            {/* ------------------------------------------------------------- */}
+            {/* PHÂN HỆ ĐỐI CHIẾU CÔNG NỢ ĐỊNH KỲ (SN-206)                    */}
+            {/* ------------------------------------------------------------- */}
+            <Route
+              element={
+                <RoleGuard
+                  allowedRoles={[
+                    'ADMIN',
+                    'ACCOUNTANT',
+                    'ACCOUNTANT_DEBT',
+                    'SALES_MANAGER',
+                    'BUSINESS_MANAGER',
+                  ]}
+                  moduleName="Đối chiếu công nợ định kỳ"
+                />
+              }
+            >
+              <Route
+                path="/accounting/debt-reconciliations"
+                element={<DebtReconciliationsPage />}
+              />
+              <Route
+                path="/accounting/debt-reconciliations/create"
+                element={<CreateDebtReconciliationPage />}
               />
             </Route>
 

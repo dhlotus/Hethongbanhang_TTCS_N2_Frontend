@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
@@ -26,6 +26,56 @@ import type { GoodsReceipt, GoodsReceiptStatus } from "../types/inventory-receip
 import type { Product } from "../types/products";
 import { ConfirmDeleteModal } from "../components/confirm-delete-modal";
 
+const KNOWN_SUPPLIERS_MAP: Record<string, string> = {
+  '22222222-0000-0000-0000-000000000001': 'Công ty Cổ phần Nước giải khát LOHA Quốc Tế',
+  'ncc-bev-01': 'Công ty Cổ phần Nước giải khát LOHA Quốc Tế',
+  'ncc-idp': 'Công ty Cổ phần Sữa Quốc Tế (IDP)',
+  '22222222-0000-0000-0000-000000000002': 'Công ty TNHH Khai Thác Khoáng Tinh Khiết Aqua Life',
+  'ncc-aqua-02': 'Công ty TNHH Khai Thác Khoáng Tinh Khiết Aqua Life',
+  'ncc-nsx': 'Công ty TNHH Nông Sản Xanh Loha',
+  '22222222-0000-0000-0000-000000000003': 'Công ty Cổ phần Sữa & Dinh Dưỡng Quốc Tế NutriPlus',
+  'ncc-dairy-03': 'Công ty Cổ phần Sữa & Dinh Dưỡng Quốc Tế NutriPlus',
+  '22222222-0000-0000-0000-000000000004': 'Nhà máy Bao Bì & Đóng Gói Tân Tiến Phát',
+  'ncc-pack-04': 'Nhà máy Bao Bì & Đóng Gói Tân Tiến Phát',
+  '22222222-0000-0000-0000-000000000005': 'Hợp tác xã Nông Sản Hữu Cơ Sạch Thảo Mộc Xanh',
+  'ncc-old-05': 'Hợp tác xã Nông Sản Hữu Cơ Sạch Thảo Mộc Xanh',
+};
+
+const KNOWN_WAREHOUSES_MAP: Record<string, string> = {
+  '11111111-0000-0000-0000-000000000001': 'Kho Miền Nam (TP. Hồ Chí Minh)',
+  'kho-mn-01': 'Kho Miền Nam (TP. Hồ Chí Minh)',
+  '11111111-0000-0000-0000-000000000002': 'Kho Miền Bắc (Hà Nội)',
+  'kho-mb-01': 'Kho Miền Bắc (Hà Nội)',
+  '11111111-0000-0000-0000-000000000003': 'Kho Miền Tây (Cần Thơ)',
+  'kho-west-01': 'Kho Miền Tây (Cần Thơ)',
+  '11111111-0000-0000-0000-000000000004': 'Kho Miền Trung (Đà Nẵng)',
+  'kho-mt-01': 'Kho Miền Trung (Đà Nẵng)',
+};
+
+const getDisplaySupplierName = (receipt?: { supplierName?: string; supplierId?: string } | null): string => {
+  if (!receipt) return 'Chưa chọn NCC';
+  const name = receipt.supplierName?.trim();
+  const isGeneric = !name || name === 'Nhà cung cấp' || name === 'Nhà cung cấp đối tác' || name === 'Chưa chọn NCC' || name === 'Nhà máy Bao Bì & Đóng Gói Loha';
+  if (!isGeneric) return name;
+  if (receipt.supplierId) {
+    const key = receipt.supplierId.toLowerCase().trim();
+    if (KNOWN_SUPPLIERS_MAP[key]) return KNOWN_SUPPLIERS_MAP[key];
+  }
+  return name && name !== 'Nhà cung cấp đối tác' ? name : 'Chưa chọn NCC';
+};
+
+const getDisplayWarehouseName = (receipt?: { warehouseName?: string; warehouseId?: string } | null): string => {
+  if (!receipt) return 'Kho Miền Nam (TP. Hồ Chí Minh)';
+  const name = receipt.warehouseName?.trim();
+  const isGeneric = !name || name === 'Kho Tổng Miền Nam - LOHA WH01' || name === 'Kho Tổng Miền Nam';
+  if (!isGeneric) return name;
+  if (receipt.warehouseId) {
+    const key = receipt.warehouseId.toLowerCase().trim();
+    if (KNOWN_WAREHOUSES_MAP[key]) return KNOWN_WAREHOUSES_MAP[key];
+  }
+  return name || 'Kho Miền Nam (TP. Hồ Chí Minh)';
+};
+
 export const InventoryReceiptsPage: React.FC = () => {
   const navigate = useNavigate();
   const [receipts, setReceipts] = useState<GoodsReceipt[]>([]);
@@ -39,6 +89,9 @@ export const InventoryReceiptsPage: React.FC = () => {
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<GoodsReceiptStatus | "ALL">("ALL");
+
+  // Debounce tìm kiếm: tự động cập nhật searchTerm sau 300ms kể từ lần cuối user gõ
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Modal xác nhận nhập kho
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -104,6 +157,25 @@ export const InventoryReceiptsPage: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearchTerm(searchInput);
+    setPage(1);
+  };
+
+  // Xử lý đánh vào ô tìm kiếm: cập nhật searchInput ngay, debounce 300ms rồi mới set searchTerm
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearchInput(val);
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      setSearchTerm(val);
+      setPage(1);
+    }, 300);
+  };
+
+  // Nút làm mới: xóa từ khóa tìm kiếm và reload từ trang 1
+  const handleRefresh = () => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    setSearchInput("");
+    setSearchTerm("");
     setPage(1);
   };
 
@@ -276,56 +348,48 @@ export const InventoryReceiptsPage: React.FC = () => {
 
   return (
     <div className="w-full space-y-6">
-      {/* Tiêu đề & Nút tạo mới */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <Package className="w-6 h-6 text-indigo-600" />
-            Nhập kho hàng hóa
-          </h1>
-        </div>
-        <button
-          onClick={() => navigate("/inventory/receipts/create")}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-xs px-4 py-2.5 inline-flex items-center gap-2 transition-colors cursor-pointer"
-        >
-          <Plus className="w-5 h-5" />
-          Lập phiếu nhập mới
-        </button>
-      </div>
-
-      {/* Bộ lọc và tìm kiếm */}
-      <div className="bg-white rounded-2xl shadow-xs border border-slate-200">
-        <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-4 justify-between items-center bg-slate-50/50">
-          <form onSubmit={handleSearch} className="relative w-full sm:w-96">
+      {/* Thẻ Card danh sách phiếu nhập & Toolbar */}
+      <div className="bg-white rounded-xl shadow-xs border border-slate-200/90 overflow-hidden">
+        <div className="p-3.5 sm:p-4 border-b border-slate-100 flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center bg-slate-50/60">
+          <form onSubmit={handleSearch} className="relative w-full sm:w-80 md:w-96">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               placeholder="Tìm theo mã phiếu, số chứng từ, kho nhập..."
               value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20 text-sm transition-all"
+              onChange={handleSearchInputChange}
+              className="w-full h-[38px] pl-9 pr-3 text-xs border border-slate-200 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400 shadow-2xs"
             />
-            <Search className="absolute left-3 top-2.5 text-slate-400 w-4.5 h-4.5" />
           </form>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap justify-end">
             <select
               value={selectedStatus}
               onChange={(e) => {
                 setSelectedStatus(e.target.value as GoodsReceiptStatus | "ALL");
                 setPage(1);
               }}
-              className="px-3.5 py-2 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-600 text-sm min-w-[160px]"
+              className="h-[38px] px-3 text-xs font-medium border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer shadow-2xs min-w-[150px]"
             >
               <option value="ALL">Tất cả trạng thái</option>
               <option value="DRAFT">Phiếu nháp</option>
               <option value="CONFIRMED">Đã xác nhận</option>
             </select>
             <button
-              onClick={fetchReceipts}
-              className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              type="button"
+              onClick={handleRefresh}
+              className="h-[38px] w-[38px] inline-flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-slate-50 bg-white border border-slate-200 rounded-lg transition-all shadow-2xs cursor-pointer shrink-0"
               title="Làm mới danh sách"
             >
-              <RefreshCw className="w-5 h-5" />
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/inventory/receipts/create")}
+              className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              <span>Lập phiếu nhập mới</span>
             </button>
           </div>
         </div>
@@ -367,7 +431,7 @@ export const InventoryReceiptsPage: React.FC = () => {
                       <td className="p-4">
                         <button
                           onClick={() => handleOpenDetail(r.id)}
-                          className="font-semibold text-indigo-600 hover:underline cursor-pointer font-mono"
+                          className="font-mono text-xs font-semibold text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100 px-2.5 py-1 rounded-md border border-indigo-200/60 transition-colors cursor-pointer"
                         >
                           {r.code}
                         </button>
@@ -380,7 +444,7 @@ export const InventoryReceiptsPage: React.FC = () => {
                       <td className="p-4">
                         <div className="font-medium text-slate-800 text-xs flex items-center gap-1.5">
                           <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{r.warehouseName || 'Kho Tổng Miền Nam'}</span>
+                          <span>{getDisplayWarehouseName(r)}</span>
                         </div>
                       </td>
                       <td className="p-4">
@@ -570,19 +634,19 @@ export const InventoryReceiptsPage: React.FC = () => {
           <p className="text-slate-600 text-sm">
             Sau khi xác nhận, toàn bộ hàng hóa sẽ được <strong>cộng trực tiếp vào tồn kho</strong> và <strong>ghi sổ thẻ kho</strong>.
           </p>
-          <div className="text-xs text-amber-800 bg-amber-50 p-3 rounded-xl border border-amber-200 text-left">
+          <div className="text-xs text-amber-800 bg-amber-50 p-3 rounded-lg border border-amber-200 text-left">
             <strong>Lưu ý:</strong> Phiếu đã xác nhận <strong>không thể chỉnh sửa hoặc xóa</strong>. Mọi điều chỉnh sau này phải lập qua phiếu điều chỉnh.
           </div>
           <div className="flex justify-center gap-3 pt-3">
             <button
               onClick={() => setConfirmModalOpen(false)}
-              className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-medium transition-colors cursor-pointer"
+              className="inline-flex items-center justify-center h-[38px] px-4 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-semibold transition-all shadow-2xs cursor-pointer"
             >
               Hủy bỏ
             </button>
             <button
               onClick={handleConfirmReceipt}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 py-2 text-sm font-semibold transition-colors shadow-xs cursor-pointer"
+              className="inline-flex items-center justify-center h-[38px] px-5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white rounded-lg text-xs font-semibold transition-all shadow-xs cursor-pointer"
             >
               Đồng ý xác nhận
             </button>
@@ -592,33 +656,44 @@ export const InventoryReceiptsPage: React.FC = () => {
 
       {/* Modal xem chi tiết phiếu nhập kho */}
       {detailModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 md:p-6 animate-in fade-in duration-150">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200/90 w-full max-w-[95%] sm:max-w-[90%] md:max-w-[58rem] lg:max-w-[68rem] max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             {/* Header Modal */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="p-3.5 sm:p-4 md:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="w-[2.5rem] h-[2.5rem] rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
                   <Package className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                    Chi tiết phiếu nhập: {selectedReceipt?.code}
+                <div className="min-w-0">
+                  <h3 className="font-bold text-slate-800 text-sm sm:text-base md:text-lg flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <span>Chi tiết phiếu nhập:</span>
+                    <span className="font-mono text-indigo-600 font-bold">{selectedReceipt?.code}</span>
+                    {selectedReceipt?.status === 'CONFIRMED' ? (
+                      <span className="inline-flex items-center gap-1 text-[0.6875rem] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        Đã xác nhận
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[0.6875rem] font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                        <AlertCircle className="w-3 h-3 text-amber-600" />
+                        Bản nháp
+                      </span>
+                    )}
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Mã chứng từ lưu kho phân hệ Quản lý Kho bãi LOHA SALES
-                  </p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setDetailModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0"
+                title="Đóng"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Nội dung chi tiết */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+            <div className="p-3.5 sm:p-5 md:p-6 overflow-y-auto space-y-4 sm:space-y-5 flex-1">
               {detailLoading ? (
                 <div className="p-12 text-center text-slate-500">
                   <RefreshCw className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-2" />
@@ -628,81 +703,108 @@ export const InventoryReceiptsPage: React.FC = () => {
                 <>
                   {/* Băng thông báo theo trạng thái */}
                   {selectedReceipt.status === 'CONFIRMED' ? (
-                    <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl flex items-center gap-2 text-xs text-emerald-800">
-                      <Lock className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div className="bg-emerald-50/80 border border-emerald-200/90 p-3 sm:p-3.5 rounded-xl flex items-start sm:items-center gap-2.5 text-xs text-emerald-800">
+                      <Lock className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5 sm:mt-0" />
                       <span>
                         <strong>Phiếu đã xác nhận:</strong> Không thể chỉnh sửa hoặc xóa. Để điều chỉnh số lượng tồn kho do thừa/thiếu, vui lòng lập <em>Phiếu điều chỉnh</em>.
                       </span>
                     </div>
                   ) : (
-                    <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-center gap-2 text-xs text-amber-800">
-                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div className="bg-amber-50/80 border border-amber-200/90 p-3 sm:p-3.5 rounded-xl flex items-start sm:items-center gap-2.5 text-xs text-amber-800">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
                       <span>
                         Phiếu này hiện ở trạng thái <strong>Nháp</strong>. Hàng hóa chưa được cộng vào tồn kho thực tế.
                       </span>
                     </div>
                   )}
 
-                  {/* Thông tin chung */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/70 p-4 rounded-xl border border-slate-100 text-xs">
-                    <div>
-                      <span className="text-slate-400 block mb-0.5">Kho nhập hàng:</span>
-                      <strong className="text-slate-800">{selectedReceipt.warehouseName || 'Kho Tổng Miền Nam'}</strong>
+                  {/* Thông tin chung: 2 cột sm, 4 cột lg — đồng nhất mọi phiếu */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3 bg-slate-50/70 p-3.5 sm:p-4 rounded-xl border border-slate-200/80 text-xs">
+                    <div className="min-w-0">
+                      <span className="text-slate-400 block mb-1 text-[0.6875rem] font-medium">Kho nhập hàng:</span>
+                      <strong
+                        className="text-slate-800 text-xs font-semibold block leading-snug"
+                        title={getDisplayWarehouseName(selectedReceipt)}
+                      >
+                        {getDisplayWarehouseName(selectedReceipt)}
+                      </strong>
                     </div>
                     <div className="min-w-0">
-                      <span className="text-slate-400 block mb-0.5">Số chứng từ gốc:</span>
-                      <div className="inline-flex items-center gap-1.5 font-mono font-semibold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200/90 shadow-2xs whitespace-nowrap text-xs max-w-full overflow-x-auto">
+                      <span className="text-slate-400 block mb-1 text-[0.6875rem] font-medium">Nhà cung cấp:</span>
+                      <strong
+                        className="text-slate-800 text-xs font-semibold block leading-snug line-clamp-2"
+                        title={getDisplaySupplierName(selectedReceipt)}
+                      >
+                        {getDisplaySupplierName(selectedReceipt)}
+                      </strong>
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-slate-400 block mb-1 text-[0.6875rem] font-medium">Số chứng từ gốc:</span>
+                      <div className="inline-flex items-center gap-1.5 font-mono font-semibold text-slate-800 bg-white px-2 py-1 rounded-md border border-slate-200/90 shadow-2xs text-xs max-w-full overflow-hidden">
                         <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="whitespace-nowrap font-mono">{selectedReceipt.referenceDocument || '---'}</span>
+                        <span className="font-mono truncate" title={selectedReceipt.referenceDocument || selectedReceipt.code}>
+                          {selectedReceipt.referenceDocument || selectedReceipt.code}
+                        </span>
                       </div>
                     </div>
-                    <div>
-                      <span className="text-slate-400 block mb-0.5">Ngày nhập kho:</span>
-                      <strong className="text-slate-800">
-                        {selectedReceipt.receivedAt 
-                          ? new Date(selectedReceipt.receivedAt).toLocaleDateString("vi-VN") 
+                    <div className="min-w-0">
+                      <span className="text-slate-400 block mb-1 text-[0.6875rem] font-medium">Ngày nhập kho:</span>
+                      <strong className="text-slate-800 text-xs font-mono block leading-snug">
+                        {selectedReceipt.receivedAt
+                          ? new Date(selectedReceipt.receivedAt).toLocaleDateString("vi-VN")
                           : new Date(selectedReceipt.createdAt).toLocaleDateString("vi-VN")}
                       </strong>
                     </div>
                   </div>
 
                   {/* Bảng chi tiết mặt hàng */}
-                  <div className="border border-slate-200 rounded-xl overflow-hidden">
-                    <div className="p-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-700 flex justify-between items-center">
-                      <span>Danh sách hàng hóa nhập kho ({selectedReceipt.items?.length || 0} SKU)</span>
-                      <span className="text-indigo-600 font-semibold">
-                        Tổng tiền: {Number(selectedReceipt.totalCost).toLocaleString("vi-VN")} đ
-                      </span>
+                  <div className="border border-slate-200/80 rounded-xl overflow-hidden bg-white shadow-2xs">
+                    <div className="p-3 sm:px-4 sm:py-3 bg-slate-50/90 border-b border-slate-200/80 text-xs font-semibold text-slate-700 flex flex-wrap justify-between items-center gap-2">
+                      <span className="font-bold">Danh sách hàng hóa nhập kho ({selectedReceipt.items?.length || 0} SKU)</span>
+                      <div className="flex items-center gap-1.5 text-xs sm:text-sm">
+                        <span className="text-slate-500 font-normal">Tổng tiền:</span>
+                        <span className="text-indigo-600 font-mono font-bold">
+                          {Number(selectedReceipt.totalCost).toLocaleString("vi-VN")} đ
+                        </span>
+                      </div>
                     </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-xs">
+
+                    {/* Dạng bảng hiển thị trên Desktop và Tablet */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs divide-y divide-slate-100">
                         <thead>
-                          <tr className="bg-slate-100/60 border-b border-slate-200 text-slate-600">
-                            <th className="p-2.5 w-10 text-center font-semibold">STT</th>
-                            <th className="p-2.5 text-left font-semibold">Mã SKU / Tên SP</th>
-                            <th className="p-2.5 text-center font-semibold">ĐVT nhập</th>
-                            <th className="p-2.5 text-right font-semibold">SL kiện</th>
-                            <th className="p-2.5 text-right font-semibold">Quy đổi cơ sở</th>
-                            <th className="p-2.5 text-right font-semibold">Đơn giá</th>
-                            <th className="p-2.5 text-right font-semibold">Thành tiền</th>
-                            <th className="p-2.5 min-w-[150px] text-left font-semibold">Lô / Hạn dùng</th>
+                          <tr className="bg-slate-100/60 border-b border-slate-200/80 text-slate-600">
+                            <th className="p-2.5 w-[5%] text-center font-semibold">STT</th>
+                            <th className="p-2.5 w-[27%] text-left font-semibold">Mã SKU / Tên SP</th>
+                            <th className="p-2.5 w-[11%] text-center font-semibold">ĐVT nhập</th>
+                            <th className="p-2.5 w-[8%] text-right font-semibold">SL kiện</th>
+                            <th className="p-2.5 w-[13%] text-right font-semibold">Quy đổi cơ sở</th>
+                            <th className="p-2.5 w-[11%] text-right font-semibold">Đơn giá</th>
+                            <th className="p-2.5 w-[12%] text-right font-semibold">Thành tiền</th>
+                            <th className="p-2.5 w-[13%] text-left font-semibold">Lô / Hạn dùng</th>
                           </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-slate-100/90 font-medium">
                           {selectedReceipt.items?.map((item, idx) => (
-                            <tr key={item.id || idx} className="border-b border-slate-100 hover:bg-slate-50/50">
-                              <td className="p-2.5 text-center text-slate-400 font-mono">{idx + 1}</td>
+                            <tr key={item.id || idx} className="hover:bg-indigo-50/20 transition-colors">
+                              <td className="p-2.5 text-center text-slate-400 font-mono text-[0.6875rem]">{idx + 1}</td>
                               <td className="p-2.5 text-left">
-                                <div className="font-semibold text-slate-800">{item.productName || item.productCode || item.productId}</div>
-                                <div className="text-[11px] text-slate-500 font-mono">{item.productCode}</div>
+                                <div className="font-semibold text-slate-800 text-xs line-clamp-1">
+                                  {item.productName || item.productCode || item.productId}
+                                </div>
+                                <div className="mt-0.5">
+                                  <span className="font-mono text-[0.6875rem] font-semibold text-indigo-700 bg-indigo-50/80 px-1.5 py-0.5 rounded border border-indigo-200/60">
+                                    {item.productCode}
+                                  </span>
+                                </div>
                               </td>
                               <td className="p-2.5 text-center font-medium whitespace-nowrap">
                                 <span className="font-semibold text-slate-800">{formatItemUnitName(item)}</span>
                               </td>
-                              <td className="p-2.5 text-right font-mono font-medium text-slate-800 whitespace-nowrap">
+                              <td className="p-2.5 text-right font-mono font-semibold text-slate-800 whitespace-nowrap">
                                 {Number(item.packageQuantity).toLocaleString("vi-VN")}
                               </td>
-                              <td className="p-2.5 text-right font-mono text-indigo-600 font-semibold whitespace-nowrap">
+                              <td className="p-2.5 text-right font-mono text-indigo-600 font-bold whitespace-nowrap">
                                 {Number(item.baseQuantity).toLocaleString("vi-VN")} {getBaseUnitName(item)}
                               </td>
                               <td className="p-2.5 text-right font-mono text-slate-600 whitespace-nowrap">
@@ -714,16 +816,16 @@ export const InventoryReceiptsPage: React.FC = () => {
                               <td className="p-2.5 text-left">
                                 {item.batchNumber ? (
                                   <div>
-                                    <span className="font-mono font-semibold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">
+                                    <span className="inline-flex font-mono font-semibold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded text-[0.6875rem] border border-slate-200/70">
                                       Lô: {item.batchNumber}
                                     </span>
-                                    <div className="text-[10px] text-slate-500 mt-1">
-                                      {item.mfgDate && `NSX: ${new Date(item.mfgDate).toLocaleDateString("vi-VN")} · `}
-                                      {item.expiryDate && `HSD: ${new Date(item.expiryDate).toLocaleDateString("vi-VN")}`}
+                                    <div className="text-[0.625rem] text-slate-500 mt-1 font-mono leading-tight">
+                                      {item.mfgDate && <span>NSX: {new Date(item.mfgDate).toLocaleDateString("vi-VN")} · </span>}
+                                      {item.expiryDate && <span>HSD: {new Date(item.expiryDate).toLocaleDateString("vi-VN")}</span>}
                                     </div>
                                   </div>
                                 ) : (
-                                  <span className="text-slate-400 text-[11px]">Không quản lý lô</span>
+                                  <span className="text-slate-400 text-[0.6875rem]">Không quản lý lô</span>
                                 )}
                               </td>
                             </tr>
@@ -731,52 +833,108 @@ export const InventoryReceiptsPage: React.FC = () => {
                         </tbody>
                       </table>
                     </div>
+
+                    {/* Dạng thẻ hiển thị trên Mobile (Responsive hoàn hảo cho màn hình nhỏ) */}
+                    <div className="md:hidden divide-y divide-slate-100 bg-white">
+                      {selectedReceipt.items?.map((item, idx) => (
+                        <div key={item.id || idx} className="p-3.5 space-y-2.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-2 min-w-0">
+                              <span className="font-mono text-[0.6875rem] font-bold text-slate-400 bg-slate-100 w-5 h-5 rounded flex items-center justify-center shrink-0 mt-0.5">
+                                {idx + 1}
+                              </span>
+                              <div className="min-w-0">
+                                <div className="font-semibold text-slate-800 text-xs line-clamp-2">
+                                  {item.productName || item.productCode || item.productId}
+                                </div>
+                                <span className="inline-block font-mono text-[0.6875rem] font-semibold text-indigo-700 bg-indigo-50/80 px-1.5 py-0.5 rounded border border-indigo-200/60 mt-1">
+                                  {item.productCode}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="font-mono font-bold text-slate-900 text-xs sm:text-sm">
+                                {Number(item.totalCost).toLocaleString("vi-VN")} đ
+                              </div>
+                              <div className="text-[0.625rem] text-slate-400 font-mono">
+                                {Number(item.unitCost).toLocaleString("vi-VN")} đ / {formatItemUnitName(item)}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 p-2 bg-slate-50/70 rounded-lg text-xs">
+                            <div>
+                              <span className="text-slate-400 text-[0.6875rem] block">SL nhập:</span>
+                              <span className="font-mono font-semibold text-slate-800">
+                                {Number(item.packageQuantity).toLocaleString("vi-VN")} {formatItemUnitName(item)}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-slate-400 text-[0.6875rem] block">Quy đổi cơ sở:</span>
+                              <span className="font-mono font-bold text-indigo-600">
+                                {Number(item.baseQuantity).toLocaleString("vi-VN")} {getBaseUnitName(item)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {item.batchNumber ? (
+                            <div className="flex flex-wrap items-center justify-between gap-1 text-[0.6875rem] pt-0.5 text-slate-600">
+                              <span className="font-mono font-semibold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/70">
+                                Lô: {item.batchNumber}
+                              </span>
+                              <span className="font-mono text-slate-500 text-[0.625rem]">
+                                {item.mfgDate && `NSX: ${new Date(item.mfgDate).toLocaleDateString("vi-VN")} • `}
+                                {item.expiryDate && `HSD: ${new Date(item.expiryDate).toLocaleDateString("vi-VN")}`}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-[0.6875rem] italic">Không quản lý lô</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  {/* Ghi chú */}
-                  {selectedReceipt.notes && (
-                    <div className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <strong>Ghi chú:</strong> {selectedReceipt.notes}
-                    </div>
-                  )}
                 </>
               ) : null}
             </div>
 
             {/* Footer Modal */}
-            <div className="p-4 border-t border-slate-100 flex justify-end items-center bg-slate-50/50">
-              <div className="flex items-center gap-2">
-                {selectedReceipt?.status === 'DRAFT' && (
-                  <button
-                    onClick={() => {
-                      setDetailModalOpen(false);
-                      setReceiptToConfirm(selectedReceipt);
-                      setConfirmModalOpen(true);
-                    }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer shadow-xs"
-                  >
-                    Xác nhận nhập kho
-                  </button>
-                )}
-                {selectedReceipt?.status === 'CONFIRMED' && (
-                  <button
-                    onClick={() => {
-                      setDetailModalOpen(false);
-                      handleNavigateToAdjustment(selectedReceipt);
-                    }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
-                  >
-                    <SlidersHorizontal className="w-3.5 h-3.5" />
-                    Lập phiếu điều chỉnh
-                  </button>
-                )}
+            <div className="p-3.5 sm:p-4 border-t border-slate-100 flex flex-wrap justify-end items-center gap-2 sm:gap-2.5 bg-slate-50/50">
+              {selectedReceipt?.status === 'DRAFT' && (
                 <button
-                  onClick={() => setDetailModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-medium rounded-xl transition-colors cursor-pointer"
+                  type="button"
+                  onClick={() => {
+                    setDetailModalOpen(false);
+                    setReceiptToConfirm(selectedReceipt);
+                    setConfirmModalOpen(true);
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 h-[2.375rem] px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer"
                 >
-                  Đóng
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Xác nhận nhập kho</span>
                 </button>
-              </div>
+              )}
+              {selectedReceipt?.status === 'CONFIRMED' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDetailModalOpen(false);
+                    handleNavigateToAdjustment(selectedReceipt);
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 h-[2.375rem] px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
+                  <span>Lập phiếu điều chỉnh</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setDetailModalOpen(false)}
+                className="inline-flex items-center justify-center gap-1.5 h-[2.375rem] px-3.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-all shadow-2xs cursor-pointer"
+              >
+                Đóng
+              </button>
             </div>
           </div>
         </div>

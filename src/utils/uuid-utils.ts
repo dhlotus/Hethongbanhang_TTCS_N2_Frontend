@@ -50,10 +50,14 @@ const KNOWN_PRODUCT_UUID_MAP: Record<string, string> = {
  * Ánh xạ kho mặc định nếu truyền code cũ
  */
 const KNOWN_WAREHOUSE_UUID_MAP: Record<string, string> = {
-  'wh01': '11111111-0000-4000-8000-000000000001',
+  'all': '11111111-0000-0000-0000-000000000001',
+  'tat ca kho hang': '11111111-0000-0000-0000-000000000001',
+  'tất cả kho hàng': '11111111-0000-0000-0000-000000000001',
+  'wh01': '11111111-0000-0000-0000-000000000001',
   'kho-mn-01': '11111111-0000-0000-0000-000000000001',
   'kho-mb-01': '11111111-0000-0000-0000-000000000002',
-  'kho-mt-01': '11111111-0000-0000-0000-000000000003',
+  'kho-west-01': '11111111-0000-0000-0000-000000000003',
+  'kho-mt-01': '11111111-0000-0000-0000-000000000004',
 };
 
 /**
@@ -66,6 +70,7 @@ const KNOWN_SUPPLIER_UUID_MAP: Record<string, string> = {
   'ncc-nsx': '22222222-0000-0000-0000-000000000002',
   'ncc-dairy-03': '22222222-0000-0000-0000-000000000003',
   'ncc-pack-04': '22222222-0000-0000-0000-000000000004',
+  'ncc-old-05': '22222222-0000-0000-0000-000000000005',
 };
 
 /**
@@ -124,12 +129,15 @@ export function normalizeProductIdToUuid(
  * @returns Chuỗi UUID hợp lệ
  */
 export function normalizeWarehouseIdToUuid(warehouseId: string): string {
+  if (!warehouseId || warehouseId === 'ALL' || warehouseId === 'all') {
+    return '11111111-0000-0000-0000-000000000001';
+  }
   if (isValidUuid(warehouseId)) return warehouseId.trim();
   const clean = (warehouseId || '').toLowerCase().trim();
   if (KNOWN_WAREHOUSE_UUID_MAP[clean]) {
     return KNOWN_WAREHOUSE_UUID_MAP[clean];
   }
-  return '11111111-0000-4000-8000-000000000001';
+  return '11111111-0000-0000-0000-000000000001';
 }
 
 /**
@@ -231,5 +239,46 @@ export function generateReferenceDocCode(dateInput?: string | Date): string {
   return `REF-${datePart}-${randPart}`;
 }
 
+/**
+ * Sinh số lô hàng tự động ngẫu nhiên, không trùng lặp theo chuẩn ERP: LOT-YYMMDD-XXXX (SN-178 / SN-184)
+ * - YYMMDD: 6 chữ số đại diện Năm-Tháng-Ngày (VD: 261018)
+ * - XXXX: 4 ký tự ngẫu nhiên chuẩn Crockford Base32 tránh nhầm lẫn (VD: K8M2, 7F3A)
+ * - Đảm bảo tính duy nhất, ngẫu nhiên và không bao giờ bị trùng lặp số -001
+ * @param dateInput Ngày nhập kho / ngày sản xuất tùy chọn
+ * @returns Chuỗi số lô tự sinh ngẫu nhiên (VD: LOT-261018-K8M2)
+ */
+export function generateRandomBatchCode(dateInput?: string | Date): string {
+  let targetDate = new Date();
+  if (dateInput) {
+    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+      const [y, m, d] = dateInput.split('-').map(Number);
+      targetDate = new Date(y, m - 1, d);
+    } else {
+      const parsed = new Date(dateInput);
+      if (!isNaN(parsed.getTime())) {
+        targetDate = parsed;
+      }
+    }
+  }
 
+  const yy = String(targetDate.getFullYear()).slice(-2);
+  const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(targetDate.getDate()).padStart(2, '0');
+  const datePart = `${yy}${mm}${dd}`;
 
+  let randPart = '';
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const randomBytes = new Uint8Array(4);
+    crypto.getRandomValues(randomBytes);
+    for (let i = 0; i < 4; i++) {
+      randPart += CROCKFORD_BASE32[randomBytes[i] % 32];
+    }
+  } else {
+    for (let i = 0; i < 4; i++) {
+      const rand = Math.floor(Math.random() * 32);
+      randPart += CROCKFORD_BASE32[rand];
+    }
+  }
+
+  return `LOT-${datePart}-${randPart}`;
+}

@@ -1109,7 +1109,7 @@ export const CustomersPage: React.FC = () => {
     <div className="space-y-6">
 
       {/* ── THỐNG KÊ NHANH KPI (CARD-BASED UI) ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-blue-600 shrink-0">
             <Building2 className="w-5 h-5" />
@@ -1248,7 +1248,7 @@ export const CustomersPage: React.FC = () => {
             <span className="hidden sm:inline">Bộ lọc:</span>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 flex-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 flex-1">
             {/* 1. Khu vực */}
             <select
               value={selectedRegion}
@@ -1331,7 +1331,7 @@ export const CustomersPage: React.FC = () => {
           <>
             {/* Desktop Table: Chuẩn 6 cột đồng bộ thiết kế Quản lý đơn hàng, không wrap dưới chân */}
             <div className="overflow-x-auto min-h-[360px]">
-              <table className="w-full text-sm divide-y divide-slate-100">
+              <table className="w-full min-w-[700px] text-sm divide-y divide-slate-100">
                 <thead>
                   <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     <th className="px-4 py-3 text-left w-[15%]">Mã đại lý</th>
@@ -1412,13 +1412,6 @@ export const CustomersPage: React.FC = () => {
                             className={`font-bold tabular-nums text-sm ${
                               isOverLimit ? 'text-rose-600' : 'text-slate-900'
                             }`}
-                            title={
-                              customer.creditLimit
-                                ? `Dư nợ: ${formatVnd(customer.currentDebt || 0)} / Hạn mức: ${formatVnd(
-                                    customer.creditLimit
-                                  )}`
-                                : undefined
-                            }
                           >
                             {formatVnd(customer.currentDebt || 0)}
                           </span>

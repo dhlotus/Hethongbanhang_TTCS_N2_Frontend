@@ -43,7 +43,7 @@ const INVOICE_STATUS_BADGES: Record<
     badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200/60',
   },
   PARTIALLY_PAID: {
-    label: 'Một phần',
+    label: 'Thanh toán một phần',
     badgeClass: 'bg-amber-50 text-amber-800 border border-amber-200/60',
   },
   OVERDUE: {
@@ -289,9 +289,9 @@ export const InvoicesPage: React.FC = () => {
       {/* =================================================================== */}
       {/* 1. BẢNG DỮ LIỆU DESKTOP (>= 640px) - ĐỒNG BỘ 100% STYLE AUDIT LOG   */}
       {/* =================================================================== */}
-      <div className="hidden sm:block rounded-xl bg-white border border-slate-200/80 shadow-xs overflow-hidden w-full">
+      <div className="hidden sm:block rounded-xl bg-white border border-slate-200/80 shadow-xs overflow-x-auto w-full">
         {/* ── BẢNG HÓA ĐƠN BÁN HÀNG (6 CỘT) ── */}
-        <table className="w-full table-fixed border-collapse">
+        <table className="w-full min-w-[680px] table-fixed border-collapse">
           <colgroup>
             <col className="w-[16%]" />
             <col className="w-[28%]" />

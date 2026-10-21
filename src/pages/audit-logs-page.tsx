@@ -19,9 +19,11 @@ import type {
  */
 const ENTITY_TO_MODULE_MAP: Record<AuditEntityType, string> = {
   INVENTORY: 'inventory',
-  DEBT: 'debt',
   PRICING: 'pricing',
   ORDER: 'orders',
+  INVOICE: 'invoices',
+  DEBT: 'debt',
+  CUSTOMER: 'customers',
   USER: 'user',
 };
 
@@ -31,13 +33,15 @@ const ENTITY_TO_MODULE_MAP: Record<AuditEntityType, string> = {
 const parseModuleParam = (param: string | null): AuditEntityType | 'ALL' => {
   if (!param || param === 'ALL') return 'ALL';
   const lower = param.toLowerCase().trim();
-  if (lower === 'inventory' || lower === 'stock') return 'INVENTORY';
+  if (lower === 'inventory' || lower === 'stock' || lower === 'warehouse') return 'INVENTORY';
   if (lower === 'debt' || lower === 'credit') return 'DEBT';
-  if (lower === 'pricing' || lower === 'price') return 'PRICING';
+  if (lower === 'pricing' || lower === 'price' || lower === 'product' || lower === 'products') return 'PRICING';
   if (lower === 'order' || lower === 'orders') return 'ORDER';
+  if (lower === 'invoice' || lower === 'invoices') return 'INVOICE';
+  if (lower === 'customer' || lower === 'customers' || lower === 'agency') return 'CUSTOMER';
   if (lower === 'user' || lower === 'users' || lower === 'account') return 'USER';
   const upper = param.toUpperCase().trim() as AuditEntityType;
-  if (['INVENTORY', 'DEBT', 'PRICING', 'ORDER', 'USER'].includes(upper)) {
+  if (['INVENTORY', 'DEBT', 'PRICING', 'ORDER', 'INVOICE', 'CUSTOMER', 'USER'].includes(upper)) {
     return upper;
   }
   return 'ALL';
