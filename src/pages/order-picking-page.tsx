@@ -19,12 +19,18 @@ import type {
   PickingSheet,
   ShortPickReasonCode,
 } from '../types/order-picking.types';
-import { PickingLineItemCard } from '../components/picking/picking-line-item-card';
+import { PickingLineItemCard, formatZoneName } from '../components/picking/picking-line-item-card';
 import { ShortPickReasonModal } from '../components/picking/short-pick-reason-modal';
-import { FefoBatchSelectorModal } from '../components/picking/fefo-batch-selector-modal';
-import { fefoPickingService } from '../services/fefo-picking.service';
-import type { SelectedBatchAllocation } from '../types/fefo-picking.types';
+import { ConfirmDialog } from '../components/confirm-dialog';
 import { showToast } from '../components/toast';
+
+export const formatPickerName = (pickerName?: string): string => {
+  if (!pickerName) return 'Thủ kho phụ trách';
+  const p = pickerName.toLowerCase().trim();
+  if (p === 'warehouse' || p === 'thukho') return 'Phạm Hùng Kho (Thủ kho)';
+  if (p === 'admin') return 'Quản trị viên hệ thống';
+  return pickerName;
+};
 
 export const OrderPickingPage: React.FC = () => {
   // Danh sách phiếu soạn hàng
@@ -41,7 +47,10 @@ export const OrderPickingPage: React.FC = () => {
     item: PickingLineItem;
     pickedQuantity: number;
   } | null>(null);
-  const [fefoModalItem, setFefoModalItem] = useState<PickingLineItem | null>(null);
+
+  // Modal xác nhận hủy phiếu
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isDeletingSheet, setIsDeletingSheet] = useState(false);
 
   // Tải danh sách phiếu soạn hàng
   const loadSheets = useCallback(async () => {
@@ -159,51 +168,7 @@ export const OrderPickingPage: React.FC = () => {
     }
   };
 
-  // Xác nhận phân bổ lô theo FEFO (SN-187) và trừ tồn kho các lô đã chọn (Tiêu chí 3)
-  const handleConfirmFefoBatches = async (
-    selectedBatches: SelectedBatchAllocation[],
-    isOverride: boolean,
-    overrideReason?: string,
-    overrideReasonCode?: string,
-  ) => {
-    if (!activeSheet || !fefoModalItem) return;
-    try {
-      // 1. Cập nhật phân bổ lô vào dòng hàng của phiếu soạn
-      const updatedSheet = await orderPickingService.updateLineItemBatches(
-        activeSheet.id,
-        fefoModalItem.id,
-        selectedBatches,
-        isOverride,
-        overrideReason,
-        overrideReasonCode,
-      );
-      setSheets((prev) => prev.map((s) => (s.id === updatedSheet.id ? updatedSheet : s)));
 
-      // 2. Tiêu chí 3: Gọi API / Service trừ tồn của các lô đã chọn
-      await fefoPickingService.confirmFefoDispatch({
-        orderId: activeSheet.sourceOrderIds[0],
-        warehouseId: activeSheet.warehouseId,
-        productId: fefoModalItem.productId,
-        selectedBatches,
-        isOverride,
-        overrideReason,
-        overrideReasonCode,
-        notes: `Xuất kho theo phiếu soạn ${activeSheet.sheetCode}`,
-      });
-
-      showToast(
-        'success',
-        isOverride
-          ? 'Đã ghi nhận lý do chọn lô khác FEFO và trừ tồn lô xuất thành công!'
-          : 'Đã phân bổ lô theo đề xuất FEFO và trừ tồn lô xuất thành công!',
-      );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Lỗi lưu thông tin lô xuất';
-      showToast('error', msg);
-    } finally {
-      setFefoModalItem(null);
-    }
-  };
 
   // Hoàn tất lượt soạn hàng
   const handleCompletePickingSheet = async () => {
@@ -229,26 +194,26 @@ export const OrderPickingPage: React.FC = () => {
   };
 
   // Hủy/Xóa phiếu soạn hàng (hoàn trả đơn về danh sách chờ)
-  const handleDeleteSheet = async () => {
+  const handleDeleteSheet = () => {
     if (!activeSheet) return;
-    const confirmMsg =
-      activeSheet.status === 'IN_PROGRESS'
-        ? `Bạn có chắc muốn hủy phiếu soạn ${activeSheet.sheetCode}? Các đơn hàng đang gắn với phiếu sẽ được hoàn trả về danh sách chờ soạn.`
-        : `Bạn có chắc muốn xóa phiếu soạn ${activeSheet.sheetCode}?`;
+    setDeleteConfirmOpen(true);
+  };
 
-    if (!window.confirm(confirmMsg)) {
-      return;
-    }
-
+  const handleConfirmDeleteSheet = async () => {
+    if (!activeSheet) return;
     try {
+      setIsDeletingSheet(true);
       await orderPickingService.deletePickingSheet(activeSheet.id);
       showToast('success', `Đã xóa phiếu soạn hàng ${activeSheet.sheetCode}`);
       const remaining = sheets.filter((s) => s.id !== activeSheet.id);
       setSheets(remaining);
       setActiveSheetId(remaining.length > 0 ? remaining[0].id : null);
+      setDeleteConfirmOpen(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi xóa phiếu soạn hàng';
       showToast('error', msg);
+    } finally {
+      setIsDeletingSheet(false);
     }
   };
 
@@ -382,7 +347,7 @@ export const OrderPickingPage: React.FC = () => {
                     Gộp {activeSheet.orderCount} đơn: {activeSheet.sourceOrderCodes.join(', ')}
                   </span>
                   <span>•</span>
-                  <span>Người soạn: <strong>{activeSheet.pickerName}</strong></span>
+                  <span>Người soạn: <strong>{formatPickerName(activeSheet.pickerName)}</strong></span>
                 </div>
               </div>
 
@@ -441,7 +406,7 @@ export const OrderPickingPage: React.FC = () => {
                 >
                   <option value="ALL">Tất cả trạng thái ({activeSheet.items.length})</option>
                   <option value="PENDING">Chưa soạn ({activeSheet.items.filter((i) => i.status === 'PENDING').length})</option>
-                  <option value="PICKED">Đã xong ({activeSheet.items.filter((i) => i.status === 'PICKED').length})</option>
+                  <option value="PICKED">Đã soạn đủ ({activeSheet.items.filter((i) => i.status === 'PICKED').length})</option>
                   <option value="SHORT_PICKED">Soạn thiếu ({activeSheet.items.filter((i) => i.status === 'SHORT_PICKED').length})</option>
                 </select>
               </div>
@@ -486,7 +451,6 @@ export const OrderPickingPage: React.FC = () => {
                   onQuickPickAll={handleQuickPickAll}
                   onRequestShortPickReason={handleRequestShortPickReason}
                   onUpdateQuantityDirect={handleUpdateQuantityDirect}
-                  onOpenFefoSelector={(it) => setFefoModalItem(it)}
                 />
               ))
             )}
@@ -548,7 +512,7 @@ export const OrderPickingPage: React.FC = () => {
 
             <div className="mt-3 pt-2.5 border-t border-gray-300 grid grid-cols-3 gap-2 text-xs">
               <div>
-                Người soạn: <strong>{activeSheet.pickerName}</strong>
+                Người soạn: <strong>{formatPickerName(activeSheet.pickerName)}</strong>
               </div>
               <div>
                 Gộp <strong>{activeSheet.orderCount} đơn</strong>: {activeSheet.sourceOrderCodes.join(', ')}
@@ -595,7 +559,7 @@ export const OrderPickingPage: React.FC = () => {
                   <td className="border border-black p-2 font-mono font-bold">
                     {item.location.formattedCode}
                     <div className="text-[10px] font-normal text-gray-700">
-                      Khu {item.location.zone} - Kệ {item.location.rack}
+                      Khu {formatZoneName(item.location.zone)} - Kệ {item.location.rack}
                     </div>
                   </td>
                   <td className="border border-black p-2 font-mono font-semibold">
@@ -627,7 +591,7 @@ export const OrderPickingPage: React.FC = () => {
               <p className="font-bold">Người soạn hàng</p>
               <p className="text-[10px] text-gray-500 italic mt-0.5">(Ký và ghi rõ họ tên)</p>
               <div className="h-16" />
-              <p className="font-semibold">{activeSheet.pickerName}</p>
+              <p className="font-semibold">{formatPickerName(activeSheet.pickerName)}</p>
             </div>
             <div>
               <p className="font-bold">Nhân viên kiểm tra & đóng gói</p>
@@ -652,17 +616,36 @@ export const OrderPickingPage: React.FC = () => {
         onConfirm={handleConfirmShortPick}
       />
 
-      <FefoBatchSelectorModal
-        isOpen={Boolean(fefoModalItem)}
-        warehouseId={activeSheet?.warehouseId || 'wh-main-01'}
-        productId={fefoModalItem?.productId || ''}
-        productName={fefoModalItem?.productName || ''}
-        productSku={fefoModalItem?.productSku || ''}
-        unit={fefoModalItem?.unit || 'hộp'}
-        requiredQuantity={fefoModalItem?.totalRequiredQuantity || 0}
-        currentAllocations={fefoModalItem?.selectedBatches || []}
-        onClose={() => setFefoModalItem(null)}
-        onConfirm={handleConfirmFefoBatches}
+      {/* ── 6. MODAL XÁC NHẬN HỦY PHIẾU ── */}
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        type={activeSheet?.status === 'IN_PROGRESS' ? 'danger' : 'warning'}
+        title={
+          activeSheet?.status === 'IN_PROGRESS'
+            ? 'Xác nhận hủy phiếu soạn'
+            : 'Xác nhận xóa phiếu soạn'
+        }
+        message={
+          activeSheet?.status === 'IN_PROGRESS' ? (
+            <span>
+              Bạn có chắc muốn hủy phiếu{' '}
+              <strong className="font-mono">{activeSheet?.sheetCode}</strong>?<br />
+              <span className="text-rose-700">
+                Các đơn hàng đang gắn với phiếu sẽ được hoàn trả về danh sách chờ soạn.
+              </span>
+            </span>
+          ) : (
+            <span>
+              Bạn có chắc muốn xóa phiếu{' '}
+              <strong className="font-mono">{activeSheet?.sheetCode}</strong>?
+            </span>
+          )
+        }
+        confirmText={activeSheet?.status === 'IN_PROGRESS' ? 'Hủy phiếu' : 'Xóa phiếu'}
+        cancelText="Quay lại"
+        isLoading={isDeletingSheet}
+        onConfirm={handleConfirmDeleteSheet}
+        onCancel={() => setDeleteConfirmOpen(false)}
       />
     </div>
   );

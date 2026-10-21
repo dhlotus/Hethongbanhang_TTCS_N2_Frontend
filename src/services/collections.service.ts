@@ -20,8 +20,37 @@ export interface RouteCollection {
   approvedByName?: string;
   approvedAt?: string;
   rejectionReason?: string;
+  orderCodes?: string[];
+  orderIds?: string[];
+  orderDetails?: Array<{
+    orderId?: string;
+    orderCode: string;
+    totalAmount: number;
+    remainingAmount?: number;
+    collectedAmount?: number;
+    status?: string;
+  }>;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface EligibleOrderForCollection {
+  id: string;
+  orderId?: string;
+  orderCode: string;
+  code?: string;
+  invoiceId?: string;
+  invoiceCode?: string;
+  customerId: string;
+  customerName: string;
+  status: 'DELIVERED' | 'SHIPPED';
+  statusLabel: string;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  issueDate?: string;
+  deliveryDate?: string;
+  orderDate?: string;
 }
 
 export interface CollectionSummary {
@@ -77,6 +106,9 @@ export interface CreateCollectionPayload {
   collection_date?: string;
   receipt_image_url?: string;
   image?: File;
+  order_ids?: string[];
+  order_codes?: string[];
+  order_details?: any;
 }
 
 export const collectionsService = {
@@ -127,6 +159,9 @@ export const collectionsService = {
       if (payload.payment_method) formData.append('payment_method', payload.payment_method);
       if (payload.note) formData.append('note', payload.note);
       if (payload.collection_date) formData.append('collection_date', payload.collection_date);
+      if (payload.order_ids) formData.append('order_ids', JSON.stringify(payload.order_ids));
+      if (payload.order_codes) formData.append('order_codes', JSON.stringify(payload.order_codes));
+      if (payload.order_details) formData.append('order_details', JSON.stringify(payload.order_details));
       formData.append('image', payload.image);
 
       const res = await apiClient.post<{ success: boolean; data: RouteCollection }>(
@@ -146,6 +181,17 @@ export const collectionsService = {
       payload,
     );
     return res.data?.data;
+  },
+
+  /**
+   * Lấy danh sách đơn hàng đã giao / đang giao đủ điều kiện thu tiền theo tuyến của đại lý (SN-205)
+   */
+  async getEligibleOrders(agencyId: string): Promise<EligibleOrderForCollection[]> {
+    const res = await apiClient.get<{
+      success: boolean;
+      data: EligibleOrderForCollection[];
+    }>('/collections/eligible-orders', { params: { agency_id: agencyId } });
+    return res.data?.data || [];
   },
 
   /**

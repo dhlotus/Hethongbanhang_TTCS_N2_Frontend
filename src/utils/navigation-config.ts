@@ -236,7 +236,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     },
     {
       id: 'route-collections',
-      name: 'Quản lý ngân sách',
+      name: 'Quản lý thu tuyến',
       path: '/route-collections',
       icon: HandCoins,
       category: 'Tài chính',
@@ -338,7 +338,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     },
     {
       id: 'route-collections',
-      name: 'Quản lý ngân sách',
+      name: 'Quản lý thu tuyến',
       path: '/route-collections',
       icon: HandCoins,
       category: 'Tài chính',
@@ -616,7 +616,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     },
     {
       id: 'route-collections',
-      name: 'Quản lý ngân sách',
+      name: 'Quản lý thu tuyến',
       path: '/route-collections',
       icon: HandCoins,
       category: 'Thu chi & Thanh toán',
@@ -823,7 +823,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     },
     {
       id: 'route-collections',
-      name: 'Quản lý ngân sách',
+      name: 'Quản lý thu tuyến',
       path: '/route-collections',
       icon: HandCoins,
       category: 'Tài chính & Kế toán',

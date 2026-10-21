@@ -425,7 +425,7 @@ export const InventoryBatchesPage: React.FC = () => {
             <thead>
               <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <th className="px-4 py-3 text-left w-[28%]">Sản phẩm / SKU</th>
-                <th className="px-4 py-3 text-left w-[20%]">Số Lô & Kho lưu trữ</th>
+                <th className="px-4 py-3 text-left w-[20%]">Số Lô</th>
                 <th className="px-4 py-3 text-left w-[16%]">NSX / HSD</th>
                 <th className="px-4 py-3 text-left w-[14%]">Hạn dùng còn lại</th>
                 <th className="px-4 py-3 text-right w-[11%]">Số lượng tồn</th>
@@ -486,16 +486,10 @@ export const InventoryBatchesPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Cột 2: Số Lô & Kho */}
+                      {/* Cột 2: Số Lô (Đã bỏ kho lưu trữ vì trên thanh bộ lọc đã có) */}
                       <td className="px-4 py-3.5">
-                        <div className="space-y-1">
-                          <div className="font-mono text-xs font-bold text-slate-800">
-                            {item.batchNumber}
-                          </div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1">
-                            <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span className="truncate">{item.warehouseName}</span>
-                          </div>
+                        <div className="font-mono text-xs font-bold text-slate-800">
+                          {item.batchNumber}
                         </div>
                       </td>
 
