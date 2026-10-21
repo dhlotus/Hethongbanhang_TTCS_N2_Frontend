@@ -211,7 +211,7 @@ export const CreateShipmentPage: React.FC = () => {
               setTrackingNumber(sh.trackingNumber || '');
               if (sh.warehouseId) setWarehouseId(sh.warehouseId);
 
-              if (sh.items && Array.isArray(sh.items)) {
+              if (sh.items && Array.isArray(sh.items) && sh.items.length > 0) {
                 setItems(
                   sh.items.map((it: any) => ({
                     productId: it.sku_code || it.skuCode || '',
@@ -230,6 +230,24 @@ export const CreateShipmentPage: React.FC = () => {
                     availableQuantity: Number(it.quantity_requested || it.quantity || 1),
                     isOverridden: Boolean(it.is_overridden ?? it.isOverridden),
                     overrideReason: it.override_reason || it.overrideReason || '',
+                    isLoadingBatch: false,
+                  }))
+                );
+              } else if (sh.lines && Array.isArray(sh.lines) && sh.lines.length > 0) {
+                setItems(
+                  sh.lines.map((l: any) => ({
+                    productId: l.productId || l.productSku || '',
+                    skuCode: l.productSku || '',
+                    productName: l.productName || l.productSku || 'Sản phẩm',
+                    unit: l.unitName || 'Hộp',
+                    quantityRequested: Number(l.shippedQuantity ?? l.orderedQuantity ?? 1),
+                    selectedBatchNo: 'LÔ-TIÊU-CHUẨN',
+                    fefoSuggestedBatchNo: 'LÔ-TIÊU-CHUẨN',
+                    expiryDate: '',
+                    manufacturingDate: '',
+                    availableQuantity: Number(l.shippedQuantity ?? l.orderedQuantity ?? 1),
+                    isOverridden: false,
+                    overrideReason: l.shortDeliveryReason || '',
                     isLoadingBatch: false,
                   }))
                 );
