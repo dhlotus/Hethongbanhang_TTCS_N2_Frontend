@@ -24,6 +24,9 @@ import {
   Calendar,
   X,
   ChevronDown,
+  Lock,
+  AlertTriangle,
+  Layers,
 } from 'lucide-react';
 import { shipmentsService, type Shipment } from '../services/shipments.service';
 import { deliveryTripsService } from '../services/delivery-trips.service';
@@ -33,6 +36,7 @@ import type { Order } from '../types/order';
 import { showToast } from '../components/toast';
 import { getStoredUser } from '../utils/navigation';
 import { USER_ROLES } from '../types/auth';
+import { ConfirmExportModal } from '../components/confirm-export-modal';
 import { ConfirmDeliveryModal, ViewDeliveryProofModal } from '../components/confirm-delivery-modal';
 import { CreateDeliveryTripModal } from '../components/create-delivery-trip-modal';
 import { DeliveryTripDetailModal } from '../components/delivery-trip-detail-modal';
@@ -125,6 +129,7 @@ export const ShipmentsPage: React.FC = () => {
   const isWarehouseManager = roles.includes(USER_ROLES.WAREHOUSE_MANAGER) || roles.includes('WH_MANAGER');
   const isWarehouseKeeper = roles.includes(USER_ROLES.WAREHOUSE_KEEPER) || roles.includes('WAREHOUSE');
 
+  const canConfirm = isAdmin || isWarehouseManager || isWarehouseKeeper;
   const canUpdateStatus = isAdmin || isWarehouseManager || isWarehouseKeeper;
   const canCreate = isAdmin || isWarehouseManager || isWarehouseKeeper;
   const canManageTrips = isAdmin || isWarehouseManager || isWarehouseKeeper;
@@ -157,6 +162,14 @@ export const ShipmentsPage: React.FC = () => {
   const [limit, setLimit] = useState<number>(urlLimit > 0 ? urlLimit : 10);
   const [totalItems, setTotalItems] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
+
+  const backordersCount = useMemo(() => {
+    return allShipments.filter(
+      (s) =>
+        s.hasShortDelivery ||
+        (s.lines && s.lines.some((l) => (l.remainingQuantity || 0) > 0 || l.isShortDelivery)),
+    ).length;
+  }, [allShipments]);
 
   // Thống kê tổng quan cho 3 KPI Cards
   const [overviewStats, setOverviewStats] = useState({
@@ -338,6 +351,10 @@ export const ShipmentsPage: React.FC = () => {
   const [updateCarrierVal, setUpdateCarrierVal] = useState('');
   const [isSubmittingStatus, setIsSubmittingStatus] = useState(false);
 
+  // SN-195: Modal Xác nhận xuất kho & Xử lý giao thiếu
+  const [confirmingShipment, setConfirmingShipment] = useState<Shipment | null>(null);
+  const [creatingBackorderOrderId, setCreatingBackorderOrderId] = useState<string | null>(null);
+
   // SN-198: Modal Xác nhận giao hàng kèm ảnh chứng từ
   const [deliveryConfirmShipment, setDeliveryConfirmShipment] = useState<Shipment | null>(null);
   // Modal Xem chứng từ giao hàng POD
@@ -346,6 +363,14 @@ export const ShipmentsPage: React.FC = () => {
   // Dropdown Thao tác trên từng dòng (Portal pattern đồng bộ hệ thống)
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
   const [actionMenuAnchor, setActionMenuAnchor] = useState<{
+    top: number;
+    right: number;
+    isDropUp?: boolean;
+  } | null>(null);
+
+  // Dropdown Thao tác trên từng dòng Chuyến giao hàng (Portal pattern)
+  const [openTripActionMenuId, setOpenTripActionMenuId] = useState<string | null>(null);
+  const [tripActionMenuAnchor, setTripActionMenuAnchor] = useState<{
     top: number;
     right: number;
     isDropUp?: boolean;
@@ -361,16 +386,27 @@ export const ShipmentsPage: React.FC = () => {
         setOpenActionMenuId(null);
         setActionMenuAnchor(null);
       }
+      if (
+        !(e.target as HTMLElement).closest('.trip-action-dropdown-container') &&
+        !(e.target as HTMLElement).closest('.trip-action-portal-menu')
+      ) {
+        setOpenTripActionMenuId(null);
+        setTripActionMenuAnchor(null);
+      }
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpenActionMenuId(null);
         setActionMenuAnchor(null);
+        setOpenTripActionMenuId(null);
+        setTripActionMenuAnchor(null);
       }
     };
     const handleScrollOrResize = () => {
       setOpenActionMenuId(null);
       setActionMenuAnchor(null);
+      setOpenTripActionMenuId(null);
+      setTripActionMenuAnchor(null);
     };
 
     document.addEventListener('click', handleDocClick);
@@ -477,15 +513,29 @@ export const ShipmentsPage: React.FC = () => {
   const fetchShipments = useCallback(async () => {
     try {
       setLoading(true);
+      const isBackorder = statusFilter === 'BACKORDERS';
       const res = await shipmentsService.getPaginatedShipments({
         page,
         limit,
         search: searchTerm || undefined,
-        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+        status: statusFilter !== 'ALL' && !isBackorder ? statusFilter : undefined,
+        hasShortDelivery: isBackorder ? true : undefined,
       });
-      setShipments(res.data || []);
-      setTotalItems(res.total ?? (res.data ? res.data.length : 0));
-      setTotalPages(res.totalPages || Math.max(1, Math.ceil((res.total || 0) / limit)));
+      let data = res.data || [];
+      if (isBackorder) {
+        data = data.filter(
+          (s) =>
+            s.hasShortDelivery ||
+            (s.lines && s.lines.some((l) => (l.remainingQuantity || 0) > 0 || l.isShortDelivery))
+        );
+      }
+      setShipments(data);
+      setTotalItems(isBackorder ? data.length : res.total ?? (res.data ? res.data.length : 0));
+      setTotalPages(
+        isBackorder
+          ? Math.max(1, Math.ceil(data.length / limit))
+          : res.totalPages || Math.max(1, Math.ceil((res.total || 0) / limit))
+      );
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       showToast('error', msg || 'Không thể tải danh sách phiếu xuất kho');
@@ -638,8 +688,29 @@ export const ShipmentsPage: React.FC = () => {
     }
   };
 
-  // Xử lý xóa phiếu xuất kho
-  const handleDelete = async (id: string) => {
+
+  // Xử lý tạo đợt xuất giao bù (SN-195)
+  const handleCreateBackorder = async (orderId: string) => {
+    try {
+      setCreatingBackorderOrderId(orderId);
+      const res = await shipmentsService.createBackorder(orderId);
+      showToast('success', `Đã tạo phiếu giao bù ${res.id} cho đơn ${res.orderCode || orderId}`);
+      fetchShipments();
+      fetchOverviewStats();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      showToast('error', msg || 'Không thể tạo phiếu giao bù cho đơn hàng này');
+    } finally {
+      setCreatingBackorderOrderId(null);
+    }
+  };
+
+  // Xử lý xóa phiếu xuất kho (Chặn nếu đã xác nhận xuất kho - SN-195)
+  const handleDelete = async (id: string, isConfirmed?: boolean) => {
+    if (isConfirmed) {
+      showToast('error', 'Phiếu xuất kho đã được xác nhận thực xuất và khóa bất biến, không thể xóa.');
+      return;
+    }
     if (!window.confirm('Bạn có chắc chắn muốn xóa phiếu xuất kho này?')) return;
     try {
       await shipmentsService.deleteShipment(id);
@@ -759,7 +830,7 @@ export const ShipmentsPage: React.FC = () => {
             }`}
           >
             <Route className="w-4 h-4" />
-            <span>Chuyến giao hàng & Phân tuyến (SN-196)</span>
+            <span>Chuyến giao hàng & Phân tuyến</span>
             <span
               className={`px-2 py-0.5 text-xs rounded-full font-bold ${
                 activeTab === 'TRIPS' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'
@@ -776,7 +847,7 @@ export const ShipmentsPage: React.FC = () => {
             <button
               onClick={() => setIsCreateTripOpen(true)}
               className="inline-flex items-center justify-center gap-1.5 h-[36px] px-3 sm:px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer"
-              title="Gom nhiều phiếu xuất vào một chuyến xe phân theo khu vực (SN-196)"
+              title="Gom nhiều phiếu xuất vào một chuyến xe phân theo khu vực"
             >
               <Route className="w-3.5 h-3.5" />
               <span>Lập Chuyến Giao Mới</span>
@@ -875,6 +946,7 @@ export const ShipmentsPage: React.FC = () => {
                   <option value="PACKED">Đã đóng gói</option>
                   <option value="SHIPPED">Đang giao hàng</option>
                   <option value="DELIVERED">Giao thành công</option>
+                  <option value="BACKORDERS">Đơn nợ hàng / Giao thiếu ({backordersCount})</option>
                   <option value="CANCELLED">Đã hủy</option>
                 </select>
               </div>
@@ -949,13 +1021,23 @@ export const ShipmentsPage: React.FC = () => {
 
                           {/* Trạng thái: Chỉ hiển thị badge trạng thái */}
                           <td className="py-3.5 px-3 sm:px-4 text-center">
-                            <span
-                              className={`inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold border max-w-full ${statusInfo.bg} ${statusInfo.text}`}
-                              title={statusInfo.label}
-                            >
-                              <StatusIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-                              <span className="truncate">{statusInfo.label}</span>
-                            </span>
+                            {item.hasShortDelivery || (item.lines && item.lines.some((l) => (l.remainingQuantity || 0) > 0 || l.isShortDelivery)) ? (
+                              <span
+                                className="inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200 max-w-full"
+                                title="Phiếu xuất có hàng giao thiếu / nợ hàng"
+                              >
+                                <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 text-amber-600" />
+                                <span className="truncate">Giao thiếu</span>
+                              </span>
+                            ) : (
+                              <span
+                                className={`inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold border max-w-full ${statusInfo.bg} ${statusInfo.text}`}
+                                title={statusInfo.label}
+                              >
+                                <StatusIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                                <span className="truncate">{statusInfo.label}</span>
+                              </span>
+                            )}
                           </td>
 
                           {/* Thao tác: Chỉ 1 nút bấm mở dropdown */}
@@ -1033,6 +1115,39 @@ export const ShipmentsPage: React.FC = () => {
                       <span>Xem chi tiết</span>
                     </button>
 
+                    {/* 1.5. Xác nhận xuất kho & Xử lý giao thiếu (SN-195) */}
+                    {canConfirm && !item.isConfirmed && ['PENDING', 'PICKING', 'PACKED'].includes(item.status) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionMenuId(null);
+                          setActionMenuAnchor(null);
+                          setConfirmingShipment(item);
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-blue-700 hover:bg-blue-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                      >
+                        <PackageCheck className="w-4 h-4 text-blue-600" />
+                        <span>Xác nhận xuất kho</span>
+                      </button>
+                    )}
+
+                    {/* 1.6. Tạo phiếu giao bù cho đơn nợ hàng (SN-195) */}
+                    {canCreate && (item.hasShortDelivery || (item.lines && item.lines.some((l) => l.remainingQuantity > 0))) && (
+                      <button
+                        type="button"
+                        disabled={creatingBackorderOrderId === (item.orderId || item.orderCode)}
+                        onClick={() => {
+                          setOpenActionMenuId(null);
+                          setActionMenuAnchor(null);
+                          handleCreateBackorder(item.orderId || item.orderCode);
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-amber-700 hover:bg-amber-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                      >
+                        <Layers className="w-4 h-4 text-amber-600" />
+                        <span>{creatingBackorderOrderId === (item.orderId || item.orderCode) ? 'Đang tạo...' : 'Tạo phiếu giao bù'}</span>
+                      </button>
+                    )}
+
                     {/* 2. Xác nhận giao hàng (khi SHIPPED) */}
                     {canUpdateStatus && item.status === 'SHIPPED' && (
                       <button
@@ -1093,7 +1208,7 @@ export const ShipmentsPage: React.FC = () => {
                         onClick={() => {
                           setOpenActionMenuId(null);
                           setActionMenuAnchor(null);
-                          handleDelete(item.id);
+                          handleDelete(item.id, item.isConfirmed);
                         }}
                         className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
                       >
@@ -1209,21 +1324,21 @@ export const ShipmentsPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Status Pills */}
-              <div className="flex flex-wrap gap-1.5 w-full sm:w-auto">
-                {['ALL', 'DRAFT', 'ASSIGNED', 'IN_TRANSIT', 'COMPLETED', 'CANCELLED'].map((st) => (
-                  <button
-                    key={st}
-                    onClick={() => setTripStatusFilter(st)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                      tripStatusFilter === st
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {st === 'ALL' ? 'Tất cả trạng thái' : TRIP_STATUS_CONFIG[st as DeliveryTripStatus]?.label || st}
-                  </button>
-                ))}
+              {/* Dropdown lọc theo trạng thái chuyến giao (Thu gọn) */}
+              <div className="w-full sm:w-56">
+                <select
+                  value={tripStatusFilter}
+                  onChange={(e) => setTripStatusFilter(e.target.value)}
+                  className="w-full h-[38px] px-3 text-xs font-medium border border-slate-200 rounded-lg bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer shadow-2xs hover:border-slate-300 transition-all"
+                  aria-label="Lọc theo trạng thái chuyến giao"
+                >
+                  <option value="ALL">Tất cả trạng thái</option>
+                  <option value="DRAFT">Chờ điều xe</option>
+                  <option value="ASSIGNED">Đã gán tài xế</option>
+                  <option value="IN_TRANSIT">Đang giao hàng</option>
+                  <option value="COMPLETED">Giao hoàn tất</option>
+                  <option value="CANCELLED">Đã hủy</option>
+                </select>
               </div>
             </div>
           </div>
@@ -1387,51 +1502,42 @@ export const ShipmentsPage: React.FC = () => {
                             </span>
                           </td>
 
-                          {/* Thao tác */}
+                          {/* Thao tác: Nút bấm thu gọn mở dropdown */}
                           <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {/* Xem chi tiết & Lộ trình */}
+                            <div className="relative inline-flex items-center justify-end trip-action-dropdown-container">
                               <button
-                                onClick={() => setSelectedTripForDetail(trip)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer"
-                                title="Xem chi tiết lộ trình và các điểm dừng"
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (openTripActionMenuId === trip.id) {
+                                    setOpenTripActionMenuId(null);
+                                    setTripActionMenuAnchor(null);
+                                  } else {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    const shouldDropUp = spaceBelow < 220 && rect.top > 220;
+                                    setTripActionMenuAnchor({
+                                      top: shouldDropUp ? rect.top - 4 : rect.bottom + 4,
+                                      right: window.innerWidth - rect.right,
+                                      isDropUp: shouldDropUp,
+                                    });
+                                    setOpenTripActionMenuId(trip.id);
+                                  }
+                                }}
+                                className={`inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none shrink-0 ${
+                                  openTripActionMenuId === trip.id
+                                    ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs ring-2 ring-indigo-500/10'
+                                    : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300'
+                                }`}
+                                title="Thao tác"
                               >
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>Chi tiết</span>
+                                <span>Thao tác</span>
+                                <ChevronDown
+                                  className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${
+                                    openTripActionMenuId === trip.id ? 'rotate-180 text-indigo-600' : ''
+                                  }`}
+                                />
                               </button>
-
-                              {/* AC 3: In bảng kê lộ trình điểm giao (Delivery Manifest) */}
-                              <button
-                                onClick={() => setSelectedTripForPrint(trip)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer"
-                                title="In Bảng kê lộ trình & Lệnh điều xe cho tài xế (SN-196 AC 3)"
-                              >
-                                <Printer className="w-3.5 h-3.5 text-slate-500" />
-                                <span>In Bảng kê</span>
-                              </button>
-
-                              {/* Nút Xuất phát nhanh (nếu đã gán xe và đang chờ chạy) */}
-                              {canManageTrips && trip.status === 'ASSIGNED' && (
-                                <button
-                                  onClick={() => handleQuickDispatchTrip(trip)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
-                                  title="Xuất phát chuyến xe ngay"
-                                >
-                                  <Send className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>Xuất phát</span>
-                                </button>
-                              )}
-
-                              {/* Xóa chuyến giao (Chỉ khi DRAFT hoặc CANCELLED) */}
-                              {canDelete && ['DRAFT', 'CANCELLED'].includes(trip.status) && (
-                                <button
-                                  onClick={() => handleDeleteTrip(trip)}
-                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                                  title="Xóa chuyến giao"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
                             </div>
                           </td>
                         </tr>
@@ -1441,6 +1547,88 @@ export const ShipmentsPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Dropdown Menu Portal Thao tác Chuyến giao */}
+            {openTripActionMenuId && tripActionMenuAnchor && typeof document !== 'undefined' && (() => {
+              const trip = trips.find((t) => t.id === openTripActionMenuId);
+              if (!trip) return null;
+              return createPortal(
+                <div
+                  className="trip-action-portal-menu fixed w-48 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-[9999] animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100"
+                  style={{
+                    top: tripActionMenuAnchor.isDropUp ? undefined : `${tripActionMenuAnchor.top}px`,
+                    bottom: tripActionMenuAnchor.isDropUp ? `${window.innerHeight - tripActionMenuAnchor.top}px` : undefined,
+                    right: `${tripActionMenuAnchor.right}px`,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="py-1">
+                    {/* 1. Xem chi tiết & Lộ trình */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenTripActionMenuId(null);
+                        setTripActionMenuAnchor(null);
+                        setSelectedTripForDetail(trip);
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                    >
+                      <Eye className="w-4 h-4 text-slate-400" />
+                      <span>Xem chi tiết</span>
+                    </button>
+
+                    {/* 2. In bảng kê lộ trình */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenTripActionMenuId(null);
+                        setTripActionMenuAnchor(null);
+                        setSelectedTripForPrint(trip);
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                    >
+                      <Printer className="w-4 h-4 text-slate-400" />
+                      <span>In Bảng kê</span>
+                    </button>
+
+                    {/* 3. Xuất phát nhanh */}
+                    {canManageTrips && trip.status === 'ASSIGNED' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenTripActionMenuId(null);
+                          setTripActionMenuAnchor(null);
+                          handleQuickDispatchTrip(trip);
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                      >
+                        <Send className="w-4 h-4 text-emerald-600" />
+                        <span>Xuất phát</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 4. Xóa chuyến giao */}
+                  {canDelete && ['DRAFT', 'CANCELLED'].includes(trip.status) && (
+                    <div className="py-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenTripActionMenuId(null);
+                          setTripActionMenuAnchor(null);
+                          handleDeleteTrip(trip);
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-500" />
+                        <span>Xóa chuyến</span>
+                      </button>
+                    </div>
+                  )}
+                </div>,
+                document.body
+              );
+            })()}
           </div>
         </div>
       )}
@@ -1729,6 +1917,20 @@ export const ShipmentsPage: React.FC = () => {
             </div>
           </form>
         </div>
+      )}
+
+      {/* Modal Xác nhận xuất kho & Xử lý giao thiếu (SN-195) */}
+      {confirmingShipment && (
+        <ConfirmExportModal
+          isOpen={Boolean(confirmingShipment)}
+          shipment={confirmingShipment}
+          onClose={() => setConfirmingShipment(null)}
+          onSuccess={() => {
+            setConfirmingShipment(null);
+            fetchShipments();
+            fetchOverviewStats();
+          }}
+        />
       )}
 
       {/* Modal Xác nhận giao hàng SN-198 */}

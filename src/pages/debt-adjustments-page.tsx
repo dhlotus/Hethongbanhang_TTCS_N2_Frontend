@@ -437,6 +437,7 @@ export const DebtAdjustmentsPage: React.FC = () => {
           <div className="p-3 border-t border-slate-100 flex justify-end">
             <Pagination
               currentPage={page}
+              totalPages={Math.max(1, Math.ceil(total / limit))}
               totalItems={total}
               pageSize={limit}
               onPageChange={setPage}

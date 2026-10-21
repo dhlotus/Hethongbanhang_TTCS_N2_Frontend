@@ -482,14 +482,6 @@ export const DeliveryTripDetailModal: React.FC<Props> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex items-center justify-center h-[38px] px-4 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-all shadow-2xs cursor-pointer"
-              >
-                Đóng
-              </button>
-
               {/* Nút Xuất phát chuyến (chuyển sang IN_TRANSIT) */}
               {canManage && (currentTrip.status === 'DRAFT' || currentTrip.status === 'ASSIGNED') && (
                 <button

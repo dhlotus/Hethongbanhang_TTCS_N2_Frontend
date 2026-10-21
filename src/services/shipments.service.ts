@@ -2,6 +2,22 @@ import { apiClient } from './api';
 import { syncDemoOrderStatus } from './orders.service';
 import type { OrderStatus } from '../types/order';
 
+export interface ShipmentLine {
+  id: string;
+  shipmentId: string;
+  orderLineId: string;
+  productId: string;
+  productSku: string;
+  productName: string;
+  unitName: string;
+  conversionRate: number;
+  orderedQuantity: number;
+  shippedQuantity: number;
+  remainingQuantity: number;
+  isShortDelivery: boolean;
+  shortDeliveryReason?: string;
+}
+
 export interface Shipment {
   id: string;
   orderId: string;
@@ -11,6 +27,9 @@ export interface Shipment {
   salesRepId?: string;
   warehouseId?: string;
   status: 'PENDING' | 'PICKING' | 'PACKED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  isConfirmed?: boolean;
+  confirmedAt?: string;
+  confirmedBy?: string;
   deliveryAddress?: string;
   receiverName?: string;
   phone?: string;
@@ -23,6 +42,9 @@ export interface Shipment {
   tripCode?: string;
   shippedAt?: string;
   deliveredAt?: string;
+  lines?: ShipmentLine[];
+  hasShortDelivery?: boolean;
+  note?: string;
   createdAt: string;
   updatedAt: string;
   items?: {
@@ -141,15 +163,28 @@ export interface ShipmentQueryParams {
   orderCode?: string;
 }
 
+export interface ConfirmExportLinePayload {
+  orderLineId: string;
+  shippedQuantity: number;
+  shortDeliveryReason?: string;
+}
+
+export interface ConfirmExportPayload {
+  lines?: ConfirmExportLinePayload[];
+  carrierName?: string;
+  trackingNumber?: string;
+  note?: string;
+}
+
 export const shipmentsService = {
-  async getShipments(params?: Record<string, string | number>): Promise<Shipment[]> {
+  async getShipments(params?: Record<string, string | number | boolean>): Promise<Shipment[]> {
     const res = await apiClient.get<any>('/shipments', { params });
     if (Array.isArray(res.data)) return res.data;
     if (res.data && Array.isArray(res.data.data)) return res.data.data;
     return [];
   },
 
-  async getPaginatedShipments(params?: ShipmentQueryParams | Record<string, string | number>): Promise<PaginatedShipmentsResponse> {
+  async getPaginatedShipments(params?: ShipmentQueryParams | Record<string, string | number | boolean>): Promise<PaginatedShipmentsResponse> {
     const res = await apiClient.get<any>('/shipments', { params });
     if (Array.isArray(res.data)) {
       const page = Number(params?.page) || 1;
@@ -170,6 +205,11 @@ export const shipmentsService = {
       limit: Number(res.data?.limit) || Number(params?.limit) || 10,
       totalPages: Number(res.data?.totalPages) || 1,
     };
+  },
+
+  async getBackorders(): Promise<Shipment[]> {
+    const res = await apiClient.get<Shipment[]>('/shipments/backorders');
+    return res.data;
   },
 
   async getShipmentById(id: string): Promise<Shipment> {
@@ -252,10 +292,25 @@ export const shipmentsService = {
     return res.data;
   },
 
-  async confirmShipment(id: string): Promise<Shipment> {
-    const res = await apiClient.post<Shipment>(`/shipments/${id}/confirm`);
+  /**
+   * Xác nhận xuất kho và xử lý giao thiếu (SN-195)
+   */
+  async confirmExport(id: string, payload: ConfirmExportPayload): Promise<Shipment> {
+    const res = await apiClient.post<Shipment>(`/shipments/${id}/confirm-export`, payload);
     notifyOrderSync(res.data);
     return res.data;
+  },
+
+  /**
+   * Tạo phiếu xuất đợt sau (Backorder) cho đơn còn nợ hàng (SN-195)
+   */
+  async createBackorder(orderId: string): Promise<Shipment> {
+    const res = await apiClient.post<Shipment>(`/shipments/create-backorder/${orderId}`);
+    return res.data;
+  },
+
+  async confirmShipment(id: string): Promise<Shipment> {
+    return this.confirmExport(id, {});
   },
 
   async deleteShipment(id: string): Promise<{ success: boolean; message: string }> {
