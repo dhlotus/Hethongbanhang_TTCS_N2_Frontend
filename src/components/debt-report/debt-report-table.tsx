@@ -87,10 +87,7 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
     const hasOverdue = overdueTotal > 0 || item.isOverdue;
     const debtDays = item.oldestDebtDays ?? 0;
 
-    let pillBadge = {
-      label: debtDays > 0 ? `Trong hạn (${debtDays}d)` : 'Trong hạn',
-      className: 'bg-emerald-50 text-emerald-700 border-emerald-200/80 font-medium',
-    };
+    let pillBadge: { label: string; className: string };
 
     if (hasOverdue) {
       if (b90 > 0) {

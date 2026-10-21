@@ -49,7 +49,7 @@ export const CreatePickingSheetModal: React.FC<CreatePickingSheetModalProps> = (
           const firstIds = data.slice(0, 2).map((o) => o.id || o.orderCode || '').filter(Boolean);
           setSelectedOrderIds(firstIds);
         }
-      } catch (err) {
+      } catch {
         showToast('error', 'Không thể tải danh sách đơn hàng đã duyệt');
       } finally {
         setLoading(false);

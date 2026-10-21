@@ -200,7 +200,9 @@ export const NotificationBell: React.FC = () => {
             priority: dn.priority,
           }));
         }
-      } catch {}
+      } catch {
+        // ignore
+      }
 
       // 3. Tải thông báo cá nhân đã lưu cục bộ (như tạo phiếu xuất kho)
       let personalNotifs: SystemNotification[] = [];
@@ -212,7 +214,9 @@ export const NotificationBell: React.FC = () => {
           ...pn,
           isRead: savedReadIds.includes(pn.id) || pn.isRead,
         }));
-      } catch {}
+      } catch {
+        // ignore
+      }
 
       const allFetched = [...personalNotifs, ...formattedSystem, ...formattedDebt];
       if (allFetched.length > 0) {
@@ -283,7 +287,9 @@ export const NotificationBell: React.FC = () => {
             'loha_personal_notifications',
             JSON.stringify([optNotif, ...savedPersonal.filter((p) => p.id !== optNotif.id)].slice(0, 30)),
           );
-        } catch {}
+        } catch {
+          // ignore
+        }
       }
       void loadNotifications();
     };

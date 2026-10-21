@@ -441,7 +441,7 @@ const removeVietnameseTones = (str: string): string => {
               return Array.from(map.values()).slice(0, 50);
             });
           }
-        } catch (err) {
+        } catch {
           // Ignore
         } finally {
           setIsSearching(false);
@@ -492,7 +492,9 @@ const removeVietnameseTones = (str: string): string => {
           handleSelect({ code: exactMatch.sku, name: exactMatch.name });
           return;
         }
-      } catch {}
+      } catch {
+        // ignore
+      }
       setRowError('Mã sản phẩm không tồn tại trong danh mục');
       onErrorChange('Mã sản phẩm không tồn tại trong danh mục');
     } else {
@@ -1071,14 +1073,12 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
     const appliedCategoryIds = Array.from(new Set(catCodes));
     const appliedProductSkus = Array.from(new Set(skuCodes));
 
-    let finalTargetType: 'SKU' | 'CATEGORY' | 'HYBRID' = 'SKU';
-    if (appliedCategoryIds.length > 0 && appliedProductSkus.length > 0) {
-      finalTargetType = 'HYBRID';
-    } else if (appliedCategoryIds.length > 0) {
-      finalTargetType = 'CATEGORY';
-    } else {
-      finalTargetType = 'SKU';
-    }
+    const finalTargetType: 'SKU' | 'CATEGORY' | 'HYBRID' =
+      appliedCategoryIds.length > 0 && appliedProductSkus.length > 0
+        ? 'HYBRID'
+        : appliedCategoryIds.length > 0
+        ? 'CATEGORY'
+        : 'SKU';
 
     const allTargetIds = [...appliedCategoryIds, ...appliedProductSkus];
 

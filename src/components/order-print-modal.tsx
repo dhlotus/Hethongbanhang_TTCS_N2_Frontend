@@ -64,16 +64,13 @@ export const OrderPrintModal: React.FC<OrderPrintModalProps> = ({
   const printContentRef = useRef<HTMLDivElement>(null);
   const [pdfNotice, setPdfNotice] = useState<string | null>(null);
 
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-
   // Quản lý class body và phím ESC để đóng modal
   useEffect(() => {
     if (isOpen) {
       document.body.classList.add('has-order-print-open');
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
-          onCloseRef.current();
+          onClose();
         }
       };
       window.addEventListener('keydown', handleKeyDown);
@@ -85,7 +82,7 @@ export const OrderPrintModal: React.FC<OrderPrintModalProps> = ({
       document.body.classList.remove('has-order-print-open');
       setPdfNotice(null);
     }
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   // Đồng bộ trạng thái mở modal vào sessionStorage & URL query để ấn F5 vẫn mở đúng trang In / Xuất PDF
   useEffect(() => {
@@ -94,7 +91,9 @@ export const OrderPrintModal: React.FC<OrderPrintModalProps> = ({
       try {
         sessionStorage.setItem('loha_active_print_order_id', code);
         sessionStorage.setItem('loha_active_print_order_data', JSON.stringify(order));
-      } catch {}
+      } catch {
+        // ignore
+      }
 
       try {
         const url = new URL(window.location.href);
@@ -102,12 +101,16 @@ export const OrderPrintModal: React.FC<OrderPrintModalProps> = ({
           url.searchParams.set('printOrderId', code);
           window.history.replaceState({}, '', url.toString());
         }
-      } catch {}
+      } catch {
+        // ignore
+      }
     } else if (!isOpen) {
       try {
         sessionStorage.removeItem('loha_active_print_order_id');
         sessionStorage.removeItem('loha_active_print_order_data');
-      } catch {}
+      } catch {
+        // ignore
+      }
 
       try {
         const url = new URL(window.location.href);
@@ -115,7 +118,9 @@ export const OrderPrintModal: React.FC<OrderPrintModalProps> = ({
           url.searchParams.delete('printOrderId');
           window.history.replaceState({}, '', url.toString());
         }
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
   }, [isOpen, order]);
 

@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-r
 
 export interface PaginationProps {
   currentPage: number;
-  totalPages: number;
+  totalPages?: number;
   totalItems?: number;
   pageSize?: number;
   pageSizeOptions?: number[];
@@ -41,11 +41,18 @@ export const Pagination: React.FC<PaginationProps> = ({
   variant = 'default',
   size = 'md',
 }) => {
-  if (totalPages <= 0 && (!totalItems || totalItems === 0)) {
+  const effectiveTotalPages =
+    totalPages !== undefined
+      ? totalPages
+      : totalItems && pageSize
+      ? Math.ceil(totalItems / pageSize)
+      : 1;
+
+  if (effectiveTotalPages <= 0 && (!totalItems || totalItems === 0)) {
     return null;
   }
 
-  const validTotalPages = Math.max(1, totalPages);
+  const validTotalPages = Math.max(1, effectiveTotalPages);
   const safePage = Math.min(Math.max(1, currentPage), validTotalPages);
 
   // Thuật toán hiển thị dải trang thông minh

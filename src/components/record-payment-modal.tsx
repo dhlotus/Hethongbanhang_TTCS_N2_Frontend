@@ -71,8 +71,6 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  if (!isOpen) return null;
-
   // Lấy thông tin tài khoản đang đăng nhập (Người thu tiền)
   const currentUser = tokenStorage.getUser();
   const currentCollectorName = currentUser?.fullName || 'Kế toán công nợ';
@@ -133,8 +131,32 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
     };
   }, []);
 
+  // Khởi tạo hoặc reset form khi modal được mở
+  useEffect(() => {
+    if (!isOpen) return;
+    const initialCId = invoice?.customerId || propCustomerId || '';
+    const initialCName = invoice?.customerName || propCustomerName || '';
+    setSelectedCustomerId(initialCId);
+    setSelectedCustomerName(initialCName);
+    setSelectedCustomerCode('');
+    setCustomerSearchKeyword('');
+    setErrorMessage(null);
+    setSubmitting(false);
+
+    if (invoice) {
+      setSelectedInvoiceIds(new Set([invoice.id]));
+      setAmount(invoice.remainingAmount || 0);
+      setNote(`Thanh toán hóa đơn ${invoice.invoiceCode}`);
+    } else {
+      setSelectedInvoiceIds(new Set());
+      setAmount(0);
+      setNote('');
+    }
+  }, [isOpen, invoice, propCustomerId, propCustomerName]);
+
   // Tải danh sách đại lý khi không có sẵn đại lý
   useEffect(() => {
+    if (!isOpen) return;
     if (!invoice && !propCustomerId) {
       setLoadingCustomers(true);
       void customerService
@@ -146,10 +168,11 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
           setLoadingCustomers(false);
         });
     }
-  }, [invoice, propCustomerId]);
+  }, [isOpen, invoice, propCustomerId]);
 
   // Tự động đồng bộ mã đại lý khi danh sách đại lý được tải
   useEffect(() => {
+    if (!isOpen) return;
     if (selectedCustomerId && customersList.length > 0 && !selectedCustomerCode) {
       const found = customersList.find(
         (c) => c.id === selectedCustomerId || c.code === selectedCustomerId,
@@ -159,7 +182,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
         if (!selectedCustomerName) setSelectedCustomerName(found.name);
       }
     }
-  }, [selectedCustomerId, customersList, selectedCustomerCode, selectedCustomerName]);
+  }, [isOpen, selectedCustomerId, customersList, selectedCustomerCode, selectedCustomerName]);
 
   // Tải danh sách hóa đơn còn nợ khi chọn đại lý
   const fetchUnpaidInvoices = useCallback(async (cId: string) => {
@@ -191,22 +214,12 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   }, [invoice]);
 
   useEffect(() => {
+    if (!isOpen) return;
     const cId = invoice?.customerId || propCustomerId || selectedCustomerId;
     if (cId) {
       void fetchUnpaidInvoices(cId);
     }
-  }, [invoice, propCustomerId, selectedCustomerId, fetchUnpaidInvoices]);
-
-  // Cập nhật hóa đơn được chọn mặc định ban đầu
-  useEffect(() => {
-    if (invoice) {
-      setSelectedInvoiceIds(new Set([invoice.id]));
-      setAmount(invoice.remainingAmount);
-      setSelectedCustomerId(invoice.customerId);
-      setSelectedCustomerName(invoice.customerName);
-      setNote(`Thanh toán hóa đơn ${invoice.invoiceCode}`);
-    }
-  }, [invoice]);
+  }, [isOpen, invoice, propCustomerId, selectedCustomerId, fetchUnpaidInvoices]);
 
   // Lọc đại lý theo từ khóa tìm kiếm (hỗ trợ tìm kiếm theo tên, mã, sđt)
   const filteredCustomers = useMemo(() => {
@@ -373,6 +386,8 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       setSubmitting(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-fade-in">

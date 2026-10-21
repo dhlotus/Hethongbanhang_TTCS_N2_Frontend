@@ -9,8 +9,6 @@ import {
   Clock,
   XCircle,
   Package,
-  CreditCard,
-  Trash2,
   Eye,
   Building2,
   Warehouse,
@@ -121,8 +119,6 @@ export const ReturnsPage: React.FC = () => {
   const canCreate = !isAccountant && (isAdmin || isSalesManager || rawRoles.includes(USER_ROLES.SALES_REP) || rawRoles.includes(USER_ROLES.CUSTOMER));
   // - Quản lý kho duyệt nhận hàng: Quản lý kho, Thủ kho, Admin, Sales Manager
   const canApprove = isAdmin || isWarehouseManager || isWarehouseKeeper || isSalesManager;
-  // - Xóa phiếu: Admin, Sales Manager
-  const canDelete = isAdmin || isSalesManager;
 
   const [receipts, setReceipts] = useState<ReturnReceipt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -426,19 +422,6 @@ export const ReturnsPage: React.FC = () => {
     }
   };
 
-  // Xử lý xóa phiếu
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa phiếu trả hàng này?')) return;
-    try {
-      await returnsService.deleteReturnReceipt(id);
-      showToast('success', 'Đã xóa phiếu trả hàng');
-      fetchReceipts();
-    } catch (err) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      showToast('error', msg || 'Lỗi khi xóa phiếu');
-    }
-  };
-
   // Bộ lọc danh sách
   const filtered = useMemo(() => {
     return receipts.filter((item) => {
@@ -473,7 +456,6 @@ export const ReturnsPage: React.FC = () => {
 
   const totalPending = receipts.filter((r) => r.status === 'PENDING').length;
   const totalApproved = receipts.filter((r) => r.status === 'APPROVED').length;
-  const totalRejected = receipts.filter((r) => r.status === 'REJECTED').length;
   const totalRefundAmount = receipts
     .filter((r) => r.status === 'APPROVED')
     .reduce((sum, r) => sum + Number(r.totalRefundAmount || 0), 0);
