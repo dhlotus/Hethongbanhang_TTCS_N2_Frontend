@@ -887,7 +887,6 @@ export const CreateShipmentPage: React.FC = () => {
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
-              <FileText className="w-4 h-4 text-indigo-600" />
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
                 1. Thông tin chung đơn hàng & Vận chuyển
               </h2>

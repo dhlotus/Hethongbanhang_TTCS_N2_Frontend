@@ -368,6 +368,14 @@ export const ShipmentsPage: React.FC = () => {
     isDropUp?: boolean;
   } | null>(null);
 
+  // Dropdown Thao tác trên từng dòng Chuyến giao hàng (Portal pattern)
+  const [openTripActionMenuId, setOpenTripActionMenuId] = useState<string | null>(null);
+  const [tripActionMenuAnchor, setTripActionMenuAnchor] = useState<{
+    top: number;
+    right: number;
+    isDropUp?: boolean;
+  } | null>(null);
+
   // Đóng dropdown thao tác khi click ra ngoài, cuộn trang hoặc nhấn phím Escape
   useEffect(() => {
     const handleDocClick = (e: MouseEvent) => {
@@ -378,16 +386,27 @@ export const ShipmentsPage: React.FC = () => {
         setOpenActionMenuId(null);
         setActionMenuAnchor(null);
       }
+      if (
+        !(e.target as HTMLElement).closest('.trip-action-dropdown-container') &&
+        !(e.target as HTMLElement).closest('.trip-action-portal-menu')
+      ) {
+        setOpenTripActionMenuId(null);
+        setTripActionMenuAnchor(null);
+      }
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpenActionMenuId(null);
         setActionMenuAnchor(null);
+        setOpenTripActionMenuId(null);
+        setTripActionMenuAnchor(null);
       }
     };
     const handleScrollOrResize = () => {
       setOpenActionMenuId(null);
       setActionMenuAnchor(null);
+      setOpenTripActionMenuId(null);
+      setTripActionMenuAnchor(null);
     };
 
     document.addEventListener('click', handleDocClick);
@@ -811,7 +830,7 @@ export const ShipmentsPage: React.FC = () => {
             }`}
           >
             <Route className="w-4 h-4" />
-            <span>Chuyến giao hàng & Phân tuyến (SN-196)</span>
+            <span>Chuyến giao hàng & Phân tuyến</span>
             <span
               className={`px-2 py-0.5 text-xs rounded-full font-bold ${
                 activeTab === 'TRIPS' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'
@@ -828,7 +847,7 @@ export const ShipmentsPage: React.FC = () => {
             <button
               onClick={() => setIsCreateTripOpen(true)}
               className="inline-flex items-center justify-center gap-1.5 h-[36px] px-3 sm:px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer"
-              title="Gom nhiều phiếu xuất vào một chuyến xe phân theo khu vực (SN-196)"
+              title="Gom nhiều phiếu xuất vào một chuyến xe phân theo khu vực"
             >
               <Route className="w-3.5 h-3.5" />
               <span>Lập Chuyến Giao Mới</span>
@@ -1305,21 +1324,21 @@ export const ShipmentsPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Status Pills */}
-              <div className="flex flex-wrap gap-1.5 w-full sm:w-auto">
-                {['ALL', 'DRAFT', 'ASSIGNED', 'IN_TRANSIT', 'COMPLETED', 'CANCELLED'].map((st) => (
-                  <button
-                    key={st}
-                    onClick={() => setTripStatusFilter(st)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                      tripStatusFilter === st
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {st === 'ALL' ? 'Tất cả trạng thái' : TRIP_STATUS_CONFIG[st as DeliveryTripStatus]?.label || st}
-                  </button>
-                ))}
+              {/* Dropdown lọc theo trạng thái chuyến giao (Thu gọn) */}
+              <div className="w-full sm:w-56">
+                <select
+                  value={tripStatusFilter}
+                  onChange={(e) => setTripStatusFilter(e.target.value)}
+                  className="w-full h-[38px] px-3 text-xs font-medium border border-slate-200 rounded-lg bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer shadow-2xs hover:border-slate-300 transition-all"
+                  aria-label="Lọc theo trạng thái chuyến giao"
+                >
+                  <option value="ALL">Tất cả trạng thái</option>
+                  <option value="DRAFT">Chờ điều xe</option>
+                  <option value="ASSIGNED">Đã gán tài xế</option>
+                  <option value="IN_TRANSIT">Đang giao hàng</option>
+                  <option value="COMPLETED">Giao hoàn tất</option>
+                  <option value="CANCELLED">Đã hủy</option>
+                </select>
               </div>
             </div>
           </div>
@@ -1483,51 +1502,42 @@ export const ShipmentsPage: React.FC = () => {
                             </span>
                           </td>
 
-                          {/* Thao tác */}
+                          {/* Thao tác: Nút bấm thu gọn mở dropdown */}
                           <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {/* Xem chi tiết & Lộ trình */}
+                            <div className="relative inline-flex items-center justify-end trip-action-dropdown-container">
                               <button
-                                onClick={() => setSelectedTripForDetail(trip)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer"
-                                title="Xem chi tiết lộ trình và các điểm dừng"
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (openTripActionMenuId === trip.id) {
+                                    setOpenTripActionMenuId(null);
+                                    setTripActionMenuAnchor(null);
+                                  } else {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    const shouldDropUp = spaceBelow < 220 && rect.top > 220;
+                                    setTripActionMenuAnchor({
+                                      top: shouldDropUp ? rect.top - 4 : rect.bottom + 4,
+                                      right: window.innerWidth - rect.right,
+                                      isDropUp: shouldDropUp,
+                                    });
+                                    setOpenTripActionMenuId(trip.id);
+                                  }
+                                }}
+                                className={`inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none shrink-0 ${
+                                  openTripActionMenuId === trip.id
+                                    ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs ring-2 ring-indigo-500/10'
+                                    : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300'
+                                }`}
+                                title="Thao tác"
                               >
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>Chi tiết</span>
+                                <span>Thao tác</span>
+                                <ChevronDown
+                                  className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${
+                                    openTripActionMenuId === trip.id ? 'rotate-180 text-indigo-600' : ''
+                                  }`}
+                                />
                               </button>
-
-                              {/* AC 3: In bảng kê lộ trình điểm giao (Delivery Manifest) */}
-                              <button
-                                onClick={() => setSelectedTripForPrint(trip)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer"
-                                title="In Bảng kê lộ trình & Lệnh điều xe cho tài xế (SN-196 AC 3)"
-                              >
-                                <Printer className="w-3.5 h-3.5 text-slate-500" />
-                                <span>In Bảng kê</span>
-                              </button>
-
-                              {/* Nút Xuất phát nhanh (nếu đã gán xe và đang chờ chạy) */}
-                              {canManageTrips && trip.status === 'ASSIGNED' && (
-                                <button
-                                  onClick={() => handleQuickDispatchTrip(trip)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
-                                  title="Xuất phát chuyến xe ngay"
-                                >
-                                  <Send className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>Xuất phát</span>
-                                </button>
-                              )}
-
-                              {/* Xóa chuyến giao (Chỉ khi DRAFT hoặc CANCELLED) */}
-                              {canDelete && ['DRAFT', 'CANCELLED'].includes(trip.status) && (
-                                <button
-                                  onClick={() => handleDeleteTrip(trip)}
-                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                                  title="Xóa chuyến giao"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
                             </div>
                           </td>
                         </tr>
@@ -1537,6 +1547,88 @@ export const ShipmentsPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Dropdown Menu Portal Thao tác Chuyến giao */}
+            {openTripActionMenuId && tripActionMenuAnchor && typeof document !== 'undefined' && (() => {
+              const trip = trips.find((t) => t.id === openTripActionMenuId);
+              if (!trip) return null;
+              return createPortal(
+                <div
+                  className="trip-action-portal-menu fixed w-48 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-[9999] animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100"
+                  style={{
+                    top: tripActionMenuAnchor.isDropUp ? undefined : `${tripActionMenuAnchor.top}px`,
+                    bottom: tripActionMenuAnchor.isDropUp ? `${window.innerHeight - tripActionMenuAnchor.top}px` : undefined,
+                    right: `${tripActionMenuAnchor.right}px`,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="py-1">
+                    {/* 1. Xem chi tiết & Lộ trình */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenTripActionMenuId(null);
+                        setTripActionMenuAnchor(null);
+                        setSelectedTripForDetail(trip);
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                    >
+                      <Eye className="w-4 h-4 text-slate-400" />
+                      <span>Xem chi tiết</span>
+                    </button>
+
+                    {/* 2. In bảng kê lộ trình */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenTripActionMenuId(null);
+                        setTripActionMenuAnchor(null);
+                        setSelectedTripForPrint(trip);
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                    >
+                      <Printer className="w-4 h-4 text-slate-400" />
+                      <span>In Bảng kê</span>
+                    </button>
+
+                    {/* 3. Xuất phát nhanh */}
+                    {canManageTrips && trip.status === 'ASSIGNED' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenTripActionMenuId(null);
+                          setTripActionMenuAnchor(null);
+                          handleQuickDispatchTrip(trip);
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                      >
+                        <Send className="w-4 h-4 text-emerald-600" />
+                        <span>Xuất phát</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 4. Xóa chuyến giao */}
+                  {canDelete && ['DRAFT', 'CANCELLED'].includes(trip.status) && (
+                    <div className="py-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenTripActionMenuId(null);
+                          setTripActionMenuAnchor(null);
+                          handleDeleteTrip(trip);
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-500" />
+                        <span>Xóa chuyến</span>
+                      </button>
+                    </div>
+                  )}
+                </div>,
+                document.body
+              );
+            })()}
           </div>
         </div>
       )}

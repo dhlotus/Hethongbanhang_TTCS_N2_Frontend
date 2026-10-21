@@ -216,16 +216,10 @@ export const ConfirmExportModal: React.FC<ConfirmExportModalProps> = ({
           )}
 
           {/* Thông tin đại lý & giao hàng */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm">
             <div>
               <span className="text-xs text-slate-500 block">Đại lý nhận hàng:</span>
               <span className="font-semibold text-slate-900">{shipment.customerName}</span>
-            </div>
-            <div>
-              <span className="text-xs text-slate-500 block">Người nhận & SĐT:</span>
-              <span className="font-medium text-slate-800">
-                {shipment.receiverName || 'Chưa có'} {shipment.phone ? `(${shipment.phone})` : ''}
-              </span>
             </div>
             <div>
               <span className="text-xs text-slate-500 block">Địa chỉ nhận hàng:</span>
@@ -329,19 +323,6 @@ export const ConfirmExportModal: React.FC<ConfirmExportModalProps> = ({
             </div>
           </div>
 
-          {/* Banner thông báo trạng thái nợ hàng */}
-          {hasAnyShortDelivery && (
-            <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-900">
-                <strong className="font-bold">Đơn hàng này phát sinh nợ hàng ({totalRemaining} sản phẩm):</strong>
-                <p className="text-xs text-amber-800 mt-0.5">
-                  Phần hàng còn thiếu sẽ được hệ thống tự động ghi nhận vào mục{' '}
-                  <strong>&quot;Đơn còn nợ hàng&quot;</strong> để tạo đợt xuất giao bù ở lượt sau, tránh bị bỏ quên!
-                </p>
-              </div>
-            </div>
-          )}
 
           {/* Thông tin giao vận & ghi chú */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -383,17 +364,6 @@ export const ConfirmExportModal: React.FC<ConfirmExportModalProps> = ({
                 placeholder="Ghi chú thêm cho lái xe hoặc đại lý..."
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:border-blue-500 focus:outline-none"
               />
-            </div>
-          </div>
-
-          {/* Cảnh báo tính bất biến */}
-          <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl flex items-start gap-3">
-            <Lock className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-blue-900 leading-relaxed">
-              <strong className="font-semibold">Quy chuẩn bất biến (Immutability):</strong> Sau khi nhấn{' '}
-              <strong>&quot;Xác nhận xuất kho&quot;</strong>, hệ thống sẽ tự động trừ tồn kho thực tế, giải phóng tồn
-              giữ chỗ và <strong>KHÓA BẤT BIẾN</strong> phiếu xuất này. Phiếu đã xác nhận sẽ không được phép sửa
-              hoặc xóa.
             </div>
           </div>
 
