@@ -570,45 +570,45 @@ export const CreateReturnReceiptPage: React.FC = () => {
         </div>
 
         {/* Khối Lý do trả hàng & Tóm tắt tài chính */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
-          {/* Lý do trả hàng */}
-          <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-3">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+          {/* Lý do trả hàng (Riêng 1 hàng khi màn hình nhỏ/vừa, 7 cột khi màn hình rất lớn) */}
+          <div className="xl:col-span-7 bg-white rounded-xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-3">
             <label htmlFor="general-reason" className="block text-xs font-bold text-slate-700">
               Lý do trả hàng <span className="text-rose-500">*</span>
             </label>
             <textarea
               id="general-reason"
-              rows={4}
+              rows={5}
               value={generalReason}
               onChange={(e) => setGeneralReason(e.target.value)}
               placeholder="Nhập lý do trả hàng..."
-              className="w-full p-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors resize-none"
+              className="w-full p-3 text-xs sm:text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors resize-none"
             />
           </div>
 
-          {/* Tóm tắt tài chính hoàn trả */}
-          <div className="bg-white rounded-xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+          {/* Tóm tắt tài chính hoàn trả (Chữ to rõ ràng, dễ nhìn, không bị co ép) */}
+          <div className="xl:col-span-5 bg-white rounded-xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800">
                 Tóm tắt hoàn trả
               </span>
-              <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2.5 py-1 rounded-md">
                 {selectedItems.length} mặt hàng
               </span>
             </div>
 
             {selectedItems.length > 0 && (
-              <div className="space-y-2 border-b border-slate-100 pb-3 max-h-40 overflow-y-auto divide-y divide-slate-100">
+              <div className="space-y-3 border-b border-slate-100 pb-3.5 max-h-48 overflow-y-auto divide-y divide-slate-100">
                 {selectedItems.map((it) => (
-                  <div key={it.productId} className="pt-1.5 first:pt-0 text-xs">
-                    <div className="font-semibold text-slate-800 truncate" title={it.productName}>
+                  <div key={it.productId} className="pt-2.5 first:pt-0">
+                    <div className="font-semibold text-slate-900 text-xs sm:text-sm truncate" title={it.productName}>
                       {it.productName}
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono mt-0.5">
-                      <span>
+                    <div className="flex items-center justify-between text-xs text-slate-600 mt-1">
+                      <span className="font-mono">
                         {it.returnQuantity} {it.unit} × {formatVND(it.unitPrice)}
                       </span>
-                      <span className="font-bold text-slate-900">
+                      <span className="font-bold text-slate-900 font-mono text-xs sm:text-sm">
                         {formatVND(it.returnQuantity * it.unitPrice)}
                       </span>
                     </div>
@@ -617,28 +617,28 @@ export const CreateReturnReceiptPage: React.FC = () => {
               </div>
             )}
 
-            <div className="space-y-2 text-xs text-slate-600">
-              <div className="flex justify-between">
-                <span>Tổng số lượng:</span>
-                <span className="font-mono font-bold text-slate-900">{totalQuantityToReturn}</span>
+            <div className="space-y-2.5 text-xs sm:text-sm text-slate-700">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600">Tổng số lượng:</span>
+                <span className="font-mono font-bold text-slate-900 text-sm">{totalQuantityToReturn}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Hàng tốt:</span>
-                <span className="font-mono font-medium text-emerald-700">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600">Hàng tốt:</span>
+                <span className="font-mono font-bold text-emerald-700 text-sm">
                   {selectedItems.filter((i) => i.conditionType === 'GOOD').reduce((s, i) => s + i.returnQuantity, 0)}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span>Hàng lỗi:</span>
-                <span className="font-mono font-medium text-amber-700">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-600">Hàng lỗi:</span>
+                <span className="font-mono font-bold text-amber-700 text-sm">
                   {selectedItems.filter((i) => i.conditionType === 'DAMAGED').reduce((s, i) => s + i.returnQuantity, 0)}
                 </span>
               </div>
             </div>
 
-            <div className="border-t border-slate-100 pt-3">
-              <div className="text-xs text-slate-500 font-medium">Tổng tiền hoàn ước tính:</div>
-              <div className="text-xl sm:text-2xl font-bold font-mono text-indigo-600 mt-0.5">
+            <div className="border-t border-slate-200/80 pt-3.5">
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tổng tiền hoàn ước tính:</div>
+              <div className="text-2xl sm:text-3xl font-extrabold font-mono text-indigo-600 mt-1 tabular-nums tracking-tight">
                 {formatVND(totalRefundEstimated)}
               </div>
             </div>
@@ -650,7 +650,7 @@ export const CreateReturnReceiptPage: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting || selectedItems.length === 0}
-            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold rounded-xl shadow-xs transition-all cursor-pointer w-full sm:w-auto"
+            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold rounded-xl shadow-xs hover:shadow-sm transition-all cursor-pointer w-full sm:w-auto"
           >
             {isSubmitting ? (
               <>
@@ -660,7 +660,7 @@ export const CreateReturnReceiptPage: React.FC = () => {
             ) : (
               <>
                 <Save className="w-4 h-4" />
-                <span>Lưu & Lập phiếu trả hàng</span>
+                <span>Lập phiếu trả</span>
               </>
             )}
           </button>
