@@ -48,6 +48,7 @@ export interface GoodsReceipt {
 export interface CreateGoodsReceiptItemDto {
   productId: string;
   unitId: string;
+  unitName?: string;
   packageQuantity: number;
   conversionFactor: number;
   unitCost?: number;
@@ -59,7 +60,9 @@ export interface CreateGoodsReceiptItemDto {
 
 export interface CreateGoodsReceiptDto {
   warehouseId: string;
+  warehouseName?: string;
   supplierId?: string;
+  supplierName?: string;
   referenceDocument?: string;
   receiptDate?: string;
   notes?: string;

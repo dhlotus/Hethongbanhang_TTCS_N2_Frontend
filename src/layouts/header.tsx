@@ -33,6 +33,46 @@ const getPageHeaderInfo = (
   userMenuItems: MenuItem[] = []
 ): PageHeaderInfo => {
   // 0. Trang con phân cấp (Breadcrumbs)
+  if (
+    pathname.startsWith('/catalog/products/edit/') ||
+    pathname.startsWith('/products/edit/') ||
+    pathname.includes('/edit') && pathname.includes('/products')
+  ) {
+    return {
+      title: 'Chỉnh sửa sản phẩm',
+      category: 'Sản phẩm & Chính sách',
+      breadcrumbs: [
+        { label: 'Danh mục sản phẩm', path: '/catalog/products' },
+        { label: 'Chỉnh sửa sản phẩm' },
+      ],
+    };
+  }
+  if (
+    pathname.startsWith('/catalog/products/edit-price/') ||
+    pathname.startsWith('/products/edit-price/')
+  ) {
+    return {
+      title: 'Điều chỉnh giá sản phẩm',
+      category: 'Sản phẩm & Chính sách',
+      breadcrumbs: [
+        { label: 'Danh mục sản phẩm', path: '/catalog/products' },
+        { label: 'Điều chỉnh giá sản phẩm' },
+      ],
+    };
+  }
+  if (
+    (pathname.startsWith('/sales/customers/') && pathname !== '/sales/customers') ||
+    (pathname.startsWith('/customers/') && pathname !== '/customers')
+  ) {
+    return {
+      title: 'Chi tiết hồ sơ đại lý',
+      category: 'Bán hàng',
+      breadcrumbs: [
+        { label: 'Quản lý đại lý', path: '/sales/customers' },
+        { label: 'Chi tiết đại lý' },
+      ],
+    };
+  }
   if (pathname === '/sales/orders/create' || pathname === '/orders/create') {
     return {
       title: 'Tạo đơn hàng mới',
@@ -40,6 +80,93 @@ const getPageHeaderInfo = (
       breadcrumbs: [
         { label: 'Quản lý đơn hàng', path: '/sales/orders' },
         { label: 'Tạo đơn hàng mới' },
+      ],
+    };
+  }
+  if (
+    pathname === '/accounting/returns/create' ||
+    pathname === '/returns/create'
+  ) {
+    return {
+      title: 'Tạo phiếu trả hàng',
+      category: 'Bán hàng',
+      breadcrumbs: [
+        { label: 'Phiếu trả hàng', path: '/accounting/returns' },
+        { label: 'Tạo phiếu trả hàng' },
+      ],
+    };
+  }
+  if (
+    pathname === '/accounting/returns' ||
+    pathname === '/sales/returns' ||
+    pathname === '/returns'
+  ) {
+    return {
+      title: 'Phiếu trả hàng',
+      category: 'Bán hàng',
+      breadcrumbs: [
+        { label: 'Phiếu trả hàng' },
+      ],
+    };
+  }
+  if (
+    pathname === '/route-collections/create' ||
+    pathname === '/app/route-collections/create'
+  ) {
+    return {
+      title: 'Tạo phiếu thu mới',
+      category: 'Tài chính & Thu chi',
+      breadcrumbs: [
+        { label: 'Quản lý ngân sách', path: '/route-collections' },
+        { label: 'Tạo phiếu thu mới' },
+      ],
+    };
+  }
+  if (pathname === '/accounting/invoices/create' || pathname === '/invoices/create') {
+    return {
+      title: 'Phát hành Hóa đơn Bán hàng',
+      category: 'Hóa đơn & Chứng từ',
+      breadcrumbs: [
+        { label: 'Hóa đơn & Chứng từ', path: '/accounting/invoices' },
+        { label: 'Phát hành Hóa đơn Bán hàng' },
+      ],
+    };
+  }
+  if (
+    pathname === '/accounting/debt-reconciliations/create' ||
+    pathname === '/debt-reconciliations/create'
+  ) {
+    return {
+      title: 'Lập biên bản',
+      category: 'Đối chiếu công nợ',
+      breadcrumbs: [
+        { label: 'Đối chiếu công nợ', path: '/accounting/debt-reconciliations' },
+        { label: 'Lập biên bản' },
+      ],
+    };
+  }
+  if (
+    pathname === '/accounting/debt-reconciliations' ||
+    pathname === '/debt-reconciliations'
+  ) {
+    return {
+      title: 'Đối chiếu công nợ',
+      category: 'Kế toán & Công nợ',
+      breadcrumbs: [
+        { label: 'Đối chiếu công nợ' },
+      ],
+    };
+  }
+  if (
+    (pathname.startsWith('/accounting/invoices/') && pathname !== '/accounting/invoices' && pathname !== '/accounting/invoices/create') ||
+    (pathname.startsWith('/invoices/') && pathname !== '/invoices' && pathname !== '/invoices/create')
+  ) {
+    return {
+      title: 'Chi tiết Hóa đơn Bán hàng',
+      category: 'Hóa đơn & Chứng từ',
+      breadcrumbs: [
+        { label: 'Hóa đơn & Chứng từ', path: '/accounting/invoices' },
+        { label: 'Chi tiết Hóa đơn' },
       ],
     };
   }
@@ -60,6 +187,91 @@ const getPageHeaderInfo = (
       breadcrumbs: [
         { label: 'Quản lý đơn hàng', path: '/sales/orders' },
         { label: 'Chỉnh sửa đơn hàng' },
+      ],
+    };
+  }
+  if (
+    pathname === '/inventory/receipts/create' ||
+    pathname === '/inventory/receipts/new' ||
+    pathname.startsWith('/inventory/receipts/create/')
+  ) {
+    return {
+      title: 'Lập phiếu nhập mới',
+      category: 'Nhập / Xuất kho',
+      breadcrumbs: [
+        { label: 'Nhập kho hàng hóa', path: '/inventory/receipts' },
+        { label: 'Lập phiếu nhập mới' },
+      ],
+    };
+  }
+  if (pathname.startsWith('/inventory/receipts/edit')) {
+    return {
+      title: 'Chỉnh sửa phiếu nhập kho',
+      category: 'Nhập / Xuất kho',
+      breadcrumbs: [
+        { label: 'Nhập kho hàng hóa', path: '/inventory/receipts' },
+        { label: 'Chỉnh sửa phiếu nhập kho' },
+      ],
+    };
+  }
+
+  // SN-188: Phân hệ Soạn hàng & Xuất kho (FEFO)
+  if (
+    pathname === '/inventory/shipments/create' ||
+    pathname === '/app/inventory/shipments/create' ||
+    pathname === '/inventory/issues/create' ||
+    pathname === '/inventory/issues/shipments/create' ||
+    pathname === '/issues/shipments/create'
+  ) {
+    const parentPath = pathname.includes('/issues') ? '/inventory/issues' : '/inventory/shipments';
+    return {
+      title: 'Tạo phiếu xuất kho',
+      category: 'Nhập / Xuất kho',
+      breadcrumbs: [
+        { label: 'Soạn hàng & Xuất kho', path: parentPath },
+        { label: 'Tạo phiếu xuất kho' },
+      ],
+    };
+  }
+
+  if (
+    (pathname.startsWith('/inventory/shipments/') && pathname !== '/inventory/shipments') ||
+    (pathname.startsWith('/app/inventory/shipments/') && pathname !== '/app/inventory/shipments') ||
+    (pathname.startsWith('/inventory/issues/') && pathname !== '/inventory/issues') ||
+    (pathname.startsWith('/issues/shipments/') && pathname !== '/issues')
+  ) {
+    const parentPath = pathname.includes('/issues') ? '/inventory/issues' : '/inventory/shipments';
+    return {
+      title: 'Chi tiết phiếu xuất kho',
+      category: 'Nhập / Xuất kho',
+      breadcrumbs: [
+        { label: 'Soạn hàng & Xuất kho', path: parentPath },
+        { label: 'Chi tiết phiếu xuất kho' },
+      ],
+    };
+  }
+
+  if (
+    pathname === '/inventory/shipments' ||
+    pathname === '/app/inventory/shipments' ||
+    pathname === '/inventory/issues'
+  ) {
+    return {
+      title: 'Soạn hàng & Xuất kho',
+      category: 'Nhập / Xuất kho',
+    };
+  }
+
+  if (
+    pathname === '/warehouse/picking/create' ||
+    pathname === '/inventory/picking/create'
+  ) {
+    return {
+      title: 'Tạo phiếu soạn hàng',
+      category: 'Kho & Vận hành',
+      breadcrumbs: [
+        { label: 'Phiếu soạn hàng', path: '/warehouse/picking' },
+        { label: 'Tạo phiếu mới' },
       ],
     };
   }
@@ -230,7 +442,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     'Người dùng';
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-xs px-4 sm:px-6 lg:px-8 shadow-2xs">
+    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-xs px-3 sm:px-6 lg:px-8 shadow-2xs">
       {/* =================================================================== */}
       {/* 1. BÊN TRÁI: NÚT ĐÓNG MỞ NAVBAR & TIÊU ĐỀ TRANG                     */}
       {/* =================================================================== */}
@@ -267,12 +479,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                     ) : crumb.path ? (
                       <Link
                         to={crumb.path}
-                        className="text-slate-500 hover:text-indigo-600 transition-colors truncate font-semibold"
+                        className="text-slate-600 hover:text-indigo-600 transition-colors truncate font-semibold"
                       >
                         {crumb.label}
                       </Link>
                     ) : (
-                      <span className="text-slate-500 truncate font-semibold">
+                      <span className="text-slate-600 truncate font-semibold">
                         {crumb.label}
                       </span>
                     )}
@@ -294,7 +506,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       {/* =================================================================== */}
       {/* 2. BÊN PHẢI: CHUÔNG THÔNG BÁO & NÚT HỒ SƠ CÁ NHÂN                   */}
       {/* =================================================================== */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         {/* Chuông thông báo hiển thị cho tất cả vai trò trên hệ thống (ẩn trên mobile khi ở trang Xác nhận đơn hàng) */}
         <div className={isOrderConfirm ? 'hidden sm:block' : 'block'}>
           <NotificationBell />
@@ -315,156 +527,154 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
 
         {/* Khung bảng tên người dùng & Dropdown Profile */}
         <div className="relative shrink-0" ref={dropdownRef}>
-        {/* Nút bấm mở Dropdown Profile (Chỉ mở khi click) */}
-        <button
-          type="button"
-          onClick={() => setIsDropdownOpen((prev) => !prev)}
-          className={`flex items-center gap-2 sm:gap-3 p-1.5 sm:px-3 sm:py-2 rounded-lg border transition-all duration-200 cursor-pointer select-none group focus:outline-none ${
-            isDropdownOpen
-              ? 'bg-slate-50 border-slate-300 shadow-2xs'
-              : 'bg-white border-slate-200/80 hover:bg-slate-50 hover:border-slate-300/90'
-          }`}
-          aria-expanded={isDropdownOpen}
-          aria-haspopup="true"
-          title={`Tài khoản: ${cleanFullName}`}
-        >
-          {/* Avatar: Ảnh hoặc Chữ cái viết tắt (radius-full) */}
-          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-xs sm:text-sm font-bold text-white shadow-2xs group-hover:scale-105 transition-transform duration-200">
-            {avatarUrl ? (
-              <img
-                src={resolveAvatarUrl(avatarUrl)}
-                alt={cleanFullName}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              context.avatarLetter || <User className="h-4.5 w-4.5" />
-            )}
-          </div>
-
-          {/* Tên & Tag vai trò (Ẩn trên mobile siêu nhỏ, hiện từ sm trở lên) */}
-          <div className="hidden sm:flex flex-col text-left min-w-0">
-            <span
-              className="text-sm font-bold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors truncate max-w-[150px] leading-tight"
-              title={context.fullName}
-            >
-              {cleanFullName}
-            </span>
-            <span
-              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold mt-0.5 w-fit max-w-[150px] truncate ${context.badgeClass}`}
-              title={context.roleLabel}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${context.dotClass}`} />
-              <span className="truncate">{context.roleLabel}</span>
-            </span>
-          </div>
-
-          {/* Mũi tên xoay biểu thị đóng/mở */}
-          <ChevronDown
-            className={`h-4 w-4 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 shrink-0 ${
-              isDropdownOpen ? 'rotate-180 text-[var(--color-primary)]' : ''
-            }`}
-          />
-        </button>
-
-        {/* Menu Dropdown xổ xuống (radius-lg: 12px) - Có cầu đệm trước khoảng trống để hover di chuyển mượt mà */}
-        {isDropdownOpen && (
-          <div
-            className="absolute right-0 top-full mt-2 w-80 rounded-xl bg-white shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-2 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3"
-            role="menu"
-            aria-orientation="vertical"
+          {/* Nút bấm mở Dropdown Profile (Chỉ mở khi click) */}
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen((prev) => !prev)}
+            className={`flex items-center gap-1.5 sm:gap-3 p-1 sm:px-3 sm:py-2 rounded-lg border transition-all duration-200 cursor-pointer select-none group focus:outline-none ${isDropdownOpen
+                ? 'bg-slate-50 border-slate-300 shadow-2xs'
+                : 'bg-white border-slate-200/80 hover:bg-slate-50 hover:border-slate-300/90'
+              }`}
+            aria-expanded={isDropdownOpen}
+            aria-haspopup="true"
+            title={`Tài khoản: ${cleanFullName}`}
           >
-            {/* Thẻ người dùng trên cùng */}
-            <div className="p-1 rounded-lg bg-white border border-slate-100 shadow-2xs">
-              <Link
-                to="/profile"
-                onClick={handleCloseDropdown}
-                className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-50 transition-colors group/user"
-              >
-                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-sm font-bold text-white shadow-xs">
-                  {avatarUrl ? (
-                    <img
-                      src={resolveAvatarUrl(avatarUrl)}
-                      alt={cleanFullName}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    context.avatarLetter || <User className="h-5 w-5" />
-                  )}
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[15px] font-semibold text-slate-900 group-hover/user:text-[var(--color-primary)] transition-colors truncate">
-                    {cleanFullName}
-                  </span>
-                  <span className="text-xs text-slate-500 truncate">{context.roleLabel}</span>
-                </div>
-              </Link>
+            {/* Avatar: Ảnh hoặc Chữ cái viết tắt (radius-full) */}
+            <div className="relative flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-xs sm:text-sm font-bold text-white shadow-2xs group-hover:scale-105 transition-transform duration-200">
+              {avatarUrl ? (
+                <img
+                  src={resolveAvatarUrl(avatarUrl)}
+                  alt={cleanFullName}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                context.avatarLetter || <User className="h-4.5 w-4.5" />
+              )}
             </div>
 
-            {/* Danh sách các nút: radius-md */}
-            <div className="space-y-0.5 pt-0.5">
-              {/* Mục 1: Hồ sơ cá nhân */}
-              <Link
-                to="/profile"
-                onClick={handleCloseDropdown}
-                className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group"
-                role="menuitem"
+            {/* Tên & Tag vai trò (Ẩn trên mobile siêu nhỏ, hiện từ sm trở lên) */}
+            <div className="hidden sm:flex flex-col text-left min-w-0">
+              <span
+                className="text-sm font-bold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors truncate max-w-[150px] leading-tight"
+                title={context.fullName}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200/80 group-hover:bg-slate-200 text-slate-900 transition-colors">
-                    <User className="h-5 w-5" />
-                  </div>
-                  <span className="text-[15px] font-medium text-slate-900 truncate">
-                    Hồ sơ cá nhân
-                  </span>
-                </div>
-                <ChevronRight className="h-5 w-5 text-slate-500 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-
-              {/* Mục 2: Đổi mật khẩu */}
-              <Link
-                to="/profile/change-password"
-                onClick={handleCloseDropdown}
-                className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group"
-                role="menuitem"
+                {cleanFullName}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold mt-0.5 w-fit max-w-[150px] truncate ${context.badgeClass}`}
+                title={context.roleLabel}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200/80 group-hover:bg-slate-200 text-slate-900 transition-colors">
-                    <Lock className="h-5 w-5" />
-                  </div>
-                  <span className="text-[15px] font-medium text-slate-900 truncate">
-                    Đổi mật khẩu
-                  </span>
-                </div>
-                <ChevronRight className="h-5 w-5 text-slate-500 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-
-              {/* Mục 3: Đăng xuất */}
-              <button
-                type="button"
-                onClick={() => {
-                  handleCloseDropdown();
-                  setShowLogoutModal(true);
-                }}
-                className="w-full flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group text-left"
-                role="menuitem"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200/80 group-hover:bg-slate-200 text-slate-900 transition-colors">
-                    <LogOut className="h-5 w-5" />
-                  </div>
-                  <span className="text-[15px] font-medium text-slate-900 truncate">Đăng xuất</span>
-                </div>
-              </button>
+                <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${context.dotClass}`} />
+                <span className="truncate">{context.roleLabel}</span>
+              </span>
             </div>
 
-            {/* Dòng chữ chân trang phong cách Facebook căn giữa */}
-            <div className="px-3 pt-3 pb-2 border-t border-slate-100 mt-2 text-center">
-              <p className="text-[11px] font-medium text-slate-400">
-                LOHA SALES • Hệ thống quản lý bán hàng
-              </p>
+            {/* Mũi tên xoay biểu thị đóng/mở */}
+            <ChevronDown
+              className={`h-4 w-4 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 shrink-0 ${isDropdownOpen ? 'rotate-180 text-[var(--color-primary)]' : ''
+                }`}
+            />
+          </button>
+
+          {/* Menu Dropdown xổ xuống (radius-lg: 12px) - Có cầu đệm trước khoảng trống để hover di chuyển mượt mà */}
+          {isDropdownOpen && (
+            <div
+              className="absolute right-0 top-full mt-2 w-72 sm:w-80 max-w-[calc(100vw-1.5rem)] rounded-xl bg-white shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-2 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3"
+              role="menu"
+              aria-orientation="vertical"
+            >
+              {/* Thẻ người dùng trên cùng */}
+              <div className="p-1 rounded-lg bg-white border border-slate-100 shadow-2xs">
+                <Link
+                  to="/profile"
+                  onClick={handleCloseDropdown}
+                  className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-50 transition-colors group/user"
+                >
+                  <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-sm font-bold text-white shadow-xs">
+                    {avatarUrl ? (
+                      <img
+                        src={resolveAvatarUrl(avatarUrl)}
+                        alt={cleanFullName}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      context.avatarLetter || <User className="h-5 w-5" />
+                    )}
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[15px] font-semibold text-slate-900 group-hover/user:text-[var(--color-primary)] transition-colors truncate">
+                      {cleanFullName}
+                    </span>
+                    <span className="text-xs text-slate-500 truncate">{context.roleLabel}</span>
+                  </div>
+                </Link>
+              </div>
+
+              {/* Danh sách các nút: radius-md */}
+              <div className="space-y-0.5 pt-0.5">
+                {/* Mục 1: Hồ sơ cá nhân */}
+                <Link
+                  to="/profile"
+                  onClick={handleCloseDropdown}
+                  className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group"
+                  role="menuitem"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200/80 group-hover:bg-slate-200 text-slate-900 transition-colors">
+                      <User className="h-5 w-5" />
+                    </div>
+                    <span className="text-[15px] font-medium text-slate-900 truncate">
+                      Hồ sơ cá nhân
+                    </span>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-slate-500 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+
+                {/* Mục 2: Đổi mật khẩu */}
+                <Link
+                  to="/profile/change-password"
+                  onClick={handleCloseDropdown}
+                  className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group"
+                  role="menuitem"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200/80 group-hover:bg-slate-200 text-slate-900 transition-colors">
+                      <Lock className="h-5 w-5" />
+                    </div>
+                    <span className="text-[15px] font-medium text-slate-900 truncate">
+                      Đổi mật khẩu
+                    </span>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-slate-500 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+
+                {/* Mục 3: Đăng xuất */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCloseDropdown();
+                    setShowLogoutModal(true);
+                  }}
+                  className="w-full flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group text-left"
+                  role="menuitem"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200/80 group-hover:bg-slate-200 text-slate-900 transition-colors">
+                      <LogOut className="h-5 w-5" />
+                    </div>
+                    <span className="text-[15px] font-medium text-slate-900 truncate">Đăng xuất</span>
+                  </div>
+                </button>
+              </div>
+
+              {/* Dòng chữ chân trang phong cách Facebook căn giữa */}
+              <div className="px-3 pt-3 pb-2 border-t border-slate-100 mt-2 text-center">
+                <p className="text-[11px] font-medium text-slate-400">
+                  LOHA SALES • Hệ thống quản lý bán hàng
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
         </div>
       </div>
 
@@ -476,15 +686,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         createPortal(
           <div
             onClick={() => !isLoggingOut && setShowLogoutModal(false)}
-            className={`fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-300 ${
-              isExiting ? 'opacity-0' : 'animate-modal-backdrop-in'
-            }`}
+            className={`fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-300 ${isExiting ? 'opacity-0' : 'animate-modal-backdrop-in'
+              }`}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className={`relative w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl border border-slate-100 transition-all duration-300 ${
-                isExiting ? 'scale-95 opacity-0' : 'animate-modal-in'
-              }`}
+              className={`relative w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl border border-slate-100 transition-all duration-300 ${isExiting ? 'scale-95 opacity-0' : 'animate-modal-in'
+                }`}
             >
               {isLoggingOut ? (
                 <div className="py-4 flex flex-col items-center justify-center text-center space-y-3">

@@ -9,6 +9,7 @@ import type {
   StockAdjustmentResponse,
   StockOverviewItem,
 } from '../types/products';
+import { STANDARD_WAREHOUSES } from '../constants/warehouse.constants';
 import type { LowStockAlert, StockBalance, StockItem, StockReservation } from '../types/inventory.types';
 
 const DEMO_TRANSACTIONS_KEY = 'loha_inventory_transactions';
@@ -21,10 +22,13 @@ const getStoredDemoTransactions = (): InventoryTransaction[] => {
     console.warn('Không thể đọc dữ liệu demo từ localStorage:', err);
   }
 
-  // Dữ liệu mẫu ban đầu
+  // Dữ liệu mẫu ban đầu phục vụ Thẻ kho (SN-185 & SN-23)
+  const now = Date.now();
+  const day = 86400000;
   const initial: InventoryTransaction[] = [
+    // 1. LH-MILK-900G
     {
-      id: 'tx-seed-001',
+      id: 'tx-seed-milk-01',
       productId: 'prod-001',
       sku: 'LH-MILK-900G',
       productName: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
@@ -36,30 +40,247 @@ const getStoredDemoTransactions = (): InventoryTransaction[] => {
       baseUnit: 'Lon',
       previousStock: 100,
       newStock: 340,
-      reason: 'Nhập hàng đợt 1 từ nhà máy',
-      referenceCode: 'PNK-2026-001',
+      reason: 'Nhập lô hàng mới từ Nhà máy Dược Loha',
+      referenceCode: 'PNK-2026-0891',
       warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
-      performedBy: 'Trần Văn Thủ Kho',
-      createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+      performedBy: 'Thủ kho Nguyễn Văn Kho',
+      createdAt: new Date(now - day * 6).toISOString(),
     },
     {
-      id: 'tx-seed-002',
+      id: 'tx-seed-milk-02',
+      productId: 'prod-001',
+      sku: 'LH-MILK-900G',
+      productName: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
+      transactionType: 'ORDER',
+      inputQuantity: -50,
+      inputUnit: 'Lon',
+      conversionRate: 1,
+      baseQuantityChange: -50,
+      baseUnit: 'Lon',
+      previousStock: 340,
+      newStock: 290,
+      reason: 'Xuất bán đơn hàng đại lý #DH-2026-1002 (Đại lý Sữa Miền Nam)',
+      referenceCode: 'DH-2026-1002',
+      warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
+      performedBy: 'Nhân viên kho Trần Văn Kho',
+      createdAt: new Date(now - day * 4.5).toISOString(),
+    },
+    {
+      id: 'tx-seed-milk-03',
+      productId: 'prod-001',
+      sku: 'LH-MILK-900G',
+      productName: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
+      transactionType: 'TRANSFER',
+      inputQuantity: -30,
+      inputUnit: 'Lon',
+      conversionRate: 1,
+      baseQuantityChange: -30,
+      baseUnit: 'Lon',
+      previousStock: 290,
+      newStock: 260,
+      reason: 'Điều chuyển nội bộ sang Kho Vận Hà Nội phục vụ thị trường phía Bắc',
+      referenceCode: 'PCK-2026-0045',
+      warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
+      performedBy: 'Quản lý kho Đỗ Quốc Bảo',
+      createdAt: new Date(now - day * 3).toISOString(),
+    },
+    {
+      id: 'tx-seed-milk-04',
+      productId: 'prod-001',
+      sku: 'LH-MILK-900G',
+      productName: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
+      transactionType: 'ADJUSTMENT',
+      inputQuantity: -2,
+      inputUnit: 'Lon',
+      conversionRate: 1,
+      baseQuantityChange: -2,
+      baseUnit: 'Lon',
+      previousStock: 260,
+      newStock: 258,
+      reason: 'Điều chỉnh kiểm kê định kỳ: Hao hụt 2 lon do móp méo khi bốc xếp',
+      referenceCode: 'PKK-20261008-001',
+      warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
+      performedBy: 'Quản lý kho Đỗ Quốc Bảo',
+      createdAt: new Date(now - day * 2).toISOString(),
+    },
+    {
+      id: 'tx-seed-milk-05',
+      productId: 'prod-001',
+      sku: 'LH-MILK-900G',
+      productName: 'Sữa Bột Dinh Dưỡng Cao Cấp Loha Gold 900g',
+      transactionType: 'IMPORT',
+      inputQuantity: 1242,
+      inputUnit: 'Lon',
+      conversionRate: 1,
+      baseQuantityChange: 1242,
+      baseUnit: 'Lon',
+      previousStock: 258,
+      newStock: 1500,
+      reason: 'Nhập bổ sung lượng lớn theo hợp đồng cung ứng số HD-2026-44',
+      referenceCode: 'PNK-2026-0905',
+      warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
+      performedBy: 'Thủ kho Nguyễn Văn Kho',
+      createdAt: new Date(now - day * 1).toISOString(),
+    },
+
+    // 2. LH-NUT-180ML
+    {
+      id: 'tx-seed-nut-01',
       productId: 'prod-002',
       sku: 'LH-NUT-180ML',
       productName: 'Sữa Hạt Óc Chó Hạnh Nhân Organic 180ml',
       transactionType: 'IMPORT',
       inputQuantity: 25,
       inputUnit: 'Thùng',
-      conversionRate: 48, // Snapshot 48 hộp/thùng
+      conversionRate: 48,
       baseQuantityChange: 1200,
       baseUnit: 'Hộp',
       previousStock: 0,
       newStock: 1200,
-      reason: 'Nhập kho sản xuất đợt 1',
-      referenceCode: 'PNK-2026-002',
+      reason: 'Nhập kho thành phẩm theo lệnh sản xuất #LSX-1102',
+      referenceCode: 'PNK-2026-0892',
       warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
-      performedBy: 'Trần Văn Thủ Kho',
-      createdAt: new Date(Date.now() - 86400000).toISOString(),
+      performedBy: 'Thủ kho Nguyễn Văn Kho',
+      createdAt: new Date(now - day * 5).toISOString(),
+    },
+    {
+      id: 'tx-seed-nut-02',
+      productId: 'prod-002',
+      sku: 'LH-NUT-180ML',
+      productName: 'Sữa Hạt Óc Chó Hạnh Nhân Organic 180ml',
+      transactionType: 'ORDER',
+      inputQuantity: -120,
+      inputUnit: 'Hộp',
+      conversionRate: 1,
+      baseQuantityChange: -120,
+      baseUnit: 'Hộp',
+      previousStock: 1200,
+      newStock: 1080,
+      reason: 'Xuất bán theo đơn hàng #DH-2026-1008 cho Chuỗi siêu thị Loha Mart',
+      referenceCode: 'DH-2026-1008',
+      warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
+      performedBy: 'Nhân viên kho Trần Văn Kho',
+      createdAt: new Date(now - day * 3).toISOString(),
+    },
+
+    // 3. LH-BIRD-NEST
+    {
+      id: 'tx-seed-bird-01',
+      productId: 'prod-003',
+      sku: 'LH-BIRD-NEST',
+      productName: 'Tổ Yến Chưng Đông Trùng Hạ Thảo Cao Cấp 70ml',
+      transactionType: 'IMPORT',
+      inputQuantity: 600,
+      inputUnit: 'Hũ',
+      conversionRate: 1,
+      baseQuantityChange: 600,
+      baseUnit: 'Hũ',
+      previousStock: 0,
+      newStock: 600,
+      reason: 'Nhập kho thành phẩm cao cấp từ Xưởng Yến Sào Nha Trang',
+      referenceCode: 'PNK-2026-0895',
+      warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
+      performedBy: 'Thủ kho Nguyễn Văn Kho',
+      createdAt: new Date(now - day * 4).toISOString(),
+    },
+    {
+      id: 'tx-seed-bird-02',
+      productId: 'prod-003',
+      sku: 'LH-BIRD-NEST',
+      productName: 'Tổ Yến Chưng Đông Trùng Hạ Thảo Cao Cấp 70ml',
+      transactionType: 'ORDER',
+      inputQuantity: -20,
+      inputUnit: 'Hũ',
+      conversionRate: 1,
+      baseQuantityChange: -20,
+      baseUnit: 'Hũ',
+      previousStock: 600,
+      newStock: 580,
+      reason: 'Xuất giao hàng đơn VIP #DH-2026-1015 (Đại lý Dinh Dưỡng An Tâm)',
+      referenceCode: 'DH-2026-1015',
+      warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
+      performedBy: 'Nhân viên kho Trần Văn Kho',
+      createdAt: new Date(now - day * 2).toISOString(),
+    },
+
+    // 4. LH-COFFEE-250G
+    {
+      id: 'tx-seed-coffee-01',
+      productId: 'prod-004',
+      sku: 'LH-COFFEE-250G',
+      productName: 'Cà Phê Rang Xay Nguyên Chất Robusta & Arabica 250g',
+      transactionType: 'IMPORT',
+      inputQuantity: 500,
+      inputUnit: 'Gói',
+      conversionRate: 1,
+      baseQuantityChange: 500,
+      baseUnit: 'Gói',
+      previousStock: 0,
+      newStock: 500,
+      reason: 'Nhập lô cà phê thu hoạch mới từ Nông trại Buôn Ma Thuột',
+      referenceCode: 'PNK-2026-0898',
+      warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
+      performedBy: 'Thủ kho Nguyễn Văn Kho',
+      createdAt: new Date(now - day * 5).toISOString(),
+    },
+    {
+      id: 'tx-seed-coffee-02',
+      productId: 'prod-004',
+      sku: 'LH-COFFEE-250G',
+      productName: 'Cà Phê Rang Xay Nguyên Chất Robusta & Arabica 250g',
+      transactionType: 'TRANSFER',
+      inputQuantity: -90,
+      inputUnit: 'Gói',
+      conversionRate: 1,
+      baseQuantityChange: -90,
+      baseUnit: 'Gói',
+      previousStock: 500,
+      newStock: 410,
+      reason: 'Điều chuyển kho nội bộ sang Kho Trung Chuyển Đà Nẵng',
+      referenceCode: 'PCK-2026-0048',
+      warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
+      performedBy: 'Quản lý kho Đỗ Quốc Bảo',
+      createdAt: new Date(now - day * 2.5).toISOString(),
+    },
+
+    // 5. LH-TEA-350ML
+    {
+      id: 'tx-seed-tea-01',
+      productId: 'prod-005',
+      sku: 'LH-TEA-350ML',
+      productName: 'Trà Thảo Mộc Hoa Cúc & Kỷ Tử Thanh Nhiệt 350ml',
+      transactionType: 'IMPORT',
+      inputQuantity: 300,
+      inputUnit: 'Chai',
+      conversionRate: 1,
+      baseQuantityChange: 300,
+      baseUnit: 'Chai',
+      previousStock: 0,
+      newStock: 300,
+      reason: 'Nhập hàng đợt 1 từ Công ty Trà Thảo Dược Thiên Nhiên',
+      referenceCode: 'PNK-2026-0901',
+      warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
+      performedBy: 'Thủ kho Nguyễn Văn Kho',
+      createdAt: new Date(now - day * 4).toISOString(),
+    },
+    {
+      id: 'tx-seed-tea-02',
+      productId: 'prod-005',
+      sku: 'LH-TEA-350ML',
+      productName: 'Trà Thảo Mộc Hoa Cúc & Kỷ Tử Thanh Nhiệt 350ml',
+      transactionType: 'EXPORT',
+      inputQuantity: -40,
+      inputUnit: 'Chai',
+      conversionRate: 1,
+      baseQuantityChange: -40,
+      baseUnit: 'Chai',
+      previousStock: 300,
+      newStock: 260,
+      reason: 'Xuất mẫu thử nghiệm và giới thiệu sản phẩm tại Hội chợ Thương mại',
+      referenceCode: 'PXK-2026-0015',
+      warehouse: 'Kho Tổng Miền Nam - LOHA WH01',
+      performedBy: 'Nhân viên kho Trần Văn Kho',
+      createdAt: new Date(now - day * 1.5).toISOString(),
     },
   ];
   return initial;
@@ -198,6 +419,9 @@ export const inventoryService = {
       } else {
         items = items.filter((i) => i.status === params.status);
       }
+    } else {
+      // Hàng lỗi chỉ hiển thị khi chọn lọc 'Sản phẩm lỗi', không hiển thị ở bất kỳ trạng thái nào khác
+      items = items.filter((i) => i.status !== 'DAMAGED');
     }
 
     const warehouseFilter = params?.warehouseId || params?.warehouse;
@@ -539,20 +763,87 @@ export const inventoryService = {
   },
 
   /**
-   * Truy vấn sổ kho và lịch sử quy đổi giao dịch nhập/xuất (SN-23)
-   * GET /inventory/transactions?sku=...
+   * Truy vấn sổ kho và lịch sử biến động giao dịch / Thẻ kho hàng hóa (SN-185 & SN-23)
+   * GET /inventory/transactions?sku=...&warehouse=...&startDate=...&endDate=...&type=...&search=...
    */
-  async getTransactions(sku?: string): Promise<InventoryTransaction[]> {
+  async getTransactions(
+    queryOrSku?: string | {
+      sku?: string;
+      warehouse?: string;
+      startDate?: string;
+      endDate?: string;
+      type?: string;
+      search?: string;
+      limit?: number;
+    },
+  ): Promise<InventoryTransaction[]> {
+    const q = typeof queryOrSku === 'string' ? { sku: queryOrSku } : (queryOrSku || {});
     const token = tokenStorage.getAccessToken();
+
     if (token && token.startsWith('demo-jwt-')) {
-      const all = getStoredDemoTransactions();
-      if (!sku) return all;
-      return all.filter((t) => t.sku.toUpperCase() === sku.trim().toUpperCase());
+      let all = getStoredDemoTransactions();
+
+      if (q.sku && q.sku.trim() !== '') {
+        const skuUpper = q.sku.trim().toUpperCase();
+        all = all.filter((t) => t.sku.toUpperCase() === skuUpper);
+      }
+
+      if (q.warehouse && q.warehouse.trim() !== '' && q.warehouse.toUpperCase() !== 'ALL') {
+        const whQuery = q.warehouse.trim().toLowerCase();
+        all = all.filter((t) => {
+          const tWh = (t.warehouse || '').toLowerCase();
+          if (tWh.includes(whQuery) || whQuery.includes(tWh)) return true;
+          const isSouth = (s: string) => s.includes('nam') || s.includes('mn') || s.includes('wh01') || s.includes('hồ chí minh');
+          const isNorth = (s: string) => s.includes('bắc') || s.includes('bac') || s.includes('mb') || s.includes('wh02') || s.includes('hà nội');
+          const isCentral = (s: string) => s.includes('trung') || s.includes('mt') || s.includes('wh03') || s.includes('đà nẵng');
+          const isWest = (s: string) => s.includes('tây') || s.includes('tay') || s.includes('west') || s.includes('cần thơ');
+          if (isSouth(whQuery) && isSouth(tWh)) return true;
+          if (isNorth(whQuery) && isNorth(tWh)) return true;
+          if (isCentral(whQuery) && isCentral(tWh)) return true;
+          if (isWest(whQuery) && isWest(tWh)) return true;
+          return false;
+        });
+      }
+
+      if (q.type && q.type.trim() !== '' && q.type.toUpperCase() !== 'ALL') {
+        const typeUpper = q.type.trim().toUpperCase();
+        all = all.filter((t) => t.transactionType === typeUpper);
+      }
+
+      if (q.startDate && q.startDate.trim() !== '') {
+        const start = new Date(q.startDate);
+        if (!isNaN(start.getTime())) {
+          start.setHours(0, 0, 0, 0);
+          all = all.filter((t) => new Date(t.createdAt).getTime() >= start.getTime());
+        }
+      }
+
+      if (q.endDate && q.endDate.trim() !== '') {
+        const end = new Date(q.endDate);
+        if (!isNaN(end.getTime())) {
+          end.setHours(23, 59, 59, 999);
+          all = all.filter((t) => new Date(t.createdAt).getTime() <= end.getTime());
+        }
+      }
+
+      if (q.search && q.search.trim() !== '') {
+        const s = q.search.trim().toLowerCase();
+        all = all.filter((t) =>
+          (t.referenceCode || '').toLowerCase().includes(s) ||
+          (t.productName || '').toLowerCase().includes(s) ||
+          (t.sku || '').toLowerCase().includes(s) ||
+          (t.reason || '').toLowerCase().includes(s) ||
+          (t.performedBy || '').toLowerCase().includes(s)
+        );
+      }
+
+      const limit = q.limit && q.limit > 0 ? q.limit : 500;
+      return all.slice(0, limit);
     }
 
     try {
       const response = await apiClient.get<InventoryTransaction[]>('/inventory/transactions', {
-        params: sku ? { sku } : undefined,
+        params: q,
       });
       return response.data;
     } catch (err: unknown) {
@@ -566,5 +857,114 @@ export const inventoryService = {
       }
       throw err;
     }
+  },
+  /**
+   * Xóa sản phẩm khỏi kho (Yêu cầu mới):
+   * - Chỉ Admin và Quản lý kho
+   * - Ràng buộc: Hết mọi loại tồn (thực tế, tạm giữ, khả dụng = 0)
+   */
+  async removeProductFromWarehouse(
+    warehouseId: string,
+    sku: string,
+    productId?: string
+  ): Promise<{ success: boolean; message: string }> {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(
+      '/inventory/stock',
+      {
+        params: {
+          warehouseId,
+          sku,
+          productId,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  /**
+   * SN-229 / SN-220: Xuất báo cáo tồn kho ra tệp Excel (.xlsx) chuẩn gửi kế toán
+   * Giữ nguyên ba cột tồn: Tồn Thực Tế, Tồn Tạm Giữ, Tồn Khả Dụng
+   * GET /api/inventory/stock/export-excel
+   */
+  async exportStockExcel(params?: {
+    warehouse?: string;
+    warehouseId?: string;
+    category?: string;
+    status?: string;
+    search?: string;
+  }): Promise<{ blob: Blob; fileName: string }> {
+    const cleanParams: Record<string, string> = {};
+    if (params) {
+      if (params.search?.trim()) cleanParams.search = params.search.trim();
+      if (params.category && params.category !== 'ALL') cleanParams.category = params.category;
+      if (params.status && params.status !== 'ALL') cleanParams.status = params.status;
+      const wh = params.warehouseId || params.warehouse;
+      if (wh && wh !== 'ALL') {
+        cleanParams.warehouse = wh;
+        cleanParams.warehouseId = wh;
+      }
+    }
+
+    try {
+      const response = await apiClient.get('/inventory/stock/export-excel', {
+        params: cleanParams,
+        responseType: 'blob',
+      });
+
+      const headers = (response.headers || {}) as any;
+      const disposition =
+        headers['content-disposition'] ||
+        (typeof headers.get === 'function' ? headers.get('content-disposition') || headers.get('Content-Disposition') : '') ||
+        '';
+      let fileName = '';
+      const match = disposition.match(/filename="?([^";]+)"?/);
+      if (match && match[1]) {
+        fileName = decodeURIComponent(match[1]);
+      } else {
+        const rawWh = cleanParams.warehouse || cleanParams.warehouseId || 'ALL';
+        const matchedWh = STANDARD_WAREHOUSES.find((w) => w.id === rawWh || w.code === rawWh);
+        const whCode = matchedWh ? matchedWh.code : (rawWh === 'ALL' ? 'ALL' : rawWh.slice(0, 8));
+        const today = new Date().toISOString().slice(0, 10);
+        fileName = `TonKho_${whCode}_${today}.xlsx`;
+      }
+
+      return { blob: response.data, fileName };
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: any } };
+        if (axiosErr.response?.data instanceof Blob) {
+          try {
+            const text = await axiosErr.response.data.text();
+            const parsed = JSON.parse(text);
+            const msg = Array.isArray(parsed.message) ? parsed.message.join(', ') : parsed.message;
+            if (msg) throw new Error(msg);
+          } catch (e: any) {
+            if (e?.message && !e.message.includes('JSON')) throw e;
+          }
+        }
+      }
+      throw err instanceof Error ? err : new Error('Không thể xuất báo cáo tồn kho ra Excel');
+    }
+  },
+
+  /**
+   * Xử lý sản phẩm lỗi (Đưa sang tồn kho hoặc Tiêu hủy)
+   * POST /inventory/damaged/process
+   */
+  async processDamagedStock(payload: {
+    warehouseId: string;
+    productId: string;
+    productSku: string;
+    batchNumber?: string;
+    expiryDate?: string;
+    action: 'TO_STOCK' | 'DESTROY';
+    quantity: number;
+    reason: string;
+  }): Promise<{ success: boolean; message: string; remainingQuantity?: number }> {
+    const response = await apiClient.post<{ success: boolean; message: string; remainingQuantity?: number }>(
+      '/inventory/damaged/process',
+      payload,
+    );
+    return response.data;
   },
 };

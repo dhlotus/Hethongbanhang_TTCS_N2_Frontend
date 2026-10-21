@@ -1,0 +1,532 @@
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  Truck,
+  Plus,
+  RefreshCw,
+  Search,
+  X,
+  Building2,
+  Filter,
+  Sliders,
+  RotateCcw,
+  ChevronDown,
+} from 'lucide-react';
+import { deliveryTripsService } from '../services/delivery-trips.service';
+import type {
+  CreateDeliveryTripPayload,
+  DeliveryTrip,
+  GoodsInTransitStats,
+  StopDeliveryStatus,
+} from '../types/delivery-trip';
+import { STANDARD_WAREHOUSES } from '../constants/warehouse.constants';
+import { TripStatsCards } from '../components/delivery-trips/trip-stats-cards';
+import { TripCard } from '../components/delivery-trips/trip-card';
+import { TripDetailModal } from '../components/delivery-trips/trip-detail-modal';
+import { TripReturnCheckinModal } from '../components/delivery-trips/trip-return-checkin-modal';
+import { CreateTripModal } from '../components/delivery-trips/create-trip-modal';
+import { showToast } from '../components/toast';
+import { getFriendlyErrorMessage } from '../utils/error-handler';
+
+type FilterTab = 'ALL' | 'IN_TRANSIT_ON_TIME' | 'OVERDUE' | 'COMPLETED';
+
+/**
+ * Màn hình Theo dõi Hàng đã xuất trên đường (SN-194 / SN-197)
+ * Giao diện Clean Corporate SaaS chuẩn hệ thống LOHA SALES, gọn gàng, trang nhã, không màu mè
+ */
+export const GoodsInTransitPage: React.FC = () => {
+  const [trips, setTrips] = useState<DeliveryTrip[]>([]);
+  const [stats, setStats] = useState<GoodsInTransitStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('ALL');
+
+  // Modals state
+  const [selectedTripForDetail, setSelectedTripForDetail] = useState<DeliveryTrip | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  const [selectedTripForCheckin, setSelectedTripForCheckin] = useState<DeliveryTrip | null>(null);
+  const [isCheckinModalOpen, setIsCheckinModalOpen] = useState(false);
+
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Tải dữ liệu từ API
+  const fetchData = useCallback(async (showNotification = false) => {
+    try {
+      setLoading(true);
+      const [tripsData, statsData] = await Promise.all([
+        deliveryTripsService.getTrips(),
+        deliveryTripsService.getGoodsInTransitStats(),
+      ]);
+
+      setTrips(tripsData);
+      setStats(statsData);
+
+      setSelectedTripForDetail((prev) =>
+        prev ? tripsData.find((t) => t.id === prev.id) || null : null,
+      );
+
+      if (showNotification) {
+        showToast('success', 'Đã cập nhật trạng thái các chuyến xe giao hàng mới nhất');
+      }
+    } catch (err: unknown) {
+      showToast('error', getFriendlyErrorMessage(err, 'Không thể tải dữ liệu chuyến đi giao hàng'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Danh sách kho lưu trữ / kho xuất
+  const availableWarehouses = useMemo(() => {
+    const list: { id: string; name: string }[] = [];
+    const seen = new Set<string>();
+
+    trips.forEach((t) => {
+      if (t.warehouseId && !seen.has(t.warehouseId)) {
+        seen.add(t.warehouseId);
+        list.push({ id: t.warehouseId, name: t.warehouseName || t.warehouseId });
+      }
+    });
+
+    STANDARD_WAREHOUSES.forEach((wh) => {
+      if (!seen.has(wh.id) && !seen.has(wh.code)) {
+        seen.add(wh.id);
+        list.push({ id: wh.id, name: wh.name });
+      }
+    });
+
+    return list;
+  }, [trips]);
+
+  // Bộ lọc danh sách chuyến đi
+  const filteredTrips = useMemo(() => {
+    return trips.filter((trip) => {
+      if (selectedWarehouseId !== 'ALL') {
+        const targetWh = availableWarehouses.find((w) => w.id === selectedWarehouseId);
+        const matchesId = trip.warehouseId === selectedWarehouseId;
+        const matchesName =
+          targetWh && trip.warehouseName?.toLowerCase() === targetWh.name.toLowerCase();
+        if (!matchesId && !matchesName) {
+          return false;
+        }
+      }
+
+      if (activeTab === 'OVERDUE') {
+        if (!trip.isOverdue || trip.status !== 'IN_TRANSIT') return false;
+      } else if (activeTab === 'IN_TRANSIT_ON_TIME') {
+        if (trip.status !== 'IN_TRANSIT' || trip.isOverdue) return false;
+      } else if (activeTab === 'COMPLETED') {
+        if (trip.status !== 'COMPLETED') return false;
+      }
+
+      if (searchTerm.trim()) {
+        const term = searchTerm.trim().toLowerCase();
+        const matchCode = trip.tripCode.toLowerCase().includes(term);
+        const matchName = trip.tripName.toLowerCase().includes(term);
+        const matchDriver = trip.driverName.toLowerCase().includes(term);
+        const matchVehicle = trip.vehicleNumber.toLowerCase().includes(term);
+        const matchWh = trip.warehouseName?.toLowerCase().includes(term);
+        const matchStop = trip.stops.some(
+          (s) =>
+            s.orderCode.toLowerCase().includes(term) ||
+            s.customerName.toLowerCase().includes(term),
+        );
+
+        if (!matchCode && !matchName && !matchDriver && !matchVehicle && !matchStop && !matchWh) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [trips, selectedWarehouseId, activeTab, searchTerm, availableWarehouses]);
+
+  // Số lượng đếm cho từng Tab
+  const counts = useMemo(() => {
+    const overdue = trips.filter((t) => t.status === 'IN_TRANSIT' && t.isOverdue).length;
+    const onTime = trips.filter((t) => t.status === 'IN_TRANSIT' && !t.isOverdue).length;
+    const completed = trips.filter((t) => t.status === 'COMPLETED').length;
+    return {
+      all: trips.length,
+      overdue,
+      onTime,
+      completed,
+    };
+  }, [trips]);
+
+  // Kiểm tra trạng thái đang có lọc & đặt lại
+  const hasActiveFilter = Boolean(
+    searchTerm.trim() || selectedWarehouseId !== 'ALL' || activeTab !== 'ALL',
+  );
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setSelectedWarehouseId('ALL');
+    setActiveTab('ALL');
+  };
+
+  // Cập nhật trạng thái điểm dừng
+  const handleUpdateStopStatus = async (
+    tripId: string,
+    stopId: string,
+    status: StopDeliveryStatus,
+    failureReason?: string,
+  ) => {
+    try {
+      const updatedTrip = await deliveryTripsService.updateStopStatus(tripId, stopId, {
+        status,
+        failureReason,
+      });
+
+      setTrips((prev) => prev.map((t) => (t.id === tripId ? updatedTrip : t)));
+      setSelectedTripForDetail(updatedTrip);
+
+      const newStats = await deliveryTripsService.getGoodsInTransitStats();
+      setStats(newStats);
+
+      if (status === 'DELIVERED') {
+        showToast('success', 'Đã ghi nhận giao hàng thành công');
+      } else {
+        showToast(
+          'warning',
+          'Đã ghi nhận giao chưa thành công. Hàng vẫn thuộc trách nhiệm chuyến đi trên xe, không tự hồi về kho!',
+        );
+      }
+    } catch (err: unknown) {
+      showToast(
+        'error',
+        getFriendlyErrorMessage(err, 'Lỗi khi cập nhật kết quả điểm giao hàng'),
+      );
+    }
+  };
+
+  // Xác nhận đối soát xe về kho & nhập lại hàng chưa giao
+  const handleConfirmReturnCheckin = async (
+    tripId: string,
+    confirmReturnAll: boolean,
+    notes?: string,
+  ) => {
+    try {
+      const updatedTrip = await deliveryTripsService.checkinTripReturn(tripId, {
+        confirmReturnAllFailedGoods: confirmReturnAll,
+        returnedNotes: notes,
+      });
+
+      setTrips((prev) => prev.map((t) => (t.id === tripId ? updatedTrip : t)));
+      if (selectedTripForDetail?.id === tripId) {
+        setSelectedTripForDetail(updatedTrip);
+      }
+
+      const newStats = await deliveryTripsService.getGoodsInTransitStats();
+      setStats(newStats);
+
+      showToast(
+        'success',
+        `Đã hoàn tất đối soát xe về kho và nhập lại hàng chưa giao cho chuyến ${updatedTrip.tripCode}`,
+      );
+    } catch (err: unknown) {
+      showToast('error', getFriendlyErrorMessage(err, 'Lỗi khi đối soát xe về kho'));
+      throw err;
+    }
+  };
+
+  // Tạo chuyến đi mới
+  const handleCreateTrip = async (payload: CreateDeliveryTripPayload) => {
+    try {
+      const newTrip = await deliveryTripsService.createTrip(payload);
+      setTrips((prev) => [newTrip, ...prev]);
+
+      const newStats = await deliveryTripsService.getGoodsInTransitStats();
+      setStats(newStats);
+
+      showToast('success', `Đã tạo thành công chuyến xe giao hàng ${newTrip.tripCode}`);
+    } catch (err: unknown) {
+      showToast('error', getFriendlyErrorMessage(err, 'Lỗi khi tạo chuyến đi giao hàng'));
+      throw err;
+    }
+  };
+
+  return (
+    <main className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
+      {/* 1. PAGE HEADER (CHUẨN THIẾT KẾ QUẢN LÝ KHO) */}
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Theo dõi hàng đã xuất trên đường
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Theo dõi tiền hàng luân chuyển, giám sát điểm đã giao và đối soát chuyến đi giao hàng.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => fetchData(true)}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin text-[#371cdb]' : ''} />
+            <span>Làm mới</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#371cdb] hover:bg-[#2d14b8] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-all cursor-pointer active:scale-95"
+          >
+            <Plus size={16} />
+            <span>Lập chuyến đi mới</span>
+          </button>
+        </div>
+      </header>
+
+      {/* 2. THỐNG KÊ TỔNG QUAN (KPI SUMMARY) */}
+      <TripStatsCards stats={stats} loading={loading} />
+
+      {/* 3. KHUNG BỘ LỌC & TÌM KIẾM (ĐỒNG BỘ 100% THEO CHUẨN THIẾT KẾ QUẢN LÝ KHO/LÔ HÀNG) */}
+      <div className="bg-white rounded-xl border border-slate-200/90 p-4 shadow-xs space-y-3.5">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          {/* Ô tìm kiếm */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Tìm theo mã chuyến, biển số xe, tài xế, mã đơn, khách hàng..."
+              className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 focus:border-[#371cdb] transition-all placeholder:text-slate-400"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Lọc theo Kho hàng */}
+          <div className="relative w-full lg:w-56">
+            <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select
+              value={selectedWarehouseId}
+              onChange={(e) => setSelectedWarehouseId(e.target.value)}
+              className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 focus:border-[#371cdb] transition-all appearance-none cursor-pointer truncate"
+            >
+              <option value="ALL">Tất cả kho lưu trữ</option>
+              {availableWarehouses.map((wh) => (
+                <option key={wh.id} value={wh.id}>
+                  {wh.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Lọc theo Trạng thái chuyến đi */}
+          <div className="relative w-full lg:w-56">
+            <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as FilterTab)}
+              className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 focus:border-[#371cdb] transition-all appearance-none cursor-pointer truncate"
+            >
+              <option value="ALL">Tất cả trạng thái lô</option>
+              <option value="IN_TRANSIT_ON_TIME">Đúng giờ ({counts.onTime})</option>
+              <option value="OVERDUE">⚠️ Quá hạn ETA ({counts.overdue})</option>
+              <option value="COMPLETED">✅ Đã hoàn tất ({counts.completed})</option>
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Nút Đặt lại bộ lọc (khi có lọc) */}
+          {hasActiveFilter && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-xl transition-all cursor-pointer shadow-2xs shrink-0"
+              title="Đặt lại toàn bộ bộ lọc về mặc định"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Đặt lại</span>
+            </button>
+          )}
+        </div>
+
+        {/* Cấu hình Lọc nhanh trạng thái (Pills) */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+          <div className="flex flex-wrap items-center gap-2">
+            <Sliders className="w-3.5 h-3.5 text-[#371cdb] shrink-0" />
+            <span className="text-xs font-bold text-slate-700">Trạng thái vận chuyển:</span>
+
+            {/* Các nút bấm chọn nhanh */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setActiveTab('ALL')}
+                className={`h-7 px-2.5 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
+                  activeTab === 'ALL'
+                    ? 'bg-[#371cdb] text-white border-[#371cdb] shadow-2xs'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-[#371cdb]/40 hover:text-[#371cdb]'
+                }`}
+              >
+                Tất cả ({counts.all})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('IN_TRANSIT_ON_TIME')}
+                className={`h-7 px-2.5 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
+                  activeTab === 'IN_TRANSIT_ON_TIME'
+                    ? 'bg-[#371cdb] text-white border-[#371cdb] shadow-2xs'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-[#371cdb]/40 hover:text-[#371cdb]'
+                }`}
+              >
+                Đúng giờ ({counts.onTime})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('OVERDUE')}
+                className={`h-7 px-2.5 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
+                  activeTab === 'OVERDUE'
+                    ? 'bg-[#371cdb] text-white border-[#371cdb] shadow-2xs'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-[#371cdb]/40 hover:text-[#371cdb]'
+                }`}
+              >
+                Quá hạn ({counts.overdue})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('COMPLETED')}
+                className={`h-7 px-2.5 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
+                  activeTab === 'COMPLETED'
+                    ? 'bg-[#371cdb] text-white border-[#371cdb] shadow-2xs'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-[#371cdb]/40 hover:text-[#371cdb]'
+                }`}
+              >
+                Đã hoàn tất ({counts.completed})
+              </button>
+            </div>
+          </div>
+
+          <div className="text-xs text-slate-500">
+            Hiển thị <span className="font-bold text-slate-800">{filteredTrips.length}</span> chuyến xe
+          </div>
+        </div>
+      </div>
+
+      {/* 4. DANH SÁCH CHUYẾN XE */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eff2fe] text-[#371cdb]">
+              <Truck size={20} />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                Danh sách chuyến xe
+                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                  {filteredTrips.length}
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500">
+                Giám sát lộ trình, tiến độ giao điểm dừng và đối soát hàng chưa giao về kho
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Danh sách các chuyến đi dạng Grid */}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            {[1, 2, 3].map((n) => (
+              <div
+                key={n}
+                className="h-72 rounded-2xl bg-white border border-slate-200/90 p-5 animate-pulse space-y-3"
+              >
+                <div className="h-5 w-1/2 bg-slate-200 rounded" />
+                <div className="h-4 w-3/4 bg-slate-100 rounded" />
+                <div className="h-16 bg-slate-50 rounded" />
+                <div className="h-8 bg-slate-100 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : filteredTrips.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center space-y-3">
+            <div className="w-12 h-12 rounded-xl bg-[#eff2fe] text-[#371cdb] flex items-center justify-center mx-auto ring-1 ring-[#371cdb]/20">
+              <Truck size={24} />
+            </div>
+            <h3 className="font-bold text-slate-800 text-base">Không tìm thấy chuyến đi nào</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              Không có chuyến xe nào khớp với điều kiện lọc hiện tại.
+            </p>
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs"
+            >
+              Đặt lại bộ lọc
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            {filteredTrips.map((trip) => (
+              <TripCard
+                key={trip.id}
+                trip={trip}
+                onOpenDetails={(t) => {
+                  setSelectedTripForDetail(t);
+                  setIsDetailModalOpen(true);
+                }}
+                onOpenReturnCheckin={(t) => {
+                  setSelectedTripForCheckin(t);
+                  setIsCheckinModalOpen(true);
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Modal chi tiết điểm dừng */}
+      <TripDetailModal
+        trip={selectedTripForDetail}
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedTripForDetail(null);
+        }}
+        onUpdateStopStatus={handleUpdateStopStatus}
+        onOpenReturnCheckin={(t) => {
+          setIsDetailModalOpen(false);
+          setSelectedTripForCheckin(t);
+          setIsCheckinModalOpen(true);
+        }}
+      />
+
+      {/* Modal đối soát xe về kho */}
+      <TripReturnCheckinModal
+        trip={selectedTripForCheckin}
+        isOpen={isCheckinModalOpen}
+        onClose={() => {
+          setIsCheckinModalOpen(false);
+          setSelectedTripForCheckin(null);
+        }}
+        onConfirmCheckin={handleConfirmReturnCheckin}
+      />
+
+      {/* Modal tạo chuyến đi */}
+      <CreateTripModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateTrip}
+      />
+    </main>
+  );
+};

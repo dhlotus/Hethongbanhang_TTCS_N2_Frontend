@@ -18,7 +18,6 @@ import {
   AlertCircle,
   UserCheck,
   Lock,
-  Unlock,
   Trash2,
   Tag,
   ArrowRightLeft,
@@ -29,7 +28,6 @@ import {
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { DeliveryPointModal } from '../components/delivery-point-modal';
-import { LockAgencyModal } from '../components/lock-agency-modal';
 import { AssignSalesRepModal } from '../components/assign-sales-rep-modal';
 import { BulkTransferTerritoryModal } from '../components/bulk-transfer-territory-modal';
 import { AssignmentHistoryModal } from '../components/assignment-history-modal';
@@ -139,7 +137,6 @@ export const CustomersPage: React.FC = () => {
   // State danh sách đại lý & tải dữ liệu
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [refreshing, setRefreshing] = useState<boolean>(false);
 
   // Bộ lọc & tìm kiếm (Hỗ trợ SN-37 đa tiêu chí & đồng bộ URL)
   const [searchInput, setSearchInput] = useState<string>(initialSearch);
@@ -166,11 +163,7 @@ export const CustomersPage: React.FC = () => {
   );
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState<boolean>(false);
 
-  // Modal Khóa / Mở khóa đại lý (SN-36)
-  const [lockModalCustomer, setLockModalCustomer] = useState<Customer | null>(null);
-  const [lockModalMode, setLockModalMode] = useState<'LOCK' | 'UNLOCK'>('LOCK');
-  const [isLockModalOpen, setIsLockModalOpen] = useState<boolean>(false);
-  const [isLockSubmitting, setIsLockSubmitting] = useState<boolean>(false);
+
 
   // Modal Sửa hạn mức công nợ (SN-34)
   const [isCreditLimitModalOpen, setIsCreditLimitModalOpen] = useState<boolean>(false);
@@ -495,7 +488,6 @@ export const CustomersPage: React.FC = () => {
       } finally {
         if (currentRequestId === activeRequestRef.current) {
           setLoading(false);
-          setRefreshing(false);
         }
       }
     },
@@ -682,16 +674,7 @@ export const CustomersPage: React.FC = () => {
     void fetchSalesReps();
   }, []);
 
-  // Làm mới dữ liệu từ server
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadCustomers();
-    showToast(
-      'success',
-      'Đồng bộ hoàn tất',
-      'Dữ liệu đại lý và điểm giao hàng đã được cập nhật mới nhất từ máy chủ.'
-    );
-  };
+
 
   // Thống kê nhanh KPI toàn bộ hệ thống đại lý (không bị phụ thuộc vào phân trang từng trang)
   const stats = useMemo(() => {
@@ -984,69 +967,7 @@ export const CustomersPage: React.FC = () => {
     }
   };
 
-  // Mở modal khóa giao dịch đại lý (SN-36)
-  const handleOpenLockModal = (customer: Customer) => {
-    setLockModalCustomer(customer);
-    setLockModalMode('LOCK');
-    setIsLockModalOpen(true);
-  };
 
-  // Mở modal mở khóa giao dịch đại lý (SN-36)
-  const handleOpenUnlockModal = (customer: Customer) => {
-    setLockModalCustomer(customer);
-    setLockModalMode('UNLOCK');
-    setIsLockModalOpen(true);
-  };
-
-  // Xác nhận khóa đại lý qua Modal (SN-36)
-  const handleConfirmLock = async (reason: string) => {
-    if (!lockModalCustomer) return;
-    try {
-      setIsLockSubmitting(true);
-      const updated = await customerService.lockCustomer(lockModalCustomer.id, reason.trim());
-      showToast(
-        'warning',
-        'Đã khóa giao dịch',
-        `Đại lý "${updated.name}" đã bị khóa giao dịch. Lý do: ${reason.trim()}`
-      );
-      setIsLockModalOpen(false);
-      setLockModalCustomer(null);
-      void loadCustomers();
-    } catch (err: unknown) {
-      showToast(
-        'error',
-        'Lỗi khóa đại lý',
-        err instanceof Error ? err.message : 'Không thể khóa đại lý.'
-      );
-    } finally {
-      setIsLockSubmitting(false);
-    }
-  };
-
-  // Xác nhận mở khóa đại lý qua Modal (SN-36)
-  const handleConfirmUnlock = async () => {
-    if (!lockModalCustomer) return;
-    try {
-      setIsLockSubmitting(true);
-      const updated = await customerService.unlockCustomer(lockModalCustomer.id);
-      showToast(
-        'success',
-        'Đã mở khóa giao dịch',
-        `Đại lý "${updated.name}" đã được mở khóa và có thể giao dịch bình thường!`
-      );
-      setIsLockModalOpen(false);
-      setLockModalCustomer(null);
-      void loadCustomers();
-    } catch (err: unknown) {
-      showToast(
-        'error',
-        'Lỗi mở khóa',
-        err instanceof Error ? err.message : 'Không thể mở khóa đại lý.'
-      );
-    } finally {
-      setIsLockSubmitting(false);
-    }
-  };
 
   // Mở modal điểm giao hàng của đại lý
   const handleOpenDeliveryPoints = (customer: Customer) => {
@@ -1186,67 +1107,9 @@ export const CustomersPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* ── HEADER GIỐNG TRANG ĐƠN HÀNG BÁN BUÔN ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-blue-600" />
-            Đại lý & Hạn mức nợ
-          </h1>
-          <p className="text-sm text-slate-500 mt-2">
-            Quản lý danh sách khách hàng đại lý, theo dõi hạn mức tín dụng và công nợ
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
-            title="Đồng bộ danh sách"
-          >
-            <RefreshCw
-              className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-600' : 'text-slate-500'}`}
-            />
-            <span>Làm mới</span>
-          </button>
 
-          {isManagerOrAdmin && (
-            <>
-              <button
-                type="button"
-                onClick={() => setIsHistoryModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
-                title="Xem lịch sử chuyển giao và phân công địa bàn (SN-35)"
-              >
-                <History className="w-4 h-4 text-indigo-600" />
-                <span>Lịch sử chuyển giao</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsBulkTransferOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-colors shadow-xs cursor-pointer"
-                title="Chuyển giao địa bàn hàng loạt khi nhân sự nghỉ việc (SN-35)"
-              >
-                <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
-                <span>Chuyển giao địa bàn</span>
-              </button>
-            </>
-          )}
-
-          <button
-            type="button"
-            onClick={handleOpenCreateModal}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-xs cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Thêm đại lý mới</span>
-          </button>
-        </div>
-      </div>
       {/* ── THỐNG KÊ NHANH KPI (CARD-BASED UI) ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-blue-600 shrink-0">
             <Building2 className="w-5 h-5" />
@@ -1339,20 +1202,33 @@ export const CustomersPage: React.FC = () => {
             )}
           </div>
 
-          {/* 2 nút hành động: Làm mới & Thêm đại lý mới */}
-          <div className="flex items-center gap-2 shrink-0 ml-auto">
-            <button
-              type="button"
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-2xs disabled:opacity-50 cursor-pointer"
-              title="Đồng bộ danh sách từ máy chủ"
-            >
-              <RefreshCw
-                className={`w-3.5 h-3.5 shrink-0 ${refreshing ? 'animate-spin text-blue-600' : 'text-slate-500'}`}
-              />
-              <span>Làm mới</span>
-            </button>
+          {/* Nhóm nút hành động: Lịch sử, Chuyển giao địa bàn, Làm mới & Thêm đại lý mới */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0 sm:ml-auto">
+            {isManagerOrAdmin && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-2xs cursor-pointer whitespace-nowrap"
+                  title="Xem lịch sử chuyển giao và phân công địa bàn (SN-35)"
+                >
+                  <History className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Lịch sử chuyển giao</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsBulkTransferOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-all shadow-2xs cursor-pointer whitespace-nowrap"
+                  title="Chuyển giao địa bàn hàng loạt khi nhân sự nghỉ việc (SN-35)"
+                >
+                  <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Chuyển giao địa bàn</span>
+                </button>
+              </>
+            )}
+
+
 
             <button
               type="button"
@@ -1372,7 +1248,7 @@ export const CustomersPage: React.FC = () => {
             <span className="hidden sm:inline">Bộ lọc:</span>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 flex-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 flex-1">
             {/* 1. Khu vực */}
             <select
               value={selectedRegion}
@@ -1455,7 +1331,7 @@ export const CustomersPage: React.FC = () => {
           <>
             {/* Desktop Table: Chuẩn 6 cột đồng bộ thiết kế Quản lý đơn hàng, không wrap dưới chân */}
             <div className="overflow-x-auto min-h-[360px]">
-              <table className="w-full text-sm divide-y divide-slate-100">
+              <table className="w-full min-w-[700px] text-sm divide-y divide-slate-100">
                 <thead>
                   <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     <th className="px-4 py-3 text-left w-[15%]">Mã đại lý</th>
@@ -1482,7 +1358,7 @@ export const CustomersPage: React.FC = () => {
                         <td className="px-4 py-3.5 whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => setViewCustomer(customer)}
+                            onClick={() => navigate(`/sales/customers/${customer.id}`)}
                             className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200/60 px-2.5 py-1 rounded-md transition-all cursor-pointer shadow-2xs group-hover:border-indigo-300"
                             title={`Xem chi tiết đại lý ${customer.code}`}
                           >
@@ -1495,7 +1371,7 @@ export const CustomersPage: React.FC = () => {
                         <td className="px-4 py-3.5">
                           <button
                             type="button"
-                            onClick={() => setViewCustomer(customer)}
+                            onClick={() => navigate(`/sales/customers/${customer.id}`)}
                             className="text-left font-semibold text-slate-800 hover:text-indigo-600 transition-colors line-clamp-1 text-sm cursor-pointer block max-w-full"
                             title={customer.name}
                           >
@@ -1536,13 +1412,6 @@ export const CustomersPage: React.FC = () => {
                             className={`font-bold tabular-nums text-sm ${
                               isOverLimit ? 'text-rose-600' : 'text-slate-900'
                             }`}
-                            title={
-                              customer.creditLimit
-                                ? `Dư nợ: ${formatVnd(customer.currentDebt || 0)} / Hạn mức: ${formatVnd(
-                                    customer.creditLimit
-                                  )}`
-                                : undefined
-                            }
                           >
                             {formatVnd(customer.currentDebt || 0)}
                           </span>
@@ -1637,7 +1506,7 @@ export const CustomersPage: React.FC = () => {
                       onClick={() => {
                         setOpenActionMenuId(null);
                         setActionMenuAnchor(null);
-                        setViewCustomer(customer);
+                        navigate(`/sales/customers/${customer.id}`);
                       }}
                       className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
                     >
@@ -1645,31 +1514,7 @@ export const CustomersPage: React.FC = () => {
                       <span>Xem chi tiết</span>
                     </button>
 
-                    {/* 2. Lên đơn hàng mới */}
-                    <button
-                      type="button"
-                      disabled={customer.status === 'LOCKED'}
-                      onClick={() => {
-                        setOpenActionMenuId(null);
-                        setActionMenuAnchor(null);
-                        navigate(`/sales/orders/create?customerId=${customer.id}`);
-                      }}
-                      className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
-                        customer.status === 'LOCKED'
-                          ? 'opacity-40 cursor-not-allowed text-slate-400 bg-slate-50/50'
-                          : 'text-indigo-600 hover:bg-indigo-50 cursor-pointer font-medium'
-                      }`}
-                      title={
-                        customer.status === 'LOCKED'
-                          ? 'Đại lý đang bị khóa giao dịch, không thể lên đơn!'
-                          : 'Tạo đơn hàng B2B cho đại lý này'
-                      }
-                    >
-                      <ShoppingCart className="w-4 h-4 text-indigo-600" />
-                      <span>Lên đơn hàng mới</span>
-                    </button>
-
-                    {/* Phân công NVKD phụ trách (SN-35) */}
+                    {/* 2. Phân công NVKD phụ trách (SN-35) */}
                     {isManagerOrAdmin && (
                       <button
                         type="button"
@@ -1687,66 +1532,7 @@ export const CustomersPage: React.FC = () => {
                   </div>
 
                   <div className="py-1">
-                    {/* 3. Sửa hạn mức công nợ */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenActionMenuId(null);
-                        setActionMenuAnchor(null);
-                        handleOpenCreditLimitModal(customer);
-                      }}
-                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-amber-700 flex items-center gap-2.5 transition-colors cursor-pointer"
-                    >
-                      <Pencil className="w-4 h-4 text-amber-600" />
-                      <span>Sửa hạn mức</span>
-                    </button>
-
-                    {/* 4. Quản lý điểm giao hàng */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenActionMenuId(null);
-                        setActionMenuAnchor(null);
-                        handleOpenDeliveryPoints(customer);
-                      }}
-                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                    >
-                      <MapPin className="w-4 h-4 text-indigo-500" />
-                      <span>Điểm giao hàng ({customer.deliveryPoints?.length || 0})</span>
-                    </button>
-                  </div>
-
-                  <div className="py-1">
-                    {/* 5. Khóa / Mở khóa giao dịch */}
-                    {customer.status === 'LOCKED' ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenActionMenuId(null);
-                          setActionMenuAnchor(null);
-                          handleOpenUnlockModal(customer);
-                        }}
-                        className="w-full text-left px-3.5 py-2 text-xs text-emerald-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
-                      >
-                        <Unlock className="w-4 h-4 text-emerald-600" />
-                        <span>Mở khóa giao dịch</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenActionMenuId(null);
-                          setActionMenuAnchor(null);
-                          handleOpenLockModal(customer);
-                        }}
-                        className="w-full text-left px-3.5 py-2 text-xs text-amber-700 hover:bg-amber-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
-                      >
-                        <Lock className="w-4 h-4 text-amber-600" />
-                        <span>Khóa giao dịch</span>
-                      </button>
-                    )}
-
-                    {/* 6. Xóa đại lý */}
+                    {/* 3. Xóa đại lý */}
                     <button
                       type="button"
                       onClick={() => {
@@ -2193,21 +1979,7 @@ export const CustomersPage: React.FC = () => {
         />
       )}
 
-      {/* ── MODAL KHÓA / MỞ KHÓA GIAO DỊCH ĐẠI LÝ (SN-36) ── */}
-      <LockAgencyModal
-        open={isLockModalOpen}
-        mode={lockModalMode}
-        customer={lockModalCustomer}
-        onClose={() => {
-          if (!isLockSubmitting) {
-            setIsLockModalOpen(false);
-            setLockModalCustomer(null);
-          }
-        }}
-        onConfirmLock={handleConfirmLock}
-        onConfirmUnlock={handleConfirmUnlock}
-        loading={isLockSubmitting}
-      />
+
 
       {/* ── MODAL XÁC NHẬN XÓA / NGỪNG GIAO DỊCH ĐẠI LÝ (SN-30 AC4) ── */}
       {deleteModalCustomer && isDeleteModalOpen &&

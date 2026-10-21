@@ -1122,12 +1122,22 @@ input.glass-input:-webkit-autofill:active {
     margin: 10mm;
   }
 
-  /* Ẩn hoàn toàn toàn bộ giao diện ứng dụng web chính */
-  #root {
-    display: none !important;
+  /* Reset layout constraints để trình duyệt không bị trắng trang hoặc cắt trang khi in */
+  html,
+  body,
+  #root,
+  #root > div,
+  main {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
-  /* Ẩn các thành phần giao diện không thuộc phiếu in */
+  /* Ẩn các thành phần giao diện điều hướng không thuộc phiếu in */
   header,
   aside,
   nav,
@@ -1143,9 +1153,10 @@ input.glass-input:-webkit-autofill:active {
     padding: 0 !important;
   }
 
-  /* Định dạng tài liệu in chuẩn khổ giấy */
+  /* Định dạng tài liệu in chuẩn khổ giấy A4 */
   #order-print-document,
-  #transfer-print-document {
+  #transfer-print-document,
+  #picking-print-document {
     display: block !important;
     position: static !important;
     width: 100% !important;
@@ -1191,6 +1202,41 @@ input.glass-input:-webkit-autofill:active {
 .no-scrollbar {
   -ms-overflow-style: none !important; /* IE and Edge */
   scrollbar-width: none !important; /* Firefox */
+}
+
+/* ========================================================================== */
+/* SIDEBAR SLIM SCROLLBAR (THANH CUỘN DỌC MỎNG TINH TẾ CHO SIDEBAR)            */
+/* ========================================================================== */
+.sidebar-scrollbar {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 2px;
+  height: 2px;
+  display: block;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 9999px;
+  margin: 4px 0;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.28);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.5);
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:active {
+  background: rgba(79, 70, 229, 0.5);
 }
 
 /* ========================================================================== */
@@ -1270,6 +1316,33 @@ input.glass-input:-webkit-autofill:active {
     scrollbar-width: thin;
     scrollbar-color: #94a3b8 transparent;
   }
+}
+
+/* ========================================================================= */
+/* RESPONSIVE & MOBILE TOUCH SCROLLING OPTIMIZATION                          */
+/* ========================================================================= */
+.overflow-x-auto,
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Smooth horizontal scrollbar for data tables on mobile & tablets */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 6px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 9999px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
+import { Pagination } from '../components/pagination';
 import {
   Package,
   Plus,
@@ -12,17 +13,12 @@ import {
   X,
   Edit2,
   Trash2,
-  Power,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
   Eye,
   FolderTree,
   FileText,
   BookOpen,
   SlidersHorizontal,
   RotateCcw,
-  Clock,
 } from 'lucide-react';
 import { getStoredUser } from '../utils/navigation';
 import { STANDARD_WAREHOUSES } from '../constants/warehouse.constants';
@@ -172,6 +168,7 @@ const formatCurrency = (val?: number): string => {
 };
 
 export const ProductsPage: React.FC = () => {
+  const navigate = useNavigate();
   // URL Query Params & State Management
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -272,34 +269,32 @@ export const ProductsPage: React.FC = () => {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
 
-  // Dropdown Thao tác
-  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
-
   const handleOpenDetailModal = (product: Product) => {
     setSelectedProductForDetail(product);
     setDetailModalOpen(true);
   };
 
-  // Đóng dropdown khi click ra ngoài
-  useEffect(() => {
-    const handleDocClick = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest('.product-action-dropdown-container')) {
-        setOpenActionMenuId(null);
-      }
-    };
-    document.addEventListener('click', handleDocClick);
-    return () => document.removeEventListener('click', handleDocClick);
-  }, []);
-
   // Xác định vai trò của người dùng hiện tại
   const user = getStoredUser();
   const userRoles = user?.roles || [];
 
-  // 1. Phân quyền xem Giá vốn & Biên lợi nhuận (Chỉ ADMIN & SALES_MANAGER)
-  const canViewCostPrice = userRoles.includes('ADMIN') || userRoles.includes('SALES_MANAGER');
+  // 1. Phân quyền xem Giá vốn & Biên lợi nhuận (Chỉ ADMIN & Quản lý kinh doanh)
+  const canViewCostPrice =
+    userRoles.includes('ADMIN') ||
+    userRoles.includes('SALES_MANAGER') ||
+    userRoles.includes('BUSINESS_MANAGER');
 
-  // 2. Phân quyền Thêm / Sửa / Đổi trạng thái sản phẩm (Chỉ ADMIN & SALES_MANAGER)
-  const canManageProducts = userRoles.includes('ADMIN') || userRoles.includes('SALES_MANAGER');
+  // 2. Phân quyền Thêm / Sửa / Đổi trạng thái sản phẩm (Chỉ ADMIN & Quản lý kinh doanh)
+  const canManageProducts =
+    userRoles.includes('ADMIN') ||
+    userRoles.includes('SALES_MANAGER') ||
+    userRoles.includes('BUSINESS_MANAGER');
+
+  // 3. Phân quyền Xóa sản phẩm: Chỉ Admin và Quản lý kinh doanh
+  const canDeleteProduct =
+    userRoles.includes('ADMIN') ||
+    userRoles.includes('SALES_MANAGER') ||
+    userRoles.includes('BUSINESS_MANAGER');
 
   // 3. Phân quyền điều chỉnh tồn kho (Chỉ ADMIN & Nhóm vai trò kho)
   const canAdjustStock =
@@ -323,12 +318,10 @@ export const ProductsPage: React.FC = () => {
   const keeperWarehouseId = useMemo(() => {
     if (!user) return STANDARD_WAREHOUSES[2].id;
     if (user.warehouseId) {
-      const match = STANDARD_WAREHOUSES.find((w) => w.id === user.warehouseId);
-      if (match) return match.id;
+      return user.warehouseId;
     }
     if (user.assignedWarehouseId) {
-      const match = STANDARD_WAREHOUSES.find((w) => w.id === user.assignedWarehouseId);
-      if (match) return match.id;
+      return user.assignedWarehouseId;
     }
     const rawWh = (user.warehouseCode || user.assignedWarehouseCode || user.assignedWarehouse || '').toUpperCase();
     const match = STANDARD_WAREHOUSES.find(
@@ -666,10 +659,9 @@ export const ProductsPage: React.FC = () => {
     setFormModalOpen(true);
   };
 
-  // Mở modal sửa sản phẩm
+  // Chuyển hướng sang trang riêng chỉnh sửa sản phẩm thay vì mở popup
   const handleOpenEditModal = (p: Product) => {
-    setEditingProduct(p);
-    setFormModalOpen(true);
+    navigate(`/catalog/products/${p.id}/edit`);
   };
 
   // Xử lý submit thêm hoặc sửa sản phẩm
@@ -689,31 +681,18 @@ export const ProductsPage: React.FC = () => {
     }
   };
 
-  // Bật/tắt trạng thái kinh doanh
-  const handleToggleStatus = async (p: Product) => {
-    if (!canManageProducts) return;
-    const newStatus: ProductStatus = p.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    try {
-      await productsService.toggleProductStatus(p.id, newStatus);
-      showToast(
-        'success',
-        newStatus === 'ACTIVE'
-          ? 'Kích hoạt kinh doanh sản phẩm thành công'
-          : 'Chuyển ngừng kinh doanh sản phẩm thành công'
-      );
-      await loadProducts();
-    } catch (err: unknown) {
-      showToast(
-        'error',
-        err instanceof Error ? err.message : 'Không thể cập nhật trạng thái sản phẩm'
-      );
-    }
-  };
-
   // Mở modal xác nhận xóa
   const handlePromptDelete = (p: Product) => {
-    if (p.hasTransactions) {
-      showToast('error', 'Không thể xóa sản phẩm đã phát sinh giao dịch');
+    if (!canDeleteProduct) {
+      showToast('error', 'Chỉ Admin và Quản lý kinh doanh mới có quyền xóa sản phẩm.');
+      return;
+    }
+    const currentStock = p.stockQuantity ?? 0;
+    if (currentStock > 0) {
+      showToast(
+        'error',
+        `Không thể xóa sản phẩm "${p.name}" (${p.sku}) vì kho vẫn còn tồn hàng (${currentStock} ${p.baseUnit || 'đơn vị'}). Vui lòng xuất hết tồn kho hoặc điều chỉnh về 0 trước khi xóa.`
+      );
       return;
     }
     setProductToDelete(p);
@@ -1029,7 +1008,7 @@ export const ProductsPage: React.FC = () => {
           </div>
 
           {/* Bên phải: 5 nút chức năng chính */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap ml-auto">
+          <div className="flex items-center gap-2 flex-wrap ml-auto">
             <button
               type="button"
               onClick={loadProducts}
@@ -1088,348 +1067,157 @@ export const ProductsPage: React.FC = () => {
           <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
             {/* A. BẢNG DỮ LIỆU CHO TABLET & DESKTOP (>=640px) */}
             <div className="hidden sm:block overflow-x-auto min-h-[360px]">
-              <table className="w-full text-left text-xs sm:text-sm text-slate-600">
-                <thead className="bg-slate-50/70 text-slate-500 text-xs uppercase font-semibold border-b border-slate-100 tracking-wide">
-              <tr>
-                <th className="px-4 py-3.5 whitespace-nowrap w-36">Mã SKU</th>
-                <th className="px-4 py-3.5">Sản phẩm</th>
-                <th className="px-4 py-3.5 whitespace-nowrap w-48">Nhóm hàng</th>
-                <th className="px-4 py-3.5 text-center whitespace-nowrap w-24">ĐVT</th>
-                <th className="px-4 py-3.5 text-right whitespace-nowrap w-36">Giá niêm yết</th>
-                <th className="px-4 py-3.5 text-center whitespace-nowrap w-32">Tồn kho</th>
-                <th className="px-4 py-3.5 text-center whitespace-nowrap w-36">Trạng thái</th>
-                <th className="px-4 py-3.5 text-center whitespace-nowrap w-32">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium bg-white">
-              {loading ? (
-                <ProductsTableSkeleton count={6} />
-              ) : products.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="py-14 text-center text-slate-400"
-                  >
-                    <Package className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-                    <p className="font-semibold text-slate-600 text-sm">
-                      Không tìm thấy sản phẩm nào
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc nhóm hàng / trạng
-                      thái.
-                    </p>
-                    {(searchTerm || activeFilterCount > 0) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSearchInput('');
-                          handleResetFilters();
-                        }}
-                        className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 shadow-2xs transition-all cursor-pointer active:scale-95"
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                        <span>Đặt lại bộ lọc</span>
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ) : (
-                products.map((p, idx) => {
-                  const isLowStock = p.stockQuantity <= 100 && p.stockQuantity > 0;
-                  const isOutOfStock = p.stockQuantity === 0;
-                  const isDropUp =
-                    idx >= Math.max(1, products.length - 2) ||
-                    (products.length > 3 && idx >= Math.floor(products.length / 2));
-
-                  return (
-                    <tr
-                      key={p.id}
-                      className={`hover:bg-slate-50/70 transition-colors border-b border-slate-100 ${
-                        isOutOfStock
-                          ? 'bg-rose-50/30'
-                          : isLowStock
-                          ? 'bg-amber-50/20'
-                          : ''
-                      }`}
-                    >
-                      {/* Cột 1: Mã SKU */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
-                        <span className="font-mono font-bold text-slate-900 tracking-wider">
-                          {p.sku}
-                        </span>
-                      </td>
-
-                      {/* Cột 2: Sản phẩm (Ảnh + Tên) */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-xl border border-slate-200/90 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
-                            {p.imageUrl ? (
-                              <img
-                                src={p.imageUrl}
-                                alt={p.name}
-                                className="h-full w-full object-cover object-center"
-                                onError={(e) => {
-                                  (e.target as HTMLElement).style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <Package className="h-4.5 w-4.5 text-slate-300" />
-                            )}
-                          </div>
+              <table className="w-full min-w-[680px] table-fixed border-collapse">
+                <colgroup>
+                  <col className="w-[18%]" /> {/* Mã SKU kèm trạng thái */}
+                  <col className="w-[45%]" /> {/* Tên sản phẩm */}
+                  <col className="w-[12%]" /> {/* Tồn kho */}
+                  <col className="w-[14%]" /> {/* Giá niêm yết */}
+                  <col className="w-[11%]" /> {/* Thao tác */}
+                </colgroup>
+                <thead className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3.5 text-left whitespace-nowrap">Mã SKU</th>
+                    <th className="px-4 py-3.5 text-left whitespace-nowrap">Tên sản phẩm</th>
+                    <th className="px-4 py-3.5 text-center whitespace-nowrap">Tồn kho</th>
+                    <th className="px-4 py-3.5 text-right whitespace-nowrap">Giá niêm yết</th>
+                    <th className="px-3 py-3.5 text-center whitespace-nowrap">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium bg-white text-xs sm:text-sm">
+                  {loading ? (
+                    <ProductsTableSkeleton count={6} />
+                  ) : products.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-14 text-center text-slate-400">
+                        <Package className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                        <p className="font-semibold text-slate-600 text-sm">
+                          Không tìm thấy sản phẩm nào
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc nhóm hàng / trạng thái.
+                        </p>
+                        {(searchTerm || activeFilterCount > 0) && (
                           <button
                             type="button"
-                            onClick={() => handleOpenDetailModal(p)}
-                            className="font-semibold text-slate-900 hover:text-blue-600 transition-colors text-left leading-snug cursor-pointer line-clamp-1 max-w-[280px]"
-                            title={`Xem chi tiết: ${p.name}`}
+                            onClick={() => {
+                              setSearchInput('');
+                              handleResetFilters();
+                            }}
+                            className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 shadow-2xs transition-all cursor-pointer active:scale-95"
                           >
-                            {p.name}
+                            <RotateCcw className="h-4 w-4" />
+                            <span>Đặt lại bộ lọc</span>
                           </button>
-                        </div>
-                      </td>
-
-                      {/* Cột 3: Nhóm hàng */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex flex-col gap-0.5 max-w-[200px]">
-                          <span className="inline-block w-fit rounded-md bg-[var(--color-primary-light)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-primary)] ring-1 ring-inset ring-[var(--color-primary-subtle)] truncate">
-                            {p.parentCategory || p.category?.split('/')[0]?.trim() || 'Nhóm hàng'}
-                          </span>
-                          {p.category && p.category.includes('/') ? (
-                            <span
-                              className="text-[11px] text-slate-500 font-medium pl-0.5 truncate"
-                              title={p.category}
-                            >
-                              ↳{' '}
-                              {p.category
-                                .split('/')
-                                .slice(1)
-                                .map((s) => s.trim())
-                                .join(' > ')}
-                            </span>
-                          ) : p.subCategory ? (
-                            <span className="text-[11px] text-slate-500 font-medium pl-0.5 truncate">
-                              ↳ {p.subCategory}
-                            </span>
-                          ) : null}
-                        </div>
-                      </td>
-
-                      {/* Cột 4: ĐVT cơ sở */}
-                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                          {p.baseUnit}
-                        </span>
-                      </td>
-
-                      {/* Cột 5: Giá niêm yết */}
-                      <td className="px-4 py-3.5 text-right font-semibold text-slate-900 font-mono whitespace-nowrap">
-                        {formatCurrency(p.price)}
-                      </td>
-
-                      {/* Cột 6: Tồn kho */}
-                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center gap-1 font-bold px-2.5 py-1 rounded-md text-xs border ${
-                            isOutOfStock
-                              ? 'bg-rose-100 text-rose-900 border-rose-200'
-                              : isLowStock
-                                ? 'bg-amber-100 text-amber-900 border-amber-200'
-                                : 'bg-emerald-100 text-emerald-900 border-emerald-200'
-                          }`}
-                        >
-                          <Warehouse className="h-3.5 w-3.5" />
-                          <span>{p.stockQuantity.toLocaleString('vi-VN')}</span>
-                          {isOutOfStock && <span className="text-[10px] ml-0.5">(Hết)</span>}
-                          {isLowStock && <span className="text-[10px] ml-0.5">(Ít)</span>}
-                        </span>
-                      </td>
-
-                      {/* Cột 7: Trạng thái */}
-                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                        {p.status === 'ACTIVE' ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                            <span>Đang kinh doanh</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-inset ring-slate-500/20">
-                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
-                            <span>Ngừng kinh doanh</span>
-                          </span>
                         )}
                       </td>
+                    </tr>
+                  ) : (
+                    products.map((p) => {
+                      return (
+                        <tr
+                          key={p.id}
+                          className="hover:bg-slate-50/70 transition-colors border-b border-slate-100"
+                        >
+                          {/* Cột 1: Mã SKU kèm dấu chỉ báo trạng thái */}
+                          <td className="px-5 py-4 whitespace-nowrap text-left">
+                            <div className="flex items-center gap-2.5">
+                              {p.status === 'ACTIVE' ? (
+                                <span
+                                  className="h-2 w-2 rounded-full bg-emerald-500 ring-4 ring-emerald-100 shrink-0"
+                                  title="Đang hoạt động"
+                                />
+                              ) : (
+                                <span
+                                  className="h-2 w-2 rounded-full bg-slate-400 ring-4 ring-slate-100 shrink-0"
+                                  title="Ngừng hoạt động"
+                                />
+                              )}
+                              <span className="font-mono font-bold text-slate-900 tracking-wider text-xs">
+                                {p.sku}
+                              </span>
+                            </div>
+                          </td>
 
-                      {/* Cột 8: Thao tác (Dropdown menu chuẩn) */}
-                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                        <div className="relative inline-block text-left product-action-dropdown-container">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenActionMenuId(openActionMenuId === p.id ? null : p.id);
-                            }}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none ${
-                              openActionMenuId === p.id
-                                ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-xs'
-                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-slate-300'
-                            }`}
-                            title="Thao tác"
-                          >
-                            <span>Thao tác</span>
-                            <ChevronDown
-                              className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${
-                                openActionMenuId === p.id ? 'rotate-180 text-blue-600' : ''
-                              }`}
-                            />
-                          </button>
-
-                          {openActionMenuId === p.id && (
-                            <div
-                              className={`absolute right-0 ${
-                                isDropUp
-                                  ? 'bottom-full mb-1 origin-bottom-right'
-                                  : 'top-full mt-1 origin-top-right'
-                              } w-48 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100`}
-                            >
-                              <div className="py-1">
-                                {/* 1. Xem chi tiết */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setOpenActionMenuId(null);
-                                    handleOpenDetailModal(p);
-                                  }}
-                                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                >
-                                  <Eye className="w-4 h-4 text-slate-400" />
-                                  <span>Xem chi tiết</span>
-                                </button>
-
-                                {/* 2. Sửa thông tin SKU */}
-                                {canManageProducts && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      handleOpenEditModal(p);
+                          {/* Cột 2: Tên sản phẩm (Chỉ Ảnh + Tên) */}
+                          <td className="px-4 py-4 text-left">
+                            <div className="flex items-center gap-3">
+                              <div className="h-9 w-9 rounded-xl border border-slate-200/90 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
+                                {p.imageUrl ? (
+                                  <img
+                                    src={p.imageUrl}
+                                    alt={p.name}
+                                    className="h-full w-full object-cover object-center"
+                                    onError={(e) => {
+                                      (e.target as HTMLElement).style.display = 'none';
                                     }}
-                                    className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-amber-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Edit2 className="w-4 h-4 text-amber-500" />
-                                    <span>Sửa thông tin SKU</span>
-                                  </button>
-                                )}
-
-                                {/* 3. Lịch sử thay đổi giá */}
-                                {canManageProducts && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      handleOpenPriceHistory(p);
-                                    }}
-                                    className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Clock className="w-4 h-4 text-slate-400" />
-                                    <span>Lịch sử giá</span>
-                                  </button>
-                                )}
-
-                                {/* 4. Điều chỉnh tồn kho */}
-                                {canAdjustStock && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      handleOpenAdjustModal(p);
-                                    }}
-                                    className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Warehouse className="w-4 h-4 text-slate-400" />
-                                    <span>Điều chỉnh tồn kho</span>
-                                  </button>
-                                )}
-
-                                {/* 5. Sổ kho & Lịch sử quy đổi */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setOpenActionMenuId(null);
-                                    handleOpenLedgerModal(p.sku);
-                                  }}
-                                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                >
-                                  <BookOpen className="w-4 h-4 text-indigo-500" />
-                                  <span>Sổ kho & Quy đổi</span>
-                                </button>
-
-                                {/* 6. Bật / Tắt kinh doanh */}
-                                {canManageProducts && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      handleToggleStatus(p);
-                                    }}
-                                    className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                  >
-                                    <Power
-                                      className={`w-4 h-4 ${
-                                        p.status === 'ACTIVE'
-                                          ? 'text-amber-500'
-                                          : 'text-emerald-500'
-                                      }`}
-                                    />
-                                    <span>
-                                      {p.status === 'ACTIVE'
-                                        ? 'Ngừng kinh doanh'
-                                        : 'Bật kinh doanh'}
-                                    </span>
-                                  </button>
+                                  />
+                                ) : (
+                                  <Package className="h-4.5 w-4.5 text-slate-300" />
                                 )}
                               </div>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDetailModal(p)}
+                                className="font-semibold text-slate-900 hover:text-indigo-600 transition-colors text-left leading-snug cursor-pointer line-clamp-1 truncate block max-w-full text-xs sm:text-sm"
+                                title={`Xem chi tiết: ${p.name}`}
+                              >
+                                {p.name}
+                              </button>
+                            </div>
+                          </td>
 
-                              {/* 7. Xóa sản phẩm */}
-                              {canManageProducts && (
-                                <div className="py-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      handlePromptDelete(p);
-                                    }}
-                                    className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
-                                      p.hasTransactions
-                                        ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
-                                        : 'text-rose-600 hover:bg-rose-50 cursor-pointer font-medium'
-                                    }`}
-                                    title={
-                                      p.hasTransactions
-                                        ? 'Sản phẩm đã có giao dịch (Chặn xóa an toàn)'
-                                        : 'Xóa sản phẩm'
-                                    }
-                                    disabled={p.hasTransactions}
-                                  >
-                                    <Trash2
-                                      className={`w-4 h-4 ${
-                                        p.hasTransactions
-                                          ? 'text-slate-300'
-                                          : 'text-rose-500'
-                                      }`}
-                                    />
-                                    <span>Xóa sản phẩm</span>
-                                  </button>
-                                </div>
+                          {/* Cột 3: Tồn kho (Chỉ số lượng tồn) */}
+                          <td className="px-4 py-4 text-center whitespace-nowrap font-mono tabular-nums text-xs sm:text-sm">
+                            <span
+                              className={`font-semibold ${
+                                p.stockQuantity === 0
+                                  ? 'text-rose-600 font-bold'
+                                  : p.stockQuantity <= 100
+                                    ? 'text-amber-600 font-bold'
+                                    : 'text-slate-800'
+                              }`}
+                            >
+                              {p.stockQuantity.toLocaleString('vi-VN')}
+                            </span>
+                          </td>
+
+                          {/* Cột 4: Giá niêm yết (Chỉ giá tiền) */}
+                          <td className="px-4 py-4 text-right whitespace-nowrap font-semibold text-slate-900 font-mono tabular-nums text-xs sm:text-sm">
+                            {formatCurrency(p.price)}
+                          </td>
+
+                          {/* Cột 5: Thao tác */}
+                          <td className="px-3 py-4 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {canManageProducts ? (
+                                <Link
+                                  to={`/catalog/products/${p.id}/edit`}
+                                  className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50/70 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+                                  title="Chỉnh sửa thông tin sản phẩm"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                  <span>Sửa</span>
+                                </Link>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenDetailModal(p)}
+                                  className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+                                  title="Xem chi tiết sản phẩm"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Chi tiết</span>
+                                </button>
                               )}
                             </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
         </div>
 
         {/* ===================================================================== */}
@@ -1491,15 +1279,15 @@ export const ProductsPage: React.FC = () => {
                           {p.sku}
                         </span>
                         {p.status === 'ACTIVE' ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                            <span>Đang KD</span>
-                          </span>
+                          <span
+                            className="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100 shrink-0 select-none"
+                            title="Đang hoạt động"
+                          />
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-500/20">
-                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
-                            <span>Ngừng KD</span>
-                          </span>
+                          <span
+                            className="h-2.5 w-2.5 rounded-full bg-slate-400 ring-4 ring-slate-100 shrink-0 select-none"
+                            title="Ngừng hoạt động"
+                          />
                         )}
                       </div>
 
@@ -1617,52 +1405,38 @@ export const ProductsPage: React.FC = () => {
                   </div>
 
                   {/* Hàng 3: Các nút thao tác nhanh gọn gàng, vùng chạm thoải mái */}
-                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-50">
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
                     <span className="text-[11px] text-slate-400 font-medium">Thao tác:</span>
-                    <div className="flex items-center gap-1.5 flex-wrap">
+                    <div className="flex items-center gap-2">
                       {/* Xem chi tiết */}
                       <button
                         type="button"
                         onClick={() => handleOpenDetailModal(p)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
                         title="Xem chi tiết sản phẩm"
                       >
-                        <Eye className="h-3.5 w-3.5 text-blue-600" />
+                        <Eye className="h-3.5 w-3.5 text-slate-500" />
                         <span>Chi tiết</span>
                       </button>
 
                       {/* Sửa thông tin */}
                       {canManageProducts && (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditModal(p)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                        <Link
+                          to={`/catalog/products/${p.id}/edit`}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50/70 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
                           title="Sửa thông tin SKU"
                         >
-                          <Edit2 className="h-3.5 w-3.5 text-blue-600" />
+                          <Edit2 className="h-3.5 w-3.5" />
                           <span>Sửa</span>
-                        </button>
+                        </Link>
                       )}
 
-                      {/* Lịch sử thay đổi giá (SN-29) */}
-                      {canManageProducts && (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenPriceHistory(p)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
-                          title="Lịch sử giá"
-                        >
-                          <Clock className="h-3.5 w-3.5 text-blue-600" />
-                          <span>Lịch sử giá</span>
-                        </button>
-                      )}
-
-                      {/* Điều chỉnh tồn kho */}
+                      {/* Điều chỉnh tồn kho cho Thủ kho */}
                       {canAdjustStock && (
                         <button
                           type="button"
                           onClick={() => handleOpenAdjustModal(p)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
                           title="Điều chỉnh tồn kho"
                         >
                           <Warehouse className="h-3.5 w-3.5 text-indigo-600" />
@@ -1670,52 +1444,20 @@ export const ProductsPage: React.FC = () => {
                         </button>
                       )}
 
-                      {/* Sổ kho & Lịch sử quy đổi */}
-                      <button
-                        type="button"
-                        onClick={() => handleOpenLedgerModal(p.sku)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
-                        title="Xem Sổ kho & Lịch sử quy đổi"
-                      >
-                        <BookOpen className="h-3.5 w-3.5 text-blue-600" />
-                        <span>Sổ</span>
-                      </button>
-
-                      {/* Bật / Tắt trạng thái kinh doanh */}
-                      {canManageProducts && (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(p)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 text-xs font-medium ${
-                            p.status === 'ACTIVE'
-                              ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
-                              : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                          }`}
-                          title={
-                            p.status === 'ACTIVE'
-                              ? 'Chuyển sang Ngừng kinh doanh'
-                              : 'Kích hoạt Đang kinh doanh'
-                          }
-                        >
-                          <Power className="h-3.5 w-3.5" />
-                          <span>{p.status === 'ACTIVE' ? 'Tắt' : 'Bật'}</span>
-                        </button>
-                      )}
-
-                      {/* Xóa sản phẩm */}
-                      {canManageProducts && (
+                      {/* Xóa sản phẩm nếu có quyền */}
+                      {canDeleteProduct && (
                         <button
                           type="button"
                           onClick={() => handlePromptDelete(p)}
-                          className={`p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 ${
-                            p.hasTransactions
-                              ? 'border-slate-200 text-slate-300 hover:text-amber-600 hover:bg-amber-50'
+                          className={`p-1.5 rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                            (p.stockQuantity ?? 0) > 0
+                              ? 'border-slate-200 text-slate-400 hover:bg-slate-50'
                               : 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'
                           }`}
                           title={
-                            p.hasTransactions
-                              ? 'Không thể xóa: SKU đã phát sinh giao dịch xuất/nhập'
-                              : 'Xóa sản phẩm'
+                            (p.stockQuantity ?? 0) > 0
+                              ? `Sản phẩm còn tồn kho (${p.stockQuantity} ${p.baseUnit || 'đơn vị'})`
+                              : 'Xóa sản phẩm khỏi danh mục'
                           }
                         >
                           <Trash2 className="h-4 w-4" />
@@ -1729,83 +1471,25 @@ export const ProductsPage: React.FC = () => {
           )}
         </div>
 
-        {/* 4. Thanh phân trang chuẩn Clean SaaS (Mặc định 20 dòng / trang) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-t border-slate-100 text-xs text-slate-500 bg-slate-50/40">
-          <div className="flex items-center gap-3 shrink-0 whitespace-nowrap">
-            <div>
-              Hiển thị{' '}
-              <strong>
-                {total === 0 ? 0 : (page - 1) * limit + 1} - {Math.min(page * limit, total)}
-              </strong>{' '}
-              trong tổng số <strong>{total}</strong> SKU sản phẩm
-            </div>
-
-            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
-              <span className="text-slate-400">Số dòng/trang:</span>
-              <select
-                value={limit}
-                onChange={(e) => {
-                  setLimit(Number(e.target.value));
-                  handlePageChange(1);
-                }}
-                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-              >
-                <option value={10}>10 dòng</option>
-                <option value={20}>20 dòng (Chuẩn)</option>
-                <option value={50}>50 dòng</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => handlePageChange(Math.max(1, page - 1))}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span>Trước</span>
-            </button>
-
-            {/* Các nút bấm trang */}
-            <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-                .map((p, idx, arr) => {
-                  const showEllipsisBefore = idx > 0 && p - arr[idx - 1] > 1;
-                  return (
-                    <React.Fragment key={p}>
-                      {showEllipsisBefore && (
-                        <span className="px-1 text-slate-400 font-bold">...</span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handlePageChange(p)}
-                        className={`h-7 min-w-7 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                          page === p
-                            ? 'bg-blue-600 text-white shadow-2xs shadow-blue-600/30'
-                            : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    </React.Fragment>
-                  );
-                })}
-            </div>
-
-            <button
-              type="button"
-              disabled={page >= totalPages}
-              onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
-            >
-              <span>Sau</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+        {/* 4. Thanh phân trang chuẩn Clean SaaS đồng bộ hệ thống (gọi backend thật) */}
+        {total > 0 && (
+          <Pagination
+            variant="default"
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={total}
+            pageSize={limit}
+            pageSizeOptions={[10, 20, 50]}
+            itemLabel="sản phẩm"
+            showRecordRange={true}
+            showFirstLast={true}
+            onPageChange={handlePageChange}
+            onPageSizeChange={(newLimit) => {
+              setLimit(newLimit);
+              handlePageChange(1);
+            }}
+          />
+        )}
       </div>
 
       {/* 4.5. Modal Xem Chi Tiết Sản phẩm (Product Detail Modal) */}
@@ -1881,13 +1565,21 @@ export const ProductsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 text-xs text-slate-600 space-y-1 mb-5">
+              <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 text-xs text-slate-600 space-y-2 mb-5">
                 <p>
                   Bạn có chắc chắn muốn xóa sản phẩm <strong>"{productToDelete.name}"</strong> khỏi
                   danh mục hàng hóa?
                 </p>
+                <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-2 text-[11px] text-emerald-800 space-y-0.5">
+                  <p className="font-semibold flex items-center gap-1">
+                    ✓ Kiểm tra ràng buộc: Tồn kho = 0 (Hết hàng)
+                  </p>
+                  <p className="text-emerald-700">
+                    Hệ thống sẽ xác nhận sản phẩm không còn giao dịch nào đang ở trạng thái chờ hoặc đang vận chuyển.
+                  </p>
+                </div>
                 <p className="text-[11px] text-rose-600 font-medium">
-                  * Thao tác này không thể hoàn tác sau khi xác nhận.
+                  * Thao tác này sẽ xóa hoàn toàn SKU khỏi danh mục và không thể hoàn tác sau khi xác nhận.
                 </p>
               </div>
 

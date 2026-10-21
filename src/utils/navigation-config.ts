@@ -14,14 +14,20 @@ import {
   BarChart3,
   PackagePlus,
   PackageMinus,
+  PackageCheck,
   ArrowLeftRight,
   ClipboardList,
   SlidersHorizontal,
   CalendarClock,
   FileText,
+  FileSpreadsheet,
   CreditCard,
   RotateCcw,
   Building2,
+  HandCoins,
+  Scale,
+  Target,
+  FileCheck2,
 } from 'lucide-react';
 import { USER_ROLES, type UserRoleType, type AuthUser } from '../types/auth';
 
@@ -166,10 +172,31 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Kinh doanh & Bán hàng',
     },
     {
+      id: 'sales-targets',
+      name: 'Chỉ tiêu & Tiến độ',
+      path: '/sales/targets',
+      icon: Target,
+      category: 'Kinh doanh & Bán hàng',
+    },
+    {
+      id: 'reports-sales',
+      name: 'Báo cáo doanh số',
+      path: '/reports/sales',
+      icon: BarChart3,
+      category: 'Kinh doanh & Bán hàng',
+    },
+    {
       id: 'sales-orders',
       name: 'Quản lý đơn hàng',
       path: '/sales/orders',
       icon: ShoppingCart,
+      category: 'Kinh doanh & Bán hàng',
+    },
+    {
+      id: 'sales-returns',
+      name: 'Phiếu trả hàng',
+      path: '/accounting/returns',
+      icon: RotateCcw,
       category: 'Kinh doanh & Bán hàng',
     },
     {
@@ -207,6 +234,20 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       icon: Receipt,
       category: 'Tài chính',
     },
+    {
+      id: 'route-collections',
+      name: 'Quản lý ngân sách',
+      path: '/route-collections',
+      icon: HandCoins,
+      category: 'Tài chính',
+    },
+    {
+      id: 'accounting-debt-adjustments',
+      name: 'Giảm trừ nợ trả hàng',
+      path: '/accounting/debt-adjustments',
+      icon: FileCheck2,
+      category: 'Tài chính',
+    },
   ],
 
   // 3. Quản lý kinh doanh (SALES_MANAGER)
@@ -216,6 +257,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Dashboard điều hành',
       path: '/dashboard',
       icon: LayoutDashboard,
+      category: 'Báo cáo & Phân tích',
+    },
+    {
+      id: 'sales-targets',
+      name: 'Chỉ tiêu doanh số',
+      path: '/sales/targets',
+      icon: Target,
       category: 'Báo cáo & Phân tích',
     },
     {
@@ -237,6 +285,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Quản lý đơn hàng',
       path: '/sales/orders',
       icon: ShoppingCart,
+      category: 'Kinh doanh',
+    },
+    {
+      id: 'sales-returns',
+      name: 'Phiếu trả hàng',
+      path: '/accounting/returns',
+      icon: RotateCcw,
       category: 'Kinh doanh',
     },
     {
@@ -282,6 +337,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Tài chính',
     },
     {
+      id: 'route-collections',
+      name: 'Quản lý ngân sách',
+      path: '/route-collections',
+      icon: HandCoins,
+      category: 'Tài chính',
+    },
+    {
       id: 'system-users',
       name: 'Quản lý nhân sự',
       path: '/system/users',
@@ -314,6 +376,20 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Soạn hàng & Giao nhận',
     },
     {
+      id: 'order-picking',
+      name: 'Phiếu soạn hàng',
+      path: '/warehouse/picking',
+      icon: PackageCheck,
+      category: 'Soạn hàng & Giao nhận',
+    },
+    {
+      id: 'warehouse-goods-in-transit',
+      name: 'Hàng xuất trên đường',
+      path: '/warehouse/goods-in-transit',
+      icon: Truck,
+      category: 'Soạn hàng & Giao nhận',
+    },
+    {
       id: 'inventory-receipts',
       name: 'Nhập kho hàng hóa',
       path: '/inventory/receipts',
@@ -325,6 +401,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Soạn hàng & Xuất kho',
       path: '/inventory/issues',
       icon: PackageMinus,
+      category: 'Nhập / Xuất kho',
+    },
+    {
+      id: 'warehouse-returns',
+      name: 'Nhập kho hàng trả',
+      path: '/accounting/returns',
+      icon: RotateCcw,
       category: 'Nhập / Xuất kho',
     },
     {
@@ -346,6 +429,20 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Sổ tồn kho & Lô hàng',
       path: '/inventory/stock',
       icon: Warehouse,
+      category: 'Quản lý Tồn kho',
+    },
+    {
+      id: 'inventory-stock-card',
+      name: 'Thẻ kho hàng hóa',
+      path: '/inventory/stock-card',
+      icon: FileSpreadsheet,
+      category: 'Quản lý Tồn kho',
+    },
+    {
+      id: 'inventory-batches',
+      name: 'Quản lý lô & Hạn sử dụng',
+      path: '/inventory/batches',
+      icon: CalendarClock,
       category: 'Quản lý Tồn kho',
     },
     {
@@ -388,6 +485,20 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Soạn hàng & Giao nhận',
     },
     {
+      id: 'order-picking',
+      name: 'Phiếu soạn hàng',
+      path: '/warehouse/picking',
+      icon: PackageCheck,
+      category: 'Soạn hàng & Giao nhận',
+    },
+    {
+      id: 'warehouse-goods-in-transit',
+      name: 'Hàng xuất trên đường',
+      path: '/warehouse/goods-in-transit',
+      icon: Truck,
+      category: 'Soạn hàng & Giao nhận',
+    },
+    {
       id: 'inventory-receipts',
       name: 'Nhập kho hàng hóa',
       path: '/inventory/receipts',
@@ -399,6 +510,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Xuất kho giao hàng',
       path: '/inventory/issues',
       icon: PackageMinus,
+      category: 'Lịch sử Nhập / Xuất',
+    },
+    {
+      id: 'warehouse-returns',
+      name: 'Nhập kho hàng trả',
+      path: '/accounting/returns',
+      icon: RotateCcw,
       category: 'Lịch sử Nhập / Xuất',
     },
     {
@@ -427,6 +545,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Sổ tồn kho & Lô hàng',
       path: '/inventory/stock',
       icon: Warehouse,
+      category: 'Kiểm soát Kho',
+    },
+    {
+      id: 'inventory-stock-card',
+      name: 'Thẻ kho hàng hóa',
+      path: '/inventory/stock-card',
+      icon: FileSpreadsheet,
       category: 'Kiểm soát Kho',
     },
     {
@@ -483,10 +608,31 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Thu chi & Thanh toán',
     },
     {
+      id: 'accounting-debt-adjustments',
+      name: 'Giảm trừ nợ trả hàng',
+      path: '/accounting/debt-adjustments',
+      icon: FileCheck2,
+      category: 'Thu chi & Thanh toán',
+    },
+    {
+      id: 'route-collections',
+      name: 'Quản lý ngân sách',
+      path: '/route-collections',
+      icon: HandCoins,
+      category: 'Thu chi & Thanh toán',
+    },
+    {
       id: 'accounting-debt',
       name: 'Sổ chi tiết công nợ',
       path: '/accounting/debt',
       icon: Receipt,
+      category: 'Theo dõi Công nợ',
+    },
+    {
+      id: 'accounting-debt-reconciliations',
+      name: 'Đối chiếu công nợ',
+      path: '/accounting/debt-reconciliations',
+      icon: Scale,
       category: 'Theo dõi Công nợ',
     },
     {
@@ -518,13 +664,6 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Quản lý Đại lý',
     },
     {
-      id: 'catalog-pricing',
-      name: 'Bảng giá & Chiết khấu',
-      path: '/catalog/pricing',
-      icon: BadgePercent,
-      category: 'Tra cứu',
-    },
-    {
       id: 'catalog-products',
       name: 'Danh mục sản phẩm',
       path: '/catalog/products',
@@ -538,13 +677,6 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       icon: Warehouse,
       category: 'Tra cứu',
     },
-    {
-      id: 'inventory-receipts',
-      name: 'Phiếu nhập kho',
-      path: '/inventory/receipts',
-      icon: PackagePlus,
-      category: 'Tra cứu',
-    },
   ],
 
   // 7. Quản trị hệ thống (ADMIN - Full Access)
@@ -555,6 +687,20 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       path: '/dashboard',
       icon: LayoutDashboard,
       category: 'Quản trị Hệ thống',
+    },
+    {
+      id: 'sales-targets',
+      name: 'Chỉ tiêu doanh số',
+      path: '/sales/targets',
+      icon: Target,
+      category: 'Nghiệp vụ Kinh doanh',
+    },
+    {
+      id: 'reports-sales',
+      name: 'Báo cáo doanh số',
+      path: '/reports/sales',
+      icon: BarChart3,
+      category: 'Nghiệp vụ Kinh doanh',
     },
     {
       id: 'system-users',
@@ -578,8 +724,15 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Nghiệp vụ Kinh doanh',
     },
     {
+      id: 'sales-returns',
+      name: 'Phiếu trả hàng',
+      path: '/accounting/returns',
+      icon: RotateCcw,
+      category: 'Nghiệp vụ Kinh doanh',
+    },
+    {
       id: 'sales-customers',
-      name: 'Đại lý & Hạn mức nợ',
+      name: 'Quản lý đại lý',
       path: '/sales/customers',
       icon: Users,
       category: 'Nghiệp vụ Kinh doanh',
@@ -606,10 +759,31 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Kho vận & Hàng hóa',
     },
     {
+      id: 'inventory-batches',
+      name: 'Quản lý lô & Hạn sử dụng',
+      path: '/inventory/batches',
+      icon: CalendarClock,
+      category: 'Kho vận & Hàng hóa',
+    },
+    {
       id: 'inventory-warehouses',
       name: 'Quản lý kho & vị trí',
       path: '/inventory/warehouses',
       icon: Warehouse,
+      category: 'Kho vận & Hàng hóa',
+    },
+    {
+      id: 'order-picking',
+      name: 'Phiếu soạn hàng',
+      path: '/warehouse/picking',
+      icon: PackageCheck,
+      category: 'Kho vận & Hàng hóa',
+    },
+    {
+      id: 'warehouse-goods-in-transit',
+      name: 'Hàng xuất trên đường',
+      path: '/warehouse/goods-in-transit',
+      icon: Truck,
       category: 'Kho vận & Hàng hóa',
     },
     {
@@ -631,6 +805,20 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Hóa đơn & Công nợ',
       path: '/accounting/invoices',
       icon: Receipt,
+      category: 'Tài chính & Kế toán',
+    },
+    {
+      id: 'route-collections',
+      name: 'Quản lý ngân sách',
+      path: '/route-collections',
+      icon: HandCoins,
+      category: 'Tài chính & Kế toán',
+    },
+    {
+      id: 'accounting-debt-reconciliations',
+      name: 'Đối chiếu công nợ',
+      path: '/accounting/debt-reconciliations',
+      icon: Scale,
       category: 'Tài chính & Kế toán',
     },
   ],

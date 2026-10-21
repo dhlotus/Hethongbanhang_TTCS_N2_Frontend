@@ -18,7 +18,26 @@ interface QueueItem {
   reject: (reason: unknown) => void;
 }
 
-const BASE_URL = import.meta.env.VITE_API_URL || '/api';
+/**
+ * Tự động xác định BASE_URL:
+ * - Khi chạy trên điện thoại hoặc thiết bị khác trong mạng LAN (hostname khác localhost),
+ *   luôn trỏ về '/api' để đi qua Vite Proxy trên máy tính, tránh lỗi Network Error.
+ */
+const getBaseUrl = (): string => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (
+    typeof window !== 'undefined' &&
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1'
+  ) {
+    if (!envUrl || envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
+      return '/api';
+    }
+  }
+  return envUrl || '/api';
+};
+
+const BASE_URL = getBaseUrl();
 
 /**
  * Axios Instance chính cho toàn bộ các API nghiệp vụ trong hệ thống

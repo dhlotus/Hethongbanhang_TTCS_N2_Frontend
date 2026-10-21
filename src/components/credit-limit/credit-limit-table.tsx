@@ -185,7 +185,6 @@ export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
                       className={`font-bold tabular-nums text-sm ${
                         isExceeded ? 'text-rose-600' : 'text-slate-900'
                       }`}
-                      title={`Dư nợ: ${formatVnd(item.currentDebt || 0)} / Hạn mức: ${formatVnd(effectiveLimit)}`}
                     >
                       {formatVnd(item.currentDebt || 0)}
                     </span>

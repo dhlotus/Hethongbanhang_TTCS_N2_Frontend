@@ -12,6 +12,12 @@ export interface Warehouse {
 export interface WarehouseManager {
   id: string;
   name: string;
+  roleName?: string;
+  roleCode?: string;
+  phone?: string;
+  assignedWarehouseId?: string | null;
+  assignedWarehouseCode?: string | null;
+  assignedWarehouseName?: string | null;
 }
 
 export interface WarehouseLocation {

@@ -25,8 +25,14 @@ export interface CalculatedPricingResult {
   displayText: string;
 }
 
+const effectivePriceListCache = new Map<string, { data: PriceList; expiresAt: number }>();
+
 export const orderPricingService = {
   async getEffectivePriceList(customerGroup: CustomerGroupType): Promise<PriceList> {
+    const cached = effectivePriceListCache.get(customerGroup);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.data;
+    }
     try {
       const response = await apiClient.get<{
         data: PriceList[];
@@ -45,6 +51,10 @@ export const orderPricingService = {
         .sort((first, second) => second.startDate.localeCompare(first.startDate))[0];
 
       if (!priceList) throw new Error(`Không có bảng giá hiệu lực cho nhóm ${customerGroup}`);
+      effectivePriceListCache.set(customerGroup, {
+        data: priceList,
+        expiresAt: Date.now() + 2 * 60 * 1000, // 2 phút cache
+      });
       return priceList;
     } catch (error: unknown) {
       throw new Error(

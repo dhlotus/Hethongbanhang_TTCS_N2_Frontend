@@ -9,15 +9,22 @@ import type {
   WarehouseManager,
 } from '../types/warehouse.types';
 
+const agencyDefaultCache = new Map<string, { data: AgencyWarehouseDetail; expiresAt: number }>();
+
 export const warehouseService = {
-  async getWarehouses(): Promise<Warehouse[]> {
+  async getWarehouses(params?: {
+    search?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<any> {
     try {
-      const response = await apiClient.get<Warehouse[]>('/warehouses');
-      if (Array.isArray(response.data) && response.data.length > 0) {
+      const response = await apiClient.get('/warehouses', { params });
+      if (response.data) {
         return response.data;
       }
     } catch {}
-    return [
+    const fallbackList: Warehouse[] = [
       {
         id: '11111111-0000-0000-0000-000000000002',
         code: 'KHO-MB-01',
@@ -55,6 +62,29 @@ export const warehouseService = {
         locationCount: 1,
       },
     ];
+
+    if (params?.page !== undefined || params?.limit !== undefined) {
+      let filtered = fallbackList;
+      if (params.search) {
+        const q = params.search.toLowerCase();
+        filtered = filtered.filter(
+          (w) => w.name.toLowerCase().includes(q) || w.code.toLowerCase().includes(q)
+        );
+      }
+      if (params.status && params.status !== 'ALL') {
+        filtered = filtered.filter((w) => w.status === params.status);
+      }
+      const page = params.page || 1;
+      const limit = params.limit || 10;
+      return {
+        data: filtered.slice((page - 1) * limit, page * limit),
+        total: filtered.length,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(filtered.length / limit)),
+      };
+    }
+    return fallbackList;
   },
   async createWarehouse(payload: CreateWarehousePayload): Promise<Warehouse> {
     const response = await apiClient.post<Warehouse>('/warehouses', payload);
@@ -91,11 +121,13 @@ export const warehouseService = {
     return response.data;
   },
   async setAgencyDefaultWarehouse(agencyId: string, warehouseId: string | null): Promise<void> {
+    agencyDefaultCache.delete(agencyId);
     await apiClient.put(`/warehouses/agencies/${encodeURIComponent(agencyId)}/default`, {
       warehouseId,
     });
   },
   async assignAgencies(warehouseId: string, agencyIds: string[]): Promise<void> {
+    agencyIds.forEach((id) => agencyDefaultCache.delete(id));
     try {
       await apiClient.post(`/warehouses/${encodeURIComponent(warehouseId)}/agencies`, {
         agencyIds,
@@ -113,14 +145,43 @@ export const warehouseService = {
     return response.data;
   },
   async getAgencyDefault(agencyId: string): Promise<AgencyWarehouseDetail> {
+    const cached = agencyDefaultCache.get(agencyId);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.data;
+    }
     const response = await apiClient.get<AgencyWarehouseDetail>(
       `/warehouses/agencies/${encodeURIComponent(agencyId)}/default`
     );
+    agencyDefaultCache.set(agencyId, {
+      data: response.data,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    });
     return response.data;
   },
-  async deleteWarehouse(id: string): Promise<{ success: boolean; message?: string }> {
+  async checkDeleteEligibility(id: string): Promise<{
+    canDelete: boolean;
+    hasPositiveStock: boolean;
+    totalOnHand: number;
+    totalAllocated: number;
+    hasZeroStockProducts: boolean;
+    productRecordCount: number;
+    isEmpty: boolean;
+    warehouseName: string;
+    warehouseCode: string;
+    message: string;
+  }> {
+    const response = await apiClient.get(
+      `/warehouses/${encodeURIComponent(id)}/delete-check`
+    );
+    return response.data;
+  },
+  async deleteWarehouse(
+    id: string,
+    confirmZeroStock?: boolean
+  ): Promise<{ success: boolean; message?: string }> {
     const response = await apiClient.delete<{ success: boolean; message?: string }>(
-      `/warehouses/${encodeURIComponent(id)}`
+      `/warehouses/${encodeURIComponent(id)}`,
+      { params: { confirmZeroStock: confirmZeroStock ? 'true' : undefined } }
     );
     return response.data;
   },

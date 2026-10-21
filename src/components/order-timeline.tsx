@@ -1,9 +1,10 @@
 import React from 'react';
 import type { OrderStatus } from '../types/order';
-import { CheckCircle2, Clock, FileText, Package, Truck, X } from 'lucide-react';
+import { CheckCircle2, Clock, FileText, Package, PackageCheck, Truck, X } from 'lucide-react';
 
 interface OrderTimelineProps {
   status: OrderStatus;
+  shipmentStatus?: string;
 }
 
 const LIFECYCLE_STEPS = [
@@ -11,17 +12,28 @@ const LIFECYCLE_STEPS = [
   { status: 'PENDING', label: 'Chờ duyệt', icon: Clock },
   { status: 'APPROVED', label: 'Đã duyệt', icon: CheckCircle2 },
   { status: 'PROCESSING', label: 'Đang soạn', icon: Package },
-  { status: 'SHIPPED', label: 'Đã xuất', icon: Truck },
+  { status: 'PACKED', label: 'Đã đóng gói', icon: PackageCheck },
+  { status: 'DISPATCHED', label: 'Đã xuất', icon: Package },
+  { status: 'SHIPPED', label: 'Đang giao', icon: Truck },
   { status: 'DELIVERED', label: 'Đã giao', icon: CheckCircle2 },
   { status: 'CLOSED', label: 'Đóng', icon: CheckCircle2 },
 ] as const;
 
-export const OrderTimeline: React.FC<OrderTimelineProps> = ({ status }) => {
-  // Determine current step index based on status
-  let currentIndex = LIFECYCLE_STEPS.findIndex((s) => s.status === status);
+export const OrderTimeline: React.FC<OrderTimelineProps> = ({ status, shipmentStatus }) => {
+  // Determine current step index based on status and shipmentStatus
+  let effectiveStatus: OrderStatus = status;
+  if (status === 'PROCESSING' && shipmentStatus === 'PACKED') {
+    effectiveStatus = 'PACKED';
+  } else if ((status === 'PROCESSING' || status === 'PACKED') && shipmentStatus === 'SHIPPED') {
+    effectiveStatus = 'SHIPPED';
+  } else if (shipmentStatus === 'DELIVERED' && status !== 'CLOSED') {
+    effectiveStatus = 'DELIVERED';
+  }
+
+  let currentIndex = LIFECYCLE_STEPS.findIndex((s) => s.status === effectiveStatus);
 
   // Handle alternative/special states mapping to the linear flow
-  if (status === 'PENDING_APPROVAL' || status === 'PENDING_INVENTORY_APPROVAL') {
+  if (effectiveStatus === 'PENDING_APPROVAL' || effectiveStatus === 'PENDING_INVENTORY_APPROVAL') {
     currentIndex = 1; // Maps to Chờ duyệt
   }
 

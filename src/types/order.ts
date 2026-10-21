@@ -11,10 +11,13 @@ export type OrderStatus =
   | 'REJECTED' // Bị từ chối khi xét duyệt
   | 'RETURNED_FOR_UPDATE' // Trả lại nhân viên kinh doanh để chỉnh sửa
   | 'PROCESSING' // Đang xử lý / soạn hàng
-  | 'SHIPPED' // Đã xuất kho / giao vận
+  | 'PACKED' // Đã đóng gói
+  | 'DISPATCHED' // Đã xuất kho (SN-199)
+  | 'SHIPPED' // Đang giao
   | 'DELIVERED' // Giao thành công
   | 'CANCELLED' // Đã hủy
   | 'RETURNED' // Hoàn hàng
+  | 'COMPLETED' // Hoàn tất đơn hàng
   | 'CLOSED'; // Đã đóng
 
 export type OrderApprovalAction = 'APPROVE' | 'REJECT' | 'RETURN_FOR_UPDATE';
@@ -54,6 +57,7 @@ export interface OrderLine {
   lineTotal: number; // Thành tiền = quantity × unitPrice
   stockAvailable?: number; // Tồn khả dụng tham khảo (hiển thị UI)
   minPrice?: number;
+  dispatchedQuantity?: number; // Số lượng đã xuất kho (SN-199)
   deliveredQuantity?: number; // Số lượng thực tế đã giao (SN-170)
   deliveredBaseQuantity?: number; // Số lượng cơ sở thực tế đã giao
   isShortDelivery?: boolean; // Cờ báo dòng hàng bị giao thiếu
@@ -106,6 +110,7 @@ export interface Order {
   subtotal: number; // Tổng tiền hàng trước chiết khấu
   totalDiscount: number; // Tổng chiết khấu
   grandTotal: number; // Tổng phải thu = subtotal - totalDiscount
+  totalAmount?: number; // Alias cho grandTotal
   note?: string;
   warningNote?: string; // Ghi chú cảnh báo công nợ / tồn kho (SN-41 / SN-39)
   status: OrderStatus;
@@ -121,6 +126,15 @@ export interface Order {
   approverId?: string; // ID người duyệt đơn (SN-180)
   approverName?: string; // Tên người duyệt đơn (SN-180)
   approvedAt?: string; // Thời gian duyệt đơn (SN-180)
+  processingAt?: string; // Thời gian bắt đầu soạn hàng (SN-199)
+  dispatchedAt?: string; // Thời gian xuất kho bàn giao vận chuyển (SN-199)
+  shippedAt?: string; // Thời gian xe lăn bánh bắt đầu giao (SN-199)
+  deliveredAt?: string; // Thời gian xe tới giao hàng thành công (SN-199)
+  estimatedDeliveryWindow?: string; // Khung giờ dự kiến xe tới (SN-199)
+  carrierName?: string; // Đơn vị vận chuyển (SN-199)
+  driverName?: string; // Tên tài xế (SN-199)
+  driverPhone?: string; // Số điện thoại tài xế (SN-199)
+  licensePlate?: string; // Biển số xe tải (SN-199)
   reservedUntil?: string; // Hạn giữ chỗ tồn kho (24h sau duyệt) (SN-180)
   isShortDelivery?: boolean; // Cờ đơn hàng bị giao thiếu (SN-170)
   region?: string; // Khu vực đại lý / đơn hàng (SN-46)
@@ -191,6 +205,8 @@ export interface OrderQueryParams {
   fromDate?: string;
   toDate?: string;
   dateType?: 'CREATED' | 'DELIVERY';
+  forShipment?: boolean | string;
+  warehouseId?: string;
 }
 
 /** Thông tin khách hàng đại lý (dùng trong form tạo đơn) */

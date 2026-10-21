@@ -5,7 +5,14 @@
 export type AuditActionType =
   'CREATE' | 'UPDATE' | 'DELETE' | 'APPROVE' | 'CANCEL' | 'STOCK_ADJUST';
 
-export type AuditEntityType = 'INVENTORY' | 'DEBT' | 'PRICING' | 'ORDER' | 'USER';
+export type AuditEntityType =
+  | 'INVENTORY'
+  | 'PRICING'
+  | 'ORDER'
+  | 'INVOICE'
+  | 'DEBT'
+  | 'CUSTOMER'
+  | 'USER';
 
 export interface AuditLogUser {
   id: string;
@@ -13,6 +20,8 @@ export interface AuditLogUser {
   email: string;
   ip_address: string;
   role?: string;
+  avatarUrl?: string | null;
+  avatar_url?: string | null;
 }
 
 export interface AuditLogItem {

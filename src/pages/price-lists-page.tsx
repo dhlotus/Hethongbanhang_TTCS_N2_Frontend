@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import { useSearchParams } from 'react-router-dom';
 import {
   Plus,
-  RefreshCw,
   Search,
   CheckCircle2,
   Clock,
@@ -14,8 +14,6 @@ import {
   Copy,
   Lock,
   Unlock,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
   X,
   FileSpreadsheet,
@@ -30,6 +28,7 @@ import { showToast } from '../components/toast';
 import { PriceListsTableSkeleton } from '../components/skeletons';
 import { ConfirmDeleteModal } from '../components/confirm-delete-modal';
 import { DiscountPoliciesTab } from '../components/discount-policies-tab';
+import { Pagination } from '../components/pagination';
 import type {
   PriceList,
   CustomerGroupType,
@@ -147,8 +146,13 @@ export const PriceListsPage: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState<string>(initialGroup);
   const [selectedStatus, setSelectedStatus] = useState<PriceListStatusType | 'ALL'>(initialStatus);
 
-  // Quản lý dropdown thao tác 3 chấm
+  // Quản lý dropdown thao tác
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+  const [actionMenuAnchor, setActionMenuAnchor] = useState<{
+    top: number;
+    right: number;
+    isDropUp: boolean;
+  } | null>(null);
 
   // Modals state
   const [formModalOpen, setFormModalOpen] = useState(false);
@@ -162,6 +166,17 @@ export const PriceListsPage: React.FC = () => {
   const [priceListToDelete, setPriceListToDelete] = useState<PriceList | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Modal xác nhận xuất Excel
+  const [exportModalConfig, setExportModalConfig] = useState<{
+    isOpen: boolean;
+    type: 'ALL' | 'SINGLE';
+    priceList?: PriceList | null;
+  }>({
+    isOpen: false,
+    type: 'ALL',
+    priceList: null,
+  });
+
   // Phân quyền người dùng: Chỉ ADMIN và SALES_MANAGER có quyền quản trị/tạo mới
   // Nhân viên kinh doanh (SALES_REP) chỉ có quyền xem
   const user = getStoredUser();
@@ -170,15 +185,29 @@ export const PriceListsPage: React.FC = () => {
     userRoles.includes('ADMIN') ||
     userRoles.includes('SALES_MANAGER');
 
-  // Đóng dropdown thao tác khi click ra ngoài
+  // Đóng dropdown thao tác khi click ra ngoài, cuộn trang hoặc thay đổi kích thước
   useEffect(() => {
     const handleDocClick = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest('.action-menu-dropdown-container')) {
+      if (
+        !(e.target as HTMLElement).closest('.action-menu-dropdown-container') &&
+        !(e.target as HTMLElement).closest('.action-portal-menu')
+      ) {
         setOpenActionMenuId(null);
+        setActionMenuAnchor(null);
       }
     };
+    const handleScrollOrResize = () => {
+      setOpenActionMenuId(null);
+      setActionMenuAnchor(null);
+    };
     document.addEventListener('click', handleDocClick);
-    return () => document.removeEventListener('click', handleDocClick);
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      document.removeEventListener('click', handleDocClick);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
   }, []);
 
   // Cập nhật query parameters an toàn lên URL mà không reload lại toàn bộ trang
@@ -267,32 +296,42 @@ export const PriceListsPage: React.FC = () => {
       setActiveTab(urlTab);
     }
 
-    const urlStatus = parseStatusParam(searchParams.get('status'));
-    if (urlStatus !== selectedStatus) {
-      setSelectedStatus(urlStatus);
-    }
+    // Chỉ đồng bộ state bộ lọc của Bảng giá cơ sở khi đang đứng ở tab BASE
+    if (urlTab === 'BASE') {
+      const urlStatus = parseStatusParam(searchParams.get('status'));
+      if (urlStatus !== selectedStatus) {
+        setSelectedStatus(urlStatus);
+      }
 
-    const urlGroup = parseGroupParam(searchParams.get('group'));
-    if (urlGroup !== selectedGroup) {
-      setSelectedGroup(urlGroup);
-    }
+      const urlGroup = parseGroupParam(searchParams.get('group'));
+      if (urlGroup !== selectedGroup) {
+        setSelectedGroup(urlGroup);
+      }
 
-    const urlSearch = searchParams.get('search') || '';
-    if (urlSearch !== searchTerm) {
-      setSearchTerm(urlSearch);
-      setSearchInput(urlSearch);
-    }
+      const urlSearch = searchParams.get('search') || '';
+      if (urlSearch !== searchTerm) {
+        setSearchTerm(urlSearch);
+        setSearchInput(urlSearch);
+      }
 
-    const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
-    if (urlPage !== page) {
-      setPage(urlPage);
+      const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+      if (urlPage !== page) {
+        setPage(urlPage);
+      }
     }
   }, [searchParams, activeTab, selectedStatus, selectedGroup, searchTerm, page]);
 
   // Chuyển đổi tab hiển thị
   const handleTabChange = (newTab: 'BASE' | 'DISCOUNT') => {
     setActiveTab(newTab);
-    updateUrlParams({ tab: newTab });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', TAB_TO_PARAM[newTab]);
+        return next;
+      },
+      { replace: true }
+    );
   };
 
   // Thay đổi bộ lọc trạng thái
@@ -477,15 +516,18 @@ export const PriceListsPage: React.FC = () => {
   };
 
   // Helper hiển thị tên tiếng Việt nhóm khách hàng
-  const getCustomerGroupName = (group: CustomerGroupType) => {
+  const getCustomerGroupName = (group?: CustomerGroupType | string) => {
     switch (group) {
       case 'AGENT_LEVEL_1':
         return 'Đại lý Cấp 1';
       case 'AGENT_LEVEL_2':
         return 'Đại lý Cấp 2';
       case 'RETAIL':
-      default:
         return 'Bán lẻ Niêm yết';
+      case 'WHOLESALE':
+        return 'Bán buôn';
+      default:
+        return group || 'Tất cả Nhóm';
     }
   };
 
@@ -793,29 +835,8 @@ export const PriceListsPage: React.FC = () => {
             )}
           </div>
 
-          {/* 3. Filter Toolbar: Tabs nhóm khách hàng, Search Box, Dropdown Trạng thái */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-4">
-            {/* Tabs Nhóm khách hàng */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100 text-xs">
-              {CUSTOMER_GROUP_TABS.map((tab) => {
-                const isActive = selectedGroup === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => handleGroupChange(tab.key)}
-                    className={`px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                      isActive
-                        ? 'bg-blue-600 text-white shadow-2xs'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-
+          {/* 3. Filter Toolbar: Search Box, Dropdown Nhóm khách hàng, Dropdown Trạng thái */}
+          <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-3">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
               {/* Ô Tìm kiếm theo tên / mã */}
               <div className="relative flex-1">
@@ -825,7 +846,7 @@ export const PriceListsPage: React.FC = () => {
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Tìm theo mã bảng giá, tên bảng giá hoặc ghi chú..."
-                  className="w-full pl-9.5 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-medium"
+                  className="w-full h-[38px] pl-9.5 pr-8 text-xs rounded-lg border border-slate-200 bg-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 font-medium"
                 />
                 {searchInput && (
                   <button
@@ -844,12 +865,27 @@ export const PriceListsPage: React.FC = () => {
                 )}
               </div>
 
+              {/* Lọc Nhóm khách hàng (Select option) */}
+              <div className="sm:w-48">
+                <select
+                  value={selectedGroup}
+                  onChange={(e) => handleGroupChange(e.target.value)}
+                  className="w-full h-[38px] px-3 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer shadow-2xs"
+                >
+                  {CUSTOMER_GROUP_TABS.map((tab) => (
+                    <option key={tab.key} value={tab.key}>
+                      {tab.key === 'ALL' ? 'Tất cả Nhóm khách hàng' : tab.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Lọc Trạng thái (Việt hóa hoàn toàn, không có từ tiếng Anh trong ngoặc) */}
               <div className="sm:w-44">
                 <select
                   value={selectedStatus}
                   onChange={(e) => handleStatusChange(e.target.value as PriceListStatusType | 'ALL')}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+                  className="w-full h-[38px] px-3 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer shadow-2xs"
                 >
                   <option value="ALL">Tất cả Trạng thái</option>
                   <option value="ACTIVE">Đang hiệu lực</option>
@@ -859,26 +895,12 @@ export const PriceListsPage: React.FC = () => {
                 </select>
               </div>
 
-              {/* Nút Làm mới */}
-              <button
-                type="button"
-                onClick={loadPriceLists}
-                disabled={loading}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer shrink-0 disabled:opacity-50"
-                title="Tải lại danh sách"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 text-slate-500 ${loading ? 'animate-spin text-blue-600' : ''}`}
-                />
-                <span className="hidden sm:inline">Làm mới</span>
-              </button>
-
               {/* Nút Bỏ lọc nếu có bộ lọc */}
               {(searchTerm || selectedStatus !== 'ALL' || selectedGroup !== 'ALL') && (
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/50 px-3.5 py-2 text-xs font-semibold text-rose-700 shadow-2xs hover:bg-rose-100/60 active:scale-[0.98] transition-all cursor-pointer shrink-0"
+                  className="inline-flex items-center justify-center gap-1.5 h-[38px] rounded-lg border border-rose-200 bg-rose-50/50 px-3.5 text-xs font-semibold text-rose-700 shadow-2xs hover:bg-rose-100/60 active:scale-[0.98] transition-all cursor-pointer shrink-0"
                   title="Đặt lại toàn bộ bộ lọc"
                 >
                   <RotateCcw className="h-3.5 w-3.5 text-rose-500" />
@@ -886,12 +908,12 @@ export const PriceListsPage: React.FC = () => {
                 </button>
               )}
 
-              {/* Nút Xuất danh sách bảng giá ra Excel */}
+              {/* Nút Xuất danh sách bảng giá ra Excel - mở Modal hỏi xác nhận */}
               <button
                 type="button"
-                onClick={handleExportAllPriceLists}
+                onClick={() => setExportModalConfig({ isOpen: true, type: 'ALL', priceList: null })}
                 disabled={priceLists.length === 0}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-1.5 h-[38px] rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-emerald-700 active:scale-[0.98] transition-all cursor-pointer shrink-0 disabled:opacity-50"
                 title="Xuất danh sách bảng giá ra tệp Excel (.xlsx)"
               >
                 <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
@@ -903,7 +925,7 @@ export const PriceListsPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleOpenCreateModal}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+                  className="inline-flex items-center justify-center gap-1.5 h-[38px] rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-[0.98] px-4 text-xs font-semibold text-white shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Thêm mới bảng giá</span>
@@ -911,62 +933,62 @@ export const PriceListsPage: React.FC = () => {
               )}
             </div>
 
-            {/* Thông tin kết quả tìm kiếm và bộ lọc đang áp dụng */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 font-medium pt-2 border-t border-slate-100 gap-1.5">
-              <div>
-                Hiển thị <strong className="text-slate-900 font-semibold">{priceLists.length}</strong> /{' '}
-                {total} bảng giá
+            {/* Thông tin bộ lọc đang áp dụng (Việt hóa hoàn toàn) */}
+            {(searchTerm || selectedStatus !== 'ALL' || selectedGroup !== 'ALL') && (
+              <div className="flex items-center text-xs text-blue-600 font-medium pt-2 border-t border-slate-100 gap-1.5">
+                <span>Đang lọc:</span>
+                {selectedStatus !== 'ALL' && (
+                  <span>Trạng thái: {getStatusName(selectedStatus as PriceListStatusType)} • </span>
+                )}
+                {selectedGroup !== 'ALL' && (
+                  <span>Nhóm: {getCustomerGroupName(selectedGroup)} • </span>
+                )}
+                {searchTerm && <span>Từ khóa: &quot;{searchTerm}&quot;</span>}
               </div>
-              {(searchTerm || selectedStatus !== 'ALL' || selectedGroup !== 'ALL') && (
-                <div className="text-[11px] text-blue-600 font-medium">
-                  Đang lọc URL: {selectedStatus !== 'ALL' && `Trạng thái: ${selectedStatus} `}
-                  {selectedGroup !== 'ALL' && `• Nhóm: ${selectedGroup} `}
-                  {searchTerm && `• Từ khóa: "${searchTerm}"`}
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
           {/* 4. Table: Danh sách Bảng giá */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
-            <div className="overflow-x-auto min-h-[360px]">
-              <table className="w-full text-left text-xs sm:text-sm text-slate-600">
+          <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm divide-y divide-slate-100">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/70">
-                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide w-14">
-                      STT
+                  <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left w-[15%]">
+                      Mã bảng giá
                     </th>
-                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-44">
-                      Mã & Phiên bản
+                    <th className="px-4 py-3 text-left w-[28%]">
+                      Tên bảng giá
                     </th>
-                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                      Tên Bảng giá
-                    </th>
-                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-36">
+                    <th className="px-4 py-3 text-left w-[15%]">
                       Nhóm áp dụng
                     </th>
-                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-48">
+                    <th className="px-4 py-3 text-left w-[18%]">
                       Thời gian hiệu lực
                     </th>
-                    <th className="px-4 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-36">
+                    <th className="px-4 py-3 text-center w-[12%]">
                       Trạng thái
                     </th>
-                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide w-44">
-                      Ràng buộc Đơn hàng
+                    <th className="px-4 py-3 text-center w-[12%]">
+                      Ràng buộc đơn
                     </th>
-                    <th className="px-4 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide w-32">
+                    <th className="px-4 py-3 text-right w-[10%] min-w-[105px]">
                       Thao tác
                     </th>
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-slate-100 bg-white">
+                <tbody
+                  className={`divide-y divide-slate-100/90 transition-opacity duration-150 ${
+                    loading ? 'opacity-60 pointer-events-none' : 'opacity-100'
+                  }`}
+                >
                   {loading ? (
                     <PriceListsTableSkeleton count={6} />
                   ) : priceLists.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={7}
                         className="py-12 text-center text-slate-400 border-b border-slate-100"
                       >
                         <div className="flex flex-col items-center justify-center gap-2">
@@ -992,39 +1014,22 @@ export const PriceListsPage: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    priceLists.map((pl, idx) => {
+                    priceLists.map((pl) => {
                       const isLocked = pl.hasOrders;
-                      const isDropUp =
-                        idx >= Math.max(1, priceLists.length - 2) ||
-                        (priceLists.length > 3 && idx >= Math.floor(priceLists.length / 2));
 
                       return (
-                        <tr key={pl.id} className="hover:bg-slate-50/70 transition-colors group">
-                          {/* STT */}
-                          <td className="px-4 py-3.5 text-center text-slate-400 font-mono text-xs">
-                            {(page - 1) * limit + idx + 1}
-                          </td>
-
-                          {/* 1. Mã bảng giá & Badge Version (Chỉ hiện badge từ v2 trở đi) */}
+                        <tr key={pl.id} className="hover:bg-indigo-50/25 transition-colors group">
+                          {/* 1. Mã bảng giá: Hiển thị badge monospace chuẩn Quản lý đại lý, đã bỏ badge phiên bản */}
                           <td className="px-4 py-3.5 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-mono font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                                {pl.code}
-                              </span>
-                              {pl.version > 1 && (
-                                <span
-                                  className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-50 text-blue-700 border border-blue-200/60 cursor-help"
-                                  title={`Phiên bản v${pl.version}.0 nhân bản từ v${pl.version - 1}.0`}
-                                >
-                                  v{pl.version}
-                                </span>
-                              )}
-                            </div>
+                            <span className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-blue-700 bg-blue-50/80 border border-blue-200/60 px-2.5 py-1 rounded-md shadow-2xs group-hover:border-blue-300">
+                              <FileSpreadsheet className="w-3 h-3 text-blue-500" />
+                              <span>{pl.code}</span>
+                            </span>
                           </td>
 
                           {/* 2. Tên bảng giá */}
                           <td className="px-4 py-3.5">
-                            <div className="font-semibold text-slate-900 leading-snug">
+                            <div className="font-semibold text-slate-800 line-clamp-1 text-sm">
                               {pl.name}
                             </div>
                             {pl.description && (
@@ -1053,165 +1058,64 @@ export const PriceListsPage: React.FC = () => {
                           </td>
 
                           {/* Trạng thái */}
-                          <td className="px-4 py-3.5 whitespace-nowrap">
+                          <td className="px-4 py-3.5 text-center whitespace-nowrap">
                             {renderStatusBadge(pl.status)}
                           </td>
 
                           {/* Ràng buộc đơn hàng */}
                           <td className="px-4 py-3.5 text-center whitespace-nowrap">
                             {isLocked ? (
-                              <div
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 text-[11px] font-semibold ring-1 ring-inset ring-amber-600/30"
+                              <span
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 text-xs font-semibold border border-amber-200/60"
                                 title="Bảng giá này đã có đơn hàng. Khóa sửa trực tiếp, hỗ trợ Clone Version."
                               >
-                                <Lock className="w-3.5 h-3.5 text-amber-600" />
-                                <span>Đã có đơn hàng</span>
-                              </div>
+                                <Lock className="w-3 h-3 text-amber-600" />
+                                <span>Có đơn</span>
+                              </span>
                             ) : (
-                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 text-slate-600 text-[11px] font-medium ring-1 ring-inset ring-slate-300/40">
-                                <Unlock className="w-3.5 h-3.5 text-slate-400" />
-                                <span>Chưa có đơn</span>
-                              </div>
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 text-slate-600 text-xs font-medium border border-slate-200/60">
+                                <Unlock className="w-3 h-3 text-slate-400" />
+                                <span>Chưa có</span>
+                              </span>
                             )}
                           </td>
 
-                          {/* 5. Cột Thao tác: Nút Thao tác dropdown chuẩn giao diện */}
-                          <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                            <div className="relative inline-block text-left action-menu-dropdown-container">
+                          {/* 5. Cột Thao tác */}
+                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                            <div className="relative inline-flex items-center justify-end action-menu-dropdown-container">
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setOpenActionMenuId(openActionMenuId === pl.id ? null : pl.id);
+                                  if (openActionMenuId === pl.id) {
+                                    setOpenActionMenuId(null);
+                                    setActionMenuAnchor(null);
+                                  } else {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    const shouldDropUp = spaceBelow < 260 && rect.top > 260;
+                                    setActionMenuAnchor({
+                                      top: shouldDropUp ? rect.top - 4 : rect.bottom + 4,
+                                      right: window.innerWidth - rect.right,
+                                      isDropUp: shouldDropUp,
+                                    });
+                                    setOpenActionMenuId(pl.id);
+                                  }
                                 }}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none ${
+                                className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none whitespace-nowrap shrink-0 ${
                                   openActionMenuId === pl.id
-                                    ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-xs'
-                                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-slate-300'
+                                    ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-xs ring-2 ring-blue-500/10'
+                                    : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-slate-300'
                                 }`}
                                 title="Thao tác"
                               >
-                                <span>Thao tác</span>
+                                <span className="whitespace-nowrap">Thao tác</span>
                                 <ChevronDown
-                                  className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${
+                                  className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${
                                     openActionMenuId === pl.id ? 'rotate-180 text-blue-600' : ''
                                   }`}
                                 />
                               </button>
-
-                              {openActionMenuId === pl.id && (
-                                <div
-                                  className={`absolute right-0 ${
-                                    isDropUp
-                                      ? 'bottom-full mb-1 origin-bottom-right'
-                                      : 'top-full mt-1 origin-top-right'
-                                  } w-48 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100`}
-                                >
-                                  <div className="py-1">
-                                    {/* 1. Xem chi tiết */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setOpenActionMenuId(null);
-                                        handleOpenViewModal(pl);
-                                      }}
-                                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                    >
-                                      <Eye className="w-4 h-4 text-slate-400" />
-                                      <span>Xem chi tiết</span>
-                                    </button>
-
-                                    {/* 2. Chỉnh sửa */}
-                                    {canManage && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setOpenActionMenuId(null);
-                                          handleOpenEditModal(pl);
-                                        }}
-                                        disabled={isLocked}
-                                        className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
-                                          isLocked
-                                            ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
-                                            : 'text-slate-700 hover:bg-slate-50 hover:text-amber-600 cursor-pointer'
-                                        }`}
-                                        title={
-                                          isLocked
-                                            ? 'Bảng giá đã có đơn hàng - Không thể sửa trực tiếp (Vui lòng nhân bản)'
-                                            : 'Chỉnh sửa bảng giá'
-                                        }
-                                      >
-                                        <Edit2
-                                          className={`w-4 h-4 ${
-                                            isLocked ? 'text-slate-300' : 'text-amber-500'
-                                          }`}
-                                        />
-                                        <span>Chỉnh sửa</span>
-                                      </button>
-                                    )}
-
-                                    {/* 3. Nhân bản */}
-                                    {canManage && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setOpenActionMenuId(null);
-                                          handleOpenCloneModal(pl);
-                                        }}
-                                        className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                      >
-                                        <Copy className="w-4 h-4 text-indigo-500" />
-                                        <span>Nhân bản (Copy)</span>
-                                      </button>
-                                    )}
-
-                                    {/* 4. Xuất bảng giá (Excel) */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setOpenActionMenuId(null);
-                                        handleExportPriceList(pl);
-                                      }}
-                                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-emerald-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                                      title="Xuất chi tiết các mặt hàng của bảng giá ra tệp Excel (.xlsx)"
-                                    >
-                                      <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                                      <span>Xuất bảng giá</span>
-                                    </button>
-                                  </div>
-
-                                  {/* 5. Xóa */}
-                                  {canManage && (
-                                    <div className="py-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setOpenActionMenuId(null);
-                                          handlePromptDelete(pl);
-                                        }}
-                                        disabled={isLocked}
-                                        className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors ${
-                                          isLocked
-                                            ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
-                                            : 'text-rose-600 hover:bg-rose-50 cursor-pointer font-medium'
-                                        }`}
-                                        title={
-                                          isLocked
-                                            ? 'Bảng giá đã có đơn hàng - Không thể xóa để bảo toàn dữ liệu'
-                                            : 'Xóa bảng giá'
-                                        }
-                                      >
-                                        <Trash2
-                                          className={`w-4 h-4 ${
-                                            isLocked ? 'text-slate-300' : 'text-rose-500'
-                                          }`}
-                                        />
-                                        <span>Xóa bảng giá</span>
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
                             </div>
                           </td>
                         </tr>
@@ -1222,58 +1126,153 @@ export const PriceListsPage: React.FC = () => {
               </table>
             </div>
 
-            {/* 6. Phân trang & Chọn số dòng/trang */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 bg-slate-50/60 text-xs text-slate-500">
-              <div>
-                Hiển thị <strong>{priceLists.length}</strong> trên tổng số <strong>{total}</strong>{' '}
-                bảng giá
-              </div>
+            {/* Dropdown Menu Portal Thao tác: không bị tràn hay cắt bởi container */}
+            {openActionMenuId && actionMenuAnchor && typeof document !== 'undefined' && (() => {
+              const pl = priceLists.find((item) => item.id === openActionMenuId);
+              if (!pl) return null;
+              const isLocked = pl.hasOrders;
+              return createPortal(
+                <div
+                  className="price-list-action-portal-menu action-portal-menu fixed w-52 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-[9999] animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100"
+                  style={{
+                    top: actionMenuAnchor.isDropUp ? undefined : `${actionMenuAnchor.top}px`,
+                    bottom: actionMenuAnchor.isDropUp ? `${window.innerHeight - actionMenuAnchor.top}px` : undefined,
+                    right: `${actionMenuAnchor.right}px`,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="py-1">
+                    {/* 1. Xem chi tiết */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenActionMenuId(null);
+                        setActionMenuAnchor(null);
+                        handleOpenViewModal(pl);
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                    >
+                      <Eye className="w-4 h-4 text-slate-400" />
+                      <span>Xem chi tiết</span>
+                    </button>
 
-              <div className="flex items-center gap-3">
-                {/* Select box chọn số dòng/trang */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500">Số dòng/trang:</span>
-                  <select
-                    value={limit}
-                    onChange={(e) => {
-                      setLimit(Number(e.target.value));
-                      handlePageChange(1);
-                    }}
-                    className="px-2 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                  >
-                    <option value={10}>10 dòng/trang</option>
-                    <option value={20}>20 dòng (Chuẩn)</option>
-                    <option value={50}>50 dòng/trang</option>
-                    <option value={100}>100 dòng/trang</option>
-                  </select>
-                </div>
+                    {/* 2. Chỉnh sửa */}
+                    {canManage && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionMenuId(null);
+                          setActionMenuAnchor(null);
+                          handleOpenEditModal(pl);
+                        }}
+                        disabled={isLocked}
+                        className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors font-medium ${
+                          isLocked
+                            ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
+                            : 'text-slate-700 hover:bg-slate-50 hover:text-amber-600 cursor-pointer'
+                        }`}
+                        title={
+                          isLocked
+                            ? 'Bảng giá đã có đơn hàng - Không thể sửa trực tiếp (Vui lòng nhân bản)'
+                            : 'Chỉnh sửa bảng giá'
+                        }
+                      >
+                        <Edit2
+                          className={`w-4 h-4 ${
+                            isLocked ? 'text-slate-300' : 'text-amber-500'
+                          }`}
+                        />
+                        <span>Chỉnh sửa</span>
+                      </button>
+                    )}
 
-                {/* Nút chuyển trang */}
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handlePageChange(Math.max(1, page - 1))}
-                    disabled={page <= 1}
-                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
+                    {/* 3. Nhân bản */}
+                    {canManage && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionMenuId(null);
+                          setActionMenuAnchor(null);
+                          handleOpenCloneModal(pl);
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                      >
+                        <Copy className="w-4 h-4 text-indigo-500" />
+                        <span>Nhân bản (Copy)</span>
+                      </button>
+                    )}
 
-                  <span className="px-2 font-medium">
-                    Trang {page} / {totalPages || 1}
-                  </span>
+                    {/* 4. Xuất bảng giá (Excel) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenActionMenuId(null);
+                        setActionMenuAnchor(null);
+                        setExportModalConfig({ isOpen: true, type: 'SINGLE', priceList: pl });
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-emerald-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
+                      title="Xuất chi tiết các mặt hàng của bảng giá ra tệp Excel (.xlsx)"
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                      <span>Xuất bảng giá</span>
+                    </button>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                    disabled={page >= totalPages}
-                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
+                  {/* 5. Xóa */}
+                  {canManage && (
+                    <div className="py-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionMenuId(null);
+                          setActionMenuAnchor(null);
+                          handlePromptDelete(pl);
+                        }}
+                        disabled={isLocked}
+                        className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors font-medium ${
+                          isLocked
+                            ? 'text-slate-300 cursor-not-allowed bg-slate-50/50'
+                            : 'text-rose-600 hover:bg-rose-50 cursor-pointer'
+                        }`}
+                        title={
+                          isLocked
+                            ? 'Bảng giá đã có đơn hàng - Không thể xóa để bảo toàn dữ liệu'
+                            : 'Xóa bảng giá'
+                        }
+                      >
+                        <Trash2
+                          className={`w-4 h-4 ${
+                            isLocked ? 'text-slate-300' : 'text-rose-500'
+                          }`}
+                        />
+                        <span>Xóa bảng giá</span>
+                      </button>
+                    </div>
+                  )}
+                </div>,
+                document.body
+              );
+            })()}
+
+            {/* 6. Thanh phân trang gắn liền chân bảng chuẩn Quản lý đại lý */}
+            {total > 0 && (
+              <Pagination
+                variant="default"
+                currentPage={page}
+                totalPages={totalPages}
+                totalItems={total}
+                pageSize={limit}
+                pageSizeOptions={[10, 20, 50]}
+                itemLabel="bảng giá"
+                showRecordRange={false}
+                showFirstLast={false}
+                onPageChange={(newPage) => handlePageChange(newPage)}
+                onPageSizeChange={(newSize) => {
+                  setLimit(newSize);
+                  handlePageChange(1);
+                }}
+              />
+            )}
           </div>
 
           {/* 5. Modal Khai báo & Chỉnh sửa Bảng giá */}
@@ -1322,6 +1321,99 @@ export const PriceListsPage: React.FC = () => {
             cancelText="Hủy bỏ"
             isDeleting={deleting}
           />
+
+          {/* 8. Modal Xác nhận Xuất Excel chuẩn UI_GUIDELINES */}
+          {exportModalConfig.isOpen &&
+            createPortal(
+              <div
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    setExportModalConfig({ isOpen: false, type: 'ALL', priceList: null });
+                  }
+                }}
+                className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+              >
+                <div
+                  className="w-full max-w-md bg-white rounded-xl border border-slate-200/90 shadow-2xl p-5 space-y-4 animate-in zoom-in-95 duration-150"
+                  role="dialog"
+                  aria-modal="true"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                        <FileSpreadsheet className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900">
+                          Xác nhận xuất tệp Excel
+                        </h3>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          {exportModalConfig.type === 'ALL'
+                            ? 'Xuất danh sách bảng giá'
+                            : 'Xuất chi tiết mặt hàng bảng giá'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setExportModalConfig({ isOpen: false, type: 'ALL', priceList: null })}
+                      className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                      title="Đóng"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-slate-600 leading-relaxed bg-slate-50/70 p-3.5 rounded-lg border border-slate-100 space-y-1.5">
+                    {exportModalConfig.type === 'ALL' ? (
+                      <p>
+                        Bạn có chắc chắn muốn xuất toàn bộ{' '}
+                        <strong className="text-slate-900 font-bold">{priceLists.length}</strong> bảng giá
+                        đang hiển thị ra tệp Excel (<span className="font-mono text-emerald-700 font-semibold">.xlsx</span>) không?
+                      </p>
+                    ) : (
+                      <p>
+                        Bạn có chắc chắn muốn xuất chi tiết bảng giá{' '}
+                        <strong className="text-slate-900 font-bold">&quot;{exportModalConfig.priceList?.name}&quot;</strong>{' '}
+                        [<span className="font-mono text-blue-700 font-semibold">{exportModalConfig.priceList?.code}</span>] gồm{' '}
+                        <strong className="text-slate-900 font-bold">{exportModalConfig.priceList?.items?.length || 0}</strong> mặt hàng
+                        ra tệp Excel (<span className="font-mono text-emerald-700 font-semibold">.xlsx</span>) không?
+                      </p>
+                    )}
+                    <p className="text-[11px] text-slate-400">
+                      Tệp Excel sau khi xuất có thể mở trực tiếp bằng Microsoft Excel hoặc Google Trang tính.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setExportModalConfig({ isOpen: false, type: 'ALL', priceList: null })}
+                      className="h-[38px] px-4 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-all shadow-2xs cursor-pointer"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const config = exportModalConfig;
+                        setExportModalConfig({ isOpen: false, type: 'ALL', priceList: null });
+                        if (config.type === 'ALL') {
+                          handleExportAllPriceLists();
+                        } else if (config.priceList) {
+                          handleExportPriceList(config.priceList);
+                        }
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 h-[38px] px-4 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      <span>Xác nhận xuất</span>
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )}
         </>
       ) : (
         <DiscountPoliciesTab canManage={canManage} />

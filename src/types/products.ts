@@ -36,6 +36,7 @@ export interface ProductUnit {
  */
 export interface Product {
   id: string;
+  uuid?: string;
   sku: string;
   name: string;
   category: string;
@@ -106,6 +107,8 @@ export interface CreateProductPayload {
   costPrice?: number;
   stockQuantity?: number;
   status: ProductStatus;
+  isBatchManaged?: boolean;
+  is_batch_managed?: boolean;
   imageUrl?: string;
   barcode?: string;
   description?: string;
@@ -115,7 +118,7 @@ export type UpdateProductPayload = Partial<CreateProductPayload>;
 
 import type { StockBalance, StockUnit } from './inventory.types';
 
-export type StockStatusType = 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | 'BELOW_MIN_STOCK';
+export type StockStatusType = 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | 'BELOW_MIN_STOCK' | 'DAMAGED';
 
 export interface StockOverviewItem extends StockBalance {
   id: string;
@@ -128,6 +131,11 @@ export interface StockOverviewItem extends StockBalance {
   units: StockUnit[];
   status: StockStatusType;
   imageUrl?: string;
+  damagedQuantity?: number;
+  damagedStock?: number;
+  batchNumber?: string;
+  expiryDate?: string;
+  mfgDate?: string;
 }
 
 export interface AdjustStockPayload {
@@ -188,7 +196,7 @@ export interface ImportProductItemDto {
   baseUnit: string;
   price: number;
   costPrice: number;
-  stockQuantity: number;
+  stockQuantity?: number;
   barcode?: string;
   description?: string;
   status: 'NEW' | 'UPDATE';

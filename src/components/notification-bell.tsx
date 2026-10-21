@@ -1,26 +1,33 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell,
   CheckCheck,
-  AlertTriangle,
   ShoppingCart,
   CheckCircle2,
   Tag,
   CreditCard,
   Clock,
   Sparkles,
+  PackageCheck,
+  HandCoins,
+  FileText,
 } from 'lucide-react';
+import { invoicesService } from '../services/invoices.service';
+import { notificationsService } from '../services/notifications.service';
+import { tokenStorage } from '../utils/token-storage';
+import { getStoredUser } from '../utils/navigation';
 
 export interface SystemNotification {
   id: string;
-  type: 'STOCK_ALERT' | 'ORDER' | 'DELIVERY' | 'PRICING' | 'CREDIT';
+  type: 'STOCK_ALERT' | 'ORDER' | 'DELIVERY' | 'PRICING' | 'CREDIT' | 'SHIPMENT' | 'COLLECTION' | 'RECONCILIATION';
   title: string;
   message: string;
   timestamp: string;
   link: string;
   isRead: boolean;
   priority?: 'high' | 'normal';
+  orderId?: string;
 }
 
 const DEFAULT_NOTIFICATIONS: SystemNotification[] = [
@@ -134,11 +141,287 @@ export const NotificationBell: React.FC = () => {
     };
   }, [isOpen]);
 
+  // Tải thông báo từ Backend hệ thống & công nợ
+  const loadNotifications = useCallback(async () => {
+    try {
+      const savedReadIds: string[] = JSON.parse(
+        localStorage.getItem('loha_read_notifications') || '[]',
+      );
+
+      const user = tokenStorage.getUser() || getStoredUser();
+      const currentRole = user?.roles?.[0] || user?.role || '';
+
+      // 1. Tải thông báo hệ thống (Đơn hàng mới, xác nhận đặt đơn...)
+      const systemNotifs = await notificationsService.getNotifications(50, {
+        userId: user?.id,
+        username: user?.username,
+        role: currentRole,
+        customerId: user?.id,
+      });
+
+      const formattedSystem: SystemNotification[] = systemNotifs.map((sn) => {
+        const createdDate = sn.createdAt ? new Date(sn.createdAt) : new Date();
+        const diffMinutes = Math.floor((Date.now() - createdDate.getTime()) / 60000);
+        let timeLabel = 'Vừa xong';
+        if (diffMinutes >= 60 * 24) {
+          timeLabel = `${Math.floor(diffMinutes / (60 * 24))} ngày trước`;
+        } else if (diffMinutes >= 60) {
+          timeLabel = `${Math.floor(diffMinutes / 60)} giờ trước`;
+        } else if (diffMinutes > 0) {
+          timeLabel = `${diffMinutes} phút trước`;
+        }
+
+        return {
+          id: sn.id,
+          type: sn.type || 'ORDER',
+          title: sn.title,
+          message: sn.message,
+          timestamp: timeLabel,
+          link: sn.link || '/sales/orders',
+          isRead: savedReadIds.includes(sn.id) || sn.isRead,
+          priority: sn.priority,
+          orderId: sn.orderId,
+        };
+      });
+
+      // 2. Tải thông báo công nợ
+      let formattedDebt: SystemNotification[] = [];
+      try {
+        const debtNotifs = await invoicesService.getDebtNotifications();
+        if (debtNotifs && debtNotifs.length > 0) {
+          formattedDebt = debtNotifs.map((dn) => ({
+            id: dn.id,
+            type: 'CREDIT',
+            title: dn.title,
+            message: dn.message,
+            timestamp: 'Mới nhận',
+            link: dn.link || '/portal/debt',
+            isRead: savedReadIds.includes(dn.id) || dn.isRead,
+            priority: dn.priority,
+          }));
+        }
+      } catch {}
+
+      // 3. Tải thông báo cá nhân đã lưu cục bộ (như tạo phiếu xuất kho)
+      let personalNotifs: SystemNotification[] = [];
+      try {
+        const rawPersonal: any[] = JSON.parse(
+          localStorage.getItem('loha_personal_notifications') || '[]',
+        );
+        personalNotifs = rawPersonal.map((pn) => ({
+          ...pn,
+          isRead: savedReadIds.includes(pn.id) || pn.isRead,
+        }));
+      } catch {}
+
+      const allFetched = [...personalNotifs, ...formattedSystem, ...formattedDebt];
+      if (allFetched.length > 0) {
+        setNotifications((prev) => {
+          const fetchedIds = new Set(allFetched.map((f) => f.id));
+          const keepDefaults = prev.filter(
+            (p) => !fetchedIds.has(p.id) && !p.id.startsWith('notif-'),
+          );
+          return [...allFetched, ...keepDefaults];
+        });
+      }
+    } catch {
+      // Backend offline fallback
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadNotifications();
+
+    // Lắng nghe sự kiện khi có đơn hàng mới được tạo (nhảy thông báo lên chuông ngay lập tức)
+    const handleOrderCreatedEvent = (e: Event) => {
+      const orderData = (e as CustomEvent).detail;
+      if (orderData && (orderData.id || orderData.orderCode)) {
+        const formattedAmount = orderData.grandTotal
+          ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(orderData.grandTotal)
+          : '';
+        const optNotif: SystemNotification = {
+          id: `opt-${orderData.id || Date.now()}`,
+          type: 'ORDER',
+          title: 'Xác nhận đặt đơn thành công',
+          message: `Bạn đã gửi xác nhận đơn thành công [${orderData.orderCode || orderData.id}]. ${formattedAmount ? `Tổng thanh toán: ${formattedAmount}. ` : ''}Đơn hàng đang được bộ phận kho vận xử lý.`,
+          timestamp: 'Vừa xong',
+          link: `/portal/tracking?orderId=${orderData.id}`,
+          isRead: false,
+          priority: 'high',
+          orderId: orderData.id,
+        };
+        setNotifications((prev) => [optNotif, ...prev.filter((p) => p.id !== optNotif.id && p.orderId !== orderData.id)]);
+      }
+      void loadNotifications();
+    };
+
+    const handleOrdersUpdatedEvent = () => {
+      void loadNotifications();
+    };
+
+    // Lắng nghe sự kiện khi thủ kho tạo phiếu xuất kho thành công (nhận thông báo cá nhân tức thì)
+    const handleShipmentCreatedEvent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.id) {
+        const optNotif: SystemNotification = {
+          id: `shipment-notif-${detail.id}`,
+          type: 'SHIPMENT',
+          title: 'Tạo phiếu xuất kho thành công',
+          message: `Bạn đã tạo thành công phiếu xuất kho [${detail.id}] cho đơn hàng [${detail.orderCode || detail.orderId}]. Hàng hóa đã được phân bổ và trừ tồn theo chuẩn FEFO.`,
+          timestamp: 'Vừa xong',
+          link: `/inventory/shipments/${detail.id}`,
+          isRead: false,
+          priority: 'high',
+          orderId: detail.orderCode || detail.orderId,
+        };
+        setNotifications((prev) => [optNotif, ...prev.filter((p) => p.id !== optNotif.id)]);
+        try {
+          const savedPersonal: any[] = JSON.parse(
+            localStorage.getItem('loha_personal_notifications') || '[]',
+          );
+          localStorage.setItem(
+            'loha_personal_notifications',
+            JSON.stringify([optNotif, ...savedPersonal.filter((p) => p.id !== optNotif.id)].slice(0, 30)),
+          );
+        } catch {}
+      }
+      void loadNotifications();
+    };
+
+    window.addEventListener('loha_order_created', handleOrderCreatedEvent);
+    window.addEventListener('loha_orders_updated', handleOrdersUpdatedEvent);
+    window.addEventListener('loha_shipment_created', handleShipmentCreatedEvent);
+
+    // Lắng nghe sự kiện khi tạo phiếu thu tiền mới (nhảy chuông tức thì)
+    const handleCollectionCreatedEvent = (e: Event) => {
+      const colData = (e as CustomEvent).detail;
+      if (colData && (colData.code || colData.id)) {
+        const formattedAmount = colData.amount
+          ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(colData.amount)
+          : '';
+        const optNotif: SystemNotification = {
+          id: `col-notif-${colData.id || Date.now()}`,
+          type: 'COLLECTION',
+          title: `Phiếu thu mới [${colData.code}]`,
+          message: `Đã ghi nhận khoản thu ${formattedAmount} từ đại lý "${colData.agencyName || ''}". Đang chờ đối chiếu và duyệt gạch nợ.`,
+          timestamp: 'Vừa xong',
+          link: '/route-collections',
+          isRead: false,
+          priority: 'high',
+        };
+        setNotifications((prev) => [optNotif, ...prev.filter((p) => p.id !== optNotif.id)]);
+      }
+      void loadNotifications();
+    };
+
+    window.addEventListener('loha_collection_created', handleCollectionCreatedEvent);
+
+    // Lắng nghe sự kiện khi kế toán tạo biên bản đối chiếu công nợ (CHỈ hiện thông báo cho ĐÚNG đại lý đó)
+    const handleReconciliationCreatedEvent = (e: Event) => {
+      const report = (e as CustomEvent).detail;
+      if (!report) return;
+
+      const user = tokenStorage.getUser() || getStoredUser();
+      const userRoles = (user?.roles || (user?.role ? [user.role] : [])).map((r) =>
+        String(r).toUpperCase(),
+      );
+      const isAgency = userRoles.includes('AGENCY') || userRoles.includes('CUSTOMER');
+      const userAgencyId = user?.agencyId || user?.customerId || user?.id;
+      const userUsername = user?.username;
+
+      const isTargetAgency =
+        isAgency &&
+        (report.agencyId === userAgencyId ||
+          report.agencyCode === userAgencyId ||
+          report.agencyId === user?.id ||
+          report.agencyCode === userUsername ||
+          Boolean(userUsername && report.agencyCode && userUsername.toLowerCase().includes(String(report.agencyCode).toLowerCase())));
+
+      if (isTargetAgency) {
+        const formattedAmount = report.closingBalance
+          ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(report.closingBalance)
+          : '';
+        const optNotif: SystemNotification = {
+          id: `rec-notif-${report.id || Date.now()}`,
+          type: 'RECONCILIATION',
+          title: `Biên bản đối chiếu công nợ kỳ ${report.period}`,
+          message: `Kế toán đã phát hành biên bản đối chiếu công nợ [${report.code}]. Dư nợ chốt kỳ: ${formattedAmount}. Vui lòng kiểm tra và xác nhận.`,
+          timestamp: 'Vừa xong',
+          link: '/portal/debt',
+          isRead: false,
+          priority: 'high',
+        };
+        setNotifications((prev) => [optNotif, ...prev.filter((p) => p.id !== optNotif.id)]);
+      }
+      void loadNotifications();
+    };
+
+    window.addEventListener('loha_reconciliation_created', handleReconciliationCreatedEvent);
+
+    // Lắng nghe sự kiện khi có phiếu trả hàng mới được lập (nhảy chuông cho các tài khoản quản lý)
+    const handleReturnCreatedEvent = (e: Event) => {
+      const retData = (e as CustomEvent).detail;
+      if (retData && (retData.code || retData.id)) {
+        const user = tokenStorage.getUser() || getStoredUser();
+        const userRoles = (user?.roles || (user?.role ? [user.role] : [])).map((r) =>
+          String(r).toUpperCase(),
+        );
+        const isManager =
+          userRoles.includes('ADMIN') ||
+          userRoles.includes('SALES_MANAGER') ||
+          userRoles.includes('WAREHOUSE_MANAGER') ||
+          userRoles.includes('WH_MANAGER') ||
+          userRoles.includes('WAREHOUSE_KEEPER') ||
+          userRoles.includes('WAREHOUSE') ||
+          userRoles.includes('ACCOUNTANT') ||
+          userRoles.includes('ACCOUNTANT_DEBT');
+
+        if (isManager) {
+          const formattedAmount = retData.totalRefundAmount
+            ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                retData.totalRefundAmount,
+              )
+            : '';
+          const optNotif: SystemNotification = {
+            id: `ret-notif-${retData.id || Date.now()}`,
+            type: 'ORDER',
+            title: `Phiếu trả hàng mới: ${retData.code}`,
+            message: `Đại lý ${retData.agencyName || 'Đại lý'} vừa lập phiếu trả hàng [${retData.code}] cho HĐ ${retData.originalInvoiceId || retData.originalInvoiceCode || ''} (${formattedAmount ? `hoàn tiền: ${formattedAmount}` : ''}). Đang chờ Quản lý kho duyệt.`,
+            timestamp: 'Vừa xong',
+            link: '/accounting/returns',
+            isRead: false,
+            priority: 'high',
+          };
+          setNotifications((prev) => [optNotif, ...prev.filter((p) => p.id !== optNotif.id)]);
+        }
+      }
+      void loadNotifications();
+    };
+
+    window.addEventListener('loha_return_created', handleReturnCreatedEvent);
+
+    // Polling nhẹ mỗi 10 giây để cập nhật chuông realtime
+    const timer = setInterval(() => {
+      void loadNotifications();
+    }, 10000);
+
+    return () => {
+      window.removeEventListener('loha_order_created', handleOrderCreatedEvent);
+      window.removeEventListener('loha_orders_updated', handleOrdersUpdatedEvent);
+      window.removeEventListener('loha_shipment_created', handleShipmentCreatedEvent);
+      window.removeEventListener('loha_collection_created', handleCollectionCreatedEvent);
+      window.removeEventListener('loha_reconciliation_created', handleReconciliationCreatedEvent);
+      window.removeEventListener('loha_return_created', handleReturnCreatedEvent);
+      clearInterval(timer);
+    };
+  }, [loadNotifications]);
+
   // Đánh dấu tất cả là đã đọc
   const handleMarkAllAsRead = () => {
     const updated = notifications.map((n) => ({ ...n, isRead: true }));
     setNotifications(updated);
     saveReadStatus(updated);
+    notificationsService.markAllAsRead().catch(() => {});
   };
 
   // Click vào 1 thông báo
@@ -146,16 +429,26 @@ export const NotificationBell: React.FC = () => {
     const updated = notifications.map((n) => (n.id === item.id ? { ...n, isRead: true } : n));
     setNotifications(updated);
     saveReadStatus(updated);
+    notificationsService.markAsRead(item.id).catch(() => {});
+    if (item.id.startsWith('notif-debt-')) {
+      invoicesService.markNotificationRead(item.id).catch(() => {});
+    }
     setIsOpen(false);
     navigate(item.link);
   };
 
   const getIcon = (type: SystemNotification['type']) => {
     switch (type) {
+      case 'SHIPMENT':
+        return (
+          <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+            <PackageCheck className="w-4 h-4" />
+          </div>
+        );
       case 'STOCK_ALERT':
         return (
-          <div className="p-2 rounded-xl bg-rose-50 text-rose-600 shrink-0">
-            <AlertTriangle className="w-4 h-4" />
+          <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+            <PackageCheck className="w-4 h-4" />
           </div>
         );
       case 'ORDER':
@@ -180,6 +473,18 @@ export const NotificationBell: React.FC = () => {
         return (
           <div className="p-2 rounded-xl bg-blue-50 text-blue-600 shrink-0">
             <CreditCard className="w-4 h-4" />
+          </div>
+        );
+      case 'COLLECTION':
+        return (
+          <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+            <HandCoins className="w-4 h-4" />
+          </div>
+        );
+      case 'RECONCILIATION':
+        return (
+          <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+            <FileText className="w-4 h-4" />
           </div>
         );
       default:

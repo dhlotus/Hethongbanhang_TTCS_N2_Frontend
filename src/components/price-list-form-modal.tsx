@@ -12,11 +12,11 @@ import {
   AlertCircle,
   Search,
   X,
-  ChevronLeft,
-  ChevronRight,
+  Edit2,
 } from 'lucide-react';
 import { CurrencyInput } from './currency-input';
 import { DateInput, formatVietnameseDate } from './date-input';
+import { Pagination } from './pagination';
 import type {
   PriceList,
   PriceListItem,
@@ -92,7 +92,15 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
 
   // Kiểm tra bảng giá đã phát sinh đơn hàng hay chưa
   const hasOrders = Boolean(initialData?.hasOrders);
-  const effectiveReadOnly = isReadOnly || hasOrders;
+
+  // Quản lý chế độ xem chi tiết / chỉnh sửa
+  const [isEditing, setIsEditing] = useState(!isReadOnly);
+
+  useEffect(() => {
+    setIsEditing(!isReadOnly);
+  }, [isReadOnly, isOpen]);
+
+  const effectiveReadOnly = !isEditing || hasOrders;
 
   // Xử lý đóng modal trực tiếp không flicker
   const handleClose = () => {
@@ -414,42 +422,75 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
       </div>
 
       <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-        <button
-          type="button"
-          onClick={handleClose}
-          className="flex-1 sm:flex-initial px-4 py-2.5 sm:py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-        >
-          {effectiveReadOnly ? 'Đóng' : 'Hủy bỏ'}
-        </button>
-
-        {!effectiveReadOnly && (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting || hasPricingErrors || isDateRangeInvalid || items.length === 0}
-            title={
-              isDateRangeInvalid
-                ? dateRangeErrorMessage || undefined
-                : hasPricingErrors
-                  ? `Không thể lưu: Có ${Object.keys(pricingErrors).length} mặt hàng có Giá bán nhỏ hơn Giá sàn`
-                  : items.length === 0
-                    ? 'Bảng giá chưa có sản phẩm nào'
-                    : 'Lưu cấu hình Bảng giá'
-            }
-            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 sm:py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white shadow-xs transition-all cursor-pointer"
-          >
-            {submitting ? (
-              <>
-                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Đang lưu...</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Lưu Bảng giá</span>
-              </>
+        {effectiveReadOnly ? (
+          <>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="flex-1 sm:flex-initial px-4 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+            >
+              Đóng
+            </button>
+            {!hasOrders && (
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-all cursor-pointer"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+                <span>Chỉnh sửa</span>
+              </button>
             )}
-          </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                if (initialData) {
+                  setIsEditing(false);
+                  setName(initialData.name || '');
+                  setCode(initialData.code || '');
+                  setCustomerGroup(initialData.customerGroup || 'AGENT_LEVEL_1');
+                  setStartDate(initialData.startDate || '');
+                  setEndDate(initialData.endDate || '');
+                  setStatus(initialData.status || 'ACTIVE');
+                  setDescription(initialData.description || '');
+                  setItems(
+                    (initialData.items || []).map((it) => ({
+                      ...it,
+                      price: Number(it.price) || 0,
+                      minPrice: Number(it.minPrice) || 0,
+                    }))
+                  );
+                } else {
+                  handleClose();
+                }
+              }}
+              className="flex-1 sm:flex-initial px-4 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+            >
+              {initialData ? 'Hủy chỉnh sửa' : 'Hủy bỏ'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting || hasPricingErrors || isDateRangeInvalid || items.length === 0}
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white shadow-xs transition-all cursor-pointer"
+            >
+              {submitting ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Đang lưu...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Lưu Bảng giá</span>
+                </>
+              )}
+            </button>
+          </>
         )}
       </div>
     </div>
@@ -461,9 +502,9 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
       aria-modal="true"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-200"
     >
-      <div className="relative w-full max-w-4xl bg-white shadow-2xl flex flex-col overflow-hidden max-h-[90vh] rounded-2xl animate-in fade-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-4xl bg-white shadow-2xl flex flex-col overflow-hidden max-h-[90vh] rounded-xl animate-in fade-in zoom-in-95 duration-150">
         {/* Header - Không có icon nút X */}
-        <div className="sticky top-0 z-20 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-t-2xl">
+        <div className="sticky top-0 z-20 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-t-xl">
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/20">
               <FileSpreadsheet className="w-5 h-5 text-blue-600" />
@@ -727,212 +768,178 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
                 </div>
               )}
 
-              {/* Bảng Dòng Sản phẩm */}
-              <div className="rounded-xl border border-slate-200/90 overflow-x-auto shadow-2xs">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-semibold text-[11px] uppercase tracking-wider">
-                      <th className="py-2.5 px-3 w-12 text-center">STT</th>
-                      <th className="py-2.5 px-3 min-w-[220px]">Sản phẩm / SKU</th>
-                      <th className="py-2.5 px-3 w-20 text-center">ĐVT</th>
-                      <th className="py-2.5 px-3 w-40">Giá sàn</th>
-                      <th className="py-2.5 px-3 w-44">Giá bán áp dụng</th>
-                      {!effectiveReadOnly && <th className="py-2.5 px-3 w-12 text-center">Xóa</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    {items.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={effectiveReadOnly ? 5 : 6}
-                          className="py-10 text-center text-slate-400"
-                        >
-                          <FileSpreadsheet className="w-8 h-8 text-slate-300 mx-auto mb-1.5" />
-                          <p className="text-xs font-semibold text-slate-600">
-                            Chưa có sản phẩm nào trong bảng giá
-                          </p>
-                          {!effectiveReadOnly && (
-                            <p className="text-[11px] text-slate-400 mt-0.5">
-                              Bấm &quot;Nạp tất cả SKU&quot; hoặc chọn sản phẩm ở trên để thêm dòng
-                              giá
+              {/* Bảng Dòng Sản phẩm kèm Thanh phân trang nối liền chuẩn Bảng giá cơ sở */}
+              <div className="rounded-xl border border-slate-200/90 bg-white overflow-hidden shadow-2xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-semibold text-[11px] uppercase tracking-wider">
+                        <th className="py-2.5 px-3 w-12 text-center">STT</th>
+                        <th className="py-2.5 px-3 min-w-[220px]">Sản phẩm / SKU</th>
+                        <th className="py-2.5 px-3 w-20 text-center">ĐVT</th>
+                        <th className="py-2.5 px-3 w-40">Giá sàn</th>
+                        <th className="py-2.5 px-3 w-44">Giá bán áp dụng</th>
+                        {!effectiveReadOnly && <th className="py-2.5 px-3 w-12 text-center">Xóa</th>}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {items.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={effectiveReadOnly ? 5 : 6}
+                            className="py-10 text-center text-slate-400"
+                          >
+                            <FileSpreadsheet className="w-8 h-8 text-slate-300 mx-auto mb-1.5" />
+                            <p className="text-xs font-semibold text-slate-600">
+                              Chưa có sản phẩm nào trong bảng giá
                             </p>
-                          )}
-                        </td>
-                      </tr>
-                    ) : filteredItems.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={effectiveReadOnly ? 5 : 6}
-                          className="py-8 text-center text-slate-400"
-                        >
-                          <Search className="w-6 h-6 text-slate-300 mx-auto mb-1.5" />
-                          <p className="text-xs font-semibold text-slate-600">
-                            Không tìm thấy sản phẩm nào khớp với &quot;{itemSearchTerm}&quot;
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setItemSearchTerm('');
-                              setItemPage(1);
-                            }}
-                            className="mt-1.5 text-xs text-blue-600 hover:underline font-medium cursor-pointer"
+                            {!effectiveReadOnly && (
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                Bấm &quot;Nạp tất cả SKU&quot; hoặc chọn sản phẩm ở trên để thêm dòng
+                                giá
+                              </p>
+                            )}
+                          </td>
+                        </tr>
+                      ) : filteredItems.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={effectiveReadOnly ? 5 : 6}
+                            className="py-8 text-center text-slate-400"
                           >
-                            Xóa từ khóa tìm kiếm
-                          </button>
-                        </td>
-                      </tr>
-                    ) : (
-                      paginatedItems.map((item, idx) => {
-                        const errorMsg = pricingErrors[item.id];
-                        const isItemError = Boolean(errorMsg);
-                        const stt = (validItemPage - 1) * itemPageSize + idx + 1;
+                            <Search className="w-6 h-6 text-slate-300 mx-auto mb-1.5" />
+                            <p className="text-xs font-semibold text-slate-600">
+                              Không tìm thấy sản phẩm nào khớp với &quot;{itemSearchTerm}&quot;
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setItemSearchTerm('');
+                                setItemPage(1);
+                              }}
+                              className="mt-1.5 text-xs text-blue-600 hover:underline font-medium cursor-pointer"
+                            >
+                              Xóa từ khóa tìm kiếm
+                            </button>
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedItems.map((item, idx) => {
+                          const errorMsg = pricingErrors[item.id];
+                          const isItemError = Boolean(errorMsg);
+                          const stt = (validItemPage - 1) * itemPageSize + idx + 1;
 
-                        return (
-                          <tr
-                            key={item.id}
-                            className={`hover:bg-slate-50/60 transition-colors ${
-                              isItemError ? 'bg-rose-50/40' : ''
-                            }`}
-                          >
-                            <td className="py-2.5 px-3 text-center text-slate-400 font-mono text-[11px]">
-                              {stt}
-                            </td>
+                          return (
+                            <tr
+                              key={item.id}
+                              className={`hover:bg-slate-50/60 transition-colors ${
+                                isItemError ? 'bg-rose-50/40' : ''
+                              }`}
+                            >
+                              <td className="py-2.5 px-3 text-center text-slate-400 font-mono text-[11px]">
+                                {stt}
+                              </td>
 
-                            <td className="py-2.5 px-3">
-                              <div className="font-semibold text-slate-900 leading-snug">
-                                {item.productName}
-                              </div>
-                              <div className="font-mono text-[11px] text-blue-600">
-                                {item.productCode}
-                              </div>
-                            </td>
+                              <td className="py-2.5 px-3">
+                                <div className="font-semibold text-slate-900 leading-snug">
+                                  {item.productName}
+                                </div>
+                                <div className="font-mono text-[11px] text-blue-600">
+                                  {item.productCode}
+                                </div>
+                              </td>
 
-                            <td className="py-2.5 px-3 text-center text-slate-600 font-medium">
-                              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px]">
-                                {item.baseUnit || 'Cái'}
-                              </span>
-                            </td>
+                              <td className="py-2.5 px-3 text-center text-slate-600 font-medium">
+                                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px]">
+                                  {item.baseUnit || 'Cái'}
+                                </span>
+                              </td>
 
-                            {/* Ô nhập Giá sàn */}
-                            <td className="py-2.5 px-3">
-                              <CurrencyInput
-                                value={item.minPrice}
-                                onChange={(val) => handleUpdateItem(item.id, 'minPrice', val ?? 0)}
-                                disabled={effectiveReadOnly}
-                                placeholder="0"
-                                className="w-full px-2.5 py-1.5 text-xs font-mono font-semibold rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-slate-50"
-                              />
-                            </td>
-
-                            {/* Ô nhập Giá bán + Báo lỗi Realtime */}
-                            <td className="py-2.5 px-3">
-                              <div>
+                              {/* Ô nhập Giá sàn */}
+                              <td className="py-2.5 px-3">
                                 <CurrencyInput
-                                  value={item.price}
-                                  onChange={(val) => handleUpdateItem(item.id, 'price', val ?? 0)}
+                                  value={item.minPrice}
+                                  onChange={(val) => handleUpdateItem(item.id, 'minPrice', val ?? 0)}
                                   disabled={effectiveReadOnly}
                                   placeholder="0"
-                                  className={`w-full px-2.5 py-1.5 text-xs font-mono font-bold rounded-lg border focus:outline-none transition-colors disabled:bg-slate-50 ${
-                                    isItemError
-                                      ? 'border-rose-500 bg-rose-50/70 text-rose-700 ring-2 ring-rose-200/90 focus:ring-rose-300'
-                                      : 'border-slate-200 bg-white text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100'
-                                  }`}
+                                  className="w-full px-2.5 py-1.5 text-xs font-mono font-semibold rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-slate-50"
                                 />
-
-                                {isItemError && (
-                                  <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-rose-600 leading-tight">
-                                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
-                                    <span>
-                                      Giá bán &lt; Giá sàn ({item.minPrice.toLocaleString('vi-VN')}{' '}
-                                      đ)!
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* Nút xóa dòng */}
-                            {!effectiveReadOnly && (
-                              <td className="py-2.5 px-3 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveItem(item.id)}
-                                  className="p-1 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
-                                  title="Xóa dòng sản phẩm này"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
                               </td>
-                            )}
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
 
-              {/* Phân trang cục bộ mặt hàng */}
-              {filteredItems.length > 0 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-3 py-2 bg-slate-50/80 border border-slate-200/90 rounded-xl text-xs text-slate-600">
-                  <div className="flex items-center gap-2">
-                    <span>
-                      Hiển thị <strong>{paginatedItems.length}</strong> trên tổng số{' '}
-                      <strong>{filteredItems.length}</strong> sản phẩm
-                      {itemSearchTerm && ` (lọc từ ${items.length} mặt hàng)`}
-                    </span>
-                  </div>
+                              {/* Ô nhập Giá bán + Báo lỗi Realtime */}
+                              <td className="py-2.5 px-3">
+                                <div>
+                                  <CurrencyInput
+                                    value={item.price}
+                                    onChange={(val) => handleUpdateItem(item.id, 'price', val ?? 0)}
+                                    disabled={effectiveReadOnly}
+                                    placeholder="0"
+                                    className={`w-full px-2.5 py-1.5 text-xs font-mono font-bold rounded-lg border focus:outline-none transition-colors disabled:bg-slate-50 ${
+                                      isItemError
+                                        ? 'border-rose-500 bg-rose-50/70 text-rose-700 ring-2 ring-rose-200/90 focus:ring-rose-300'
+                                        : 'border-slate-200 bg-white text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100'
+                                    }`}
+                                  />
 
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex items-center gap-1 text-[11px]">
-                      <span className="text-slate-500">Số dòng:</span>
-                      <select
-                        value={itemPageSize}
-                        onChange={(e) => {
-                          setItemPageSize(Number(e.target.value));
-                          setItemPage(1);
-                        }}
-                        className="px-1.5 py-0.5 text-xs rounded-md border border-slate-200 bg-white text-slate-700 cursor-pointer focus:outline-none"
-                      >
-                        <option value={5}>5 / trang</option>
-                        <option value={10}>10 / trang</option>
-                        <option value={20}>20 / trang</option>
-                        <option value={50}>50 / trang</option>
-                      </select>
-                    </div>
+                                  {isItemError && (
+                                    <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-rose-600 leading-tight">
+                                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
+                                      <span>
+                                        Giá bán &lt; Giá sàn ({item.minPrice.toLocaleString('vi-VN')}{' '}
+                                        đ)!
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
 
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setItemPage((p) => Math.max(1, p - 1))}
-                        disabled={validItemPage <= 1}
-                        className="p-1 rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                        title="Trang trước"
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="px-2 font-medium text-slate-700 text-xs">
-                        Trang {validItemPage} / {totalItemPages}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setItemPage((p) => Math.min(totalItemPages, p + 1))}
-                        disabled={validItemPage >= totalItemPages}
-                        className="p-1 rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                        title="Trang sau"
-                      >
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
+                              {/* Nút xóa dòng */}
+                              {!effectiveReadOnly && (
+                                <td className="py-2.5 px-3 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveItem(item.id)}
+                                    className="p-1 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
+                                    title="Xóa dòng sản phẩm này"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-              )}
+
+                {/* Phân trang nối liền chân bảng chuẩn Bảng giá cơ sở */}
+                {filteredItems.length > 0 && (
+                  <Pagination
+                    variant="default"
+                    currentPage={validItemPage}
+                    totalPages={totalItemPages}
+                    totalItems={filteredItems.length}
+                    pageSize={itemPageSize}
+                    pageSizeOptions={[5, 10, 20, 50]}
+                    itemLabel="sản phẩm"
+                    showRecordRange={false}
+                    showFirstLast={false}
+                    onPageChange={(newPage) => setItemPage(newPage)}
+                    onPageSizeChange={(newSize) => {
+                      setItemPageSize(newSize);
+                      setItemPage(1);
+                    }}
+                  />
+                )}
+              </div>
             </div>
           </form>
         </div>
 
         {/* Footer cố định - Nút Hủy bỏ là lối thoát duy nhất */}
-        <div className="sticky bottom-0 z-20 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-b-2xl">
+        <div className="sticky bottom-0 z-20 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-b-xl">
           {modalFooter}
         </div>
       </div>

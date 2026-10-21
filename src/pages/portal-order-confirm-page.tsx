@@ -47,6 +47,28 @@ const cleanProductName = (name?: string): string => {
   return name.replace(/\s*\((lon|chai|hộp|gói|thùng|lốc|lon\s*\d*|chai\s*\d*)\)\s*$/i, '').trim();
 };
 
+/** Nhãn hiển thị cho Nhóm/Cấp đại lý */
+const getGroupBadgeMeta = (group?: string) => {
+  switch (group) {
+    case 'AGENT_LEVEL_1':
+      return {
+        label: 'Đại lý Cấp 1',
+        className: 'bg-indigo-50 text-indigo-700 border-indigo-200 ring-1 ring-indigo-500/10',
+      };
+    case 'AGENT_LEVEL_2':
+      return {
+        label: 'Đại lý Cấp 2',
+        className: 'bg-sky-50 text-sky-700 border-sky-200 ring-1 ring-sky-500/10',
+      };
+    case 'RETAIL':
+    default:
+      return {
+        label: 'Đại lý Bán lẻ',
+        className: 'bg-emerald-50 text-emerald-700 border-emerald-200 ring-1 ring-emerald-500/10',
+      };
+  }
+};
+
 /** Cấu trúc một món trong Giỏ hàng của Đại lý */
 export interface CartItem {
   product: Product;
@@ -85,12 +107,17 @@ export const PortalOrderConfirmPage: React.FC = () => {
     const matched = list.find(
       (c) =>
         c.id === user?.id ||
+        (user?.customerId && (c.id === user.customerId || c.code === user.customerId)) ||
+        (user?.customerCode && (c.code === user.customerCode || c.id === user.customerCode)) ||
+        (user?.agencyId && (c.id === user.agencyId || c.code === user.agencyId)) ||
         (user?.email && c.email && user.email.toLowerCase() === c.email.toLowerCase()) ||
         (user?.username && c.code && c.code.toLowerCase() === user.username.toLowerCase()) ||
         (user?.email && c.phone && user.email.includes(c.phone))
     );
-    return matched || list[0] || null;
+    return matched || list.find((c) => c.id === 'cust-dl-0002') || list[0] || null;
   });
+
+  const groupBadge = getGroupBadgeMeta(currentCustomer?.customerGroup || (currentCustomer as unknown as { group?: string })?.group);
 
   // 2.1 Kho phục vụ mặc định của Đại lý (SN: 1 Kho - N Đại lý)
   const [servingWarehouse, setServingWarehouse] = useState<{ warehouseId: string; warehouseName: string; warehouseCode: string } | null>(null);
@@ -214,16 +241,44 @@ export const PortalOrderConfirmPage: React.FC = () => {
 
   // 5. Thông tin giao hàng & Ghi chú
   const [selectedDeliveryPoint, setSelectedDeliveryPoint] = useState<CustomerDeliveryPoint | null>(() => {
-    return currentCustomer?.deliveryPoints?.[0] || null;
+    const points = currentCustomer?.deliveryPoints || [];
+    return points.find((dp) => dp.isDefault) || points[0] || null;
   });
 
   const [customDeliveryAddress, setCustomDeliveryAddress] = useState<string>(() => {
-    try {
-      const saved = sessionStorage.getItem('loha_portal_delivery_address');
-      if (saved) return saved;
-    } catch {}
-    return currentCustomer?.deliveryPoints?.[0]?.address || currentCustomer?.address || '';
+    if (currentCustomer?.id) {
+      try {
+        const saved = sessionStorage.getItem(`loha_portal_delivery_address_${currentCustomer.id}`);
+        if (saved) return saved;
+      } catch {}
+    }
+    const defaultPoint = currentCustomer?.deliveryPoints?.find((dp) => dp.isDefault) || currentCustomer?.deliveryPoints?.[0];
+    return defaultPoint?.address || currentCustomer?.address || '';
   });
+
+  // Đồng bộ điểm giao hàng và địa chỉ khi currentCustomer thay đổi
+  useEffect(() => {
+    if (!currentCustomer) return;
+    const points = currentCustomer.deliveryPoints || [];
+    const isPointBelongs = selectedDeliveryPoint && points.some((dp) => dp.id === selectedDeliveryPoint.id);
+    if (!isPointBelongs) {
+      const defaultPoint = points.find((dp) => dp.isDefault) || points[0] || null;
+      setSelectedDeliveryPoint(defaultPoint);
+
+      let savedAddr = '';
+      try {
+        savedAddr = sessionStorage.getItem(`loha_portal_delivery_address_${currentCustomer.id}`) || '';
+      } catch {}
+
+      if (savedAddr) {
+        setCustomDeliveryAddress(savedAddr);
+      } else if (defaultPoint?.address) {
+        setCustomDeliveryAddress(defaultPoint.address);
+      } else if (currentCustomer.address) {
+        setCustomDeliveryAddress(currentCustomer.address);
+      }
+    }
+  }, [currentCustomer]);
 
   const [deliveryDate, setDeliveryDate] = useState<string>(() => {
     try {
@@ -242,14 +297,16 @@ export const PortalOrderConfirmPage: React.FC = () => {
     return '';
   });
 
-  // Lưu tạm vào sessionStorage để không mất khi reload
+  // Lưu tạm vào sessionStorage theo ID đại lý để không bị lẫn địa chỉ giữa các đại lý
   useEffect(() => {
     try {
-      sessionStorage.setItem('loha_portal_delivery_address', customDeliveryAddress);
+      if (currentCustomer?.id) {
+        sessionStorage.setItem(`loha_portal_delivery_address_${currentCustomer.id}`, customDeliveryAddress);
+      }
       sessionStorage.setItem('loha_portal_delivery_date', deliveryDate);
       sessionStorage.setItem('loha_portal_order_note', orderNote);
     } catch {}
-  }, [customDeliveryAddress, deliveryDate, orderNote]);
+  }, [currentCustomer?.id, customDeliveryAddress, deliveryDate, orderNote]);
 
   const [isSubmittingOrder, setIsSubmittingOrder] = useState<boolean>(false);
   const [submittedOrder, setSubmittedOrder] = useState<Order | null>(null);
@@ -584,16 +641,18 @@ export const PortalOrderConfirmPage: React.FC = () => {
         deliveryDate: String(deliveryDate),
         items,
         lines,
-        deliveryPoint: selectedDeliveryPoint
+        deliveryPoint: (selectedDeliveryPoint &&
+          currentCustomer.deliveryPoints?.some((dp) => dp.id === selectedDeliveryPoint.id) &&
+          selectedDeliveryPoint.address.trim().toLowerCase() === resolvedDeliveryAddress.trim().toLowerCase())
           ? {
               id: selectedDeliveryPoint.id,
               name: selectedDeliveryPoint.name,
               address: resolvedDeliveryAddress,
-              receiverName: selectedDeliveryPoint.receiverName,
-              phone: selectedDeliveryPoint.phone,
+              receiverName: selectedDeliveryPoint.receiverName || currentCustomer.name,
+              phone: selectedDeliveryPoint.phone || currentCustomer.phone,
             }
           : {
-              name: 'Điểm giao hàng',
+              name: 'Điểm giao tự chỉ định',
               address: resolvedDeliveryAddress,
               receiverName: currentCustomer.name,
               phone: currentCustomer.phone,
@@ -615,7 +674,7 @@ export const PortalOrderConfirmPage: React.FC = () => {
       setCart({});
       sessionStorage.removeItem('loha_portal_cart');
       window.dispatchEvent(new Event('loha_portal_cart_updated'));
-      window.dispatchEvent(new Event('loha_order_created'));
+      window.dispatchEvent(new CustomEvent('loha_order_created', { detail: created }));
     } catch (err: unknown) {
       showToast('error', err instanceof Error ? err.message : 'Có lỗi xảy ra khi gửi đơn hàng. Vui lòng thử lại!');
     } finally {
@@ -682,9 +741,14 @@ export const PortalOrderConfirmPage: React.FC = () => {
             <div className="p-4 sm:p-5 rounded-xl bg-slate-50/80 border border-slate-200/70 grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className="text-slate-500 font-medium block mb-1">Tên doanh nghiệp:</span>
-                <strong className="text-slate-900 text-sm sm:text-base font-semibold block">
-                  {currentCustomer?.name}
-                </strong>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <strong className="text-slate-900 text-sm sm:text-base font-semibold">
+                    {currentCustomer?.name}
+                  </strong>
+                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${groupBadge.className}`}>
+                    {groupBadge.label}
+                  </span>
+                </div>
               </div>
               <div>
                 <span className="text-slate-500 font-medium block mb-1">Mã đại lý:</span>
@@ -732,26 +796,6 @@ export const PortalOrderConfirmPage: React.FC = () => {
                 </div>
               </div>
             </div>
-
-            {/* Thanh tiến trình tỷ lệ sử dụng hạn mức */}
-            {cartTotals.creditLimit > 0 && (
-              <div className="space-y-1.5 pt-1">
-                <div className="flex justify-between text-xs text-slate-500">
-                  <span>Tỷ lệ sử dụng hạn mức trước đơn:</span>
-                  <span className="font-bold text-slate-800">
-                    {Math.round((cartTotals.currentDebt / cartTotals.creditLimit) * 100)}%
-                  </span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      cartTotals.currentDebt >= cartTotals.creditLimit ? 'bg-rose-500' : 'bg-indigo-600'
-                    }`}
-                    style={{ width: `${Math.min(100, Math.round((cartTotals.currentDebt / cartTotals.creditLimit) * 100))}%` }}
-                  />
-                </div>
-              </div>
-            )}
           </div>
 
           {/* ── GIAO DIỆN MOBILE: 1 KHUNG CHIA 6 Ô (2 CỘT X 3 HÀNG), GÓC BO TRÒN, KHÔNG CÓ THANH TIẾN TRÌNH ── */}
@@ -843,7 +887,12 @@ export const PortalOrderConfirmPage: React.FC = () => {
                 <select
                   value={selectedDeliveryPoint?.id || ''}
                   onChange={(e) => {
-                    const found = currentCustomer.deliveryPoints?.find((dp) => dp.id === e.target.value);
+                    const pointId = e.target.value;
+                    if (!pointId) {
+                      setSelectedDeliveryPoint(null);
+                      return;
+                    }
+                    const found = currentCustomer.deliveryPoints?.find((dp) => dp.id === pointId);
                     if (found) {
                       setSelectedDeliveryPoint(found);
                       setCustomDeliveryAddress(found.address);
@@ -853,9 +902,10 @@ export const PortalOrderConfirmPage: React.FC = () => {
                 >
                   {currentCustomer.deliveryPoints.map((dp) => (
                     <option key={dp.id} value={dp.id}>
-                      {dp.name} — {dp.address}
+                      {dp.name} — {dp.address} {dp.isDefault ? '(Mặc định)' : ''}
                     </option>
                   ))}
+                  <option value="">Địa chỉ khác / Tự nhập địa chỉ giao hàng</option>
                 </select>
               )}
 
@@ -863,7 +913,13 @@ export const PortalOrderConfirmPage: React.FC = () => {
                 id="confirm-delivery-address"
                 type="text"
                 value={customDeliveryAddress}
-                onChange={(e) => setCustomDeliveryAddress(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCustomDeliveryAddress(val);
+                  if (selectedDeliveryPoint && selectedDeliveryPoint.address.trim().toLowerCase() !== val.trim().toLowerCase()) {
+                    setSelectedDeliveryPoint(null);
+                  }
+                }}
                 placeholder="Nhập chi tiết số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố..."
                 className="w-full text-sm rounded-xl border border-slate-200 bg-white p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
               />
@@ -1074,7 +1130,7 @@ export const PortalOrderConfirmPage: React.FC = () => {
                       <td className="py-3 px-2 text-center whitespace-nowrap">
                         {calc.isFixed ? (
                           <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
-                            -{formatVND(calc.discountAmountPerUnit)}
+                            -{formatVND(calc.discountAmountPerUnit)}{item.unit ? ` / ${item.unit}` : ''}
                           </span>
                         ) : effectiveDiscountPercent > 0 ? (
                           <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
@@ -1269,7 +1325,7 @@ export const PortalOrderConfirmPage: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Tổng thanh toán:</span>
-                <span className="font-mono font-bold text-slate-900">{formatVND(submittedOrder.grandTotal ?? (submittedOrder as any).totalAmount ?? 0)}</span>
+                <span className="font-mono font-bold text-slate-900">{formatVND(submittedOrder.grandTotal ?? submittedOrder.totalAmount ?? submittedOrder.subtotal ?? 0)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Trạng thái:</span>
@@ -1288,10 +1344,10 @@ export const PortalOrderConfirmPage: React.FC = () => {
                 Đặt đơn mới
               </Link>
               <Link
-                to="/portal/tracking"
-                className="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/30"
+                to={`/portal/tracking?orderId=${submittedOrder.id}`}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/30 text-center"
               >
-                Theo dõi tiến độ đơn
+                Xem chi tiết & Theo dõi đơn
               </Link>
             </div>
           </div>
