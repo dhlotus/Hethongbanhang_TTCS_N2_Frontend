@@ -64,7 +64,7 @@ export const TripStatsCards: React.FC<TripStatsCardsProps> = ({
         }`}
       >
         <div className="min-w-0 flex-1">
-          <span className="text-[11px] font-medium text-slate-500 block truncate">Quá hạn ETA</span>
+          <span className="text-[11px] font-medium text-slate-500 block truncate">Quá hạn dự kiến</span>
           <span
             className={`text-base sm:text-lg font-bold font-mono tracking-tight block truncate mt-0.5 ${
               isOverdue ? 'text-rose-600' : 'text-slate-900'

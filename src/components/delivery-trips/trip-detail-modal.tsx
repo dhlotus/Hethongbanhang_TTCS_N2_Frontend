@@ -207,7 +207,7 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
             <div className="flex items-center gap-1.5 min-w-0">
               <AlertTriangle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
               <span className="truncate">
-                Chuyến trễ <strong>{trip.overdueMinutes > 60 ? `${Math.floor(trip.overdueMinutes / 60)}h ${trip.overdueMinutes % 60}p` : `${trip.overdueMinutes}p`}</strong> so với ETA.
+                Chuyến trễ <strong>{trip.overdueMinutes > 60 ? `${Math.floor(trip.overdueMinutes / 60)}h ${trip.overdueMinutes % 60}p` : `${trip.overdueMinutes}p`}</strong> so với dự kiến đến.
               </span>
             </div>
             <a
@@ -265,7 +265,7 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
                   displayTrip.isOverdue && displayTrip.status === 'IN_TRANSIT' ? 'text-rose-600' : 'text-slate-600'
                 }`}
               >
-                ETA: {formatTripDateTime(displayTrip.estimatedCompletionTime)}
+                Dự kiến đến: {formatTripDateTime(displayTrip.estimatedCompletionTime)}
               </p>
             </div>
 

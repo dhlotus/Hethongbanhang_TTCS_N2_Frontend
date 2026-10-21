@@ -130,7 +130,7 @@ export const TripCard: React.FC<TripCardProps> = ({
             Xuất: <span className="font-mono text-slate-700">{formatTripDateTime(trip.departedAt)}</span>
           </div>
           <div className="text-slate-500">
-            ETA:{' '}
+            Dự kiến đến:{' '}
             <span
               className={`font-mono font-medium ${
                 trip.isOverdue && trip.status === 'IN_TRANSIT'

@@ -254,7 +254,7 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-                Thời gian dự kiến chạy (ETA):
+                Thời gian dự kiến đến:
               </label>
               <select
                 value={estimatedHours}

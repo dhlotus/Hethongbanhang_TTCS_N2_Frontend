@@ -38,10 +38,10 @@ export const TripTableView: React.FC<TripTableViewProps> = ({
               <th className="py-2.5 px-3">Mã chuyến / Xe</th>
               <th className="py-2.5 px-3">Tuyến đường & Kho xuất</th>
               <th className="py-2.5 px-3">Tài xế & Liên hệ</th>
-              <th className="py-2.5 px-3">Khởi hành / ETA</th>
+              <th className="py-2.5 px-3">Khởi hành / Dự kiến đến</th>
               <th className="py-2.5 px-3">Tiến độ giao</th>
               <th className="py-2.5 px-3 text-right">Tiền trên đường</th>
-              <th className="py-2.5 px-3 text-center">Trạng thái ETA</th>
+              <th className="py-2.5 px-3 text-center">Trạng thái đến</th>
               <th className="py-2.5 px-3 text-right">Thao tác</th>
             </tr>
           </thead>
@@ -135,7 +135,7 @@ export const TripTableView: React.FC<TripTableViewProps> = ({
                       Xuất: <span className="font-mono text-slate-700">{formatTripDateTime(trip.departedAt)}</span>
                     </div>
                     <div className="text-[11px] mt-0.5">
-                      ETA:{' '}
+                      Dự kiến đến:{' '}
                       <span
                         className={`font-mono font-medium ${
                           trip.isOverdue && trip.status === 'IN_TRANSIT'
