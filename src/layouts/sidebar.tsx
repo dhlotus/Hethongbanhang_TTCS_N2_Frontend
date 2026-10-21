@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { X, ChevronRight, ChevronLeft } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import { getStoredUser } from '../utils/navigation';
 import { tokenStorage } from '../utils/token-storage';
-import { getNavigationItems, type MenuItem } from '../utils/navigation-config';
+import {
+  getGroupedNavigationItems,
+  type NavigationGroup,
+} from '../utils/navigation-config';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -23,10 +26,10 @@ interface SidebarNavContentProps {
 /**
  * Nội dung điều hướng của Sidebar (Dùng chung cho cả Desktop & Mobile Drawer):
  * - Hỗ trợ chế độ thu gọn (isCollapsed) linh hoạt, tiết kiệm không gian
- * - Tự động lọc các mục menu theo Role (RBAC Dynamic Navigation - SN-11)
+ * - Tự động gom nhóm các mục menu với tiêu đề nhỏ gọn bên trên từng phân hệ
  * - Nút bấm đóng/mở dạng mũi tên chỉ vào/ra kèm hiệu ứng hover mượt mà
- * - Tooltip nổi (Floating Tooltip) khi thu gọn giúp nhận diện icon trực quan
- * - Giao diện Clean SaaS theo tiêu chuẩn UI_GUIDELINES.md
+ * - Tooltip nổi (Floating Tooltip) khi thu gọn hiển thị tên chức năng & phân hệ
+ * - Giao diện Clean Enterprise SaaS theo tiêu chuẩn UI_GUIDELINES.md
  */
 const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
   onItemClick,
@@ -37,6 +40,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
   const [currentUser, setCurrentUser] = useState(getStoredUser());
   const [hoveredTooltip, setHoveredTooltip] = useState<{
     name: string;
+    category?: string;
     top: number;
     left: number;
   } | null>(null);
@@ -73,7 +77,29 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
     };
   }, [location.pathname]);
 
-  const menuItems: MenuItem[] = getNavigationItems(currentUser?.roles || currentUser?.role);
+  // Gom nhóm danh mục theo vai trò người dùng (Tất cả vai trò)
+  const menuGroups: NavigationGroup[] = useMemo(() => {
+    return getGroupedNavigationItems(currentUser?.roles || currentUser?.role);
+  }, [currentUser]);
+
+  // Hàm kiểm tra mục menu có đang active hay không
+  const checkIsItemActive = (path: string): boolean => {
+    if (path === '/catalog/products') {
+      return (
+        location.pathname === '/catalog/products' ||
+        location.pathname.startsWith('/catalog/categories')
+      );
+    }
+    if (path === '/inventory/issues') {
+      return (
+        location.pathname === '/inventory/issues' ||
+        location.pathname.startsWith('/inventory/issues/') ||
+        location.pathname.startsWith('/inventory/shipments') ||
+        location.pathname.startsWith('/issues')
+      );
+    }
+    return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
 
   useEffect(() => {
     checkScroll();
@@ -83,7 +109,7 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
       clearTimeout(timer);
       window.removeEventListener('resize', checkScroll);
     };
-  }, [menuItems, isCollapsed]);
+  }, [menuGroups, isCollapsed]);
 
   return (
     <div className="flex h-full flex-col justify-between py-3 pl-3 pr-1.5 sm:py-4 sm:pl-4 sm:pr-2 bg-white select-none">
@@ -172,9 +198,9 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
         </div>
 
         {/* ===================================================================== */}
-        {/* PHẦN 2: DANH MỤC MENU ĐIỀU HƯỚNG THEO VAI TRÒ (DYNAMIC NAVIGATION)    */}
+        {/* PHẦN 2: DANH MỤC MENU GOM NHÓM THEO VAI TRÒ (GROUPED NAVIGATION)       */}
         {/* ===================================================================== */}
-        <div className="relative mt-3 flex-1 flex flex-col min-h-0">
+        <div className="relative mt-2.5 flex-1 flex flex-col min-h-0">
           <div 
             ref={scrollRef}
             onScroll={() => {
@@ -184,101 +210,121 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
             className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden sidebar-scrollbar pr-1 sm:pr-1.5"
           >
             <div onClick={(e) => isCollapsed && e.stopPropagation()}>
-              <nav className="space-y-1 pb-6">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const isItemActive =
-                  item.path === '/catalog/products'
-                    ? location.pathname === '/catalog/products' ||
-                      location.pathname.startsWith('/catalog/categories')
-                    : item.path === '/inventory/issues'
-                    ? location.pathname === '/inventory/issues' ||
-                      location.pathname.startsWith('/inventory/issues/') ||
-                      location.pathname.startsWith('/inventory/shipments') ||
-                      location.pathname.startsWith('/issues')
-                    : location.pathname === item.path ||
-                      location.pathname.startsWith(item.path + '/');
-
-                return (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => {
-                      setHoveredTooltip(null);
-                      onItemClick?.();
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isCollapsed) return;
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      setHoveredTooltip({
-                        name: item.name,
-                        top: rect.top + rect.height / 2,
-                        left: rect.right + 10,
-                      });
-                    }}
-                    onMouseLeave={() => setHoveredTooltip(null)}
-                    className={`group relative flex items-center min-h-[2.5rem] rounded-lg text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1 ${
-                      isCollapsed
-                        ? 'justify-center w-full px-2 py-1'
-                        : 'px-3.5 py-2 w-full'
-                    } ${
-                      isItemActive
-                        ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-bold shadow-2xs'
-                        : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950'
-                    }`}
-                  >
-                    <div
-                      className={`flex items-center min-w-0 ${
-                        isCollapsed ? 'justify-center w-full' : 'w-full'
-                      }`}
-                    >
-                      {/* Thanh định vị Active nhỏ ở bên trái */}
-                      {isItemActive && (
-                        <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[var(--color-primary)]" />
+              <nav className="space-y-3 pb-6">
+                {menuGroups.map((group, groupIndex) => {
+                  return (
+                    <div key={group.category} className="group/section">
+                      {/* Tiêu đề Phân hệ / Nhóm chức năng rõ ràng, dễ phân biệt */}
+                      {!isCollapsed ? (
+                        <div
+                          className={`px-3.5 ${
+                            groupIndex === 0 ? 'pt-1.5' : 'pt-4'
+                          } pb-1.5 flex items-center gap-2`}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)] shrink-0" />
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 select-none shrink-0">
+                            {group.category}
+                          </span>
+                          <div className="h-px flex-1 bg-slate-200/90 min-w-[0.75rem]" />
+                        </div>
+                      ) : (
+                        /* Khi Sidebar thu gọn: Đường phân cách mỏng phân tách các cụm */
+                        groupIndex > 0 && (
+                          <div className="my-2.5 mx-3 border-t border-slate-200/90" aria-hidden="true" />
+                        )
                       )}
 
-                      {/* Icon: Khi collapsed, icon container có padding ngang cân đối h-9 w-9 */}
-                      <div
-                        className={`flex shrink-0 items-center justify-center ${
-                          isCollapsed ? 'h-9 w-9 rounded-lg' : 'h-6 w-6'
-                        }`}
-                      >
-                        <Icon
-                          className={`h-5 w-5 shrink-0 transition-colors duration-150 ${
-                            isItemActive
-                              ? 'text-[var(--color-primary)]'
-                              : 'text-slate-500 group-hover:text-[var(--color-primary)]'
-                          }`}
-                        />
+                      {/* Danh sách các mục menu thuộc nhóm */}
+                      <div className="space-y-1">
+                        {group.items.map((item) => {
+                          const Icon = item.icon;
+                          const isItemActive = checkIsItemActive(item.path);
+
+                          return (
+                            <NavLink
+                              key={item.path}
+                              to={item.path}
+                              onClick={() => {
+                                setHoveredTooltip(null);
+                                onItemClick?.();
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isCollapsed) return;
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setHoveredTooltip({
+                                  name: item.name,
+                                  category: group.category,
+                                  top: rect.top + rect.height / 2,
+                                  left: rect.right + 10,
+                                });
+                              }}
+                              onMouseLeave={() => setHoveredTooltip(null)}
+                              className={`group relative flex items-center min-h-[2.5rem] rounded-lg text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1 ${
+                                isCollapsed
+                                  ? 'justify-center w-full px-2 py-1'
+                                  : 'px-3.5 py-2 w-full'
+                              } ${
+                                isItemActive
+                                  ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-bold shadow-2xs'
+                                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950'
+                              }`}
+                            >
+                              <div
+                                className={`flex items-center min-w-0 ${
+                                  isCollapsed ? 'justify-center w-full' : 'w-full'
+                                }`}
+                              >
+                                {/* Thanh định vị Active nhỏ ở bên trái */}
+                                {isItemActive && (
+                                  <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[var(--color-primary)]" />
+                                )}
+
+                                {/* Icon: Khi collapsed, icon container có padding ngang cân đối h-9 w-9 */}
+                                <div
+                                  className={`flex shrink-0 items-center justify-center ${
+                                    isCollapsed ? 'h-9 w-9 rounded-lg' : 'h-6 w-6'
+                                  }`}
+                                >
+                                  <Icon
+                                    className={`h-5 w-5 shrink-0 transition-colors duration-150 ${
+                                      isItemActive
+                                        ? 'text-[var(--color-primary)]'
+                                        : 'text-slate-500 group-hover:text-[var(--color-primary)]'
+                                    }`}
+                                  />
+                                </div>
+
+                                {/* Tên Menu co giãn mượt mà */}
+                                <span
+                                  className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] tracking-tight ${
+                                    isCollapsed
+                                      ? 'max-w-0 opacity-0 -translate-x-2.5 pointer-events-none'
+                                      : 'max-w-[13.5rem] opacity-100 translate-x-0 ml-3'
+                                  }`}
+                                >
+                                  {item.name}
+                                </span>
+                              </div>
+
+                              {/* Mũi tên bên phải co giãn mượt mà */}
+                              <div
+                                className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] shrink-0 ${
+                                  !isCollapsed && isItemActive
+                                    ? 'max-w-5 opacity-100 ml-1'
+                                    : 'max-w-0 opacity-0 pointer-events-none'
+                                }`}
+                              >
+                                <ChevronRight className="h-4 w-4 text-[var(--color-primary)] shrink-0" />
+                              </div>
+                            </NavLink>
+                          );
+                        })}
                       </div>
-
-                      {/* Tên Menu co giãn mượt mà không bao giờ giật */}
-                      <span
-                        className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] tracking-tight ${
-                          isCollapsed
-                            ? 'max-w-0 opacity-0 -translate-x-2.5 pointer-events-none'
-                            : 'max-w-[13.5rem] opacity-100 translate-x-0 ml-3'
-                        }`}
-                      >
-                        {item.name}
-                      </span>
                     </div>
-
-                    {/* Mũi tên bên phải co giãn mượt mà */}
-                    <div
-                      className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] shrink-0 ${
-                        !isCollapsed && isItemActive
-                          ? 'max-w-5 opacity-100 ml-1'
-                          : 'max-w-0 opacity-0 pointer-events-none'
-                      }`}
-                    >
-                      <ChevronRight className="h-4 w-4 text-[var(--color-primary)] shrink-0" />
-                    </div>
-                  </NavLink>
-                );
-              })}
-            </nav>
-          </div>
+                  );
+                })}
+              </nav>
+            </div>
 
             {/* Vùng khoảng trống bên dưới các icon khi thu gọn: Click để mở rộng navbar */}
             {isCollapsed && onToggleCollapse && (
@@ -320,10 +366,15 @@ const SidebarNavContent: React.FC<SidebarNavContentProps> = ({
           {/* Mũi tên nhỏ tam giác chỉ sang trái */}
           <div className="w-0 h-0 border-y-[5px] border-y-transparent border-r-[6px] border-r-slate-900" />
           {/* Hộp nội dung Tooltip màu tối tương phản cao */}
-          <div className="bg-slate-900/95 backdrop-blur-xs text-white px-3 py-1.5 rounded-lg shadow-xl border border-slate-700/50 whitespace-nowrap">
+          <div className="bg-slate-900/95 backdrop-blur-xs text-white px-3 py-1.5 rounded-lg shadow-xl border border-slate-700/50 whitespace-nowrap flex flex-col gap-0.5">
             <span className="text-xs font-semibold text-slate-100">
               {hoveredTooltip.name}
             </span>
+            {hoveredTooltip.category && (
+              <span className="text-[10px] font-medium text-slate-400">
+                • {hoveredTooltip.category}
+              </span>
+            )}
           </div>
         </div>,
         document.body
