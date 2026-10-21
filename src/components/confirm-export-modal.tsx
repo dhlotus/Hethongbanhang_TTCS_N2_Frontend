@@ -186,11 +186,8 @@ export const ConfirmExportModal: React.FC<ConfirmExportModalProps> = ({
               <Package className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold flex items-center gap-2">
+              <h3 className="text-lg font-bold">
                 Xác nhận Xuất kho & Xử lý Giao thiếu
-                <span className="text-xs font-normal px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                  SN-195
-                </span>
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 Phiếu: <strong className="text-white">{shipment.id}</strong> | Đơn hàng:{' '}
