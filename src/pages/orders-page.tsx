@@ -935,26 +935,13 @@ export const OrdersPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Cụm nút hành động: Làm mới & Tạo đơn hàng (trên màn hình lớn >= xl) */}
+            {/* Cụm nút hành động: Phiếu soạn hàng & Tạo đơn hàng (Bỏ nút Làm mới) */}
             <div className="flex items-center gap-2 shrink-0 self-end xl:self-auto">
-              <button
-                type="button"
-                onClick={() => setRefreshKey((k) => k + 1)}
-                disabled={loading}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-2xs disabled:opacity-50 cursor-pointer"
-                title="Làm mới danh sách đơn hàng"
-              >
-                <RefreshCw
-                  className={`w-3.5 h-3.5 shrink-0 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`}
-                />
-                <span className="hidden sm:inline">Làm mới</span>
-              </button>
-
               {(isWarehouse || isAdmin) && (
                 <button
                   type="button"
                   onClick={() => navigate('/warehouse/picking')}
-                  className="hidden xl:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
                   title="Soạn hàng theo vị trí kho từ đơn đã duyệt"
                 >
                   <PackageCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
@@ -966,7 +953,7 @@ export const OrdersPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/sales/orders/create')}
-                  className="hidden xl:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
                   title="Tạo đơn hàng bán buôn mới"
                 >
                   <Plus className="w-3.5 h-3.5 shrink-0" />
@@ -976,119 +963,77 @@ export const OrdersPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Hàng 2: Bộ lọc (Trạng thái, Khu vực) & Nút Reset + Nút Tạo đơn hàng trên màn hình nhỏ */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-2.5 border-t border-slate-100">
-            <div className="flex flex-wrap items-center gap-2.5 flex-1">
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold shrink-0">
-                <Filter className="w-3.5 h-3.5 text-slate-400" />
-                <span>Bộ lọc:</span>
-              </div>
-
-              {/* 1. Dropdown Trạng thái đơn hàng */}
-              <div className="w-full sm:w-48 md:w-52">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value as OrderStatus | 'ALL');
-                    setPage(1);
-                  }}
-                  aria-label="Lọc theo trạng thái đơn hàng"
-                  className="w-full text-xs font-medium border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer shadow-2xs"
-                >
-                  {STATUS_TABS.map((tab) => (
-                    <option key={tab.key} value={tab.key}>
-                      {tab.key === 'ALL' ? 'Tất cả trạng thái' : tab.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* 2. Dropdown Khu vực */}
-              <div className="w-full sm:w-40 md:w-44">
-                <select
-                  value={selectedRegion}
-                  onChange={(e) => handleRegionChange(e.target.value)}
-                  aria-label="Lọc theo khu vực"
-                  className="w-full text-xs font-medium border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer shadow-2xs"
-                >
-                  <option value="ALL">Tất cả khu vực</option>
-                  <option value="Miền Bắc">Miền Bắc</option>
-                  <option value="Miền Trung">Miền Trung</option>
-                  <option value="Miền Nam">Miền Nam</option>
-                </select>
-              </div>
-
-              {urlCustomerId && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs max-w-xs truncate" title={filterCustomerName ? `Đang lọc theo đại lý: ${filterCustomerName}` : undefined}>
-                  <span className="truncate">Đại lý: {filterCustomerName || urlCustomerId}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = new URLSearchParams(searchParams);
-                      next.delete('customerId');
-                      setSearchParams(next);
-                    }}
-                    className="p-0.5 hover:bg-indigo-100 rounded-full cursor-pointer transition-colors shrink-0"
-                    title="Bỏ lọc theo đại lý"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              )}
-
-              {/* Nút Đặt lại bộ lọc */}
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-lg transition-all shrink-0 cursor-pointer shadow-2xs"
-                  title="Đặt lại toàn bộ tiêu chí lọc"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Xóa lọc</span>
-                </button>
-              )}
+          {/* Hàng 2: Bộ lọc (Trạng thái dạng Select, Khu vực dạng Select & Nút Xóa lọc) */}
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-2.5 border-t border-slate-100">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold shrink-0">
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <span>Bộ lọc:</span>
             </div>
 
-            {/* Nút Tạo đơn hàng xuất hiện ở dòng thứ 2 trên màn hình nhỏ (< xl) */}
-            {(isSalesRep || isSalesManager || isAdmin) && (
-              <div className="xl:hidden shrink-0 pt-1 sm:pt-0">
-                <button
-                  type="button"
-                  onClick={() => navigate('/sales/orders/create')}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
-                  title="Tạo đơn hàng bán buôn mới"
-                >
-                  <Plus className="w-3.5 h-3.5 shrink-0" />
-                  <span>Tạo Đơn hàng</span>
-                </button>
-              </div>
-            )}
-          </div>
+            {/* 1. Dropdown Trạng thái đơn hàng */}
+            <div className="w-full sm:w-48 md:w-52">
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value as OrderStatus | 'ALL');
+                  setPage(1);
+                }}
+                aria-label="Lọc theo trạng thái đơn hàng"
+                className="w-full text-xs sm:text-sm font-medium border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer shadow-2xs"
+              >
+                {STATUS_TABS.map((tab) => (
+                  <option key={tab.key} value={tab.key}>
+                    {tab.key === 'ALL' ? 'Tất cả trạng thái' : tab.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Hàng 3: Thanh Tab nhanh trạng thái đơn hàng (Quick Status Pills) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-2.5 border-t border-slate-100 no-scrollbar">
-            {STATUS_TABS.map((tab) => {
-              const isActive = statusFilter === tab.key;
-              return (
+            {/* 2. Dropdown Khu vực */}
+            <div className="w-full sm:w-40 md:w-44">
+              <select
+                value={selectedRegion}
+                onChange={(e) => handleRegionChange(e.target.value)}
+                aria-label="Lọc theo khu vực"
+                className="w-full text-xs sm:text-sm font-medium border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer shadow-2xs"
+              >
+                <option value="ALL">Tất cả khu vực</option>
+                <option value="Miền Bắc">Miền Bắc</option>
+                <option value="Miền Trung">Miền Trung</option>
+                <option value="Miền Nam">Miền Nam</option>
+              </select>
+            </div>
+
+            {urlCustomerId && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs max-w-xs truncate" title={filterCustomerName ? `Đang lọc theo đại lý: ${filterCustomerName}` : undefined}>
+                <span className="truncate">Đại lý: {filterCustomerName || urlCustomerId}</span>
                 <button
-                  key={tab.key}
                   type="button"
                   onClick={() => {
-                    setStatusFilter(tab.key);
-                    setPage(1);
+                    const next = new URLSearchParams(searchParams);
+                    next.delete('customerId');
+                    setSearchParams(next);
                   }}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all shrink-0 cursor-pointer ${
-                    isActive
-                      ? 'bg-indigo-600 text-white shadow-xs font-bold'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
-                  }`}
+                  className="p-0.5 hover:bg-indigo-100 rounded-full cursor-pointer transition-colors shrink-0"
+                  title="Bỏ lọc theo đại lý"
                 >
-                  {tab.key === 'PACKED' && <PackageCheck className="w-3.5 h-3.5" />}
-                  <span>{tab.label}</span>
+                  <X className="w-3 h-3" />
                 </button>
-              );
-            })}
+              </span>
+            )}
+
+            {/* Nút Đặt lại bộ lọc */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-lg transition-all shrink-0 cursor-pointer shadow-2xs ml-auto sm:ml-0"
+                title="Đặt lại toàn bộ tiêu chí lọc"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Xóa lọc</span>
+              </button>
+            )}
           </div>
         </div>
 
