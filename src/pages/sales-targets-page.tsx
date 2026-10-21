@@ -1,25 +1,26 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   Target,
   Users,
   MapPin,
-  Lock,
-  Unlock,
-  Clock,
-  History,
   Edit3,
   Plus,
-  RefreshCw,
   Search,
   ShieldAlert,
   X,
+  Eye,
+  RefreshCw,
+  ScrollText,
+  ChevronDown,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
+import { Pagination } from '../components/pagination';
 import { salesTargetsService } from '../services/sales-targets.service';
 import type {
   SalesTargetItem,
   SalesTargetsResponse,
-  AdjustmentLogItem,
   SalesTargetType,
 } from '../services/sales-targets.service';
 import { usersService } from '../services/users.service';
@@ -33,25 +34,44 @@ const formatCurrency = (val: number): string => {
 };
 
 export const SalesTargetsPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const user = getStoredUser();
   const roles = user?.roles || [];
   const isManager = roles.some(
     (r: string) => r === 'ADMIN' || r === 'SALES_MANAGER' || r === 'BUSINESS_MANAGER',
   );
 
-  // Kỳ tháng hiện tại YYYY-MM
+  // Kỳ tháng mặc định YYYY-MM
   const now = new Date();
-  const currentPeriodStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const defaultPeriodStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-  const [period, setPeriod] = useState<string>(currentPeriodStr);
-  const [targetTypeFilter, setTargetTypeFilter] = useState<'ALL' | 'EMPLOYEE' | 'REGION'>('ALL');
-  const [searchTerm, setSearchTerm] = useState<string>('');
+  // 1. Khôi phục trạng thái từ URL Query Parameters
+  const initialTab = searchParams.get('tab') === 'create' && isManager ? 'create' : 'list';
+  const initialPeriod = searchParams.get('period') || defaultPeriodStr;
+  const rawType = searchParams.get('type') || searchParams.get('targetType') || 'ALL';
+  const initialType: 'ALL' | 'EMPLOYEE' | 'REGION' =
+    rawType === 'EMPLOYEE' || rawType === 'REGION' ? rawType : 'ALL';
+  const initialSearch = (searchParams.get('search') || searchParams.get('q') || '').trim();
+  const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const initialLimit = Math.max(5, Math.min(100, parseInt(searchParams.get('limit') || '10', 10) || 10));
+
+  // Quản lý Tab: 'list' (Tiến độ chỉ tiêu) | 'create' (Giao chỉ tiêu mới dạng tab)
+  const [activeTab, setActiveTab] = useState<'list' | 'create'>(initialTab);
+
+  const [period, setPeriod] = useState<string>(initialPeriod);
+  const [targetTypeFilter, setTargetTypeFilter] = useState<'ALL' | 'EMPLOYEE' | 'REGION'>(initialType);
+  const [searchTerm, setSearchTerm] = useState<string>(initialSearch);
+  const [page, setPage] = useState<number>(initialPage);
+  const [limit, setLimit] = useState<number>(initialLimit);
 
   const [data, setData] = useState<SalesTargetsResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [lastUpdated, setLastUpdated] = useState<string>('');
 
-  // Modal Đặt / Sửa chỉ tiêu
+  // Dropdown Thao tác dạng portal (Nhóm lại thành 1 nút, không vỡ layout)
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [dropdownCoords, setDropdownCoords] = useState<{ top: number; left: number } | null>(null);
+
+  // Modal Sửa chỉ tiêu
   const [editModalOpen, setEditModalOpen] = useState<boolean>(false);
   const [editingTarget, setEditingTarget] = useState<SalesTargetItem | null>(null);
   const [inputAmount, setInputAmount] = useState<number>(0);
@@ -59,26 +79,19 @@ export const SalesTargetsPage: React.FC = () => {
   const [inputReason, setInputReason] = useState<string>('');
   const [saving, setSaving] = useState<boolean>(false);
 
-  // Modal Tạo mới chỉ tiêu (chỉ dành cho Quản lý)
-  const [createModalOpen, setCreateModalOpen] = useState<boolean>(false);
-  const [newPeriod, setNewPeriod] = useState<string>(currentPeriodStr);
+  // Form Giao chỉ tiêu mới dạng Tab
+  const [newPeriod, setNewPeriod] = useState<string>(defaultPeriodStr);
   const [newTargetType, setNewTargetType] = useState<SalesTargetType>('EMPLOYEE');
   const [newTargetId, setNewTargetId] = useState<string>('');
   const [newTargetName, setNewTargetName] = useState<string>('');
-  const [newTargetAmount, setNewTargetAmount] = useState<number>(0);
+  const [newTargetAmount, setNewTargetAmount] = useState<number>(100000000);
   const [newTargetNote, setNewTargetNote] = useState<string>('');
 
-  // Modal Lịch sử điều chỉnh (Audit logs)
-  const [logModalOpen, setLogModalOpen] = useState<boolean>(false);
-  const [selectedTargetLogs, setSelectedTargetLogs] = useState<AdjustmentLogItem[]>([]);
-  const [selectedTargetForLogs, setSelectedTargetForLogs] = useState<SalesTargetItem | null>(null);
-  const [loadingLogs, setLoadingLogs] = useState<boolean>(false);
-
-  // Danh sách nhân viên kinh doanh thực từ API (SN-215 - không hardcode)
+  // Danh sách nhân viên kinh doanh thực từ API
   const [employeeOptions, setEmployeeOptions] = useState<{ id: string; name: string }[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState<boolean>(false);
 
-  // Danh sách khu vực — enum cố định theo cấu trúc vùng miền hệ thống
+  // Danh sách khu vực cố định theo chuẩn hệ thống
   const regionOptions = [
     { id: 'Miền Nam', name: 'Khu vực Miền Nam' },
     { id: 'Miền Bắc', name: 'Khu vực Miền Bắc' },
@@ -86,7 +99,86 @@ export const SalesTargetsPage: React.FC = () => {
     { id: 'Miền Tây', name: 'Khu vực Miền Tây' },
   ];
 
-  // Fetch nhân viên kinh doanh thực tế từ /users?role=SALES_REP khi modal tạo mở
+  // Hàm cập nhật URL Search Parameters mượt mà
+  const updateUrlParams = useCallback(
+    (params: {
+      tab?: 'list' | 'create';
+      period?: string;
+      type?: 'ALL' | 'EMPLOYEE' | 'REGION';
+      search?: string;
+      page?: number;
+      limit?: number;
+    }) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (params.tab !== undefined) {
+            if (params.tab === 'create') {
+              next.set('tab', 'create');
+            } else {
+              next.delete('tab');
+            }
+          }
+          if (params.period !== undefined) {
+            next.set('period', params.period);
+          }
+          if (params.type !== undefined) {
+            if (params.type === 'ALL') {
+              next.delete('type');
+              next.delete('targetType');
+            } else {
+              next.set('type', params.type);
+            }
+          }
+          if (params.search !== undefined) {
+            if (params.search.trim()) {
+              next.set('search', params.search.trim());
+            } else {
+              next.delete('search');
+              next.delete('q');
+            }
+          }
+          if (params.page !== undefined) {
+            if (params.page <= 1) {
+              next.delete('page');
+            } else {
+              next.set('page', String(params.page));
+            }
+          }
+          if (params.limit !== undefined) {
+            if (params.limit === 10) {
+              next.delete('limit');
+            } else {
+              next.set('limit', String(params.limit));
+            }
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  // Đóng dropdown thao tác khi click ra ngoài hoặc cuộn trang
+  useEffect(() => {
+    const handleCloseDropdown = () => {
+      setOpenDropdownId(null);
+      setDropdownCoords(null);
+    };
+
+    window.addEventListener('click', handleCloseDropdown);
+    window.addEventListener('scroll', handleCloseDropdown, true);
+    window.addEventListener('resize', handleCloseDropdown);
+
+    return () => {
+      window.removeEventListener('click', handleCloseDropdown);
+      window.removeEventListener('scroll', handleCloseDropdown, true);
+      window.removeEventListener('resize', handleCloseDropdown);
+    };
+  }, []);
+
+  // Fetch danh sách nhân viên kinh doanh cho form
   useEffect(() => {
     if (!isManager) return;
     setLoadingEmployees(true);
@@ -99,73 +191,86 @@ export const SalesTargetsPage: React.FC = () => {
         }));
         if (list.length > 0) {
           setEmployeeOptions(list);
+          if (!newTargetId) {
+            setNewTargetId(list[0].id);
+            setNewTargetName(list[0].name);
+          }
         } else {
-          // Fallback seed khi chưa có SALES_REP trong DB
-          setEmployeeOptions([
+          const fallback = [
             { id: 'usr-sale-01', name: 'Trần Văn Long' },
             { id: 'usr-sales-002', name: 'Phạm Minh Hùng' },
             { id: 'usr-sale-02', name: 'Lê Thị Hoa' },
             { id: 'usr-sale-03', name: 'Phạm Minh Tuấn' },
-          ]);
+          ];
+          setEmployeeOptions(fallback);
+          if (!newTargetId) {
+            setNewTargetId(fallback[0].id);
+            setNewTargetName(fallback[0].name);
+          }
         }
       })
       .catch(() => {
-        // Fallback seed khi API lỗi
-        setEmployeeOptions([
+        const fallback = [
           { id: 'usr-sale-01', name: 'Trần Văn Long' },
           { id: 'usr-sales-002', name: 'Phạm Minh Hùng' },
           { id: 'usr-sale-02', name: 'Lê Thị Hoa' },
           { id: 'usr-sale-03', name: 'Phạm Minh Tuấn' },
-        ]);
+        ];
+        setEmployeeOptions(fallback);
+        if (!newTargetId) {
+          setNewTargetId(fallback[0].id);
+          setNewTargetName(fallback[0].name);
+        }
       })
       .finally(() => setLoadingEmployees(false));
   }, [isManager]);
 
-  const loadData = useCallback(async (showLoading = true) => {
-    try {
-      if (showLoading) setLoading(true);
-      const res = await salesTargetsService.getSalesTargets({
-        period,
-        targetType: targetTypeFilter !== 'ALL' ? targetTypeFilter : undefined,
-        search: searchTerm.trim() || undefined,
-      });
-      setData(res);
-      setLastUpdated(res.lastUpdated || new Date().toISOString());
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Lỗi tải chỉ tiêu doanh số';
-      showToast('error', msg);
-    } finally {
-      if (showLoading) setLoading(false);
+  // Tải dữ liệu từ Backend thật kèm phân trang và tìm kiếm
+  const loadData = useCallback(
+    async (showLoading = true) => {
+      try {
+        if (showLoading) setLoading(true);
+        const res = await salesTargetsService.getSalesTargets({
+          period,
+          targetType: targetTypeFilter !== 'ALL' ? targetTypeFilter : undefined,
+          search: searchTerm.trim() || undefined,
+          page,
+          limit,
+        });
+        setData(res);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Lỗi tải chỉ tiêu doanh số';
+        showToast('error', msg);
+      } finally {
+        if (showLoading) setLoading(false);
+      }
+    },
+    [period, targetTypeFilter, searchTerm, page, limit],
+  );
+
+  // Debounce gọi backend khi gõ ô tìm kiếm
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
     }
-  }, [period, targetTypeFilter, searchTerm]);
+    searchTimeoutRef.current = setTimeout(() => {
+      setPage(1);
+      updateUrlParams({ search: val, page: 1 });
+    }, 350);
+  };
 
   useEffect(() => {
     loadData(true);
   }, [loadData]);
 
-  // Đồng bộ tiến độ ngay lập tức theo sự kiện và polling dự phòng (SN-215)
+  // Đồng bộ thời gian thực theo sự kiện phát sinh giao dịch
   useEffect(() => {
-    // 1. Polling dự phòng 10 giây một lần (cho các thiết bị/trình duyệt khác nhau)
-    const interval = setInterval(() => {
-      loadData(false);
-    }, 10000);
-
-    // 2. Tự động đồng bộ khi quay lại tab trình duyệt
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') {
-        loadData(false);
-      }
-    };
-    document.addEventListener('visibilitychange', onVisible);
-
-    // 3. Đồng bộ ngay lập tức trong cùng tab khi phát sinh giao dịch hoặc duyệt đơn
-    const onSyncEvent = () => {
-      loadData(false);
-    };
+    const onSyncEvent = () => loadData(false);
     window.addEventListener('loha_orders_updated', onSyncEvent);
     window.addEventListener('loha_sales_target_sync', onSyncEvent);
 
-    // 4. Đồng bộ ngay lập tức giữa hai phiên / hai tab khác nhau qua Storage Event
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'loha_orders_updated_sync' || e.key === 'loha_sales_target_sync') {
         loadData(false);
@@ -173,26 +278,51 @@ export const SalesTargetsPage: React.FC = () => {
     };
     window.addEventListener('storage', onStorage);
 
-    // 5. Đồng bộ cực nhanh qua BroadcastChannel giữa các tab (<5ms latency)
     let broadcast: BroadcastChannel | null = null;
     try {
       broadcast = new BroadcastChannel('loha_sales_sync');
-      broadcast.onmessage = () => {
-        loadData(false);
-      };
+      broadcast.onmessage = () => loadData(false);
     } catch {}
 
     return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('loha_orders_updated', onSyncEvent);
       window.removeEventListener('loha_sales_target_sync', onSyncEvent);
       window.removeEventListener('storage', onStorage);
-      if (broadcast) {
-        broadcast.close();
-      }
+      if (broadcast) broadcast.close();
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     };
   }, [loadData]);
+
+  // Bật/tắt dropdown thao tác tại từng dòng (Đảm bảo toạ độ an toàn, không tràn khỏi màn hình)
+  const handleToggleDropdown = (e: React.MouseEvent, item: SalesTargetItem) => {
+    e.stopPropagation();
+    if (openDropdownId === item.id) {
+      setOpenDropdownId(null);
+      setDropdownCoords(null);
+    } else {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const menuWidth = 148;
+      const menuHeight = 88;
+
+      // Đảm bảo không bị tràn mép phải màn hình
+      let left = rect.right - menuWidth;
+      if (left + menuWidth > window.innerWidth - 12) {
+        left = window.innerWidth - menuWidth - 12;
+      }
+      if (left < 12) {
+        left = 12;
+      }
+
+      // Đảm bảo không bị tràn đáy màn hình
+      let top = rect.bottom + 4;
+      if (top + menuHeight > window.innerHeight - 8) {
+        top = Math.max(8, rect.top - menuHeight - 4);
+      }
+
+      setOpenDropdownId(item.id);
+      setDropdownCoords({ top, left });
+    }
+  };
 
   // Mở modal sửa chỉ tiêu
   const handleOpenEdit = (item: SalesTargetItem) => {
@@ -203,7 +333,7 @@ export const SalesTargetsPage: React.FC = () => {
     setEditModalOpen(true);
   };
 
-  // Xác nhận lưu cập nhật
+  // Xác nhận lưu cập nhật chỉ tiêu
   const handleSaveUpdate = async () => {
     if (!editingTarget) return;
 
@@ -228,7 +358,6 @@ export const SalesTargetsPage: React.FC = () => {
       setEditModalOpen(false);
       loadData(false);
 
-      // Phát sự kiện đồng bộ ngay lập tức tới tất cả các tab khác
       try {
         localStorage.setItem('loha_sales_target_sync', Date.now().toString());
         window.dispatchEvent(new CustomEvent('loha_sales_target_sync'));
@@ -244,19 +373,22 @@ export const SalesTargetsPage: React.FC = () => {
     }
   };
 
-  // Mở modal tạo mới
-  const handleOpenCreate = () => {
+  // Chuyển sang Tab Giao chỉ tiêu mới
+  const handleGoToCreateTab = () => {
     setNewPeriod(period);
     setNewTargetType('EMPLOYEE');
-    setNewTargetId(employeeOptions[0].id);
-    setNewTargetName(employeeOptions[0].name);
+    if (employeeOptions.length > 0) {
+      setNewTargetId(employeeOptions[0].id);
+      setNewTargetName(employeeOptions[0].name);
+    }
     setNewTargetAmount(100000000);
     setNewTargetNote('');
-    setCreateModalOpen(true);
+    setActiveTab('create');
+    updateUrlParams({ tab: 'create' });
   };
 
-  // Xác nhận tạo mới
-  const handleSaveCreate = async () => {
+  // Xác nhận giao chỉ tiêu mới từ Tab
+  const handleSaveCreateTab = async () => {
     if (!newTargetId || !newTargetName) {
       showToast('error', 'Vui lòng chọn đối tượng giao chỉ tiêu');
       return;
@@ -277,10 +409,10 @@ export const SalesTargetsPage: React.FC = () => {
         note: newTargetNote.trim() || undefined,
       });
       showToast('success', 'Đã đặt chỉ tiêu mới thành công');
-      setCreateModalOpen(false);
+      setActiveTab('list');
+      updateUrlParams({ tab: 'list' });
       loadData(false);
 
-      // Phát sự kiện đồng bộ ngay lập tức tới tất cả các tab khác
       try {
         localStorage.setItem('loha_sales_target_sync', Date.now().toString());
         window.dispatchEvent(new CustomEvent('loha_sales_target_sync'));
@@ -296,534 +428,693 @@ export const SalesTargetsPage: React.FC = () => {
     }
   };
 
-  // Mở modal xem lịch sử nhật ký điều chỉnh
-  const handleOpenLogs = async (item: SalesTargetItem) => {
-    setSelectedTargetForLogs(item);
-    setLogModalOpen(true);
-    setLoadingLogs(true);
-    try {
-      const logs = await salesTargetsService.getAdjustmentLogs(item.id);
-      setSelectedTargetLogs(logs);
-    } catch {
-      setSelectedTargetLogs([]);
-    } finally {
-      setLoadingLogs(false);
-    }
-  };
-
   const summary = data?.summary;
   const items = data?.items || [];
+  const total = data?.total || items.length;
+  const totalPages = data?.totalPages || 1;
 
   return (
-    <div className="space-y-5 sm:space-y-6">
-      {/* ── HEADER & TOOLBAR ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 pb-1">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Target className="h-6 w-6 text-indigo-600 shrink-0" />
-            <span>Chỉ tiêu doanh số & Tiến độ thực tế</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {isManager
-              ? 'Thiết lập mục tiêu kinh doanh theo tháng cho từng nhân viên và khu vực thị trường'
-              : 'Theo dõi tiến độ đạt mục tiêu doanh số cá nhân theo thời gian thực'}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Badge Trạng thái kỳ */}
-          <div
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${
-              summary?.isPeriodLocked
-                ? 'bg-amber-50 text-amber-800 border-amber-200'
-                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+    <div className="space-y-4 sm:space-y-5 w-full">
+      {/* ── THANH TAB CHUYỂN ĐỔI DUY NHẤT (LUÔN HIỂN THỊ, KHÔNG CÓ NÚT LẶP Ở BÊN PHẢI) ── */}
+      <div className="pb-1 border-b border-slate-200/80">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl w-fit">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('list');
+              updateUrlParams({ tab: 'list' });
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
+              activeTab === 'list'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            {summary?.isPeriodLocked ? (
-              <>
-                <Lock className="h-3.5 w-3.5 text-amber-600" />
-                <span>Kỳ đã khóa (chỉnh sửa cần lý do)</span>
-              </>
-            ) : (
-              <>
-                <Unlock className="h-3.5 w-3.5 text-emerald-600" />
-                <span>Kỳ đang diễn ra</span>
-              </>
-            )}
-          </div>
+            <Target className="h-4 w-4 text-indigo-600" />
+            <span>Tiến độ chỉ tiêu</span>
+          </button>
 
-          {/* Nút đặt chỉ tiêu mới (Chỉ quản lý) */}
           {isManager && (
             <button
               type="button"
-              onClick={handleOpenCreate}
-              className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3.5 py-2 text-xs sm:text-sm font-semibold shadow-xs transition-colors"
+              onClick={handleGoToCreateTab}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                activeTab === 'create'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4 text-indigo-600" />
               <span>Giao chỉ tiêu mới</span>
             </button>
           )}
-
-          {/* Nút Refresh */}
-          <button
-            type="button"
-            onClick={() => loadData(true)}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
-            title="Làm mới số liệu"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
-            <span className="hidden sm:inline">Làm mới</span>
-          </button>
         </div>
       </div>
 
-      {/* ── BỘ LỌC THÁNG & PHẠM VI (Quản lý) ── */}
-      {isManager && (
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            {/* Lọc kỳ tháng */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-500 shrink-0">Kỳ tháng:</span>
-              <input
-                type="month"
-                value={period}
-                onChange={(e) => setPeriod(e.target.value)}
-                className="text-xs sm:text-sm rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none"
-              />
+      {/* ── NỘI DUNG TAB KÈM ANIMATION CHUYỂN ĐỔI MƯỢT MÀ ── */}
+      {activeTab === 'create' ? (
+        <div
+          key="tab-create"
+          className="animate-in fade-in-50 slide-in-from-bottom-2 duration-300 ease-out space-y-5 w-full"
+        >
+          {/* Form Giao chỉ tiêu mới dạng Tab (Bố cục chuẩn Enterprise SaaS) */}
+          <div className="max-w-2xl bg-white rounded-xl border border-slate-200/80 p-5 sm:p-7 shadow-xs space-y-5">
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Thiết lập mục tiêu kinh doanh theo tháng</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Phân bổ chỉ tiêu doanh thu thực tế cho nhân viên kinh doanh hoặc khu vực thị trường
+                </p>
+              </div>
+              <div className="text-xs text-slate-500 font-semibold bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/60 shrink-0">
+                Kỳ tháng: <strong className="text-slate-800">{newPeriod}</strong>
+              </div>
             </div>
 
-            {/* Phân loại phạm vi (Tất cả / Nhân viên / Khu vực) */}
-            <div className="flex items-center gap-1.5 border border-slate-200 rounded-lg p-1 bg-slate-50">
-              {(
-                [
-                  { key: 'ALL', label: 'Tất cả' },
-                  { key: 'EMPLOYEE', label: 'Cá nhân nhân viên' },
-                  { key: 'REGION', label: 'Khu vực thị trường' },
-                ] as const
-              ).map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setTargetTypeFilter(tab.key)}
-                  className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
-                    targetTypeFilter === tab.key
-                      ? 'bg-white text-indigo-700 shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
+            <div className="space-y-4 text-xs sm:text-sm">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Kỳ áp dụng (Tháng) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="month"
+                  value={newPeriod}
+                  onChange={(e) => setNewPeriod(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none bg-white cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Phạm vi chỉ tiêu <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={newTargetType}
+                  onChange={(e) => {
+                    const t = e.target.value as SalesTargetType;
+                    setNewTargetType(t);
+                    if (t === 'EMPLOYEE' && employeeOptions.length > 0) {
+                      setNewTargetId(employeeOptions[0].id);
+                      setNewTargetName(employeeOptions[0].name);
+                    } else if (regionOptions.length > 0) {
+                      setNewTargetId(regionOptions[0].id);
+                      setNewTargetName(regionOptions[0].name);
+                    }
+                  }}
+                  className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none bg-white cursor-pointer font-medium"
                 >
-                  {tab.label}
-                </button>
-              ))}
+                  <option value="EMPLOYEE">Cá nhân nhân viên kinh doanh</option>
+                  <option value="REGION">Khu vực thị trường</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  {newTargetType === 'EMPLOYEE' ? 'Chọn nhân viên kinh doanh' : 'Chọn khu vực thị trường'}{' '}
+                  <span className="text-rose-500">*</span>
+                </label>
+                {newTargetType === 'EMPLOYEE' ? (
+                  <select
+                    value={newTargetId}
+                    onChange={(e) => {
+                      const emp = employeeOptions.find((o) => o.id === e.target.value);
+                      if (emp) {
+                        setNewTargetId(emp.id);
+                        setNewTargetName(emp.name);
+                      }
+                    }}
+                    disabled={loadingEmployees}
+                    className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none bg-white cursor-pointer font-medium disabled:bg-slate-50"
+                  >
+                    <option value="">
+                      {loadingEmployees ? 'Đang tải danh sách...' : '-- Chọn nhân viên --'}
+                    </option>
+                    {employeeOptions.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    value={newTargetId}
+                    onChange={(e) => {
+                      const reg = regionOptions.find((o) => o.id === e.target.value);
+                      if (reg) {
+                        setNewTargetId(reg.id);
+                        setNewTargetName(reg.name);
+                      }
+                    }}
+                    className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none bg-white cursor-pointer font-medium"
+                  >
+                    {regionOptions.map((reg) => (
+                      <option key={reg.id} value={reg.id}>
+                        {reg.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Mức chỉ tiêu (VNĐ) <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={
+                      newTargetAmount > 0
+                        ? newTargetAmount.toLocaleString('vi-VN')
+                        : newTargetAmount === 0
+                        ? '0'
+                        : ''
+                    }
+                    onChange={(e) => {
+                      const cleanDigits = e.target.value.replace(/\D/g, '');
+                      setNewTargetAmount(cleanDigits ? Number(cleanDigits) : 0);
+                    }}
+                    placeholder="0"
+                    className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-sm font-bold text-slate-900 focus:border-indigo-500 focus:outline-none pr-14"
+                  />
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                    VNĐ
+                  </span>
+                </div>
+                {newTargetAmount > 0 && (
+                  <p className="text-xs text-indigo-600 font-medium mt-1">
+                    Số tiền: {formatCurrency(newTargetAmount)}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">Ghi chú kế hoạch</label>
+                <textarea
+                  rows={3}
+                  value={newTargetNote}
+                  onChange={(e) => setNewTargetNote(e.target.value)}
+                  placeholder="Nhập ghi chú kế hoạch kinh doanh hoặc lưu ý thực hiện..."
+                  className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none"
+                />
+              </div>
             </div>
 
-            {/* Ô tìm kiếm tên đối tượng */}
-            <div className="relative flex-1 min-w-[180px]">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Tìm nhân viên hoặc khu vực..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs sm:text-sm rounded-lg border border-slate-200 focus:border-indigo-500 focus:outline-none"
-              />
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('list');
+                  updateUrlParams({ tab: 'list' });
+                }}
+                className="px-4 py-2 rounded-lg border border-slate-200 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveCreateTab}
+                disabled={saving}
+                className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer"
+              >
+                {saving ? 'Đang lưu...' : 'Giao chỉ tiêu'}
+              </button>
             </div>
           </div>
         </div>
-      )}
+      ) : (
+        /* ========================================================================= */
+        /* 2. KHI Ở TAB "TIẾN ĐỘ CHỈ TIÊU" (DANH SÁCH & BẢNG SỐ LIỆU)               */
+        /* ========================================================================= */
+        <div
+          key="tab-list"
+          className="animate-in fade-in-50 slide-in-from-bottom-2 duration-300 ease-out space-y-4 sm:space-y-5 w-full"
+        >
 
-      {/* ── THẺ TỔNG HỢP TIẾN ĐỘ KHÔNG CỘNG TRÙNG (SN-215) ── */}
-      {isManager && summary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Cụm 1: Chỉ tiêu Cá nhân Nhân viên */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-                  <Users className="h-5 w-5" />
+          {/* ── BỘ LỌC ĐỒNG BỘ QUERY PARAMETER: TÌM KIẾM BÊN TRÁI + SELECT PHẠM VI + KỲ THÁNG ── */}
+          {isManager && (
+            <div className="bg-white rounded-xl border border-slate-200/80 p-3 sm:p-4 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3">
+                {/* 1. Ô tìm kiếm nằm BÊN TRÁI */}
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm nhân viên hoặc khu vực..."
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="w-full pl-8.5 pr-3 py-1.5 text-xs sm:text-sm rounded-lg border border-slate-200/80 bg-white focus:border-indigo-500 focus:outline-none placeholder:text-slate-400"
+                  />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">Tổng hợp Chỉ tiêu Nhân viên</h3>
-                  <p className="text-xs text-slate-500">Phạm vi: Toàn bộ nhân viên kinh doanh</p>
-                </div>
-              </div>
-              {summary.employeeCompletionRate !== null && (
-                <span
-                  className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                    summary.employeeCompletionRate >= 100
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : summary.employeeCompletionRate >= 80
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-amber-100 text-amber-800'
-                  }`}
-                >
-                  Đạt {summary.employeeCompletionRate}%
-                </span>
-              )}
-            </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
-              <div>
-                <div className="text-xs text-slate-500">Mục tiêu giao:</div>
-                <div className="text-base sm:text-lg font-bold text-slate-900 tabular-nums">
-                  {formatCurrency(summary.totalEmployeeTarget)}
+                {/* 2. Select chọn phạm vi (Cá nhân / Khu vực) tiết kiệm diện tích */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <select
+                    value={targetTypeFilter}
+                    onChange={(e) => {
+                      const val = e.target.value as 'ALL' | 'EMPLOYEE' | 'REGION';
+                      setTargetTypeFilter(val);
+                      setPage(1);
+                      updateUrlParams({ type: val, page: 1 });
+                    }}
+                    className="h-9 px-3 text-xs sm:text-sm rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:border-indigo-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL">Tất cả phạm vi</option>
+                    <option value="EMPLOYEE">Cá nhân nhân viên</option>
+                    <option value="REGION">Khu vực thị trường</option>
+                  </select>
                 </div>
-              </div>
-              <div>
-                <div className="text-xs text-slate-500">Doanh số thực tế:</div>
-                <div className="text-base sm:text-lg font-bold text-blue-700 tabular-nums">
-                  {formatCurrency(summary.totalEmployeeActual)}
-                </div>
-              </div>
-            </div>
 
-            {/* Progress bar */}
-            <div className="mt-3 w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  (summary.employeeCompletionRate || 0) >= 100
-                    ? 'bg-emerald-500'
-                    : 'bg-blue-600'
-                }`}
-                style={{ width: `${Math.min(summary.employeeCompletionRate || 0, 100)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Cụm 2: Chỉ tiêu Khu vực Thị trường */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-                  <MapPin className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">Tổng hợp Chỉ tiêu Khu vực</h3>
-                  <p className="text-xs text-slate-500">Phạm vi: Phân bổ theo 4 cụm địa bàn</p>
-                </div>
-              </div>
-              {summary.regionCompletionRate !== null && (
-                <span
-                  className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                    summary.regionCompletionRate >= 100
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : summary.regionCompletionRate >= 80
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-amber-100 text-amber-800'
-                  }`}
-                >
-                  Đạt {summary.regionCompletionRate}%
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
-              <div>
-                <div className="text-xs text-slate-500">Mục tiêu giao:</div>
-                <div className="text-base sm:text-lg font-bold text-slate-900 tabular-nums">
-                  {formatCurrency(summary.totalRegionTarget)}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs text-slate-500">Doanh số thực tế:</div>
-                <div className="text-base sm:text-lg font-bold text-emerald-700 tabular-nums">
-                  {formatCurrency(summary.totalRegionActual)}
+                {/* 3. Lọc kỳ tháng */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs font-semibold text-slate-500 shrink-0">Kỳ tháng:</span>
+                  <input
+                    type="month"
+                    value={period}
+                    onChange={(e) => {
+                      setPeriod(e.target.value);
+                      setPage(1);
+                      updateUrlParams({ period: e.target.value, page: 1 });
+                    }}
+                    className="h-9 text-xs sm:text-sm rounded-lg border border-slate-200 px-2.5 py-1.5 font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none bg-white cursor-pointer"
+                  />
                 </div>
               </div>
             </div>
+          )}
 
-            {/* Progress bar */}
-            <div className="mt-3 w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  (summary.regionCompletionRate || 0) >= 100
-                    ? 'bg-emerald-500'
-                    : 'bg-emerald-600'
-                }`}
-                style={{ width: `${Math.min(summary.regionCompletionRate || 0, 100)}%` }}
-              />
+          {/* ── 2 THẺ TỔNG HỢP GỌN GÀNG, BỎ WRAP TEXT BÊN DƯỚI ĐỂ TRÁNH VỠ GIAO DIỆN ── */}
+          {isManager && summary && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+              {/* Card 1: Tổng hợp Chỉ tiêu Nhân viên */}
+              <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                      <Users className="h-4 w-4" />
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-900 whitespace-nowrap">Chỉ tiêu Cá nhân Nhân viên</h3>
+                  </div>
+                  {summary.employeeCompletionRate !== null && (
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${
+                        summary.employeeCompletionRate >= 100
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : summary.employeeCompletionRate >= 80
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      Đạt {summary.employeeCompletionRate}%
+                    </span>
+                  )}
+                </div>
+
+                {/* Dãy số liệu 1 dòng gọn gàng, không wrap text thừa */}
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                  <div className="min-w-0">
+                    <span className="text-xs text-slate-500 whitespace-nowrap block">Mục tiêu giao:</span>
+                    <span className="text-base sm:text-lg font-bold text-slate-900 tabular-nums whitespace-nowrap truncate block">
+                      {formatCurrency(summary.totalEmployeeTarget)}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs text-slate-500 whitespace-nowrap block">Thực tế đạt:</span>
+                    <span className="text-base sm:text-lg font-bold text-blue-700 tabular-nums whitespace-nowrap truncate block">
+                      {formatCurrency(summary.totalEmployeeActual)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      (summary.employeeCompletionRate || 0) >= 100 ? 'bg-emerald-500' : 'bg-blue-600'
+                    }`}
+                    style={{ width: `${Math.min(summary.employeeCompletionRate || 0, 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Card 2: Tổng hợp Chỉ tiêu Khu vực */}
+              <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+                      <MapPin className="h-4 w-4" />
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-900 whitespace-nowrap">Chỉ tiêu Khu vực Thị trường</h3>
+                  </div>
+                  {summary.regionCompletionRate !== null && (
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${
+                        summary.regionCompletionRate >= 100
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : summary.regionCompletionRate >= 80
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      Đạt {summary.regionCompletionRate}%
+                    </span>
+                  )}
+                </div>
+
+                {/* Dãy số liệu 1 dòng gọn gàng, không wrap text thừa */}
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                  <div className="min-w-0">
+                    <span className="text-xs text-slate-500 whitespace-nowrap block">Mục tiêu giao:</span>
+                    <span className="text-base sm:text-lg font-bold text-slate-900 tabular-nums whitespace-nowrap truncate block">
+                      {formatCurrency(summary.totalRegionTarget)}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs text-slate-500 whitespace-nowrap block">Thực tế đạt:</span>
+                    <span className="text-base sm:text-lg font-bold text-emerald-700 tabular-nums whitespace-nowrap truncate block">
+                      {formatCurrency(summary.totalRegionActual)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      (summary.regionCompletionRate || 0) >= 100 ? 'bg-emerald-500' : 'bg-emerald-600'
+                    }`}
+                    style={{ width: `${Math.min(summary.regionCompletionRate || 0, 100)}%` }}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* ── DANH SÁCH CHỈ TIÊU & TIẾN ĐỘ ── */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
-          <div className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
-            <span>Chi tiết tiến độ từng đối tượng</span>
-            <span className="text-xs font-normal text-slate-400">({items.length} bản ghi)</span>
-          </div>
-          <div className="text-xs text-slate-400 flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5" />
-            <span>Đồng bộ: {lastUpdated ? new Date(lastUpdated).toLocaleTimeString('vi-VN') : '—'}</span>
-          </div>
-        </div>
-
-        {items.length > 0 ? (
-          <div>
-            {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left text-xs sm:text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50/70 text-slate-600 font-semibold">
-                    <th className="py-3 px-4">Đối tượng</th>
-                    <th className="py-3 px-4">Phạm vi</th>
-                    <th className="py-3 px-4 text-right">Chỉ tiêu (VNĐ)</th>
-                    <th className="py-3 px-4 text-right">Doanh số thực tế</th>
-                    <th className="py-3 px-4 text-center">Tỷ lệ hoàn thành</th>
-                    <th className="py-3 px-4 text-right">Chênh lệch</th>
-                    <th className="py-3 px-4 text-center">Trạng thái</th>
-                    {isManager && <th className="py-3 px-4 text-center">Thao tác</th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {items.map((item) => {
-                    const hasTarget = item.targetAmount > 0;
-                    return (
-                      <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3.5 px-4 font-semibold text-slate-900">
-                          <div className="flex items-center gap-2">
-                            {item.targetType === 'EMPLOYEE' ? (
-                              <Users className="h-4 w-4 text-blue-500 shrink-0" />
-                            ) : (
-                              <MapPin className="h-4 w-4 text-emerald-500 shrink-0" />
-                            )}
-                            <div>
-                              <div>{item.targetName}</div>
-                              {item.note && <div className="text-[11px] text-slate-400 font-normal">{item.note}</div>}
-                            </div>
-                          </div>
+          {/* ── BẢNG DỮ LIỆU ĐỒNG NHẤT STYLE NHẬT KÝ HỆ THỐNG - NÚT THAO TÁC GỌN GÀNG KHÔNG VỠ ── */}
+          <div className="w-full space-y-3">
+            {/* 1. Bảng Desktop (>= 640px) */}
+            <div className="hidden sm:block rounded-xl bg-white border border-slate-200/80 shadow-xs overflow-hidden w-full">
+              <div className="overflow-x-auto w-full">
+                <table className="w-full min-w-[780px] table-fixed border-collapse">
+                  <colgroup>
+                    <col className="w-[24%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[18%]" />
+                    <col className="w-[18%]" />
+                    <col className="w-[11%]" />
+                    <col className="w-[17%]" />
+                  </colgroup>
+                  <thead>
+                    <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 py-3.5 text-left whitespace-nowrap">Đối tượng</th>
+                      <th className="px-3 py-3.5 text-center whitespace-nowrap">Phạm vi</th>
+                      <th className="px-4 py-3.5 text-right whitespace-nowrap">Chỉ tiêu (VNĐ)</th>
+                      <th className="px-4 py-3.5 text-right whitespace-nowrap">Thực hiện (VNĐ)</th>
+                      <th className="px-3 py-3.5 text-center whitespace-nowrap">% Đạt</th>
+                      <th className="px-4 py-3.5 text-center whitespace-nowrap">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-sm">
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} className="py-14 text-center text-slate-400">
+                          <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-[var(--color-primary)]" />
+                          <span className="font-medium text-sm text-slate-600">Đang tải chỉ tiêu doanh số...</span>
                         </td>
-                        <td className="py-3.5 px-4">
-                          <span
-                            className={`inline-flex px-2 py-0.5 rounded text-[11px] font-semibold ${
-                              item.targetType === 'EMPLOYEE'
-                                ? 'bg-blue-50 text-blue-700'
-                                : 'bg-emerald-50 text-emerald-700'
-                            }`}
-                          >
-                            {item.targetType === 'EMPLOYEE' ? 'Cá nhân' : 'Khu vực'}
-                          </span>
+                      </tr>
+                    ) : items.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-14 text-center text-slate-400">
+                          <ScrollText className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                          <p className="text-sm text-slate-400 font-normal">Không tìm thấy bản ghi chỉ tiêu nào</p>
                         </td>
-                        <td className="py-3.5 px-4 text-right font-bold text-slate-900 tabular-nums">
-                          {hasTarget ? (
-                            formatCurrency(item.targetAmount)
-                          ) : (
-                            <span className="text-slate-400 font-normal">Chưa giao</span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-bold text-indigo-700 tabular-nums">
-                          {formatCurrency(item.actualAmount)}
-                          <div className="text-[11px] text-slate-400 font-normal">{item.ordersCount} đơn hàng</div>
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          {hasTarget && item.completionRate !== null ? (
-                            <div className="inline-flex flex-col items-center">
+                      </tr>
+                    ) : (
+                      items.map((item) => {
+                        const hasTarget = item.targetAmount > 0;
+                        return (
+                          <tr key={item.id} className="hover:bg-slate-50/70 transition-colors group">
+                            {/* Cột 1: Đối tượng */}
+                            <td className="px-4 py-3.5 text-left whitespace-nowrap">
+                              <div className="flex items-center gap-2.5">
+                                {item.targetType === 'EMPLOYEE' ? (
+                                  <Users className="h-4 w-4 text-blue-600 shrink-0" />
+                                ) : (
+                                  <MapPin className="h-4 w-4 text-emerald-600 shrink-0" />
+                                )}
+                                <span className="font-semibold text-slate-900 truncate" title={item.targetName}>
+                                  {item.targetName}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Cột 2: Phạm vi */}
+                            <td className="px-3 py-3.5 text-center whitespace-nowrap">
                               <span
-                                className={`text-xs font-bold tabular-nums px-2 py-0.5 rounded-full ${
-                                  item.completionRate >= 100
-                                    ? 'bg-emerald-100 text-emerald-800'
-                                    : item.completionRate >= 80
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : 'bg-amber-100 text-amber-800'
+                                className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                  item.targetType === 'EMPLOYEE'
+                                    ? 'bg-blue-50 text-blue-700 border border-blue-200/60'
+                                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
                                 }`}
                               >
-                                {item.completionRate}%
+                                {item.targetType === 'EMPLOYEE' ? 'Cá nhân' : 'Khu vực'}
                               </span>
-                              <div className="w-20 bg-slate-100 h-1.5 rounded-full mt-1.5 overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full ${
-                                    item.completionRate >= 100 ? 'bg-emerald-500' : 'bg-blue-600'
+                            </td>
+
+                            {/* Cột 3: Chỉ tiêu (VNĐ) */}
+                            <td className="px-4 py-3.5 text-right whitespace-nowrap font-bold text-slate-900 tabular-nums">
+                              {hasTarget ? (
+                                formatCurrency(item.targetAmount)
+                              ) : (
+                                <span className="text-slate-400 font-normal">Chưa giao</span>
+                              )}
+                            </td>
+
+                            {/* Cột 4: Thực hiện (VNĐ) */}
+                            <td className="px-4 py-3.5 text-right whitespace-nowrap font-bold text-indigo-700 tabular-nums">
+                              {formatCurrency(item.actualAmount)}
+                            </td>
+
+                            {/* Cột 5: % Đạt */}
+                            <td className="px-3 py-3.5 text-center whitespace-nowrap">
+                              {hasTarget && item.completionRate !== null ? (
+                                <span
+                                  className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold tabular-nums ${
+                                    item.completionRate >= 100
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                                      : item.completionRate >= 80
+                                      ? 'bg-blue-50 text-blue-700 border border-blue-200/60'
+                                      : 'bg-amber-50 text-amber-800 border border-amber-200/60'
                                   }`}
-                                  style={{ width: `${Math.min(item.completionRate, 100)}%` }}
-                                />
-                              </div>
-                            </div>
+                                >
+                                  {item.completionRate}%
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-xs">—</span>
+                              )}
+                            </td>
+
+                            {/* Cột 6: Thao tác (Nhóm thành 1 nút Thao tác duy nhất, rộng rãi không bị tràn) */}
+                            <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={(e) => handleToggleDropdown(e, item)}
+                                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 hover:text-indigo-600 text-xs font-semibold shadow-2xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                              >
+                                <span>Thao tác</span>
+                                <ChevronDown className="h-3.5 w-3.5 text-slate-400 group-hover:text-indigo-600 transition-transform" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Phân trang Backend gắn chân bảng desktop */}
+              {total > 0 && (
+                <Pagination
+                  variant="default"
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={total}
+                  pageSize={limit}
+                  pageSizeOptions={[10, 20, 50]}
+                  itemLabel="chỉ tiêu"
+                  showRecordRange={false}
+                  showFirstLast={false}
+                  onPageChange={(newPage) => {
+                    setPage(newPage);
+                    updateUrlParams({ page: newPage });
+                  }}
+                  onPageSizeChange={(newLimit) => {
+                    setLimit(newLimit);
+                    setPage(1);
+                    updateUrlParams({ limit: newLimit, page: 1 });
+                  }}
+                />
+              )}
+            </div>
+
+            {/* 2. Giao diện Thẻ Mobile (< 640px) */}
+            <div className="sm:hidden space-y-2.5 w-full">
+              {loading ? (
+                <div className="rounded-xl bg-white border border-slate-200/80 p-8 text-center text-slate-400">
+                  <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-[var(--color-primary)]" />
+                  <span className="font-medium text-xs">Đang tải chỉ tiêu...</span>
+                </div>
+              ) : items.length === 0 ? (
+                <div className="rounded-xl bg-white border border-slate-200/80 p-8 text-center text-slate-400">
+                  <ScrollText className="h-7 w-7 mx-auto mb-2 text-slate-300" />
+                  <p className="text-xs text-slate-400 font-normal">Không tìm thấy bản ghi nào</p>
+                </div>
+              ) : (
+                items.map((item) => {
+                  const hasTarget = item.targetAmount > 0;
+                  return (
+                    <div
+                      key={item.id}
+                      className="rounded-xl bg-white border border-slate-200/80 p-3.5 shadow-xs space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {item.targetType === 'EMPLOYEE' ? (
+                            <Users className="h-4 w-4 text-blue-600 shrink-0" />
                           ) : (
-                            <span className="text-slate-400 text-xs">—</span>
+                            <MapPin className="h-4 w-4 text-emerald-600 shrink-0" />
                           )}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-semibold tabular-nums">
-                          {hasTarget ? (
-                            item.isExceeded ? (
-                              <span className="text-emerald-600">
-                                +{formatCurrency(item.shortageOrExcess)} (Vượt)
-                              </span>
-                            ) : (
-                              <span className="text-rose-600">
-                                -{formatCurrency(Math.abs(item.shortageOrExcess))} (Thiếu)
-                              </span>
-                            )
+                          <span className="font-bold text-slate-900 text-sm truncate">{item.targetName}</span>
+                        </div>
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded text-[11px] font-semibold shrink-0 ${
+                            item.targetType === 'EMPLOYEE'
+                              ? 'bg-blue-50 text-blue-700'
+                              : 'bg-emerald-50 text-emerald-700'
+                          }`}
+                        >
+                          {item.targetType === 'EMPLOYEE' ? 'Cá nhân' : 'Khu vực'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-lg text-xs">
+                        <div>
+                          <div className="text-slate-400 text-[11px]">Chỉ tiêu giao:</div>
+                          <div className="font-bold text-slate-900 tabular-nums">
+                            {hasTarget ? formatCurrency(item.targetAmount) : 'Chưa giao'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-slate-400 text-[11px]">Thực tế đạt:</div>
+                          <div className="font-bold text-indigo-700 tabular-nums">
+                            {formatCurrency(item.actualAmount)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500">Tiến độ:</span>
+                          {hasTarget && item.completionRate !== null ? (
+                            <span className="font-bold text-indigo-700">{item.completionRate}%</span>
                           ) : (
                             <span className="text-slate-400">—</span>
                           )}
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          {item.isLocked ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                              <Lock className="h-3 w-3" />
-                              <span>Đã khóa</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                              <Unlock className="h-3 w-3" />
-                              <span>Mở</span>
-                            </span>
-                          )}
-                        </td>
-                        {isManager && (
-                          <td className="py-3.5 px-4 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEdit(item)}
-                                className="text-indigo-600 hover:text-indigo-800 font-semibold inline-flex items-center gap-1"
-                                title="Chỉnh sửa chỉ tiêu"
-                              >
-                                <Edit3 className="h-3.5 w-3.5" />
-                                <span>Sửa</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenLogs(item)}
-                                className="text-slate-500 hover:text-slate-700 font-semibold inline-flex items-center gap-1"
-                                title="Xem lịch sử điều chỉnh"
-                              >
-                                <History className="h-3.5 w-3.5" />
-                                <span>Nhật ký</span>
-                              </button>
-                            </div>
-                          </td>
-                        )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Cards View (Tối ưu màn hình hẹp 320px - 768px) */}
-            <div className="md:hidden divide-y divide-slate-100">
-              {items.map((item) => {
-                const hasTarget = item.targetAmount > 0;
-                return (
-                  <div key={item.id} className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        {item.targetType === 'EMPLOYEE' ? (
-                          <Users className="h-4 w-4 text-blue-500 shrink-0" />
-                        ) : (
-                          <MapPin className="h-4 w-4 text-emerald-500 shrink-0" />
-                        )}
-                        <div>
-                          <div className="font-bold text-slate-900 text-sm">{item.targetName}</div>
-                          <div className="text-[11px] text-slate-400">
-                            {item.targetType === 'EMPLOYEE' ? 'Chỉ tiêu Cá nhân' : 'Chỉ tiêu Khu vực'}
-                            {item.note && ` • ${item.note}`}
-                          </div>
                         </div>
-                      </div>
 
-                      {item.isLocked ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 shrink-0">
-                          <Lock className="h-3 w-3" />
-                          <span>Đã khóa</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
-                          <Unlock className="h-3 w-3" />
-                          <span>Mở</span>
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-lg text-xs">
-                      <div>
-                        <div className="text-slate-400 text-[11px]">Mục tiêu giao:</div>
-                        <div className="font-bold text-slate-900 tabular-nums">
-                          {hasTarget ? formatCurrency(item.targetAmount) : 'Chưa giao'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-slate-400 text-[11px]">Doanh số thực hiện:</div>
-                        <div className="font-bold text-indigo-700 tabular-nums">
-                          {formatCurrency(item.actualAmount)}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Progress & Chênh lệch */}
-                    {hasTarget && (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500">Tỷ lệ hoàn thành:</span>
-                          <span
-                            className={`font-bold ${
-                              (item.completionRate || 0) >= 100
-                                ? 'text-emerald-600'
-                                : 'text-blue-600'
-                            }`}
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to={`/sales/targets/${item.id}`}
+                            className="text-xs font-semibold text-[var(--color-primary)] hover:underline inline-flex items-center gap-1"
                           >
-                            {item.completionRate}%
-                          </span>
-                        </div>
-                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${
-                              (item.completionRate || 0) >= 100 ? 'bg-emerald-500' : 'bg-blue-600'
-                            }`}
-                            style={{ width: `${Math.min(item.completionRate || 0, 100)}%` }}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between text-[11px] pt-1">
-                          <span className="text-slate-400">{item.ordersCount} đơn phát sinh</span>
-                          {item.isExceeded ? (
-                            <span className="text-emerald-600 font-semibold">
-                              Vượt {formatCurrency(item.shortageOrExcess)}
-                            </span>
-                          ) : (
-                            <span className="text-rose-600 font-semibold">
-                              Còn thiếu {formatCurrency(Math.abs(item.shortageOrExcess))}
-                            </span>
+                            <Eye className="h-3 w-3" />
+                            <span>Chi tiết</span>
+                          </Link>
+                          {isManager && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(item)}
+                              className="text-xs font-semibold text-indigo-600 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <Edit3 className="h-3 w-3" />
+                              <span>Sửa</span>
+                            </button>
                           )}
                         </div>
                       </div>
-                    )}
+                    </div>
+                  );
+                })
+              )}
 
-                    {isManager && (
-                      <div className="flex items-center justify-end gap-3 pt-1 border-t border-slate-100">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenLogs(item)}
-                          className="text-slate-500 hover:text-slate-700 text-xs font-semibold flex items-center gap-1 py-1"
-                        >
-                          <History className="h-3.5 w-3.5" />
-                          <span>Nhật ký</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(item)}
-                          className="text-indigo-600 hover:text-indigo-800 text-xs font-semibold flex items-center gap-1 py-1"
-                        >
-                          <Edit3 className="h-3.5 w-3.5" />
-                          <span>Chỉnh sửa</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {/* Phân trang Backend mobile */}
+              {total > 0 && (
+                <Pagination
+                  variant="default"
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={total}
+                  pageSize={limit}
+                  pageSizeOptions={[10, 20, 50]}
+                  itemLabel="chỉ tiêu"
+                  showRecordRange={false}
+                  showFirstLast={false}
+                  onPageChange={(newPage) => {
+                    setPage(newPage);
+                    updateUrlParams({ page: newPage });
+                  }}
+                  onPageSizeChange={(newLimit) => {
+                    setLimit(newLimit);
+                    setPage(1);
+                    updateUrlParams({ limit: newLimit, page: 1 });
+                  }}
+                />
+              )}
             </div>
           </div>
-        ) : (
-          <div className="text-center py-10 text-sm text-slate-500">
-            Không tìm thấy bản ghi chỉ tiêu nào phù hợp với điều kiện lọc.
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* ── MODAL SỬA CHỈ TIÊU (Bắt buộc lý do nếu kỳ đã khóa - SN-215) ── */}
+      {/* ========================================================================= */}
+      {/* 3. MENU THAO TÁC PORTAL (KHÔNG BỊ OVERFLOW CỦA BẢNG CHE KHUẤT)           */}
+      {/* ========================================================================= */}
+      {openDropdownId && dropdownCoords && createPortal(
+        <div
+          style={{ top: `${dropdownCoords.top}px`, left: `${dropdownCoords.left}px` }}
+          className="fixed z-[9999] w-[148px] rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 animate-in fade-in-0 zoom-in-95 duration-100"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Link
+            to={`/sales/targets/${openDropdownId}`}
+            onClick={() => setOpenDropdownId(null)}
+            className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+          >
+            <Eye className="h-3.5 w-3.5 text-slate-400 group-hover:text-indigo-600" />
+            <span>Xem chi tiết</span>
+          </Link>
+          {isManager && (
+            <button
+              type="button"
+              onClick={() => {
+                const target = items.find((t) => t.id === openDropdownId);
+                setOpenDropdownId(null);
+                if (target) handleOpenEdit(target);
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors cursor-pointer text-left"
+            >
+              <Edit3 className="h-3.5 w-3.5 text-slate-400" />
+              <span>Chỉnh sửa</span>
+            </button>
+          )}
+        </div>,
+        document.body,
+      )}
+
+      {/* ========================================================================= */}
+      {/* 4. MODAL SỬA CHỈ TIÊU (Bắt buộc lý do nếu kỳ đã khóa)                     */}
+      {/* ========================================================================= */}
       {editModalOpen && editingTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
@@ -834,13 +1125,12 @@ export const SalesTargetsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setEditModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Thông tin đối tượng */}
             <div className="bg-slate-50 p-3 rounded-xl space-y-1 text-xs">
               <div>
                 <span className="text-slate-500">Kỳ áp dụng:</span>{' '}
@@ -862,7 +1152,6 @@ export const SalesTargetsPage: React.FC = () => {
               )}
             </div>
 
-            {/* Form sửa */}
             <div className="space-y-3 text-xs sm:text-sm">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Mức chỉ tiêu mới (VNĐ) *</label>
@@ -895,7 +1184,6 @@ export const SalesTargetsPage: React.FC = () => {
                 />
               </div>
 
-              {/* Ô nhập lý do bắt buộc khi kỳ bị khóa */}
               {editingTarget.isLocked && (
                 <div>
                   <label className="block font-semibold text-slate-900 mb-1">
@@ -905,7 +1193,7 @@ export const SalesTargetsPage: React.FC = () => {
                     rows={3}
                     value={inputReason}
                     onChange={(e) => setInputReason(e.target.value)}
-                    placeholder="Nhập lý do thay đổi chỉ tiêu đã khóa (VD: Điều chỉnh theo Quyết định số...)"
+                    placeholder="Nhập lý do thay đổi chỉ tiêu đã khóa..."
                     className="w-full rounded-lg border border-amber-300 px-3 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
@@ -916,7 +1204,7 @@ export const SalesTargetsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setEditModalOpen(false)}
-                className="px-4 py-2 rounded-lg border border-slate-200 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="px-4 py-2 rounded-lg border border-slate-200 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
               >
                 Hủy bỏ
               </button>
@@ -924,226 +1212,9 @@ export const SalesTargetsPage: React.FC = () => {
                 type="button"
                 onClick={handleSaveUpdate}
                 disabled={saving}
-                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold shadow-xs transition-colors"
+                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer"
               >
                 {saving ? 'Đang lưu...' : 'Lưu điều chỉnh'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── MODAL TẠO MỚI CHỈ TIÊU (SN-215) ── */}
-      {createModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-base text-slate-900">
-                Giao chỉ tiêu doanh số mới
-              </h3>
-              <button
-                type="button"
-                onClick={() => setCreateModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs sm:text-sm">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Kỳ áp dụng (Tháng) *</label>
-                <input
-                  type="month"
-                  value={newPeriod}
-                  onChange={(e) => setNewPeriod(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Phạm vi chỉ tiêu *</label>
-                <select
-                  value={newTargetType}
-                  onChange={(e) => {
-                    const t = e.target.value as SalesTargetType;
-                    setNewTargetType(t);
-                    if (t === 'EMPLOYEE') {
-                      setNewTargetId(employeeOptions[0].id);
-                      setNewTargetName(employeeOptions[0].name);
-                    } else {
-                      setNewTargetId(regionOptions[0].id);
-                      setNewTargetName(regionOptions[0].name);
-                    }
-                  }}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none"
-                >
-                  <option value="EMPLOYEE">Cá nhân nhân viên kinh doanh</option>
-                  <option value="REGION">Khu vực thị trường</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  {newTargetType === 'EMPLOYEE' ? 'Chọn nhân viên *' : 'Chọn khu vực *'}
-                </label>
-                {newTargetType === 'EMPLOYEE' ? (
-                  <select
-                    value={newTargetId}
-                    onChange={(e) => {
-                      const emp = employeeOptions.find((o) => o.id === e.target.value);
-                      if (emp) {
-                        setNewTargetId(emp.id);
-                        setNewTargetName(emp.name);
-                      }
-                    }}
-                    disabled={loadingEmployees}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
-                  >
-                    <option value="">
-                      {loadingEmployees ? 'Đang tải danh sách nhân viên...' : '-- Chọn nhân viên --'}
-                    </option>
-                    {employeeOptions.map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <select
-                    value={newTargetId}
-                    onChange={(e) => {
-                      const reg = regionOptions.find((o) => o.id === e.target.value);
-                      if (reg) {
-                        setNewTargetId(reg.id);
-                        setNewTargetName(reg.name);
-                      }
-                    }}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none"
-                  >
-                    {regionOptions.map((reg) => (
-                      <option key={reg.id} value={reg.id}>
-                        {reg.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Mức chỉ tiêu (VNĐ) *</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={newTargetAmount > 0 ? newTargetAmount.toLocaleString('vi-VN') : (newTargetAmount === 0 ? '0' : '')}
-                    onChange={(e) => {
-                      const cleanDigits = e.target.value.replace(/\D/g, '');
-                      setNewTargetAmount(cleanDigits ? Number(cleanDigits) : 0);
-                    }}
-                    placeholder="0"
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-900 focus:border-indigo-500 focus:outline-none pr-12"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">
-                    VNĐ
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Ghi chú</label>
-                <input
-                  type="text"
-                  value={newTargetNote}
-                  onChange={(e) => setNewTargetNote(e.target.value)}
-                  placeholder="Ghi chú mục tiêu..."
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setCreateModalOpen(false)}
-                className="px-4 py-2 rounded-lg border border-slate-200 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveCreate}
-                disabled={saving}
-                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold shadow-xs transition-colors"
-              >
-                {saving ? 'Đang lưu...' : 'Tạo chỉ tiêu'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── DRAWER / MODAL XEM NHẬT KÝ ĐIỀU CHỈNH (SN-215) ── */}
-      {logModalOpen && selectedTargetForLogs && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <History className="h-5 w-5 text-indigo-600" />
-                <h3 className="font-bold text-base text-slate-900">
-                  Lịch sử điều chỉnh chỉ tiêu
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setLogModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="text-xs text-slate-500">
-              Đối tượng: <span className="font-semibold text-slate-900">{selectedTargetForLogs.targetName}</span> • Kỳ:{' '}
-              <span className="font-semibold text-slate-900">{selectedTargetForLogs.period}</span>
-            </div>
-
-            <div className="max-h-72 overflow-y-auto space-y-2.5 pr-1">
-              {loadingLogs ? (
-                <div className="text-center py-6 text-xs text-slate-400">Đang tải nhật ký...</div>
-              ) : selectedTargetLogs.length > 0 ? (
-                selectedTargetLogs.map((log) => (
-                  <div key={log.id} className="p-3 rounded-lg border border-slate-200 bg-slate-50 text-xs space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-slate-800">{log.adjustedByName}</span>
-                      <span className="text-[11px] text-slate-400">
-                        {new Date(log.adjustedAt).toLocaleString('vi-VN')}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-700">
-                      <span className="line-through text-slate-400">{formatCurrency(log.oldAmount)}</span>
-                      <span>→</span>
-                      <span className="font-bold text-indigo-700">{formatCurrency(log.newAmount)}</span>
-                    </div>
-                    <div className="text-slate-600 bg-white p-2 rounded border border-slate-100">
-                      <span className="font-semibold text-slate-700">Lý do:</span> {log.reason}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-6 text-xs text-slate-400">
-                  Chưa có lịch sử điều chỉnh nào được ghi nhận cho chỉ tiêu này.
-                </div>
-              )}
-            </div>
-
-            <div className="pt-2 border-t border-slate-100 text-right">
-              <button
-                type="button"
-                onClick={() => setLogModalOpen(false)}
-                className="px-4 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Đóng
               </button>
             </div>
           </div>

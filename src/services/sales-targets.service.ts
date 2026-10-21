@@ -25,6 +25,10 @@ export interface SalesTargetItem {
 
 export interface SalesTargetsResponse {
   items: SalesTargetItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
   summary: {
     totalEmployeeTarget: number;
     totalEmployeeActual: number;
@@ -43,6 +47,21 @@ export interface MyProgressResponse {
   period: string;
   isLocked: boolean;
   lastUpdated: string;
+}
+
+export interface ContributingOrder {
+  id: string;
+  orderCode: string;
+  customerName: string;
+  createdAt: string;
+  grandTotal: number;
+  status: string;
+}
+
+export interface SalesTargetDetailResponse {
+  item: SalesTargetItem;
+  contributingOrders: ContributingOrder[];
+  logs: AdjustmentLogItem[];
 }
 
 export interface AdjustmentLogItem {
@@ -79,6 +98,8 @@ export interface QuerySalesTargetsParams {
   targetType?: SalesTargetType;
   targetId?: string;
   search?: string;
+  page?: number;
+  limit?: number;
 }
 
 export const salesTargetsService = {
@@ -87,6 +108,14 @@ export const salesTargetsService = {
    */
   async getSalesTargets(params?: QuerySalesTargetsParams): Promise<SalesTargetsResponse> {
     const res = await apiClient.get<SalesTargetsResponse>('/sales-targets', { params });
+    return res.data;
+  },
+
+  /**
+   * Lấy chi tiết một chỉ tiêu cùng danh sách đơn hàng ghi nhận thực tế và lịch sử điều chỉnh
+   */
+  async getSalesTargetDetail(id: string): Promise<SalesTargetDetailResponse> {
+    const res = await apiClient.get<SalesTargetDetailResponse>(`/sales-targets/${id}`);
     return res.data;
   },
 
