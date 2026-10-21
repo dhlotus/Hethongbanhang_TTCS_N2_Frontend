@@ -16,6 +16,7 @@ import {
   FileText,
   ShieldAlert,
   Printer,
+  ArrowLeft,
 } from 'lucide-react';
 import { shipmentsService } from '../services/shipments.service';
 import type { BatchItem, CreateShipmentPayload, Shipment } from '../services/shipments.service';
@@ -878,6 +879,14 @@ export const CreateShipmentPage: React.FC = () => {
         <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs p-5 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate(backListUrl)}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors shadow-2xs cursor-pointer mr-1"
+                title="Quay lại danh sách"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
               <FileText className="w-4 h-4 text-indigo-600" />
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
                 1. Thông tin chung đơn hàng & Vận chuyển
@@ -1117,7 +1126,7 @@ export const CreateShipmentPage: React.FC = () => {
             <div>
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <Package className="w-4 h-4 text-indigo-600" />
-                <span>2. Bảng phân bổ lô xuất kho theo nguyên tắc FEFO</span>
+                <span>2. Bảng phân bổ lô xuất kho</span>
               </h2>
             </div>
 
@@ -1153,13 +1162,13 @@ export const CreateShipmentPage: React.FC = () => {
                       <th className="py-3 px-4 min-w-[150px] text-center">Trạng thái</th>
                     </>
                   )}
-                  <th className="py-3 px-4 text-right w-24">Thao tác</th>
+                  {!isDetailMode && <th className="py-3 px-4 text-right w-24">Thao tác</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={isDetailMode ? 7 : 6} className="text-center py-12 text-slate-400">
+                    <td colSpan={6} className="text-center py-12 text-slate-400">
                       <Package className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                       <p>Vui lòng chọn Đơn hàng ở trên để nạp danh sách sản phẩm cần xuất kho</p>
                     </td>
@@ -1304,11 +1313,8 @@ export const CreateShipmentPage: React.FC = () => {
                           </>
                         )}
 
-                        {/* Thao tác */}
-                        <td className="py-3.5 px-4 text-right">
-                          {isDetailMode ? (
-                            <span className="text-slate-400 text-xs">-</span>
-                          ) : (
+                        {!isDetailMode && (
+                          <td className="py-3.5 px-4 text-right">
                             <button
                               type="button"
                               onClick={() => handleOpenBatchModal(idx)}
@@ -1318,8 +1324,8 @@ export const CreateShipmentPage: React.FC = () => {
                               <Calendar className="w-3.5 h-3.5" />
                               <span>Đổi lô</span>
                             </button>
-                          )}
-                        </td>
+                          </td>
+                        )}
                       </tr>
                     );
                   })
@@ -1386,23 +1392,14 @@ export const CreateShipmentPage: React.FC = () => {
 
           <div className="flex items-center gap-3">
             {isDetailMode ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => navigate(backListUrl)}
-                  className="h-[38px] px-4 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
-                >
-                  Quay lại danh sách
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="inline-flex items-center justify-center gap-1.5 h-[38px] px-5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer shadow-2xs"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>In phiếu xuất kho</span>
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center justify-center gap-1.5 h-[38px] px-5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer shadow-2xs"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>In phiếu xuất kho</span>
+              </button>
             ) : (
               <>
                 <button
