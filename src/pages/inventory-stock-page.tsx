@@ -123,12 +123,6 @@ export const InventoryStockPage: React.FC = () => {
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>(defaultWarehouse);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<StockStatusType | 'ALL'>(initialFilter);
-  // Đảm bảo thủ kho luôn bị khóa cố định vào kho của mình
-  useEffect(() => {
-    if (isKeeper && keeperWarehouseId && selectedWarehouse !== keeperWarehouseId) {
-      setSelectedWarehouse(keeperWarehouseId);
-    }
-  }, [isKeeper, keeperWarehouseId, selectedWarehouse]);
 
   // Lắng nghe thay đổi searchParams từ URL (khi click từ Dashboard chuyển sang)
   useEffect(() => {
@@ -707,10 +701,9 @@ export const InventoryStockPage: React.FC = () => {
               <select
                 value={selectedWarehouse}
                 onChange={(e) => setSelectedWarehouse(e.target.value)}
-                disabled={isKeeper}
-                className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer truncate disabled:bg-slate-100 disabled:text-slate-700 disabled:cursor-not-allowed"
+                className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer truncate"
               >
-                {!isKeeper && <option value="ALL">Tất cả kho hàng</option>}
+                <option value="ALL">Tất cả kho hàng</option>
                 {warehousesList.map((wh) => (
                   <option key={wh.id} value={wh.id}>
                     {wh.displayName || wh.name}
