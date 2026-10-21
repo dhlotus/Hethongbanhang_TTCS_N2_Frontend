@@ -171,6 +171,8 @@ export const AppRoutes: React.FC = () => {
               }
             >
               <Route path="/sales/customers" element={<CustomersPage />} />
+              <Route path="/sales/customers/create" element={<CustomersPage defaultTab="create" />} />
+              <Route path="/customers/create" element={<Navigate to="/sales/customers/create" replace />} />
               <Route path="/sales/customers/:id" element={<CustomerDetailPage />} />
               <Route path="/customers/:id" element={<CustomerDetailPage />} />
               <Route path="/customers" element={<Navigate to="/sales/customers" replace />} />
