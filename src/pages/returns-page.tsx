@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   RotateCcw,
+  Plus,
   Search,
   CheckCircle2,
   Clock,
@@ -260,31 +261,7 @@ export const ReturnsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto px-2 sm:px-4">
-      {/* Tiêu đề & Nút lập phiếu */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-            Phiếu trả hàng
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Quản lý và tiếp nhận các yêu cầu trả hàng từ đại lý
-          </p>
-        </div>
-
-        {canCreate && (
-          <div className="flex items-center gap-2">
-            <Link
-              to="/accounting/returns/create"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs hover:shadow-sm transition-all cursor-pointer"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span>Lập phiếu trả hàng</span>
-            </Link>
-          </div>
-        )}
-      </div>
-
+    <div className="space-y-4 max-w-7xl mx-auto px-2 sm:px-4">
       {/* Thẻ thống kê */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-xs hover:shadow-sm transition-all">
@@ -324,9 +301,9 @@ export const ReturnsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Thanh bộ lọc: Ô tìm kiếm + Select Kho + Select Trạng thái (chuyển từ các nút dàn trải thành select) */}
+      {/* Thanh bộ lọc: Ô tìm kiếm + Select Kho + Select Trạng thái + Nút Lập phiếu */}
       <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200/80 shadow-xs space-y-3">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+        <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
           {/* Ô tìm kiếm */}
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -353,10 +330,10 @@ export const ReturnsPage: React.FC = () => {
             )}
           </div>
 
-          {/* Nhóm các hộp chọn lọc (Kho + Trạng thái) */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-            {/* Lọc trạng thái (Chuyển đổi thành Select) */}
-            <div className="relative min-w-[160px]">
+          {/* Nhóm các hộp chọn lọc (Kho + Trạng thái) & Nút Lập phiếu */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-wrap">
+            {/* Lọc trạng thái (Select) */}
+            <div className="relative min-w-[150px]">
               <select
                 value={statusFilter}
                 onChange={(e) => {
@@ -374,7 +351,7 @@ export const ReturnsPage: React.FC = () => {
             </div>
 
             {/* Lọc kho tiếp nhận */}
-            <div className="relative min-w-[170px]">
+            <div className="relative min-w-[160px]">
               <select
                 value={warehouseFilter}
                 onChange={(e) => {
@@ -392,6 +369,17 @@ export const ReturnsPage: React.FC = () => {
               </select>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
+
+            {/* Nút Lập phiếu trả hàng */}
+            {canCreate && (
+              <Link
+                to="/accounting/returns/create"
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs hover:shadow-sm transition-all whitespace-nowrap cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Lập phiếu trả hàng</span>
+              </Link>
+            )}
           </div>
         </div>
       </div>
