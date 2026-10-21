@@ -464,7 +464,8 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({
         isOpen={true}
         onClose={onClose}
         title="Cập nhật ảnh đại diện"
-        subtitle="Căn chỉnh vùng hiển thị ảnh đại diện của bạn"
+        showCloseButton={false}
+        closeOnOverlayClick={false}
         icon={<ImageIcon className="h-5 w-5" />}
         maxWidth="max-w-md"
         bodyClassName="px-6 py-5 space-y-4"
