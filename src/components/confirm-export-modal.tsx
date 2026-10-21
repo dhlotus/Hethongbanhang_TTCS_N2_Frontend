@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   X,
   CheckCircle2,
-  AlertTriangle,
-  Lock,
   Truck,
   Package,
   FileText,
@@ -77,7 +75,7 @@ export const ConfirmExportModal: React.FC<ConfirmExportModalProps> = ({
         initialLines.push({
           orderLineId: 'line-default',
           productSku: 'SP-ORDER',
-          productName: `Toàn bộ kiện hàng đơn ${shipment.orderCode}`,
+          productName: `Kiện hàng đơn ${shipment.orderCode}`,
           unitName: 'Kiện',
           orderedQuantity: 1,
           shippedQuantity: 1,
@@ -366,14 +364,6 @@ export const ConfirmExportModal: React.FC<ConfirmExportModalProps> = ({
 
           {/* Action buttons */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
-            >
-              Hủy bỏ
-            </button>
             <button
               type="submit"
               disabled={isSubmitting}
