@@ -34,6 +34,7 @@ import { AssignmentHistoryModal } from '../components/assignment-history-modal';
 import { UpdateLimitModal } from '../components/credit-limit/update-limit-modal';
 import axios from 'axios';
 import { Pagination } from '../components/pagination';
+import { AgencyFlagBadge } from '../components/agency-flag-badge';
 import { customerService, getStoredCustomers } from '../services/customer.service';
 import type { Customer, CreateCustomerPayload, DeliveryPoint, SalesRepOption, BulkTransferResult } from '../types/customer.types';
 import type { UpdateCreditLimitPayload } from '../types/credit-limit.type';
@@ -1417,28 +1418,36 @@ export const CustomersPage: React.FC = () => {
                           </span>
                         </td>
 
-                        {/* 5. Trạng thái: Pill badge bo tròn đồng bộ */}
+                        {/* 5. Trạng thái: Pill badge bo tròn đồng bộ kèm Cờ cảnh báo công nợ (SN-204) */}
                         <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                          {customer.status === 'LOCKED' ? (
-                            <span
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200/60"
-                              title={`Lý do khóa: ${customer.lockReason || 'Không xác định'}`}
-                            >
-                              <Lock className="w-3 h-3 text-rose-500" />
-                              <span>Khóa giao dịch</span>
-                            </span>
-                          ) : customer.status === 'ACTIVE' ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                              <span>Hoạt động</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200/60">
-                              <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                              <span>Tạm dừng</span>
-                            </span>
-                          )}
+                          <div className="inline-flex flex-col items-center gap-1">
+                            {customer.status === 'LOCKED' ? (
+                              <span
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200/60"
+                                title={`Lý do khóa: ${customer.lockReason || 'Không xác định'}`}
+                              >
+                                <Lock className="w-3 h-3 text-rose-500" />
+                                <span>Khóa giao dịch</span>
+                              </span>
+                            ) : customer.status === 'ACTIVE' ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                <span>Hoạt động</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200/60">
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                <span>Tạm dừng</span>
+                              </span>
+                            )}
+                            <AgencyFlagBadge
+                              agencyId={customer.id}
+                              size="sm"
+                              hideIfClear={true}
+                            />
+                          </div>
                         </td>
+
 
                         {/* 6. Thao tác */}
                         <td className="px-4 py-3.5 text-right whitespace-nowrap">

@@ -366,7 +366,7 @@ export const UpdateLimitModal: React.FC<UpdateLimitModalProps> = ({
               <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
               <div className="text-xs text-red-700 leading-relaxed font-medium">
                 <p>
-                  <strong>Cảnh báo vượt trần:</strong> Dư nợ hiện hành <strong>{formatVND(currentDebt)}đ</strong> đã vượt quá hạn mức <strong>{roundedUsageRate}%</strong>. Cần rà soát và thu hồi nợ trước khi cấp thêm.
+                  <strong>Cảnh báo vượt hạn mức:</strong> Dư nợ hiện hành <strong>{formatVND(currentDebt)}đ</strong> đã vượt quá hạn mức <strong>{roundedUsageRate}%</strong>. Cần rà soát và thu hồi nợ trước khi cấp thêm.
                 </p>
               </div>
             </div>
