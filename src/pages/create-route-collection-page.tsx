@@ -3,17 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   UploadCloud,
-  Check,
   RefreshCw,
   Building2,
   CreditCard,
   Banknote,
-  AlertCircle,
   FileText,
   ShieldCheck,
   Clock,
   Package,
-  ShoppingBag,
   CheckCircle2,
   AlertTriangle,
   Info,
@@ -189,12 +186,13 @@ export const CreateRouteCollectionPage: React.FC = () => {
   }, [eligibleOrders, selectedOrderCodes]);
 
   // Tổng giá trị các đơn hàng được chọn
-  const totalSelectedOrdersAmount = useMemo(() => {
+  const _totalSelectedOrdersAmount = useMemo(() => {
     return selectedOrders.reduce(
       (sum, o) => sum + (o.totalAmount ?? (o as any).total_amount ?? 0),
       0,
     );
   }, [selectedOrders]);
+  void _totalSelectedOrdersAmount;
 
   // Tổng số tiền còn phải thu của các đơn được chọn
   const totalSelectedRemaining = useMemo(() => {

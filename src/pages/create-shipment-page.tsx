@@ -13,7 +13,6 @@ import {
   MapPin,
   RefreshCw,
   X,
-  FileText,
   ShieldAlert,
   Printer,
   ArrowLeft,

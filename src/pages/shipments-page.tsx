@@ -24,7 +24,6 @@ import {
   Calendar,
   X,
   ChevronDown,
-  Lock,
   AlertTriangle,
   Layers,
 } from 'lucide-react';
