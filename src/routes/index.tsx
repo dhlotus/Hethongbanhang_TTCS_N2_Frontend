@@ -606,7 +606,7 @@ export const AppRoutes: React.FC = () => {
                     'SALES_MANAGER',
                     'BUSINESS_MANAGER',
                   ]}
-                  moduleName="Quản lý ngân sách"
+                  moduleName="Quản lý thu tuyến"
                 />
               }
             >

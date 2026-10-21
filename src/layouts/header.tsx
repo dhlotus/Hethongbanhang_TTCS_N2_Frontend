@@ -117,7 +117,7 @@ const getPageHeaderInfo = (
       title: 'Tạo phiếu thu mới',
       category: 'Tài chính & Thu chi',
       breadcrumbs: [
-        { label: 'Quản lý ngân sách', path: '/route-collections' },
+        { label: 'Quản lý thu tuyến', path: '/route-collections' },
         { label: 'Tạo phiếu thu mới' },
       ],
     };
