@@ -490,7 +490,7 @@ export const FefoBatchSelectorModal: React.FC<FefoBatchSelectorModalProps> = ({
         <div className="px-5 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
             <HelpCircle className="w-4 h-4 text-slate-400" />
-            <span className="hidden sm:inline">Nguyên tắc FEFO: First Expired, First Out</span>
+            <span className="hidden sm:inline">Nguyên tắc FEFO: Lô có hạn dùng gần hơn ưu tiên xuất trước</span>
           </div>
 
           <div className="flex items-center gap-2">

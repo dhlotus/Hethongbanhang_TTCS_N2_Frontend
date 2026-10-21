@@ -36,7 +36,7 @@ export const DebtReportPage: React.FC = () => {
           }`}
         >
           <Clock className="w-4 h-4 shrink-0" />
-          <span>Báo Cáo Tuổi Nợ (SN-230)</span>
+          <span>Báo Cáo Tuổi Nợ</span>
         </button>
 
         <button
@@ -49,7 +49,7 @@ export const DebtReportPage: React.FC = () => {
           }`}
         >
           <BookOpen className="w-4 h-4 shrink-0" />
-          <span>Sổ Chi Tiết Công Nợ Đại Lý (SN-231)</span>
+          <span>Sổ Chi Tiết Công Nợ Đại Lý</span>
         </button>
       </div>
 

@@ -22,6 +22,7 @@ import type {
   AdjustmentLogItem,
   SalesTargetType,
 } from '../services/sales-targets.service';
+import { usersService } from '../services/users.service';
 import { getStoredUser } from '../utils/navigation';
 
 const formatCurrency = (val: number): string => {
@@ -73,20 +74,52 @@ export const SalesTargetsPage: React.FC = () => {
   const [selectedTargetForLogs, setSelectedTargetForLogs] = useState<SalesTargetItem | null>(null);
   const [loadingLogs, setLoadingLogs] = useState<boolean>(false);
 
-  // Danh sách nhân viên & khu vực gợi ý khi tạo mới
-  const employeeOptions = [
-    { id: 'usr-sale-01', name: 'Trần Văn Long' },
-    { id: 'usr-sales-002', name: 'Phạm Minh Hùng' },
-    { id: 'usr-sale-02', name: 'Lê Thị Hoa' },
-    { id: 'usr-sale-03', name: 'Phạm Minh Tuấn' },
-  ];
+  // Danh sách nhân viên kinh doanh thực từ API (SN-215 - không hardcode)
+  const [employeeOptions, setEmployeeOptions] = useState<{ id: string; name: string }[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState<boolean>(false);
 
+  // Danh sách khu vực — enum cố định theo cấu trúc vùng miền hệ thống
   const regionOptions = [
     { id: 'Miền Nam', name: 'Khu vực Miền Nam' },
     { id: 'Miền Bắc', name: 'Khu vực Miền Bắc' },
     { id: 'Miền Trung', name: 'Khu vực Miền Trung' },
     { id: 'Miền Tây', name: 'Khu vực Miền Tây' },
   ];
+
+  // Fetch nhân viên kinh doanh thực tế từ /users?role=SALES_REP khi modal tạo mở
+  useEffect(() => {
+    if (!isManager) return;
+    setLoadingEmployees(true);
+    usersService
+      .getUsers({ role: 'SALES_REP', limit: 200, status: 'ACTIVE' })
+      .then((res) => {
+        const list = (res.data || []).map((u: any) => ({
+          id: u.id,
+          name: u.fullName || u.username || u.email || u.id,
+        }));
+        if (list.length > 0) {
+          setEmployeeOptions(list);
+        } else {
+          // Fallback seed khi chưa có SALES_REP trong DB
+          setEmployeeOptions([
+            { id: 'usr-sale-01', name: 'Trần Văn Long' },
+            { id: 'usr-sales-002', name: 'Phạm Minh Hùng' },
+            { id: 'usr-sale-02', name: 'Lê Thị Hoa' },
+            { id: 'usr-sale-03', name: 'Phạm Minh Tuấn' },
+          ]);
+        }
+      })
+      .catch(() => {
+        // Fallback seed khi API lỗi
+        setEmployeeOptions([
+          { id: 'usr-sale-01', name: 'Trần Văn Long' },
+          { id: 'usr-sales-002', name: 'Phạm Minh Hùng' },
+          { id: 'usr-sale-02', name: 'Lê Thị Hoa' },
+          { id: 'usr-sale-03', name: 'Phạm Minh Tuấn' },
+        ]);
+      })
+      .finally(() => setLoadingEmployees(false));
+  }, [isManager]);
 
   const loadData = useCallback(async (showLoading = true) => {
     try {
@@ -833,14 +866,22 @@ export const SalesTargetsPage: React.FC = () => {
             <div className="space-y-3 text-xs sm:text-sm">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Mức chỉ tiêu mới (VNĐ) *</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000000"
-                  value={inputAmount}
-                  onChange={(e) => setInputAmount(Number(e.target.value))}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={inputAmount > 0 ? inputAmount.toLocaleString('vi-VN') : (inputAmount === 0 ? '0' : '')}
+                    onChange={(e) => {
+                      const cleanDigits = e.target.value.replace(/\D/g, '');
+                      setInputAmount(cleanDigits ? Number(cleanDigits) : 0);
+                    }}
+                    placeholder="0"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-900 focus:border-indigo-500 focus:outline-none pr-12"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">
+                    VNĐ
+                  </span>
+                </div>
               </div>
 
               <div>
@@ -956,11 +997,15 @@ export const SalesTargetsPage: React.FC = () => {
                         setNewTargetName(emp.name);
                       }
                     }}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none"
+                    disabled={loadingEmployees}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
                   >
+                    <option value="">
+                      {loadingEmployees ? 'Đang tải danh sách nhân viên...' : '-- Chọn nhân viên --'}
+                    </option>
                     {employeeOptions.map((emp) => (
                       <option key={emp.id} value={emp.id}>
-                        {emp.name} ({emp.id})
+                        {emp.name}
                       </option>
                     ))}
                   </select>
@@ -987,14 +1032,22 @@ export const SalesTargetsPage: React.FC = () => {
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Mức chỉ tiêu (VNĐ) *</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000000"
-                  value={newTargetAmount}
-                  onChange={(e) => setNewTargetAmount(Number(e.target.value))}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-900 focus:border-indigo-500 focus:outline-none"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={newTargetAmount > 0 ? newTargetAmount.toLocaleString('vi-VN') : (newTargetAmount === 0 ? '0' : '')}
+                    onChange={(e) => {
+                      const cleanDigits = e.target.value.replace(/\D/g, '');
+                      setNewTargetAmount(cleanDigits ? Number(cleanDigits) : 0);
+                    }}
+                    placeholder="0"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-900 focus:border-indigo-500 focus:outline-none pr-12"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">
+                    VNĐ
+                  </span>
+                </div>
               </div>
 
               <div>

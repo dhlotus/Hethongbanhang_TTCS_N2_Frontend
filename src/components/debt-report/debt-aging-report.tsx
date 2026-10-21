@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   FileSpreadsheet,
-  FileText,
   AlertTriangle,
   Clock,
   Building2,
@@ -69,8 +68,6 @@ export const DebtAgingReport: React.FC<DebtAgingReportProps> = ({ onOpenLedger }
   const [totalPages, setTotalPages] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
   const [exporting, setExporting] = useState<boolean>(false);
-  const [exportingPdf, setExportingPdf] = useState<boolean>(false);
-  const [exportingWord, setExportingWord] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Danh mục Dropdown
@@ -206,64 +203,6 @@ export const DebtAgingReport: React.FC<DebtAgingReportProps> = ({ onOpenLedger }
     }
   };
 
-  // 5. Xuất PDF báo cáo tuổi nợ
-  const handleExportPdf = async () => {
-    setExportingPdf(true);
-    try {
-      const params: QueryDebtReportParams = {
-        asOfDate,
-        agencyId: selectedAgency || undefined,
-        salesRepName: selectedSalesRep !== 'ALL' ? selectedSalesRep : undefined,
-        agingGroup: selectedAgingGroup !== 'ALL' ? selectedAgingGroup : undefined,
-        priority: selectedPriority !== 'ALL' ? selectedPriority : undefined,
-        search: searchTerm.trim() || undefined,
-      };
-
-      const blob = await debtReportService.exportDebtReportToPdf(params);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Bao_Cao_Tuoi_No_${asOfDate}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      alert('Không thể xuất file PDF. Vui lòng thử lại sau.');
-    } finally {
-      setExportingPdf(false);
-    }
-  };
-
-  // 6. Xuất Word (.docx) báo cáo tuổi nợ
-  const handleExportWord = async () => {
-    setExportingWord(true);
-    try {
-      const params: QueryDebtReportParams = {
-        asOfDate,
-        agencyId: selectedAgency || undefined,
-        salesRepName: selectedSalesRep !== 'ALL' ? selectedSalesRep : undefined,
-        agingGroup: selectedAgingGroup !== 'ALL' ? selectedAgingGroup : undefined,
-        priority: selectedPriority !== 'ALL' ? selectedPriority : undefined,
-        search: searchTerm.trim() || undefined,
-      };
-
-      const blob = await debtReportService.exportDebtReportToWord(params);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Bao_Cao_Tuoi_No_${asOfDate}.docx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      alert('Không thể xuất file Word. Vui lòng thử lại sau.');
-    } finally {
-      setExportingWord(false);
-    }
-  };
-
   // Helper format tiền tệ rõ ràng, không rớt chữ số
   const formatMoney = (val?: number) => {
     return new Intl.NumberFormat('vi-VN').format(Math.round(val || 0)) + ' đ';
@@ -356,27 +295,6 @@ export const DebtAgingReport: React.FC<DebtAgingReportProps> = ({ onOpenLedger }
             >
               <FileSpreadsheet className="w-4 h-4" />
               <span>{exporting ? 'Đang xuất...' : 'Xuất Excel'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleExportPdf}
-              disabled={exportingPdf || loading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-sm disabled:opacity-50 transition-colors"
-            >
-              <FileText className="w-4 h-4" />
-              <span>{exportingPdf ? 'Đang xuất...' : 'Xuất PDF'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleExportWord}
-              disabled={exportingWord || loading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-lg bg-blue-700 hover:bg-blue-800 text-white shadow-sm disabled:opacity-50 transition-colors"
-              title="Xuất file Microsoft Word (.docx) chuyên nghiệp"
-            >
-              <FileText className="w-4 h-4 text-blue-200" />
-              <span>{exportingWord ? 'Đang xuất...' : 'Xuất Word'}</span>
             </button>
           </div>
         </div>
@@ -807,7 +725,7 @@ export const DebtAgingReport: React.FC<DebtAgingReportProps> = ({ onOpenLedger }
                                 type="button"
                                 onClick={() => onOpenLedger(item.agencyCode || item.agencyId)}
                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs sm:text-[13px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors shadow-2xs whitespace-nowrap"
-                                title="Mở Sổ chi tiết công nợ đại lý (SN-231)"
+                                title="Mở Sổ chi tiết công nợ đại lý"
                               >
                                 <BookOpen className="w-3.5 h-3.5" />
                                 <span>Sổ chi tiết</span>
