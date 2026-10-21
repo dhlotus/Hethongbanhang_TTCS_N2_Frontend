@@ -13,6 +13,7 @@ import { receiptsService } from '../services/receipts.service';
 import { ReceiptPrintTemplate } from '../components/receipt-print-template';
 import { RecordPaymentModal } from '../components/record-payment-modal';
 import { Pagination } from '../components/pagination';
+import { DebtAdjustmentsPage } from './debt-adjustments-page';
 import type { Receipt as ReceiptType } from '../types/receipt';
 
 // Dữ liệu mẫu Fallback khi mất kết nối Backend
@@ -124,6 +125,9 @@ export const ReceiptsPage: React.FC = () => {
   });
 
   // State Phiếu thu tiền
+  const [activeTab, setActiveTab] = useState<'RECEIPTS' | 'DEBT_ADJUSTMENTS'>(() => {
+    return searchParams.get('tab') === 'adjustments' ? 'DEBT_ADJUSTMENTS' : 'RECEIPTS';
+  });
   const [receipts, setReceipts] = useState<ReceiptType[]>(INITIAL_DEMO_RECEIPTS);
   const [totalReceipts, setTotalReceipts] = useState<number>(INITIAL_DEMO_RECEIPTS.length);
   const [totalReceiptPages, setTotalReceiptPages] = useState<number>(1);
@@ -256,8 +260,50 @@ export const ReceiptsPage: React.FC = () => {
 
   return (
     <div className="space-y-4 w-full">
-      {/* ── THANH BỘ LỌC TÌM KIẾM TINH GỌN ── */}
-      <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+      {/* ── TABS CHUYỂN ĐỔI NGHIỆP VỤ (PHIẾU THU & ĐỐI TRỪ / GIẢM TRỪ TRẢ HÀNG SN-212) ── */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200/80 pb-2">
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('RECEIPTS');
+            updateUrlParams({ tab: 'receipts' } as any);
+          }}
+          className={`flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
+            activeTab === 'RECEIPTS'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <ScrollText className="w-4 h-4" />
+          <span>Phiếu thu tiền & Đối trừ công nợ</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('DEBT_ADJUSTMENTS');
+            updateUrlParams({ tab: 'adjustments' } as any);
+          }}
+          className={`flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
+            activeTab === 'DEBT_ADJUSTMENTS'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <RotateCcw className="w-4 h-4" />
+          <span>Chứng từ giảm trừ công nợ khi trả hàng</span>
+          <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-emerald-500 text-white font-mono">
+            SN-212
+          </span>
+        </button>
+      </div>
+
+      {activeTab === 'DEBT_ADJUSTMENTS' ? (
+        <DebtAdjustmentsPage />
+      ) : (
+        <>
+          {/* ── THANH BỘ LỌC TÌM KIẾM TINH GỌN ── */}
+          <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         {/* Ô tìm kiếm */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
@@ -575,6 +621,9 @@ export const ReceiptsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+        </>
+      )}
 
       {/* Modal In & Tải PDF Phiếu Thu (SN-209) */}
       <ReceiptPrintTemplate

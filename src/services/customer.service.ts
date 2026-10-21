@@ -30,7 +30,7 @@ export const DEMO_CUSTOMERS_DATA: Customer[] = [
     salesRepName: 'Trần Văn Long',
     salesRep: { id: 'usr-sale-01', name: 'Trần Văn Long' },
     creditLimit: 500000000,
-    currentDebt: 29388790,
+    currentDebt: 9316390, // Chuẩn hóa đồng bộ chính xác với backend sau khi trừ 3 phiếu giảm nợ 30.700 đ
     maxDebtDays: 45,
     phone: '0901234561',
     email: 'minhkhang.dist@lohasales.vn',
@@ -396,9 +396,12 @@ export function getStoredCustomers(): Customer[] {
               parsed[idx] = { ...parsed[idx], ...demo };
               hasNew = true;
             }
-            if (demo.id === 'cust-dl-0001' && (parsed[idx].currentDebt === 13877990 || parsed[idx].currentDebt === 45000000)) {
-              parsed[idx].currentDebt = 29388790;
-              hasNew = true;
+            if (demo.id === 'cust-dl-0001') {
+              const staleDebts = [13877990, 45000000, 53154790, 29388790, 9408490, 9377790, 9347090];
+              if (staleDebts.includes(parsed[idx].currentDebt)) {
+                parsed[idx].currentDebt = 9316390;
+                hasNew = true;
+              }
             }
           } else {
             parsed.unshift(demo);
@@ -837,10 +840,18 @@ export const customerService = {
   async getCustomerById(id: string): Promise<Customer> {
     try {
       const res = await apiClient.get<Customer>(`/customers/${id}`);
+      if (res.data) {
+        const list = getStoredCustomers();
+        const idx = list.findIndex((c) => c.id === res.data.id || c.code === res.data.code);
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], ...res.data };
+          saveStoredCustomers(list);
+        }
+      }
       return res.data;
     } catch {
       const list = getStoredCustomers();
-      const found = list.find((c) => c.id === id);
+      const found = list.find((c) => c.id === id || c.code === id);
       if (found) return found;
       throw new Error(`Không tìm thấy đại lý có ID: ${id}`);
     }

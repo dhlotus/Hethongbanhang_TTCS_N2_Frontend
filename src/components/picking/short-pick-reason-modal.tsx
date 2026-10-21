@@ -104,6 +104,27 @@ export const ShortPickReasonModal: React.FC<ShortPickReasonModalProps> = ({
                 Thực soạn: {currentPickedQuantity} {item.unit}
               </span>
             </div>
+
+            {/* Danh sách các đơn hàng thành phần bị ảnh hưởng */}
+            {item.orders && item.orders.length > 0 && (
+              <div className="pt-2 border-t border-slate-200/80 space-y-1">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                  Đơn hàng bị ảnh hưởng ({item.orders.length} đơn):
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {item.orders.map((ord) => (
+                    <span
+                      key={ord.orderId}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700 text-[11px] shadow-2xs"
+                    >
+                      <strong className="font-mono text-indigo-700">{ord.orderCode}</strong>
+                      <span className="text-slate-500">({ord.requiredQuantity} {ord.unit})</span>
+                      <span className="text-slate-400">• {ord.customerName}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Danh sách chọn lý do */}

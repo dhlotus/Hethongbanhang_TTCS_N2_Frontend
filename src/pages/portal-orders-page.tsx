@@ -484,11 +484,10 @@ export const PortalOrdersPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Tabs lọc nhanh: Grid 2 cột 3 hàng trên mobile (< 640px), flex-wrap trên tablet/desktop */}
+        {/* Tabs lọc nhanh: Grid 2 cột 3-4 hàng trên mobile (< 640px), flex-wrap trên tablet/desktop */}
         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 sm:flex sm:flex-wrap sm:items-center sm:gap-1.5">
           {[
             { id: 'ALL', label: 'Tất cả đơn', count: statusCounts.ALL },
-            { id: 'PENDING', label: 'Chờ duyệt', count: statusCounts.PENDING },
             { id: 'APPROVED', label: 'Đã duyệt', count: statusCounts.APPROVED },
             { id: 'PROCESSING', label: 'Đang soạn', count: statusCounts.PROCESSING },
             { id: 'PACKED', label: 'Đã đóng gói', count: statusCounts.PACKED },
@@ -1003,7 +1002,8 @@ export const PortalOrdersPage: React.FC = () => {
             pageSize={limit}
             pageSizeOptions={[10, 20, 50]}
             itemLabel="đơn hàng"
-            showRecordRange={true}
+            showRecordRange={false}
+            showFirstLast={false}
             onPageChange={(newPage) => setPage(newPage)}
             onPageSizeChange={(newLimit) => {
               setLimit(newLimit);

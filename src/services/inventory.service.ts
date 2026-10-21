@@ -9,6 +9,7 @@ import type {
   StockAdjustmentResponse,
   StockOverviewItem,
 } from '../types/products';
+import { STANDARD_WAREHOUSES } from '../constants/warehouse.constants';
 import type { LowStockAlert, StockBalance, StockItem, StockReservation } from '../types/inventory.types';
 
 const DEMO_TRANSACTIONS_KEY = 'loha_inventory_transactions';
@@ -418,6 +419,9 @@ export const inventoryService = {
       } else {
         items = items.filter((i) => i.status === params.status);
       }
+    } else {
+      // Hàng lỗi chỉ hiển thị khi chọn lọc 'Sản phẩm lỗi', không hiển thị ở bất kỳ trạng thái nào khác
+      items = items.filter((i) => i.status !== 'DAMAGED');
     }
 
     const warehouseFilter = params?.warehouseId || params?.warehouse;
@@ -873,6 +877,93 @@ export const inventoryService = {
           productId,
         },
       }
+    );
+    return response.data;
+  },
+
+  /**
+   * SN-229 / SN-220: Xuất báo cáo tồn kho ra tệp Excel (.xlsx) chuẩn gửi kế toán
+   * Giữ nguyên ba cột tồn: Tồn Thực Tế, Tồn Tạm Giữ, Tồn Khả Dụng
+   * GET /api/inventory/stock/export-excel
+   */
+  async exportStockExcel(params?: {
+    warehouse?: string;
+    warehouseId?: string;
+    category?: string;
+    status?: string;
+    search?: string;
+  }): Promise<{ blob: Blob; fileName: string }> {
+    const cleanParams: Record<string, string> = {};
+    if (params) {
+      if (params.search?.trim()) cleanParams.search = params.search.trim();
+      if (params.category && params.category !== 'ALL') cleanParams.category = params.category;
+      if (params.status && params.status !== 'ALL') cleanParams.status = params.status;
+      const wh = params.warehouseId || params.warehouse;
+      if (wh && wh !== 'ALL') {
+        cleanParams.warehouse = wh;
+        cleanParams.warehouseId = wh;
+      }
+    }
+
+    try {
+      const response = await apiClient.get('/inventory/stock/export-excel', {
+        params: cleanParams,
+        responseType: 'blob',
+      });
+
+      const headers = (response.headers || {}) as any;
+      const disposition =
+        headers['content-disposition'] ||
+        (typeof headers.get === 'function' ? headers.get('content-disposition') || headers.get('Content-Disposition') : '') ||
+        '';
+      let fileName = '';
+      const match = disposition.match(/filename="?([^";]+)"?/);
+      if (match && match[1]) {
+        fileName = decodeURIComponent(match[1]);
+      } else {
+        const rawWh = cleanParams.warehouse || cleanParams.warehouseId || 'ALL';
+        const matchedWh = STANDARD_WAREHOUSES.find((w) => w.id === rawWh || w.code === rawWh);
+        const whCode = matchedWh ? matchedWh.code : (rawWh === 'ALL' ? 'ALL' : rawWh.slice(0, 8));
+        const today = new Date().toISOString().slice(0, 10);
+        fileName = `TonKho_${whCode}_${today}.xlsx`;
+      }
+
+      return { blob: response.data, fileName };
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: any } };
+        if (axiosErr.response?.data instanceof Blob) {
+          try {
+            const text = await axiosErr.response.data.text();
+            const parsed = JSON.parse(text);
+            const msg = Array.isArray(parsed.message) ? parsed.message.join(', ') : parsed.message;
+            if (msg) throw new Error(msg);
+          } catch (e: any) {
+            if (e?.message && !e.message.includes('JSON')) throw e;
+          }
+        }
+      }
+      throw err instanceof Error ? err : new Error('Không thể xuất báo cáo tồn kho ra Excel');
+    }
+  },
+
+  /**
+   * Xử lý sản phẩm lỗi (Đưa sang tồn kho hoặc Tiêu hủy)
+   * POST /inventory/damaged/process
+   */
+  async processDamagedStock(payload: {
+    warehouseId: string;
+    productId: string;
+    productSku: string;
+    batchNumber?: string;
+    expiryDate?: string;
+    action: 'TO_STOCK' | 'DESTROY';
+    quantity: number;
+    reason: string;
+  }): Promise<{ success: boolean; message: string; remainingQuantity?: number }> {
+    const response = await apiClient.post<{ success: boolean; message: string; remainingQuantity?: number }>(
+      '/inventory/damaged/process',
+      payload,
     );
     return response.data;
   },

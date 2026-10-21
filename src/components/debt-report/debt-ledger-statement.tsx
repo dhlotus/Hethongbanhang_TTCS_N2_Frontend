@@ -54,7 +54,6 @@ export const DebtLedgerStatementView: React.FC<DebtLedgerStatementProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [exportingExcel, setExportingExcel] = useState<boolean>(false);
   const [exportingPdf, setExportingPdf] = useState<boolean>(false);
-  const [exportingWord, setExportingWord] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Danh mục đại lý
@@ -80,9 +79,34 @@ export const DebtLedgerStatementView: React.FC<DebtLedgerStatementProps> = ({
     }
   }, [initialAgencyCode]);
 
+  // Kiểm tra tính hợp lệ của khoảng thời gian
+  const isDateRangeInvalid = useMemo(() => {
+    if (!fromDate || !toDate) return false;
+    return fromDate > toDate;
+  }, [fromDate, toDate]);
+
+  // Xử lý thay đổi Từ ngày (Không cho phép vượt quá Đến ngày)
+  const handleFromDateChange = (val: string) => {
+    setFromDate(val);
+    if (toDate && val && val > toDate) {
+      setToDate(val);
+    }
+  };
+
+  // Xử lý thay đổi Đến ngày (Chặn chọn lùi ngày trước Từ ngày)
+  const handleToDateChange = (val: string) => {
+    if (fromDate && val && val < fromDate) {
+      // Nếu cố chọn lùi ngày trước ngày bắt đầu -> tự động gán ngày bắt đầu bằng ngày kết thúc
+      setFromDate(val);
+      setToDate(val);
+    } else {
+      setToDate(val);
+    }
+  };
+
   // Tải dữ liệu Sổ chi tiết công nợ
   const fetchLedger = async () => {
-    if (!agencyCode) return;
+    if (!agencyCode || (fromDate && toDate && fromDate > toDate)) return;
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -175,33 +199,6 @@ export const DebtLedgerStatementView: React.FC<DebtLedgerStatementProps> = ({
     }
   };
 
-  // Xuất file Word (.docx)
-  const handleExportWord = async () => {
-    if (!agencyCode) return;
-    setExportingWord(true);
-    try {
-      const params: QueryDebtLedgerParams = {
-        agencyId: agencyCode,
-        fromDate,
-        toDate,
-        documentType: documentType !== 'ALL' ? (documentType as any) : undefined,
-      };
-      const blob = await debtReportService.exportLedgerToWord(params);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `So_Chi_Tiet_Cong_No_${agencyCode}_${fromDate}_den_${toDate}.docx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch {
-      alert('Không thể xuất file Word sổ chi tiết. Vui lòng thử lại sau.');
-    } finally {
-      setExportingWord(false);
-    }
-  };
-
   // Helper format tiền tệ
   const formatMoney = (n?: number) => {
     return new Intl.NumberFormat('vi-VN').format(Math.round(n || 0)) + ' đ';
@@ -274,17 +271,6 @@ export const DebtLedgerStatementView: React.FC<DebtLedgerStatementProps> = ({
               <FileText className="w-4 h-4" />
               <span>{exportingPdf ? 'Đang xuất...' : 'Xuất PDF'}</span>
             </button>
-
-            <button
-              type="button"
-              onClick={handleExportWord}
-              disabled={exportingWord || loading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-lg bg-blue-700 hover:bg-blue-800 text-white shadow-sm disabled:opacity-50 transition-colors"
-              title="Xuất file Microsoft Word (.docx) chuyên nghiệp A4 đứng"
-            >
-              <FileText className="w-4 h-4 text-blue-200" />
-              <span>{exportingWord ? 'Đang xuất...' : 'Xuất Word'}</span>
-            </button>
           </div>
         </div>
 
@@ -310,8 +296,13 @@ export const DebtLedgerStatementView: React.FC<DebtLedgerStatementProps> = ({
             <input
               type="date"
               value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="w-full h-10 px-3 py-1.5 text-sm bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+              max={toDate || undefined}
+              onChange={(e) => handleFromDateChange(e.target.value)}
+              className={`w-full h-10 px-3 py-1.5 text-sm bg-white border rounded-lg text-slate-800 focus:outline-none focus:ring-2 ${
+                isDateRangeInvalid
+                  ? 'border-rose-400 focus:ring-rose-500/20 focus:border-rose-500'
+                  : 'border-slate-300 focus:ring-indigo-500/20 focus:border-indigo-600'
+              }`}
             />
           </div>
 
@@ -323,11 +314,24 @@ export const DebtLedgerStatementView: React.FC<DebtLedgerStatementProps> = ({
             <input
               type="date"
               value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="w-full h-10 px-3 py-1.5 text-sm bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+              min={fromDate || undefined}
+              onChange={(e) => handleToDateChange(e.target.value)}
+              className={`w-full h-10 px-3 py-1.5 text-sm bg-white border rounded-lg text-slate-800 focus:outline-none focus:ring-2 ${
+                isDateRangeInvalid
+                  ? 'border-rose-400 focus:ring-rose-500/20 focus:border-rose-500'
+                  : 'border-slate-300 focus:ring-indigo-500/20 focus:border-indigo-600'
+              }`}
             />
           </div>
         </div>
+
+        {/* Thông báo cảnh báo nếu cố tình chọn ngày kết thúc trước ngày bắt đầu */}
+        {isDateRangeInvalid && (
+          <div className="mt-3 p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+            <span>Ngày kết thúc không thể trước ngày bắt đầu. Hệ thống đã tự động giới hạn ngày hợp lệ.</span>
+          </div>
+        )}
 
         {/* Lọc loại chứng từ & Tìm kiếm nhanh */}
         <div className="mt-3.5 pt-3.5 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -415,12 +419,6 @@ export const DebtLedgerStatementView: React.FC<DebtLedgerStatementProps> = ({
                     </>
                   )}
                 </div>
-              </div>
-
-              {/* Banner Cân Đối Kế Toán */}
-              <div className="shrink-0 flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-300 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold shadow-2xs">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Số liệu khớp 100%: Dư cuối = Dư đầu + Tăng - Giảm</span>
               </div>
             </div>
 

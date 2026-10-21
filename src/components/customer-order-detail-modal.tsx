@@ -464,7 +464,7 @@ export const CustomerOrderDetailModal: React.FC<CustomerOrderDetailModalProps> =
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                       <Clock className="w-4 h-4 text-indigo-600" />
-                      Tiến trình 5 mốc giao hàng thực tế (SN-199)
+                      Tiến trình 5 mốc giao hàng thực tế
                     </h4>
                     <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200 inline-flex items-center gap-1 w-fit">
                       <span>{overallProgress.label}</span>

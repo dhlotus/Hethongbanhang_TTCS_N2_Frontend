@@ -84,6 +84,32 @@ const getPageHeaderInfo = (
     };
   }
   if (
+    pathname === '/accounting/returns/create' ||
+    pathname === '/returns/create'
+  ) {
+    return {
+      title: 'Tạo phiếu trả hàng',
+      category: 'Bán hàng',
+      breadcrumbs: [
+        { label: 'Phiếu trả hàng', path: '/accounting/returns' },
+        { label: 'Tạo phiếu trả hàng' },
+      ],
+    };
+  }
+  if (
+    pathname === '/accounting/returns' ||
+    pathname === '/sales/returns' ||
+    pathname === '/returns'
+  ) {
+    return {
+      title: 'Phiếu trả hàng',
+      category: 'Bán hàng',
+      breadcrumbs: [
+        { label: 'Phiếu trả hàng' },
+      ],
+    };
+  }
+  if (
     pathname === '/route-collections/create' ||
     pathname === '/app/route-collections/create'
   ) {
@@ -501,156 +527,154 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
 
         {/* Khung bảng tên người dùng & Dropdown Profile */}
         <div className="relative shrink-0" ref={dropdownRef}>
-        {/* Nút bấm mở Dropdown Profile (Chỉ mở khi click) */}
-        <button
-          type="button"
-          onClick={() => setIsDropdownOpen((prev) => !prev)}
-          className={`flex items-center gap-1.5 sm:gap-3 p-1 sm:px-3 sm:py-2 rounded-lg border transition-all duration-200 cursor-pointer select-none group focus:outline-none ${
-            isDropdownOpen
-              ? 'bg-slate-50 border-slate-300 shadow-2xs'
-              : 'bg-white border-slate-200/80 hover:bg-slate-50 hover:border-slate-300/90'
-          }`}
-          aria-expanded={isDropdownOpen}
-          aria-haspopup="true"
-          title={`Tài khoản: ${cleanFullName}`}
-        >
-          {/* Avatar: Ảnh hoặc Chữ cái viết tắt (radius-full) */}
-          <div className="relative flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-xs sm:text-sm font-bold text-white shadow-2xs group-hover:scale-105 transition-transform duration-200">
-            {avatarUrl ? (
-              <img
-                src={resolveAvatarUrl(avatarUrl)}
-                alt={cleanFullName}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              context.avatarLetter || <User className="h-4.5 w-4.5" />
-            )}
-          </div>
-
-          {/* Tên & Tag vai trò (Ẩn trên mobile siêu nhỏ, hiện từ sm trở lên) */}
-          <div className="hidden sm:flex flex-col text-left min-w-0">
-            <span
-              className="text-sm font-bold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors truncate max-w-[150px] leading-tight"
-              title={context.fullName}
-            >
-              {cleanFullName}
-            </span>
-            <span
-              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold mt-0.5 w-fit max-w-[150px] truncate ${context.badgeClass}`}
-              title={context.roleLabel}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${context.dotClass}`} />
-              <span className="truncate">{context.roleLabel}</span>
-            </span>
-          </div>
-
-          {/* Mũi tên xoay biểu thị đóng/mở */}
-          <ChevronDown
-            className={`h-4 w-4 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 shrink-0 ${
-              isDropdownOpen ? 'rotate-180 text-[var(--color-primary)]' : ''
-            }`}
-          />
-        </button>
-
-        {/* Menu Dropdown xổ xuống (radius-lg: 12px) - Có cầu đệm trước khoảng trống để hover di chuyển mượt mà */}
-        {isDropdownOpen && (
-          <div
-            className="absolute right-0 top-full mt-2 w-72 sm:w-80 max-w-[calc(100vw-1.5rem)] rounded-xl bg-white shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-2 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3"
-            role="menu"
-            aria-orientation="vertical"
+          {/* Nút bấm mở Dropdown Profile (Chỉ mở khi click) */}
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen((prev) => !prev)}
+            className={`flex items-center gap-1.5 sm:gap-3 p-1 sm:px-3 sm:py-2 rounded-lg border transition-all duration-200 cursor-pointer select-none group focus:outline-none ${isDropdownOpen
+                ? 'bg-slate-50 border-slate-300 shadow-2xs'
+                : 'bg-white border-slate-200/80 hover:bg-slate-50 hover:border-slate-300/90'
+              }`}
+            aria-expanded={isDropdownOpen}
+            aria-haspopup="true"
+            title={`Tài khoản: ${cleanFullName}`}
           >
-            {/* Thẻ người dùng trên cùng */}
-            <div className="p-1 rounded-lg bg-white border border-slate-100 shadow-2xs">
-              <Link
-                to="/profile"
-                onClick={handleCloseDropdown}
-                className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-50 transition-colors group/user"
-              >
-                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-sm font-bold text-white shadow-xs">
-                  {avatarUrl ? (
-                    <img
-                      src={resolveAvatarUrl(avatarUrl)}
-                      alt={cleanFullName}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    context.avatarLetter || <User className="h-5 w-5" />
-                  )}
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[15px] font-semibold text-slate-900 group-hover/user:text-[var(--color-primary)] transition-colors truncate">
-                    {cleanFullName}
-                  </span>
-                  <span className="text-xs text-slate-500 truncate">{context.roleLabel}</span>
-                </div>
-              </Link>
+            {/* Avatar: Ảnh hoặc Chữ cái viết tắt (radius-full) */}
+            <div className="relative flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-xs sm:text-sm font-bold text-white shadow-2xs group-hover:scale-105 transition-transform duration-200">
+              {avatarUrl ? (
+                <img
+                  src={resolveAvatarUrl(avatarUrl)}
+                  alt={cleanFullName}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                context.avatarLetter || <User className="h-4.5 w-4.5" />
+              )}
             </div>
 
-            {/* Danh sách các nút: radius-md */}
-            <div className="space-y-0.5 pt-0.5">
-              {/* Mục 1: Hồ sơ cá nhân */}
-              <Link
-                to="/profile"
-                onClick={handleCloseDropdown}
-                className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group"
-                role="menuitem"
+            {/* Tên & Tag vai trò (Ẩn trên mobile siêu nhỏ, hiện từ sm trở lên) */}
+            <div className="hidden sm:flex flex-col text-left min-w-0">
+              <span
+                className="text-sm font-bold text-slate-900 group-hover:text-[var(--color-primary)] transition-colors truncate max-w-[150px] leading-tight"
+                title={context.fullName}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200/80 group-hover:bg-slate-200 text-slate-900 transition-colors">
-                    <User className="h-5 w-5" />
-                  </div>
-                  <span className="text-[15px] font-medium text-slate-900 truncate">
-                    Hồ sơ cá nhân
-                  </span>
-                </div>
-                <ChevronRight className="h-5 w-5 text-slate-500 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-
-              {/* Mục 2: Đổi mật khẩu */}
-              <Link
-                to="/profile/change-password"
-                onClick={handleCloseDropdown}
-                className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group"
-                role="menuitem"
+                {cleanFullName}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold mt-0.5 w-fit max-w-[150px] truncate ${context.badgeClass}`}
+                title={context.roleLabel}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200/80 group-hover:bg-slate-200 text-slate-900 transition-colors">
-                    <Lock className="h-5 w-5" />
-                  </div>
-                  <span className="text-[15px] font-medium text-slate-900 truncate">
-                    Đổi mật khẩu
-                  </span>
-                </div>
-                <ChevronRight className="h-5 w-5 text-slate-500 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-
-              {/* Mục 3: Đăng xuất */}
-              <button
-                type="button"
-                onClick={() => {
-                  handleCloseDropdown();
-                  setShowLogoutModal(true);
-                }}
-                className="w-full flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group text-left"
-                role="menuitem"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200/80 group-hover:bg-slate-200 text-slate-900 transition-colors">
-                    <LogOut className="h-5 w-5" />
-                  </div>
-                  <span className="text-[15px] font-medium text-slate-900 truncate">Đăng xuất</span>
-                </div>
-              </button>
+                <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${context.dotClass}`} />
+                <span className="truncate">{context.roleLabel}</span>
+              </span>
             </div>
 
-            {/* Dòng chữ chân trang phong cách Facebook căn giữa */}
-            <div className="px-3 pt-3 pb-2 border-t border-slate-100 mt-2 text-center">
-              <p className="text-[11px] font-medium text-slate-400">
-                LOHA SALES • Hệ thống quản lý bán hàng
-              </p>
+            {/* Mũi tên xoay biểu thị đóng/mở */}
+            <ChevronDown
+              className={`h-4 w-4 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 shrink-0 ${isDropdownOpen ? 'rotate-180 text-[var(--color-primary)]' : ''
+                }`}
+            />
+          </button>
+
+          {/* Menu Dropdown xổ xuống (radius-lg: 12px) - Có cầu đệm trước khoảng trống để hover di chuyển mượt mà */}
+          {isDropdownOpen && (
+            <div
+              className="absolute right-0 top-full mt-2 w-72 sm:w-80 max-w-[calc(100vw-1.5rem)] rounded-xl bg-white shadow-[0_12px_36px_-6px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right space-y-2 before:absolute before:-top-3 before:left-0 before:right-0 before:h-3"
+              role="menu"
+              aria-orientation="vertical"
+            >
+              {/* Thẻ người dùng trên cùng */}
+              <div className="p-1 rounded-lg bg-white border border-slate-100 shadow-2xs">
+                <Link
+                  to="/profile"
+                  onClick={handleCloseDropdown}
+                  className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-50 transition-colors group/user"
+                >
+                  <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden bg-[var(--color-brand-gradient)] text-sm font-bold text-white shadow-xs">
+                    {avatarUrl ? (
+                      <img
+                        src={resolveAvatarUrl(avatarUrl)}
+                        alt={cleanFullName}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      context.avatarLetter || <User className="h-5 w-5" />
+                    )}
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[15px] font-semibold text-slate-900 group-hover/user:text-[var(--color-primary)] transition-colors truncate">
+                      {cleanFullName}
+                    </span>
+                    <span className="text-xs text-slate-500 truncate">{context.roleLabel}</span>
+                  </div>
+                </Link>
+              </div>
+
+              {/* Danh sách các nút: radius-md */}
+              <div className="space-y-0.5 pt-0.5">
+                {/* Mục 1: Hồ sơ cá nhân */}
+                <Link
+                  to="/profile"
+                  onClick={handleCloseDropdown}
+                  className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group"
+                  role="menuitem"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200/80 group-hover:bg-slate-200 text-slate-900 transition-colors">
+                      <User className="h-5 w-5" />
+                    </div>
+                    <span className="text-[15px] font-medium text-slate-900 truncate">
+                      Hồ sơ cá nhân
+                    </span>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-slate-500 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+
+                {/* Mục 2: Đổi mật khẩu */}
+                <Link
+                  to="/profile/change-password"
+                  onClick={handleCloseDropdown}
+                  className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group"
+                  role="menuitem"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200/80 group-hover:bg-slate-200 text-slate-900 transition-colors">
+                      <Lock className="h-5 w-5" />
+                    </div>
+                    <span className="text-[15px] font-medium text-slate-900 truncate">
+                      Đổi mật khẩu
+                    </span>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-slate-500 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+
+                {/* Mục 3: Đăng xuất */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCloseDropdown();
+                    setShowLogoutModal(true);
+                  }}
+                  className="w-full flex items-center justify-between p-2 rounded-md hover:bg-slate-100 transition-colors cursor-pointer group text-left"
+                  role="menuitem"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200/80 group-hover:bg-slate-200 text-slate-900 transition-colors">
+                      <LogOut className="h-5 w-5" />
+                    </div>
+                    <span className="text-[15px] font-medium text-slate-900 truncate">Đăng xuất</span>
+                  </div>
+                </button>
+              </div>
+
+              {/* Dòng chữ chân trang phong cách Facebook căn giữa */}
+              <div className="px-3 pt-3 pb-2 border-t border-slate-100 mt-2 text-center">
+                <p className="text-[11px] font-medium text-slate-400">
+                  LOHA SALES • Hệ thống quản lý bán hàng
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
         </div>
       </div>
 
@@ -662,15 +686,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         createPortal(
           <div
             onClick={() => !isLoggingOut && setShowLogoutModal(false)}
-            className={`fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-300 ${
-              isExiting ? 'opacity-0' : 'animate-modal-backdrop-in'
-            }`}
+            className={`fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-300 ${isExiting ? 'opacity-0' : 'animate-modal-backdrop-in'
+              }`}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className={`relative w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl border border-slate-100 transition-all duration-300 ${
-                isExiting ? 'scale-95 opacity-0' : 'animate-modal-in'
-              }`}
+              className={`relative w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl border border-slate-100 transition-all duration-300 ${isExiting ? 'scale-95 opacity-0' : 'animate-modal-in'
+                }`}
             >
               {isLoggingOut ? (
                 <div className="py-4 flex flex-col items-center justify-center text-center space-y-3">

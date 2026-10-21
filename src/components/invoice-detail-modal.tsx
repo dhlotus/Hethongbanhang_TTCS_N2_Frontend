@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   X,
   Download,
-  Building2,
   Calendar,
   AlertTriangle,
   CheckCircle2,
@@ -224,16 +224,12 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             </div>
           )}
 
-          {/* Khung thông tin chứng từ */}
+          {/* Khung thông tin chứng từ: Gộp gọn gàng, loại bỏ trùng lặp và không hiển thị UUID */}
           <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3 sm:p-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-xs">
               {/* Cột 1: Thông tin đại lý */}
-              <div className="space-y-1 min-w-0">
-                <div className="flex items-center gap-1.5 text-slate-500 font-medium">
-                  <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span>Đại lý nhận hóa đơn</span>
-                </div>
-                <p className="font-bold text-slate-900 text-xs sm:text-sm break-words" title={invoice.customerName}>
+              <div className="flex flex-col justify-center min-w-0">
+                <p className="font-bold text-slate-900 text-sm sm:text-base leading-snug break-words" title={invoice.customerName}>
                   {invoice.customerName}
                 </p>
               </div>
@@ -244,9 +240,21 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                   <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   <span>Đơn hàng liên kết</span>
                 </div>
-                <p className="font-mono font-bold text-indigo-600 text-xs sm:text-sm break-all">
-                  {invoice.orderCode || '—'}
-                </p>
+                {invoice.orderCode ? (
+                  <Link
+                    to={`/sales/orders?search=${encodeURIComponent(invoice.orderCode)}`}
+                    onClick={onClose}
+                    className="inline-flex items-center gap-1.5 font-mono font-bold text-indigo-600 hover:text-indigo-800 hover:underline text-xs sm:text-sm break-all"
+                    title="Bấm để mở trang đơn hàng đối chiếu chi tiết"
+                  >
+                    <span>{invoice.orderCode}</span>
+                    <span className="text-[11px] font-normal text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 hover:bg-indigo-100 shrink-0">
+                      Đối chiếu
+                    </span>
+                  </Link>
+                ) : (
+                  <p className="font-mono font-bold text-slate-400 text-xs sm:text-sm">—</p>
+                )}
               </div>
 
               {/* Cột 3: Kỳ hạn chứng từ */}

@@ -11,7 +11,6 @@ import {
   Clock,
   Building2,
   DollarSign,
-  Bell,
 } from 'lucide-react';
 import type {
   InvoiceItem,
@@ -20,7 +19,6 @@ import type {
 import { invoicesService } from '../services/invoices.service';
 import { InvoiceDetailModal } from '../components/invoice-detail-modal';
 import { RecordPaymentModal } from '../components/record-payment-modal';
-import { ReminderTestModal } from '../components/reminder-test-modal';
 import { ConfirmActionModal } from '../components/confirm-action-modal';
 import { PortalReconciliationTab } from '../components/portal-reconciliation-tab';
 import { showToast } from '../components/toast';
@@ -60,7 +58,6 @@ export const PortalDebtPage: React.FC = () => {
 
   const [selectedInvoiceForDetail, setSelectedInvoiceForDetail] = useState<InvoiceItem | null>(null);
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<InvoiceItem | null>(null);
-  const [isReminderTestOpen, setIsReminderTestOpen] = useState<boolean>(false);
   const [confirmInvoicePdf, setConfirmInvoicePdf] = useState<InvoiceItem | null>(null);
   const [isPdfDownloading, setIsPdfDownloading] = useState<boolean>(false);
 
@@ -237,16 +234,6 @@ export const PortalDebtPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setIsReminderTestOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors shadow-xs"
-            title="Kiểm tra tác vụ quét hạn và gửi email nhắc nợ tự động theo SN-208"
-          >
-            <Bell className="h-3.5 w-3.5" />
-            <span>Tác vụ nhắc nợ (SN-208)</span>
-          </button>
-
-          <button
-            type="button"
             onClick={fetchData}
             disabled={loading}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-xs"
@@ -293,7 +280,7 @@ export const PortalDebtPage: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="text-sm font-bold">
-                    Nhắc hạn: Có {upcomingInvoicesCount} hóa đơn sắp đến hạn trong 3 ngày tới (SN-208 A)
+                    Nhắc hạn: Có {upcomingInvoicesCount} hóa đơn sắp đến hạn trong 3 ngày tới
                   </h4>
                   <p className="text-xs text-amber-700 mt-0.5">
                     Hệ thống đã chuẩn bị gửi thông báo email tự động. Quý đại lý vui lòng thu xếp thanh toán đúng kỳ hạn.
@@ -805,12 +792,6 @@ export const PortalDebtPage: React.FC = () => {
         onSuccess={() => {
           fetchData();
         }}
-      />
-
-      <ReminderTestModal
-        isOpen={isReminderTestOpen}
-        onClose={() => setIsReminderTestOpen(false)}
-        onRefreshDebt={fetchData}
       />
 
       {/* Modal xác nhận trước khi Tải PDF */}
