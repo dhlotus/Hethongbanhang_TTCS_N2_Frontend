@@ -982,6 +982,29 @@ export const ShipmentsPage: React.FC = () => {
                             <span className="font-medium text-slate-800 text-xs truncate block" title={item.customerName || 'Khách lẻ'}>
                               {item.customerName || 'Khách lẻ'}
                             </span>
+                            {item.hasShortDelivery && (
+                              <div
+                                className="mt-1 flex items-center gap-1.5 text-[11px] text-amber-900 bg-amber-50/90 border border-amber-200/90 px-2 py-0.5 rounded-md w-fit max-w-full"
+                                title={
+                                  item.lines && item.lines.some((l) => (l.remainingQuantity || 0) > 0)
+                                    ? `Còn nợ: ${item.lines
+                                        .filter((l) => (l.remainingQuantity || 0) > 0)
+                                        .map((l) => `${l.productName || l.productSku} (thiếu ${l.remainingQuantity} ${l.unitName || ''}${l.shortDeliveryReason ? ` - ${l.shortDeliveryReason}` : ''})`)
+                                        .join('; ')}`
+                                    : 'Có mặt hàng giao thiếu / nợ hàng'
+                                }
+                              >
+                                <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                <span className="truncate font-medium">
+                                  {item.lines && item.lines.some((l) => (l.remainingQuantity || 0) > 0)
+                                    ? `Nợ: ${item.lines
+                                        .filter((l) => (l.remainingQuantity || 0) > 0)
+                                        .map((l) => `${l.productName || l.productSku} (thiếu ${l.remainingQuantity} ${l.unitName || ''})`)
+                                        .join('; ')}`
+                                    : 'Có mặt hàng giao thiếu / nợ hàng'}
+                                </span>
+                              </div>
+                            )}
                           </td>
 
                           {/* Trạng thái: Chỉ hiển thị badge trạng thái */}

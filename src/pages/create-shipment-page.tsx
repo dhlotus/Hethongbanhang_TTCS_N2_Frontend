@@ -32,6 +32,12 @@ interface ShipmentProductRow {
   productName: string;
   unit: string;
   quantityRequested: number;
+  // SN-195 Giao hàng thiếu
+  orderedQuantity?: number;
+  shippedQuantity?: number;
+  remainingQuantity?: number;
+  isShortDelivery?: boolean;
+  shortDeliveryReason?: string;
   // Thông tin lô
   selectedBatchNo: string;
   fefoSuggestedBatchNo: string;
@@ -211,45 +217,96 @@ export const CreateShipmentPage: React.FC = () => {
               setTrackingNumber(sh.trackingNumber || '');
               if (sh.warehouseId) setWarehouseId(sh.warehouseId);
 
-              if (sh.items && Array.isArray(sh.items) && sh.items.length > 0) {
+              if (sh.lines && Array.isArray(sh.lines) && sh.lines.length > 0) {
                 setItems(
-                  sh.items.map((it: any) => ({
-                    productId: it.sku_code || it.skuCode || '',
-                    skuCode: it.sku_code || it.skuCode || '',
-                    productName: it.product_name || it.productName || it.sku_code || 'Sản phẩm',
-                    unit: 'Hộp',
-                    quantityRequested: Number(it.quantity_requested || it.quantity || 1),
-                    selectedBatchNo: it.selected_batch_no || it.selectedBatchNo || 'CHƯA_CÓ_LÔ',
-                    fefoSuggestedBatchNo:
-                      it.fefo_suggested_batch_no ||
-                      it.fefoSuggestedBatchNo ||
-                      it.selected_batch_no ||
-                      '',
-                    expiryDate: it.expiry_date || it.expiryDate || '',
-                    manufacturingDate: it.manufacturing_date || it.manufacturingDate || '',
-                    availableQuantity: Number(it.quantity_requested || it.quantity || 1),
-                    isOverridden: Boolean(it.is_overridden ?? it.isOverridden),
-                    overrideReason: it.override_reason || it.overrideReason || '',
-                    isLoadingBatch: false,
-                  }))
+                  sh.lines.map((l: any) => {
+                    const matchedItem: any = Array.isArray(sh.items)
+                      ? sh.items.find(
+                          (it: any) =>
+                            (it.sku_code || it.skuCode || it.productId) === (l.productSku || l.productId)
+                        )
+                      : null;
+                    const ordQty = Number(l.orderedQuantity ?? l.shippedQuantity ?? 1);
+                    const shpQty = Number(l.shippedQuantity ?? 0);
+                    const remQty = Number(
+                      l.remainingQuantity ?? Math.max(0, ordQty - shpQty)
+                    );
+                    const isShort = Boolean(
+                      l.isShortDelivery || remQty > 0 || sh.hasShortDelivery
+                    );
+
+                    return {
+                      productId: l.productId || l.productSku || '',
+                      skuCode: l.productSku || l.productId || '',
+                      productName: l.productName || l.productSku || 'Sản phẩm',
+                      unit: l.unitName || 'Hộp',
+                      quantityRequested: Number(l.shippedQuantity ?? l.orderedQuantity ?? 1),
+                      orderedQuantity: ordQty,
+                      shippedQuantity: shpQty,
+                      remainingQuantity: remQty,
+                      isShortDelivery: isShort,
+                      shortDeliveryReason: l.shortDeliveryReason || '',
+                      selectedBatchNo:
+                        matchedItem?.selected_batch_no ||
+                        matchedItem?.selectedBatchNo ||
+                        'LÔ-TIÊU-CHUẨN',
+                      fefoSuggestedBatchNo:
+                        matchedItem?.fefo_suggested_batch_no ||
+                        matchedItem?.fefoSuggestedBatchNo ||
+                        matchedItem?.selected_batch_no ||
+                        'LÔ-TIÊU-CHUẨN',
+                      expiryDate: matchedItem?.expiry_date || matchedItem?.expiryDate || '',
+                      manufacturingDate:
+                        matchedItem?.manufacturing_date || matchedItem?.manufacturingDate || '',
+                      availableQuantity: Number(l.shippedQuantity ?? l.orderedQuantity ?? 1),
+                      isOverridden: Boolean(matchedItem?.is_overridden ?? matchedItem?.isOverridden),
+                      overrideReason:
+                        matchedItem?.override_reason ||
+                        matchedItem?.overrideReason ||
+                        l.shortDeliveryReason ||
+                        '',
+                      isLoadingBatch: false,
+                    };
+                  })
                 );
-              } else if (sh.lines && Array.isArray(sh.lines) && sh.lines.length > 0) {
+              } else if (sh.items && Array.isArray(sh.items) && sh.items.length > 0) {
                 setItems(
-                  sh.lines.map((l: any) => ({
-                    productId: l.productId || l.productSku || '',
-                    skuCode: l.productSku || '',
-                    productName: l.productName || l.productSku || 'Sản phẩm',
-                    unit: l.unitName || 'Hộp',
-                    quantityRequested: Number(l.shippedQuantity ?? l.orderedQuantity ?? 1),
-                    selectedBatchNo: 'LÔ-TIÊU-CHUẨN',
-                    fefoSuggestedBatchNo: 'LÔ-TIÊU-CHUẨN',
-                    expiryDate: '',
-                    manufacturingDate: '',
-                    availableQuantity: Number(l.shippedQuantity ?? l.orderedQuantity ?? 1),
-                    isOverridden: false,
-                    overrideReason: l.shortDeliveryReason || '',
-                    isLoadingBatch: false,
-                  }))
+                  sh.items.map((it: any) => {
+                    const ordQty = Number(
+                      it.ordered_quantity || it.orderedQuantity || it.quantity_requested || it.quantity || 1
+                    );
+                    const shpQty = Number(
+                      it.shipped_quantity || it.shippedQuantity || it.quantity_requested || it.quantity || 1
+                    );
+                    const remQty = Number(it.remaining_quantity || it.remainingQuantity || 0);
+
+                    return {
+                      productId: it.sku_code || it.skuCode || '',
+                      skuCode: it.sku_code || it.skuCode || '',
+                      productName: it.product_name || it.productName || it.sku_code || 'Sản phẩm',
+                      unit: it.unit || 'Hộp',
+                      quantityRequested: Number(it.quantity_requested || it.quantity || 1),
+                      orderedQuantity: ordQty,
+                      shippedQuantity: shpQty,
+                      remainingQuantity: remQty,
+                      isShortDelivery: Boolean(
+                        it.is_short_delivery || it.isShortDelivery || remQty > 0
+                      ),
+                      shortDeliveryReason: it.short_delivery_reason || it.shortDeliveryReason || '',
+                      selectedBatchNo: it.selected_batch_no || it.selectedBatchNo || 'CHƯA_CÓ_LÔ',
+                      fefoSuggestedBatchNo:
+                        it.fefo_suggested_batch_no ||
+                        it.fefoSuggestedBatchNo ||
+                        it.selected_batch_no ||
+                        '',
+                      expiryDate: it.expiry_date || it.expiryDate || '',
+                      manufacturingDate: it.manufacturing_date || it.manufacturingDate || '',
+                      availableQuantity: Number(it.quantity_requested || it.quantity || 1),
+                      isOverridden: Boolean(it.is_overridden ?? it.isOverridden),
+                      overrideReason: it.override_reason || it.overrideReason || '',
+                      isLoadingBatch: false,
+                    };
+                  })
                 );
               }
             }
@@ -1031,6 +1088,45 @@ export const CreateShipmentPage: React.FC = () => {
         </div>
 
         {/* ======================================================================= */}
+        {/* CẢNH BÁO / THÔNG BÁO XUẤT THIẾU - CÒN NỢ HÀNG (SN-195)                  */}
+        {/* ======================================================================= */}
+        {isDetailMode &&
+          (currentShipment?.hasShortDelivery ||
+            items.some((it) => it.isShortDelivery || (it.remainingQuantity || 0) > 0)) && (
+            <div className="bg-amber-50/90 border-2 border-amber-300 rounded-xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in">
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center shrink-0 text-amber-700 shadow-2xs">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h3 className="text-sm font-bold text-amber-950 uppercase tracking-wide">
+                      Phiếu xuất kho giao thiếu (Task SN-195 - Còn nợ hàng)
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-200 text-amber-900 border border-amber-400">
+                      Xuất một phần (Partial)
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-900/90 mt-1 leading-relaxed">
+                    Đơn hàng này chưa được xuất kho đủ 100% số lượng đặt. Hệ thống đã tự động ghi nhận số lượng nợ hàng để điều phối giao bù trong đợt tiếp theo.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0 self-start md:self-center bg-white/80 border border-amber-200/80 rounded-lg px-4 py-2">
+                <div className="text-right">
+                  <p className="text-[11px] text-amber-700 uppercase font-semibold">Tổng lượng còn nợ</p>
+                  <p className="text-base font-black text-amber-900">
+                    {items
+                      .reduce((acc, it) => acc + (it.remainingQuantity || 0), 0)
+                      .toLocaleString('vi-VN')}{' '}
+                    SP
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+        {/* ======================================================================= */}
         {/* KHU VỰC 2: BẢNG CHI TIẾT SẢN PHẨM & PHÂN BỔ LÔ FEFO                      */}
         {/* ======================================================================= */}
         <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
@@ -1060,19 +1156,28 @@ export const CreateShipmentPage: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
                   <th className="py-3 px-4 w-12 text-center">STT</th>
                   <th className="py-3 px-4 min-w-[220px]">Sản phẩm & Mã SKU</th>
-                  <th className="py-3 px-4 text-center w-28"> SỐ LƯỢNG </th>
-                  <th className="py-3 px-4 min-w-[220px]">LÔ HÀNG & HẠN DÙNG FEFO</th>
-                  <th className="py-3 px-4 min-w-[160px] text-center">TRẠNG THÁI</th>
-                  <th className="py-3 px-4 text-right w-28">Thao tác</th>
+                  {isDetailMode ? (
+                    <>
+                      <th className="py-3 px-3 text-center w-24">SL Đặt</th>
+                      <th className="py-3 px-3 text-center w-24 text-indigo-700 bg-indigo-50/50">Thực xuất</th>
+                      <th className="py-3 px-3 text-center w-28 text-amber-800 bg-amber-50/60">Nợ hàng</th>
+                      <th className="py-3 px-4 min-w-[180px]">Lý do giao thiếu</th>
+                    </>
+                  ) : (
+                    <th className="py-3 px-4 text-center w-28">Số lượng</th>
+                  )}
+                  <th className="py-3 px-4 min-w-[200px]">Lô hàng & Hạn dùng FEFO</th>
+                  <th className="py-3 px-4 min-w-[150px] text-center">Trạng thái</th>
+                  <th className="py-3 px-4 text-right w-24">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-slate-400">
+                    <td colSpan={isDetailMode ? 9 : 6} className="text-center py-12 text-slate-400">
                       <Package className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                       <p>Vui lòng chọn Đơn hàng ở trên để nạp danh sách sản phẩm cần xuất kho</p>
                     </td>
@@ -1100,12 +1205,56 @@ export const CreateShipmentPage: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* Số lượng */}
-                        <td className="py-3.5 px-4 text-center">
-                          <span className="inline-block px-2.5 py-1 text-sm font-bold text-slate-800 bg-slate-100 rounded-md">
-                            {row.quantityRequested.toLocaleString('vi-VN')}
-                          </span>
-                        </td>
+                        {isDetailMode ? (
+                          <>
+                            {/* SL Đặt */}
+                            <td className="py-3.5 px-3 text-center font-semibold text-slate-700">
+                              <span className="text-xs">
+                                {(row.orderedQuantity ?? row.quantityRequested).toLocaleString('vi-VN')} {row.unit}
+                              </span>
+                            </td>
+
+                            {/* Thực xuất */}
+                            <td className="py-3.5 px-3 text-center bg-indigo-50/20">
+                              <span className="inline-block px-2.5 py-1 text-xs font-bold text-indigo-800 bg-indigo-100/70 border border-indigo-200/60 rounded-md">
+                                {(row.shippedQuantity ?? row.quantityRequested).toLocaleString('vi-VN')} {row.unit}
+                              </span>
+                            </td>
+
+                            {/* Nợ hàng (Còn thiếu) */}
+                            <td className="py-3.5 px-3 text-center bg-amber-50/20">
+                              {(row.remainingQuantity || 0) > 0 ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                  <AlertTriangle className="w-3 h-3 text-amber-700 shrink-0" />
+                                  <span>Thiếu {row.remainingQuantity?.toLocaleString('vi-VN')} {row.unit}</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                  <span>Đủ 100%</span>
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Lý do giao thiếu */}
+                            <td className="py-3.5 px-4">
+                              {(row.remainingQuantity || 0) > 0 ? (
+                                <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-1.5 flex items-start gap-1">
+                                  <span className="font-medium">{row.shortDeliveryReason || 'Kho tạm hết hàng, nợ đợt sau'}</span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 text-xs">-</span>
+                              )}
+                            </td>
+                          </>
+                        ) : (
+                          /* Số lượng khi tạo mới */
+                          <td className="py-3.5 px-4 text-center">
+                            <span className="inline-block px-2.5 py-1 text-sm font-bold text-slate-800 bg-slate-100 rounded-md">
+                              {row.quantityRequested.toLocaleString('vi-VN')}
+                            </span>
+                          </td>
+                        )}
 
                         {/* Lô xuất kho & HSD */}
                         <td className="py-3.5 px-4">
@@ -1198,12 +1347,56 @@ export const CreateShipmentPage: React.FC = () => {
         {/* ======================================================================= */}
         {/* NÚT HÀNH ĐỘNG DƯỚI CÙNG                                                  */}
         {/* ======================================================================= */}
-        <div className="flex items-center justify-between bg-white border border-slate-200/90 rounded-xl p-4 shadow-xs">
-          <div className="text-xs text-slate-500">
-            <strong className="text-slate-800 text-sm">{items.length}</strong> sản phẩm | Tổng số lượng:{' '}
-            <strong className="text-slate-800 text-sm">
-              {items.reduce((acc, cur) => acc + cur.quantityRequested, 0).toLocaleString('vi-VN')}
-            </strong>
+        <div className="flex items-center justify-between bg-white border border-slate-200/90 rounded-xl p-4 shadow-xs flex-wrap gap-4">
+          <div className="text-xs text-slate-500 flex items-center gap-3.5 flex-wrap">
+            <div>
+              <strong className="text-slate-800 text-sm">{items.length}</strong> sản phẩm
+            </div>
+            {isDetailMode ? (
+              <>
+                <div className="h-4 w-px bg-slate-200" />
+                <div>
+                  Tổng đặt:{' '}
+                  <strong className="text-slate-800 text-sm">
+                    {items
+                      .reduce((acc, cur) => acc + (cur.orderedQuantity ?? cur.quantityRequested), 0)
+                      .toLocaleString('vi-VN')}
+                  </strong>
+                </div>
+                <div className="h-4 w-px bg-slate-200" />
+                <div>
+                  Thực xuất:{' '}
+                  <strong className="text-indigo-700 text-sm">
+                    {items
+                      .reduce((acc, cur) => acc + (cur.shippedQuantity ?? cur.quantityRequested), 0)
+                      .toLocaleString('vi-VN')}
+                  </strong>
+                </div>
+                {items.some((it) => (it.remainingQuantity || 0) > 0) && (
+                  <>
+                    <div className="h-4 w-px bg-slate-200" />
+                    <div className="text-amber-800 font-semibold">
+                      Còn nợ:{' '}
+                      <strong className="text-amber-900 text-sm bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300">
+                        {items
+                          .reduce((acc, cur) => acc + (cur.remainingQuantity || 0), 0)
+                          .toLocaleString('vi-VN')}
+                      </strong>
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <span>|</span>
+                <span>
+                  Tổng số lượng:{' '}
+                  <strong className="text-slate-800 text-sm">
+                    {items.reduce((acc, cur) => acc + cur.quantityRequested, 0).toLocaleString('vi-VN')}
+                  </strong>
+                </span>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
