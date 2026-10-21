@@ -14,6 +14,8 @@ import {
   RefreshCw,
   ScrollText,
   ChevronDown,
+  Calendar,
+  CheckCircle2,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { Pagination } from '../components/pagination';
@@ -31,6 +33,23 @@ const formatCurrency = (val: number): string => {
     style: 'currency',
     currency: 'VND',
   }).format(val || 0);
+};
+
+const numberToWordsVN = (num: number): string => {
+  if (!num || num <= 0) return '';
+  if (num >= 1_000_000_000) {
+    const val = num / 1_000_000_000;
+    return `${Number.isInteger(val) ? val : val.toFixed(1)} tỷ đồng`;
+  }
+  if (num >= 1_000_000) {
+    const val = num / 1_000_000;
+    return `${Number.isInteger(val) ? val : val.toFixed(1)} triệu đồng`;
+  }
+  if (num >= 1_000) {
+    const val = num / 1_000;
+    return `${Number.isInteger(val) ? val : val.toFixed(0)} nghìn đồng`;
+  }
+  return `${num.toLocaleString('vi-VN')} đồng`;
 };
 
 export const SalesTargetsPage: React.FC = () => {
@@ -435,22 +454,22 @@ export const SalesTargetsPage: React.FC = () => {
 
   return (
     <div className="space-y-4 sm:space-y-5 w-full">
-      {/* ── THANH TAB CHUYỂN ĐỔI DUY NHẤT (LUÔN HIỂN THỊ, KHÔNG CÓ NÚT LẶP Ở BÊN PHẢI) ── */}
+      {/* ── THANH TAB CHUYỂN ĐỔI KÈM HIỆU ỨNG MƯỢT MÀ ── */}
       <div className="pb-1 border-b border-slate-200/80">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl w-fit">
+        <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/90 rounded-2xl w-fit border border-slate-200/60 shadow-2xs">
           <button
             type="button"
             onClick={() => {
               setActiveTab('list');
               updateUrlParams({ tab: 'list' });
             }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 ease-out cursor-pointer select-none ${
               activeTab === 'list'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-900/5 -translate-y-0.5'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
-            <Target className="h-4 w-4 text-indigo-600" />
+            <Target className={`h-4 w-4 transition-transform duration-300 ${activeTab === 'list' ? 'text-indigo-600 scale-110' : 'text-slate-400'}`} />
             <span>Tiến độ chỉ tiêu</span>
           </button>
 
@@ -458,13 +477,13 @@ export const SalesTargetsPage: React.FC = () => {
             <button
               type="button"
               onClick={handleGoToCreateTab}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 ease-out cursor-pointer select-none ${
                 activeTab === 'create'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-900/5 -translate-y-0.5'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              <Plus className="h-4 w-4 text-indigo-600" />
+              <Plus className={`h-4 w-4 transition-transform duration-300 ${activeTab === 'create' ? 'text-indigo-600 scale-110' : 'text-slate-400'}`} />
               <span>Giao chỉ tiêu mới</span>
             </button>
           )}
@@ -475,171 +494,212 @@ export const SalesTargetsPage: React.FC = () => {
       {activeTab === 'create' ? (
         <div
           key="tab-create"
-          className="animate-in fade-in-50 slide-in-from-bottom-2 duration-300 ease-out space-y-5 w-full"
+          className="animate-in fade-in-0 zoom-in-99 slide-in-from-bottom-2 duration-200 ease-out w-full"
         >
-          {/* Form Giao chỉ tiêu mới dạng Tab (Bố cục chuẩn Enterprise SaaS) */}
-          <div className="max-w-2xl bg-white rounded-xl border border-slate-200/80 p-5 sm:p-7 shadow-xs space-y-5">
-            <div className="border-b border-slate-100 pb-3 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Thiết lập mục tiêu kinh doanh theo tháng</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Phân bổ chỉ tiêu doanh thu thực tế cho nhân viên kinh doanh hoặc khu vực thị trường
-                </p>
-              </div>
-              <div className="text-xs text-slate-500 font-semibold bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/60 shrink-0">
-                Kỳ tháng: <strong className="text-slate-800">{newPeriod}</strong>
-              </div>
-            </div>
-
-            <div className="space-y-4 text-xs sm:text-sm">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">
-                  Kỳ áp dụng (Tháng) <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="month"
-                  value={newPeriod}
-                  onChange={(e) => setNewPeriod(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none bg-white cursor-pointer"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">
-                  Phạm vi chỉ tiêu <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={newTargetType}
-                  onChange={(e) => {
-                    const t = e.target.value as SalesTargetType;
-                    setNewTargetType(t);
-                    if (t === 'EMPLOYEE' && employeeOptions.length > 0) {
-                      setNewTargetId(employeeOptions[0].id);
-                      setNewTargetName(employeeOptions[0].name);
-                    } else if (regionOptions.length > 0) {
-                      setNewTargetId(regionOptions[0].id);
-                      setNewTargetName(regionOptions[0].name);
-                    }
-                  }}
-                  className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none bg-white cursor-pointer font-medium"
-                >
-                  <option value="EMPLOYEE">Cá nhân nhân viên kinh doanh</option>
-                  <option value="REGION">Khu vực thị trường</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">
-                  {newTargetType === 'EMPLOYEE' ? 'Chọn nhân viên kinh doanh' : 'Chọn khu vực thị trường'}{' '}
-                  <span className="text-rose-500">*</span>
-                </label>
-                {newTargetType === 'EMPLOYEE' ? (
-                  <select
-                    value={newTargetId}
-                    onChange={(e) => {
-                      const emp = employeeOptions.find((o) => o.id === e.target.value);
-                      if (emp) {
-                        setNewTargetId(emp.id);
-                        setNewTargetName(emp.name);
-                      }
-                    }}
-                    disabled={loadingEmployees}
-                    className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none bg-white cursor-pointer font-medium disabled:bg-slate-50"
-                  >
-                    <option value="">
-                      {loadingEmployees ? 'Đang tải danh sách...' : '-- Chọn nhân viên --'}
-                    </option>
-                    {employeeOptions.map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <select
-                    value={newTargetId}
-                    onChange={(e) => {
-                      const reg = regionOptions.find((o) => o.id === e.target.value);
-                      if (reg) {
-                        setNewTargetId(reg.id);
-                        setNewTargetName(reg.name);
-                      }
-                    }}
-                    className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none bg-white cursor-pointer font-medium"
-                  >
-                    {regionOptions.map((reg) => (
-                      <option key={reg.id} value={reg.id}>
-                        {reg.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">
-                  Mức chỉ tiêu (VNĐ) <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={
-                      newTargetAmount > 0
-                        ? newTargetAmount.toLocaleString('vi-VN')
-                        : newTargetAmount === 0
-                        ? '0'
-                        : ''
-                    }
-                    onChange={(e) => {
-                      const cleanDigits = e.target.value.replace(/\D/g, '');
-                      setNewTargetAmount(cleanDigits ? Number(cleanDigits) : 0);
-                    }}
-                    placeholder="0"
-                    className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-sm font-bold text-slate-900 focus:border-indigo-500 focus:outline-none pr-14"
-                  />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                    VNĐ
-                  </span>
+          {/* Form Giao chỉ tiêu mới căn giữa, tinh gọn, không dài dòng */}
+          <div className="w-full flex justify-center py-2 sm:py-6">
+            <div className="w-full max-w-xl bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+              {/* Header card gọn gàng */}
+              <div className="px-6 py-4.5 border-b border-slate-100 flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+                  <Target className="h-5 w-5" />
                 </div>
-                {newTargetAmount > 0 && (
-                  <p className="text-xs text-indigo-600 font-medium mt-1">
-                    Số tiền: {formatCurrency(newTargetAmount)}
-                  </p>
-                )}
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">Giao chỉ tiêu mới</h2>
+                  <p className="text-xs text-slate-500">Kỳ tháng {newPeriod}</p>
+                </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">Ghi chú kế hoạch</label>
-                <textarea
-                  rows={3}
-                  value={newTargetNote}
-                  onChange={(e) => setNewTargetNote(e.target.value)}
-                  placeholder="Nhập ghi chú kế hoạch kinh doanh hoặc lưu ý thực hiện..."
-                  className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-xs sm:text-sm focus:border-indigo-500 focus:outline-none"
-                />
-              </div>
-            </div>
+              {/* Form body */}
+              <div className="p-6 space-y-4 text-xs sm:text-sm">
+                {/* Hàng 1: Kỳ áp dụng & Phạm vi */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1.5">
+                      Kỳ áp dụng <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="month"
+                      value={newPeriod}
+                      onChange={(e) => setNewPeriod(e.target.value)}
+                      className="w-full h-10.5 rounded-lg border border-slate-200 px-3 font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-2xs transition-all bg-white"
+                    />
+                  </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('list');
-                  updateUrlParams({ tab: 'list' });
-                }}
-                className="px-4 py-2 rounded-lg border border-slate-200 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveCreateTab}
-                disabled={saving}
-                className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer"
-              >
-                {saving ? 'Đang lưu...' : 'Giao chỉ tiêu'}
-              </button>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1.5">
+                      Phạm vi <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="h-10.5 p-1 bg-slate-100 rounded-lg flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewTargetType('EMPLOYEE');
+                          if (employeeOptions.length > 0) {
+                            setNewTargetId(employeeOptions[0].id);
+                            setNewTargetName(employeeOptions[0].name);
+                          }
+                        }}
+                        className={`flex-1 h-full rounded-md font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          newTargetType === 'EMPLOYEE'
+                            ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <Users className="h-3.5 w-3.5 text-blue-600" />
+                        <span>Cá nhân</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewTargetType('REGION');
+                          if (regionOptions.length > 0) {
+                            setNewTargetId(regionOptions[0].id);
+                            setNewTargetName(regionOptions[0].name);
+                          }
+                        }}
+                        className={`flex-1 h-full rounded-md font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          newTargetType === 'REGION'
+                            ? 'bg-white text-emerald-700 shadow-2xs font-bold'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <MapPin className="h-3.5 w-3.5 text-emerald-600" />
+                        <span>Khu vực</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hàng 2: Chọn đối tượng */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1.5">
+                    {newTargetType === 'EMPLOYEE' ? 'Nhân viên kinh doanh' : 'Khu vực thị trường'}{' '}
+                    <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={newTargetId}
+                    onChange={(e) => {
+                      if (newTargetType === 'EMPLOYEE') {
+                        const emp = employeeOptions.find((o) => o.id === e.target.value);
+                        if (emp) {
+                          setNewTargetId(emp.id);
+                          setNewTargetName(emp.name);
+                        }
+                      } else {
+                        const reg = regionOptions.find((o) => o.id === e.target.value);
+                        if (reg) {
+                          setNewTargetId(reg.id);
+                          setNewTargetName(reg.name);
+                        }
+                      }
+                    }}
+                    disabled={newTargetType === 'EMPLOYEE' && loadingEmployees}
+                    className="w-full h-10.5 rounded-lg border border-slate-200 bg-white px-3 font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-2xs transition-all disabled:bg-slate-50"
+                  >
+                    {newTargetType === 'EMPLOYEE' ? (
+                      <>
+                        <option value="">
+                          {loadingEmployees ? 'Đang tải danh sách...' : '-- Chọn nhân viên --'}
+                        </option>
+                        {employeeOptions.map((emp) => (
+                          <option key={emp.id} value={emp.id}>
+                            {emp.name}
+                          </option>
+                        ))}
+                      </>
+                    ) : (
+                      regionOptions.map((reg) => (
+                        <option key={reg.id} value={reg.id}>
+                          {reg.name}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                {/* Hàng 3: Mức chỉ tiêu */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="font-bold text-slate-700">
+                      Mức chỉ tiêu (VNĐ) <span className="text-rose-500">*</span>
+                    </label>
+                    {newTargetAmount > 0 && (
+                      <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                        {numberToWordsVN(newTargetAmount)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={
+                        newTargetAmount > 0
+                          ? newTargetAmount.toLocaleString('vi-VN')
+                          : newTargetAmount === 0
+                          ? '0'
+                          : ''
+                      }
+                      onChange={(e) => {
+                        const cleanDigits = e.target.value.replace(/\D/g, '');
+                        setNewTargetAmount(cleanDigits ? Number(cleanDigits) : 0);
+                      }}
+                      placeholder="0"
+                      className="w-full h-11 rounded-lg border border-slate-200 pl-3.5 pr-12 text-base font-bold text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-2xs tabular-nums"
+                    />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                      VNĐ
+                    </span>
+                  </div>
+                </div>
+
+                {/* Hàng 4: Ghi chú */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1.5">Ghi chú</label>
+                  <textarea
+                    rows={2}
+                    value={newTargetNote}
+                    onChange={(e) => setNewTargetNote(e.target.value)}
+                    placeholder="Nhập ghi chú kế hoạch..."
+                    className="w-full rounded-lg border border-slate-200 p-3 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-2xs resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Footer hành động */}
+              <div className="bg-slate-50/70 px-6 py-3.5 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('list');
+                    updateUrlParams({ tab: 'list' });
+                  }}
+                  className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors shadow-2xs"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveCreateTab}
+                  disabled={saving}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white text-xs sm:text-sm font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-60"
+                >
+                  {saving ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <span>Đang lưu...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>Giao chỉ tiêu</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -649,7 +709,7 @@ export const SalesTargetsPage: React.FC = () => {
         /* ========================================================================= */
         <div
           key="tab-list"
-          className="animate-in fade-in-50 slide-in-from-bottom-2 duration-300 ease-out space-y-4 sm:space-y-5 w-full"
+          className="animate-in fade-in-0 zoom-in-99 slide-in-from-bottom-3 duration-300 ease-out space-y-4 sm:space-y-5 w-full"
         >
 
           {/* ── BỘ LỌC ĐỒNG BỘ QUERY PARAMETER: TÌM KIẾM BÊN TRÁI + SELECT PHẠM VI + KỲ THÁNG ── */}
