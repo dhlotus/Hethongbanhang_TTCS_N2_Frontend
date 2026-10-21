@@ -19,11 +19,18 @@ import {
   FileSpreadsheet,
   Calendar,
   RotateCcw,
+  Layers,
 } from 'lucide-react';
 import { getStoredUser } from '../utils/navigation';
 import { priceListsService } from '../services/price-lists.service';
 import { PriceListFormModal } from '../components/price-list-form-modal';
 import { PriceListCloneModal } from '../components/price-list-clone-modal';
+import { DiscountPolicyFormModal } from '../components/discount-policy-form-modal';
+import { discountPoliciesService } from '../services/discount-policies.service';
+import type {
+  DiscountPolicy,
+  CreateDiscountPolicyPayload,
+} from '../services/discount-policies.service';
 import { showToast } from '../components/toast';
 import { PriceListsTableSkeleton } from '../components/skeletons';
 import { ConfirmDeleteModal } from '../components/confirm-delete-modal';
@@ -47,19 +54,35 @@ const CUSTOMER_GROUP_TABS: { key: string; label: string }[] = [
   { key: 'RETAIL', label: 'Bán lẻ Niêm yết' },
 ];
 
-const TAB_TO_PARAM: Record<'BASE' | 'DISCOUNT', string> = {
+export type ActiveTabType =
+  | 'BASE'
+  | 'DISCOUNT'
+  | 'CREATE_PRICE_LIST'
+  | 'EDIT_PRICE_LIST'
+  | 'CREATE_DISCOUNT'
+  | 'EDIT_DISCOUNT';
+
+const TAB_TO_PARAM: Record<ActiveTabType, string> = {
   BASE: 'base',
   DISCOUNT: 'discount',
+  CREATE_PRICE_LIST: 'create_price_list',
+  EDIT_PRICE_LIST: 'edit_price_list',
+  CREATE_DISCOUNT: 'create_discount',
+  EDIT_DISCOUNT: 'edit_discount',
 };
 
-const PARAM_TO_TAB: Record<string, 'BASE' | 'DISCOUNT'> = {
+const PARAM_TO_TAB: Record<string, ActiveTabType> = {
   base: 'BASE',
   discount: 'DISCOUNT',
   base_price: 'BASE',
   policies: 'DISCOUNT',
+  create_price_list: 'CREATE_PRICE_LIST',
+  edit_price_list: 'EDIT_PRICE_LIST',
+  create_discount: 'CREATE_DISCOUNT',
+  edit_discount: 'EDIT_DISCOUNT',
 };
 
-const parseTabParam = (param: string | null): 'BASE' | 'DISCOUNT' => {
+const parseTabParam = (param: string | null): ActiveTabType => {
   if (!param) return 'BASE';
   const lower = param.toLowerCase().trim();
   return PARAM_TO_TAB[lower] || 'BASE';
@@ -129,8 +152,8 @@ export const PriceListsPage: React.FC = () => {
   const initialSearch = searchParams.get('search') || '';
   const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
 
-  // Tab cấp cao (Bảng giá cơ sở vs Chính sách chiết khấu sản lượng)
-  const [activeTab, setActiveTab] = useState<'BASE' | 'DISCOUNT'>(initialTab);
+  // Tab cấp cao (Bảng giá cơ sở vs Chính sách chiết khấu sản lượng vs Tab Thêm/Sửa)
+  const [activeTab, setActiveTab] = useState<ActiveTabType>(initialTab);
 
   // Dữ liệu bảng giá & Phân trang
   const [priceLists, setPriceLists] = useState<PriceList[]>([]);
@@ -154,10 +177,12 @@ export const PriceListsPage: React.FC = () => {
     isDropUp: boolean;
   } | null>(null);
 
-  // Modals state
-  const [formModalOpen, setFormModalOpen] = useState(false);
+  // Form states cho Bảng giá và Chính sách Chiết khấu
   const [editingPriceList, setEditingPriceList] = useState<PriceList | null>(null);
   const [isViewOnly, setIsViewOnly] = useState(false);
+
+  const [editingDiscountPolicy, setEditingDiscountPolicy] = useState<DiscountPolicy | null>(null);
+  const [isDiscountViewOnly, setIsDiscountViewOnly] = useState(false);
 
   const [cloneModalOpen, setCloneModalOpen] = useState(false);
   const [priceListToClone, setPriceListToClone] = useState<PriceList | null>(null);
@@ -213,7 +238,7 @@ export const PriceListsPage: React.FC = () => {
   // Cập nhật query parameters an toàn lên URL mà không reload lại toàn bộ trang
   const updateUrlParams = useCallback(
     (updates: {
-      tab?: 'BASE' | 'DISCOUNT';
+      tab?: ActiveTabType;
       status?: PriceListStatusType | 'ALL';
       group?: string;
       search?: string;
@@ -223,7 +248,7 @@ export const PriceListsPage: React.FC = () => {
         (prev) => {
           const next = new URLSearchParams(prev);
 
-          // 1. Tab hiển thị: ?tab=base | ?tab=discount
+          // 1. Tab hiển thị: ?tab=base | ?tab=discount | ?tab=create_price_list ...
           const targetTab = updates.tab !== undefined ? updates.tab : activeTab;
           next.set('tab', TAB_TO_PARAM[targetTab]);
 
@@ -322,7 +347,7 @@ export const PriceListsPage: React.FC = () => {
   }, [searchParams, activeTab, selectedStatus, selectedGroup, searchTerm, page]);
 
   // Chuyển đổi tab hiển thị
-  const handleTabChange = (newTab: 'BASE' | 'DISCOUNT') => {
+  const handleTabChange = (newTab: ActiveTabType) => {
     setActiveTab(newTab);
     setSearchParams(
       (prev) => {
@@ -424,29 +449,57 @@ export const PriceListsPage: React.FC = () => {
     };
   }, [priceLists, total]);
 
-  // Mở modal thêm mới
-  const handleOpenCreateModal = () => {
+  // Mở tab thêm mới bảng giá
+  const handleOpenCreatePriceListTab = () => {
     setEditingPriceList(null);
     setIsViewOnly(false);
-    setFormModalOpen(true);
+    handleTabChange('CREATE_PRICE_LIST');
   };
 
-  // Mở modal xem chi tiết
-  const handleOpenViewModal = (pl: PriceList) => {
+  // Mở tab xem chi tiết bảng giá
+  const handleOpenViewPriceListTab = (pl: PriceList) => {
     setEditingPriceList(pl);
     setIsViewOnly(true);
-    setFormModalOpen(true);
+    handleTabChange('EDIT_PRICE_LIST');
   };
 
-  // Mở modal chỉnh sửa
-  const handleOpenEditModal = (pl: PriceList) => {
+  // Mở tab chỉnh sửa bảng giá
+  const handleOpenEditPriceListTab = (pl: PriceList) => {
     if (pl.hasOrders) {
       showToast('error', 'Không thể chỉnh sửa bảng giá đã phát sinh đơn hàng');
       return;
     }
     setEditingPriceList(pl);
     setIsViewOnly(false);
-    setFormModalOpen(true);
+    handleTabChange('EDIT_PRICE_LIST');
+  };
+
+  // Đóng tab bảng giá (trở về tab BASE)
+  const handleClosePriceListTab = () => {
+    setEditingPriceList(null);
+    setIsViewOnly(false);
+    handleTabChange('BASE');
+  };
+
+  // Mở tab thêm mới chính sách chiết khấu
+  const handleOpenCreateDiscountTab = () => {
+    setEditingDiscountPolicy(null);
+    setIsDiscountViewOnly(false);
+    handleTabChange('CREATE_DISCOUNT');
+  };
+
+  // Mở tab chỉnh sửa / xem chi tiết chính sách chiết khấu
+  const handleOpenEditDiscountTab = (policy: DiscountPolicy, viewOnly = false) => {
+    setEditingDiscountPolicy(policy);
+    setIsDiscountViewOnly(viewOnly);
+    handleTabChange('EDIT_DISCOUNT');
+  };
+
+  // Đóng tab chính sách chiết khấu (trở về tab DISCOUNT)
+  const handleCloseDiscountTab = () => {
+    setEditingDiscountPolicy(null);
+    setIsDiscountViewOnly(false);
+    handleTabChange('DISCOUNT');
   };
 
   // Mở modal Clone Version
@@ -471,7 +524,7 @@ export const PriceListsPage: React.FC = () => {
     }
   };
 
-  // Lưu biểu mẫu thêm mới hoặc sửa
+  // Lưu biểu mẫu thêm mới hoặc sửa bảng giá
   const handleFormSubmit = async (payload: CreatePriceListPayload) => {
     try {
       if (editingPriceList) {
@@ -481,10 +534,33 @@ export const PriceListsPage: React.FC = () => {
         await priceListsService.createPriceList(payload);
         showToast('success', 'Tạo mới bảng giá thành công');
       }
+      handleClosePriceListTab();
       await loadPriceLists();
     } catch {
       showToast('error', 'Không thể lưu bảng giá');
       throw new Error('Submit failed');
+    }
+  };
+
+  // Lưu biểu mẫu thêm mới hoặc sửa chính sách chiết khấu
+  const handleDiscountFormSubmit = async (payload: CreateDiscountPolicyPayload, id?: string) => {
+    try {
+      if (id) {
+        await discountPoliciesService.updatePolicy(id, payload);
+        showToast('success', 'Cập nhật chính sách thành công');
+      } else {
+        await discountPoliciesService.createPolicy(payload);
+        showToast('success', 'Thêm mới chính sách thành công');
+      }
+      handleCloseDiscountTab();
+      window.dispatchEvent(new Event('loha_discount_policies_updated'));
+    } catch (err: unknown) {
+      const msg =
+        typeof err === 'object' && err !== null && 'response' in err
+          ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Lỗi khi lưu chính sách')
+          : (err instanceof Error ? err.message : 'Lỗi khi lưu chính sách');
+      showToast('error', msg);
+      throw err;
     }
   };
 
@@ -726,32 +802,113 @@ export const PriceListsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* High-level Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100 text-sm mb-4">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-200 text-sm mb-4 scrollbar-thin">
         <button
           type="button"
           onClick={() => handleTabChange('BASE')}
-          className={`px-4 py-2 rounded-t-xl font-semibold transition-all whitespace-nowrap cursor-pointer border-b-2 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl font-semibold transition-all whitespace-nowrap cursor-pointer border-b-2 text-xs sm:text-sm ${
             activeTab === 'BASE'
-              ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-              : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/60 shadow-2xs'
+              : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           }`}
         >
-          Bảng giá Cơ sở
+          <FileSpreadsheet className="w-4 h-4 text-blue-600 shrink-0" />
+          <span>Bảng giá Cơ sở</span>
         </button>
+
         <button
           type="button"
           onClick={() => handleTabChange('DISCOUNT')}
-          className={`px-4 py-2 rounded-t-xl font-semibold transition-all whitespace-nowrap cursor-pointer border-b-2 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl font-semibold transition-all whitespace-nowrap cursor-pointer border-b-2 text-xs sm:text-sm ${
             activeTab === 'DISCOUNT'
-              ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-              : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/60 shadow-2xs'
+              : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           }`}
         >
-          Chính sách Chiết khấu sản lượng
+          <Layers className="w-4 h-4 text-purple-600 shrink-0" />
+          <span>Chính sách Chiết khấu sản lượng</span>
         </button>
+
+        {/* Tab động: Thiết lập Bảng giá mới / Chỉnh sửa Bảng giá */}
+        {(activeTab === 'CREATE_PRICE_LIST' || activeTab === 'EDIT_PRICE_LIST') && (
+          <div
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-t-xl font-semibold transition-all whitespace-nowrap border-b-2 text-xs sm:text-sm bg-blue-50/80 border-blue-600 text-blue-700 shadow-2xs animate-in fade-in duration-150"
+          >
+            {activeTab === 'CREATE_PRICE_LIST' ? (
+              <>
+                <Plus className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>Thiết lập Bảng giá mới</span>
+              </>
+            ) : (
+              <>
+                <Edit2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="max-w-[180px] sm:max-w-xs truncate">
+                  {isViewOnly ? 'Chi tiết' : 'Chỉnh sửa'}: {editingPriceList?.name || editingPriceList?.code}
+                </span>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={handleClosePriceListTab}
+              className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-blue-100/60 transition-colors ml-1 cursor-pointer"
+              title="Đóng tab này"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Tab động: Thêm mới Chính sách / Chỉnh sửa Chính sách */}
+        {(activeTab === 'CREATE_DISCOUNT' || activeTab === 'EDIT_DISCOUNT') && (
+          <div
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-t-xl font-semibold transition-all whitespace-nowrap border-b-2 text-xs sm:text-sm bg-purple-50/80 border-purple-600 text-purple-700 shadow-2xs animate-in fade-in duration-150"
+          >
+            {activeTab === 'CREATE_DISCOUNT' ? (
+              <>
+                <Plus className="w-4 h-4 text-purple-600 shrink-0" />
+                <span>Thêm mới Chính sách</span>
+              </>
+            ) : (
+              <>
+                <Edit2 className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                <span className="max-w-[180px] sm:max-w-xs truncate">
+                  {isDiscountViewOnly ? 'Chi tiết' : 'Chỉnh sửa'}: {editingDiscountPolicy?.name || editingDiscountPolicy?.code}
+                </span>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={handleCloseDiscountTab}
+              className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-purple-100/60 transition-colors ml-1 cursor-pointer"
+              title="Đóng tab này"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
-      {activeTab === 'BASE' ? (
+      {activeTab === 'CREATE_PRICE_LIST' || activeTab === 'EDIT_PRICE_LIST' ? (
+        <PriceListFormModal
+          mode="tab"
+          isOpen={true}
+          onClose={handleClosePriceListTab}
+          onSubmit={handleFormSubmit}
+          onClone={handleOpenCloneModal}
+          onToast={(type, title, message) => showToast(type, title || message)}
+          initialData={editingPriceList}
+          isReadOnly={isViewOnly}
+        />
+      ) : activeTab === 'CREATE_DISCOUNT' || activeTab === 'EDIT_DISCOUNT' ? (
+        <DiscountPolicyFormModal
+          mode="tab"
+          isOpen={true}
+          onClose={handleCloseDiscountTab}
+          onSubmit={handleDiscountFormSubmit}
+          initialData={editingDiscountPolicy}
+          isReadOnly={isDiscountViewOnly}
+        />
+      ) : activeTab === 'BASE' ? (
         <>
           {/* 2. Metrics Header: Hiển thị linh hoạt theo trạng thái được chọn */}
           <div
@@ -924,7 +1081,7 @@ export const PriceListsPage: React.FC = () => {
               {canManage && (
                 <button
                   type="button"
-                  onClick={handleOpenCreateModal}
+                  onClick={handleOpenCreatePriceListTab}
                   className="inline-flex items-center justify-center gap-1.5 h-[38px] rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-[0.98] px-4 text-xs font-semibold text-white shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <Plus className="h-4 w-4" />
@@ -951,7 +1108,7 @@ export const PriceListsPage: React.FC = () => {
           {/* 4. Table: Danh sách Bảng giá */}
           <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm divide-y divide-slate-100">
+              <table className="w-full text-sm divide-y divide-slate-100 min-w-[900px]">
                 <thead>
                   <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     <th className="px-4 py-3 text-left w-[15%]">
@@ -1018,7 +1175,11 @@ export const PriceListsPage: React.FC = () => {
                       const isLocked = pl.hasOrders;
 
                       return (
-                        <tr key={pl.id} className="hover:bg-indigo-50/25 transition-colors group">
+                        <tr
+                          key={pl.id}
+                          onClick={() => handleOpenViewPriceListTab(pl)}
+                          className="hover:bg-indigo-50/25 transition-colors group cursor-pointer"
+                        >
                           {/* 1. Mã bảng giá: Hiển thị badge monospace chuẩn Quản lý đại lý, đã bỏ badge phiên bản */}
                           <td className="px-4 py-3.5 whitespace-nowrap">
                             <span className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-blue-700 bg-blue-50/80 border border-blue-200/60 px-2.5 py-1 rounded-md shadow-2xs group-hover:border-blue-300">
@@ -1148,7 +1309,7 @@ export const PriceListsPage: React.FC = () => {
                       onClick={() => {
                         setOpenActionMenuId(null);
                         setActionMenuAnchor(null);
-                        handleOpenViewModal(pl);
+                        handleOpenViewPriceListTab(pl);
                       }}
                       className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
                     >
@@ -1163,7 +1324,7 @@ export const PriceListsPage: React.FC = () => {
                         onClick={() => {
                           setOpenActionMenuId(null);
                           setActionMenuAnchor(null);
-                          handleOpenEditModal(pl);
+                          handleOpenEditPriceListTab(pl);
                         }}
                         disabled={isLocked}
                         className={`w-full text-left px-3.5 py-2 text-xs flex items-center gap-2.5 transition-colors font-medium ${
@@ -1275,18 +1436,7 @@ export const PriceListsPage: React.FC = () => {
             )}
           </div>
 
-          {/* 5. Modal Khai báo & Chỉnh sửa Bảng giá */}
-          <PriceListFormModal
-            isOpen={formModalOpen}
-            onClose={() => setFormModalOpen(false)}
-            onSubmit={handleFormSubmit}
-            onClone={handleOpenCloneModal}
-            onToast={(type, title, message) => showToast(type, title || message)}
-            initialData={editingPriceList}
-            isReadOnly={isViewOnly}
-          />
-
-          {/* 6. Modal Nhân bản Bảng giá (Clone Version) */}
+          {/* 5. Modal Nhân bản Bảng giá (Clone Version) */}
           <PriceListCloneModal
             isOpen={cloneModalOpen}
             onClose={() => setCloneModalOpen(false)}
@@ -1416,7 +1566,11 @@ export const PriceListsPage: React.FC = () => {
             )}
         </>
       ) : (
-        <DiscountPoliciesTab canManage={canManage} />
+        <DiscountPoliciesTab
+          canManage={canManage}
+          onRequestCreate={handleOpenCreateDiscountTab}
+          onRequestEdit={handleOpenEditDiscountTab}
+        />
       )}
     </div>
   );

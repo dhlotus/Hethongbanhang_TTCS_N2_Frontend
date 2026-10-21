@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  RotateCcw,
   Plus,
   Search,
   CheckCircle2,

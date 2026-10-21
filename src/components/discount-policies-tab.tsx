@@ -54,10 +54,14 @@ const formatDate = (dateStr?: string): string => {
 
 export interface DiscountPoliciesTabProps {
   canManage?: boolean;
+  onRequestCreate?: () => void;
+  onRequestEdit?: (policy: DiscountPolicy, isReadOnly?: boolean) => void;
 }
 
 export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
   canManage: canManageProp,
+  onRequestCreate,
+  onRequestEdit,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -263,6 +267,17 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
     loadPolicies();
   }, [loadPolicies]);
 
+  // Lắng nghe cập nhật chính sách từ tab chỉnh sửa / tạo mới
+  useEffect(() => {
+    const handleSync = () => {
+      void loadPolicies();
+    };
+    window.addEventListener('loha_discount_policies_updated', handleSync);
+    return () => {
+      window.removeEventListener('loha_discount_policies_updated', handleSync);
+    };
+  }, [loadPolicies]);
+
   // Lọc dữ liệu hiển thị theo trạng thái và từ khóa tìm kiếm
   const filteredPolicies = useMemo(() => {
     return policies.filter((p) => {
@@ -329,21 +344,33 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
   );
 
   const handleOpenCreateModal = () => {
-    setEditingPolicy(null);
-    setIsViewOnly(false);
-    setIsModalOpen(true);
+    if (onRequestCreate) {
+      onRequestCreate();
+    } else {
+      setEditingPolicy(null);
+      setIsViewOnly(false);
+      setIsModalOpen(true);
+    }
   };
 
   const handleOpenEditModal = (policy: DiscountPolicy) => {
-    setEditingPolicy(policy);
-    setIsViewOnly(false);
-    setIsModalOpen(true);
+    if (onRequestEdit) {
+      onRequestEdit(policy, false);
+    } else {
+      setEditingPolicy(policy);
+      setIsViewOnly(false);
+      setIsModalOpen(true);
+    }
   };
 
   const handleOpenViewModal = (policy: DiscountPolicy) => {
-    setEditingPolicy(policy);
-    setIsViewOnly(true);
-    setIsModalOpen(true);
+    if (onRequestEdit) {
+      onRequestEdit(policy, true);
+    } else {
+      setEditingPolicy(policy);
+      setIsViewOnly(true);
+      setIsModalOpen(true);
+    }
   };
 
   const handleDelete = (policy: DiscountPolicy) => {
@@ -395,6 +422,71 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
       default:
         return status;
     }
+  };
+
+  // Helper hiển thị badge đối tượng áp dụng
+  const renderTargetBadge = (policy: DiscountPolicy) => {
+    if (
+      policy.targetType === 'CATEGORY' ||
+      (policy.appliedCategoryIds && policy.appliedCategoryIds.length > 0)
+    ) {
+      const catCount = policy.appliedCategoryIds?.length || 1;
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-700/20">
+          Nhóm hàng ({catCount})
+        </span>
+      );
+    }
+    const skuCount =
+      policy.targetIds?.length || policy.appliedProductSkus?.length || 1;
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-700/20">
+        Sản phẩm ({skuCount} SKU)
+      </span>
+    );
+  };
+
+  // Helper hiển thị badge loại chiết khấu
+  const renderDiscountTypeBadge = (type?: 'PERCENTAGE' | 'FIXED_AMOUNT') => {
+    if (type === 'PERCENTAGE' || !type) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-600/20">
+          % Phần trăm
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20">
+        Số tiền (VNĐ)
+      </span>
+    );
+  };
+
+  // Helper hiển thị badge trạng thái đồng bộ với Bảng giá cơ sở
+  const renderStatusBadge = (status: string, endDate?: string) => {
+    const isExpired = endDate && new Date(endDate) < new Date();
+    if (isExpired) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+          Đã hết hạn
+        </span>
+      );
+    }
+    if (status === 'ACTIVE') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          Đang hiệu lực
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+        Tạm dừng
+      </span>
+    );
   };
 
   return (
@@ -493,15 +585,17 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
       {/* 3. Bảng dữ liệu chính sách chiết khấu (Định dạng table chuẩn Quản lý đại lý & Bảng giá, không khoảng trắng thừa) */}
       <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm divide-y divide-slate-100">
+          <table className="w-full text-sm divide-y divide-slate-100 min-w-[900px]">
             <thead>
               <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="px-4 py-3 text-left w-[20%]">Mã chính sách</th>
-                <th className="px-4 py-3 text-left w-[35%]">Tên chính sách</th>
-                <th className="px-4 py-3 text-left w-[25%]">Thời gian hiệu lực</th>
+                <th className="px-4 py-3 text-left w-[15%]">Mã chính sách</th>
+                <th className="px-4 py-3 text-left w-[25%]">Tên chính sách</th>
+                <th className="px-4 py-3 text-left w-[15%]">Đối tượng áp dụng</th>
+                <th className="px-4 py-3 text-left w-[13%]">Loại chiết khấu</th>
+                <th className="px-4 py-3 text-left w-[17%]">Thời gian hiệu lực</th>
                 <th className="px-4 py-3 text-center w-[10%]">Trạng thái</th>
                 {canManage && (
-                  <th className="px-4 py-3 text-right w-[10%] min-w-[95px]">Thao tác</th>
+                  <th className="px-4 py-3 text-right w-[10%] min-w-[105px]">Thao tác</th>
                 )}
               </tr>
             </thead>
@@ -513,7 +607,7 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
               {loading ? (
                 <tr>
                   <td
-                    colSpan={canManage ? 5 : 4}
+                    colSpan={canManage ? 7 : 6}
                     className="py-12 text-center text-slate-400 border-b border-slate-100"
                   >
                     <div className="flex flex-col items-center justify-center gap-2">
@@ -527,7 +621,7 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
               ) : filteredPolicies.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={canManage ? 5 : 4}
+                    colSpan={canManage ? 7 : 6}
                     className="py-12 text-center text-slate-400 border-b border-slate-100"
                   >
                     <div className="flex flex-col items-center justify-center gap-2">
@@ -560,7 +654,7 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
                     onClick={() => handleOpenViewModal(p)}
                     className="hover:bg-indigo-50/25 transition-colors group cursor-pointer"
                   >
-                    {/* Mã chính sách: Monospace badge chuẩn Quản lý đại lý / Bảng giá */}
+                    {/* 1. Mã chính sách: Monospace badge chuẩn Quản lý đại lý / Bảng giá */}
                     <td className="px-4 py-3.5 whitespace-nowrap">
                       <span className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-blue-700 bg-blue-50/80 border border-blue-200/60 px-2.5 py-1 rounded-md shadow-2xs group-hover:border-blue-300">
                         <FileSpreadsheet className="w-3 h-3 text-blue-500" />
@@ -568,14 +662,24 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
                       </span>
                     </td>
 
-                    {/* Tên chính sách */}
+                    {/* 2. Tên chính sách */}
                     <td className="px-4 py-3.5">
                       <div className="font-semibold text-slate-800 line-clamp-1 text-sm group-hover:text-blue-600 transition-colors">
                         {p.name}
                       </div>
                     </td>
 
-                    {/* Thời gian hiệu lực */}
+                    {/* 3. Đối tượng áp dụng */}
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      {renderTargetBadge(p)}
+                    </td>
+
+                    {/* 4. Loại chiết khấu */}
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      {renderDiscountTypeBadge(p.discountType)}
+                    </td>
+
+                    {/* 5. Thời gian hiệu lực */}
                     <td className="px-4 py-3.5 text-slate-600 font-medium whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -585,22 +689,12 @@ export const DiscountPoliciesTab: React.FC<DiscountPoliciesTabProps> = ({
                       </div>
                     </td>
 
-                    {/* Trạng thái: Pill badge bo tròn đồng bộ */}
+                    {/* 6. Trạng thái: Pill badge bo tròn đồng bộ với pulse dot */}
                     <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                      {p.status === 'ACTIVE' ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                          <span>Đang hiệu lực</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200/60">
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                          <span>Tạm dừng</span>
-                        </span>
-                      )}
+                      {renderStatusBadge(p.status, p.endDate)}
                     </td>
 
-                    {/* Thao tác */}
+                    {/* 7. Thao tác */}
                     {canManage && (
                       <td
                         className="px-4 py-3.5 text-right whitespace-nowrap"

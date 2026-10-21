@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { X, Plus, Trash2, Save, AlertCircle, Sparkles, Edit2 } from 'lucide-react';
+import { X, Plus, Trash2, Save, AlertCircle, Sparkles, Edit2, ArrowLeft } from 'lucide-react';
 import { ConfirmDialog } from './confirm-dialog';
 import type {
   DiscountPolicy,
@@ -8,12 +8,13 @@ import type {
 import { productsService, INITIAL_MOCK_PRODUCTS, PRODUCT_CATEGORIES } from '../services/products.service';
 import { categoriesService } from '../services/categories.service';
 
-interface DiscountPolicyFormModalProps {
-  isOpen: boolean;
+export interface DiscountPolicyFormModalProps {
+  isOpen?: boolean;
   onClose: () => void;
   onSubmit: (payload: CreateDiscountPolicyPayload, id?: string) => Promise<void>;
   initialData: DiscountPolicy | null;
   isReadOnly?: boolean;
+  mode?: 'modal' | 'tab';
 }
 
 interface TargetItem {
@@ -795,11 +796,12 @@ const getInitialFormDataAndScope = (data: DiscountPolicy | null) => {
 };
 
 export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = ({
-  isOpen,
+  isOpen = true,
   onClose,
   onSubmit,
   initialData,
   isReadOnly = false,
+  mode = 'modal',
 }) => {
   const [isEditing, setIsEditing] = useState<boolean>(!isReadOnly);
 
@@ -1192,38 +1194,16 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
     return null;
   };
 
-  if (!isOpen) return null;
+  if (mode === 'modal' && !isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">
-              {!isEditing
-                ? 'Chi tiết Chính sách Chiết khấu'
-                : initialData
-                ? 'Chỉnh sửa Chính sách Chiết khấu'
-                : 'Thêm mới Chính sách Chiết khấu'}
-            </h2>
-            {!isEditing && (
-              <p className="text-xs text-slate-500 mt-0.5">
-                Xem chi tiết phạm vi áp dụng, loại chiết khấu và các nấc bậc thang
-              </p>
-            )}
-          </div>
-        </div>
+  const formContent = (
+    <form id="discount-policy-form" onSubmit={handleSubmit} className="space-y-6">
+      {/* 1. Thông tin chung */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+        <h3 className="text-sm font-semibold text-slate-800">Thông tin chung</h3>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
-          <form id="discount-policy-form" onSubmit={handleSubmit} className="space-y-6">
-            {/* 1. Thông tin chung */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-              <h3 className="text-sm font-semibold text-slate-800">Thông tin chung</h3>
-
-              {/* Dòng 1: Mã chính sách & Tên chính sách */}
-              <div className="grid grid-cols-2 gap-4">
+        {/* Dòng 1: Mã chính sách & Tên chính sách */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
                     Mã chính sách
@@ -1569,73 +1549,135 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                 </table>
               </div>
             </div>
-          </form>
-        </div>
+    </form>
+  );
 
-        {/* Footer: Thiết kế chuẩn UI_GUIDELINES: Nút h-[38px] rounded-lg */}
-        {!isEditing ? (
-          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3 rounded-b-xl">
+  const footerContent = (
+    <>
+      {!isEditing ? (
+        <div className="flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-[38px] px-4 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer shadow-2xs"
+          >
+            Đóng
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsEditing(true)}
+            className="inline-flex items-center gap-1.5 h-[38px] px-4 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors cursor-pointer"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+            <span>Chỉnh sửa</span>
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {/* Ô Checkbox xác nhận bắt buộc */}
+          <div className="flex flex-col gap-1">
+            <label className="inline-flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-slate-800 select-none bg-white border border-slate-200 hover:border-blue-400 px-3.5 py-2.5 rounded-lg shadow-2xs transition-all w-full sm:w-auto">
+              <input
+                type="checkbox"
+                checked={isConfirmed}
+                onChange={(e) => {
+                  setIsConfirmed(e.target.checked);
+                  if (errors.confirmed) {
+                    setErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.confirmed;
+                      return next;
+                    });
+                  }
+                }}
+                className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+              />
+              <span>Tôi đã kiểm tra kỹ và xác nhận áp dụng chính sách chiết khấu này</span>
+            </label>
+            {errors.confirmed && (
+              <p className="text-xs font-semibold text-rose-500 flex items-center gap-1.5 pl-1">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                {errors.confirmed}
+              </p>
+            )}
+          </div>
+
+          {/* Hàng chứa 2 nút Hủy và Lưu */}
+          <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-200/60">
             <button
               type="button"
-              onClick={onClose}
-              className="h-[38px] px-4 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer shadow-2xs"
+              onClick={isReadOnly ? handleCancelEdit : handleRequestClose}
+              className="h-[38px] px-4 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              disabled={isSubmitting}
             >
-              Đóng
+              {isReadOnly ? 'Hủy chỉnh sửa' : 'Hủy bỏ'}
             </button>
             <button
-              type="button"
-              onClick={() => setIsEditing(true)}
-              className="inline-flex items-center gap-1.5 h-[38px] px-4 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors cursor-pointer"
+              type="submit"
+              form="discount-policy-form"
+              disabled={isSubmitting}
+              className={`inline-flex items-center gap-1.5 h-[38px] px-5 text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white shadow-blue-500/20 ${
+                isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
             >
-              <Edit2 className="w-3.5 h-3.5" />
-              <span>Chỉnh sửa</span>
+              {isSubmitting ? (
+                <>Đang lưu...</>
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Lưu chính sách</span>
+                </>
+              )}
             </button>
           </div>
-        ) : (
-          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-3 rounded-b-xl">
-            {/* Vị trí Áp chót: Ô Checkbox xác nhận bắt buộc */}
-            <div className="flex flex-col gap-1">
-              <label className="inline-flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-slate-800 select-none bg-white border border-slate-200 hover:border-blue-400 px-3.5 py-2.5 rounded-lg shadow-2xs transition-all w-full sm:w-auto">
-                <input
-                  type="checkbox"
-                  checked={isConfirmed}
-                  onChange={(e) => {
-                    setIsConfirmed(e.target.checked);
-                    if (errors.confirmed) {
-                      setErrors((prev) => {
-                        const next = { ...prev };
-                        delete next.confirmed;
-                        return next;
-                      });
-                    }
-                  }}
-                  className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
-                />
-                <span>Tôi đã kiểm tra kỹ và xác nhận áp dụng chính sách chiết khấu này</span>
-              </label>
-              {errors.confirmed && (
-                <p className="text-xs font-semibold text-rose-500 flex items-center gap-1.5 pl-1">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  {errors.confirmed}
-                </p>
-              )}
-            </div>
+        </div>
+      )}
+    </>
+  );
 
-            {/* Hàng chứa 2 nút Hủy và Lưu */}
-            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-200/60">
-              <button
-                type="button"
-                onClick={isReadOnly ? handleCancelEdit : handleRequestClose}
-                className="h-[38px] px-4 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                disabled={isSubmitting}
-              >
-                {isReadOnly ? 'Hủy chỉnh sửa' : 'Hủy bỏ'}
-              </button>
+  // Chế độ TAB: Hiển thị toàn trang không bị ép kích thước trong popup modal
+  if (mode === 'tab') {
+    return (
+      <div className="w-full space-y-5 animate-in fade-in duration-200">
+        {/* Header toolbar với breadcrumb + back button + tiêu đề + action buttons */}
+        <div className="rounded-xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={handleRequestClose}
+              className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-blue-600 transition-colors cursor-pointer shadow-2xs shrink-0"
+              title="Quay lại danh sách"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                {!isEditing
+                  ? `Chi tiết Chính sách: ${formData.name || formData.code}`
+                  : initialData
+                  ? `Chỉnh sửa Chính sách: ${formData.name || formData.code}`
+                  : 'Thêm mới Chính sách Chiết khấu'}
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Cấu hình phạm vi áp dụng, loại chiết khấu và các nấc chiết khấu sản lượng
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <button
+              type="button"
+              onClick={isReadOnly ? handleCancelEdit : handleRequestClose}
+              className="px-4 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs"
+            >
+              {isReadOnly ? 'Hủy chỉnh sửa' : 'Hủy bỏ'}
+            </button>
+            {isEditing && (
               <button
                 type="submit"
                 form="discount-policy-form"
                 disabled={isSubmitting}
-                className={`inline-flex items-center gap-1.5 h-[38px] px-5 text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white shadow-blue-500/20 ${
+                className={`inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white shadow-blue-500/20 ${
                   isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
                 }`}
               >
@@ -1648,9 +1690,66 @@ export const DiscountPolicyFormModal: React.FC<DiscountPolicyFormModalProps> = (
                   </>
                 )}
               </button>
-            </div>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Form Body - full-width cards */}
+        {formContent}
+
+        {/* Footer actions card */}
+        <div className="rounded-xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs">
+          {footerContent}
+        </div>
+
+        <ConfirmDialog
+          isOpen={showDiscardConfirm}
+          onCancel={() => setShowDiscardConfirm(false)}
+          onConfirm={() => {
+            setShowDiscardConfirm(false);
+            onClose();
+          }}
+          title="Bỏ thay đổi chính sách?"
+          message="Dữ liệu chính sách chiết khấu và các nấc chiết khấu đang nhập dở chưa được lưu. Bạn có chắc chắn muốn thoát và hủy bỏ thay đổi?"
+          confirmText="Rời khỏi & Bỏ thay đổi"
+          cancelText="Tiếp tục chỉnh sửa"
+          type="warning"
+        />
+      </div>
+    );
+  }
+
+  // Chế độ MODAL POPUP
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">
+              {!isEditing
+                ? 'Chi tiết Chính sách Chiết khấu'
+                : initialData
+                ? 'Chỉnh sửa Chính sách Chiết khấu'
+                : 'Thêm mới Chính sách Chiết khấu'}
+            </h2>
+            {!isEditing && (
+              <p className="text-xs text-slate-500 mt-0.5">
+                Xem chi tiết phạm vi áp dụng, loại chiết khấu và các nấc bậc thang
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {formContent}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 rounded-b-xl">
+          {footerContent}
+        </div>
       </div>
 
       <ConfirmDialog

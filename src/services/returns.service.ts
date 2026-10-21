@@ -180,7 +180,7 @@ export const returnsService = {
   },
 
   // Alias methods tương thích cũ
-  async getReturns(params?: any): Promise<ReturnReceipt[]> {
+  async getReturns(params?: any): Promise<ReturnReceiptsResponse | ReturnReceipt[]> {
     return this.getReturnReceipts(params);
   },
   async getReturnById(id: string): Promise<ReturnReceipt> {

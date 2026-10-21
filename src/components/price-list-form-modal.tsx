@@ -13,6 +13,7 @@ import {
   Search,
   X,
   Edit2,
+  ArrowLeft,
 } from 'lucide-react';
 import { CurrencyInput } from './currency-input';
 import { DateInput, formatVietnameseDate } from './date-input';
@@ -27,8 +28,8 @@ import type {
 import { productsService } from '../services/products.service';
 import type { Product } from '../types/products';
 
-interface PriceListFormModalProps {
-  isOpen: boolean;
+export interface PriceListFormModalProps {
+  isOpen?: boolean;
   onClose: () => void;
   onSubmit: (payload: CreatePriceListPayload) => Promise<void>;
   onClone?: (priceList: PriceList) => void;
@@ -39,6 +40,7 @@ interface PriceListFormModalProps {
   ) => void;
   initialData?: PriceList | null;
   isReadOnly?: boolean;
+  mode?: 'modal' | 'tab';
 }
 
 const CUSTOMER_GROUP_OPTIONS: { value: CustomerGroupType; label: string }[] = [
@@ -64,13 +66,14 @@ const STATUS_OPTIONS: { value: PriceListStatusType; label: string }[] = [
 ];
 
 export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
-  isOpen,
+  isOpen = true,
   onClose,
   onSubmit,
   onClone,
   onToast,
   initialData,
   isReadOnly = false,
+  mode = 'modal',
 }) => {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -496,6 +499,503 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
     </div>
   );
 
+  if (mode === 'modal' && !isOpen) return null;
+
+  const basicInfoSection = (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+      {/* Tên bảng giá */}
+      <div className="lg:col-span-2 space-y-1">
+        <label className="text-xs font-semibold text-slate-700">
+          Tên bảng giá <span className="text-rose-500">*</span>
+        </label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          disabled={effectiveReadOnly}
+          placeholder="Ví dụ: Bảng giá Đại lý Cấp 1 - Q4/2026"
+          className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+        />
+      </div>
+
+      {/* Mã định danh - Tự động sinh bởi hệ thống, khóa không cho gõ tay */}
+      <div className="space-y-1">
+        <label className="text-xs font-semibold text-slate-700">Mã bảng giá</label>
+        <input
+          type="text"
+          value={code}
+          readOnly
+          disabled
+          placeholder={
+            customerGroup === 'AGENT_LEVEL_1'
+              ? 'Tự động sinh (VD: BG-C1-0001)'
+              : customerGroup === 'AGENT_LEVEL_2'
+                ? 'Tự động sinh (VD: BG-C2-0001)'
+                : 'Tự động sinh (VD: BG-C3-0001)'
+          }
+          className="w-full px-3 py-2 text-xs font-mono font-medium rounded-xl border border-slate-200 bg-slate-100 text-slate-500 placeholder-slate-400 cursor-not-allowed select-none focus:outline-none"
+        />
+      </div>
+
+      {/* Nhóm khách hàng áp dụng */}
+      <div className="space-y-1">
+        <label className="text-xs font-semibold text-slate-700">
+          Nhóm khách hàng <span className="text-rose-500">*</span>
+        </label>
+        <select
+          value={customerGroup}
+          onChange={(e) => setCustomerGroup(e.target.value as CustomerGroupType)}
+          disabled={effectiveReadOnly}
+          className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 cursor-pointer"
+        >
+          {CUSTOMER_GROUP_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Ngày bắt đầu */}
+      <DateInput
+        label="Ngày bắt đầu"
+        required
+        value={startDate}
+        max={endDate || undefined}
+        onChange={(val) => {
+          setStartDate(val);
+          setLocalError(null);
+        }}
+        disabled={effectiveReadOnly}
+        placeholder="dd/mm/yyyy"
+        helperText="Định dạng dd/mm/yyyy"
+      />
+
+      {/* Ngày kết thúc */}
+      <DateInput
+        label="Ngày kết thúc"
+        required
+        value={endDate}
+        min={startDate || undefined}
+        onChange={(val) => {
+          setEndDate(val);
+          setLocalError(null);
+        }}
+        disabled={effectiveReadOnly}
+        placeholder="dd/mm/yyyy"
+        error={dateRangeErrorMessage}
+        hasError={isDateRangeInvalid}
+        helperText={
+          !isDateRangeInvalid
+            ? startDate
+              ? `Tự động chặn ngày trước ${formatVietnameseDate(startDate)}`
+              : undefined
+            : undefined
+        }
+      />
+
+      {/* Trạng thái */}
+      <div className="space-y-1">
+        <label className="text-xs font-semibold text-slate-700">Trạng thái</label>
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as PriceListStatusType)}
+          disabled={effectiveReadOnly}
+          className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 cursor-pointer"
+        >
+          {STATUS_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Ghi chú */}
+      <div className="lg:col-span-2 space-y-1">
+        <label className="text-xs font-semibold text-slate-700">Ghi chú & Phạm vi</label>
+        <input
+          type="text"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          disabled={effectiveReadOnly}
+          placeholder="Ghi chú điều kiện thương mại, thời hạn hoặc khu vực..."
+          className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+        />
+      </div>
+    </div>
+  );
+
+  const productsTableSection = (
+    <div className="space-y-3.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+            Danh mục sản phẩm ({items.length})
+          </h3>
+          {hasPricingErrors && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20">
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+              Vi phạm giá sàn ({Object.keys(pricingErrors).length})
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+          {/* Ô tìm kiếm SKU / Tên sản phẩm */}
+          <div className="relative flex-1 sm:w-60">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <input
+              type="text"
+              value={itemSearchTerm}
+              onChange={(e) => {
+                setItemSearchTerm(e.target.value);
+                setItemPage(1);
+              }}
+              placeholder="Tìm SKU hoặc tên sản phẩm..."
+              className="w-full pl-9 pr-8 py-2 text-xs rounded-lg border border-slate-200 bg-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+            {itemSearchTerm && (
+              <button
+                type="button"
+                onClick={() => {
+                  setItemSearchTerm('');
+                  setItemPage(1);
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                title="Xóa tìm kiếm"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {!effectiveReadOnly && (
+            <>
+              <button
+                type="button"
+                onClick={handleLoadAllProducts}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+                title="Nạp nhanh toàn bộ sản phẩm SKU từ danh mục kho"
+              >
+                <Layers className="w-4 h-4 text-slate-500" />
+                <span>Nạp tất cả SKU</span>
+              </button>
+
+              <div className="flex items-center gap-1.5 flex-1 w-full sm:w-auto">
+                <select
+                  value={selectedProductToAdd}
+                  onChange={(e) => setSelectedProductToAdd(e.target.value)}
+                  className="px-3 py-2 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 flex-1 sm:max-w-[240px] cursor-pointer"
+                >
+                  <option value="">-- Chọn sản phẩm --</option>
+                  {availableProducts.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.sku} - {p.name}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  onClick={handleAddProduct}
+                  disabled={!selectedProductToAdd}
+                  className="inline-flex items-center gap-1 px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-2xs"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Thêm</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Banner cảnh báo lỗi giá sàn thời gian thực */}
+      {hasPricingErrors && (
+        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-rose-900 animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
+            <div className="text-xs">
+              <strong className="font-semibold text-rose-950">
+                Ràng buộc Giá bán & Giá sàn vi phạm:
+              </strong>{' '}
+              Có <strong>{Object.keys(pricingErrors).length}</strong> sản phẩm có Giá bán nhỏ hơn Giá sàn. Nút "Lưu Bảng giá" đã tự động bị khóa để bảo vệ biên lợi nhuận.
+            </div>
+          </div>
+          <span className="text-[11px] font-semibold text-rose-700 bg-rose-100/70 px-2.5 py-1 rounded-md shrink-0">
+            Yêu cầu Giá bán ≥ Giá sàn
+          </span>
+        </div>
+      )}
+
+      {/* Bảng Dòng Sản phẩm */}
+      <div className="rounded-xl border border-slate-200/90 bg-white overflow-hidden shadow-2xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-semibold text-[11px] uppercase tracking-wider">
+                <th className="py-3 px-3.5 w-12 text-center">STT</th>
+                <th className="py-3 px-3.5 min-w-[240px]">Sản phẩm / SKU</th>
+                <th className="py-3 px-3.5 w-24 text-center">ĐVT</th>
+                <th className="py-3 px-3.5 w-44">Giá sàn</th>
+                <th className="py-3 px-3.5 w-48">Giá bán áp dụng</th>
+                {!effectiveReadOnly && <th className="py-3 px-3.5 w-14 text-center">Xóa</th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {items.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={effectiveReadOnly ? 5 : 6}
+                    className="py-12 text-center text-slate-400"
+                  >
+                    <FileSpreadsheet className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-slate-600">
+                      Chưa có sản phẩm nào trong bảng giá
+                    </p>
+                    {!effectiveReadOnly && (
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Bấm &quot;Nạp tất cả SKU&quot; hoặc chọn sản phẩm ở trên để thêm dòng giá
+                      </p>
+                    )}
+                  </td>
+                </tr>
+              ) : filteredItems.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={effectiveReadOnly ? 5 : 6}
+                    className="py-10 text-center text-slate-400"
+                  >
+                    <Search className="w-6 h-6 text-slate-300 mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-slate-600">
+                      Không tìm thấy sản phẩm nào khớp với &quot;{itemSearchTerm}&quot;
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setItemSearchTerm('');
+                        setItemPage(1);
+                      }}
+                      className="mt-2 text-xs text-blue-600 hover:underline font-medium cursor-pointer"
+                    >
+                      Xóa từ khóa tìm kiếm
+                    </button>
+                  </td>
+                </tr>
+              ) : (
+                paginatedItems.map((item, idx) => {
+                  const errorMsg = pricingErrors[item.id];
+                  const isItemError = Boolean(errorMsg);
+                  const stt = (validItemPage - 1) * itemPageSize + idx + 1;
+
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`hover:bg-slate-50/60 transition-colors ${
+                        isItemError ? 'bg-rose-50/40' : ''
+                      }`}
+                    >
+                      <td className="py-3 px-3.5 text-center text-slate-400 font-mono text-[11px]">
+                        {stt}
+                      </td>
+
+                      <td className="py-3 px-3.5">
+                        <div className="font-semibold text-slate-900 leading-snug">
+                          {item.productName}
+                        </div>
+                        <div className="font-mono text-[11px] text-blue-600">
+                          {item.productCode}
+                        </div>
+                      </td>
+
+                      <td className="py-3 px-3.5 text-center text-slate-600 font-medium">
+                        <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-[11px]">
+                          {item.baseUnit || 'Cái'}
+                        </span>
+                      </td>
+
+                      {/* Ô nhập Giá sàn */}
+                      <td className="py-3 px-3.5">
+                        <CurrencyInput
+                          value={item.minPrice}
+                          onChange={(val) => handleUpdateItem(item.id, 'minPrice', val ?? 0)}
+                          disabled={effectiveReadOnly}
+                          placeholder="0"
+                          className="w-full px-2.5 py-1.5 text-xs font-mono font-semibold rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-slate-50"
+                        />
+                      </td>
+
+                      {/* Ô nhập Giá bán + Báo lỗi Realtime */}
+                      <td className="py-3 px-3.5">
+                        <div>
+                          <CurrencyInput
+                            value={item.price}
+                            onChange={(val) => handleUpdateItem(item.id, 'price', val ?? 0)}
+                            disabled={effectiveReadOnly}
+                            placeholder="0"
+                            className={`w-full px-2.5 py-1.5 text-xs font-mono font-bold rounded-lg border focus:outline-none transition-colors disabled:bg-slate-50 ${
+                              isItemError
+                                ? 'border-rose-500 bg-rose-50/70 text-rose-700 ring-2 ring-rose-200/90 focus:ring-rose-300'
+                                : 'border-slate-200 bg-white text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100'
+                            }`}
+                          />
+
+                          {isItemError && (
+                            <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-rose-600 leading-tight">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
+                              <span>
+                                Giá bán &lt; Giá sàn ({item.minPrice.toLocaleString('vi-VN')} đ)!
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Nút xóa dòng */}
+                      {!effectiveReadOnly && (
+                        <td className="py-3 px-3.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(item.id)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="Xóa dòng sản phẩm này"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Phân trang nối liền chân bảng */}
+        {filteredItems.length > 0 && (
+          <Pagination
+            variant="default"
+            currentPage={validItemPage}
+            totalPages={totalItemPages}
+            totalItems={filteredItems.length}
+            pageSize={itemPageSize}
+            pageSizeOptions={[5, 10, 20, 50]}
+            itemLabel="sản phẩm"
+            showRecordRange={false}
+            showFirstLast={false}
+            onPageChange={(newPage) => setItemPage(newPage)}
+            onPageSizeChange={(newSize) => {
+              setItemPageSize(newSize);
+              setItemPage(1);
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+
+  // Chế độ TAB: Hiển thị toàn trang không bị ép kích thước trong popup modal
+  if (mode === 'tab') {
+    return (
+      <div className="w-full space-y-5 animate-in fade-in duration-200">
+        {/* Header toolbar với breadcrumb + nút quay lại + tiêu đề + action buttons */}
+        <div className="rounded-xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-blue-600 transition-colors cursor-pointer shadow-2xs shrink-0"
+              title="Quay lại danh sách"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-500/20">
+              <FileSpreadsheet className="w-5 h-5 text-blue-600" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                  {initialData
+                    ? effectiveReadOnly
+                      ? `Chi tiết Bảng giá: ${initialData.name}`
+                      : `Chỉnh sửa Bảng giá: ${initialData.name}`
+                    : 'Thiết lập Bảng giá mới'}
+                </h2>
+                {initialData && (
+                  <span className="px-2 py-0.5 text-[11px] font-mono font-semibold rounded-md bg-slate-100 text-slate-700">
+                    v{initialData.version}.0
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {initialData
+                  ? `Mã: ${initialData.code} • Cập nhật giá theo thời vụ và nhóm đối tác`
+                  : 'Cấu hình đơn giá, giá sàn và thời gian áp dụng'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="px-4 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs"
+            >
+              {initialData ? 'Hủy chỉnh sửa' : 'Hủy bỏ'}
+            </button>
+            {!effectiveReadOnly && (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={submitting || hasPricingErrors || isDateRangeInvalid || items.length === 0}
+                className="inline-flex items-center justify-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white shadow-xs transition-all cursor-pointer"
+              >
+                {submitting ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Đang lưu...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Lưu Bảng giá</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Banner cảnh báo nếu có */}
+        {modalBanner}
+
+        {/* Khối 1: Thông tin cơ bản */}
+        <div className="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+              1. Thông tin cơ bản
+            </h3>
+            <span className="text-[11px] text-slate-400">Các mục có dấu * là bắt buộc</span>
+          </div>
+          {basicInfoSection}
+        </div>
+
+        {/* Khối 2: Danh mục sản phẩm & Định giá */}
+        <div className="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs space-y-4">
+          {productsTableSection}
+        </div>
+
+        {/* Khối 3: Footer Actions */}
+        <div className="rounded-xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs">
+          {modalFooter}
+        </div>
+      </div>
+    );
+  }
+
+  // Chế độ MODAL POPUP
   return createPortal(
     <div
       role="dialog"
@@ -539,402 +1039,8 @@ export const PriceListFormModal: React.FC<PriceListFormModalProps> = ({
         {/* Thân biểu mẫu cuộn nội dung độc lập */}
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 sm:space-y-5">
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 pb-2">
-            {/* Nhóm thông tin cơ bản */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {/* Tên bảng giá */}
-              <div className="lg:col-span-2 space-y-1">
-                <label className="text-xs font-semibold text-slate-700">
-                  Tên bảng giá <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  disabled={effectiveReadOnly}
-                  placeholder="Ví dụ: Bảng giá Đại lý Cấp 1 - Q4/2026"
-                  className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
-                />
-              </div>
-
-              {/* Mã định danh - Tự động sinh bởi hệ thống, khóa không cho gõ tay */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">Mã bảng giá</label>
-                <input
-                  type="text"
-                  value={code}
-                  readOnly
-                  disabled
-                  placeholder={
-                    customerGroup === 'AGENT_LEVEL_1'
-                      ? 'Tự động sinh (VD: BG-C1-0001)'
-                      : customerGroup === 'AGENT_LEVEL_2'
-                        ? 'Tự động sinh (VD: BG-C2-0001)'
-                        : 'Tự động sinh (VD: BG-C3-0001)'
-                  }
-                  className="w-full px-3 py-2 text-xs font-mono font-medium rounded-xl border border-slate-200 bg-slate-100 text-slate-500 placeholder-slate-400 cursor-not-allowed select-none focus:outline-none"
-                />
-              </div>
-
-              {/* Nhóm khách hàng áp dụng */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">
-                  Nhóm khách hàng <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={customerGroup}
-                  onChange={(e) => setCustomerGroup(e.target.value as CustomerGroupType)}
-                  disabled={effectiveReadOnly}
-                  className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 cursor-pointer"
-                >
-                  {CUSTOMER_GROUP_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Ngày bắt đầu */}
-              <DateInput
-                label="Ngày bắt đầu"
-                required
-                value={startDate}
-                max={endDate || undefined}
-                onChange={(val) => {
-                  setStartDate(val);
-                  setLocalError(null);
-                }}
-                disabled={effectiveReadOnly}
-                placeholder="dd/mm/yyyy"
-                helperText="Định dạng dd/mm/yyyy"
-              />
-
-              {/* Ngày kết thúc */}
-              <DateInput
-                label="Ngày kết thúc"
-                required
-                value={endDate}
-                min={startDate || undefined}
-                onChange={(val) => {
-                  setEndDate(val);
-                  setLocalError(null);
-                }}
-                disabled={effectiveReadOnly}
-                placeholder="dd/mm/yyyy"
-                error={dateRangeErrorMessage}
-                hasError={isDateRangeInvalid}
-                helperText={
-                  !isDateRangeInvalid
-                    ? startDate
-                      ? `Tự động chặn ngày trước ${formatVietnameseDate(startDate)}`
-                      : undefined
-                    : undefined
-                }
-              />
-
-              {/* Trạng thái */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">Trạng thái</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as PriceListStatusType)}
-                  disabled={effectiveReadOnly}
-                  className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 cursor-pointer"
-                >
-                  {STATUS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Ghi chú */}
-              <div className="lg:col-span-2 space-y-1">
-                <label className="text-xs font-semibold text-slate-700">Ghi chú & Phạm vi</label>
-                <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  disabled={effectiveReadOnly}
-                  placeholder="Ghi chú điều kiện thương mại, thời hạn hoặc khu vực..."
-                  className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
-                />
-              </div>
-            </div>
-
-            {/* Nhóm Chi tiết Giá từng sản phẩm */}
-            <div className="space-y-3 pt-3 border-t border-slate-100">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                    Danh mục sản phẩm ({items.length})
-                  </h3>
-                  {hasPricingErrors && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20">
-                      <AlertTriangle className="w-3 h-3 text-rose-600" />
-                      Vi phạm giá sàn ({Object.keys(pricingErrors).length})
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                  {/* Ô tìm kiếm SKU / Tên sản phẩm ngay trong modal */}
-                  <div className="relative flex-1 sm:w-56">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                    <input
-                      type="text"
-                      value={itemSearchTerm}
-                      onChange={(e) => {
-                        setItemSearchTerm(e.target.value);
-                        setItemPage(1);
-                      }}
-                      placeholder="Tìm SKU hoặc tên sản phẩm..."
-                      className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg border border-slate-200 bg-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
-                    />
-                    {itemSearchTerm && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setItemSearchTerm('');
-                          setItemPage(1);
-                        }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-                        title="Xóa tìm kiếm"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-
-                  {!effectiveReadOnly && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleLoadAllProducts}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer whitespace-nowrap shrink-0"
-                        title="Nạp nhanh toàn bộ sản phẩm SKU từ danh mục kho"
-                      >
-                        <Layers className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Nạp tất cả SKU</span>
-                      </button>
-
-                      <div className="flex items-center gap-1.5 flex-1 w-full sm:w-auto">
-                        <select
-                          value={selectedProductToAdd}
-                          onChange={(e) => setSelectedProductToAdd(e.target.value)}
-                          className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 flex-1 sm:max-w-[200px] cursor-pointer"
-                        >
-                          <option value="">-- Chọn sản phẩm --</option>
-                          {availableProducts.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.sku} - {p.name}
-                            </option>
-                          ))}
-                        </select>
-
-                        <button
-                          type="button"
-                          onClick={handleAddProduct}
-                          disabled={!selectedProductToAdd}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Thêm</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Banner cảnh báo lỗi giá sàn thời gian thực */}
-              {hasPricingErrors && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-rose-900 animate-in fade-in">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
-                    <div className="text-xs">
-                      <strong className="font-semibold text-rose-950">
-                        Ràng buộc Giá bán & Giá sàn vi phạm:
-                      </strong>{' '}
-                      Có <strong>{Object.keys(pricingErrors).length}</strong> sản phẩm có Giá bán
-                      nhỏ hơn Giá sàn. Nút "Lưu Bảng giá" đã tự động bị khóa để bảo vệ biên lợi
-                      nhuận.
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-semibold text-rose-700 bg-rose-100/70 px-2 py-0.5 rounded-md shrink-0">
-                    Yêu cầu Giá bán ≥ Giá sàn
-                  </span>
-                </div>
-              )}
-
-              {/* Bảng Dòng Sản phẩm kèm Thanh phân trang nối liền chuẩn Bảng giá cơ sở */}
-              <div className="rounded-xl border border-slate-200/90 bg-white overflow-hidden shadow-2xs">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-semibold text-[11px] uppercase tracking-wider">
-                        <th className="py-2.5 px-3 w-12 text-center">STT</th>
-                        <th className="py-2.5 px-3 min-w-[220px]">Sản phẩm / SKU</th>
-                        <th className="py-2.5 px-3 w-20 text-center">ĐVT</th>
-                        <th className="py-2.5 px-3 w-40">Giá sàn</th>
-                        <th className="py-2.5 px-3 w-44">Giá bán áp dụng</th>
-                        {!effectiveReadOnly && <th className="py-2.5 px-3 w-12 text-center">Xóa</th>}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white">
-                      {items.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={effectiveReadOnly ? 5 : 6}
-                            className="py-10 text-center text-slate-400"
-                          >
-                            <FileSpreadsheet className="w-8 h-8 text-slate-300 mx-auto mb-1.5" />
-                            <p className="text-xs font-semibold text-slate-600">
-                              Chưa có sản phẩm nào trong bảng giá
-                            </p>
-                            {!effectiveReadOnly && (
-                              <p className="text-[11px] text-slate-400 mt-0.5">
-                                Bấm &quot;Nạp tất cả SKU&quot; hoặc chọn sản phẩm ở trên để thêm dòng
-                                giá
-                              </p>
-                            )}
-                          </td>
-                        </tr>
-                      ) : filteredItems.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={effectiveReadOnly ? 5 : 6}
-                            className="py-8 text-center text-slate-400"
-                          >
-                            <Search className="w-6 h-6 text-slate-300 mx-auto mb-1.5" />
-                            <p className="text-xs font-semibold text-slate-600">
-                              Không tìm thấy sản phẩm nào khớp với &quot;{itemSearchTerm}&quot;
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setItemSearchTerm('');
-                                setItemPage(1);
-                              }}
-                              className="mt-1.5 text-xs text-blue-600 hover:underline font-medium cursor-pointer"
-                            >
-                              Xóa từ khóa tìm kiếm
-                            </button>
-                          </td>
-                        </tr>
-                      ) : (
-                        paginatedItems.map((item, idx) => {
-                          const errorMsg = pricingErrors[item.id];
-                          const isItemError = Boolean(errorMsg);
-                          const stt = (validItemPage - 1) * itemPageSize + idx + 1;
-
-                          return (
-                            <tr
-                              key={item.id}
-                              className={`hover:bg-slate-50/60 transition-colors ${
-                                isItemError ? 'bg-rose-50/40' : ''
-                              }`}
-                            >
-                              <td className="py-2.5 px-3 text-center text-slate-400 font-mono text-[11px]">
-                                {stt}
-                              </td>
-
-                              <td className="py-2.5 px-3">
-                                <div className="font-semibold text-slate-900 leading-snug">
-                                  {item.productName}
-                                </div>
-                                <div className="font-mono text-[11px] text-blue-600">
-                                  {item.productCode}
-                                </div>
-                              </td>
-
-                              <td className="py-2.5 px-3 text-center text-slate-600 font-medium">
-                                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px]">
-                                  {item.baseUnit || 'Cái'}
-                                </span>
-                              </td>
-
-                              {/* Ô nhập Giá sàn */}
-                              <td className="py-2.5 px-3">
-                                <CurrencyInput
-                                  value={item.minPrice}
-                                  onChange={(val) => handleUpdateItem(item.id, 'minPrice', val ?? 0)}
-                                  disabled={effectiveReadOnly}
-                                  placeholder="0"
-                                  className="w-full px-2.5 py-1.5 text-xs font-mono font-semibold rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 disabled:bg-slate-50"
-                                />
-                              </td>
-
-                              {/* Ô nhập Giá bán + Báo lỗi Realtime */}
-                              <td className="py-2.5 px-3">
-                                <div>
-                                  <CurrencyInput
-                                    value={item.price}
-                                    onChange={(val) => handleUpdateItem(item.id, 'price', val ?? 0)}
-                                    disabled={effectiveReadOnly}
-                                    placeholder="0"
-                                    className={`w-full px-2.5 py-1.5 text-xs font-mono font-bold rounded-lg border focus:outline-none transition-colors disabled:bg-slate-50 ${
-                                      isItemError
-                                        ? 'border-rose-500 bg-rose-50/70 text-rose-700 ring-2 ring-rose-200/90 focus:ring-rose-300'
-                                        : 'border-slate-200 bg-white text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100'
-                                    }`}
-                                  />
-
-                                  {isItemError && (
-                                    <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-rose-600 leading-tight">
-                                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
-                                      <span>
-                                        Giá bán &lt; Giá sàn ({item.minPrice.toLocaleString('vi-VN')}{' '}
-                                        đ)!
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-
-                              {/* Nút xóa dòng */}
-                              {!effectiveReadOnly && (
-                                <td className="py-2.5 px-3 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveItem(item.id)}
-                                    className="p-1 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
-                                    title="Xóa dòng sản phẩm này"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </td>
-                              )}
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Phân trang nối liền chân bảng chuẩn Bảng giá cơ sở */}
-                {filteredItems.length > 0 && (
-                  <Pagination
-                    variant="default"
-                    currentPage={validItemPage}
-                    totalPages={totalItemPages}
-                    totalItems={filteredItems.length}
-                    pageSize={itemPageSize}
-                    pageSizeOptions={[5, 10, 20, 50]}
-                    itemLabel="sản phẩm"
-                    showRecordRange={false}
-                    showFirstLast={false}
-                    onPageChange={(newPage) => setItemPage(newPage)}
-                    onPageSizeChange={(newSize) => {
-                      setItemPageSize(newSize);
-                      setItemPage(1);
-                    }}
-                  />
-                )}
-              </div>
-            </div>
+            {basicInfoSection}
+            {productsTableSection}
           </form>
         </div>
 
