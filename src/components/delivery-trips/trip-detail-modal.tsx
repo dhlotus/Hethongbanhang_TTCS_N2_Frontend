@@ -13,6 +13,7 @@ import {
   Pencil,
   Check,
   User,
+  Lock,
 } from 'lucide-react';
 import type { DeliveryStop, DeliveryTrip, StopDeliveryStatus } from '../../types/delivery-trip';
 import { formatTripDateTime, formatVndCurrency } from '../../utils/delivery-format';
@@ -156,15 +157,6 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
       );
       setSelectedStopForFailure(null);
       setFailureReasonInput('');
-    } finally {
-      setUpdatingStopId(null);
-    }
-  };
-
-  const handleMarkDelivered = async (stop: DeliveryStop) => {
-    try {
-      setUpdatingStopId(stop.id);
-      await onUpdateStopStatus(trip.id, stop.id, 'DELIVERED');
     } finally {
       setUpdatingStopId(null);
     }
@@ -454,7 +446,6 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
                 const isDelivered = stop.status === 'DELIVERED';
                 const isFailed = stop.status === 'FAILED';
                 const isPending = stop.status === 'PENDING';
-                const isUpdating = updatingStopId === stop.id;
 
                 return (
                   <div
@@ -554,35 +545,38 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
                           </span>
                         </div>
 
-                        {/* Các nút cập nhật nếu chuyến đi đang chạy */}
+                        {/* Các nút cập nhật nếu chuyến đi đang chạy (Chỉ dành riêng cho Tài xế) */}
                         {trip.status === 'IN_TRANSIT' && (
-                          <div className="flex items-center gap-1.5 mt-1">
-                            {!isDelivered && (
-                              <button
-                                type="button"
-                                disabled={isUpdating}
-                                onClick={() => handleMarkDelivered(stop)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
-                              >
-                                <CheckCircle2 className="h-3 w-3" />
-                                <span>Giao xong</span>
-                              </button>
-                            )}
+                          <div className="flex flex-col sm:items-end gap-1 mt-1">
+                            <div className="flex items-center gap-1.5">
+                              {!isDelivered && (
+                                <button
+                                  type="button"
+                                  disabled
+                                  title="Chỉ tài xế phụ trách chuyến mới có quyền xác nhận"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-700/60 border border-emerald-200/60 shadow-2xs opacity-75 cursor-not-allowed select-none"
+                                >
+                                  <Lock className="h-3 w-3 text-emerald-600/70" />
+                                  <span>Giao xong</span>
+                                </button>
+                              )}
 
-                            {!isFailed && (
-                              <button
-                                type="button"
-                                disabled={isUpdating}
-                                onClick={() => {
-                                  setSelectedStopForFailure(stop);
-                                  setFailureReasonInput(stop.failureReason || '');
-                                }}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer disabled:opacity-50"
-                              >
-                                <XCircle className="h-3 w-3" />
-                                <span>Chưa giao được</span>
-                              </button>
-                            )}
+                              {!isFailed && (
+                                <button
+                                  type="button"
+                                  disabled
+                                  title="Chỉ tài xế phụ trách chuyến mới có quyền xác nhận"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700/60 border border-rose-200/60 opacity-75 cursor-not-allowed select-none"
+                                >
+                                  <Lock className="h-3 w-3 text-rose-500/70" />
+                                  <span>Chưa giao được</span>
+                                </button>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60 inline-flex items-center gap-1 font-medium select-none">
+                              <Lock className="w-2.5 h-2.5 text-amber-600" />
+                              Chỉ tài xế phụ trách chuyến mới có quyền xác nhận
+                            </span>
                           </div>
                         )}
                       </div>
