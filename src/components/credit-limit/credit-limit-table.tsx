@@ -179,13 +179,12 @@ export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
                     </span>
                   </td>
 
-                  {/* 4. Dư nợ hiện tại: Số tiền tabular-nums rõ ràng (màu đen, đỏ nếu vượt trần) */}
+                  {/* 4. Dư nợ hiện tại: Số tiền tabular-nums rõ ràng (màu đen, đỏ nếu vượt hạn mức) */}
                   <td className="px-4 py-3.5 text-right whitespace-nowrap">
                     <span
                       className={`font-bold tabular-nums text-sm ${
                         isExceeded ? 'text-rose-600' : 'text-slate-900'
                       }`}
-                      title={`Dư nợ: ${formatVnd(item.currentDebt || 0)} / Hạn mức: ${formatVnd(effectiveLimit)}`}
                     >
                       {formatVnd(item.currentDebt || 0)}
                     </span>
@@ -201,7 +200,7 @@ export const CreditLimitTable: React.FC<CreditLimitTableProps> = ({
                     ) : isExceeded ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200/60">
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                        <span>Vượt trần</span>
+                        <span>Vượt hạn mức</span>
                       </span>
                     ) : isWarning ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
