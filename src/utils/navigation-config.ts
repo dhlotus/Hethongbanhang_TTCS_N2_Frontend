@@ -773,6 +773,20 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Kho vận & Hàng hóa',
     },
     {
+      id: 'inventory-receipts',
+      name: 'Nhập kho hàng hóa',
+      path: '/inventory/receipts',
+      icon: PackagePlus,
+      category: 'Kho vận & Hàng hóa',
+    },
+    {
+      id: 'inventory-issues',
+      name: 'Soạn hàng & Xuất kho',
+      path: '/inventory/issues',
+      icon: PackageMinus,
+      category: 'Kho vận & Hàng hóa',
+    },
+    {
       id: 'order-picking',
       name: 'Phiếu soạn hàng',
       path: '/warehouse/picking',
