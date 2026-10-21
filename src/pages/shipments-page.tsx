@@ -1002,23 +1002,21 @@ export const ShipmentsPage: React.FC = () => {
 
                           {/* Trạng thái: Chỉ hiển thị badge trạng thái */}
                           <td className="py-3.5 px-3 sm:px-4 text-center">
-                            <span
-                              className={`inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold border max-w-full ${statusInfo.bg} ${statusInfo.text}`}
-                              title={statusInfo.label}
-                            >
-                              <StatusIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-                              <span className="truncate">{statusInfo.label}</span>
-                            </span>
-                            {item.hasShortDelivery && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 ml-1.5" title="Phiếu xuất có hàng giao thiếu/còn nợ">
-                                <AlertTriangle className="w-3 h-3 text-amber-600" />
-                                <span>Giao thiếu</span>
+                            {item.hasShortDelivery || (item.lines && item.lines.some((l) => (l.remainingQuantity || 0) > 0 || l.isShortDelivery)) ? (
+                              <span
+                                className="inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200 max-w-full"
+                                title="Phiếu xuất có hàng giao thiếu / nợ hàng"
+                              >
+                                <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 text-amber-600" />
+                                <span className="truncate">Giao thiếu</span>
                               </span>
-                            )}
-                            {item.isConfirmed && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200 ml-1" title="Phiếu đã xác nhận thực xuất và khóa bất biến">
-                                <Lock className="w-2.5 h-2.5 text-slate-500" />
-                                <span>Đã khóa</span>
+                            ) : (
+                              <span
+                                className={`inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold border max-w-full ${statusInfo.bg} ${statusInfo.text}`}
+                                title={statusInfo.label}
+                              >
+                                <StatusIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                                <span className="truncate">{statusInfo.label}</span>
                               </span>
                             )}
                           </td>

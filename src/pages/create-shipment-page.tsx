@@ -884,8 +884,29 @@ export const CreateShipmentPage: React.FC = () => {
               </h2>
             </div>
             {isDetailMode && currentShipment?.status && (
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                Trạng thái: {currentShipment.status}
+              <span
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                  currentShipment.hasShortDelivery ||
+                  (currentShipment.lines &&
+                    currentShipment.lines.some(
+                      (l) => (l.remainingQuantity || 0) > 0 || l.isShortDelivery
+                    ))
+                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                    : currentShipment.status === 'DELIVERED'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                }`}
+              >
+                Trạng thái:{' '}
+                {currentShipment.hasShortDelivery ||
+                (currentShipment.lines &&
+                  currentShipment.lines.some(
+                    (l) => (l.remainingQuantity || 0) > 0 || l.isShortDelivery
+                  ))
+                  ? 'Giao thiếu'
+                  : currentShipment.status === 'DELIVERED'
+                  ? 'Giao thành công'
+                  : currentShipment.status}
               </span>
             )}
           </div>
