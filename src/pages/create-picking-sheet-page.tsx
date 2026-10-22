@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Building2,
   Calendar,
+  Check,
   CheckSquare,
   Package,
   PackagePlus,
@@ -180,15 +181,8 @@ export const CreatePickingSheetPage: React.FC = () => {
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
-              <div className="flex items-center gap-2 text-xs text-slate-500 mb-0.5">
-                <Link to="/warehouse/picking" className="hover:text-indigo-600 font-medium">
-                  Phiếu soạn hàng
-                </Link>
-                <span>/</span>
-                <span className="font-semibold text-slate-800">Tạo phiếu mới</span>
-              </div>
               <h1 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
-                <PackagePlus className="w-5 h-5 text-indigo-600" />
+                <PackagePlus className="w-5 h-5 text-indigo-600 shrink-0" />
                 <span>Tạo phiếu soạn hàng (Gộp nhiều đơn)</span>
               </h1>
             </div>
@@ -198,46 +192,45 @@ export const CreatePickingSheetPage: React.FC = () => {
 
       {/* ── 2. NỘI DUNG FORM ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {/* Khối 1: Chọn kho xuất hàng phụ trách */}
-        <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3">
-          <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-            <Building2 className="w-4 h-4 text-indigo-600" />
-            <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              1. Chọn kho xuất hàng phụ trách <span className="text-rose-500">*</span>
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Khối 1: Chọn kho xuất hàng phụ trách (Gọn gàng, dễ tương tác, không bị cắt chữ) */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 shadow-xs">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
             {STANDARD_WAREHOUSES.map((wh) => {
               const isSelected = selectedWarehouseId === wh.id;
               const isDisabled = isKeeper && selectedWarehouseId !== wh.id;
+              const shortName = wh.name.split('(')[0].trim();
+              const location = wh.name.match(/\((.*?)\)/)?.[1] || wh.code;
+
               return (
                 <button
                   key={wh.id}
                   type="button"
                   disabled={isDisabled}
                   onClick={() => setSelectedWarehouseId(wh.id)}
-                  className={`p-3.5 rounded-xl border text-left flex items-start gap-3 transition-all ${
+                  className={`px-3.5 py-3 rounded-xl border text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer ${
                     isDisabled
                       ? 'opacity-40 cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
                       : isSelected
-                      ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-2 ring-indigo-500/20 shadow-xs cursor-pointer'
-                      : 'border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer'
+                      ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-2 ring-indigo-500/20 shadow-xs'
+                      : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700'
                   }`}
                 >
-                  <Building2
-                    className={`w-5 h-5 mt-0.5 shrink-0 ${
-                      isSelected ? 'text-indigo-600' : 'text-slate-400'
-                    }`}
-                  />
                   <div className="min-w-0">
-                    <span className="font-bold text-xs sm:text-sm block truncate">{wh.name}</span>
-                    <span className="text-[11px] font-mono text-slate-500 block mt-0.5">
-                      Mã kho: {wh.code}
+                    <span className="font-bold text-xs sm:text-sm block text-slate-900 leading-tight">
+                      {shortName}
                     </span>
-                    <span className="text-[11px] text-slate-500 truncate block mt-0.5">
-                      {wh.displayName}
+                    <span className="text-[11px] text-slate-500 block mt-0.5 truncate">
+                      {location}
                     </span>
+                  </div>
+                  <div
+                    className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border transition-all ${
+                      isSelected
+                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-2xs'
+                        : 'border-slate-300 bg-white'
+                    }`}
+                  >
+                    {isSelected && <Check className="w-3 h-3 stroke-[2.5]" />}
                   </div>
                 </button>
               );
@@ -251,7 +244,7 @@ export const CreatePickingSheetPage: React.FC = () => {
             <div className="flex items-center gap-2">
               <ShoppingBag className="w-4 h-4 text-indigo-600" />
               <h2 className="text-sm sm:text-base font-bold text-slate-900">
-                2. Chọn đơn hàng cần gom soạn ({selectedOrderIds.length}/{filteredOrders.length} đơn){' '}
+                Chọn đơn hàng cần gom soạn ({selectedOrderIds.length}/{filteredOrders.length} đơn){' '}
                 <span className="text-rose-500">*</span>
               </h2>
             </div>
@@ -486,7 +479,7 @@ export const CreatePickingSheetPage: React.FC = () => {
         {/* Khối 3: Ghi chú thêm cho thủ kho */}
         <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-2">
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-            3. Ghi chú điều phối (Tùy chọn)
+            Ghi chú điều phối (Tùy chọn)
           </label>
           <textarea
             rows={2}
