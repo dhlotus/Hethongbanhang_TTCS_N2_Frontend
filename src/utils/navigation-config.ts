@@ -800,6 +800,13 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       category: 'Kho vận & Vận hành',
     },
     {
+      id: 'reports-inventory',
+      name: 'Báo cáo kho & Vòng quay',
+      path: '/reports/inventory',
+      icon: BarChart3,
+      category: 'Kho vận & Vận hành',
+    },
+    {
       id: 'order-picking',
       name: 'Phiếu soạn hàng',
       path: '/warehouse/picking',

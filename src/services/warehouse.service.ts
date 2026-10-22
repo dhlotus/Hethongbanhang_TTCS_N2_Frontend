@@ -120,6 +120,15 @@ export const warehouseService = {
     );
     return response.data;
   },
+  async deleteLocation(
+    warehouseId: string,
+    locationId: string
+  ): Promise<{ success: boolean; message?: string }> {
+    const response = await apiClient.delete<{ success: boolean; message?: string }>(
+      `/warehouses/${encodeURIComponent(warehouseId)}/locations/${encodeURIComponent(locationId)}`
+    );
+    return response.data;
+  },
   async setAgencyDefaultWarehouse(agencyId: string, warehouseId: string | null): Promise<void> {
     agencyDefaultCache.delete(agencyId);
     await apiClient.put(`/warehouses/agencies/${encodeURIComponent(agencyId)}/default`, {

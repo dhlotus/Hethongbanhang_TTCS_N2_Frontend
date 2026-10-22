@@ -1,15 +1,44 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, X } from 'lucide-react';
+import { Printer, RefreshCw, X } from 'lucide-react';
 import type { DeliveryTrip } from '../types/delivery-trip';
+import { deliveryTripsService } from '../services/delivery-trips.service';
 
 interface Props {
   trip: DeliveryTrip;
   onClose: () => void;
 }
 
-export const PrintTripManifestModal: React.FC<Props> = ({ trip, onClose }) => {
+export const PrintTripManifestModal: React.FC<Props> = ({ trip: initialTrip, onClose }) => {
   const printAreaRef = useRef<HTMLDivElement>(null);
+  const [trip, setTrip] = useState<DeliveryTrip>(initialTrip);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (initialTrip?.id) {
+      setIsLoading(true);
+      deliveryTripsService
+        .getTripManifest(initialTrip.id)
+        .then((manifest) => {
+          if (isMounted && manifest?.trip) {
+            setTrip({
+              ...manifest.trip,
+              stops: manifest.stops || manifest.trip.stops || [],
+            });
+          }
+        })
+        .catch((err) => {
+          console.warn('[PrintTripManifestModal] Không thể nạp manifest live từ server:', err);
+        })
+        .finally(() => {
+          if (isMounted) setIsLoading(false);
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [initialTrip]);
 
   /**
    * In độc lập qua Hidden Iframe:
@@ -192,10 +221,18 @@ export const PrintTripManifestModal: React.FC<Props> = ({ trip, onClose }) => {
               <Printer className="w-4 h-4 text-indigo-600" />
               Xem trước Bản in Lệnh điều xe & Bảng kê điểm giao
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Mã chuyến: <span className="font-mono font-semibold text-indigo-700">{trip.tripCode}</span>
-              {' — '}
-              Tuyến: <span className="font-medium text-slate-700">{trip.routeArea}</span>
+            <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+              <span>
+                Mã chuyến: <span className="font-mono font-semibold text-indigo-700">{trip.tripCode}</span>
+                {' — '}
+                Tuyến: <span className="font-medium text-slate-700">{trip.routeArea}</span>
+              </span>
+              {isLoading && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  Đang đồng bộ...
+                </span>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">

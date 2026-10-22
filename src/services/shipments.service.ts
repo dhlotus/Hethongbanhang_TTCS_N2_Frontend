@@ -78,6 +78,8 @@ export interface BatchItem {
   availableQuantity: number;
   warehouseId?: string;
   warehouseName?: string;
+  locationCode?: string;
+  location_code?: string;
   isFefoRecommended?: boolean;
 }
 

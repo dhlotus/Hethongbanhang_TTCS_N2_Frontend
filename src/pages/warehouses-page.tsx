@@ -809,6 +809,28 @@ export function WarehousesPage(): React.ReactElement {
     }
   };
 
+  // DELETE LOCATION
+  const handleDeleteLocation = async (locationId: string, locationCode: string): Promise<void> => {
+    if (!selectedId) return;
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa vị trí "${locationCode}" khỏi kho không?`)) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await warehouseService.deleteLocation(selectedId, locationId);
+      const updatedLocations = await warehouseService.getLocations(selectedId);
+      setLocations(updatedLocations);
+      setWarehouses((prev) =>
+        prev.map((w) => (w.id === selectedId ? { ...w, locationCount: updatedLocations.length } : w))
+      );
+      showToast('success', `Đã xóa vị trí "${locationCode}" thành công`);
+    } catch (error: unknown) {
+      showToast('error', getFriendlyErrorMessage(error, 'Không thể xóa vị trí'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // ASSIGN AGENCY (Kho 1-n Đại lý)
   const handleAssignAgency = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
@@ -1792,9 +1814,20 @@ export function WarehousesPage(): React.ReactElement {
                             .join(' · ')}
                         </span>
                       </div>
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200 shrink-0">
-                        Sẵn sàng
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+                          Sẵn sàng
+                        </span>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void handleDeleteLocation(loc.id, loc.code)}
+                          className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-50"
+                          title="Xóa vị trí"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

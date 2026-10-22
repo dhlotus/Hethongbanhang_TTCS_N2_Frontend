@@ -18,6 +18,7 @@ import {
 import { showToast } from '../components/toast';
 import { Pagination } from '../components/pagination';
 import { DateInput } from '../components/date-input';
+import { customerService } from '../services/customer.service';
 import { ordersService } from '../services/orders.service';
 import { productsService } from '../services/products.service';
 import { matchesSearchTerm } from '../utils/vietnamese';
@@ -26,6 +27,7 @@ import type {
   Order,
   OrderStatus,
   OrderApprovalAction,
+  OrderApprovalHistory,
 } from '../types/order';
 
 const formatCurrency = (val: number): string =>
@@ -142,6 +144,45 @@ export const OrderApprovalsPage: React.FC = () => {
   const [decisionComment, setDecisionComment] = useState('');
   const [modalValidationError, setModalValidationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [customerDebtInfo, setCustomerDebtInfo] = useState<{ creditLimit: number; currentDebt: number } | null>(null);
+  const [approvalHistory, setApprovalHistory] = useState<OrderApprovalHistory[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // Load customer debt and approval history when reviewOrder changes
+  useEffect(() => {
+    if (!reviewOrder?.id) {
+      setApprovalHistory([]);
+      setCustomerDebtInfo(null);
+      return;
+    }
+
+    if (reviewOrder.customerId) {
+      customerService
+        .getCustomerById(reviewOrder.customerId)
+        .then((cust) => {
+          if (cust) {
+            setCustomerDebtInfo({
+              creditLimit: cust.creditLimit ?? 0,
+              currentDebt: cust.currentDebt ?? 0,
+            });
+          }
+        })
+        .catch(() => {});
+    }
+
+    setIsLoadingHistory(true);
+    ordersService
+      .getApprovalHistory(reviewOrder.id)
+      .then((history) => {
+        setApprovalHistory(history || []);
+      })
+      .catch(() => {
+        setApprovalHistory([]);
+      })
+      .finally(() => {
+        setIsLoadingHistory(false);
+      });
+  }, [reviewOrder?.id, reviewOrder?.customerId]);
 
   // Bộ lọc nhanh theo tình trạng tồn kho (chỉ dùng cho tab Chờ duyệt)
   const [stockFilter, setStockFilter] = useState<'ALL' | 'SUFFICIENT' | 'INSUFFICIENT'>(initialStock);
@@ -896,24 +937,26 @@ export const OrderApprovalsPage: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed border-collapse min-w-[620px]">
+            <table className="w-full table-fixed border-collapse min-w-[760px]">
               <colgroup>
-                <col className="w-[36%]" />
-                <col className="w-[15%]" />
-                <col className="w-[18%]" />
-                <col className="w-[16%]" />
-                <col className="w-[15%]" />
+                <col className="w-[24%]" />
+                <col className="w-[28%]" />
+                <col className="w-[12%]" />
+                <col className="w-[14%]" />
+                <col className="w-[12%]" />
+                <col className="w-[10%]" />
               </colgroup>
 
               <thead>
                 <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  <th className="px-5 py-3.5 text-left whitespace-nowrap">Đại lý</th>
-                  <th className="px-4 py-3.5 text-center whitespace-nowrap">Ngày tạo</th>
-                  <th className="px-5 py-3.5 text-right whitespace-nowrap">Tổng tiền</th>
+                  <th className="px-4 py-3.5 text-left whitespace-nowrap">Đại lý & Mã đơn</th>
+                  <th className="px-4 py-3.5 text-left whitespace-nowrap">Lý do duyệt & Mức vi phạm</th>
+                  <th className="px-3 py-3.5 text-center whitespace-nowrap">Ngày tạo</th>
+                  <th className="px-4 py-3.5 text-right whitespace-nowrap">Tổng tiền</th>
                   <th className="px-3 py-3.5 text-center whitespace-nowrap">
                     {activeTab === 'PENDING' ? 'Tồn kho' : 'Trạng thái'}
                   </th>
-                  <th className="px-4 py-3.5 text-center whitespace-nowrap">Thao tác</th>
+                  <th className="px-3 py-3.5 text-center whitespace-nowrap">Thao tác</th>
                 </tr>
               </thead>
 
@@ -923,11 +966,44 @@ export const OrderApprovalsPage: React.FC = () => {
 
                   return (
                     <tr key={order.id} className="hover:bg-slate-50/70 transition-colors group">
-                      {/* 1. Đại lý: Chỉ hiển thị tên theo style chuẩn gọn gàng */}
-                      <td className="px-5 py-4 text-left whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-900 truncate block max-w-full" title={order.customerName}>
+                      {/* 1. Đại lý & Mã đơn */}
+                      <td className="px-4 py-3.5 text-left">
+                        <span className="text-sm font-semibold text-slate-900 truncate block max-w-full" title={order.customerName}>
                           {order.customerName}
                         </span>
+                        <span className="text-[11px] font-mono text-indigo-700 font-bold block mt-0.5">
+                          {order.orderCode}
+                        </span>
+                      </td>
+
+                      {/* 2. Lý do cần duyệt & Mức vi phạm */}
+                      <td className="px-4 py-3.5 text-left">
+                        {order.approvalReasons && order.approvalReasons.length > 0 ? (
+                          <div className="flex flex-col gap-1 max-w-full">
+                            {order.approvalReasons.map((r, i) => (
+                              <span
+                                key={i}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 truncate"
+                                title={r}
+                              >
+                                <AlertCircle className="w-3 h-3 text-rose-600 shrink-0" />
+                                <span className="truncate">{r}</span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : order.isCreditLimitExceeded ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                            <AlertCircle className="w-3 h-3 text-rose-600 shrink-0" />
+                            <span>Vượt hạn mức {formatCurrency(order.creditLimitExceededAmount || 0)}</span>
+                          </span>
+                        ) : order.lines?.some((l) => l.requiresApproval || (l.minPrice && l.unitPrice < l.minPrice)) ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                            <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                            <span>Bán dưới giá sàn</span>
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 italic">Chờ phê duyệt bán hàng</span>
+                        )}
                       </td>
 
                       {/* 2. Ngày tạo: Căn giữa */}
@@ -1070,9 +1146,34 @@ export const OrderApprovalsPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Hàng 2: Đại lý */}
-                  <div className="text-xs font-medium text-slate-900 truncate" title={order.customerName}>
-                    {order.customerName}
+                  {/* Hàng 2: Đại lý & Lý do duyệt */}
+                  <div>
+                    <div className="text-xs font-semibold text-slate-900 truncate" title={order.customerName}>
+                      {order.customerName}
+                    </div>
+                    {order.approvalReasons && order.approvalReasons.length > 0 ? (
+                      <div className="flex flex-col gap-1 mt-1">
+                        {order.approvalReasons.map((r, i) => (
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200"
+                          >
+                            <AlertCircle className="w-2.5 h-2.5 text-rose-600 shrink-0" />
+                            <span>{r}</span>
+                          </span>
+                        ))}
+                      </div>
+                    ) : order.isCreditLimitExceeded ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 mt-1">
+                        <AlertCircle className="w-2.5 h-2.5 text-rose-600 shrink-0" />
+                        <span>Vượt hạn mức {formatCurrency(order.creditLimitExceededAmount || 0)}</span>
+                      </span>
+                    ) : order.lines?.some((l) => l.requiresApproval || (l.minPrice && l.unitPrice < l.minPrice)) ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 mt-1">
+                        <AlertCircle className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                        <span>Bán dưới giá sàn</span>
+                      </span>
+                    ) : null}
                   </div>
 
                   {/* Hàng 3: Ngày tạo, Tổng tiền */}
@@ -1168,33 +1269,73 @@ export const OrderApprovalsPage: React.FC = () => {
 
             {/* Modal Body */}
             <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
-              {/* Khối Kiểm tra công nợ (Gộp trực tiếp xem được ngay, không cần click thêm tab) */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-slate-50/80 border border-slate-200/80 rounded-2xl text-xs">
-                <div className="space-y-0.5">
-                  <span className="text-[11px] text-slate-500 font-semibold block">Hạn mức nợ tối đa</span>
-                  <span className="text-sm sm:text-base font-extrabold text-slate-900 block font-mono">
-                    {formatCurrency(50000000)}
-                  </span>
-                </div>
+              {/* Banner Lý do cần phê duyệt & Mức vi phạm */}
+              {(() => {
+                const creditLimit = customerDebtInfo?.creditLimit ?? 0;
+                const currentDebt = customerDebtInfo?.currentDebt ?? 0;
+                const projectedDebt = currentDebt + reviewOrder.grandTotal;
+                const isExceeded = creditLimit > 0 && projectedDebt > creditLimit;
+                const exceededAmount = isExceeded ? projectedDebt - creditLimit : 0;
+                const reasons = reviewOrder.approvalReasons || [];
 
-                <div className="space-y-0.5">
-                  <span className="text-[11px] text-slate-500 font-semibold block">Dư nợ hiện tại</span>
-                  <span className="text-sm sm:text-base font-extrabold text-slate-900 block font-mono">
-                    {formatCurrency(35000000)}
-                  </span>
-                  <span className="text-[10px] text-emerald-600 font-semibold">Không có nợ quá hạn</span>
-                </div>
+                return (
+                  <>
+                    {(reasons.length > 0 || isExceeded || reviewOrder.isCreditLimitExceeded) && (
+                      <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold text-rose-800">
+                          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                          <span>Lý do cần xét duyệt & Mức vi phạm:</span>
+                        </div>
+                        <ul className="list-disc list-inside space-y-0.5 text-rose-700 font-medium pl-1">
+                          {reasons.length > 0 ? (
+                            reasons.map((r, idx) => <li key={idx}>{r}</li>)
+                          ) : (
+                            <li>
+                              Vượt hạn mức nợ {formatCurrency(exceededAmount || reviewOrder.creditLimitExceededAmount || 0)} (Tổng nợ dự kiến {formatCurrency(projectedDebt)} / Hạn mức {formatCurrency(creditLimit)})
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
 
-                <div className="space-y-0.5">
-                  <span className="text-[11px] text-indigo-700 font-semibold block">Dự kiến nợ sau đơn này</span>
-                  <span className="text-sm sm:text-base font-extrabold text-indigo-700 block font-mono">
-                    {formatCurrency(35000000 + reviewOrder.grandTotal)}
-                  </span>
-                  <span className="text-[10px] text-slate-500">
-                    Khả dụng: <strong className="text-emerald-700 font-bold">{formatCurrency(Math.max(0, 50000000 - (35000000 + reviewOrder.grandTotal)))}</strong>
-                  </span>
-                </div>
-              </div>
+                    {/* Khối Kiểm tra công nợ thực tế của Đại lý */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-slate-50/80 border border-slate-200/80 rounded-2xl text-xs">
+                      <div className="space-y-0.5">
+                        <span className="text-[11px] text-slate-500 font-semibold block">Hạn mức nợ tối đa</span>
+                        <span className="text-sm sm:text-base font-extrabold text-slate-900 block font-mono">
+                          {creditLimit > 0 ? formatCurrency(creditLimit) : 'Không giới hạn'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <span className="text-[11px] text-slate-500 font-semibold block">Dư nợ hiện tại</span>
+                        <span className="text-sm sm:text-base font-extrabold text-slate-900 block font-mono">
+                          {formatCurrency(currentDebt)}
+                        </span>
+                        <span className="text-[10px] text-emerald-600 font-semibold">Theo hồ sơ đại lý</span>
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <span className={`text-[11px] font-semibold block ${isExceeded ? 'text-rose-700' : 'text-indigo-700'}`}>
+                          Dự kiến nợ sau đơn này
+                        </span>
+                        <span className={`text-sm sm:text-base font-extrabold block font-mono ${isExceeded ? 'text-rose-700' : 'text-indigo-700'}`}>
+                          {formatCurrency(projectedDebt)}
+                        </span>
+                        {isExceeded ? (
+                          <span className="text-[10px] text-rose-600 font-bold block">
+                            Vượt hạn mức: {formatCurrency(exceededAmount)}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-500 block">
+                            Khả dụng: <strong className="text-emerald-700 font-bold">{formatCurrency(Math.max(0, creditLimit - projectedDebt))}</strong>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Bảng danh sách dòng hàng */}
               <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -1205,6 +1346,7 @@ export const OrderApprovalsPage: React.FC = () => {
                       <th className="px-2.5 py-2.5 text-center">Đơn vị</th>
                       <th className="px-2.5 py-2.5 text-center">Số lượng</th>
                       <th className="px-3 py-2.5 text-center">Tồn khả dụng</th>
+                      <th className="px-3 py-2.5 text-right">Giá sàn</th>
                       <th className="px-3 py-2.5 text-right">Đơn giá bán</th>
                       <th className="px-3 py-2.5 text-right">Chiết khấu</th>
                       <th className="px-3 py-2.5 text-right">Thành tiền</th>
@@ -1213,16 +1355,24 @@ export const OrderApprovalsPage: React.FC = () => {
                   <tbody className="divide-y divide-slate-100">
                     {reviewOrder.lines?.map((line, idx) => {
                       const itemStock = stockCheckResults.linesStockInfo[idx];
+                      const isBelowFloor = Boolean(
+                        line.requiresApproval || (line.minPrice && line.unitPrice < line.minPrice),
+                      );
 
                       return (
-                        <tr key={idx}>
+                        <tr key={idx} className={isBelowFloor ? 'bg-amber-50/40' : undefined}>
                           <td className="px-3.5 py-2.5">
                             <p className="font-bold text-slate-900">{line.productName}</p>
                             <span className="text-[10px] font-mono text-slate-500">{line.productSku}</span>
+                            {isBelowFloor && (
+                              <span className="inline-block px-1.5 py-0.2 rounded text-[10px] font-semibold bg-rose-100 text-rose-800 ml-2">
+                                Dưới giá sàn
+                              </span>
+                            )}
                           </td>
                           <td className="px-2.5 py-2.5 text-center font-medium text-slate-600">{line.unit}</td>
                           <td className="px-2.5 py-2.5 text-center font-bold text-slate-900">{line.quantity}</td>
-                          {/* Cột Tồn khả dụng (Gọn gàng, bỏ text thừa Kho/Đã giữ) */}
+                          {/* Cột Tồn khả dụng */}
                           <td className="px-3 py-2.5 text-center">
                             {isLoadingStock ? (
                               <span className="text-[10px] text-slate-400">Đang đối soát...</span>
@@ -1240,8 +1390,18 @@ export const OrderApprovalsPage: React.FC = () => {
                               <span className="text-[10px] text-slate-400">---</span>
                             )}
                           </td>
-                          <td className="px-3 py-2.5 text-right font-bold text-slate-900">
+                          {/* Giá sàn */}
+                          <td className="px-3 py-2.5 text-right font-medium text-slate-600">
+                            {line.minPrice ? formatCurrency(line.minPrice) : '---'}
+                          </td>
+                          {/* Đơn giá bán */}
+                          <td className={`px-3 py-2.5 text-right font-bold ${isBelowFloor ? 'text-rose-700' : 'text-slate-900'}`}>
                             {formatCurrency(line.unitPrice)}
+                            {isBelowFloor && line.minPrice && (
+                              <span className="block text-[10px] font-normal text-rose-600">
+                                (-{formatCurrency(line.minPrice - line.unitPrice)})
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2.5 text-right font-medium text-emerald-700">
                             {line.discountPercent > 0 ? `${line.discountPercent}%` : '---'}
@@ -1272,11 +1432,11 @@ export const OrderApprovalsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Khu vực quyết định phê duyệt */}
+              {/* Khu vực quyết định phê duyệt (Ba hành động: Duyệt, Từ chối, Trả lại sửa) */}
               {isOrderPendingApproval(reviewOrder) ? (
                 <div className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
                   <label className="text-xs font-bold text-slate-800 block">
-                    Ý kiến chỉ đạo / Lý do (Bắt buộc khi Trả lại sửa):
+                    Ý kiến chỉ đạo / Lý do (Bắt buộc khi Từ chối hoặc Trả lại sửa):
                   </label>
 
                   {/* Thông báo lỗi validation hiển thị ngay trên modal */}
@@ -1292,7 +1452,7 @@ export const OrderApprovalsPage: React.FC = () => {
                       setDecisionComment(e.target.value);
                       if (modalValidationError) setModalValidationError(null);
                     }}
-                    placeholder="Nhập ghi chú hoặc lý do yêu cầu sửa đổi..."
+                    placeholder="Nhập lý do cụ thể khi Từ chối hoặc Trả lại sửa..."
                     rows={2}
                     className={`w-full px-3 py-2 text-xs border rounded-xl bg-white focus:outline-none focus:ring-2 resize-none transition-all ${
                       modalValidationError
@@ -1302,7 +1462,17 @@ export const OrderApprovalsPage: React.FC = () => {
                   />
 
                   <div className="flex items-center justify-end gap-2 pt-1">
-                    {/* Chỉ giữ lại 1 nút: Trả lại sửa */}
+                    {/* Hành động 1: Từ chối đơn */}
+                    <button
+                      type="button"
+                      disabled={isSubmitting}
+                      onClick={() => void handleDecisionSubmit('REJECT')}
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      <span>Từ chối</span>
+                    </button>
+
+                    {/* Hành động 2: Trả lại sửa */}
                     <button
                       type="button"
                       disabled={isSubmitting}
@@ -1312,7 +1482,7 @@ export const OrderApprovalsPage: React.FC = () => {
                       <span>Trả lại sửa</span>
                     </button>
 
-                    {/* Nút Duyệt đơn (Khóa trước nếu thiếu hàng) */}
+                    {/* Hành động 3: Duyệt đơn */}
                     {stockCheckResults.outOfStockItems.length > 0 ? (
                       <button
                         type="button"
@@ -1342,12 +1512,56 @@ export const OrderApprovalsPage: React.FC = () => {
                   </div>
                 </div>
               ) : (reviewOrder.status === 'REJECTED' || reviewOrder.status === 'RETURNED_FOR_UPDATE') && (reviewOrder.note || reviewOrder.warningNote) ? (
-                /* Với đơn bị từ chối / trả lại: chỉ hiển thị lý do nếu có ghi chú, không lặp lại chữ đã duyệt */
                 <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900">
                   <span className="font-semibold">Lý do yêu cầu sửa đổi: </span>
                   <span>{reviewOrder.note || reviewOrder.warningNote}</span>
                 </div>
               ) : null}
+
+              {/* Khối Lịch sử xét duyệt đơn hàng (Bất biến - SN-44) */}
+              <div className="pt-3 border-t border-slate-200 space-y-2">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Lịch sử xét duyệt đơn hàng (Không thể sửa / xóa)</span>
+                </h4>
+                {isLoadingHistory ? (
+                  <div className="p-3 text-center text-xs text-slate-400">Đang nạp lịch sử duyệt...</div>
+                ) : approvalHistory.length === 0 ? (
+                  <div className="p-3 text-xs text-slate-400 italic bg-slate-50 rounded-xl">
+                    Chưa có lượt xét duyệt nào được ghi nhận cho đơn hàng này.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden text-xs">
+                    {approvalHistory.map((h, i) => (
+                      <div key={i} className="p-2.5 bg-white flex items-start justify-between gap-3">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                h.action === 'APPROVE'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : h.action === 'REJECT'
+                                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                  : 'bg-amber-50 text-amber-800 border border-amber-200'
+                              }`}
+                            >
+                              {h.action === 'APPROVE' ? 'Đã duyệt' : h.action === 'REJECT' ? 'Từ chối' : 'Trả lại sửa'}
+                            </span>
+                            <span className="font-semibold text-slate-800">{h.approverName}</span>
+                            {h.approverRoles?.length ? (
+                              <span className="text-[10px] text-slate-400">({h.approverRoles.join(', ')})</span>
+                            ) : null}
+                          </div>
+                          {h.comment && (
+                            <p className="text-slate-600 italic pl-1 text-[11px]">Ý kiến: "{h.comment}"</p>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-slate-400 shrink-0 font-mono">{formatDate(h.createdAt)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>,

@@ -63,6 +63,7 @@ import { SalesTargetsPage } from '../pages/sales-targets-page';
 import { SalesTargetDetailPage } from '../pages/sales-target-detail-page';
 import { SalesReportPage } from '../pages/sales-report-page';
 import { DebtAdjustmentsPage } from '../pages/debt-adjustments-page';
+import { InventoryReportPage } from '../pages/inventory-report-page';
 
 /**
  * Component xử lý điều hướng thông minh tại root ('/'):
@@ -436,13 +437,7 @@ export const AppRoutes: React.FC = () => {
               />
               <Route
                 path="/reports/inventory"
-                element={
-                  <RoleModulePage
-                    title="Báo cáo Kho hàng & Tồn luân chuyển"
-                    subtitle="Báo cáo xuất nhập tồn chi tiết, phân tích tốc độ luân chuyển hàng tồn kho (Inventory Turnover)"
-                    requiredRole="Quản lý kho"
-                  />
-                }
+                element={<InventoryReportPage />}
               />
             </Route>
 

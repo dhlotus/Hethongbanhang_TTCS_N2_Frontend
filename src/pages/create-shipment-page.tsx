@@ -44,6 +44,7 @@ interface ShipmentProductRow {
   expiryDate: string;
   manufacturingDate?: string;
   availableQuantity: number;
+  locationCode?: string;
   isOverridden: boolean;
   overrideReason: string;
   isLoadingBatch?: boolean;
@@ -477,6 +478,7 @@ export const CreateShipmentPage: React.FC = () => {
               expiryDate: b.expiryDate || (b as any).expiry_date || '',
               manufacturingDate: b.manufacturingDate || (b as any).mfgDate || (b as any).mfg_date || '',
               availableQuantity: b.availableQuantity ?? b.quantity ?? (b as any).available_quantity ?? 0,
+              locationCode: b.locationCode || (b as any).location_code || '',
               isOverridden: false,
               overrideReason: '',
               isLoadingBatch: false,
@@ -681,6 +683,7 @@ export const CreateShipmentPage: React.FC = () => {
       expiryDate: chosenBatch.expiryDate || (chosenBatch as any).expiry_date || '',
       manufacturingDate: chosenBatch.manufacturingDate || (chosenBatch as any).mfgDate || (chosenBatch as any).mfg_date || '',
       availableQuantity: bAvail,
+      locationCode: chosenBatch.locationCode || (chosenBatch as any).location_code || updated[activeItemIndex].locationCode || '',
       isOverridden: isOverride,
       overrideReason: isOverride ? tempOverrideReason.trim() : '',
     };
@@ -1186,10 +1189,21 @@ export const CreateShipmentPage: React.FC = () => {
                         {/* Sản phẩm */}
                         <td className="py-3.5 px-4">
                           <p className="font-bold text-slate-900 text-sm">{row.productName}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <span className="font-mono text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded text-[11px] font-semibold">
                               {row.skuCode}
                             </span>
+                            {row.locationCode && row.locationCode !== 'Chưa định vị' ? (
+                              <span className="inline-flex items-center gap-1 font-mono text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded text-[11px] font-medium">
+                                <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
+                                Vị trí: {row.locationCode}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-slate-400 text-[11px]">
+                                <MapPin className="w-3 h-3 text-slate-300 shrink-0" />
+                                Chưa gán vị trí kệ
+                              </span>
+                            )}
                           </div>
                         </td>
 
@@ -1539,6 +1553,12 @@ export const CreateShipmentPage: React.FC = () => {
                                 {mfgDisplay && (
                                   <span>
                                     NSX: {mfgDisplay}
+                                  </span>
+                                )}
+                                {(b.locationCode || (b as any).location_code) && (
+                                  <span className="text-emerald-700 font-mono flex items-center gap-0.5">
+                                    <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
+                                    Vị trí: {b.locationCode || (b as any).location_code}
                                   </span>
                                 )}
                               </div>
