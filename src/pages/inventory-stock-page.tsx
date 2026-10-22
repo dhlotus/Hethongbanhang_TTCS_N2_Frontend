@@ -16,8 +16,6 @@ import {
   Filter,
   Layers,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   SlidersHorizontal,
   PackagePlus,
   Trash2,

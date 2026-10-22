@@ -197,6 +197,40 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
           </div>
         </div>
 
+        {/* Khối hiển thị khi mặt hàng nằm ở nhiều vị trí trong kho */}
+        {item.location.hasMultipleLocations && item.location.multipleLocations && item.location.multipleLocations.length > 1 && (
+          <div className="p-2.5 bg-blue-50/80 border border-blue-200 rounded-xl text-xs text-blue-950 space-y-1.5 shadow-2xs">
+            <div className="flex items-center gap-1.5 font-bold text-blue-900 text-[11px] uppercase tracking-wider">
+              <Layers className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span>Mặt hàng lưu trữ tại {item.location.multipleLocations.length} vị trí ô kệ:</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {item.location.multipleLocations.map((loc, idx) => (
+                <div
+                  key={idx}
+                  className={`px-2.5 py-1.5 rounded-lg border flex items-center justify-between text-[11px] ${
+                    idx === 0
+                      ? 'bg-blue-100/70 border-blue-300 font-semibold text-blue-950'
+                      : 'bg-white/90 border-blue-200/70 text-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono font-bold">{loc.code}</span>
+                    {idx === 0 && (
+                      <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.2 rounded font-medium">
+                        Chính
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-slate-500 text-[10px]">
+                    {loc.batchNumber ? `Lô ${loc.batchNumber} • ` : ''}Tồn: <strong className="text-blue-700">{loc.quantity?.toLocaleString('vi-VN')}</strong>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Lý do soạn thiếu và Danh sách các đơn bị ảnh hưởng */}
         {isShortPicked && (
           <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 space-y-2">
@@ -302,7 +336,7 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
           </div>
 
           {/* Cụm nút: [Đánh dấu đã soạn] và [Báo thiếu (Bắt buộc lý do)] */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
             {/* Nút Đánh dấu đã soạn */}
             <button
               type="button"
@@ -310,21 +344,27 @@ export const PickingLineItemCard: React.FC<PickingLineItemCardProps> = ({
                 setInputVal(String(item.totalRequiredQuantity));
                 onQuickPickAll(item.id);
               }}
-              className="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
+              className="flex-1 sm:flex-initial h-10 px-3 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
               title="Đánh dấu đã hoàn thành việc soạn dòng hàng này"
             >
-              <Check className="w-4 h-4 stroke-[3]" />
+              <Check className="w-4 h-4 stroke-[3] shrink-0" />
               <span>Đánh dấu đã soạn</span>
             </button>
 
             {/* Nút Báo thiếu */}
             <button
               type="button"
-              onClick={() => onRequestShortPickReason(item, item.totalPickedQuantity)}
-              className="h-10 px-3.5 rounded-xl border border-slate-300 hover:border-amber-400 bg-white hover:bg-amber-50 active:bg-amber-100 text-amber-800 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer whitespace-nowrap"
+              onClick={() => {
+                const targetQty =
+                  item.totalPickedQuantity >= item.totalRequiredQuantity
+                    ? Math.max(0, item.totalRequiredQuantity - 1)
+                    : item.totalPickedQuantity;
+                onRequestShortPickReason(item, targetQty);
+              }}
+              className="flex-1 sm:flex-initial h-10 px-3 sm:px-3.5 rounded-xl border border-slate-300 hover:border-amber-400 bg-white hover:bg-amber-50 active:bg-amber-100 text-amber-800 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer whitespace-nowrap"
               title="Soạn thiếu bắt buộc nhập lý do"
             >
-              <FileText className="w-3.5 h-3.5 text-amber-600" />
+              <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
               <span>Báo thiếu</span>
             </button>
           </div>

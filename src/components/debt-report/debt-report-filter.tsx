@@ -132,7 +132,7 @@ export const DebtReportFilter: React.FC<DebtReportFilterProps> = ({
   };
 
   return (
-    <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs font-sans antialiased relative z-30 overflow-visible">
+    <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs font-sans antialiased relative z-10 overflow-visible">
       {/* CÙNG 1 DÒNG DUY NHẤT (Single Row) - Chống rớt dòng */}
       <div className="flex items-center gap-2.5 flex-nowrap w-full overflow-visible">
         {/* 1. Ô tìm kiếm */}

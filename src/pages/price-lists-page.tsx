@@ -13,7 +13,6 @@ import {
   Trash2,
   Copy,
   Lock,
-  Unlock,
   ChevronDown,
   X,
   FileSpreadsheet,

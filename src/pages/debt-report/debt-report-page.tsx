@@ -1,69 +1,229 @@
 import React, { useState } from 'react';
-import { Clock, BookOpen } from 'lucide-react';
-import { DebtAgingReport } from '../../components/debt-report/debt-aging-report';
-import { DebtLedgerStatementView } from '../../components/debt-report/debt-ledger-statement';
+import { FileSpreadsheet } from 'lucide-react';
+import { useDebtReport } from '../../hooks/use-debt-report';
+import { DebtReportFilter } from '../../components/debt-report/debt-report-filter';
+import { DebtReportTable } from '../../components/debt-report/debt-report-table';
+import { ConfirmDialog } from '../../components/confirm-dialog';
+import {
+  AgingDebtGroupEnum,
+  type AgentDebtReport,
+} from '../../types/debt-report.type';
 
 /**
- * Trang Quản Lý Công Nợ & Sổ Chi Tiết (SN-230 & SN-231)
- * Tích hợp 2 phân hệ chuyên nghiệp cho Kế toán công nợ:
- * 1. Báo cáo công nợ quá hạn theo tuổi nợ (SN-230)
- * 2. Sổ chi tiết công nợ đại lý (SN-231)
+ * Màn hình Sổ chi tiết công nợ (Sổ công nợ và Phân tích tuổi nợ đại lý)
+ * Giao diện tối ưu theo phong cách Compact, thanh lọc 1 dòng ngang,
+ * bảng dữ liệu 6 cột chuẩn quy định kèm popup Sổ Chi Tiết Công Nợ và Xác nhận xuất Excel.
  */
 export const DebtReportPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'aging' | 'ledger'>('aging');
-  const [selectedAgencyForLedger, setSelectedAgencyForLedger] = useState<string>('DL-0001');
+  const {
+    data,
+    summary,
+    loading,
+    exporting,
+    total,
+    totalPages,
+    params,
+    selectedAgingGroup,
+    fetchDebtReport,
+    updateFilters,
+    toggleSort,
+    changePage,
+    changePageSize,
+    exportExcel,
+  } = useDebtReport();
 
-  // Điều hướng từ Báo cáo tuổi nợ sang Sổ chi tiết công nợ của đại lý cụ thể
-  const handleOpenLedgerForAgency = (agencyIdOrCode: string) => {
-    setSelectedAgencyForLedger(agencyIdOrCode);
-    setActiveTab('ledger');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const [showExportConfirm, setShowExportConfirm] = useState(false);
+
+  const criticalOverdueCount = React.useMemo(() => {
+    return data.filter((item) => (item.ageOver90 || 0) > 0).length;
+  }, [data]);
+
+  const getAgencyAgingGroup = (item: AgentDebtReport): AgingDebtGroupEnum => {
+    if ((item.ageOver90 || 0) > 0 || (item.oldestDebtDays || 0) > 90) {
+      return AgingDebtGroupEnum.AGE_OVER_90;
+    }
+    if ((item.age61To90 || 0) > 0 || (item.oldestDebtDays || 0) > 60) {
+      return AgingDebtGroupEnum.AGE_61_90;
+    }
+    if ((item.age31To60 || 0) > 0 || (item.oldestDebtDays || 0) > 30) {
+      return AgingDebtGroupEnum.AGE_31_60;
+    }
+    return AgingDebtGroupEnum.AGE_0_30;
   };
 
+  // Helper kiểm tra chính xác đại lý có nợ quá hạn hay không (Single Source of Truth)
+  const isAgencyOverdue = (item: AgentDebtReport) => {
+    return (
+      item.isOverdue ||
+      (item.overdueAmount || 0) > 0 ||
+      (item.age31To60 || 0) > 0 ||
+      (item.age61To90 || 0) > 0 ||
+      (item.ageOver90 || 0) > 0 ||
+      (item.oldestDebtDays || 0) > 30
+    );
+  };
+
+  // Bộ lọc dữ liệu tức thì ở Client-side
+  const displayData = React.useMemo(() => {
+    if (!data || data.length === 0) return [];
+
+    let filtered = data;
+
+    // 1. Lọc theo trạng thái nợ (Nợ trong hạn / Nợ quá hạn)
+    if (params.debtStatus === 'IN_TERM' || params.isOverdue === false) {
+      filtered = filtered.filter((item) => !isAgencyOverdue(item));
+    } else if (
+      params.debtStatus === 'OVERDUE' ||
+      params.isOverdue === true ||
+      params.isOverdueOnly
+    ) {
+      filtered = filtered.filter((item) => isAgencyOverdue(item));
+    }
+
+    // 2. Lọc theo nhóm tuổi nợ (0-30, 31-60, 61-90, Trên 90 ngày)
+    const activeAging = params.agingGroup || selectedAgingGroup;
+    if (activeAging && activeAging !== AgingDebtGroupEnum.ALL) {
+      filtered = filtered.filter((item) => getAgencyAgingGroup(item) === activeAging);
+    }
+
+    // 3. Lọc theo cấp đại lý
+    if (params.customerGroup) {
+      filtered = filtered.filter((item) => item.customerGroup === params.customerGroup);
+    }
+
+    // 4. Lọc theo từ khóa tìm kiếm
+    if (params.search) {
+      const q = params.search.toLowerCase().trim();
+      filtered = filtered.filter(
+        (item) =>
+          item.agencyCode.toLowerCase().includes(q) ||
+          item.agencyName.toLowerCase().includes(q) ||
+          (item.phone && item.phone.toLowerCase().includes(q)),
+      );
+    }
+
+    return filtered;
+  }, [data, params, selectedAgingGroup]);
+
+  // Tổng hợp dữ liệu hiển thị chân bảng đồng bộ với bộ lọc hiện tại
+  const displaySummary = React.useMemo(() => {
+    const isClientNarrowed = displayData.length !== data.length;
+
+    if (!isClientNarrowed && summary && summary.totalAgencies > 0) {
+      const totalAgencies = summary.totalAgencies || total;
+      const overdueAgenciesCount = summary.overdueAgenciesCount || 0;
+      const inTermAgenciesCount =
+        summary.inTermAgenciesCount !== undefined
+          ? summary.inTermAgenciesCount
+          : Math.max(0, totalAgencies - overdueAgenciesCount);
+
+      return {
+        ...summary,
+        totalAgencies,
+        overdueAgenciesCount,
+        inTermAgenciesCount,
+      };
+    }
+
+    const totalAgencies = displayData.length;
+    const totalPaid = displayData.reduce((acc, cur) => acc + (cur.totalPaid || 0), 0);
+    const totalReceivable = displayData.reduce((acc, cur) => acc + (cur.totalReceivable || 0), 0);
+    const remainingDebt = displayData.reduce((acc, cur) => acc + (cur.remainingDebt || 0), 0);
+    const overdueCount = displayData.filter((item) => isAgencyOverdue(item)).length;
+    const inTermCount = Math.max(0, totalAgencies - overdueCount);
+
+    return {
+      ...summary,
+      totalAgencies,
+      totalPaid,
+      totalReceivable,
+      remainingDebt,
+      overdueAgenciesCount: overdueCount,
+      inTermAgenciesCount: inTermCount,
+    };
+  }, [summary, displayData, data, total]);
+
   return (
-    <div className="w-full max-w-full mx-auto px-1 sm:px-2 py-3 space-y-3.5">
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* THANH TAB ĐIỀU HƯỚNG 2 CHỨC NĂNG CÔNG NỢ */}
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-1.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5">
-        <button
-          type="button"
-          onClick={() => setActiveTab('aging')}
-          className={`flex-1 flex items-center justify-center gap-2.5 py-3 px-4 rounded-lg text-sm sm:text-[15px] font-bold transition-all duration-200 ${
-            activeTab === 'aging'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-          }`}
-        >
-          <Clock className="w-4 h-4 shrink-0" />
-          <span>Báo Cáo Tuổi Nợ</span>
-        </button>
+    <div className="p-3 sm:p-5 max-w-7xl mx-auto space-y-3">
+      {/* 1. Bộ lọc tìm kiếm, chọn nhóm tuổi nợ & Xuất Excel */}
+      <DebtReportFilter
+        params={params}
+        onFilterChange={updateFilters}
+        onExportExcel={() => setShowExportConfirm(true)}
+        onRefresh={() => fetchDebtReport()}
+        exporting={exporting}
+        loading={loading}
+        criticalOverdueCount={criticalOverdueCount}
+      />
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('ledger')}
-          className={`flex-1 flex items-center justify-center gap-2.5 py-3 px-4 rounded-lg text-sm sm:text-[15px] font-bold transition-all duration-200 ${
-            activeTab === 'ledger'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-          }`}
-        >
-          <BookOpen className="w-4 h-4 shrink-0" />
-          <span>Sổ Chi Tiết Công Nợ Đại Lý</span>
-        </button>
-      </div>
+      {/* 2. Bảng dữ liệu công nợ 6 cột chuẩn quy định */}
+      <DebtReportTable
+        data={displayData}
+        summary={displaySummary}
+        debtStatus={params.debtStatus}
+        loading={loading}
+        page={params.page || 1}
+        limit={params.limit || 20}
+        total={displayData.length !== data.length ? displayData.length : total}
+        totalPages={
+          displayData.length !== data.length
+            ? Math.ceil(displayData.length / (params.limit || 20)) || 1
+            : totalPages
+        }
+        selectedAgingGroup={selectedAgingGroup as AgingDebtGroupEnum}
+        sortBy={params.sortBy as 'oldestDebtDays' | 'remainingDebt' | 'overdueAmount' | 'agencyName' | 'code' | undefined}
+        sortOrder={params.sortOrder}
+        onSort={toggleSort}
+        onPageChange={changePage}
+        onPageSizeChange={changePageSize}
+      />
 
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* NỘI DUNG TỪNG PHÂN HỆ */}
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'aging' ? (
-        <DebtAgingReport onOpenLedger={handleOpenLedgerForAgency} />
-      ) : (
-        <DebtLedgerStatementView
-          initialAgencyCode={selectedAgencyForLedger}
-          onBackToAgingReport={() => setActiveTab('aging')}
-        />
-      )}
+      {/* Modal xác nhận xuất file Excel */}
+      <ConfirmDialog
+        isOpen={showExportConfirm}
+        onCancel={() => setShowExportConfirm(false)}
+        onConfirm={async () => {
+          setShowExportConfirm(false);
+          await exportExcel();
+        }}
+        title="Xác nhận xuất file Excel"
+        message={
+          <div className="space-y-2.5 text-sm text-slate-600">
+            <p>
+              Bạn có chắc chắn muốn xuất dữ liệu báo cáo <strong>Sổ công nợ & Phân tích tuổi nợ</strong> ra file Excel (.xlsx) không?
+            </p>
+            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/80 text-xs space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Tổng số đại lý xuất:</span>
+                <span className="font-bold text-slate-800">{displaySummary.totalAgencies} đại lý</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Bộ lọc nhóm tuổi nợ:</span>
+                <span className="font-semibold text-slate-800">
+                  {selectedAgingGroup === AgingDebtGroupEnum.ALL ? 'Tất cả nhóm tuổi nợ' : selectedAgingGroup}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Trạng thái công nợ:</span>
+                <span className="font-semibold text-slate-800">
+                  {params.debtStatus === 'IN_TERM'
+                    ? 'Nợ trong hạn'
+                    : params.debtStatus === 'OVERDUE'
+                    ? 'Nợ quá hạn'
+                    : 'Tất cả trạng thái'}
+                </span>
+              </div>
+            </div>
+          </div>
+        }
+        confirmText="Xuất file Excel"
+        cancelText="Hủy bỏ"
+        type="primary"
+        customIcon={<FileSpreadsheet className="w-5 h-5 text-emerald-600" />}
+        iconBg="bg-emerald-100"
+        confirmClassName="!bg-emerald-600 hover:!bg-emerald-700 active:!bg-emerald-800 !text-white"
+        isLoading={exporting}
+      />
     </div>
   );
 };

@@ -63,6 +63,17 @@ export interface WarehouseLocationDetail {
   formattedCode: string; // Mã hiển thị nhanh (vd: A-01-R02-T1-B01)
   sortIndex: number; // Chỉ số tính toán đường đi tối ưu (S-Shape Routing)
   isConfigured?: boolean; // Cờ xác nhận sản phẩm đã được gán vị trí thực tế trong kho (false nếu chưa cấu hình)
+  hasMultipleLocations?: boolean; // Mặt hàng lưu trữ tại nhiều vị trí kệ khác nhau
+  multipleLocations?: Array<{
+    code: string;
+    zone: string;
+    aisle: string;
+    rack: string;
+    shelf: string;
+    bin: string;
+    batchNumber?: string;
+    quantity?: number;
+  }>;
 }
 
 /** Phân bổ số lượng mặt hàng cho từng đơn khi gộp nhiều đơn */

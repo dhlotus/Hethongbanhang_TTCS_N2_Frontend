@@ -495,9 +495,9 @@ export const SalesTargetsPage: React.FC = () => {
           key="tab-create"
           className="animate-in fade-in-0 zoom-in-99 slide-in-from-bottom-2 duration-200 ease-out w-full"
         >
-          {/* Form Giao chỉ tiêu mới căn giữa, tinh gọn, không dài dòng */}
-          <div className="w-full flex justify-center py-2 sm:py-6">
-            <div className="w-full max-w-xl bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+          {/* Form Giao chỉ tiêu mới full width đồng bộ với tab Tiến độ chỉ tiêu */}
+          <div className="w-full py-2">
+            <div className="w-full bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
               {/* Header card gọn gàng */}
               <div className="px-6 py-4.5 border-b border-slate-100 flex items-center gap-3">
                 <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
@@ -571,91 +571,93 @@ export const SalesTargetsPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Hàng 2: Chọn đối tượng */}
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1.5">
-                    {newTargetType === 'EMPLOYEE' ? 'Nhân viên kinh doanh' : 'Khu vực thị trường'}{' '}
-                    <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={newTargetId}
-                    onChange={(e) => {
-                      if (newTargetType === 'EMPLOYEE') {
-                        const emp = employeeOptions.find((o) => o.id === e.target.value);
-                        if (emp) {
-                          setNewTargetId(emp.id);
-                          setNewTargetName(emp.name);
-                        }
-                      } else {
-                        const reg = regionOptions.find((o) => o.id === e.target.value);
-                        if (reg) {
-                          setNewTargetId(reg.id);
-                          setNewTargetName(reg.name);
-                        }
-                      }
-                    }}
-                    disabled={newTargetType === 'EMPLOYEE' && loadingEmployees}
-                    className="w-full h-10.5 rounded-lg border border-slate-200 bg-white px-3 font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-2xs transition-all disabled:bg-slate-50"
-                  >
-                    {newTargetType === 'EMPLOYEE' ? (
-                      <>
-                        <option value="">
-                          {loadingEmployees ? 'Đang tải danh sách...' : '-- Chọn nhân viên --'}
-                        </option>
-                        {employeeOptions.map((emp) => (
-                          <option key={emp.id} value={emp.id}>
-                            {emp.name}
-                          </option>
-                        ))}
-                      </>
-                    ) : (
-                      regionOptions.map((reg) => (
-                        <option key={reg.id} value={reg.id}>
-                          {reg.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
-
-                {/* Hàng 3: Mức chỉ tiêu */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="font-bold text-slate-700">
-                      Mức chỉ tiêu (VNĐ) <span className="text-rose-500">*</span>
+                {/* Hàng 2: Chọn đối tượng & Mức chỉ tiêu (2 cột trên desktop) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1.5">
+                      {newTargetType === 'EMPLOYEE' ? 'Nhân viên kinh doanh' : 'Khu vực thị trường'}{' '}
+                      <span className="text-rose-500">*</span>
                     </label>
-                    {newTargetAmount > 0 && (
-                      <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
-                        {numberToWordsVN(newTargetAmount)}
-                      </span>
-                    )}
+                    <select
+                      value={newTargetId}
+                      onChange={(e) => {
+                        if (newTargetType === 'EMPLOYEE') {
+                          const emp = employeeOptions.find((o) => o.id === e.target.value);
+                          if (emp) {
+                            setNewTargetId(emp.id);
+                            setNewTargetName(emp.name);
+                          }
+                        } else {
+                          const reg = regionOptions.find((o) => o.id === e.target.value);
+                          if (reg) {
+                            setNewTargetId(reg.id);
+                            setNewTargetName(reg.name);
+                          }
+                        }
+                      }}
+                      disabled={newTargetType === 'EMPLOYEE' && loadingEmployees}
+                      className="w-full h-10.5 rounded-lg border border-slate-200 bg-white px-3 font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-2xs transition-all disabled:bg-slate-50"
+                    >
+                      {newTargetType === 'EMPLOYEE' ? (
+                        <>
+                          <option value="">
+                            {loadingEmployees ? 'Đang tải danh sách...' : '-- Chọn nhân viên --'}
+                          </option>
+                          {employeeOptions.map((emp) => (
+                            <option key={emp.id} value={emp.id}>
+                              {emp.name}
+                            </option>
+                          ))}
+                        </>
+                      ) : (
+                        regionOptions.map((reg) => (
+                          <option key={reg.id} value={reg.id}>
+                            {reg.name}
+                          </option>
+                        ))
+                      )}
+                    </select>
                   </div>
 
-                  <div className="relative">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={
-                        newTargetAmount > 0
-                          ? newTargetAmount.toLocaleString('vi-VN')
-                          : newTargetAmount === 0
-                          ? '0'
-                          : ''
-                      }
-                      onChange={(e) => {
-                        const cleanDigits = e.target.value.replace(/\D/g, '');
-                        setNewTargetAmount(cleanDigits ? Number(cleanDigits) : 0);
-                      }}
-                      placeholder="0"
-                      className="w-full h-11 rounded-lg border border-slate-200 pl-3.5 pr-12 text-base font-bold text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-2xs tabular-nums"
-                    />
-                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                      VNĐ
-                    </span>
+                  {/* Mức chỉ tiêu */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="font-bold text-slate-700">
+                        Mức chỉ tiêu (VNĐ) <span className="text-rose-500">*</span>
+                      </label>
+                      {newTargetAmount > 0 && (
+                        <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                          {numberToWordsVN(newTargetAmount)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={
+                          newTargetAmount > 0
+                            ? newTargetAmount.toLocaleString('vi-VN')
+                            : newTargetAmount === 0
+                            ? '0'
+                            : ''
+                        }
+                        onChange={(e) => {
+                          const cleanDigits = e.target.value.replace(/\D/g, '');
+                          setNewTargetAmount(cleanDigits ? Number(cleanDigits) : 0);
+                        }}
+                        placeholder="0"
+                        className="w-full h-10.5 rounded-lg border border-slate-200 pl-3.5 pr-12 text-base font-bold text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-2xs tabular-nums"
+                      />
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                        VNĐ
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Hàng 4: Ghi chú */}
+                {/* Hàng 3: Ghi chú */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-1.5">Ghi chú</label>
                   <textarea

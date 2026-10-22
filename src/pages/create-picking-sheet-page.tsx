@@ -70,15 +70,7 @@ export const CreatePickingSheetPage: React.FC = () => {
         setLoading(true);
         const data = await orderPickingService.getEligibleOrdersForPicking();
         setOrders(data);
-        // Tự động chọn 1-2 đơn đầu tiên nếu có để nhân viên kho thao tác nhanh
-        if (data.length > 0 && selectedOrderIds.length === 0) {
-          const firstIds = data
-            .filter((o: any) => !o.isCurrentlyPicking)
-            .slice(0, 2)
-            .map((o) => o.id || o.orderCode || '')
-            .filter(Boolean);
-          setSelectedOrderIds(firstIds);
-        }
+        // Mặc định không tích chọn đơn nào để người dùng tự chọn
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Không thể tải danh sách đơn hàng đã duyệt';
         showToast('error', msg);
@@ -507,7 +499,7 @@ export const CreatePickingSheetPage: React.FC = () => {
       </div>
 
       {/* ── 3. BOTTOM STICKY ACTION BAR ── */}
-      <div className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-4 sm:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="fixed bottom-0 left-0 right-0 lg:left-[var(--sidebar-width,18.25rem)] z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-4 sm:px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-[left] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-700 flex-wrap">
             <div className="flex items-center gap-1.5 font-medium">

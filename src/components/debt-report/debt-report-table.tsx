@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Inbox,
-  Eye,
 } from 'lucide-react';
 import { Pagination } from '../pagination';
 import { DebtDetailModal } from './debt-detail-modal';
@@ -286,16 +285,16 @@ export const DebtReportTable: React.FC<DebtReportTableProps> = ({
                       {renderAgingAndStatusCell(item)}
                     </td>
 
-                    {/* CỘT 6 (12%): [THAO TÁC] - Nút Xem chi tiết trực tiếp */}
+                    {/* CỘT 6 (12%): [THAO TÁC] - Nút Thao tác dạng dropdown pill chuẩn */}
                     <td className="px-2 sm:px-2.5 py-3 text-right whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => setSelectedAgency(item)}
-                        className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200/90 bg-white text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 text-xs font-semibold transition-all cursor-pointer shadow-2xs whitespace-nowrap"
-                        title="Xem chi tiết sổ công nợ"
+                        className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200/90 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 text-xs font-semibold transition-all cursor-pointer shadow-2xs whitespace-nowrap"
+                        title="Thao tác chi tiết sổ công nợ"
                       >
-                        <Eye className="w-3.5 h-3.5 text-current shrink-0" />
-                        <span>Xem chi tiết</span>
+                        <span>Thao tác</span>
+                        <span className="text-[10px] text-slate-400">▾</span>
                       </button>
                     </td>
                   </tr>
