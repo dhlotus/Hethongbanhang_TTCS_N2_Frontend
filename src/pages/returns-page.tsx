@@ -23,6 +23,7 @@ import { warehouseService } from '../services/warehouse.service';
 import type { Warehouse as SystemWarehouse } from '../types/warehouse.types';
 import { showToast } from '../components/toast';
 import { getStoredUser } from '../utils/navigation';
+import { toWarehouseSlug, fromWarehouseSlugToId } from '../utils/warehouse-slug';
 import { USER_ROLES } from '../types/auth';
 import { Pagination } from '../components/pagination';
 
@@ -96,7 +97,8 @@ export const ReturnsPage: React.FC = () => {
   // Lấy giá trị ban đầu từ URL query parameters
   const initialSearch = searchParams.get('search') || searchParams.get('q') || '';
   const initialStatus = searchParams.get('status') || 'ALL';
-  const initialWarehouse = searchParams.get('warehouse') || 'ALL';
+  const rawUrlWh = searchParams.get('warehouse');
+  const initialWarehouse = rawUrlWh ? fromWarehouseSlugToId(rawUrlWh) : 'ALL';
   const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
   const initialLimit = Math.max(1, parseInt(searchParams.get('limit') || '10', 10) || 10);
 
@@ -132,10 +134,16 @@ export const ReturnsPage: React.FC = () => {
       .getWarehouses()
       .then((res) => {
         const list: SystemWarehouse[] = Array.isArray(res) ? res : res?.data || [];
-        setWarehouses(list.filter((w) => w.status !== 'INACTIVE'));
+        const activeList = list.filter((w) => w.status !== 'INACTIVE');
+        setWarehouses(activeList);
+        const urlWh = searchParams.get('warehouse');
+        if (urlWh) {
+          const resolved = fromWarehouseSlugToId(urlWh, activeList);
+          if (resolved) setWarehouseFilter(resolved);
+        }
       })
       .catch(() => {});
-  }, []);
+  }, [searchParams]);
 
   // Debounce tìm kiếm từ khóa
   useEffect(() => {
@@ -158,7 +166,8 @@ export const ReturnsPage: React.FC = () => {
       params.set('status', statusFilter);
     }
     if (warehouseFilter !== 'ALL') {
-      params.set('warehouse', warehouseFilter);
+      const slug = toWarehouseSlug(warehouseFilter, warehouses);
+      params.set('warehouse', slug || warehouseFilter);
     }
     if (currentPage > 1) {
       params.set('page', String(currentPage));

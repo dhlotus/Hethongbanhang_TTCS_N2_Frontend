@@ -31,6 +31,7 @@ import { productsService, PRODUCT_CATEGORIES } from '../services/products.servic
 import { categoriesService } from '../services/categories.service';
 import { apiClient } from '../services/api';
 import { STANDARD_WAREHOUSES, type StandardWarehouse } from '../constants/warehouse.constants';
+import { toWarehouseSlug, fromWarehouseSlugToId } from '../utils/warehouse-slug';
 import { getStoredUser } from '../utils/navigation';
 import type {
   StockOverviewItem,
@@ -77,10 +78,17 @@ export const InventoryStockPage: React.FC = () => {
             displayName: w.name && w.code ? `${w.name} (${w.code})` : w.name || w.code,
           }));
           setWarehousesList(list);
+          const rawWhParam = searchParams.get('warehouse');
+          if (rawWhParam) {
+            const resolvedId = fromWarehouseSlugToId(rawWhParam, list);
+            if (resolvedId && resolvedId !== 'ALL') {
+              setSelectedWarehouse(resolvedId);
+            }
+          }
         }
       })
       .catch(() => {});
-  }, []);
+  }, [searchParams]);
 
   const user = getStoredUser();
   const userRoles = user?.roles || [];
@@ -122,7 +130,8 @@ export const InventoryStockPage: React.FC = () => {
 
   // Đọc giá trị bộ lọc & phân trang ban đầu từ URL Query Parameters
   const initialSearch = searchParams.get('search') || '';
-  const initialWarehouse = searchParams.get('warehouse') || defaultWarehouse;
+  const rawUrlWarehouse = searchParams.get('warehouse');
+  const initialWarehouse = rawUrlWarehouse ? fromWarehouseSlugToId(rawUrlWarehouse) : defaultWarehouse;
   const initialCategory = searchParams.get('category') || 'ALL';
   const initialStatus =
     (searchParams.get('status') as StockStatusType) ||
@@ -380,6 +389,15 @@ export const InventoryStockPage: React.FC = () => {
         (prev) => {
           const next = new URLSearchParams(prev);
           Object.entries(updates).forEach(([key, val]) => {
+            if (key === 'warehouse') {
+              const slug = toWarehouseSlug(val, warehousesList);
+              if (!slug || slug === 'all' || val === 'ALL' || val === '') {
+                next.delete('warehouse');
+              } else {
+                next.set('warehouse', slug);
+              }
+              return;
+            }
             if (
               val === undefined ||
               val === '' ||
@@ -425,7 +443,8 @@ export const InventoryStockPage: React.FC = () => {
   // Lắng nghe thay đổi searchParams từ URL (khi click từ Dashboard chuyển sang hoặc Back/Forward trên browser)
   useEffect(() => {
     const urlSearch = searchParams.get('search') || '';
-    const urlWh = searchParams.get('warehouse') || defaultWarehouse;
+    const rawWh = searchParams.get('warehouse');
+    const urlWh = rawWh ? fromWarehouseSlugToId(rawWh, warehousesList) : defaultWarehouse;
     const urlCat = searchParams.get('category') || 'ALL';
     const urlStatus =
       (searchParams.get('status') as StockStatusType) ||
@@ -443,6 +462,14 @@ export const InventoryStockPage: React.FC = () => {
     if (urlWh !== selectedWarehouse) {
       setSelectedWarehouse(urlWh);
       changed = true;
+    }
+
+    // Tự động chuẩn hóa nếu URL đang lưu UUID raw sang slug đẹp
+    if (rawWh && /^[0-9a-f-]{36}$/i.test(rawWh.trim())) {
+      const cleanSlug = toWarehouseSlug(rawWh, warehousesList);
+      if (cleanSlug) {
+        updateUrlParams({ warehouse: rawWh });
+      }
     }
     if (urlCat !== selectedCategory) {
       setSelectedCategory(urlCat);
@@ -1158,7 +1185,7 @@ export const InventoryStockPage: React.FC = () => {
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <button
                       type="button"
-                      onClick={() => navigate(`/inventory/stock-card?sku=${encodeURIComponent(item.sku)}&warehouse=${encodeURIComponent(item.warehouse)}`)}
+                      onClick={() => navigate(`/inventory/stock-card?sku=${encodeURIComponent(item.sku)}&warehouse=${toWarehouseSlug(item.warehouseId || item.warehouse, warehousesList)}`)}
                       className="min-h-[44px] px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:bg-slate-100 text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
                     >
                       <Eye className="w-4 h-4 text-slate-500" />
@@ -1538,7 +1565,7 @@ export const InventoryStockPage: React.FC = () => {
                 onClick={() => {
                   setOpenActionMenuKey(null);
                   setActionMenuAnchor(null);
-                  navigate(`/inventory/stock-card?sku=${encodeURIComponent(item.sku)}&warehouse=${encodeURIComponent(item.warehouse)}`);
+                  navigate(`/inventory/stock-card?sku=${encodeURIComponent(item.sku)}&warehouse=${toWarehouseSlug(item.warehouseId || item.warehouse, warehousesList)}`);
                 }}
                 className="w-full text-left px-3.5 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 flex items-center gap-2.5 transition-colors cursor-pointer"
               >

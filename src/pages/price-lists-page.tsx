@@ -1224,14 +1224,7 @@ export const PriceListsPage: React.FC = () => {
                                   </span>
                                 )}
                               </div>
-                              {pl.description && (
-                                <div
-                                  className="text-xs text-slate-400 truncate w-full mt-0.5"
-                                  title={pl.description}
-                                >
-                                  {pl.description}
-                                </div>
-                              )}
+                              
                             </td>
 
                             {/* 3. Nhóm áp dụng */}
@@ -1371,11 +1364,7 @@ export const PriceListsPage: React.FC = () => {
                                 </span>
                               )}
                             </div>
-                            {pl.description && (
-                              <p className="text-xs text-slate-400 truncate mt-0.5">
-                                {pl.description}
-                              </p>
-                            )}
+                            
                           </div>
 
                           {/* Hàng 3: Nhóm áp dụng + Thời gian */}

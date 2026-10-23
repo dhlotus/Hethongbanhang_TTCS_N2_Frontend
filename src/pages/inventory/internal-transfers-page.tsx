@@ -32,6 +32,7 @@ import type {
   TransferStatus,
 } from '../../types/internal-transfer.types';
 import type { Warehouse } from '../../types/warehouse.types';
+import { toWarehouseSlug, fromWarehouseSlugToId } from '../../utils/warehouse-slug';
 
 export const InternalTransfersPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -47,8 +48,10 @@ export const InternalTransfersPage: React.FC = () => {
     // Độ ưu tiên luôn để đang vận chuyển (IN_TRANSIT) khi mở trang
     return 'IN_TRANSIT';
   })();
-  const initialFrom = searchParams.get('from') || searchParams.get('fromWarehouseId') || 'ALL';
-  const initialTo = searchParams.get('to') || searchParams.get('toWarehouseId') || 'ALL';
+  const rawFrom = searchParams.get('from') || searchParams.get('fromWarehouseId');
+  const initialFrom = rawFrom ? fromWarehouseSlugToId(rawFrom) : 'ALL';
+  const rawTo = searchParams.get('to') || searchParams.get('toWarehouseId');
+  const initialTo = rawTo ? fromWarehouseSlugToId(rawTo) : 'ALL';
   const initialAction = searchParams.get('action') || '';
 
   const [transfers, setTransfers] = useState<InternalTransfer[]>([]);
@@ -93,8 +96,9 @@ export const InternalTransfersPage: React.FC = () => {
           }
 
           if (updates.from !== undefined) {
-            if (updates.from && updates.from !== 'ALL') {
-              next.set('from', updates.from);
+            const slug = toWarehouseSlug(updates.from, warehouses);
+            if (slug && slug !== 'all' && updates.from !== 'ALL') {
+              next.set('from', slug);
             } else {
               next.delete('from');
               next.delete('fromWarehouseId');
@@ -102,8 +106,9 @@ export const InternalTransfersPage: React.FC = () => {
           }
 
           if (updates.to !== undefined) {
-            if (updates.to && updates.to !== 'ALL') {
-              next.set('to', updates.to);
+            const slug = toWarehouseSlug(updates.to, warehouses);
+            if (slug && slug !== 'all' && updates.to !== 'ALL') {
+              next.set('to', slug);
             } else {
               next.delete('to');
               next.delete('toWarehouseId');
@@ -165,9 +170,11 @@ export const InternalTransfersPage: React.FC = () => {
       ? 'ALL'
       : (urlStatusRaw && ['DRAFT', 'IN_TRANSIT', 'COMPLETED', 'PARTIALLY_RECEIVED', 'CANCELLED'].includes(urlStatusRaw))
         ? (urlStatusRaw as TransferStatus)
-        : 'IN_TRANSIT'; // Độ ưu tiên luôn là Đang vận chuyển
-    const urlFrom = searchParams.get('from') || searchParams.get('fromWarehouseId') || 'ALL';
-    const urlTo = searchParams.get('to') || searchParams.get('toWarehouseId') || 'ALL';
+        : 'IN_TRANSIT';
+    const rawFromParam = searchParams.get('from') || searchParams.get('fromWarehouseId');
+    const rawToParam = searchParams.get('to') || searchParams.get('toWarehouseId');
+    const urlFrom = rawFromParam ? fromWarehouseSlugToId(rawFromParam, warehouses) : 'ALL';
+    const urlTo = rawToParam ? fromWarehouseSlugToId(rawToParam, warehouses) : 'ALL';
     const urlAction = searchParams.get('action') || '';
 
     setSearchTerm((prev) => (prev.trim() !== urlSearch ? urlSearch : prev));
@@ -253,6 +260,16 @@ export const InternalTransfersPage: React.FC = () => {
         if (!mounted) return;
         setWarehouses(whList);
         setTransfers(transferList);
+        const urlFromP = searchParams.get('from') || searchParams.get('fromWarehouseId');
+        if (urlFromP) {
+          const resF = fromWarehouseSlugToId(urlFromP, whList);
+          if (resF) setFromWarehouseFilter(resF);
+        }
+        const urlToP = searchParams.get('to') || searchParams.get('toWarehouseId');
+        if (urlToP) {
+          const resT = fromWarehouseSlugToId(urlToP, whList);
+          if (resT) setToWarehouseFilter(resT);
+        }
       } catch {
         showToast('error', 'Không thể tải danh sách phiếu chuyển kho');
       } finally {

@@ -23,6 +23,7 @@ import { inventoryService } from '../../services/inventory.service';
 import { productsService } from '../../services/products.service';
 import { showToast } from '../../components/toast';
 import { STANDARD_WAREHOUSES, type StandardWarehouse } from '../../constants/warehouse.constants';
+import { toWarehouseSlug, fromWarehouseSlugToId } from '../../utils/warehouse-slug';
 import { getStoredUser } from '../../utils/navigation';
 import type { InventoryTransaction, Product } from '../../types/products';
 
@@ -33,7 +34,11 @@ export const StockCardPage: React.FC = () => {
 
   // URL Query Params ban đầu
   const initialSku = searchParams.get('sku') || '';
-  const initialWarehouse = searchParams.get('warehouse') || searchParams.get('warehouseId') || 'ALL';
+  const rawUrlWh = searchParams.get('warehouse') || searchParams.get('warehouseId');
+  const resolvedWhId = rawUrlWh ? fromWarehouseSlugToId(rawUrlWh) : 'ALL';
+  const initialWarehouse = resolvedWhId !== 'ALL'
+    ? (STANDARD_WAREHOUSES.find((w) => w.id === resolvedWhId)?.name || rawUrlWh || 'ALL')
+    : 'ALL';
   const initialStartDate = searchParams.get('startDate') || '';
   const initialEndDate = searchParams.get('endDate') || '';
 
@@ -146,11 +151,14 @@ export const StockCardPage: React.FC = () => {
   useEffect(() => {
     const nextParams = new URLSearchParams();
     if (selectedSku) nextParams.set('sku', selectedSku);
-    if (selectedWarehouse && selectedWarehouse !== 'ALL') nextParams.set('warehouse', selectedWarehouse);
+    if (selectedWarehouse && selectedWarehouse !== 'ALL') {
+      const slug = toWarehouseSlug(selectedWarehouse, warehousesList);
+      nextParams.set('warehouse', slug || selectedWarehouse);
+    }
     if (startDate) nextParams.set('startDate', startDate);
     if (endDate) nextParams.set('endDate', endDate);
     setSearchParams(nextParams, { replace: true });
-  }, [selectedSku, selectedWarehouse, startDate, endDate, setSearchParams]);
+  }, [selectedSku, selectedWarehouse, startDate, endDate, setSearchParams, warehousesList]);
 
   // Tìm thông tin chi tiết sản phẩm đang chọn
   const currentProduct = useMemo(() => {
