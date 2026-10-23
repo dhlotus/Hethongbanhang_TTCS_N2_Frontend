@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { forwardRef, useImperativeHandle, useRef, useState, useEffect } from 'react';
 
 export interface CurrencyInputProps extends Omit<

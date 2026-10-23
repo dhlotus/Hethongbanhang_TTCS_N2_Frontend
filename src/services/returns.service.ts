@@ -96,6 +96,20 @@ export interface ApproveReturnReceiptDto {
   note?: string;
 }
 
+export interface ReturnReceiptsResponse {
+  data: ReturnReceipt[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  summary?: {
+    totalReceipts?: number;
+    totalPending?: number;
+    totalApproved?: number;
+    totalRefundAmount?: number;
+  };
+}
+
 // Kiểu dữ liệu tương thích cũ
 export type ReturnRequest = ReturnReceipt;
 
@@ -103,8 +117,15 @@ export const returnsService = {
   /**
    * Lấy danh sách phiếu trả hàng (SN-210)
    */
-  async getReturnReceipts(params?: { status?: string; search?: string; agencyId?: string }): Promise<ReturnReceipt[]> {
-    const res = await apiClient.get<ReturnReceipt[]>('/return-receipts', { params });
+  async getReturnReceipts(params?: {
+    status?: string;
+    search?: string;
+    agencyId?: string;
+    warehouseId?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<ReturnReceiptsResponse | ReturnReceipt[]> {
+    const res = await apiClient.get<ReturnReceiptsResponse | ReturnReceipt[]>('/return-receipts', { params });
     return res.data;
   },
 
@@ -159,7 +180,7 @@ export const returnsService = {
   },
 
   // Alias methods tương thích cũ
-  async getReturns(params?: any): Promise<ReturnReceipt[]> {
+  async getReturns(params?: any): Promise<ReturnReceiptsResponse | ReturnReceipt[]> {
     return this.getReturnReceipts(params);
   },
   async getReturnById(id: string): Promise<ReturnReceipt> {

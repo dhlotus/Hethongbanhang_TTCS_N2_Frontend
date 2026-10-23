@@ -214,7 +214,7 @@ export const CreditLimitPage: React.FC = () => {
             <option value="">Tất cả trạng thái</option>
             <option value={CreditStatus.NORMAL}>An toàn (Dưới 80%)</option>
             <option value={CreditStatus.WARNING}>Cảnh báo (80% - 100%)</option>
-            <option value={CreditStatus.EXCEEDED}>Vượt trần (&gt; 100%)</option>
+            <option value={CreditStatus.EXCEEDED}>Vượt hạn mức (&gt; 100%)</option>
             <option value={CreditStatus.BLOCKED}>Bị khóa công nợ</option>
           </select>
 

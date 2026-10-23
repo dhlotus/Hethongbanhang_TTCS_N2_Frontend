@@ -17,6 +17,7 @@ export interface ModalLayoutProps {
   banner?: React.ReactNode;
   closeOnEsc?: boolean;
   closeOnOverlayClick?: boolean;
+  showCloseButton?: boolean;
   bodyClassName?: string;
   containerClassName?: string;
   ariaLabelledBy?: string;
@@ -53,6 +54,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
   banner,
   closeOnEsc = true,
   closeOnOverlayClick,
+  showCloseButton = true,
   bodyClassName,
   containerClassName = '',
   ariaLabelledBy = 'modal-title',
@@ -146,17 +148,21 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              {headerExtra}
-              <button
-                type="button"
-                onClick={requestClose}
-                aria-label="Đóng popup"
-                className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+            {(headerExtra || showCloseButton) && (
+              <div className="flex items-center gap-2 shrink-0">
+                {headerExtra}
+                {showCloseButton && (
+                  <button
+                    type="button"
+                    onClick={requestClose}
+                    aria-label="Đóng popup"
+                    className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

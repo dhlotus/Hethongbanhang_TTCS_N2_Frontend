@@ -212,6 +212,7 @@ class ToastManager {
   }
 }
 
+/* eslint-disable react-refresh/only-export-components */
 export const toastManager = new ToastManager();
 
 /**

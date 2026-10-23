@@ -44,6 +44,7 @@ import { warehouseService } from '../services/warehouse.service';
 import { PRODUCT_CATEGORIES } from '../services/products.service';
 import { tokenStorage } from '../utils/token-storage';
 import { getStoredUser } from '../utils/navigation';
+import { ForbiddenPage } from './forbidden-page';
 import type { Customer, DeliveryPoint as CustomerDeliveryPoint } from '../types/customer.types';
 import type { PriceList, CustomerGroupType } from '../types/price-list';
 import type { Product } from '../types/products';
@@ -1296,6 +1297,21 @@ export const AgencyPortalPage: React.FC = () => {
   };
 
   const groupBadge = getGroupBadgeMeta(currentCustomer?.customerGroup || (currentCustomer as unknown as { group?: string })?.group);
+
+  // Xác thực nghiêm ngặt vai trò Đại lý B2B (CUSTOMER) - Chặn toàn bộ vai trò khác
+  const activeUser = currentUser || getStoredUser() || tokenStorage.getUser();
+  const activeRoles = (activeUser?.roles || (activeUser?.role ? [activeUser.role] : [])).map((r) =>
+    r.trim().toUpperCase()
+  );
+  if (!activeRoles.includes('CUSTOMER')) {
+    return (
+      <ForbiddenPage
+        allowedRoles={['CUSTOMER']}
+        moduleName="Cổng Dịch vụ & Đặt hàng Đại lý B2B"
+        customMessage="Chức năng cổng đặt hàng đại lý chỉ dành riêng cho tài khoản Đại lý B2B. Các vai trò khác không có quyền xem hoặc thao tác trên trang này."
+      />
+    );
+  }
 
   return (
     <div className={`min-h-screen bg-slate-50/60 ${cartTotals.totalItems > 0 ? 'pb-28 sm:pb-24' : 'pb-8 sm:pb-10'}`}>

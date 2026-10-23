@@ -151,163 +151,175 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Sổ công nợ',
       path: '/portal/debt',
       icon: Receipt,
-      category: 'Tài chính & Thanh toán',
+      category: 'Tài chính & Công nợ',
     },
     {
       id: 'portal-profile',
       name: 'Hồ sơ đại lý',
       path: '/portal/profile',
       icon: UserCheck,
-      category: 'Tài khoản',
+      category: 'Tài khoản & Thiết lập',
     },
   ],
 
   // 2. Nhân viên kinh doanh (SALES_REP)
   [USER_ROLES.SALES_REP]: [
+    // Nhóm 1: Tổng quan & Chỉ tiêu
     {
       id: 'dashboard',
       name: 'Bảng điều khiển',
       path: '/dashboard',
       icon: LayoutDashboard,
-      category: 'Kinh doanh & Bán hàng',
+      category: 'Tổng quan & Chỉ tiêu',
     },
     {
       id: 'sales-targets',
       name: 'Chỉ tiêu & Tiến độ',
       path: '/sales/targets',
       icon: Target,
-      category: 'Kinh doanh & Bán hàng',
+      category: 'Tổng quan & Chỉ tiêu',
     },
     {
       id: 'reports-sales',
       name: 'Báo cáo doanh số',
       path: '/reports/sales',
       icon: BarChart3,
-      category: 'Kinh doanh & Bán hàng',
+      category: 'Tổng quan & Chỉ tiêu',
     },
+
+    // Nhóm 2: Đơn hàng & Đại lý
     {
       id: 'sales-orders',
       name: 'Quản lý đơn hàng',
       path: '/sales/orders',
       icon: ShoppingCart,
-      category: 'Kinh doanh & Bán hàng',
+      category: 'Đơn hàng & Đại lý',
     },
     {
       id: 'sales-returns',
       name: 'Phiếu trả hàng',
       path: '/accounting/returns',
       icon: RotateCcw,
-      category: 'Kinh doanh & Bán hàng',
+      category: 'Đơn hàng & Đại lý',
     },
     {
       id: 'sales-customers',
       name: 'Quản lý đại lý',
       path: '/sales/customers',
       icon: Users,
-      category: 'Quan hệ Khách hàng',
+      category: 'Đơn hàng & Đại lý',
     },
+
+    // Nhóm 3: Sản phẩm & Tồn kho
     {
       id: 'catalog-pricing',
       name: 'Bảng giá & Chiết khấu',
       path: '/catalog/pricing',
       icon: BadgePercent,
-      category: 'Hàng hóa',
+      category: 'Sản phẩm & Tồn kho',
     },
     {
       id: 'catalog-products',
       name: 'Danh mục sản phẩm',
       path: '/catalog/products',
       icon: Package,
-      category: 'Hàng hóa',
+      category: 'Sản phẩm & Tồn kho',
     },
     {
       id: 'inventory-stock',
       name: 'Tra cứu tồn kho',
       path: '/inventory/stock',
       icon: Warehouse,
-      category: 'Kho vận',
+      category: 'Sản phẩm & Tồn kho',
     },
+
+    // Nhóm 4: Tài chính & Công nợ
     {
       id: 'accounting-debt',
       name: 'Theo dõi công nợ',
       path: '/accounting/debt',
       icon: Receipt,
-      category: 'Tài chính',
+      category: 'Tài chính & Công nợ',
     },
     {
       id: 'route-collections',
-      name: 'Quản lý ngân sách',
+      name: 'Quản lý thu tuyến',
       path: '/route-collections',
       icon: HandCoins,
-      category: 'Tài chính',
+      category: 'Tài chính & Công nợ',
     },
     {
       id: 'accounting-debt-adjustments',
       name: 'Giảm trừ nợ trả hàng',
       path: '/accounting/debt-adjustments',
       icon: FileCheck2,
-      category: 'Tài chính',
+      category: 'Tài chính & Công nợ',
     },
   ],
 
   // 3. Quản lý kinh doanh (SALES_MANAGER)
   [USER_ROLES.SALES_MANAGER]: [
+    // Nhóm 1: Tổng quan & Phê duyệt
     {
       id: 'dashboard',
       name: 'Dashboard điều hành',
       path: '/dashboard',
       icon: LayoutDashboard,
-      category: 'Báo cáo & Phân tích',
-    },
-    {
-      id: 'sales-targets',
-      name: 'Chỉ tiêu doanh số',
-      path: '/sales/targets',
-      icon: Target,
-      category: 'Báo cáo & Phân tích',
-    },
-    {
-      id: 'reports-sales',
-      name: 'Báo cáo doanh số',
-      path: '/reports/sales',
-      icon: BarChart3,
-      category: 'Báo cáo & Phân tích',
+      category: 'Tổng quan & Phê duyệt',
     },
     {
       id: 'sales-approvals',
       name: 'Phê duyệt đơn hàng',
       path: '/sales/approvals',
       icon: ClipboardCheck,
-      category: 'Duyệt nghiệp vụ',
+      category: 'Tổng quan & Phê duyệt',
     },
+    {
+      id: 'sales-targets',
+      name: 'Chỉ tiêu doanh số',
+      path: '/sales/targets',
+      icon: Target,
+      category: 'Tổng quan & Phê duyệt',
+    },
+    {
+      id: 'reports-sales',
+      name: 'Báo cáo doanh số',
+      path: '/reports/sales',
+      icon: BarChart3,
+      category: 'Tổng quan & Phê duyệt',
+    },
+
+    // Nhóm 2: Kinh doanh & Đại lý
     {
       id: 'sales-orders',
       name: 'Quản lý đơn hàng',
       path: '/sales/orders',
       icon: ShoppingCart,
-      category: 'Kinh doanh',
+      category: 'Kinh doanh & Đại lý',
     },
     {
       id: 'sales-returns',
       name: 'Phiếu trả hàng',
       path: '/accounting/returns',
       icon: RotateCcw,
-      category: 'Kinh doanh',
+      category: 'Kinh doanh & Đại lý',
     },
     {
       id: 'sales-customers',
       name: 'Quản lý đại lý',
       path: '/sales/customers',
       icon: Users,
-      category: 'Đội ngũ & Khách hàng',
+      category: 'Kinh doanh & Đại lý',
     },
     {
       id: 'sales-credit-limit',
       name: 'Hạn mức công nợ',
       path: '/sales/credit-limit',
       icon: CreditCard,
-      category: 'Đội ngũ & Khách hàng',
+      category: 'Kinh doanh & Đại lý',
     },
+
+    // Nhóm 3: Sản phẩm & Chính sách
     {
       id: 'catalog-pricing',
       name: 'Bảng giá & Chiết khấu',
@@ -327,22 +339,26 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       name: 'Tra cứu tồn kho',
       path: '/inventory/stock',
       icon: Warehouse,
-      category: 'Kho vận',
+      category: 'Sản phẩm & Chính sách',
     },
+
+    // Nhóm 4: Tài chính & Công nợ
     {
       id: 'accounting-debt',
       name: 'Theo dõi công nợ',
       path: '/accounting/debt',
       icon: Receipt,
-      category: 'Tài chính',
+      category: 'Tài chính & Công nợ',
     },
     {
       id: 'route-collections',
-      name: 'Quản lý ngân sách',
+      name: 'Quản lý thu tuyến',
       path: '/route-collections',
       icon: HandCoins,
-      category: 'Tài chính',
+      category: 'Tài chính & Công nợ',
     },
+
+    // Nhóm 5: Quản trị hệ thống
     {
       id: 'system-users',
       name: 'Quản lý nhân sự',
@@ -361,171 +377,187 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
 
   // 4. Nhân viên kho / Thủ kho (WAREHOUSE_KEEPER)
   [USER_ROLES.WAREHOUSE_KEEPER]: [
+    // Nhóm 1: Tổng quan
     {
       id: 'dashboard',
       name: 'Bảng điều khiển',
       path: '/dashboard',
       icon: LayoutDashboard,
-      category: 'Kiểm soát Kho',
+      category: 'Tổng quan',
     },
+
+    // Nhóm 2: Soạn hàng & Giao vận
     {
       id: 'sales-orders',
       name: 'Đơn hàng chuẩn bị xuất',
       path: '/warehouse/orders',
       icon: ShoppingCart,
-      category: 'Soạn hàng & Giao nhận',
+      category: 'Soạn hàng & Giao vận',
     },
     {
       id: 'order-picking',
       name: 'Phiếu soạn hàng',
       path: '/warehouse/picking',
       icon: PackageCheck,
-      category: 'Soạn hàng & Giao nhận',
+      category: 'Soạn hàng & Giao vận',
     },
     {
       id: 'warehouse-goods-in-transit',
       name: 'Hàng xuất trên đường',
       path: '/warehouse/goods-in-transit',
       icon: Truck,
-      category: 'Soạn hàng & Giao nhận',
+      category: 'Soạn hàng & Giao vận',
+    },
+
+    // Nhóm 3: Xuất nhập & Trả hàng
+    {
+      id: 'inventory-issues',
+      name: 'Soạn hàng & Xuất kho',
+      path: '/inventory/issues',
+      icon: PackageMinus,
+      category: 'Xuất nhập & Trả hàng',
     },
     {
       id: 'inventory-receipts',
       name: 'Nhập kho hàng hóa',
       path: '/inventory/receipts',
       icon: PackagePlus,
-      category: 'Nhập / Xuất kho',
-    },
-    {
-      id: 'inventory-issues',
-      name: 'Soạn hàng & Xuất kho',
-      path: '/inventory/issues',
-      icon: PackageMinus,
-      category: 'Nhập / Xuất kho',
+      category: 'Xuất nhập & Trả hàng',
     },
     {
       id: 'warehouse-returns',
       name: 'Nhập kho hàng trả',
       path: '/accounting/returns',
       icon: RotateCcw,
-      category: 'Nhập / Xuất kho',
-    },
-    {
-      id: 'inventory-transfers',
-      name: 'Chuyển kho nội bộ',
-      path: '/inventory/transfers',
-      icon: ArrowLeftRight,
-      category: 'Điều chuyển & Kiểm tra',
-    },
-    {
-      id: 'inventory-audits',
-      name: 'Kiểm kê kho hàng',
-      path: '/inventory/audits',
-      icon: ClipboardList,
-      category: 'Điều chuyển & Kiểm tra',
-    },
-    {
-      id: 'inventory-stock',
-      name: 'Sổ tồn kho & Lô hàng',
-      path: '/inventory/stock',
-      icon: Warehouse,
-      category: 'Quản lý Tồn kho',
-    },
-    {
-      id: 'inventory-stock-card',
-      name: 'Thẻ kho hàng hóa',
-      path: '/inventory/stock-card',
-      icon: FileSpreadsheet,
-      category: 'Quản lý Tồn kho',
-    },
-    {
-      id: 'inventory-batches',
-      name: 'Quản lý lô & Hạn sử dụng',
-      path: '/inventory/batches',
-      icon: CalendarClock,
-      category: 'Quản lý Tồn kho',
+      category: 'Xuất nhập & Trả hàng',
     },
     {
       id: 'inventory-suppliers',
       name: 'Quản lý nhà cung cấp',
       path: '/inventory/suppliers',
       icon: Building2,
-      category: 'Nhập / Xuất kho',
+      category: 'Xuất nhập & Trả hàng',
+    },
+
+    // Nhóm 4: Điều chuyển & Kiểm kê
+    {
+      id: 'inventory-transfers',
+      name: 'Chuyển kho nội bộ',
+      path: '/inventory/transfers',
+      icon: ArrowLeftRight,
+      category: 'Điều chuyển & Kiểm kê',
+    },
+    {
+      id: 'inventory-audits',
+      name: 'Kiểm kê kho hàng',
+      path: '/inventory/audits',
+      icon: ClipboardList,
+      category: 'Điều chuyển & Kiểm kê',
+    },
+
+    // Nhóm 5: Quản lý tồn kho & Lô hạn
+    {
+      id: 'inventory-stock',
+      name: 'Sổ tồn kho & Lô hàng',
+      path: '/inventory/stock',
+      icon: Warehouse,
+      category: 'Quản lý tồn kho & Lô hạn',
+    },
+    {
+      id: 'inventory-stock-card',
+      name: 'Thẻ kho hàng hóa',
+      path: '/inventory/stock-card',
+      icon: FileSpreadsheet,
+      category: 'Quản lý tồn kho & Lô hạn',
+    },
+    {
+      id: 'inventory-batches',
+      name: 'Quản lý lô & Hạn sử dụng',
+      path: '/inventory/batches',
+      icon: CalendarClock,
+      category: 'Quản lý tồn kho & Lô hạn',
     },
     {
       id: 'catalog-products',
       name: 'Danh mục sản phẩm',
       path: '/catalog/products',
       icon: Package,
-      category: 'Tra cứu',
+      category: 'Quản lý tồn kho & Lô hạn',
     },
   ],
 
   // 5. Quản lý kho (WAREHOUSE_MANAGER)
   [USER_ROLES.WAREHOUSE_MANAGER]: [
+    // Nhóm 1: Tổng quan & Báo cáo
     {
       id: 'dashboard',
       name: 'Bảng điều khiển',
       path: '/dashboard',
       icon: LayoutDashboard,
-      category: 'Kiểm soát Kho',
+      category: 'Tổng quan & Báo cáo',
     },
     {
       id: 'reports-inventory',
       name: 'Báo cáo kho hàng',
       path: '/reports/inventory',
       icon: BarChart3,
-      category: 'Báo cáo Vận hành',
+      category: 'Tổng quan & Báo cáo',
     },
+
+    // Nhóm 2: Soạn hàng & Giao vận
     {
       id: 'sales-orders',
       name: 'Quản lý đơn hàng',
       path: '/warehouse/orders',
       icon: ShoppingCart,
-      category: 'Soạn hàng & Giao nhận',
+      category: 'Soạn hàng & Giao vận',
     },
     {
       id: 'order-picking',
       name: 'Phiếu soạn hàng',
       path: '/warehouse/picking',
       icon: PackageCheck,
-      category: 'Soạn hàng & Giao nhận',
+      category: 'Soạn hàng & Giao vận',
     },
     {
       id: 'warehouse-goods-in-transit',
       name: 'Hàng xuất trên đường',
       path: '/warehouse/goods-in-transit',
       icon: Truck,
-      category: 'Soạn hàng & Giao nhận',
+      category: 'Soạn hàng & Giao vận',
+    },
+
+    // Nhóm 3: Xuất nhập & Điều chuyển
+    {
+      id: 'inventory-issues',
+      name: 'Xuất kho giao hàng',
+      path: '/inventory/issues',
+      icon: PackageMinus,
+      category: 'Xuất nhập & Điều chuyển',
     },
     {
       id: 'inventory-receipts',
       name: 'Nhập kho hàng hóa',
       path: '/inventory/receipts',
       icon: PackagePlus,
-      category: 'Lịch sử Nhập / Xuất',
-    },
-    {
-      id: 'inventory-issues',
-      name: 'Xuất kho giao hàng',
-      path: '/inventory/issues',
-      icon: PackageMinus,
-      category: 'Lịch sử Nhập / Xuất',
+      category: 'Xuất nhập & Điều chuyển',
     },
     {
       id: 'warehouse-returns',
       name: 'Nhập kho hàng trả',
       path: '/accounting/returns',
       icon: RotateCcw,
-      category: 'Lịch sử Nhập / Xuất',
+      category: 'Xuất nhập & Điều chuyển',
     },
     {
       id: 'inventory-transfers',
       name: 'Chuyển kho nội bộ',
       path: '/inventory/transfers',
       icon: ArrowLeftRight,
-      category: 'Lịch sử Nhập / Xuất',
+      category: 'Xuất nhập & Điều chuyển',
     },
+
+    // Nhóm 4: Kiểm kê & Điều chỉnh
     {
       id: 'inventory-audits',
       name: 'Kiểm kê kho hàng',
@@ -540,286 +572,318 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
       icon: SlidersHorizontal,
       category: 'Kiểm kê & Điều chỉnh',
     },
+
+    // Nhóm 5: Quản trị kho & Lô hạn
     {
       id: 'inventory-stock',
       name: 'Sổ tồn kho & Lô hàng',
       path: '/inventory/stock',
       icon: Warehouse,
-      category: 'Kiểm soát Kho',
+      category: 'Quản trị kho & Lô hạn',
     },
     {
       id: 'inventory-stock-card',
       name: 'Thẻ kho hàng hóa',
       path: '/inventory/stock-card',
       icon: FileSpreadsheet,
-      category: 'Kiểm soát Kho',
+      category: 'Quản trị kho & Lô hạn',
     },
     {
       id: 'inventory-batches',
       name: 'Quản lý lô & Hạn sử dụng',
       path: '/inventory/batches',
       icon: CalendarClock,
-      category: 'Kiểm soát Kho',
+      category: 'Quản trị kho & Lô hạn',
     },
     {
       id: 'inventory-warehouses',
       name: 'Quản lý kho & vị trí',
       path: '/inventory/warehouses',
       icon: Warehouse,
-      category: 'Kiểm soát Kho',
+      category: 'Quản trị kho & Lô hạn',
     },
     {
       id: 'inventory-suppliers',
       name: 'Quản lý nhà cung cấp',
       path: '/inventory/suppliers',
       icon: Building2,
-      category: 'Kiểm soát Kho',
+      category: 'Quản trị kho & Lô hạn',
     },
     {
       id: 'catalog-products',
       name: 'Danh mục sản phẩm',
       path: '/catalog/products',
       icon: Package,
-      category: 'Tra cứu',
+      category: 'Quản trị kho & Lô hạn',
     },
   ],
 
   // 6. Kế toán công nợ (ACCOUNTANT)
   [USER_ROLES.ACCOUNTANT]: [
+    // Nhóm 1: Tổng quan
     {
       id: 'dashboard',
       name: 'Bảng điều khiển',
       path: '/dashboard',
       icon: LayoutDashboard,
-      category: 'Hóa đơn & Chứng từ',
+      category: 'Tổng quan',
     },
+
+    // Nhóm 2: Hóa đơn & Thu tiền
     {
       id: 'accounting-invoices',
       name: 'Hóa đơn & Chứng từ',
       path: '/accounting/invoices',
       icon: FileText,
-      category: 'Hóa đơn & Chứng từ',
+      category: 'Hóa đơn & Thu tiền',
     },
     {
       id: 'accounting-payments',
       name: 'Phiếu thu & Đối trừ công nợ',
       path: '/accounting/payments',
       icon: CreditCard,
-      category: 'Thu chi & Thanh toán',
+      category: 'Hóa đơn & Thu tiền',
     },
     {
       id: 'accounting-debt-adjustments',
       name: 'Giảm trừ nợ trả hàng',
       path: '/accounting/debt-adjustments',
       icon: FileCheck2,
-      category: 'Thu chi & Thanh toán',
+      category: 'Hóa đơn & Thu tiền',
     },
     {
       id: 'route-collections',
-      name: 'Quản lý ngân sách',
+      name: 'Quản lý thu tuyến',
       path: '/route-collections',
       icon: HandCoins,
-      category: 'Thu chi & Thanh toán',
+      category: 'Hóa đơn & Thu tiền',
     },
+
+    // Nhóm 3: Sổ nợ & Đối chiếu
     {
       id: 'accounting-debt',
       name: 'Sổ chi tiết công nợ',
       path: '/accounting/debt',
       icon: Receipt,
-      category: 'Theo dõi Công nợ',
+      category: 'Sổ nợ & Đối chiếu',
     },
     {
       id: 'accounting-debt-reconciliations',
       name: 'Đối chiếu công nợ',
       path: '/accounting/debt-reconciliations',
       icon: Scale,
-      category: 'Theo dõi Công nợ',
-    },
-    {
-      id: 'accounting-returns',
-      name: 'Xử lý phiếu trả hàng',
-      path: '/accounting/returns',
-      icon: RotateCcw,
-      category: 'Nghiệp vụ Bán hàng',
-    },
-    {
-      id: 'sales-orders',
-      name: 'Quản lý đơn hàng',
-      path: '/sales/orders',
-      icon: ShoppingCart,
-      category: 'Nghiệp vụ Bán hàng',
-    },
-    {
-      id: 'sales-customers',
-      name: 'Quản lý đại lý',
-      path: '/sales/customers',
-      icon: Users,
-      category: 'Quản lý Đại lý',
+      category: 'Sổ nợ & Đối chiếu',
     },
     {
       id: 'sales-credit-limit',
       name: 'Hạn mức công nợ',
       path: '/sales/credit-limit',
       icon: CreditCard,
-      category: 'Quản lý Đại lý',
+      category: 'Sổ nợ & Đối chiếu',
     },
-    {
-      id: 'catalog-products',
-      name: 'Danh mục sản phẩm',
-      path: '/catalog/products',
-      icon: Package,
-      category: 'Tra cứu',
-    },
-    {
-      id: 'inventory-stock',
-      name: 'Tra cứu tồn kho',
-      path: '/inventory/stock',
-      icon: Warehouse,
-      category: 'Tra cứu',
-    },
-  ],
 
-  // 7. Quản trị hệ thống (ADMIN - Full Access)
-  [USER_ROLES.ADMIN]: [
-    {
-      id: 'dashboard',
-      name: 'Bảng điều khiển tổng quan',
-      path: '/dashboard',
-      icon: LayoutDashboard,
-      category: 'Quản trị Hệ thống',
-    },
-    {
-      id: 'sales-targets',
-      name: 'Chỉ tiêu doanh số',
-      path: '/sales/targets',
-      icon: Target,
-      category: 'Nghiệp vụ Kinh doanh',
-    },
-    {
-      id: 'reports-sales',
-      name: 'Báo cáo doanh số',
-      path: '/reports/sales',
-      icon: BarChart3,
-      category: 'Nghiệp vụ Kinh doanh',
-    },
-    {
-      id: 'system-users',
-      name: 'Quản lý người dùng',
-      path: '/system/users',
-      icon: Users,
-      category: 'Quản trị Hệ thống',
-    },
-    {
-      id: 'system-audit-logs',
-      name: 'Nhật ký hệ thống',
-      path: '/system/audit-logs',
-      icon: ScrollText,
-      category: 'Quản trị Hệ thống',
-    },
+    // Nhóm 4: Nghiệp vụ bán hàng
     {
       id: 'sales-orders',
       name: 'Quản lý đơn hàng',
       path: '/sales/orders',
       icon: ShoppingCart,
-      category: 'Nghiệp vụ Kinh doanh',
+      category: 'Nghiệp vụ bán hàng',
     },
     {
-      id: 'sales-returns',
-      name: 'Phiếu trả hàng',
+      id: 'accounting-returns',
+      name: 'Xử lý phiếu trả hàng',
       path: '/accounting/returns',
       icon: RotateCcw,
-      category: 'Nghiệp vụ Kinh doanh',
+      category: 'Nghiệp vụ bán hàng',
     },
     {
       id: 'sales-customers',
       name: 'Quản lý đại lý',
       path: '/sales/customers',
       icon: Users,
-      category: 'Nghiệp vụ Kinh doanh',
+      category: 'Nghiệp vụ bán hàng',
+    },
+
+    // Nhóm 5: Tra cứu & Tồn kho
+    {
+      id: 'catalog-products',
+      name: 'Danh mục sản phẩm',
+      path: '/catalog/products',
+      icon: Package,
+      category: 'Tra cứu & Tồn kho',
+    },
+    {
+      id: 'inventory-stock',
+      name: 'Tra cứu tồn kho',
+      path: '/inventory/stock',
+      icon: Warehouse,
+      category: 'Tra cứu & Tồn kho',
+    },
+  ],
+
+  // 7. Quản trị hệ thống (ADMIN - Full Access)
+  [USER_ROLES.ADMIN]: [
+    // Nhóm 1: Tổng quan & Hệ thống
+    {
+      id: 'dashboard',
+      name: 'Bảng điều khiển tổng quan',
+      path: '/dashboard',
+      icon: LayoutDashboard,
+      category: 'Tổng quan & Hệ thống',
+    },
+    {
+      id: 'system-users',
+      name: 'Quản lý người dùng',
+      path: '/system/users',
+      icon: Users,
+      category: 'Tổng quan & Hệ thống',
+    },
+    {
+      id: 'system-audit-logs',
+      name: 'Nhật ký hệ thống',
+      path: '/system/audit-logs',
+      icon: ScrollText,
+      category: 'Tổng quan & Hệ thống',
+    },
+
+    // Nhóm 2: Kinh doanh & Đại lý
+    {
+      id: 'sales-targets',
+      name: 'Chỉ tiêu doanh số',
+      path: '/sales/targets',
+      icon: Target,
+      category: 'Kinh doanh & Đại lý',
+    },
+    {
+      id: 'reports-sales',
+      name: 'Báo cáo doanh số',
+      path: '/reports/sales',
+      icon: BarChart3,
+      category: 'Kinh doanh & Đại lý',
+    },
+    {
+      id: 'sales-orders',
+      name: 'Quản lý đơn hàng',
+      path: '/sales/orders',
+      icon: ShoppingCart,
+      category: 'Kinh doanh & Đại lý',
+    },
+    {
+      id: 'sales-returns',
+      name: 'Phiếu trả hàng',
+      path: '/accounting/returns',
+      icon: RotateCcw,
+      category: 'Kinh doanh & Đại lý',
+    },
+    {
+      id: 'sales-customers',
+      name: 'Quản lý đại lý',
+      path: '/sales/customers',
+      icon: Users,
+      category: 'Kinh doanh & Đại lý',
     },
     {
       id: 'catalog-pricing',
       name: 'Bảng giá & Chiết khấu',
       path: '/catalog/pricing',
       icon: BadgePercent,
-      category: 'Nghiệp vụ Kinh doanh',
+      category: 'Kinh doanh & Đại lý',
     },
-    {
-      id: 'catalog-products',
-      name: 'Danh mục sản phẩm',
-      path: '/catalog/products',
-      icon: Package,
-      category: 'Kho vận & Hàng hóa',
-    },
+
+    // Nhóm 3: Kho vận & Vận hành
     {
       id: 'inventory-stock',
       name: 'Quản lý tồn kho & Lô hàng',
       path: '/inventory/stock',
       icon: Warehouse,
-      category: 'Kho vận & Hàng hóa',
-    },
-    {
-      id: 'inventory-batches',
-      name: 'Quản lý lô & Hạn sử dụng',
-      path: '/inventory/batches',
-      icon: CalendarClock,
-      category: 'Kho vận & Hàng hóa',
-    },
-    {
-      id: 'inventory-warehouses',
-      name: 'Quản lý kho & vị trí',
-      path: '/inventory/warehouses',
-      icon: Warehouse,
-      category: 'Kho vận & Hàng hóa',
+      category: 'Kho vận & Vận hành',
     },
     {
       id: 'order-picking',
       name: 'Phiếu soạn hàng',
       path: '/warehouse/picking',
       icon: PackageCheck,
-      category: 'Kho vận & Hàng hóa',
+      category: 'Kho vận & Vận hành',
+    },
+    {
+      id: 'inventory-issues',
+      name: 'Soạn hàng & Xuất kho',
+      path: '/inventory/issues',
+      icon: PackageMinus,
+      category: 'Kho vận & Vận hành',
     },
     {
       id: 'warehouse-goods-in-transit',
       name: 'Hàng xuất trên đường',
       path: '/warehouse/goods-in-transit',
       icon: Truck,
-      category: 'Kho vận & Hàng hóa',
+      category: 'Kho vận & Vận hành',
+    },
+    {
+      id: 'inventory-receipts',
+      name: 'Nhập kho hàng hóa',
+      path: '/inventory/receipts',
+      icon: PackagePlus,
+      category: 'Kho vận & Vận hành',
     },
     {
       id: 'inventory-transfers',
       name: 'Chuyển kho nội bộ',
       path: '/inventory/transfers',
       icon: ArrowLeftRight,
-      category: 'Kho vận & Hàng hóa',
+      category: 'Kho vận & Vận hành',
+    },
+    {
+      id: 'inventory-batches',
+      name: 'Quản lý lô & Hạn sử dụng',
+      path: '/inventory/batches',
+      icon: CalendarClock,
+      category: 'Kho vận & Vận hành',
+    },
+    {
+      id: 'inventory-warehouses',
+      name: 'Quản lý kho & vị trí',
+      path: '/inventory/warehouses',
+      icon: Warehouse,
+      category: 'Kho vận & Vận hành',
     },
     {
       id: 'inventory-suppliers',
       name: 'Quản lý nhà cung cấp',
       path: '/inventory/suppliers',
       icon: Building2,
-      category: 'Kho vận & Hàng hóa',
+      category: 'Kho vận & Vận hành',
     },
+    {
+      id: 'catalog-products',
+      name: 'Danh mục sản phẩm',
+      path: '/catalog/products',
+      icon: Package,
+      category: 'Kho vận & Vận hành',
+    },
+
+    // Nhóm 4: Tài chính & Công nợ
     {
       id: 'accounting-invoices',
       name: 'Hóa đơn & Công nợ',
       path: '/accounting/invoices',
       icon: Receipt,
-      category: 'Tài chính & Kế toán',
+      category: 'Tài chính & Công nợ',
     },
     {
       id: 'route-collections',
-      name: 'Quản lý ngân sách',
+      name: 'Quản lý thu tuyến',
       path: '/route-collections',
       icon: HandCoins,
-      category: 'Tài chính & Kế toán',
+      category: 'Tài chính & Công nợ',
     },
     {
       id: 'accounting-debt-reconciliations',
       name: 'Đối chiếu công nợ',
       path: '/accounting/debt-reconciliations',
       icon: Scale,
-      category: 'Tài chính & Kế toán',
+      category: 'Tài chính & Công nợ',
     },
   ],
 };
@@ -885,6 +949,32 @@ export const getNavigationItems = (roleOrRoles?: string | string[]): MenuItem[] 
 
   const role = normalizeRole(primaryRoleString);
   return ROLE_NAVIGATION_MATRIX[role] || ROLE_NAVIGATION_MATRIX[USER_ROLES.CUSTOMER];
+};
+
+export interface NavigationGroup {
+  category: string;
+  items: MenuItem[];
+}
+
+/**
+ * Gom nhóm danh sách menu items theo danh mục (category)
+ */
+export const getGroupedNavigationItems = (roleOrRoles?: string | string[]): NavigationGroup[] => {
+  const items = getNavigationItems(roleOrRoles);
+  const groups: NavigationGroup[] = [];
+  const groupMap = new Map<string, NavigationGroup>();
+
+  for (const item of items) {
+    const category = item.category || 'Chức năng khác';
+    if (!groupMap.has(category)) {
+      const newGroup: NavigationGroup = { category, items: [] };
+      groupMap.set(category, newGroup);
+      groups.push(newGroup);
+    }
+    groupMap.get(category)!.items.push(item);
+  }
+
+  return groups;
 };
 
 /**

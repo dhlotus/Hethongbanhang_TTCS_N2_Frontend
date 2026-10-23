@@ -196,7 +196,7 @@ export const DebtAgingReport: React.FC<DebtAgingReportProps> = ({ onOpenLedger }
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch {
       alert('Không thể xuất file Excel. Vui lòng thử lại sau.');
     } finally {
       setExporting(false);

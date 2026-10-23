@@ -241,61 +241,74 @@ export const SuppliersTableSkeleton: React.FC<{ count?: number }> = ({ count = 6
 };
 
 /**
- * Skeleton Loading cho Bảng Bảng giá (PriceLists Table)
+ * Skeleton Loading cho Bảng Bảng giá & Chiết khấu (5 cột chuẩn, không scroll ngang)
  */
 export const PriceListsTableSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) => {
   return (
     <>
       {Array.from({ length: count }).map((_, idx) => (
-        <tr key={idx} className="animate-pulse">
-          {/* STT */}
-          <td className="border-b border-slate-100 py-3.5 px-4 text-center w-14">
-            <div className="h-4 w-5 mx-auto bg-slate-100 rounded" />
+        <tr key={idx} className="animate-pulse border-b border-slate-100">
+          {/* Cột 1: Mã bảng giá (16%) */}
+          <td className="px-3.5 py-3.5 whitespace-nowrap">
+            <div className="h-6 w-24 bg-blue-100/70 rounded-md" />
           </td>
 
-          {/* Mã bảng giá */}
-          <td className="border-b border-slate-100 py-3.5 px-4 w-44">
-            <div className="space-y-1">
-              <div className="h-4 w-24 bg-slate-200 rounded-md" />
-              <div className="h-4 w-12 bg-blue-100/60 rounded" />
-            </div>
-          </td>
-
-          {/* Tên bảng giá */}
-          <td className="border-b border-slate-100 py-3.5 px-4">
+          {/* Cột 2: Tên bảng giá (34%) */}
+          <td className="px-3.5 py-3.5 overflow-hidden min-w-0">
             <div
               className="h-4 bg-slate-200 rounded-md"
-              style={{ width: `${140 + (idx % 3) * 35}px` }}
+              style={{ width: `${160 + (idx % 3) * 40}px` }}
             />
           </td>
 
-          {/* Nhóm khách hàng */}
-          <td className="border-b border-slate-100 py-3.5 px-4 w-36">
-            <div className="h-6 w-24 bg-purple-50 rounded-lg" />
+          {/* Cột 3: Nhóm áp dụng (18%) */}
+          <td className="px-3.5 py-3.5 whitespace-nowrap">
+            <div className="h-6 w-28 bg-purple-50 rounded-full" />
           </td>
 
-          {/* Thời gian hiệu lực */}
-          <td className="border-b border-slate-100 py-3.5 px-4 w-48">
-            <div className="h-4 w-32 bg-slate-100 rounded-md" />
+          {/* Cột 4: Trạng thái (16%) */}
+          <td className="px-3.5 py-3.5 text-center whitespace-nowrap">
+            <div className="h-6 w-24 mx-auto bg-slate-100 rounded-full" />
           </td>
 
-          {/* Trạng thái */}
-          <td className="border-b border-slate-100 py-3.5 px-4 w-36">
-            <div className="h-6 w-24 bg-slate-100 rounded-full" />
-          </td>
-
-          {/* Ràng buộc đơn hàng */}
-          <td className="border-b border-slate-100 py-3.5 px-4 text-center w-44">
-            <div className="h-6 w-24 mx-auto bg-slate-100 rounded-lg" />
-          </td>
-
-          {/* Thao tác */}
-          <td className="border-b border-slate-100 py-3.5 px-4 text-center w-32">
-            <div className="h-8 w-24 mx-auto bg-slate-100 rounded-lg" />
+          {/* Cột 5: Thao tác (16%) */}
+          <td className="px-3.5 py-3.5 text-center whitespace-nowrap">
+            <div className="h-7 w-20 mx-auto bg-slate-100 rounded-lg" />
           </td>
         </tr>
       ))}
     </>
+  );
+};
+
+/**
+ * Skeleton Loading cho Thẻ Bảng giá & Chiết khấu (Mobile Card View)
+ */
+export const PriceListsMobileCardSkeleton: React.FC<{ count?: number }> = ({ count = 4 }) => {
+  return (
+    <div className="space-y-2.5">
+      {Array.from({ length: count }).map((_, idx) => (
+        <div
+          key={idx}
+          className="rounded-xl bg-white border border-slate-200/80 p-3.5 shadow-2xs space-y-2.5 animate-pulse"
+        >
+          <div className="flex items-center justify-between gap-2.5">
+            <div className="h-6 w-20 bg-blue-100/70 rounded-md" />
+            <div className="h-6 w-24 bg-slate-100 rounded-full" />
+          </div>
+
+          <div
+            className="h-4 bg-slate-200 rounded-md"
+            style={{ width: `${140 + (idx % 3) * 35}px` }}
+          />
+
+          <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+            <div className="h-5 w-24 bg-purple-50 rounded-full" />
+            <div className="h-4 w-28 bg-slate-100 rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 };
 

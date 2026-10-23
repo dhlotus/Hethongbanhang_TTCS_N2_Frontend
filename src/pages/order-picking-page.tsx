@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Package,
+  PackageSearch,
   Plus,
   Printer,
   Search,
@@ -263,27 +264,29 @@ export const OrderPickingPage: React.FC = () => {
           {/* Cụm nút hành động: In phiếu, Hủy phiếu & Tạo phiếu soạn mới */}
           <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
             {activeSheet && (
-              <button
-                type="button"
-                onClick={handleDeleteSheet}
-                className="h-[38px] px-3 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 active:bg-rose-100 text-rose-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                title="Hủy phiếu soạn hàng này và hoàn trả các đơn về danh sách chờ"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                <span className="hidden sm:inline">Hủy phiếu</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={handleDeleteSheet}
+                  className="h-[38px] px-3 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 active:bg-rose-100 text-rose-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                  title="Hủy phiếu soạn hàng này và hoàn trả các đơn về danh sách chờ"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                  <span className="hidden sm:inline">Hủy phiếu</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrintSheet}
+                  className="h-[38px] px-3.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                  title="In phiếu soạn hàng A4 cho thủ kho"
+                >
+                  <Printer className="w-4 h-4 text-slate-500" />
+                  <span>In phiếu</span>
+                </button>
+              </>
             )}
-            <button
-              type="button"
-              onClick={handlePrintSheet}
-              className="h-[38px] px-3.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-              title="In phiếu soạn hàng A4 cho thủ kho"
-            >
-              <Printer className="w-4 h-4 text-slate-500" />
-              <span>In phiếu</span>
-            </button>
             <Link
-              to="/warehouse/picking/create"
+              to="/inventory/picking/create"
               className="h-[38px] px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer"
               title="Chuyển đến trang tạo phiếu soạn hàng mới"
             >
@@ -295,20 +298,11 @@ export const OrderPickingPage: React.FC = () => {
 
         {/* B. Nếu không có phiếu nào */}
         {!activeSheet && !loading && (
-          <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
-              <Package className="w-6 h-6" />
-            </div>
-            <h3 className="font-bold text-slate-800 text-base">Chưa có phiếu soạn hàng nào</h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Hãy tạo phiếu soạn hàng từ các đơn đã duyệt để hệ thống gom hàng và sắp xếp lộ trình đi lại trong kho tối ưu nhất.
+          <div className="bg-white rounded-2xl border border-slate-200 py-16 flex flex-col items-center justify-center text-center shadow-xs">
+            <PackageSearch className="w-10 h-10 text-slate-300 mb-2 stroke-[1.5]" />
+            <p className="text-sm font-semibold text-slate-600">
+              Chưa có phiếu nào
             </p>
-            <Link
-              to="/warehouse/picking/create"
-              className="mt-2 h-[38px] px-4 rounded-lg bg-indigo-600 text-white font-semibold text-xs inline-flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" /> Tạo phiếu soạn đầu tiên
-            </Link>
           </div>
         )}
 

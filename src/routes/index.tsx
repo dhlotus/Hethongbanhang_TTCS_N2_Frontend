@@ -60,6 +60,7 @@ import { CreateRouteCollectionPage } from '../pages/create-route-collection-page
 import { DebtReconciliationsPage } from '../pages/debt-reconciliations-page';
 import { CreateDebtReconciliationPage } from '../pages/create-debt-reconciliation-page';
 import { SalesTargetsPage } from '../pages/sales-targets-page';
+import { SalesTargetDetailPage } from '../pages/sales-target-detail-page';
 import { SalesReportPage } from '../pages/sales-report-page';
 import { DebtAdjustmentsPage } from '../pages/debt-adjustments-page';
 
@@ -135,7 +136,8 @@ export const AppRoutes: React.FC = () => {
             <Route
               element={
                 <RoleGuard
-                  allowedRoles={['CUSTOMER', 'ADMIN', 'SALES_REP', 'SALES_MANAGER']}
+                  allowedRoles={['CUSTOMER']}
+                  allowAdminBypass={false}
                   moduleName="Cổng Dịch vụ & Đặt hàng Đại lý B2B"
                 />
               }
@@ -169,6 +171,8 @@ export const AppRoutes: React.FC = () => {
               }
             >
               <Route path="/sales/customers" element={<CustomersPage />} />
+              <Route path="/sales/customers/create" element={<CustomersPage defaultTab="create" />} />
+              <Route path="/customers/create" element={<Navigate to="/sales/customers/create" replace />} />
               <Route path="/sales/customers/:id" element={<CustomerDetailPage />} />
               <Route path="/customers/:id" element={<CustomerDetailPage />} />
               <Route path="/customers" element={<Navigate to="/sales/customers" replace />} />
@@ -219,6 +223,10 @@ export const AppRoutes: React.FC = () => {
               <Route
                 path="/sales/targets"
                 element={<SalesTargetsPage />}
+              />
+              <Route
+                path="/sales/targets/:id"
+                element={<SalesTargetDetailPage />}
               />
               {/* SN-218: Báo cáo Doanh số Bán hàng nhiều chiều */}
               <Route
@@ -606,7 +614,7 @@ export const AppRoutes: React.FC = () => {
                     'SALES_MANAGER',
                     'BUSINESS_MANAGER',
                   ]}
-                  moduleName="Quản lý ngân sách"
+                  moduleName="Quản lý thu tuyến"
                 />
               }
             >

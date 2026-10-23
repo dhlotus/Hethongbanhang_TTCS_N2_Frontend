@@ -71,7 +71,7 @@ export const CreatePickingSheetModal: React.FC<CreatePickingSheetModalProps> = (
           }
         }
       } catch {
-        showToast('error', 'Không thể tải danh sách đơn hàng');
+        showToast('error', 'Không thể tải danh sách đơn hàng đã duyệt');
       } finally {
         setLoading(false);
       }

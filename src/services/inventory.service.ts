@@ -357,16 +357,16 @@ export const inventoryService = {
           status?: string;
           search?: string;
           warehouseId?: string;
+          page?: number;
+          limit?: number;
         },
-  ): Promise<StockOverviewItem[]> {
+  ): Promise<any> {
     const params =
       typeof paramsOrWarehouseId === 'string'
         ? { warehouseId: paramsOrWarehouseId, warehouse: paramsOrWarehouseId }
         : paramsOrWarehouseId;
 
     const token = tokenStorage.getAccessToken();
-
-    let items: StockOverviewItem[];
 
     const cleanParams: Record<string, string> = {};
     if (params) {
@@ -378,20 +378,76 @@ export const inventoryService = {
         cleanParams.warehouse = wh;
         cleanParams.warehouseId = wh;
       }
+      if (params.page !== undefined) cleanParams.page = String(params.page);
+      if (params.limit !== undefined) cleanParams.limit = String(params.limit);
     }
 
-    if (token && token.startsWith('demo-jwt-')) {
-      items = buildMockStockOverview();
-    } else {
+    if (token && !token.startsWith('demo-jwt-')) {
       try {
-        const response = await apiClient.get<StockOverviewItem[]>('/inventory/stock', {
+        const response = await apiClient.get<any>('/inventory/stock', {
           params: cleanParams,
         });
-        items = response.data;
+
+        // Nếu backend đã trả về phân trang { data, total, page, limit, totalPages, summary }
+        if (response.data && Array.isArray(response.data.data)) {
+          return response.data;
+        }
+
+        if (Array.isArray(response.data)) {
+          let items: StockOverviewItem[] = response.data;
+          if (params?.page !== undefined || params?.limit !== undefined) {
+            const page = Math.max(1, params?.page || 1);
+            const limit = Math.max(1, params?.limit || 10);
+            const total = items.length;
+            const totalPages = Math.max(1, Math.ceil(total / limit));
+            const paginatedData = items.slice((page - 1) * limit, page * limit);
+
+            let totalPhysical = 0;
+            let totalReserved = 0;
+            let totalAvailable = 0;
+            let lowStockCount = 0;
+            let outOfStockCount = 0;
+            let nearOutOfStockCount = 0;
+
+            for (const item of items) {
+              totalPhysical += item.physicalStock;
+              totalReserved += item.reservedStock;
+              totalAvailable += item.availableStock;
+              if (item.status === 'LOW_STOCK') lowStockCount++;
+              if (item.status === 'OUT_OF_STOCK') outOfStockCount++;
+              const isNearOutOfStock =
+                item.availableStock > 0 &&
+                (item.status === 'LOW_STOCK' ||
+                  Boolean(item.isBelowMinStock) ||
+                  ((item.minStockLevel || 0) > 0 && item.availableStock <= (item.minStockLevel || 0)));
+              if (isNearOutOfStock) nearOutOfStockCount++;
+            }
+
+            return {
+              data: paginatedData,
+              total,
+              page,
+              limit,
+              totalPages,
+              summary: {
+                totalPhysical,
+                totalReserved,
+                totalAvailable,
+                lowStockCount,
+                outOfStockCount,
+                nearOutOfStockCount,
+                totalSku: total,
+              },
+            };
+          }
+          return items;
+        }
       } catch {
-        items = buildMockStockOverview();
+        // Fallback to mock below
       }
     }
+
+    let items: StockOverviewItem[] = buildMockStockOverview();
 
     if (params?.search) {
       const q = params.search.trim().toLowerCase();
@@ -429,6 +485,52 @@ export const inventoryService = {
       items = items.filter(
         (i) => i.warehouse === warehouseFilter || i.warehouseId === warehouseFilter,
       );
+    }
+
+    if (params?.page !== undefined || params?.limit !== undefined) {
+      const page = Math.max(1, params?.page || 1);
+      const limit = Math.max(1, params?.limit || 10);
+      const total = items.length;
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      const paginatedData = items.slice((page - 1) * limit, page * limit);
+
+      let totalPhysical = 0;
+      let totalReserved = 0;
+      let totalAvailable = 0;
+      let lowStockCount = 0;
+      let outOfStockCount = 0;
+      let nearOutOfStockCount = 0;
+
+      for (const item of items) {
+        totalPhysical += item.physicalStock;
+        totalReserved += item.reservedStock;
+        totalAvailable += item.availableStock;
+        if (item.status === 'LOW_STOCK') lowStockCount++;
+        if (item.status === 'OUT_OF_STOCK') outOfStockCount++;
+        const isNearOutOfStock =
+          item.availableStock > 0 &&
+          (item.status === 'LOW_STOCK' ||
+            Boolean(item.isBelowMinStock) ||
+            ((item.minStockLevel || 0) > 0 && item.availableStock <= (item.minStockLevel || 0)));
+        if (isNearOutOfStock) nearOutOfStockCount++;
+      }
+
+      return {
+        data: paginatedData,
+        total,
+        page,
+        limit,
+        totalPages,
+        summary: {
+          totalPhysical,
+          totalReserved,
+          totalAvailable,
+          lowStockCount,
+          outOfStockCount,
+          nearOutOfStockCount,
+          totalSku: total,
+        },
+      };
     }
 
     return items;

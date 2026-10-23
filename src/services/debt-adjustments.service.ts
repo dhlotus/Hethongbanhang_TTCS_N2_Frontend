@@ -67,7 +67,7 @@ export const debtAdjustmentsService = {
     );
     const voucher = response.data;
     if (voucher?.agencyId) {
-      const amount = Number(voucher.adjustmentAmount || voucher.totalAdjustment || 0);
+      const amount = Number(voucher.adjustmentAmount || (voucher as any).totalAdjustment || 0);
       if (amount > 0) {
         updateStoredCustomerDebt(voucher.agencyId, -amount);
       }

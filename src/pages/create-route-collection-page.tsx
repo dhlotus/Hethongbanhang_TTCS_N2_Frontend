@@ -3,20 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   UploadCloud,
-  Check,
   RefreshCw,
   Building2,
   CreditCard,
   Banknote,
-  AlertCircle,
   FileText,
   ShieldCheck,
   Clock,
+  Package,
+  CheckCircle2,
+  AlertTriangle,
+  Info,
 } from 'lucide-react';
 import {
   collectionsService,
   type CreateCollectionPayload,
   type PaymentMethod,
+  type EligibleOrderForCollection,
 } from '../services/collections.service';
 import { customerService } from '../services/customer.service';
 import type { Customer } from '../types/customer.types';
@@ -26,6 +29,10 @@ import { getStoredUser } from '../utils/navigation';
 export const CreateRouteCollectionPage: React.FC = () => {
   const navigate = useNavigate();
   const currentUser = getStoredUser();
+
+  useEffect(() => {
+    document.title = 'Tạo phiếu thu tuyến | LOHA SALES';
+  }, []);
 
   // Danh sách đại lý
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -42,6 +49,11 @@ export const CreateRouteCollectionPage: React.FC = () => {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Đơn hàng đủ điều kiện theo tuyến của đại lý
+  const [eligibleOrders, setEligibleOrders] = useState<EligibleOrderForCollection[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [selectedOrderCodes, setSelectedOrderCodes] = useState<string[]>([]);
 
   // Tải danh sách đại lý
   useEffect(() => {
@@ -60,6 +72,91 @@ export const CreateRouteCollectionPage: React.FC = () => {
     }
     loadCustomers();
   }, []);
+
+  // Helper lấy mã đơn hàng, ngày và mã định danh duy nhất của từng đơn
+  const getOrderCode = (o: any, idx?: number): string => {
+    return String(
+      o?.orderCode ||
+      o?.order_code ||
+      o?.code ||
+      o?.invoiceCode ||
+      o?.invoice_code ||
+      (o?.id ? o.id : '') ||
+      (idx !== undefined ? `DH-TUYEN-${idx + 1}` : 'DH-TUYEN')
+    );
+  };
+
+  const getOrderDate = (o: any) => {
+    return (
+      o?.orderDate ||
+      o?.order_date ||
+      o?.createdAt ||
+      o?.created_at ||
+      o?.deliveryDate ||
+      o?.delivery_date ||
+      o?.issueDate ||
+      o?.issue_date
+    );
+  };
+
+  const formatOrderDate = (dateVal?: any) => {
+    if (!dateVal) return '—';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal);
+    return d.toLocaleDateString('vi-VN');
+  };
+
+  // Tải danh sách đơn hàng đang đi giao (SHIPPED) hoặc đã giao (DELIVERED) của đại lý
+  useEffect(() => {
+    if (!agencyId) {
+      setEligibleOrders([]);
+      setSelectedOrderCodes([]);
+      setAmount(0);
+      return;
+    }
+
+    let isMounted = true;
+    async function fetchOrders() {
+      try {
+        setLoadingOrders(true);
+        const orders = await collectionsService.getEligibleOrders(agencyId);
+        if (isMounted) {
+          setEligibleOrders(orders);
+          // Mặc định tích chọn tất cả các đơn hàng đủ điều kiện
+          const codes = orders.map((o, idx) => getOrderCode(o, idx));
+          setSelectedOrderCodes(codes);
+          // Tính tổng số tiền còn phải thu của các đơn được chọn
+          const totalRemaining = orders.reduce(
+            (sum, o) =>
+              sum +
+              (o.remainingAmount ??
+                (o as any).remaining_amount ??
+                Math.max(
+                  0,
+                  (o.totalAmount ?? (o as any).total_amount ?? 0) -
+                    (o.paidAmount ?? (o as any).paid_amount ?? 0),
+                )),
+            0,
+          );
+          setAmount(totalRemaining > 0 ? totalRemaining : 0);
+        }
+      } catch (err) {
+        console.error('Failed to load eligible orders', err);
+        if (isMounted) {
+          setEligibleOrders([]);
+          setSelectedOrderCodes([]);
+          setAmount(0);
+        }
+      } finally {
+        if (isMounted) setLoadingOrders(false);
+      }
+    }
+
+    fetchOrders();
+    return () => {
+      isMounted = false;
+    };
+  }, [agencyId]);
 
   // Xử lý upload ảnh preview
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,9 +180,90 @@ export const CreateRouteCollectionPage: React.FC = () => {
     return customers.find((c) => c.id === agencyId || c.code === agencyId);
   }, [customers, agencyId]);
 
+  // Danh sách đơn hàng được tích chọn
+  const selectedOrders = useMemo(() => {
+    return eligibleOrders.filter((o, idx) => selectedOrderCodes.includes(getOrderCode(o, idx)));
+  }, [eligibleOrders, selectedOrderCodes]);
+
+  // Tổng giá trị các đơn hàng được chọn
+  const _totalSelectedOrdersAmount = useMemo(() => {
+    return selectedOrders.reduce(
+      (sum, o) => sum + (o.totalAmount ?? (o as any).total_amount ?? 0),
+      0,
+    );
+  }, [selectedOrders]);
+  void _totalSelectedOrdersAmount;
+
+  // Tổng số tiền còn phải thu của các đơn được chọn
+  const totalSelectedRemaining = useMemo(() => {
+    return selectedOrders.reduce(
+      (sum, o) =>
+        sum +
+        (o.remainingAmount ??
+          (o as any).remaining_amount ??
+          Math.max(
+            0,
+            (o.totalAmount ?? (o as any).total_amount ?? 0) -
+              (o.paidAmount ?? (o as any).paid_amount ?? 0),
+          )),
+      0,
+    );
+  }, [selectedOrders]);
+
+  // Bật/tắt chọn tất cả đơn hàng
+  const handleToggleSelectAll = () => {
+    if (selectedOrderCodes.length === eligibleOrders.length) {
+      setSelectedOrderCodes([]);
+      setAmount(0);
+    } else {
+      const allCodes = eligibleOrders.map((o, idx) => getOrderCode(o, idx));
+      setSelectedOrderCodes(allCodes);
+      const totalRemaining = eligibleOrders.reduce(
+        (sum, o) =>
+          sum +
+          (o.remainingAmount ??
+            (o as any).remaining_amount ??
+            Math.max(
+              0,
+              (o.totalAmount ?? (o as any).total_amount ?? 0) -
+                (o.paidAmount ?? (o as any).paid_amount ?? 0),
+            )),
+        0,
+      );
+      setAmount(totalRemaining);
+    }
+  };
+
+  // Bật/tắt chọn từng đơn
+  const handleToggleOrder = (code: string) => {
+    setSelectedOrderCodes((prev) => {
+      const next = prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code];
+      const nextSelected = eligibleOrders.filter((o, idx) => next.includes(getOrderCode(o, idx)));
+      if (nextSelected.length === 0) {
+        setAmount(0);
+      } else {
+        const nextRemaining = nextSelected.reduce(
+          (sum, o) =>
+            sum +
+            (o.remainingAmount ??
+              (o as any).remaining_amount ??
+              Math.max(
+                0,
+                (o.totalAmount ?? (o as any).total_amount ?? 0) -
+                  (o.paidAmount ?? (o as any).paid_amount ?? 0),
+              )),
+          0,
+        );
+        setAmount(nextRemaining);
+      }
+      return next;
+    });
+  };
+
   // Đọc số tiền bằng chữ (Tiếng Việt)
   const amountInWords = useMemo(() => {
-    if (!amount || amount <= 0) return '';
+    if (amount === 0) return 'Không đồng';
+    if (!amount || amount < 0) return '';
     const digits = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
 
     const readGroup = (group: number, showZeroHundred: boolean): string => {
@@ -161,20 +339,16 @@ export const CreateRouteCollectionPage: React.FC = () => {
     setAmount(num);
   };
 
-  // Dư nợ sau khi gạch nợ dự kiến
-  const projectedRemainingDebt = useMemo(() => {
-    if (!selectedAgency || selectedAgency.currentDebt === undefined) return 0;
-    const current = Number(selectedAgency.currentDebt) || 0;
-    const pay = typeof amount === 'number' ? amount : 0;
-    return Math.max(0, current - pay);
-  }, [selectedAgency, amount]);
-
   // Submit form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!agencyId) {
       showToast('error', 'Thiếu thông tin', 'Vui lòng chọn đại lý cần thu tiền');
+      return;
+    }
+    if (eligibleOrders.length > 0 && selectedOrderCodes.length === 0) {
+      showToast('error', 'Chưa chọn đơn hàng', 'Vui lòng tích chọn ít nhất một đơn hàng trong tuyến để thu tiền');
       return;
     }
     if (!amount || Number(amount) <= 0) {
@@ -188,6 +362,14 @@ export const CreateRouteCollectionPage: React.FC = () => {
 
     try {
       setIsSubmitting(true);
+      const orderDetails = selectedOrders.map((o) => ({
+        orderId: o.orderId || o.id,
+        orderCode: getOrderCode(o),
+        totalAmount: o.totalAmount,
+        remainingAmount: o.remainingAmount ?? Math.max(0, o.totalAmount - (o.paidAmount || 0)),
+        status: o.status,
+      }));
+
       const payload: CreateCollectionPayload = {
         agency_id: agencyId,
         agency_name: selectedAgency?.name || undefined,
@@ -197,6 +379,9 @@ export const CreateRouteCollectionPage: React.FC = () => {
         note: note.trim() || undefined,
         image: receiptFile || undefined,
         receipt_image_url: !receiptFile ? receiptPreview : undefined,
+        order_ids: selectedOrders.map((o) => o.id),
+        order_codes: selectedOrderCodes,
+        order_details: orderDetails,
       };
 
       const res = await collectionsService.createCollection(payload);
@@ -272,12 +457,12 @@ export const CreateRouteCollectionPage: React.FC = () => {
               <select
                 value={agencyId}
                 onChange={(e) => {
-                  setAgencyId(e.target.value);
-                  const cust = customers.find(
-                    (c) => c.id === e.target.value || c.code === e.target.value,
-                  );
-                  if (cust && cust.currentDebt && cust.currentDebt > 0 && !amount) {
-                    setAmount(cust.currentDebt);
+                  const val = e.target.value;
+                  setAgencyId(val);
+                  if (!val) {
+                    setAmount('');
+                    setEligibleOrders([]);
+                    setSelectedOrderCodes([]);
                   }
                 }}
                 disabled={loadingCustomers}
@@ -289,148 +474,321 @@ export const CreateRouteCollectionPage: React.FC = () => {
                 </option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} ({c.code || c.id}) - Nợ hiện tại: {(c.currentDebt || 0).toLocaleString('vi-VN')} đ
+                    {c.name} ({c.code || c.id})
                   </option>
                 ))}
               </select>
+            </div>
 
-              {/* Thông tin nợ đại lý hiện tại */}
-              {selectedAgency && (
-                <div className="mt-2.5 p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+            {/* KHI CHƯA CHỌN ĐẠI LÝ: ẨN TOÀN BỘ Ô NHẬP TIỀN, HÌNH THỨC, NGÀY THU & ĐƠN HÀNG */}
+            {!agencyId ? (
+              <div className="py-7 px-4 text-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 space-y-1.5">
+                <Building2 className="w-7 h-7 text-slate-300 mx-auto" />
+                <p className="text-xs font-semibold text-slate-600">
+                  Chưa chọn đại lý thu tiền
+                </p>
+                <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                  Vui lòng chọn đại lý từ danh sách phía trên để hiển thị danh sách đơn hàng trong tuyến, ô nhập số tiền thu thực tế, hình thức thanh toán và ngày thu.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* BẢNG CHỌN ĐƠN HÀNG THEO TUYẾN */}
+                <div className="pt-2 border-t border-slate-100 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4 text-indigo-600" />
+                    <label className="text-xs font-bold text-slate-800">
+                      Đơn hàng trong tuyến cần thu tiền
+                    </label>
+                    {eligibleOrders.length > 0 && (
+                      <span className="px-2 py-0.5 text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full">
+                        {eligibleOrders.length} đơn hàng
+                      </span>
+                    )}
+                  </div>
+
+                  {loadingOrders ? (
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin text-indigo-500" />
+                      <span>Đang tìm kiếm đơn hàng đang giao (SHIPPED) hoặc đã giao (DELIVERED)...</span>
+                    </div>
+                  ) : eligibleOrders.length === 0 ? (
+                    <div className="p-3.5 bg-amber-50/70 rounded-xl border border-amber-200/80 text-xs text-amber-800 flex items-start gap-2">
+                      <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold">Đại lý hiện không có đơn hàng cần thu tiền</p>
+                        <p className="text-[11px] text-amber-700 mt-0.5">
+                          Không tìm thấy đơn hàng nào ở trạng thái Đang giao (SHIPPED) hoặc Đã giao (DELIVERED) của đại lý này.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs border-collapse">
+                            <thead>
+                              <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-600 font-semibold">
+                                <th className="py-2.5 px-3 w-8 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedOrderCodes.length === eligibleOrders.length && eligibleOrders.length > 0}
+                                    onChange={handleToggleSelectAll}
+                                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                  />
+                                </th>
+                                <th className="py-2.5 px-3">Mã đơn hàng</th>
+                                <th className="py-2.5 px-3">Ngày đặt</th>
+                                <th className="py-2.5 px-3 text-center">Trạng thái</th>
+                                <th className="py-2.5 px-3 text-right">Tổng tiền</th>
+                                <th className="py-2.5 px-3 text-right">Đã thanh toán</th>
+                                <th className="py-2.5 px-3 text-right font-bold text-indigo-700">Còn phải thu</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {eligibleOrders.map((order, idx) => {
+                                const ordCode = getOrderCode(order, idx);
+                                const ordDate = getOrderDate(order);
+                                const isSelected = selectedOrderCodes.includes(ordCode);
+                                const totalAmt = order.totalAmount ?? (order as any).total_amount ?? 0;
+                                const paidAmt = order.paidAmount ?? (order as any).paid_amount ?? 0;
+                                const remaining =
+                                  order.remainingAmount ??
+                                  (order as any).remaining_amount ??
+                                  Math.max(0, totalAmt - paidAmt);
+
+                                return (
+                                  <tr
+                                    key={ordCode}
+                                    onClick={() => handleToggleOrder(ordCode)}
+                                    className={`transition-colors cursor-pointer ${
+                                      isSelected ? 'bg-indigo-50/40 hover:bg-indigo-50/70' : 'hover:bg-slate-50/80'
+                                    }`}
+                                  >
+                                    <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => handleToggleOrder(ordCode)}
+                                        className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                      />
+                                    </td>
+                                    <td className="py-2.5 px-3 font-mono font-bold text-indigo-600">
+                                      {ordCode}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">
+                                      {formatOrderDate(ordDate)}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-center">
+                                      <span
+                                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                          order.status === 'DELIVERED'
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                                        }`}
+                                      >
+                                        {order.status === 'DELIVERED' ? 'Đã giao hàng' : 'Đang đi giao'}
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right font-mono text-slate-700">
+                                      {totalAmt.toLocaleString('vi-VN')} đ
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right font-mono text-slate-500">
+                                      {paidAmt.toLocaleString('vi-VN')} đ
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-700">
+                                      {remaining.toLocaleString('vi-VN')} đ
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Thanh tóm tắt chọn đơn */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-600">Đã chọn:</span>
+                          <strong className="text-slate-900 font-bold">{selectedOrders.length} / {eligibleOrders.length} đơn</strong>
+                          <span className="text-slate-300">|</span>
+                          <span className="text-slate-600">Tổng cần thu theo đơn:</span>
+                          <strong className="text-indigo-700 font-mono font-bold text-sm">
+                            {totalSelectedRemaining.toLocaleString('vi-VN')} đ
+                          </strong>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Số tiền thu */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Số tiền thu thực tế (VND) <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={displayAmount}
+                      onChange={handleAmountChange}
+                      placeholder="Nhập số tiền thu (Ví dụ: 15.000.000)"
+                      required
+                      className="w-full h-[46px] px-4 pr-12 text-base font-bold font-mono bg-slate-50/70 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                      VNĐ
+                    </span>
+                  </div>
+
+                  {/* Nút gợi ý số tròn */}
+                  <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                    <span className="text-xs text-slate-400">Gợi ý nhanh:</span>
+                    {totalSelectedRemaining > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setAmount(totalSelectedRemaining)}
+                        className="px-2.5 py-1 text-xs font-mono font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer"
+                      >
+                        Thu đủ đơn ({totalSelectedRemaining.toLocaleString('vi-VN')} đ)
+                      </button>
+                    )}
+                    {[5000000, 10000000, 20000000, 30000000, 50000000].map((val) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setAmount(val)}
+                        className="px-2.5 py-1 text-xs font-mono font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                      >
+                        {(val / 1000000).toLocaleString('vi-VN')} tr
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Ô ghi lại số tiền bằng chữ ngay dưới */}
+                  <div className="mt-2.5 p-2.5 bg-slate-50/80 rounded-lg border border-slate-200/80 flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-500 shrink-0">Bằng chữ:</span>
+                    <input
+                      type="text"
+                      readOnly
+                      value={amountInWords}
+                      placeholder="Chưa có số tiền"
+                      tabIndex={-1}
+                      className="w-full text-xs italic font-medium text-slate-800 bg-transparent border-none outline-none cursor-default"
+                    />
+                  </div>
+
+                  {/* THÔNG BÁO ĐỐI CHIẾU SỐ TIỀN THU: THU ĐỦ vs THU THIẾU */}
+                  {selectedOrders.length > 0 && typeof amount === 'number' && amount > 0 && (
+                    <div className="mt-3">
+                      {amount === totalSelectedRemaining ? (
+                        <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-start gap-2.5 text-xs text-emerald-900 animate-in fade-in duration-150">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold text-emerald-800">
+                              ✓ Thu đủ 100% tiền đơn hàng: {amount.toLocaleString('vi-VN')} đ
+                            </p>
+                            <p className="text-[11px] text-emerald-700 mt-0.5">
+                              Khớp đúng toàn bộ giá trị các đơn hàng được chọn. Khi kế toán duyệt phiếu, hệ thống sẽ gạch nợ hoàn tất cho các đơn hàng này.
+                            </p>
+                          </div>
+                        </div>
+                      ) : amount < totalSelectedRemaining ? (
+                        <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-start gap-2.5 text-xs text-amber-900 animate-in fade-in duration-150">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold text-amber-800">
+                              ⚠️ Đại lý trả thiếu {(totalSelectedRemaining - amount).toLocaleString('vi-VN')} đ so với tổng đơn được chọn
+                            </p>
+                            <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
+                              Phần tiền còn thiếu vẫn sẽ giữ nguyên trên công nợ của hóa đơn/đại lý, hệ thống <strong>không tự động cộng thêm nợ mới hay trừ khống</strong>. Khi đại lý trả nốt qua các lần thu sau, hệ thống sẽ tiếp tục cấn trừ tiếp.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 flex items-start gap-2.5 text-xs text-blue-900 animate-in fade-in duration-150">
+                          <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold text-blue-800">
+                              ℹ️ Số tiền thu lớn hơn giá trị các đơn được chọn {(amount - totalSelectedRemaining).toLocaleString('vi-VN')} đ
+                            </p>
+                            <p className="text-[11px] text-blue-700 mt-0.5 leading-relaxed">
+                              Phần tiền thu dư sẽ được cấn trừ thêm vào tổng công nợ chung của đại lý sau khi kế toán duyệt.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Hình thức thanh toán & Ngày thu */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                   <div>
-                    <span className="text-slate-600">Đại lý: </span>
-                    <strong className="text-slate-800">{selectedAgency.name}</strong>
-                    <span className="text-slate-400 font-mono ml-1.5">({selectedAgency.code || selectedAgency.id})</span>
-                    <div className="mt-0.5 text-slate-500">
-                      Dư nợ hiện tại: <strong className="text-indigo-700 font-mono">{(selectedAgency.currentDebt || 0).toLocaleString('vi-VN')} đ</strong>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Hình thức thanh toán
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('CASH')}
+                        className={`h-[40px] px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          paymentMethod === 'CASH'
+                            ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-2xs'
+                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        <Banknote className="w-4 h-4" />
+                        <span>Tiền mặt</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('BANK_TRANSFER')}
+                        className={`h-[40px] px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          paymentMethod === 'BANK_TRANSFER'
+                            ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-2xs'
+                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        <CreditCard className="w-4 h-4" />
+                        <span>Chuyển khoản</span>
+                      </button>
                     </div>
                   </div>
-                  {selectedAgency.currentDebt && selectedAgency.currentDebt > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => setAmount(selectedAgency.currentDebt)}
-                      className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-colors shadow-2xs cursor-pointer"
-                    >
-                      <Check className="w-3 h-3 text-indigo-600" />
-                      <span>Thu hết nợ</span>
-                    </button>
-                  ) : null}
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Ngày thu tiền thực tế
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="date"
+                        min="2020-01-01"
+                        max="2099-12-31"
+                        value={collectionDate}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (!val) {
+                            setCollectionDate('');
+                            return;
+                          }
+                          const [yearStr] = val.split('-');
+                          if (yearStr && (yearStr.length > 4 || parseInt(yearStr, 10) > 2099 || parseInt(yearStr, 10) < 2000)) {
+                            return;
+                          }
+                          setCollectionDate(val);
+                        }}
+                        required
+                        className="w-full h-[40px] px-3 text-xs bg-slate-50/70 border border-slate-200 rounded-lg focus:bg-white focus:outline-none"
+                      />
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
-
-            {/* Số tiền thu */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Số tiền thu thực tế (VND) <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={displayAmount}
-                  onChange={handleAmountChange}
-                  placeholder="Nhập số tiền thu (Ví dụ: 15.000.000)"
-                  required
-                  className="w-full h-[46px] px-4 pr-12 text-base font-bold font-mono bg-slate-50/70 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                  VNĐ
-                </span>
-              </div>
-
-              {/* Nút gợi ý số tròn */}
-              <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-                <span className="text-xs text-slate-400">Gợi ý nhanh:</span>
-                {[5000000, 10000000, 20000000, 30000000, 50000000].map((val) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => setAmount(val)}
-                    className="px-2.5 py-1 text-xs font-mono font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
-                  >
-                    {(val / 1000000).toLocaleString('vi-VN')} tr
-                  </button>
-                ))}
-              </div>
-
-              {/* Ô ghi lại số tiền bằng chữ ngay dưới */}
-              <div className="mt-2.5 p-2.5 bg-slate-50/80 rounded-lg border border-slate-200/80 flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-500 shrink-0">Bằng chữ:</span>
-                <input
-                  type="text"
-                  readOnly
-                  value={amountInWords}
-                  placeholder="Chưa có số tiền"
-                  tabIndex={-1}
-                  className="w-full text-xs italic font-medium text-slate-800 bg-transparent border-none outline-none cursor-default"
-                />
-              </div>
-            </div>
-
-            {/* Hình thức thanh toán & Ngày thu */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Hình thức thanh toán
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('CASH')}
-                    className={`h-[40px] px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                      paymentMethod === 'CASH'
-                        ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-2xs'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Banknote className="w-4 h-4" />
-                    <span>Tiền mặt</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('BANK_TRANSFER')}
-                    className={`h-[40px] px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                      paymentMethod === 'BANK_TRANSFER'
-                        ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-2xs'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    <span>Chuyển khoản</span>
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Ngày thu tiền thực tế
-                </label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    min="2020-01-01"
-                    max="2099-12-31"
-                    value={collectionDate}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (!val) {
-                        setCollectionDate('');
-                        return;
-                      }
-                      const [yearStr] = val.split('-');
-                      if (yearStr && (yearStr.length > 4 || parseInt(yearStr, 10) > 2099 || parseInt(yearStr, 10) < 2000)) {
-                        return;
-                      }
-                      setCollectionDate(val);
-                    }}
-                    required
-                    className="w-full h-[40px] px-3 text-xs bg-slate-50/70 border border-slate-200 rounded-lg focus:bg-white focus:outline-none"
-                  />
-                </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
 
           {/* KHỐI 2: ẢNH CHỤP BIÊN LAI / ỦY NHIỆM CHI & GHI CHÚ */}
@@ -524,15 +882,11 @@ export const CreateRouteCollectionPage: React.FC = () => {
         <div className="lg:col-span-5 space-y-5">
           {/* TÓM TẮT DÒNG TIỀN ĐỐI SOÁT */}
           <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs p-5 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 gap-2">
+            <div className="pb-3 border-b border-slate-100">
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 Tóm tắt khoản thu nộp
               </h3>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                <Clock className="w-3 h-3 text-amber-600" />
-                Trạng thái sau tạo: Chờ duyệt
-              </span>
             </div>
 
             <div className="space-y-3 text-xs">
@@ -543,24 +897,34 @@ export const CreateRouteCollectionPage: React.FC = () => {
                 </span>
               </div>
 
+              {/* Đơn hàng được chọn */}
+              <div className="flex items-start justify-between py-1.5 border-b border-slate-100 gap-2">
+                <span className="text-slate-500 shrink-0">Đơn hàng trong tuyến:</span>
+                <div className="text-right">
+                  <span className="font-bold text-slate-800">{selectedOrders.length} đơn</span>
+                  {selectedOrderCodes.length > 0 && (
+                    <div className="flex flex-wrap justify-end gap-1 mt-1">
+                      {selectedOrderCodes.map((code) => (
+                        <span key={code} className="inline-block px-1.5 py-0.5 bg-slate-100 text-slate-700 font-mono text-[10px] rounded border border-slate-200">
+                          {code}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="flex items-center justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Dư nợ hiện tại:</span>
-                <span className="font-mono font-semibold text-slate-700">
-                  {selectedAgency ? (selectedAgency.currentDebt || 0).toLocaleString('vi-VN') : 0} đ
+                <span className="text-slate-500">Cần thu theo đơn:</span>
+                <span className="font-mono font-semibold text-indigo-700">
+                  {totalSelectedRemaining.toLocaleString('vi-VN')} đ
                 </span>
               </div>
 
               <div className="flex items-center justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Số tiền thu nộp:</span>
+                <span className="text-slate-500">Số tiền thực thu:</span>
                 <span className="font-mono font-bold text-indigo-600 text-sm">
                   {typeof amount === 'number' ? amount.toLocaleString('vi-VN') : 0} đ
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Dư nợ sau khi duyệt:</span>
-                <span className="font-mono font-bold text-emerald-600">
-                  {projectedRemainingDebt.toLocaleString('vi-VN')} đ
                 </span>
               </div>
 
@@ -575,19 +939,9 @@ export const CreateRouteCollectionPage: React.FC = () => {
                 <span className="text-slate-500">Trạng thái:</span>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                   <Clock className="w-3 h-3" />
-                  Chờ duyệt
+                  Chờ nộp (PENDING)
                 </span>
               </div>
-            </div>
-
-            {/* Lưu ý quy trình đối soát */}
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/80 text-[11px] text-slate-500 space-y-1">
-              <p className="font-semibold text-slate-700 flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5 text-indigo-500" />
-                Quy trình đối soát:
-              </p>
-              <p>• Phiếu thu tạo xong sẽ ở trạng thái <strong>Chờ duyệt</strong>.</p>
-              <p>• Kế toán sẽ đối chiếu ảnh biên lai và bấm duyệt để <strong>gạch nợ tự động</strong>.</p>
             </div>
 
             {/* Nút Hủy và Xác nhận nằm ngang nhau */}

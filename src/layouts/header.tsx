@@ -117,7 +117,7 @@ const getPageHeaderInfo = (
       title: 'Tạo phiếu thu mới',
       category: 'Tài chính & Thu chi',
       breadcrumbs: [
-        { label: 'Quản lý ngân sách', path: '/route-collections' },
+        { label: 'Quản lý thu tuyến', path: '/route-collections' },
         { label: 'Tạo phiếu thu mới' },
       ],
     };
@@ -442,7 +442,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     'Người dùng';
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-xs px-3 sm:px-6 lg:px-8 shadow-2xs">
+    <header className="sticky top-0 z-40 flex h-16 w-full shrink-0 items-center justify-between border-b border-slate-200/80 bg-white/95 backdrop-blur-xs px-3 sm:px-6 lg:px-8 shadow-2xs">
       {/* =================================================================== */}
       {/* 1. BÊN TRÁI: NÚT ĐÓNG MỞ NAVBAR & TIÊU ĐỀ TRANG                     */}
       {/* =================================================================== */}

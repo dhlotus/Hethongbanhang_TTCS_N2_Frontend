@@ -33,6 +33,7 @@ import { ordersService } from '../services/orders.service';
 import { CustomerOrderDetailModal } from '../components/customer-order-detail-modal';
 import { ReorderModal } from '../components/reorder-modal';
 import { OrderPrintModal } from '../components/order-print-modal';
+import { getStoredUser } from '../utils/navigation';
 import type { Order, OrderStatus } from '../types/order';
 
 /** Định dạng tiền tệ VND */
@@ -165,6 +166,12 @@ interface DropdownMenuState {
 export const PortalOrdersPage: React.FC = () => {
   const location = useLocation();
   const isTrackingRoute = location.pathname.includes('/tracking');
+
+  const currentUser = getStoredUser();
+  const userRoles = (currentUser?.roles || (currentUser?.role ? [currentUser.role] : [])).map((r) =>
+    r.trim().toUpperCase()
+  );
+  const isAgency = userRoles.includes('CUSTOMER');
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [total, setTotal] = useState<number>(0);
@@ -453,16 +460,18 @@ export const PortalOrdersPage: React.FC = () => {
 
             {/* Hai nút chức năng: cân đối 50-50 trên mobile, tự nhiên trên desktop */}
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Link to="/portal/orders" className="flex-1 sm:flex-initial">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  leftIcon={<Plus className="w-3.5 h-3.5 shrink-0" />}
-                  className="w-full sm:w-auto h-[38px] cursor-pointer shadow-xs whitespace-nowrap justify-center text-xs px-2.5 sm:px-3"
-                >
-                  <span className="truncate">Đặt hàng mới</span>
-                </Button>
-              </Link>
+              {isAgency && (
+                <Link to="/portal/orders" className="flex-1 sm:flex-initial">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    leftIcon={<Plus className="w-3.5 h-3.5 shrink-0" />}
+                    className="w-full sm:w-auto h-[38px] cursor-pointer shadow-xs whitespace-nowrap justify-center text-xs px-2.5 sm:px-3"
+                  >
+                    <span className="truncate">Đặt hàng mới</span>
+                  </Button>
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={() => {

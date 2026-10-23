@@ -6,17 +6,23 @@ import { ForbiddenPage } from '../pages/forbidden-page';
 interface RoleGuardProps {
   allowedRoles: string[];
   moduleName?: string;
+  allowAdminBypass?: boolean;
   children?: React.ReactNode;
 }
 
 /**
  * Component kiểm soát phân quyền cấp Route (Role-based Route Guard - SN-12):
  * - Đọc vai trò của người dùng hiện tại từ localStorage
- * - ADMIN luôn sở hữu toàn quyền truy cập (Full access)
+ * - ADMIN luôn sở hữu toàn quyền truy cập (Full access) trừ khi cấu hình allowAdminBypass = false
  * - Nếu người dùng không thuộc danh sách allowedRoles, lập tức hiển thị màn hình 403 Forbidden chuẩn UI
  * - Tuyệt đối không để xảy ra màn hình trắng hoặc chuyển hướng mù quáng
  */
-export const RoleGuard: React.FC<RoleGuardProps> = ({ allowedRoles, moduleName, children }) => {
+export const RoleGuard: React.FC<RoleGuardProps> = ({
+  allowedRoles,
+  moduleName,
+  allowAdminBypass = true,
+  children,
+}) => {
   const user = getStoredUser();
 
   if (!user) {
@@ -27,8 +33,8 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ allowedRoles, moduleName, 
     r.trim().toUpperCase()
   );
 
-  // 1. Quản trị viên (ADMIN) luôn sở hữu toàn quyền truy cập
-  if (userRoles.includes('ADMIN')) {
+  // 1. Quản trị viên (ADMIN) luôn sở hữu toàn quyền truy cập (trừ khi trang yêu cầu cách ly tuyệt đối)
+  if (allowAdminBypass && userRoles.includes('ADMIN')) {
     return children ? <>{children}</> : <Outlet />;
   }
 

@@ -30,9 +30,26 @@ export const ShortPickReasonModal: React.FC<ShortPickReasonModalProps> = ({
   const [customReasonText, setCustomReasonText] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Khởi tạo số lượng thực soạn: nếu hiện tại đang >= requiredQty thì mặc định giảm 1 hoặc về 0 để là trường hợp thiếu
+  const initialQty = React.useMemo(() => {
+    if (!item) return 0;
+    if (currentPickedQuantity < item.totalRequiredQuantity) {
+      return currentPickedQuantity;
+    }
+    return Math.max(0, item.totalRequiredQuantity - 1);
+  }, [item, currentPickedQuantity]);
+
+  const [pickedQtyInput, setPickedQtyInput] = useState<number>(initialQty);
+
+  React.useEffect(() => {
+    setPickedQtyInput(initialQty);
+    setErrorMessage(null);
+  }, [initialQty]);
+
   if (!isOpen || !item) return null;
 
-  const missingQuantity = Math.max(0, item.totalRequiredQuantity - currentPickedQuantity);
+  const currentParsedQty = isNaN(pickedQtyInput) ? 0 : pickedQtyInput;
+  const missingQuantity = Math.max(0, item.totalRequiredQuantity - currentParsedQty);
 
   const handleSelectReason = (code: ShortPickReasonCode) => {
     setSelectedReasonCode(code);
@@ -41,6 +58,16 @@ export const ShortPickReasonModal: React.FC<ShortPickReasonModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (currentParsedQty >= item.totalRequiredQuantity) {
+      setErrorMessage(`Khi báo thiếu, số lượng thực soạn (${currentParsedQty}) phải nhỏ hơn số lượng cần soạn (${item.totalRequiredQuantity})`);
+      return;
+    }
+
+    if (currentParsedQty < 0) {
+      setErrorMessage('Số lượng thực soạn không được âm');
+      return;
+    }
 
     const selectedOption = SHORT_PICK_REASONS.find((r) => r.code === selectedReasonCode);
     let finalReasonText = selectedOption?.label || '';
@@ -55,7 +82,7 @@ export const ShortPickReasonModal: React.FC<ShortPickReasonModalProps> = ({
       finalReasonText = `${finalReasonText}: ${customReasonText.trim()}`;
     }
 
-    onConfirm(currentPickedQuantity, finalReasonText, selectedReasonCode);
+    onConfirm(currentParsedQty, finalReasonText, selectedReasonCode);
     onClose();
   };
 
@@ -100,9 +127,76 @@ export const ShortPickReasonModal: React.FC<ShortPickReasonModalProps> = ({
               <span className="text-slate-600">
                 Yêu cầu: <strong>{item.totalRequiredQuantity} {item.unit}</strong>
               </span>
-              <span className="text-amber-700 font-bold">
-                Thực soạn: {currentPickedQuantity} {item.unit}
+              <span className="font-bold text-rose-600">
+                Số lượng thiếu: {missingQuantity} {item.unit}
               </span>
+            </div>
+          </div>
+
+          {/* Khối nhập số lượng thực tế nhặt được khi báo thiếu */}
+          <div className="p-3.5 bg-amber-50/70 border border-amber-200/90 rounded-xl space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                Số lượng thực tế nhặt được <span className="text-rose-500">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setPickedQtyInput(0);
+                  setErrorMessage(null);
+                }}
+                className="px-2 py-0.5 rounded bg-white border border-amber-300 text-[11px] font-semibold text-amber-900 hover:bg-amber-100 cursor-pointer shadow-2xs"
+              >
+                Hết hàng hoàn toàn (Nhặt 0)
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center h-10 border border-slate-300 rounded-xl bg-white shadow-2xs overflow-hidden shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPickedQtyInput((prev) => Math.max(0, prev - 1));
+                    setErrorMessage(null);
+                  }}
+                  disabled={pickedQtyInput <= 0}
+                  className="w-10 h-full flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-40 cursor-pointer text-base font-bold"
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min={0}
+                  max={Math.max(0, item.totalRequiredQuantity - 1)}
+                  value={pickedQtyInput}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setPickedQtyInput(isNaN(val) ? 0 : val);
+                    setErrorMessage(null);
+                  }}
+                  className="w-16 h-full text-center font-mono font-bold text-slate-900 text-sm focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPickedQtyInput((prev) => Math.min(Math.max(0, item.totalRequiredQuantity - 1), prev + 1));
+                    setErrorMessage(null);
+                  }}
+                  disabled={pickedQtyInput >= item.totalRequiredQuantity - 1}
+                  className="w-10 h-full flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-40 cursor-pointer text-base font-bold"
+                >
+                  +
+                </button>
+              </div>
+
+              <div className="text-xs leading-tight">
+                <span className="text-slate-600 block">
+                  Đơn vị tính: <strong className="text-slate-800">{item.unit}</strong>
+                </span>
+                <span className="text-[11px] text-amber-800 mt-0.5 block">
+                  (Tối đa: {Math.max(0, item.totalRequiredQuantity - 1)} {item.unit} để ghi nhận thiếu)
+                </span>
+              </div>
             </div>
 
             {/* Danh sách các đơn hàng thành phần bị ảnh hưởng */}

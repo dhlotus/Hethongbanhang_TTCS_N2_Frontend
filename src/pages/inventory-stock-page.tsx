@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Boxes,
   Search,
-  RefreshCw,
+  PackageSearch,
   AlertTriangle,
   CheckCircle2,
   Lock,
@@ -16,8 +16,6 @@ import {
   Filter,
   Layers,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   SlidersHorizontal,
   PackagePlus,
   Trash2,
@@ -26,6 +24,7 @@ import {
 import { showToast } from '../components/toast';
 import { ModalLayout } from '../components/modal-layout';
 import { MinStockModal } from '../components/inventory/min-stock-modal';
+import { Pagination } from '../components/pagination';
 import { inventoryService } from '../services/inventory.service';
 import { productsService, PRODUCT_CATEGORIES } from '../services/products.service';
 import { categoriesService } from '../services/categories.service';
@@ -42,9 +41,11 @@ import type {
 import type { StockBalance } from '../types/inventory.types';
 
 export const InventoryStockPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [stockItems, setStockItems] = useState<StockOverviewItem[]>([]);
+  const [totalItems, setTotalItems] = useState<number>(0);
+  const [backendSummary, setBackendSummary] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [totalAlertsCount, setTotalAlertsCount] = useState<number>(0);
   const [warehousesList, setWarehousesList] = useState<StandardWarehouse[]>(STANDARD_WAREHOUSES);
@@ -118,21 +119,24 @@ export const InventoryStockPage: React.FC = () => {
   // Bộ lọc kho ban đầu: Thủ kho cố định kho của mình, Quản lý kho / Admin xem Tất cả kho
   const defaultWarehouse = isKeeper ? keeperWarehouseId : 'ALL';
 
-  // Bộ lọc & Tìm kiếm (Đồng bộ query filter từ Dashboard kho: /inventory/stock?filter=BELOW_MIN_STOCK)
-  const initialFilter = (searchParams.get('filter') as StockStatusType) || 'ALL';
-  const [searchInput, setSearchInput] = useState<string>('');
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [selectedWarehouse, setSelectedWarehouse] = useState<string>(defaultWarehouse);
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [selectedStatus, setSelectedStatus] = useState<StockStatusType | 'ALL'>(initialFilter);
+  // Đọc giá trị bộ lọc & phân trang ban đầu từ URL Query Parameters
+  const initialSearch = searchParams.get('search') || '';
+  const initialWarehouse = searchParams.get('warehouse') || defaultWarehouse;
+  const initialCategory = searchParams.get('category') || 'ALL';
+  const initialStatus =
+    (searchParams.get('status') as StockStatusType) ||
+    (searchParams.get('filter') as StockStatusType) ||
+    'ALL';
+  const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+  const initialLimit = Math.max(10, parseInt(searchParams.get('limit') || '10', 10) || 10);
 
-  // Lắng nghe thay đổi searchParams từ URL (khi click từ Dashboard chuyển sang)
-  useEffect(() => {
-    const f = searchParams.get('filter');
-    if (f === 'BELOW_MIN_STOCK') {
-      setSelectedStatus('BELOW_MIN_STOCK');
-    }
-  }, [searchParams]);
+  const [searchInput, setSearchInput] = useState<string>(initialSearch);
+  const [searchTerm, setSearchTerm] = useState<string>(initialSearch);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>(initialWarehouse);
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
+  const [selectedStatus, setSelectedStatus] = useState<StockStatusType | 'ALL'>(initialStatus);
+  const [currentPage, setCurrentPage] = useState<number>(initialPage);
+  const [pageSize, setPageSize] = useState<number>(initialLimit);
 
   // Popup & Modal trạng thái
   const [conversionModalOpen, setConversionModalOpen] = useState<boolean>(false);
@@ -359,48 +363,197 @@ export const InventoryStockPage: React.FC = () => {
     userRoles.includes('WH_MANAGER') ||
     userRoles.includes('SALES_MANAGER');
 
-  // Debounce tìm kiếm
+  const isInternalChangeRef = useRef(false);
+
+  // Đồng bộ hóa URL Search Params an toàn, giữ nguyên các param khác và không reload trang
+  const updateUrlParams = useCallback(
+    (updates: {
+      search?: string;
+      warehouse?: string;
+      category?: string;
+      status?: string;
+      page?: number;
+      limit?: number;
+    }) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          Object.entries(updates).forEach(([key, val]) => {
+            if (
+              val === undefined ||
+              val === '' ||
+              val === 'ALL' ||
+              (key === 'page' && val === 1) ||
+              (key === 'limit' && val === 10)
+            ) {
+              next.delete(key);
+            } else {
+              next.set(key, String(val));
+            }
+          });
+          if (updates.status !== undefined) {
+            next.delete('filter');
+          }
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
+  const isInitialSearchMount = useRef(true);
+
+  // Debounce tìm kiếm (350ms) để cập nhật URL và nạp dữ liệu
   useEffect(() => {
+    if (isInitialSearchMount.current) {
+      isInitialSearchMount.current = false;
+      return;
+    }
     const timer = setTimeout(() => {
-      setSearchTerm(searchInput);
-    }, 300);
+      const trimmed = searchInput.trim();
+      if (trimmed !== searchTerm) {
+        setSearchTerm(trimmed);
+        setCurrentPage(1);
+        updateUrlParams({ search: trimmed, page: 1 });
+      }
+    }, 350);
     return () => clearTimeout(timer);
-  }, [searchInput]);
+  }, [searchInput, searchTerm, updateUrlParams]);
+
+  // Lắng nghe thay đổi searchParams từ URL (khi click từ Dashboard chuyển sang hoặc Back/Forward trên browser)
+  useEffect(() => {
+    const urlSearch = searchParams.get('search') || '';
+    const urlWh = searchParams.get('warehouse') || defaultWarehouse;
+    const urlCat = searchParams.get('category') || 'ALL';
+    const urlStatus =
+      (searchParams.get('status') as StockStatusType) ||
+      (searchParams.get('filter') as StockStatusType) ||
+      'ALL';
+    const urlPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    const urlLimit = Math.max(10, parseInt(searchParams.get('limit') || '10', 10) || 10);
+
+    let changed = false;
+    if (urlSearch !== searchTerm) {
+      setSearchTerm(urlSearch);
+      setSearchInput(urlSearch);
+      changed = true;
+    }
+    if (urlWh !== selectedWarehouse) {
+      setSelectedWarehouse(urlWh);
+      changed = true;
+    }
+    if (urlCat !== selectedCategory) {
+      setSelectedCategory(urlCat);
+      changed = true;
+    }
+    if (urlStatus !== selectedStatus) {
+      setSelectedStatus(urlStatus);
+      changed = true;
+    }
+    if (urlPage !== currentPage) {
+      setCurrentPage(urlPage);
+      changed = true;
+    }
+    if (urlLimit !== pageSize) {
+      setPageSize(urlLimit);
+      changed = true;
+    }
+
+    if (changed && isInternalChangeRef.current) {
+      isInternalChangeRef.current = false;
+    }
+  }, [searchParams, defaultWarehouse]);
+
+  const handleWarehouseChange = (newWh: string) => {
+    isInternalChangeRef.current = true;
+    setSelectedWarehouse(newWh);
+    setCurrentPage(1);
+    updateUrlParams({ warehouse: newWh, page: 1 });
+  };
+
+  const handleCategoryChange = (newCat: string) => {
+    isInternalChangeRef.current = true;
+    setSelectedCategory(newCat);
+    setCurrentPage(1);
+    updateUrlParams({ category: newCat, page: 1 });
+  };
+
+  const handleStatusChange = (newStatus: StockStatusType | 'ALL') => {
+    isInternalChangeRef.current = true;
+    setSelectedStatus(newStatus);
+    setCurrentPage(1);
+    updateUrlParams({ status: newStatus, page: 1 });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    isInternalChangeRef.current = true;
+    setCurrentPage(newPage);
+    updateUrlParams({ page: newPage });
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    isInternalChangeRef.current = true;
+    setPageSize(newSize);
+    setCurrentPage(1);
+    updateUrlParams({ limit: newSize, page: 1 });
+  };
+
+  const handleResetFilters = () => {
+    isInternalChangeRef.current = true;
+    setSearchInput('');
+    setSearchTerm('');
+    setSelectedWarehouse(defaultWarehouse);
+    setSelectedCategory('ALL');
+    setSelectedStatus('ALL');
+    setCurrentPage(1);
+    setSearchParams({}, { replace: true });
+  };
+
+  const hasActiveFilters = useMemo(() => {
+    return (
+      searchTerm.trim() !== '' ||
+      (selectedWarehouse !== 'ALL' && selectedWarehouse !== defaultWarehouse) ||
+      selectedCategory !== 'ALL' ||
+      selectedStatus !== 'ALL'
+    );
+  }, [searchTerm, selectedWarehouse, defaultWarehouse, selectedCategory, selectedStatus]);
 
   // Tải dữ liệu tồn kho từ Backend API / Demo
   const fetchStockData = useCallback(async () => {
     setLoading(true);
     try {
-      const [data, alerts] = await Promise.all([
+      const [res, alerts] = await Promise.all([
         inventoryService.getStockOverview({
           search: searchTerm,
           warehouse: selectedWarehouse,
           category: selectedCategory,
           status: selectedStatus,
+          page: currentPage,
+          limit: pageSize,
         }),
         inventoryService.getLowStockAlerts(selectedWarehouse),
       ]);
-      setStockItems(data);
+      if (Array.isArray(res)) {
+        setStockItems(res);
+        setTotalItems(res.length);
+        setBackendSummary(null);
+      } else if (res && typeof res === 'object') {
+        setStockItems(res.data || []);
+        setTotalItems(res.total ?? (res.data?.length || 0));
+        setBackendSummary(res.summary || null);
+      }
       setTotalAlertsCount(alerts.length);
     } catch {
       showToast('error', 'Không thể tải dữ liệu tồn kho. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, selectedWarehouse, selectedCategory, selectedStatus]);
+  }, [searchTerm, selectedWarehouse, selectedCategory, selectedStatus, currentPage, pageSize]);
 
   useEffect(() => {
     fetchStockData();
   }, [fetchStockData]);
-
-  // Phân trang danh sách tồn kho (10 - 20 - 50 - 100)
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(10);
-
-  // Reset về trang 1 khi thay đổi bộ lọc tìm kiếm
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, selectedWarehouse, selectedCategory, selectedStatus]);
 
   // Danh sách nhóm hàng cấp 1 bền vững: chỉ lọc theo nhóm hàng cấp 1 (Level 1)
   const [categoryOptions, setCategoryOptions] = useState<string[]>(() =>
@@ -447,6 +600,9 @@ export const InventoryStockPage: React.FC = () => {
 
   // Thống kê tổng hợp 3 cột tồn kho + Cảnh báo đứt hàng (chỉ đếm hàng sắp đứt, không lấy hàng 0 tồn)
   const summaryStats = useMemo(() => {
+    if (backendSummary) {
+      return backendSummary;
+    }
     let totalPhysical = 0;
     let totalReserved = 0;
     let totalAvailable = 0;
@@ -480,9 +636,10 @@ export const InventoryStockPage: React.FC = () => {
       nearOutOfStockCount,
       totalSku: stockItems.length,
     };
-  }, [stockItems]);
+  }, [stockItems, backendSummary]);
 
-  const totalPages = Math.max(1, Math.ceil(stockItems.length / pageSize));
+  const effectiveTotalItems = totalItems || stockItems.length;
+  const totalPages = Math.max(1, Math.ceil(effectiveTotalItems / pageSize));
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -491,8 +648,11 @@ export const InventoryStockPage: React.FC = () => {
   }, [currentPage, totalPages]);
 
   const paginatedItems = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return stockItems.slice(start, start + pageSize);
+    if (stockItems.length > pageSize) {
+      const start = (currentPage - 1) * pageSize;
+      return stockItems.slice(start, start + pageSize);
+    }
+    return stockItems;
   }, [stockItems, currentPage, pageSize]);
 
   // Mở modal cấu hình tồn tối thiểu (SN-183)
@@ -668,103 +828,187 @@ export const InventoryStockPage: React.FC = () => {
   };
 
   return (
-    <div className="p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
+    <div className="space-y-4 sm:space-y-5 w-full max-w-[1600px] mx-auto">
 
-      {/* Thẻ Thống kê 3 Cột Tồn Kho Minh Bạch */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Thẻ Thống kê 3 Cột Tồn Kho Minh Bạch (Interactive KPI Cards) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Thẻ 1: Tồn thực tế */}
-        <div className="rounded-xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs hover:shadow-xs transition-shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Tồn Thực Tế
-            </span>
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-              <Building2 className="w-5 h-5" />
+        <div
+          onClick={() => handleStatusChange('ALL')}
+          className={`p-3.5 sm:p-4.5 rounded-2xl border shadow-xs flex items-center justify-between transition-all cursor-pointer ${
+            selectedStatus === 'ALL'
+              ? 'bg-blue-50/50 border-blue-300 ring-2 ring-blue-500/20 shadow-xs'
+              : 'bg-white border-slate-200 hover:border-blue-200 hover:shadow-xs hover:scale-[1.01] active:scale-[0.99]'
+          }`}
+          title="Bấm để xem toàn bộ sản phẩm tồn kho"
+        >
+          <div>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Tồn Thực Tế
+              </p>
+              {selectedStatus === 'ALL' && (
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse" />
+              )}
             </div>
+            <p className="mt-1 text-xl sm:text-2xl font-extrabold text-slate-900 tabular-nums">
+              {summaryStats.totalPhysical.toLocaleString('vi-VN')}
+            </p>
           </div>
-          <div className="mt-2 text-2xl font-extrabold text-slate-900 tabular-nums">
-            {summaryStats.totalPhysical.toLocaleString('vi-VN')}
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
         {/* Thẻ 2: Tồn tạm giữ */}
-        <div className="rounded-xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs hover:shadow-xs transition-shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+        <div className="bg-white p-3.5 sm:p-4.5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">
               Tồn Tạm Giữ
-            </span>
-            <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
-              <Lock className="w-5 h-5" />
-            </div>
+            </p>
+            <p className="mt-1 text-xl sm:text-2xl font-extrabold text-slate-900 tabular-nums">
+              {summaryStats.totalReserved.toLocaleString('vi-VN')}
+            </p>
           </div>
-          <div className="mt-2 text-2xl font-extrabold text-slate-900 tabular-nums">
-            {summaryStats.totalReserved.toLocaleString('vi-VN')}
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <Lock className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
         {/* Thẻ 3: Tồn khả dụng */}
-        <div className="rounded-xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs hover:shadow-xs transition-shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Tồn Khả Dụng
-            </span>
-            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-              <CheckCircle2 className="w-5 h-5" />
+        <div
+          onClick={() => handleStatusChange(selectedStatus === 'IN_STOCK' ? 'ALL' : 'IN_STOCK')}
+          className={`p-3.5 sm:p-4.5 rounded-2xl border shadow-xs flex items-center justify-between transition-all cursor-pointer ${
+            selectedStatus === 'IN_STOCK'
+              ? 'bg-emerald-50/50 border-emerald-300 ring-2 ring-emerald-500/20 shadow-xs'
+              : 'bg-white border-slate-200 hover:border-emerald-200 hover:shadow-xs hover:scale-[1.01] active:scale-[0.99]'
+          }`}
+          title="Bấm để lọc các sản phẩm còn hàng"
+        >
+          <div>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Tồn Khả Dụng
+              </p>
+              {selectedStatus === 'IN_STOCK' && (
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              )}
             </div>
+            <p className="mt-1 text-xl sm:text-2xl font-extrabold text-emerald-700 tabular-nums">
+              {summaryStats.totalAvailable.toLocaleString('vi-VN')}
+            </p>
           </div>
-          <div className="mt-2 text-2xl font-extrabold text-slate-900 tabular-nums">
-            {summaryStats.totalAvailable.toLocaleString('vi-VN')}
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
-        {/* Thẻ 4: Cảnh báo đứt hàng (Ô thông báo thuần túy, không trỏ, không click) */}
-        <div className="rounded-xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Cảnh Báo Đứt Hàng
-            </span>
-            <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
-              <AlertTriangle className="w-5 h-5" />
+        {/* Thẻ 4: Cảnh báo đứt hàng (Click để lọc nhanh) */}
+        <div
+          onClick={() => handleStatusChange(selectedStatus === 'BELOW_MIN_STOCK' ? 'ALL' : 'BELOW_MIN_STOCK')}
+          className={`p-3.5 sm:p-4.5 rounded-2xl border shadow-xs flex items-center justify-between transition-all cursor-pointer ${
+            selectedStatus === 'BELOW_MIN_STOCK'
+              ? 'bg-rose-50/80 border-rose-300 ring-2 ring-rose-500/20 shadow-xs'
+              : 'bg-white border-slate-200 hover:border-rose-200 hover:shadow-xs hover:scale-[1.01] active:scale-[0.99]'
+          }`}
+          title="Bấm để lọc các sản phẩm cảnh báo đứt hàng"
+        >
+          <div>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Cảnh Báo Đứt Hàng
+              </p>
+              {selectedStatus === 'BELOW_MIN_STOCK' && (
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-600 animate-pulse" />
+              )}
             </div>
+            <p className="mt-1 text-xl sm:text-2xl font-extrabold text-rose-600 tabular-nums">
+              {totalAlertsCount}
+            </p>
           </div>
-          <div className="mt-2 text-2xl font-extrabold text-rose-600 tabular-nums">
-            {totalAlertsCount}
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
       </div>
 
-      {/* Thanh Bộ Lọc, Tìm Kiếm & Làm Mới (Gọn gàng trên 1 hàng) */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 sm:gap-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 flex-1 min-w-0">
-            {/* Ô Tìm nhanh theo Mã SKU hoặc Tên sản phẩm */}
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      {/* ── THANH TÌM KIẾM, BỘ LỌC ĐA TIÊU CHÍ & NÚT CHỨC NĂNG ── */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs space-y-3">
+        {/* Hàng 1: Ô tìm kiếm thông minh + Các nút hành động */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* Ô input tìm kiếm & nút reset bộ lọc */}
+          <div className="flex items-center gap-2 flex-1 max-w-xl">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Tìm nhanh mã SKU hoặc tên sản phẩm..."
-                className="w-full pl-9 pr-7 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                className="w-full h-10 pl-10 pr-9 text-xs sm:text-sm font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50/60 hover:bg-white focus:bg-white transition-all placeholder-slate-400 shadow-2xs"
               />
               {searchInput && (
                 <button
                   type="button"
-                  onClick={() => setSearchInput('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  onClick={() => {
+                    setSearchInput('');
+                    setSearchTerm('');
+                    setCurrentPage(1);
+                    updateUrlParams({ search: '', page: 1 });
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
+                  title="Xóa từ khóa tìm kiếm"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
-            {/* Lọc theo Kho hàng (Cố định hoặc lấy động các kho thực tế) */}
+            {/* Nút reset bộ lọc khi có điều kiện lọc đang kích hoạt */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="inline-flex items-center justify-center gap-1.5 h-10 px-3.5 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-xl transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95"
+                title="Đặt lại toàn bộ bộ lọc về mặc định"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Xóa lọc</span>
+              </button>
+            )}
+          </div>
+
+          {/* Nhóm nút hành động: Xuất Excel */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0 sm:ml-auto">
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={exportingExcel || loading}
+              className="inline-flex items-center justify-center gap-1.5 h-10 px-4 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 rounded-xl transition-all cursor-pointer shadow-2xs shadow-emerald-600/20 whitespace-nowrap active:scale-95"
+              title="Xuất báo cáo tồn kho ra tệp Excel (.xlsx) chuẩn gửi kế toán"
+            >
+              <FileSpreadsheet className={`w-4 h-4 ${exportingExcel ? 'animate-bounce' : ''}`} />
+              <span>{exportingExcel ? 'Đang xuất...' : 'Xuất Excel'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Hàng 2: Grid 3 dropdown bộ lọc chia đều cân xứng, rộng rãi, không bị co lại */}
+        <div className="pt-2.5 border-t border-slate-100 flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold shrink-0">
+            <Filter className="w-3.5 h-3.5 text-slate-400" />
+            <span className="hidden sm:inline">Bộ lọc:</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 flex-1">
+            {/* 1. Lọc theo Kho hàng */}
             <div className="relative">
-              <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Building2 className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <select
                 value={selectedWarehouse}
-                onChange={(e) => setSelectedWarehouse(e.target.value)}
-                className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer truncate"
+                onChange={(e) => handleWarehouseChange(e.target.value)}
+                aria-label="Lọc theo kho hàng"
+                className="w-full h-10 text-xs sm:text-sm font-medium border border-slate-200 rounded-xl pl-8 pr-7 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer transition-all truncate shadow-2xs"
               >
                 <option value="ALL">Tất cả kho hàng</option>
                 {warehousesList.map((wh) => (
@@ -775,13 +1019,14 @@ export const InventoryStockPage: React.FC = () => {
               </select>
             </div>
 
-            {/* Lọc theo Nhóm hàng */}
+            {/* 2. Lọc theo Nhóm hàng */}
             <div className="relative">
-              <Layers className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Layers className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <select
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer truncate"
+                onChange={(e) => handleCategoryChange(e.target.value)}
+                aria-label="Lọc theo nhóm hàng"
+                className="w-full h-10 text-xs sm:text-sm font-medium border border-slate-200 rounded-xl pl-8 pr-7 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer transition-all truncate shadow-2xs"
               >
                 <option value="ALL">Tất cả nhóm hàng</option>
                 {categoryOptions.map((cat) => (
@@ -792,13 +1037,14 @@ export const InventoryStockPage: React.FC = () => {
               </select>
             </div>
 
-            {/* Lọc theo Trạng thái tồn kho */}
+            {/* 3. Lọc theo Trạng thái tồn kho */}
             <div className="relative">
-              <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Filter className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <select
                 value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value as StockStatusType | 'ALL')}
-                className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer truncate"
+                onChange={(e) => handleStatusChange(e.target.value as StockStatusType | 'ALL')}
+                aria-label="Lọc theo trạng thái tồn"
+                className="w-full h-10 text-xs sm:text-sm font-medium border border-slate-200 rounded-xl pl-8 pr-7 bg-slate-50/70 hover:bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer transition-all truncate shadow-2xs"
               >
                 <option value="ALL">Tất cả trạng thái tồn</option>
                 <option value="BELOW_MIN_STOCK">Dưới tồn tối thiểu</option>
@@ -808,36 +1054,11 @@ export const InventoryStockPage: React.FC = () => {
               </select>
             </div>
           </div>
-
-          {/* Nút Làm mới */}
-          <div className="flex items-center gap-2 self-end lg:self-auto shrink-0">
-            {/* Nút Xuất Excel gửi kế toán (SN-229 / SN-220) */}
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              disabled={exportingExcel || loading}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 rounded-xl transition-all cursor-pointer shadow-2xs shadow-emerald-600/20"
-              title="Xuất báo cáo tồn kho ra tệp Excel (.xlsx) chuẩn gửi kế toán"
-            >
-              <FileSpreadsheet className={`w-4 h-4 ${exportingExcel ? 'animate-bounce' : ''}`} />
-              <span>{exportingExcel ? 'Đang xuất...' : 'Xuất Excel'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={fetchStockData}
-              disabled={loading}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 border border-slate-200/90 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-2xs"
-              title="Làm mới tồn kho"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
-              <span>Làm mới</span>
-            </button>
-          </div>
         </div>
       </div>
 
       {/* Bảng Danh Sách Sổ Tồn Kho: Dạng Thẻ trên Mobile, Dạng Bảng trên Desktop */}
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
         {/* 1. GIAO DIỆN MOBILE (< 768px): Card View trực quan, 0% cuộn ngang */}
         <div className="md:hidden divide-y divide-slate-100">
           {loading ? (
@@ -856,12 +1077,10 @@ export const InventoryStockPage: React.FC = () => {
               </div>
             ))
           ) : stockItems.length === 0 ? (
-            <div className="p-8 text-center text-slate-400">
-              <Boxes className="w-10 h-10 mx-auto mb-2 text-slate-300" />
-              <p className="font-semibold text-slate-700 text-sm">
-                {selectedWarehouse !== 'ALL'
-                  ? 'Kho hàng này hiện chưa có sản phẩm nào'
-                  : 'Không tìm thấy sản phẩm tồn kho nào'}
+            <div className="py-12 flex flex-col items-center justify-center text-center">
+              <PackageSearch className="w-10 h-10 text-slate-300 mb-2 stroke-[1.5]" />
+              <p className="text-sm font-semibold text-slate-600">
+                Không tìm thấy sản phẩm
               </p>
             </div>
           ) : (
@@ -875,7 +1094,7 @@ export const InventoryStockPage: React.FC = () => {
                 <div key={itemKey} className="p-3.5 space-y-3 bg-white hover:bg-slate-50/50 transition-colors">
                   {/* Hàng 1: SKU badge + Kho bãi */}
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
+                    <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
                       {item.sku}
                     </span>
                     <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md truncate max-w-[200px]">
@@ -888,7 +1107,7 @@ export const InventoryStockPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleOpenConversionModal(item)}
-                    className="text-left font-bold text-slate-900 text-base leading-snug hover:text-indigo-600 transition-colors block cursor-pointer break-words"
+                    className="text-left font-bold text-slate-900 text-base leading-snug hover:text-blue-600 transition-colors block cursor-pointer break-words"
                   >
                     {item.name}
                   </button>
@@ -938,8 +1157,8 @@ export const InventoryStockPage: React.FC = () => {
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <button
                       type="button"
-                      onClick={() => navigate(`/warehouse/cards?sku=${item.sku}&warehouseId=${item.warehouseId || ''}`)}
-                      className="min-h-[44px] px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:bg-slate-100 text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                      onClick={() => navigate(`/inventory/stock-card?sku=${encodeURIComponent(item.sku)}&warehouse=${encodeURIComponent(item.warehouse)}`)}
+                      className="min-h-[44px] px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:bg-slate-100 text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
                     >
                       <Eye className="w-4 h-4 text-slate-500" />
                       <span>Xem thẻ kho</span>
@@ -949,16 +1168,16 @@ export const InventoryStockPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleOpenMinStockModal(item)}
-                        className="min-h-[44px] px-3 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 active:bg-indigo-200 text-xs font-semibold text-indigo-700 flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                        className="min-h-[44px] px-3 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100 active:bg-blue-200 text-xs font-semibold text-blue-700 flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
                       >
-                        <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
+                        <SlidersHorizontal className="w-4 h-4 text-blue-600" />
                         <span>Sửa tồn min</span>
                       </button>
                     ) : canAdjustStock ? (
                       <button
                         type="button"
                         onClick={() => handleOpenAdjustModal(item)}
-                        className="min-h-[44px] px-3 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 active:bg-emerald-200 text-xs font-semibold text-emerald-700 flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                        className="min-h-[44px] px-3 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 active:bg-emerald-200 text-xs font-semibold text-emerald-700 flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
                       >
                         <ArrowRightLeft className="w-4 h-4 text-emerald-600" />
                         <span>Điều chỉnh</span>
@@ -967,7 +1186,7 @@ export const InventoryStockPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleOpenConversionModal(item)}
-                        className="min-h-[44px] px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                        className="min-h-[44px] px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
                       >
                         <Layers className="w-4 h-4 text-slate-500" />
                         <span>Quy đổi ĐVT</span>
@@ -980,98 +1199,114 @@ export const InventoryStockPage: React.FC = () => {
           )}
         </div>
 
-        {/* 2. GIAO DIỆN DESKTOP (>= 768px): Bảng Danh Sách 6 Cột */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-sm divide-y divide-slate-100">
+        {/* 2. GIAO DIỆN DESKTOP (>= 768px): Bảng Danh Sách 6 Cột Thích Ứng Toàn Diện */}
+        <div className="hidden md:block w-full overflow-x-auto">
+          <table className="w-full text-sm divide-y divide-slate-100 table-fixed border-collapse">
+            <colgroup>
+              <col className="w-[32%]" />
+              <col className="w-[16%]" />
+              {selectedStatus === 'DAMAGED' ? (
+                <>
+                  <col className="w-[19%]" />
+                  <col className="w-[19%]" />
+                </>
+              ) : selectedStatus === 'BELOW_MIN_STOCK' ? (
+                <>
+                  <col className="w-[13%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[13%]" />
+                </>
+              ) : (
+                <>
+                  <col className="w-[13%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[13%]" />
+                </>
+              )}
+              <col className="w-[14%]" />
+            </colgroup>
             <thead>
-              <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="px-4 py-3 text-left w-[30%]">
-                  Sản Phẩm &amp; SKU
+              <tr className="border-b border-slate-200/80 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="px-3.5 py-3.5 text-left whitespace-nowrap">
+                  Sản phẩm &amp; SKU
                 </th>
-                <th className="px-4 py-3 text-left w-[20%]">
-                  Kho Bãi
+                <th className="px-3 py-3.5 text-left whitespace-nowrap">
+                  Kho bãi
                 </th>
                 {selectedStatus === 'DAMAGED' ? (
                   <>
-                    <th className="px-4 py-3 text-left w-[20%]">
-                      Số Lô
+                    <th className="px-3 py-3.5 text-left whitespace-nowrap">
+                      Số lô
                     </th>
-                    <th className="px-4 py-3 text-right w-[18%] text-amber-600">
+                    <th className="px-3 py-3.5 text-right whitespace-nowrap text-amber-600">
                       SL Lỗi
                     </th>
                   </>
                 ) : selectedStatus === 'BELOW_MIN_STOCK' ? (
                   <>
-                    <th className="px-4 py-3 text-right w-[13%]">
-                      Tồn Khả Dụng
+                    <th className="px-2.5 py-3.5 text-right whitespace-nowrap">
+                      Tồn khả dụng
                     </th>
-                    <th className="px-4 py-3 text-right w-[13%]">
-                      Tồn Tối Thiểu
+                    <th className="px-2.5 py-3.5 text-right whitespace-nowrap">
+                      Tồn tối thiểu
                     </th>
-                    <th className="px-4 py-3 text-right w-[14%] text-rose-600">
-                      Thiếu Hụt
+                    <th className="px-2.5 py-3.5 text-right whitespace-nowrap text-rose-600">
+                      Thiếu hụt
                     </th>
                   </>
                 ) : (
                   <>
-                    <th className="px-4 py-3 text-right w-[13%]">
-                      Tồn Thực Tế
+                    <th className="px-2.5 py-3.5 text-right whitespace-nowrap">
+                      Tồn thực tế
                     </th>
-                    <th className="px-4 py-3 text-right w-[13%]">
-                      Tồn Tạm Giữ
+                    <th className="px-2.5 py-3.5 text-right whitespace-nowrap">
+                      Tồn tạm giữ
                     </th>
-                    <th className="px-4 py-3 text-right w-[14%]">
-                      Tồn Khả Dụng
+                    <th className="px-2.5 py-3.5 text-right whitespace-nowrap">
+                      Tồn khả dụng
                     </th>
                   </>
                 )}
-                <th className="px-4 py-3 text-right w-[10%] min-w-[105px]">
-                  Thao Tác
+                <th className="px-3 py-3.5 text-center whitespace-nowrap">
+                  Thao tác
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100/90 text-sm">
+            <tbody className="divide-y divide-slate-100 text-sm">
               {loading ? (
                 Array.from({ length: 5 }).map((_, idx) => (
                   <tr key={idx} className="animate-pulse">
-                    <td className="px-4 py-3.5">
+                    <td className="px-3.5 py-3.5">
                       <div className="h-4 bg-slate-200 rounded w-40 mb-2"></div>
                       <div className="h-3 bg-slate-100 rounded w-24"></div>
                     </td>
-                    <td className="px-4 py-3.5">
+                    <td className="px-3 py-3.5">
                       <div className="h-4 bg-slate-200 rounded w-32 mb-1"></div>
                       <div className="h-3 bg-slate-100 rounded w-20"></div>
                     </td>
-                    <td className="px-4 py-3.5 text-right">
+                    <td className="px-2.5 py-3.5 text-right">
                       <div className="h-4 bg-slate-200 rounded w-16 ml-auto"></div>
                     </td>
-                    <td className="px-4 py-3.5 text-right">
+                    <td className="px-2.5 py-3.5 text-right">
                       <div className="h-4 bg-slate-200 rounded w-16 ml-auto"></div>
                     </td>
-                    <td className="px-4 py-3.5 text-right">
+                    <td className="px-2.5 py-3.5 text-right">
                       <div className="h-4 bg-slate-200 rounded w-20 ml-auto"></div>
                     </td>
-                    <td className="px-4 py-3.5 text-right">
-                      <div className="h-7 bg-slate-200 rounded-lg w-20 ml-auto"></div>
+                    <td className="px-3 py-3.5 text-center">
+                      <div className="h-8 bg-slate-200 rounded-lg w-20 mx-auto"></div>
                     </td>
                   </tr>
                 ))
               ) : stockItems.length === 0 ? (
                 <tr>
-                  <td colSpan={selectedStatus === 'DAMAGED' ? 5 : 6} className="py-12 text-center text-slate-400">
-                    <Boxes className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                    <p className="font-semibold text-slate-700 text-base">
-                      {selectedStatus === 'DAMAGED'
-                        ? 'Không có sản phẩm lỗi nào tại kho đã chọn'
-                        : selectedWarehouse !== 'ALL'
-                        ? 'Kho hàng này hiện chưa có sản phẩm nào'
-                        : 'Không tìm thấy sản phẩm tồn kho nào'}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-                      {selectedStatus === 'DAMAGED'
-                        ? 'Tất cả sản phẩm tại kho đều đạt chuẩn chất lượng hoặc đã được xử lý hết.'
-                        : 'Thử thay đổi từ khóa tìm kiếm hoặc bỏ bớt bộ lọc'}
-                    </p>
+                  <td colSpan={selectedStatus === 'DAMAGED' ? 5 : 6} className="py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-center">
+                      <PackageSearch className="w-10 h-10 text-slate-300 mb-2 stroke-[1.5]" />
+                      <p className="text-sm font-semibold text-slate-600">
+                        Không tìm thấy sản phẩm
+                      </p>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -1082,18 +1317,23 @@ export const InventoryStockPage: React.FC = () => {
                   return (
                     <tr
                       key={itemKey}
-                      className="hover:bg-indigo-50/25 transition-colors group"
+                      className="hover:bg-slate-50/80 transition-colors group"
                     >
                       {/* 1. Sản Phẩm & SKU */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex flex-col items-start">
-                          <span className="font-mono text-xs font-semibold text-indigo-700 bg-indigo-50/80 border border-indigo-200/60 px-2 py-0.5 rounded-md">
-                            {item.sku}
-                          </span>
+                      <td className="px-3.5 py-3 overflow-hidden">
+                        <div className="flex flex-col items-start gap-1 max-w-full">
                           <button
                             type="button"
                             onClick={() => handleOpenConversionModal(item)}
-                            className="text-left font-semibold text-slate-800 hover:text-indigo-600 transition-colors line-clamp-1 text-sm block mt-1 cursor-pointer"
+                            className="inline-flex items-center font-mono text-[11px] font-bold text-blue-700 bg-blue-50/90 hover:bg-blue-100 border border-blue-200/80 px-2 py-0.5 rounded-md transition-all cursor-pointer max-w-full truncate active:scale-95"
+                            title={`Mã SKU: ${item.sku} — Bấm để tra cứu quy đổi ĐVT`}
+                          >
+                            <span className="truncate">{item.sku}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenConversionModal(item)}
+                            className="text-left font-semibold text-slate-800 hover:text-blue-600 transition-colors text-xs sm:text-sm truncate block max-w-full cursor-pointer leading-snug"
                             title={item.name}
                           >
                             {item.name}
@@ -1102,19 +1342,19 @@ export const InventoryStockPage: React.FC = () => {
                       </td>
 
                       {/* 2. Kho Bãi */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                      <td className="px-3 py-3 overflow-hidden">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-600 min-w-0 max-w-full" title={item.warehouse}>
                           <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="line-clamp-1">{item.warehouse}</span>
+                          <span className="truncate block font-medium">{item.warehouse}</span>
                         </div>
                       </td>
 
                       {selectedStatus === 'DAMAGED' ? (
                         <>
                           {/* 3. Số Lô */}
-                          <td className="px-4 py-3.5 text-left whitespace-nowrap">
+                          <td className="px-3 py-3 text-left overflow-hidden whitespace-nowrap">
                             {item.batchNumber ? (
-                              <span className="font-mono text-xs font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                              <span className="font-mono text-xs font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200/70 truncate block">
                                 {item.batchNumber}
                               </span>
                             ) : (
@@ -1123,86 +1363,93 @@ export const InventoryStockPage: React.FC = () => {
                           </td>
 
                           {/* 4. SL Lỗi */}
-                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                            <span className="font-bold text-amber-600 tabular-nums text-sm">
+                          <td className="px-3 py-3 text-right overflow-hidden whitespace-nowrap">
+                            <span className="font-bold text-amber-600 tabular-nums text-xs sm:text-sm">
                               {(item.damagedQuantity || item.physicalStock || 0).toLocaleString('vi-VN')}
                             </span>
-                            <span className="text-xs font-medium text-amber-600 ml-1">{baseUnit}</span>
+                            <span className="text-[11px] font-normal text-amber-600/70 ml-1">{baseUnit}</span>
                           </td>
                         </>
                       ) : selectedStatus === 'BELOW_MIN_STOCK' ? (
                         <>
-                          {/* 3. Tồn Khả Dụng (Khi ở bộ lọc Dưới tồn tối thiểu: màu đen bình thường, ví dụ: 102 Túi) */}
-                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                            <span className="font-bold text-slate-900 tabular-nums text-sm">
+                          {/* 3. Tồn Khả Dụng */}
+                          <td className="px-2.5 py-3 text-right overflow-hidden whitespace-nowrap">
+                            <span className="font-bold text-slate-900 tabular-nums text-xs sm:text-sm">
                               {item.availableStock.toLocaleString('vi-VN')}
                             </span>
-                            <span className="text-xs font-normal text-slate-900 ml-1">{baseUnit}</span>
+                            <span className="text-[11px] font-normal text-slate-400 ml-1">{baseUnit}</span>
                           </td>
 
-                          {/* 4. Mức Tồn Tối Thiểu (Chỉ hiển thị mức quy định, không chỉnh sửa, màu đen) */}
-                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                            <span className="font-semibold text-slate-900 tabular-nums text-sm">
+                          {/* 4. Mức Tồn Tối Thiểu */}
+                          <td className="px-2.5 py-3 text-right overflow-hidden whitespace-nowrap">
+                            <span className="font-medium text-slate-600 tabular-nums text-xs sm:text-sm">
                               {(item.minStockLevel || 0).toLocaleString('vi-VN')}
                             </span>
-                            <span className="text-xs font-normal text-slate-900 ml-1">{baseUnit}</span>
+                            <span className="text-[11px] font-normal text-slate-400 ml-1">{baseUnit}</span>
                           </td>
 
-                          {/* 5. Thiếu Hụt (Hiển thị số lượng thiếu hụt, màu đỏ, ví dụ: 298 Túi) */}
-                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                            <span className="font-bold text-rose-600 tabular-nums text-sm">
+                          {/* 5. Thiếu Hụt */}
+                          <td className="px-2.5 py-3 text-right overflow-hidden whitespace-nowrap">
+                            <span className="font-bold text-rose-600 tabular-nums text-xs sm:text-sm">
                               {Math.max(0, (item.minStockLevel || 0) - item.availableStock).toLocaleString('vi-VN')}
                             </span>
-                            <span className="text-xs font-semibold text-rose-600 ml-1">{baseUnit}</span>
+                            <span className="text-[11px] font-normal text-rose-500 ml-1">{baseUnit}</span>
                           </td>
                         </>
                       ) : (
                         <>
                           {/* 3. Tồn Thực Tế */}
-                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                            <span className="font-bold text-slate-900 tabular-nums text-sm">
+                          <td className="px-2.5 py-3 text-right overflow-hidden whitespace-nowrap">
+                            <span className="font-bold text-slate-900 tabular-nums text-xs sm:text-sm">
                               {item.physicalStock.toLocaleString('vi-VN')}
                             </span>
-                            <span className="text-xs font-normal text-slate-500 ml-1">{baseUnit}</span>
+                            <span className="text-[11px] font-normal text-slate-400 ml-1">{baseUnit}</span>
                           </td>
 
                           {/* 4. Tồn Tạm Giữ */}
-                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                          <td className="px-2.5 py-3 text-right overflow-hidden whitespace-nowrap">
                             {item.reservedStock > 0 ? (
-                              <span className="inline-flex items-center justify-end gap-1 font-semibold text-amber-700 tabular-nums text-sm">
-                                <Lock className="w-3 h-3 text-amber-500 shrink-0" />
-                                <span>{item.reservedStock.toLocaleString('vi-VN')}</span>
-                                <span className="text-xs font-normal text-slate-500 ml-0.5">{baseUnit}</span>
+                              <span className="font-bold text-amber-700 tabular-nums text-xs sm:text-sm">
+                                {item.reservedStock.toLocaleString('vi-VN')}
                               </span>
                             ) : (
-                              <span className="text-slate-400 text-xs font-normal">0 {baseUnit}</span>
+                              <span className="text-slate-400 tabular-nums text-xs sm:text-sm font-normal">0</span>
                             )}
+                            <span className="text-[11px] font-normal text-slate-400 ml-1">{baseUnit}</span>
                           </td>
 
                           {/* 5. Tồn Khả Dụng */}
-                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                            <span className="font-bold text-slate-900 tabular-nums text-sm">
+                          <td className="px-2.5 py-3 text-right overflow-hidden whitespace-nowrap">
+                            <span
+                              className={`font-bold tabular-nums text-xs sm:text-sm ${
+                                item.availableStock <= 0
+                                  ? 'text-rose-600 font-extrabold'
+                                  : item.isBelowMinStock || item.status === 'LOW_STOCK'
+                                  ? 'text-amber-700 font-extrabold'
+                                  : 'text-emerald-700 font-bold'
+                              }`}
+                            >
                               {item.availableStock.toLocaleString('vi-VN')}
                             </span>
-                            <span className="text-xs font-normal text-slate-500 ml-1">{baseUnit}</span>
+                            <span className="text-[11px] font-normal text-slate-400 ml-1">{baseUnit}</span>
                           </td>
                         </>
                       )}
 
                       {/* 6. Thao Tác (Nếu là hàng lỗi: Nút Xử lý, bình thường: Menu Thao tác) */}
-                      <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                      <td className="px-2 py-3 text-center whitespace-nowrap">
                         {selectedStatus === 'DAMAGED' ? (
                           <button
                             type="button"
                             onClick={() => handleOpenProcessDamagedModal(item)}
-                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
+                            className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
                             title="Xử lý sản phẩm lỗi"
                           >
                             <Wrench className="w-3.5 h-3.5" />
                             <span>Xử lý</span>
                           </button>
                         ) : (
-                          <div className="relative inline-flex items-center justify-end inventory-action-dropdown-container">
+                          <div className="relative inline-flex items-center justify-center inventory-action-dropdown-container">
                             <button
                               type="button"
                               onClick={(e) => {
@@ -1215,24 +1462,24 @@ export const InventoryStockPage: React.FC = () => {
                                   const spaceBelow = window.innerHeight - rect.bottom;
                                   const shouldDropUp = spaceBelow < 250 && rect.top > 250;
                                   setActionMenuAnchor({
-                                    top: shouldDropUp ? rect.top - 4 : rect.bottom + 4,
-                                    right: window.innerWidth - rect.right,
+                                    top: shouldDropUp ? rect.top - 4 : rect.bottom + 6,
+                                    right: Math.max(16, window.innerWidth - rect.right),
                                     isDropUp: shouldDropUp,
                                   });
                                   setOpenActionMenuKey(itemKey);
                                 }
                               }}
-                              className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs select-none whitespace-nowrap shrink-0 ${
+                              className={`inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-semibold transition-all cursor-pointer select-none whitespace-nowrap shadow-2xs active:scale-95 ${
                                 openActionMenuKey === itemKey
-                                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs ring-2 ring-indigo-500/10'
-                                  : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300'
+                                  ? 'bg-blue-600 border-blue-600 text-white shadow-xs ring-2 ring-blue-500/20'
+                                  : 'bg-white hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 border-slate-200 text-slate-700'
                               }`}
                               title="Thao tác"
                             >
-                              <span className="whitespace-nowrap">Thao tác</span>
+                              <span>Thao tác</span>
                               <ChevronDown
-                                className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${
-                                  openActionMenuKey === itemKey ? 'rotate-180 text-indigo-600' : ''
+                                className={`w-3.5 h-3.5 shrink-0 transition-transform duration-150 ${
+                                  openActionMenuKey === itemKey ? 'rotate-180 text-white' : 'text-slate-400'
                                 }`}
                               />
                             </button>
@@ -1247,80 +1494,21 @@ export const InventoryStockPage: React.FC = () => {
           </table>
         </div>
 
-        {/* Thanh Phân Trang 10-20-50-100 Dòng */}
-        {stockItems.length > 0 && (
-          <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
-            {/* Hình 2: Bỏ "mỗi trang " -> Chỉ còn "Số dòng:", bỏ "Hiển thị 1 - 15..." */}
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-slate-600">Số dòng:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-2xs"
-              >
-                <option value={10}>10 dòng</option>
-                <option value={20}>20 dòng</option>
-                <option value={50}>50 dòng</option>
-                <option value={100}>100 dòng</option>
-              </select>
-            </div>
-
-            {/* Hình 4: Các nút phân trang vuông bo nhẹ [<] [1] [2] [3] [4] [>] */}
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage <= 1}
-                className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center shadow-2xs cursor-pointer"
-                title="Trang trước"
-                aria-label="Trang trước"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              <div className="flex items-center gap-1.5">
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter((p) => {
-                    if (totalPages <= 7) return true;
-                    if (p === 1 || p === totalPages) return true;
-                    return Math.abs(p - currentPage) <= 1;
-                  })
-                  .map((p, idx, arr) => {
-                    const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
-                    return (
-                      <React.Fragment key={p}>
-                        {showEllipsis && <span className="px-1 text-slate-400">...</span>}
-                        <button
-                          type="button"
-                          onClick={() => setCurrentPage(p)}
-                          className={`w-8 h-8 rounded-lg text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${
-                            currentPage === p
-                              ? 'bg-indigo-600 text-white font-bold shadow-2xs'
-                              : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      </React.Fragment>
-                    );
-                  })}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage >= totalPages}
-                className="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center shadow-2xs cursor-pointer"
-                title="Trang sau"
-                aria-label="Trang sau"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+        {/* ── THANH PHÂN TRANG GẮN LIỀN CHÂN BẢNG (CHUẨN HỆ THỐNG) ── */}
+        {(effectiveTotalItems > 0 || stockItems.length > 0) && (
+          <Pagination
+            variant="default"
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={effectiveTotalItems}
+            pageSize={pageSize}
+            pageSizeOptions={[10, 20, 50, 100]}
+            itemLabel="sản phẩm"
+            showRecordRange={false}
+            showFirstLast={false}
+            onPageChange={(page) => handlePageChange(page)}
+            onPageSizeChange={handlePageSizeChange}
+          />
         )}
       </div>
 
@@ -1332,7 +1520,7 @@ export const InventoryStockPage: React.FC = () => {
         if (!item) return null;
         return createPortal(
           <div
-            className="inventory-action-portal-menu fixed w-52 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-[9999] animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100"
+            className="inventory-action-portal-menu fixed w-56 rounded-xl bg-white border border-slate-200/90 shadow-xl py-1 z-[9999] animate-in fade-in zoom-in-95 text-left divide-y divide-slate-100"
             style={{
               top: actionMenuAnchor.isDropUp ? undefined : `${actionMenuAnchor.top}px`,
               bottom: actionMenuAnchor.isDropUp
@@ -1343,21 +1531,7 @@ export const InventoryStockPage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="py-1">
-              {/* 1. Xem chi tiết (Có ở tất cả các bộ lọc) */}
-              <button
-                type="button"
-                onClick={() => {
-                  setOpenActionMenuKey(null);
-                  setActionMenuAnchor(null);
-                  handleOpenConversionModal(item);
-                }}
-                className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-              >
-                <Eye className="w-4 h-4 text-slate-400" />
-                <span>Xem chi tiết</span>
-              </button>
-
-              {/* 2. Xem thẻ kho hàng hóa (SN-185) */}
+              {/* 1. Xem thẻ kho hàng hóa (Ưu tiên số 1 trong nghiệp vụ kho) */}
               <button
                 type="button"
                 onClick={() => {
@@ -1365,10 +1539,24 @@ export const InventoryStockPage: React.FC = () => {
                   setActionMenuAnchor(null);
                   navigate(`/inventory/stock-card?sku=${encodeURIComponent(item.sku)}&warehouse=${encodeURIComponent(item.warehouse)}`);
                 }}
-                className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                className="w-full text-left px-3.5 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 flex items-center gap-2.5 transition-colors cursor-pointer"
               >
-                <FileSpreadsheet className="w-4 h-4 text-slate-400" />
+                <FileSpreadsheet className="w-4 h-4 text-blue-600" />
                 <span>Xem thẻ kho</span>
+              </button>
+
+              {/* 2. Xem chi tiết & quy đổi ĐVT */}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenActionMenuKey(null);
+                  setActionMenuAnchor(null);
+                  handleOpenConversionModal(item);
+                }}
+                className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+              >
+                <Eye className="w-4 h-4 text-slate-400" />
+                <span>Xem chi tiết &amp; ĐVT</span>
               </button>
 
               {/* 3. Điều chỉnh tồn tối thiểu:
@@ -1383,15 +1571,15 @@ export const InventoryStockPage: React.FC = () => {
                     setActionMenuAnchor(null);
                     handleOpenMinStockModal(item);
                   }}
-                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-indigo-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  className="w-full text-left px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2.5 transition-colors cursor-pointer"
                 >
                   <SlidersHorizontal className="w-4 h-4 text-slate-400" />
-                  <span>Điều chỉnh tồn tối thiểu</span>
+                  <span>Sửa tồn tối thiểu</span>
                 </button>
               )}
             </div>
 
-            {/* 3. Điều chỉnh kho / Sổ kho */}
+            {/* 4. Điều chỉnh kho / Sổ kho */}
             {canAdjustStock && (
               <div className="py-1">
                 <button
@@ -1404,12 +1592,12 @@ export const InventoryStockPage: React.FC = () => {
                   className="w-full text-left px-3.5 py-2 text-xs text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5 transition-colors cursor-pointer font-medium"
                 >
                   <PackagePlus className="w-4 h-4 text-indigo-600" />
-                  <span>Điều chỉnh / Sổ kho</span>
+                  <span>Ghi sổ / Điều chỉnh kho</span>
                 </button>
               </div>
             )}
 
-            {/* 4. Xóa sản phẩm khỏi kho (Chỉ Admin và Quản lý kho) */}
+            {/* 5. Xóa sản phẩm khỏi kho (Chỉ Admin và Quản lý kho) */}
             {(isAdmin || isManager) && (
               <div className="py-1">
                 <button

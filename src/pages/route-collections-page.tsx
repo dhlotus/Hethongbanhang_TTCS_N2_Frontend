@@ -40,7 +40,7 @@ const STATUS_CONFIG: Record<
   { label: string; bg: string; text: string; icon: React.ComponentType<{ className?: string }> }
 > = {
   PENDING: {
-    label: 'Chờ duyệt',
+    label: 'Chờ nộp',
     bg: 'bg-amber-50 border-amber-200',
     text: 'text-amber-700',
     icon: Clock,
@@ -67,6 +67,10 @@ const PAYMENT_METHOD_LABELS: Record<PaymentMethod, { label: string; icon: React.
 export const RouteCollectionsPage: React.FC = () => {
   const navigate = useNavigate();
   const currentUser = getStoredUser();
+
+  useEffect(() => {
+    document.title = 'Quản lý thu tuyến | LOHA SALES';
+  }, []);
   const roles = (currentUser?.roles || (currentUser?.role ? [currentUser.role] : [])).map((r) =>
     String(r).toUpperCase(),
   );
@@ -454,9 +458,9 @@ export const RouteCollectionsPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Chờ duyệt */}
+        {/* Chờ nộp */}
         <div className="bg-white p-4 rounded-xl border border-amber-200/80 bg-amber-50/20 shadow-xs">
-          <p className="text-xs font-semibold text-amber-800">Chờ duyệt</p>
+          <p className="text-xs font-semibold text-amber-800">Chờ nộp</p>
           <p className="text-xl font-bold text-amber-700 mt-1 font-mono">
             {summary.pendingAmount.toLocaleString('vi-VN')} <span className="text-sm font-sans font-medium text-amber-500">đ</span>
           </p>
@@ -564,7 +568,7 @@ export const RouteCollectionsPage: React.FC = () => {
                   className="w-full h-[38px] px-3 text-xs bg-slate-50/70 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer"
                 >
                   <option value="ALL">Tất cả trạng thái</option>
-                  <option value="PENDING">Chờ duyệt</option>
+                  <option value="PENDING">Chờ nộp</option>
                   <option value="APPROVED">Đã duyệt</option>
                   <option value="REJECTED">Bị từ chối</option>
                 </select>
@@ -609,10 +613,11 @@ export const RouteCollectionsPage: React.FC = () => {
           {/* Bảng danh sách phiếu thu */}
           <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm min-w-[880px]">
+              <table className="w-full text-left border-collapse text-sm min-w-[960px]">
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-200/80 text-slate-700 font-semibold uppercase tracking-wider text-xs">
                     <th className="py-3.5 px-5">Mã phiếu</th>
+                    <th className="py-3.5 px-5">Mã đơn hàng</th>
                     <th className="py-3.5 px-5">Đại lý</th>
                     <th className="py-3.5 px-5">Nhân viên thu</th>
                     <th className="py-3.5 px-5 text-right">Số tiền thu</th>
@@ -623,14 +628,14 @@ export const RouteCollectionsPage: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-12 text-slate-400">
+                      <td colSpan={7} className="text-center py-12 text-slate-400">
                         <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-500" />
                         Đang tải danh sách phiếu thu tiền tuyến...
                       </td>
                     </tr>
                   ) : filteredCollections.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-14 text-slate-400">
+                      <td colSpan={7} className="text-center py-14 text-slate-400">
                         <HandCoins className="w-10 h-10 mx-auto mb-2 text-slate-300" />
                         <p className="font-medium text-slate-600">Chưa có phiếu thu nào phù hợp</p>
                         <p className="text-xs text-slate-400 mt-0.5">Nhân viên kinh doanh tạo phiếu khi thu tiền từ đại lý đi tuyến</p>
@@ -653,11 +658,29 @@ export const RouteCollectionsPage: React.FC = () => {
                           className="hover:bg-indigo-50/30 transition-colors cursor-pointer group"
                           title="Bấm để xem chi tiết phiếu thu"
                         >
-                          {/* Mã phiếu: Font to rõ ràng, chỉ giữ lại mã bên ngoài */}
+                          {/* Mã phiếu: Chỉ hiển thị mã phiếu */}
                           <td className="py-4.5 px-5 whitespace-nowrap">
-                            <span className="font-bold text-indigo-600 font-mono text-sm group-hover:underline">
+                            <span className="font-bold text-indigo-600 font-mono text-sm group-hover:underline block">
                               {item.code}
                             </span>
+                          </td>
+
+                          {/* Mã đơn hàng liên kết */}
+                          <td className="py-4.5 px-5 whitespace-nowrap">
+                            {item.orderCodes && item.orderCodes.length > 0 ? (
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {item.orderCodes.map((oc) => (
+                                  <span
+                                    key={oc}
+                                    className="inline-block text-xs font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-md"
+                                  >
+                                    {oc}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 font-mono text-xs">—</span>
+                            )}
                           </td>
 
                           {/* Đại lý: Tên đại lý hiển thị rõ ràng, font chữ to hơn */}
@@ -1323,6 +1346,89 @@ export const RouteCollectionsPage: React.FC = () => {
                   </strong>
                 </div>
               </div>
+
+              {/* Danh sách đơn hàng trong tuyến liên kết */}
+              {((selectedCollection.orderDetails && selectedCollection.orderDetails.length > 0) ||
+                (selectedCollection.orderCodes && selectedCollection.orderCodes.length > 0)) && (
+                <div className="space-y-2.5 border border-slate-200 rounded-xl p-3.5 bg-slate-50/60 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-indigo-600" />
+                      Đơn hàng trong tuyến liên kết ({selectedCollection.orderDetails?.length || selectedCollection.orderCodes?.length || 0} đơn)
+                    </span>
+                  </div>
+
+                  {selectedCollection.orderDetails && selectedCollection.orderDetails.length > 0 ? (
+                    <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold text-[11px]">
+                            <th className="py-2 px-3">Mã đơn hàng</th>
+                            <th className="py-2 px-3 text-right">Tổng tiền đơn</th>
+                            <th className="py-2 px-3 text-right font-bold text-indigo-700">Còn phải thu</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-mono text-xs">
+                          {selectedCollection.orderDetails.map((od, i) => (
+                            <tr key={i} className="hover:bg-slate-50">
+                              <td className="py-2 px-3 font-bold text-indigo-600">{od.orderCode}</td>
+                              <td className="py-2 px-3 text-right text-slate-700">{od.totalAmount.toLocaleString('vi-VN')} đ</td>
+                              <td className="py-2 px-3 text-right font-bold text-indigo-700">
+                                {(od.remainingAmount ?? od.totalAmount).toLocaleString('vi-VN')} đ
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedCollection.orderCodes?.map((oc) => (
+                        <span key={oc} className="px-2 py-1 bg-white border border-slate-200 rounded font-mono text-xs font-semibold text-indigo-700">
+                          {oc}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Thông tin đối chiếu thu đủ vs thu thiếu */}
+                  {(() => {
+                    const totalOrderAmt = selectedCollection.orderDetails?.reduce(
+                      (s, od) => s + (od.remainingAmount ?? od.totalAmount),
+                      0,
+                    ) || 0;
+                    if (totalOrderAmt <= 0) return null;
+
+                    if (selectedCollection.amount === totalOrderAmt) {
+                      return (
+                        <div className="p-2.5 bg-emerald-50 rounded-lg border border-emerald-200 text-xs text-emerald-900 flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>✓ Thu đủ 100% giá trị các đơn hàng được chọn ({selectedCollection.amount.toLocaleString('vi-VN')} đ).</span>
+                        </div>
+                      );
+                    } else if (selectedCollection.amount < totalOrderAmt) {
+                      return (
+                        <div className="p-2.5 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-900 space-y-0.5">
+                          <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span>Đại lý trả thiếu {(totalOrderAmt - selectedCollection.amount).toLocaleString('vi-VN')} đ so với tổng đơn.</span>
+                          </div>
+                          <p className="text-[11px] text-amber-700">
+                            Phần tiền thiếu vẫn giữ nguyên trên công nợ của hóa đơn đó, hệ thống không tự động cộng thêm nợ mới hay trừ khống.
+                          </p>
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div className="p-2.5 bg-blue-50 rounded-lg border border-blue-200 text-xs text-blue-900 flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 text-blue-600 shrink-0" />
+                          <span>Đại lý nộp dư {(selectedCollection.amount - totalOrderAmt).toLocaleString('vi-VN')} đ so với đơn hàng liên kết.</span>
+                        </div>
+                      );
+                    }
+                  })()}
+                </div>
+              )}
 
               {/* Thông tin đối chiếu xét duyệt nếu có */}
               {selectedCollection.status === 'APPROVED' && selectedCollection.approvedByName && (
