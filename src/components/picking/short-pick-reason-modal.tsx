@@ -94,20 +94,20 @@ export const ShortPickReasonModal: React.FC<ShortPickReasonModalProps> = ({
     >
       <div className="w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col animate-in fade-in slide-in-from-bottom duration-200">
         {/* Header Modal */}
-        <div className="flex items-center justify-between px-5 py-4 bg-amber-500 text-white">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-white/20 text-white">
+            <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 shadow-2xs">
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base sm:text-lg">Xác nhận lý do soạn thiếu</h3>
-              <p className="text-xs text-amber-100 font-medium">Bắt buộc giải trình theo quy định kho</p>
+              <h3 className="font-bold text-slate-900 text-base sm:text-lg">Xác nhận lý do soạn thiếu</h3>
+              <p className="text-xs text-slate-500 font-medium">Bắt buộc giải trình theo quy định kho</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-white/20 text-white/90 hover:text-white transition-colors cursor-pointer"
+            className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -117,8 +117,8 @@ export const ShortPickReasonModal: React.FC<ShortPickReasonModalProps> = ({
         <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4">
           <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs sm:text-sm">
             <div className="flex items-center justify-between text-slate-500">
-              <span>Mã SKU: <strong className="text-slate-800">{item.productSku}</strong></span>
-              <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-bold text-xs">
+              <span>Mã sản phẩm: <strong className="text-slate-800">{item.productSku}</strong></span>
+              <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-semibold text-xs">
                 Thiếu {missingQuantity} {item.unit}
               </span>
             </div>
@@ -134,9 +134,9 @@ export const ShortPickReasonModal: React.FC<ShortPickReasonModalProps> = ({
           </div>
 
           {/* Khối nhập số lượng thực tế nhặt được khi báo thiếu */}
-          <div className="p-3.5 bg-amber-50/70 border border-amber-200/90 rounded-xl space-y-2.5">
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                 Số lượng thực tế nhặt được <span className="text-rose-500">*</span>
               </label>
               <button
@@ -145,7 +145,7 @@ export const ShortPickReasonModal: React.FC<ShortPickReasonModalProps> = ({
                   setPickedQtyInput(0);
                   setErrorMessage(null);
                 }}
-                className="px-2 py-0.5 rounded bg-white border border-amber-300 text-[11px] font-semibold text-amber-900 hover:bg-amber-100 cursor-pointer shadow-2xs"
+                className="px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer shadow-2xs transition-colors"
               >
                 Hết hàng hoàn toàn (Nhặt 0)
               </button>
@@ -160,7 +160,7 @@ export const ShortPickReasonModal: React.FC<ShortPickReasonModalProps> = ({
                     setErrorMessage(null);
                   }}
                   disabled={pickedQtyInput <= 0}
-                  className="w-10 h-full flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-40 cursor-pointer text-base font-bold"
+                  className="w-10 h-full flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-40 cursor-pointer text-base font-bold transition-colors"
                 >
                   -
                 </button>
@@ -183,7 +183,7 @@ export const ShortPickReasonModal: React.FC<ShortPickReasonModalProps> = ({
                     setErrorMessage(null);
                   }}
                   disabled={pickedQtyInput >= item.totalRequiredQuantity - 1}
-                  className="w-10 h-full flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-40 cursor-pointer text-base font-bold"
+                  className="w-10 h-full flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-40 cursor-pointer text-base font-bold transition-colors"
                 >
                   +
                 </button>
@@ -193,7 +193,7 @@ export const ShortPickReasonModal: React.FC<ShortPickReasonModalProps> = ({
                 <span className="text-slate-600 block">
                   Đơn vị tính: <strong className="text-slate-800">{item.unit}</strong>
                 </span>
-                <span className="text-[11px] text-amber-800 mt-0.5 block">
+                <span className="text-[11px] text-slate-500 mt-0.5 block">
                   (Tối đa: {Math.max(0, item.totalRequiredQuantity - 1)} {item.unit} để ghi nhận thiếu)
                 </span>
               </div>
@@ -236,13 +236,13 @@ export const ShortPickReasonModal: React.FC<ShortPickReasonModalProps> = ({
                     onClick={() => handleSelectReason(reason.code)}
                     className={`w-full text-left p-3 rounded-xl border text-xs sm:text-sm transition-all cursor-pointer flex items-start gap-3 ${
                       isSelected
-                        ? 'bg-amber-50/80 border-amber-400 text-amber-950 ring-2 ring-amber-400/20 shadow-xs'
+                        ? 'bg-indigo-50/70 border-indigo-600 text-indigo-950 ring-2 ring-indigo-500/20 shadow-xs'
                         : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                     }`}
                   >
                     <div
                       className={`w-4 h-4 rounded-full mt-0.5 border flex items-center justify-center shrink-0 ${
-                        isSelected ? 'border-amber-600 bg-amber-600 text-white' : 'border-slate-300'
+                        isSelected ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300'
                       }`}
                     >
                       {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
@@ -278,7 +278,7 @@ export const ShortPickReasonModal: React.FC<ShortPickReasonModalProps> = ({
                   ? 'Ví dụ: Hàng chưa về kho phụ trách, lệch số liệu kiểm kê tuần trước...'
                   : 'Ghi chú thêm thông tin cho quản lý kho (không bắt buộc)...'
               }
-              className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 resize-none"
+              className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
             />
             {errorMessage && (
               <p className="text-xs text-rose-600 font-semibold mt-1 flex items-center gap-1">
@@ -293,13 +293,13 @@ export const ShortPickReasonModal: React.FC<ShortPickReasonModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 px-4 rounded-xl border border-slate-300 text-slate-700 font-semibold text-sm hover:bg-slate-100 transition-colors cursor-pointer"
+              className="flex-1 py-3 px-4 rounded-xl border border-slate-300 text-slate-700 font-semibold text-sm hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer"
             >
               Hủy bỏ
             </button>
             <button
               type="submit"
-              className="flex-1 py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm shadow-md shadow-amber-600/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              className="flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-sm shadow-sm shadow-indigo-600/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
             >
               <FileText className="w-4 h-4" />
               Lưu lý do thiếu

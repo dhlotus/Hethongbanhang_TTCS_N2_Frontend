@@ -27,8 +27,11 @@ import { showToast } from '../components/toast';
 export const formatPickerName = (pickerName?: string): string => {
   if (!pickerName) return 'Thủ kho phụ trách';
   const p = pickerName.toLowerCase().trim();
-  if (p === 'warehouse' || p === 'thukho') return 'Phạm Hùng Kho (Thủ kho)';
+  if (p === 'warehousemanager' || p === 'warehouse_manager') return 'Quản lý kho (Đỗ Quốc Bảo)';
+  if (p === 'warehouse' || p === 'thukho') return 'Thủ kho (Phạm Hùng Kho)';
   if (p === 'admin') return 'Quản trị viên hệ thống';
+  if (p === 'salesrep' || p === 'sales') return 'Nhân viên kinh doanh';
+  if (p === 'accountant') return 'Kế toán viên';
   return pickerName;
 };
 
@@ -239,7 +242,7 @@ export const OrderPickingPage: React.FC = () => {
                   onClick={() => setActiveSheetId(sheet.id)}
                   className={`h-[38px] px-3.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 border ${
                     isActive
-                      ? 'bg-slate-900 border-slate-900 text-white shadow-2xs'
+                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-xs'
                       : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
                   }`}
                 >
@@ -249,7 +252,7 @@ export const OrderPickingPage: React.FC = () => {
                       isDone
                         ? 'bg-emerald-500 text-white'
                         : isActive
-                        ? 'bg-slate-700 text-white'
+                        ? 'bg-indigo-700 text-white'
                         : 'bg-slate-100 text-slate-600'
                     }`}
                   >
@@ -260,7 +263,7 @@ export const OrderPickingPage: React.FC = () => {
             })}
           </div>
 
-          {/* Cụm nút hành động: In phiếu, Hủy phiếu & Tạo phiếu soạn mới */}
+          {/* Cụm nút hành động: In, Hủy lượt soạn & Tạo lượt soạn mới */}
           <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
             {activeSheet && (
               <>
@@ -268,29 +271,29 @@ export const OrderPickingPage: React.FC = () => {
                   type="button"
                   onClick={handleDeleteSheet}
                   className="h-[38px] px-3 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 active:bg-rose-100 text-rose-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                  title="Hủy phiếu soạn hàng này và hoàn trả các đơn về danh sách chờ"
+                  title="Hủy lượt soạn hàng này và hoàn trả các đơn về danh sách chờ"
                 >
                   <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                  <span className="hidden sm:inline">Hủy phiếu</span>
+                  <span className="hidden sm:inline">Hủy lượt soạn</span>
                 </button>
                 <button
                   type="button"
                   onClick={handlePrintSheet}
                   className="h-[38px] px-3.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                  title="In phiếu soạn hàng A4 cho thủ kho"
+                  title="In danh sách soạn hàng A4 cho thủ kho"
                 >
                   <Printer className="w-4 h-4 text-slate-500" />
-                  <span>In phiếu</span>
+                  <span>In</span>
                 </button>
               </>
             )}
             <Link
               to="/inventory/picking/create"
               className="h-[38px] px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer"
-              title="Chuyển đến trang tạo phiếu soạn hàng mới"
+              title="Chuyển đến trang tạo lượt soạn hàng mới"
             >
               <Plus className="w-4 h-4" />
-              <span>Tạo phiếu soạn mới</span>
+              <span>Tạo lượt soạn mới</span>
             </Link>
           </div>
         </div>
@@ -300,7 +303,7 @@ export const OrderPickingPage: React.FC = () => {
           <div className="bg-white rounded-2xl border border-slate-200 py-16 flex flex-col items-center justify-center text-center shadow-xs">
             <PackageSearch className="w-10 h-10 text-slate-300 mb-2 stroke-[1.5]" />
             <p className="text-sm font-semibold text-slate-600">
-              Chưa có phiếu nào
+              Chưa có lượt soạn nào
             </p>
           </div>
         )}
@@ -410,7 +413,7 @@ export const OrderPickingPage: React.FC = () => {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Tìm mã SKU, tên SP, vị trí kệ..."
+                placeholder="Tìm mã sản phẩm, tên sản phẩm, vị trí kệ..."
                 value={itemSearchTerm}
                 onChange={(e) => setItemSearchTerm(e.target.value)}
                 className="w-full h-[38px] pl-9 pr-8 text-xs sm:text-sm bg-white border border-slate-300 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-2xs transition-colors"
@@ -519,7 +522,7 @@ export const OrderPickingPage: React.FC = () => {
           {/* Tiêu đề phiếu */}
           <div className="text-center my-4">
             <h2 className="text-base font-black uppercase tracking-wider">
-              PHIẾU SOẠN HÀNG THEO VỊ TRÍ
+              DANH SÁCH SOẠN HÀNG THEO VỊ TRÍ
             </h2>
             <p className="text-[11px] text-gray-600 italic mt-0.5">
               * Thứ tự sắp xếp theo lộ trình di chuyển một chiều (S-Shape) tối ưu trong kho
@@ -530,10 +533,10 @@ export const OrderPickingPage: React.FC = () => {
           <table className="w-full text-xs border-collapse border border-black mb-6">
             <thead>
               <tr className="bg-gray-100 text-center font-bold">
-                <th className="border border-black p-2 w-10">Phiếu</th>
+                <th className="border border-black p-2 w-10">STT</th>
                 <th className="border border-black p-2 w-10">[✓]</th>
                 <th className="border border-black p-2 text-left w-36">Vị trí kệ kho</th>
-                <th className="border border-black p-2 text-left w-28">Mã SKU</th>
+                <th className="border border-black p-2 text-left w-28">Mã sản phẩm</th>
                 <th className="border border-black p-2 text-left">Tên sản phẩm</th>
                 <th className="border border-black p-2 text-center w-16">SL cần</th>
                 <th className="border border-black p-2 text-center w-16">SL nhặt</th>
@@ -609,32 +612,32 @@ export const OrderPickingPage: React.FC = () => {
         onConfirm={handleConfirmShortPick}
       />
 
-      {/* ── 6. MODAL XÁC NHẬN HỦY PHIẾU ── */}
+      {/* ── 6. MODAL XÁC NHẬN HỦY LƯỢT SOẠN ── */}
       <ConfirmDialog
         isOpen={deleteConfirmOpen}
         type={activeSheet?.status === 'IN_PROGRESS' ? 'danger' : 'warning'}
         title={
           activeSheet?.status === 'IN_PROGRESS'
-            ? 'Xác nhận hủy phiếu soạn'
-            : 'Xác nhận xóa phiếu soạn'
+            ? 'Xác nhận hủy lượt soạn'
+            : 'Xác nhận xóa lượt soạn'
         }
         message={
           activeSheet?.status === 'IN_PROGRESS' ? (
             <span>
-              Bạn có chắc muốn hủy phiếu{' '}
+              Bạn có chắc muốn hủy lượt soạn{' '}
               <strong className="font-mono">{activeSheet?.sheetCode}</strong>?<br />
               <span className="text-rose-700">
-                Các đơn hàng đang gắn với phiếu sẽ được hoàn trả về danh sách chờ soạn.
+                Các đơn hàng đang gắn với lượt soạn này sẽ được hoàn trả về danh sách chờ soạn.
               </span>
             </span>
           ) : (
             <span>
-              Bạn có chắc muốn xóa phiếu{' '}
+              Bạn có chắc muốn xóa lượt soạn{' '}
               <strong className="font-mono">{activeSheet?.sheetCode}</strong>?
             </span>
           )
         }
-        confirmText={activeSheet?.status === 'IN_PROGRESS' ? 'Hủy phiếu' : 'Xóa phiếu'}
+        confirmText={activeSheet?.status === 'IN_PROGRESS' ? 'Hủy lượt soạn' : 'Xóa lượt soạn'}
         cancelText="Quay lại"
         isLoading={isDeletingSheet}
         onConfirm={handleConfirmDeleteSheet}

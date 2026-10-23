@@ -156,10 +156,10 @@ export const CreatePickingSheetPage: React.FC = () => {
       };
 
       const created = await orderPickingService.createPickingSheet(payload);
-      showToast('success', `Đã tạo phiếu soạn hàng ${created.sheetCode} thành công!`);
+      showToast('success', `Đã tạo lượt soạn hàng ${created.sheetCode} thành công!`);
       navigate('/warehouse/picking');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Lỗi khi tạo phiếu soạn hàng';
+      const msg = err instanceof Error ? err.message : 'Lỗi khi tạo lượt soạn hàng';
       showToast('error', msg);
     } finally {
       setIsSubmitting(false);
@@ -175,14 +175,14 @@ export const CreatePickingSheetPage: React.FC = () => {
             <Link
               to="/warehouse/picking"
               className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-              title="Quay lại danh sách phiếu soạn hàng"
+              title="Quay lại danh sách soạn hàng"
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
                 <PackagePlus className="w-5 h-5 text-indigo-600 shrink-0" />
-                <span>Tạo phiếu soạn hàng (Gộp nhiều đơn)</span>
+                <span>Tạo lượt soạn hàng (Gộp nhiều đơn)</span>
               </h1>
             </div>
           </div>
@@ -526,11 +526,11 @@ export const CreatePickingSheetPage: React.FC = () => {
               className="flex-1 sm:flex-initial h-10 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 shadow-sm shadow-indigo-600/20 transition-all cursor-pointer"
             >
               {isSubmitting ? (
-                <span>Đang tạo phiếu...</span>
+                <span>Đang tạo lượt soạn...</span>
               ) : (
                 <>
                   <PackagePlus className="w-4 h-4" />
-                  <span>Tạo phiếu soạn hàng</span>
+                  <span>Tạo lượt soạn hàng</span>
                 </>
               )}
             </button>

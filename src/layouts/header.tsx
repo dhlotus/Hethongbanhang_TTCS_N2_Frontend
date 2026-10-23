@@ -286,11 +286,11 @@ const getPageHeaderInfo = (
     pathname === '/inventory/picking/create'
   ) {
     return {
-      title: 'Tạo phiếu soạn hàng',
+      title: 'Tạo lượt soạn hàng',
       category: 'Kho & Vận hành',
       breadcrumbs: [
-        { label: 'Phiếu soạn hàng', path: '/warehouse/picking' },
-        { label: 'Tạo phiếu mới' },
+        { label: 'Soạn hàng', path: '/warehouse/picking' },
+        { label: 'Tạo lượt mới' },
       ],
     };
   }

@@ -396,7 +396,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     },
     {
       id: 'order-picking',
-      name: 'Phiếu soạn hàng',
+      name: 'Soạn hàng',
       path: '/warehouse/picking',
       icon: PackageCheck,
       category: 'Soạn hàng & Giao vận',
@@ -514,7 +514,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     },
     {
       id: 'order-picking',
-      name: 'Phiếu soạn hàng',
+      name: 'Soạn hàng',
       path: '/warehouse/picking',
       icon: PackageCheck,
       category: 'Soạn hàng & Giao vận',
@@ -801,7 +801,7 @@ export const ROLE_NAVIGATION_MATRIX: Record<UserRoleType, MenuItem[]> = {
     },
     {
       id: 'order-picking',
-      name: 'Phiếu soạn hàng',
+      name: 'Soạn hàng',
       path: '/warehouse/picking',
       icon: PackageCheck,
       category: 'Kho vận & Vận hành',

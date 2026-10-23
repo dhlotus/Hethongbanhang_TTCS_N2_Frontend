@@ -38,7 +38,7 @@ export const SHORT_PICK_REASONS: ShortPickReasonOption[] = [
   },
   {
     code: 'EXPIRED_OR_NEAR_EXPIRY',
-    label: 'Hàng cận hạn sử dụng (Cận Date)',
+    label: 'Hàng cận hạn sử dụng (Cận hạn dùng)',
     description: 'Lô hàng không thỏa mãn điều kiện hạn sử dụng cam kết với khách hàng',
   },
   {

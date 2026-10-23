@@ -118,11 +118,11 @@ export const CreatePickingSheetModal: React.FC<CreatePickingSheetModalProps> = (
       };
 
       const created = await orderPickingService.createPickingSheet(payload);
-      showToast('success', `Đã tạo phiếu soạn hàng ${created.sheetCode} thành công!`);
+      showToast('success', `Đã tạo lượt soạn hàng ${created.sheetCode} thành công!`);
       onSuccess(created.id);
       onClose();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Lỗi khi tạo phiếu soạn hàng';
+      const msg = err instanceof Error ? err.message : 'Lỗi khi tạo lượt soạn hàng';
       showToast('error', msg);
     } finally {
       setIsSubmitting(false);
@@ -146,7 +146,7 @@ export const CreatePickingSheetModal: React.FC<CreatePickingSheetModalProps> = (
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-base sm:text-lg">
-                Tạo phiếu soạn hàng (Gộp nhiều đơn)
+                Tạo lượt soạn hàng (Gộp nhiều đơn)
               </h3>
               <p className="text-xs text-slate-500">
                 Gom dòng hàng & sắp xếp tự động theo đường đi trong kho
@@ -296,7 +296,7 @@ export const CreatePickingSheetModal: React.FC<CreatePickingSheetModalProps> = (
                   Đã chọn {selectedOrderIds.length} đơn hàng để gộp
                 </p>
                 <p className="text-[11px] text-indigo-700 mt-0.5">
-                  Hệ thống sẽ gom các SKU trùng nhau và tự sắp xếp vị trí kệ
+                  Hệ thống sẽ gom các sản phẩm trùng nhau và tự sắp xếp vị trí kệ
                 </p>
               </div>
               <div className="text-right">
@@ -340,7 +340,7 @@ export const CreatePickingSheetModal: React.FC<CreatePickingSheetModalProps> = (
               className="flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/25 transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               <PackagePlus className="w-4 h-4" />
-              {isSubmitting ? 'Đang tạo...' : 'Tạo phiếu & Bắt đầu soạn'}
+              {isSubmitting ? 'Đang tạo...' : 'Tạo lượt & Bắt đầu soạn'}
             </button>
           </div>
         </form>
