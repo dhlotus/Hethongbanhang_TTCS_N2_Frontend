@@ -453,41 +453,7 @@ export const SalesTargetsPage: React.FC = () => {
 
   return (
     <div className="space-y-4 sm:space-y-5 w-full">
-      {/* ── THANH TAB CHUYỂN ĐỔI KÈM HIỆU ỨNG MƯỢT MÀ ── */}
-      <div className="pb-1 border-b border-slate-200/80">
-        <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/90 rounded-2xl w-fit border border-slate-200/60 shadow-2xs">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('list');
-              updateUrlParams({ tab: 'list' });
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 ease-out cursor-pointer select-none ${
-              activeTab === 'list'
-                ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-900/5 -translate-y-0.5'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            <Target className={`h-4 w-4 transition-transform duration-300 ${activeTab === 'list' ? 'text-indigo-600 scale-110' : 'text-slate-400'}`} />
-            <span>Tiến độ chỉ tiêu</span>
-          </button>
-
-          {isManager && (
-            <button
-              type="button"
-              onClick={handleGoToCreateTab}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 ease-out cursor-pointer select-none ${
-                activeTab === 'create'
-                  ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-900/5 -translate-y-0.5'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-              }`}
-            >
-              <Plus className={`h-4 w-4 transition-transform duration-300 ${activeTab === 'create' ? 'text-indigo-600 scale-110' : 'text-slate-400'}`} />
-              <span>Giao chỉ tiêu mới</span>
-            </button>
-          )}
-        </div>
-      </div>
+      {/* ── NỘI DUNG TAB KÈM ANIMATION CHUYỂN ĐỔI MƯỢT MÀ ── */}
 
       {/* ── NỘI DUNG TAB KÈM ANIMATION CHUYỂN ĐỔI MƯỢT MÀ ── */}
       {activeTab === 'create' ? (
@@ -761,6 +727,17 @@ export const SalesTargetsPage: React.FC = () => {
                     className="h-9 text-xs sm:text-sm rounded-lg border border-slate-200 px-2.5 py-1.5 font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none bg-white cursor-pointer"
                   />
                 </div>
+
+                {/* 4. Nút Giao chỉ tiêu mới chuẩn màu hệ thống */}
+                <button
+                  type="button"
+                  onClick={handleGoToCreateTab}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
+                  title="Giao chỉ tiêu doanh số mới"
+                >
+                  <Plus className="w-3.5 h-3.5 shrink-0" />
+                  <span>Giao chỉ tiêu mới</span>
+                </button>
               </div>
             </div>
           )}

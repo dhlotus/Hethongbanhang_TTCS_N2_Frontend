@@ -83,6 +83,25 @@ const getPageHeaderInfo = (
       ],
     };
   }
+  if (pathname.startsWith('/sales/targets/') && pathname !== '/sales/targets') {
+    return {
+      title: 'Chi tiết chỉ tiêu & tiến độ',
+      category: 'Tổng quan & Chỉ tiêu',
+      breadcrumbs: [
+        { label: 'Chỉ tiêu & Tiến độ', path: '/sales/targets' },
+        { label: 'Chi tiết chỉ tiêu' },
+      ],
+    };
+  }
+  if (pathname === '/sales/targets') {
+    return {
+      title: 'Chỉ tiêu & Tiến độ',
+      category: 'Tổng quan & Chỉ tiêu',
+      breadcrumbs: [
+        { label: 'Chỉ tiêu & Tiến độ' },
+      ],
+    };
+  }
   if (
     pathname === '/accounting/returns/create' ||
     pathname === '/returns/create'

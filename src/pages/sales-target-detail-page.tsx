@@ -106,27 +106,64 @@ export const SalesTargetDetailPage: React.FC = () => {
   const { item, contributingOrders = [], logs = [] } = data;
   const hasTarget = item.targetAmount > 0;
 
+  const getOrderStatusBadge = (status: string) => {
+    const s = (status || '').toUpperCase();
+    switch (s) {
+      case 'DRAFT':
+        return { label: 'Bản nháp', cls: 'bg-slate-100 text-slate-700 border-slate-200' };
+      case 'PENDING':
+      case 'PENDING_APPROVAL':
+        return { label: 'Chờ duyệt', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
+      case 'APPROVED':
+        return { label: 'Đã duyệt', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
+      case 'REJECTED':
+        return { label: 'Từ chối', cls: 'bg-rose-50 text-rose-700 border-rose-200' };
+      case 'RETURNED_FOR_UPDATE':
+        return { label: 'Trả lại sửa', cls: 'bg-orange-50 text-orange-700 border-orange-200' };
+      case 'PROCESSING':
+        return { label: 'Đang soạn', cls: 'bg-purple-50 text-purple-700 border-purple-200' };
+      case 'PACKED':
+        return { label: 'Đã đóng gói', cls: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
+      case 'DISPATCHED':
+        return { label: 'Đã xuất kho', cls: 'bg-cyan-50 text-cyan-700 border-cyan-200' };
+      case 'SHIPPED':
+        return { label: 'Đang giao', cls: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
+      case 'DELIVERED':
+        return { label: 'Giao thành công', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+      case 'COMPLETED':
+        return { label: 'Hoàn tất', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+      case 'CANCELLED':
+        return { label: 'Đã hủy', cls: 'bg-slate-100 text-slate-600 border-slate-200' };
+      default:
+        return { label: status || 'Không rõ', cls: 'bg-slate-100 text-slate-700 border-slate-200' };
+    }
+  };
+
   return (
     <div className="space-y-5 w-full">
-      {/* ── NÚT QUAY LẠI & TIÊU ĐỀ ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="space-y-1.5">
-          <Link
-            to="/sales/targets"
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-slate-500 hover:text-[var(--color-primary)] transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Quay lại danh sách chỉ tiêu</span>
-          </Link>
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+      {/* ── CARD HEADER: NÚT QUAY LẠI & THÔNG TIN CHỈ TIÊU (GIỐNG TẠO ĐƠN HÀNG) ── */}
+      <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+          <div className="flex items-center gap-2.5">
+            <Link
+              to="/sales/targets"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors shrink-0 shadow-2xs"
+              title="Quay lại danh sách chỉ tiêu"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Quay lại</span>
+            </Link>
+            <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+            <div className="flex items-center gap-2">
               {item.targetType === 'EMPLOYEE' ? (
-                <Users className="h-6 w-6 text-blue-600 shrink-0" />
+                <Users className="w-5 h-5 text-indigo-600 shrink-0" />
               ) : (
-                <MapPin className="h-6 w-6 text-emerald-600 shrink-0" />
+                <MapPin className="w-5 h-5 text-emerald-600 shrink-0" />
               )}
-              <span>{item.targetName}</span>
-            </h1>
+              <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                {item.targetName}
+              </h1>
+            </div>
 
             {/* Badge Phạm vi */}
             <span
@@ -160,93 +197,93 @@ export const SalesTargetDetailPage: React.FC = () => {
               )}
             </span>
           </div>
+
+          <div className="text-xs sm:text-sm font-semibold text-slate-600 bg-slate-100/80 px-3 py-1.5 rounded-lg border border-slate-200/60 shrink-0">
+            Kỳ áp dụng: <span className="text-slate-900 font-bold">{item.period}</span>
+          </div>
         </div>
 
-        <div className="text-xs sm:text-sm font-semibold text-slate-600 bg-slate-100/80 px-3 py-1.5 rounded-lg border border-slate-200/60 self-start sm:self-auto">
-          Kỳ áp dụng: <span className="text-slate-900 font-bold">{item.period}</span>
+        {/* ── THẺ KPI TỔNG HỢP GỌN GÀNG, KHÔNG WRAP DƯ THỪA ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {/* Card 1: Mục tiêu giao */}
+          <div className="rounded-xl bg-slate-50/70 border border-slate-200/80 p-3.5 sm:p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Mục tiêu giao</span>
+              <Target className="h-4 w-4 text-slate-400 shrink-0" />
+            </div>
+            <div className="text-lg sm:text-xl font-bold text-slate-900 tabular-nums whitespace-nowrap truncate">
+              {hasTarget ? formatCurrency(item.targetAmount) : 'Chưa giao'}
+            </div>
+          </div>
+
+          {/* Card 2: Doanh số thực tế */}
+          <div className="rounded-xl bg-slate-50/70 border border-slate-200/80 p-3.5 sm:p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Doanh số thực tế</span>
+              <TrendingUp className="h-4 w-4 text-indigo-500 shrink-0" />
+            </div>
+            <div className="text-lg sm:text-xl font-bold text-indigo-700 tabular-nums whitespace-nowrap truncate">
+              {formatCurrency(item.actualAmount)}
+            </div>
+          </div>
+
+          {/* Card 3: % Hoàn thành */}
+          <div className="rounded-xl bg-slate-50/70 border border-slate-200/80 p-3.5 sm:p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Tỷ lệ hoàn thành</span>
+              {hasTarget && item.completionRate !== null && (
+                <span
+                  className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                    item.completionRate >= 100
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : item.completionRate >= 80
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  {item.statusLabel}
+                </span>
+              )}
+            </div>
+            <div className="text-lg sm:text-xl font-bold text-slate-900 tabular-nums whitespace-nowrap truncate">
+              {hasTarget && item.completionRate !== null ? `${item.completionRate}%` : '—'}
+            </div>
+          </div>
+
+          {/* Card 4: Chênh lệch */}
+          <div className="rounded-xl bg-slate-50/70 border border-slate-200/80 p-3.5 sm:p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Chênh lệch mục tiêu</span>
+              <Receipt className="h-4 w-4 text-slate-400 shrink-0" />
+            </div>
+            <div
+              className={`text-lg sm:text-xl font-bold tabular-nums whitespace-nowrap truncate ${
+                !hasTarget
+                  ? 'text-slate-400'
+                  : item.isExceeded
+                  ? 'text-emerald-600'
+                  : 'text-rose-600'
+              }`}
+            >
+              {hasTarget
+                ? item.isExceeded
+                  ? `+${formatCurrency(item.shortageOrExcess)}`
+                  : `-${formatCurrency(Math.abs(item.shortageOrExcess))}`
+                : '—'}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── THẺ KPI TỔNG HỢP GỌN GÀNG, KHÔNG WRAP DƯ THỪA ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Card 1: Mục tiêu giao */}
-        <div className="rounded-xl bg-white border border-slate-200/80 p-4 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Mục tiêu giao</span>
-            <Target className="h-4 w-4 text-slate-400 shrink-0" />
-          </div>
-          <div className="text-lg sm:text-xl font-bold text-slate-900 tabular-nums whitespace-nowrap truncate">
-            {hasTarget ? formatCurrency(item.targetAmount) : 'Chưa giao'}
-          </div>
-        </div>
-
-        {/* Card 2: Doanh số thực tế */}
-        <div className="rounded-xl bg-white border border-slate-200/80 p-4 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Doanh số thực tế</span>
-            <TrendingUp className="h-4 w-4 text-indigo-500 shrink-0" />
-          </div>
-          <div className="text-lg sm:text-xl font-bold text-indigo-700 tabular-nums whitespace-nowrap truncate">
-            {formatCurrency(item.actualAmount)}
-          </div>
-        </div>
-
-        {/* Card 3: % Hoàn thành */}
-        <div className="rounded-xl bg-white border border-slate-200/80 p-4 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Tỷ lệ hoàn thành</span>
-            {hasTarget && item.completionRate !== null && (
-              <span
-                className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                  item.completionRate >= 100
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : item.completionRate >= 80
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-amber-100 text-amber-800'
-                }`}
-              >
-                {item.statusLabel}
-              </span>
-            )}
-          </div>
-          <div className="text-lg sm:text-xl font-bold text-slate-900 tabular-nums whitespace-nowrap truncate">
-            {hasTarget && item.completionRate !== null ? `${item.completionRate}%` : '—'}
-          </div>
-        </div>
-
-        {/* Card 4: Chênh lệch */}
-        <div className="rounded-xl bg-white border border-slate-200/80 p-4 shadow-xs">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Chênh lệch mục tiêu</span>
-            <Receipt className="h-4 w-4 text-slate-400 shrink-0" />
-          </div>
-          <div
-            className={`text-lg sm:text-xl font-bold tabular-nums whitespace-nowrap truncate ${
-              !hasTarget
-                ? 'text-slate-400'
-                : item.isExceeded
-                ? 'text-emerald-600'
-                : 'text-rose-600'
-            }`}
-          >
-            {hasTarget
-              ? item.isExceeded
-                ? `+${formatCurrency(item.shortageOrExcess)}`
-                : `-${formatCurrency(Math.abs(item.shortageOrExcess))}`
-              : '—'}
-          </div>
-        </div>
-      </div>
-
-      {/* ── TAB CHUYỂN ĐỔI BẢNG: ĐƠN HÀNG ĐÓNG GÓP & LỊCH SỬ ĐIỀU CHỈNH ── */}
+      {/* ── TAB CHUYỂN ĐỔI BẢNG: ĐỒNG BỘ MÀU VỚI CÁC NÚT CỦA HỆ THỐNG (INDIGO/SLATE) ── */}
       <div className="flex items-center gap-2 border-b border-slate-200/80 pb-2">
         <button
           type="button"
           onClick={() => setActiveTab('orders')}
-          className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors ${
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
             activeTab === 'orders'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+              ? 'bg-indigo-600 text-white shadow-xs -translate-y-0.5'
+              : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200'
           }`}
         >
           <Receipt className="h-4 w-4" />
@@ -256,10 +293,10 @@ export const SalesTargetDetailPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('logs')}
-          className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors ${
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
             activeTab === 'logs'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+              ? 'bg-indigo-600 text-white shadow-xs -translate-y-0.5'
+              : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200'
           }`}
         >
           <History className="h-4 w-4" />
@@ -278,8 +315,8 @@ export const SalesTargetDetailPage: React.FC = () => {
                   <col className="w-[18%]" />
                   <col className="w-[18%]" />
                   <col className="w-[32%]" />
-                  <col className="w-[20%]" />
-                  <col className="w-[12%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[14%]" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -301,27 +338,30 @@ export const SalesTargetDetailPage: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    contributingOrders.map((ord: ContributingOrder) => (
-                      <tr key={ord.id} className="hover:bg-slate-50/70 transition-colors group">
-                        <td className="px-5 py-3.5 text-center whitespace-nowrap font-mono font-semibold text-indigo-700 text-xs">
-                          {ord.orderCode}
-                        </td>
-                        <td className="px-5 py-3.5 text-center whitespace-nowrap text-sm font-medium text-slate-600">
-                          {formatDate(ord.createdAt)}
-                        </td>
-                        <td className="px-5 py-3.5 text-left whitespace-nowrap font-medium text-slate-900 truncate" title={ord.customerName}>
-                          {ord.customerName}
-                        </td>
-                        <td className="px-5 py-3.5 text-right whitespace-nowrap font-bold text-slate-900 tabular-nums">
-                          {formatCurrency(ord.grandTotal)}
-                        </td>
-                        <td className="px-5 py-3.5 text-center whitespace-nowrap">
-                          <span className="inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                            {ord.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
+                    contributingOrders.map((ord: ContributingOrder) => {
+                      const badge = getOrderStatusBadge(ord.status);
+                      return (
+                        <tr key={ord.id} className="hover:bg-slate-50/70 transition-colors group">
+                          <td className="px-5 py-3.5 text-center whitespace-nowrap font-mono font-semibold text-indigo-700 text-xs">
+                            {ord.orderCode}
+                          </td>
+                          <td className="px-5 py-3.5 text-center whitespace-nowrap text-sm font-medium text-slate-600">
+                            {formatDate(ord.createdAt)}
+                          </td>
+                          <td className="px-5 py-3.5 text-left whitespace-nowrap font-medium text-slate-900 truncate" title={ord.customerName}>
+                            {ord.customerName}
+                          </td>
+                          <td className="px-5 py-3.5 text-right whitespace-nowrap font-bold text-slate-900 tabular-nums">
+                            {formatCurrency(ord.grandTotal)}
+                          </td>
+                          <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                            <span className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-semibold border ${badge.cls}`}>
+                              {badge.label}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -336,24 +376,27 @@ export const SalesTargetDetailPage: React.FC = () => {
                 <p className="text-xs text-slate-400">Chưa có đơn hàng nào phát sinh</p>
               </div>
             ) : (
-              contributingOrders.map((ord: ContributingOrder) => (
-                <div
-                  key={ord.id}
-                  className="rounded-xl bg-white border border-slate-200/80 p-3.5 shadow-xs space-y-2"
-                >
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-mono font-bold text-indigo-700">{ord.orderCode}</span>
-                    <span className="text-slate-400">{formatDate(ord.createdAt)}</span>
+              contributingOrders.map((ord: ContributingOrder) => {
+                const badge = getOrderStatusBadge(ord.status);
+                return (
+                  <div
+                    key={ord.id}
+                    className="rounded-xl bg-white border border-slate-200/80 p-3.5 shadow-xs space-y-2"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-mono font-bold text-indigo-700">{ord.orderCode}</span>
+                      <span className="text-slate-400">{formatDate(ord.createdAt)}</span>
+                    </div>
+                    <div className="font-semibold text-slate-900 text-sm truncate">{ord.customerName}</div>
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                      <span className="font-bold text-slate-900 tabular-nums">{formatCurrency(ord.grandTotal)}</span>
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold border ${badge.cls}`}>
+                        {badge.label}
+                      </span>
+                    </div>
                   </div>
-                  <div className="font-semibold text-slate-900 text-sm truncate">{ord.customerName}</div>
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
-                    <span className="font-bold text-slate-900 tabular-nums">{formatCurrency(ord.grandTotal)}</span>
-                    <span className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                      {ord.status}
-                    </span>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
