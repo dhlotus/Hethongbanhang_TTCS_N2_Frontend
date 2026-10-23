@@ -9,7 +9,6 @@ import {
   Clock,
   XCircle,
   Package,
-  CreditCard,
   Trash2,
   Eye,
   Building2,
@@ -473,7 +472,6 @@ export const ReturnsPage: React.FC = () => {
 
   const totalPending = receipts.filter((r) => r.status === 'PENDING').length;
   const totalApproved = receipts.filter((r) => r.status === 'APPROVED').length;
-  const totalRejected = receipts.filter((r) => r.status === 'REJECTED').length;
   const totalRefundAmount = receipts
     .filter((r) => r.status === 'APPROVED')
     .reduce((sum, r) => sum + Number(r.totalRefundAmount || 0), 0);
@@ -690,16 +688,27 @@ export const ReturnsPage: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
-                        <button
-                          onClick={() => {
-                            setDetailReceipt(item);
-                            setApprovalNote('');
-                          }}
-                          className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
-                          title="Xem chi tiết phiếu trả hàng"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => {
+                              setDetailReceipt(item);
+                              setApprovalNote('');
+                            }}
+                            className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                            title="Xem chi tiết phiếu trả hàng"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          {canDelete && item.status === 'PENDING' && (
+                            <button
+                              onClick={() => handleDelete(item.id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                              title="Xóa phiếu trả hàng"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

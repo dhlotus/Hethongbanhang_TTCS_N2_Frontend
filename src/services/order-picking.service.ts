@@ -72,6 +72,13 @@ export const orderPickingService = {
   },
 
   /**
+   * Alias tương thích ngược cho getEligibleOrdersForPicking
+   */
+  async getAllOrders(): Promise<Order[]> {
+    return this.getEligibleOrdersForPicking();
+  },
+
+  /**
    * Tạo phiếu soạn hàng mới từ 1 hoặc nhiều đơn hàng (Gộp đơn - Wave Picking)
    * POST /api/picking-sheets
    */
@@ -172,3 +179,13 @@ export const orderPickingService = {
     }
   },
 };
+
+export function getStoredPickingSheets(): PickingSheet[] {
+  try {
+    const raw = localStorage.getItem('loha_picking_sheets_v2');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+

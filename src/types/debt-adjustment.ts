@@ -23,6 +23,7 @@ export interface DebtAdjustmentVoucher {
   originalInvoiceId: string;
   originalInvoiceCode?: string;
   adjustmentAmount: number; // Tổng số tiền giảm trừ
+  totalAdjustment?: number;
   reason: string;
   status: DebtAdjustmentStatus; // 'POSTED'
   createdBy: string;

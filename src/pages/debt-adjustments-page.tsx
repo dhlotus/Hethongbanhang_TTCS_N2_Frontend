@@ -1,20 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  FileSpreadsheet,
   Search,
   RotateCcw,
   Plus,
   Eye,
   Receipt,
-  Clock,
-  Building2,
-  Calendar,
   X,
-  Printer,
   AlertCircle,
   CheckCircle2,
-  Info,
-  ChevronRight,
   ShieldCheck,
   RefreshCw,
 } from 'lucide-react';
@@ -50,7 +43,6 @@ export const DebtAdjustmentsPage: React.FC = () => {
   // State bộ lọc
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [agencyFilter, setAgencyFilter] = useState<string>('ALL');
-  const [dateFilter, setDateFilter] = useState<string>('ALL');
 
   // State Modal Chi tiết bút toán
   const [selectedVoucher, setSelectedVoucher] = useState<DebtAdjustmentVoucher | null>(null);
@@ -447,6 +439,7 @@ export const DebtAdjustmentsPage: React.FC = () => {
               currentPage={page}
               totalItems={total}
               pageSize={limit}
+              totalPages={Math.max(1, Math.ceil(total / limit))}
               onPageChange={setPage}
             />
           </div>

@@ -59,14 +59,14 @@ export const CreatePickingSheetModal: React.FC<CreatePickingSheetModalProps> = (
           setSelectedOrderIds(preSelectedOrderIds);
         } else if (data.length > 0) {
           // Tự động gợi ý 2 đơn đã duyệt đầu tiên
-          const approved = data.filter((o) => o.status === 'APPROVED');
+          const approved = data.filter((o: Order) => o.status === 'APPROVED');
           if (approved.length > 0) {
             setSelectedOrderIds(
-              approved.slice(0, 2).map((o) => o.id || o.orderCode || '').filter(Boolean),
+              approved.slice(0, 2).map((o: Order) => o.id || o.orderCode || '').filter(Boolean),
             );
           } else {
             setSelectedOrderIds(
-              data.slice(0, 2).map((o) => o.id || o.orderCode || '').filter(Boolean),
+              data.slice(0, 2).map((o: Order) => o.id || o.orderCode || '').filter(Boolean),
             );
           }
         }
