@@ -420,7 +420,110 @@ export const InventoryBatchesPage: React.FC = () => {
 
       {/* 4. Bảng Dữ Liệu Lô Hàng (Data Table Fluid) */}
       <div className="bg-white rounded-xl border border-slate-200/90 overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
+        {/* Mobile View (< 768px): Thẻ card lô hàng vừa vặn màn hình điện thoại, không cần cuộn ngang */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {loading ? (
+            <div className="p-8 text-center text-slate-400">
+              <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-600" />
+              <p className="text-xs">Đang tải dữ liệu lô hàng...</p>
+            </div>
+          ) : batches.length === 0 ? (
+            <div className="py-12 px-4 text-center text-slate-500">
+              <p className="font-semibold text-slate-700 text-sm">
+                {statusFilter === 'EXPIRED'
+                  ? 'Tuyệt vời! Không có lô hàng nào bị quá hạn'
+                  : statusFilter === 'EXPIRING_SOON'
+                  ? `Không có lô hàng nào sắp hết hạn trong ${thresholdDays} ngày tới`
+                  : statusFilter === 'VALID'
+                  ? 'Không tìm thấy lô hàng còn hạn an toàn'
+                  : 'Không tìm thấy lô hàng nào'}
+              </p>
+            </div>
+          ) : (
+            batches.map((item) => {
+              const isExpired = item.status === 'EXPIRED' || item.daysRemaining < 0;
+              const isNearExpiry = item.status === 'EXPIRING_SOON';
+
+              return (
+                <div
+                  key={item.id}
+                  className={`p-4 space-y-2.5 transition-colors ${
+                    isExpired ? 'bg-rose-50/25' : isNearExpiry ? 'bg-amber-50/20' : 'hover:bg-slate-50/70'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-xs font-semibold text-indigo-700 bg-indigo-50/80 px-2 py-0.5 rounded border border-indigo-200/60">
+                      {item.productSku}
+                    </span>
+
+                    {isExpired ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                        <XCircle className="w-3 h-3 shrink-0" />
+                        Quá hạn {Math.abs(item.daysRemaining)} ngày
+                      </span>
+                    ) : isNearExpiry ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                        <AlertTriangle className="w-3 h-3 shrink-0" />
+                        Còn {item.daysRemaining} ngày
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        <CheckCircle2 className="w-3 h-3 shrink-0" />
+                        Còn {item.daysRemaining} ngày
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="font-bold text-sm text-slate-900">{item.productName}</div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-white/70 p-2.5 rounded-lg border border-slate-100">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Số Lô:</span>
+                      <span className="font-mono font-bold text-slate-800">{item.batchNumber}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Hạn sử dụng:</span>
+                      <span className="font-mono font-bold text-slate-800">{formatDate(item.expiryDate)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Tồn kho:</span>
+                      <span className="font-mono font-bold text-slate-900">{item.quantity.toLocaleString('vi-VN')} {item.baseUnit}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Khả dụng:</span>
+                      <span className="font-mono font-semibold text-emerald-700">{item.availableQuantity} {item.baseUnit}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDispatchCheck(item)}
+                    className={`w-full py-2 text-xs font-semibold rounded-xl border flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                      isExpired
+                        ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                        : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+                    }`}
+                  >
+                    {isExpired ? (
+                      <>
+                        <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                        <span>Ghi đè điều kiện xuất</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Kiểm tra xuất kho</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop View (>= 768px): Bảng dữ liệu đầy đủ */}
+        <div className="hidden md:block overflow-x-auto overscroll-x-contain">
           <table className="w-full text-sm divide-y divide-slate-100">
             <thead>
               <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">

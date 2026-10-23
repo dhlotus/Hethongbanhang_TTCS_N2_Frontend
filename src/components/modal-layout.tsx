@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, Maximize2, Minimize2 } from 'lucide-react';
 import { ConfirmDialog } from './confirm-dialog';
 
 export interface ModalLayoutProps {
@@ -24,6 +24,7 @@ export interface ModalLayoutProps {
   bodyAs?: 'div' | 'form';
   onFormSubmit?: (e: React.FormEvent) => void;
   fullScreenOnMobile?: boolean; // Mặc định true: chuyển thành Page Sheet / Full-screen Drawer trên màn hình < 768px
+  allowFullscreen?: boolean; // Cho phép phóng to toàn màn hình (mặc định true)
   isDirty?: boolean; // Khi biểu mẫu có dữ liệu chưa lưu, cảnh báo trước khi thoát
   dirtyPromptMessage?: string;
 }
@@ -61,10 +62,12 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
   bodyAs = 'div',
   onFormSubmit,
   fullScreenOnMobile = false,
+  allowFullscreen = true,
   isDirty = false,
   dirtyPromptMessage = 'Biểu mẫu đang có dữ liệu thay đổi chưa lưu. Bạn có chắc chắn muốn thoát mà không lưu?',
 }) => {
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
 
   // Mặc định không đóng khi click ngoài backdrop đối với modal form để chống mất dữ liệu
   const shouldCloseOnOverlay =
@@ -115,18 +118,20 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
           requestClose();
         }
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-900/40 backdrop-blur-xs transition-all animate-modal-backdrop-in"
+      className={`fixed inset-0 z-50 flex items-center justify-center ${isMaximized ? 'p-0' : 'p-3 sm:p-4 md:p-6'} bg-slate-900/40 backdrop-blur-xs transition-all animate-modal-backdrop-in`}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative w-full ${maxWidth} bg-white overflow-hidden ${
-          fullScreenOnMobile
-            ? 'h-[100dvh] sm:h-auto rounded-none sm:rounded-xl max-h-[100dvh] sm:max-h-[calc(100dvh-3rem)]'
-            : 'rounded-xl max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-3rem)]'
+        className={`relative w-full ${isMaximized ? 'max-w-none h-full max-h-none rounded-none' : maxWidth} bg-white overflow-hidden ${
+          isMaximized
+            ? 'h-full max-h-none rounded-none'
+            : fullScreenOnMobile
+              ? 'h-[100dvh] sm:h-auto rounded-none sm:rounded-xl max-h-[100dvh] sm:max-h-[calc(100dvh-3rem)]'
+              : 'rounded-xl max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-3rem)]'
         } border border-slate-200/90 shadow-xl flex flex-col animate-modal-in ${containerClassName}`}
       >
         {/* 1. Header cố định */}
-        <div className="sticky top-0 z-20 flex flex-col px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-t-xl">
+        <div className={`sticky top-0 z-20 flex flex-col px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 ${isMaximized ? 'rounded-none' : 'rounded-t-xl'}`}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               {icon && (
@@ -148,14 +153,26 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
               </div>
             </div>
 
-            {(headerExtra || showCloseButton) && (
-              <div className="flex items-center gap-2 shrink-0">
+            {(headerExtra || allowFullscreen || showCloseButton) && (
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                 {headerExtra}
+                {allowFullscreen && (
+                  <button
+                    type="button"
+                    onClick={() => setIsMaximized(!isMaximized)}
+                    aria-label={isMaximized ? 'Thu nhỏ cửa sổ' : 'Phóng to toàn màn hình'}
+                    title={isMaximized ? 'Thu nhỏ cửa sổ' : 'Phóng to toàn màn hình'}
+                    className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
+                  >
+                    {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                  </button>
+                )}
                 {showCloseButton && (
                   <button
                     type="button"
                     onClick={requestClose}
                     aria-label="Đóng popup"
+                    title="Đóng popup"
                     className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
                   >
                     <X className="h-5 w-5" />
@@ -183,7 +200,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
               {children}
             </div>
             {footer && (
-              <div className="sticky bottom-0 z-20 flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-b-xl pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-4">
+              <div className={`sticky bottom-0 z-20 flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 ${isMaximized ? 'rounded-none' : 'rounded-b-xl'} pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-4`}>
                 {footer}
               </div>
             )}
@@ -198,7 +215,7 @@ export const ModalLayout: React.FC<ModalLayoutProps> = ({
               {children}
             </div>
             {footer && (
-              <div className="sticky bottom-0 z-20 flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 rounded-b-xl pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-4">
+              <div className={`sticky bottom-0 z-20 flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 ${isMaximized ? 'rounded-none' : 'rounded-b-xl'} pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-4`}>
                 {footer}
               </div>
             )}

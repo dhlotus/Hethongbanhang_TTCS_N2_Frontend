@@ -395,8 +395,8 @@ export const InventoryReceiptsPage: React.FC = () => {
         </div>
 
         {/* Bảng danh sách phiếu nhập */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto overscroll-x-contain">
+          <table className="w-full min-w-[720px] text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <th className="px-4 py-3.5">Mã phiếu</th>

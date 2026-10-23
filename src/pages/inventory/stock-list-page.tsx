@@ -628,8 +628,8 @@ export const StockListPage: React.FC = () => {
 
       {/* Bảng Sổ Tồn Kho Chuẩn 3 Cột + Ngưỡng Tồn Tối Thiểu (SN-180 & SN-183) */}
       <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto overscroll-x-contain">
+          <table className="w-full min-w-[700px] text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50/75 text-xs font-semibold uppercase tracking-wider text-slate-600">
               <tr>
                 <th scope="col" className="px-5 py-3.5">

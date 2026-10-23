@@ -91,7 +91,7 @@ export const AdminLayout: React.FC = () => {
         <Header onToggleMobileMenu={handleToggleMobileMenu} />
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto min-h-0 px-2 py-3 sm:px-4 sm:py-4 lg:px-6">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 px-2 py-3 sm:px-4 sm:py-4 lg:px-6">
           <div className="mx-auto w-full max-w-[1800px] page-transition min-w-0">
             <Outlet />
           </div>

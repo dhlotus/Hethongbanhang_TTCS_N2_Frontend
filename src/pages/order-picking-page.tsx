@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Package,
   PackageSearch,
   Plus,
   Printer,
@@ -531,7 +530,7 @@ export const OrderPickingPage: React.FC = () => {
           <table className="w-full text-xs border-collapse border border-black mb-6">
             <thead>
               <tr className="bg-gray-100 text-center font-bold">
-                <th className="border border-black p-2 w-10">Bước</th>
+                <th className="border border-black p-2 w-10">Phiếu</th>
                 <th className="border border-black p-2 w-10">[✓]</th>
                 <th className="border border-black p-2 text-left w-36">Vị trí kệ kho</th>
                 <th className="border border-black p-2 text-left w-28">Mã SKU</th>

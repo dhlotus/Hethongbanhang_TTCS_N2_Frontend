@@ -112,7 +112,7 @@ export const CreateTransferModal: React.FC<CreateTransferModalProps> = ({
         // Cập nhật lại tồn khả dụng cho các item đã chọn trong bảng
         setItems((prev) =>
           prev.map((item) => {
-            const stockFound = stocks.find((s) => s.sku.toUpperCase() === item.sku.toUpperCase());
+            const stockFound = stocks.find((s: any) => s.sku.toUpperCase() === item.sku.toUpperCase());
             return {
               ...item,
               availableAtSource: stockFound?.availableQuantity ?? 0,
@@ -296,7 +296,7 @@ export const CreateTransferModal: React.FC<CreateTransferModalProps> = ({
       onClose={onClose}
       title="Lập Phiếu Chuyển Kho Nội Bộ"
       icon={<Warehouse className="w-5 h-5 text-[var(--color-primary)]" />}
-      maxWidth="max-w-4xl"
+      maxWidth="max-w-5xl"
       bodyClassName="p-4 sm:p-6 space-y-5 text-slate-700 text-xs"
       footer={
         <div className="flex items-center justify-between w-full">

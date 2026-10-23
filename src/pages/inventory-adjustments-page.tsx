@@ -453,7 +453,8 @@ export const InventoryAdjustmentsPage: React.FC = () => {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden font-sans">
-        <table className="w-full text-left text-xs text-slate-700 border-collapse table-fixed">
+        <div className="overflow-x-auto overscroll-x-contain">
+          <table className="w-full min-w-[750px] text-left text-xs text-slate-700 border-collapse table-fixed">
           <thead className="bg-slate-50 text-xs text-slate-600 uppercase tracking-wider border-b border-slate-200 font-semibold font-sans">
             <tr>
               <th className="py-3 px-3.5 w-[18%]">Mã phiếu</th>
@@ -634,6 +635,7 @@ export const InventoryAdjustmentsPage: React.FC = () => {
             </tfoot>
           )}
         </table>
+        </div>
 
         {/* Phân trang */}
         {adjustments.length > pageSize && (

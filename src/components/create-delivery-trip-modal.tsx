@@ -8,6 +8,8 @@ import {
   AlertCircle,
   Loader2,
   Package,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import type { Shipment } from '../services/shipments.service';
 import type { DeliveryTrip, CreateDeliveryTripPayload } from '../types/delivery-trip';
@@ -38,6 +40,7 @@ export const CreateDeliveryTripModal: React.FC<Props> = ({
   onCreated,
 }) => {
   const [submitting, setSubmitting] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
 
   // Form fields
   const [name, setName] = useState(() => {
@@ -143,8 +146,12 @@ export const CreateDeliveryTripModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl flex flex-col max-h-[92vh] overflow-hidden">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 ${isMaximized ? 'p-0' : 'p-3 sm:p-5'}`}>
+      <div className={`bg-white shadow-2xl flex flex-col overflow-hidden transition-all duration-150 ${
+        isMaximized
+          ? 'w-full h-full rounded-none'
+          : 'w-full max-w-5xl rounded-2xl max-h-[94vh]'
+      }`}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div>
@@ -156,14 +163,25 @@ export const CreateDeliveryTripModal: React.FC<Props> = ({
               Gom nhiều phiếu xuất vào một chuyến giao theo khu vực và gán tài xế, phương tiện
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsMaximized(!isMaximized)}
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              title={isMaximized ? 'Thu nhỏ cửa sổ' : 'Phóng to toàn màn hình'}
+            >
+              {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              title="Đóng"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Form Body */}
@@ -175,7 +193,7 @@ export const CreateDeliveryTripModal: React.FC<Props> = ({
               1. Thông tin Tuyến & Chuyến giao
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 block">
                   Tên chuyến giao <span className="text-rose-500">*</span>
@@ -189,16 +207,16 @@ export const CreateDeliveryTripModal: React.FC<Props> = ({
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 min-w-0">
                 <label className="text-xs font-bold text-slate-700 block">
                   Khu vực / Tuyến giao hàng <span className="text-rose-500">*</span>
                 </label>
                 {!isCustomArea ? (
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <select
                       value={routeArea}
                       onChange={(e) => setRouteArea(e.target.value)}
-                      className="flex-1 h-[38px] px-3 text-xs border border-slate-200 rounded-lg bg-slate-50/60 hover:bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium cursor-pointer"
+                      className="flex-1 min-w-0 h-[38px] px-3 text-xs border border-slate-200 rounded-lg bg-slate-50/60 hover:bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium cursor-pointer"
                     >
                       {ROUTE_SUGGESTIONS.map((r) => (
                         <option key={r} value={r}>
@@ -209,24 +227,24 @@ export const CreateDeliveryTripModal: React.FC<Props> = ({
                     <button
                       type="button"
                       onClick={() => setIsCustomArea(true)}
-                      className="px-2.5 text-xs text-indigo-600 hover:text-indigo-800 font-semibold border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap cursor-pointer"
+                      className="shrink-0 px-3 h-[38px] text-xs text-indigo-600 hover:text-indigo-800 font-semibold border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap cursor-pointer"
                     >
                       Tự nhập
                     </button>
                   </div>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <input
                       type="text"
                       value={customRouteArea}
                       onChange={(e) => setCustomRouteArea(e.target.value)}
                       placeholder="Nhập tên tuyến / khu vực..."
-                      className="flex-1 h-[38px] px-3 text-xs border border-slate-200 rounded-lg bg-slate-50/60 hover:bg-white focus:bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium"
+                      className="flex-1 min-w-0 h-[38px] px-3 text-xs border border-slate-200 rounded-lg bg-slate-50/60 hover:bg-white focus:bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium"
                     />
                     <button
                       type="button"
                       onClick={() => setIsCustomArea(false)}
-                      className="px-2.5 text-xs text-slate-600 hover:text-slate-800 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap cursor-pointer"
+                      className="shrink-0 px-3 h-[38px] text-xs text-slate-600 hover:text-slate-800 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap cursor-pointer"
                     >
                       Chọn có sẵn
                     </button>
@@ -366,7 +384,7 @@ export const CreateDeliveryTripModal: React.FC<Props> = ({
                 </p>
               </div>
             ) : (
-              <div className="border border-slate-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto bg-white divide-y divide-slate-100">
+              <div className={`border border-slate-200 rounded-xl overflow-hidden ${isMaximized ? 'max-h-[50vh]' : 'max-h-72'} overflow-y-auto bg-white divide-y divide-slate-100`}>
                 {filteredShipments.map((s) => {
                   const isChecked = selectedIds.includes(s.id);
                   return (

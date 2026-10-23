@@ -331,8 +331,8 @@ export const DebtReconciliationsPage: React.FC = () => {
 
       {/* 4. Bảng Danh Sách Biên Bản Đối Chiếu */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className={`overflow-x-auto transition-all duration-200 ${openActionId ? 'pb-44 min-h-[280px]' : ''}`}>
-          <table className="w-full text-left border-collapse text-sm">
+        <div className={`overflow-x-auto overscroll-x-contain transition-all duration-200 ${openActionId ? 'pb-44 min-h-[280px]' : ''}`}>
+          <table className="w-full min-w-[750px] text-left border-collapse text-sm">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 <th className="py-3 px-4">Mã biên bản</th>

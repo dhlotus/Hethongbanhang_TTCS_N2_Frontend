@@ -385,8 +385,8 @@ export const ReturnsPage: React.FC = () => {
 
       {/* Bảng danh sách phiếu trả hàng (Đồng bộ style với Orders / Invoices) */}
       <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs sm:text-sm">
+        <div className="overflow-x-auto overscroll-x-contain">
+          <table className="w-full min-w-[750px] text-left text-xs sm:text-sm">
             <thead className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               <tr>
                 <th className="py-3 px-4">Mã phiếu</th>

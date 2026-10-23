@@ -446,7 +446,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       {/* =================================================================== */}
       {/* 1. BÊN TRÁI: NÚT ĐÓNG MỞ NAVBAR & TIÊU ĐỀ TRANG                     */}
       {/* =================================================================== */}
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
         {/* Nút Hamburger chỉ cho Mobile (<1024px) */}
         <button
           type="button"
@@ -458,12 +458,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         </button>
 
         {/* Tiêu đề trang hoặc breadcrumb phân cấp */}
-        <div className="overflow-hidden min-w-0">
+        <div className="overflow-hidden min-w-0 flex-1">
           {breadcrumbs && breadcrumbs.length > 1 ? (
             <nav
               aria-label="Breadcrumb"
               key={location.pathname}
-              className="flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base tracking-tight animate-header-title min-w-0"
+              className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base tracking-tight animate-header-title min-w-0"
             >
               {breadcrumbs.map((crumb, idx) => {
                 const isLast = idx === breadcrumbs.length - 1;
@@ -495,7 +495,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           ) : (
             <h1
               key={location.pathname}
-              className="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate animate-header-title"
+              className="text-sm sm:text-base md:text-lg font-bold text-slate-900 tracking-tight truncate animate-header-title"
             >
               {title}
             </h1>

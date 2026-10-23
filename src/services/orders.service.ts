@@ -1262,7 +1262,7 @@ export const ordersService = {
         try {
           const stockRows = await inventoryService.getStockOverview(resolvedWarehouseId);
           availableBySku = new Map(
-            stockRows.map((stock) => [
+            stockRows.map((stock: any) => [
               stock.sku.toUpperCase(),
               (stock as { availableQuantity?: number; stockQuantity?: number }).availableQuantity ??
                 stock.stockQuantity,

@@ -284,9 +284,114 @@ export const SuppliersPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Table - Responsive & Tối ưu hiển thị */}
+      {/* 3. Table & Mobile Card View */}
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-        <div className="overflow-x-auto">
+        {/* Mobile View (< 768px): Card danh sách vừa vặn màn hình điện thoại, không cần cuộn ngang */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {loading ? (
+            <div className="p-8 text-center text-slate-400">
+              <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-blue-500" />
+              <p className="text-xs">Đang tải danh sách nhà cung cấp...</p>
+            </div>
+          ) : suppliers.length === 0 ? (
+            <div className="py-12 px-4 text-center text-slate-400">
+              <Building2 className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+              <p className="font-semibold text-slate-600 text-sm">Không tìm thấy nhà cung cấp nào</p>
+              <p className="text-xs text-slate-400 mt-1">Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc.</p>
+            </div>
+          ) : (
+            suppliers.map((supplier) => {
+              const hasReceipts = Boolean(
+                supplier.hasReceipts ?? supplier.has_receipts
+              );
+              const isActive = supplier.status === "ACTIVE";
+
+              return (
+                <div key={supplier.id} className="p-4 space-y-2 hover:bg-slate-50/70 transition-colors">
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleViewDetail(supplier)}
+                      className="font-mono font-bold text-xs text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200/70"
+                    >
+                      {supplier.code}
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                          isActive
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50"
+                            : "bg-slate-100 text-slate-600 border border-slate-200/50"
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            isActive ? "bg-emerald-500" : "bg-slate-400"
+                          }`}
+                        />
+                        {isActive ? "Đang giao dịch" : "Ngừng GD"}
+                      </span>
+
+                      {canManageSuppliers && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStatus(supplier)}
+                          className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors cursor-pointer ${
+                            isActive
+                              ? "text-slate-400 hover:text-amber-600 hover:bg-amber-50"
+                              : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
+                          }`}
+                          title={isActive ? "Ngừng giao dịch" : "Kích hoạt"}
+                        >
+                          <Power className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => handleViewDetail(supplier)}
+                    className="font-bold text-sm text-slate-900 hover:text-blue-600 cursor-pointer transition-colors"
+                  >
+                    {supplier.name}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 pt-1">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Người đại diện:</span>
+                      <span className="font-medium text-slate-700 truncate block">
+                        {supplier.contactName || supplier.contact_name || "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Phiếu nhập kho:</span>
+                      {hasReceipts ? (
+                        <span className="inline-flex items-center gap-1 text-indigo-700 font-semibold text-[11px]">
+                          <Receipt className="h-3 w-3 text-indigo-500" /> Đã có phiếu
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-[11px]">Chưa phát sinh</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleViewDetail(supplier)}
+                    className="w-full mt-2 py-2 text-xs font-semibold text-blue-700 bg-blue-50/80 hover:bg-blue-100 rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Xem chi tiết đối tác</span>
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop View (>= 768px): Bảng dữ liệu đầy đủ */}
+        <div className="hidden md:block overflow-x-auto overscroll-x-contain">
           <table className="w-full text-left text-xs text-slate-600">
             <thead className="bg-slate-50/80 text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-100">
               <tr>

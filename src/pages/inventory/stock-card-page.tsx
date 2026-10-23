@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   FileText,
   CheckCircle2,
+  RefreshCw,
 } from 'lucide-react';
 import { inventoryService } from '../../services/inventory.service';
 import { productsService } from '../../services/products.service';
@@ -419,8 +420,87 @@ export const StockCardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Bảng dữ liệu chính: Bảng tinh gọn, không dàn trải */}
-        <div className="overflow-x-auto">
+        {/* Mobile View (< 768px): Thẻ card biến động kho vừa vặn màn hình điện thoại, không cần cuộn ngang */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {loading ? (
+            <div className="py-8 text-center text-slate-500 text-xs">
+              <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-600" />
+              Đang tải lịch sử phát sinh...
+            </div>
+          ) : paginatedTransactions.length === 0 ? (
+            <div className="py-10 px-4 text-center text-slate-500">
+              <AlertTriangle className="w-7 h-7 text-amber-500 mx-auto mb-1.5" />
+              <p className="text-xs font-semibold text-slate-700">Không có phát sinh nào phù hợp</p>
+              <p className="text-[11px] text-slate-400 mt-1">Vui lòng chọn sản phẩm khác hoặc đặt lại bộ lọc.</p>
+            </div>
+          ) : (
+            paginatedTransactions.map((tx) => {
+              const isPositive = tx.baseQuantityChange > 0;
+              const isNegative = tx.baseQuantityChange < 0;
+
+              return (
+                <div key={tx.id} className="p-3.5 space-y-2 hover:bg-slate-50/70 transition-colors">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-800">
+                      {new Date(tx.createdAt).toLocaleDateString('vi-VN')}
+                    </span>
+                    <div>{renderTransactionTypeBadge(tx.transactionType)}</div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Chứng từ gốc:</span>
+                      {tx.referenceCode ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDocumentDetail(tx)}
+                          className="inline-flex items-center gap-1 font-mono text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50/70 border border-indigo-200/80 px-2 py-0.5 rounded transition-colors cursor-pointer"
+                        >
+                          <span>{tx.referenceCode}</span>
+                          <ExternalLink className="w-3 h-3 text-indigo-400" />
+                        </button>
+                      ) : (
+                        <span className="text-slate-400 italic">-</span>
+                      )}
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-slate-400 block text-[11px]">Biến động:</span>
+                      <span
+                        className={`font-bold font-mono text-xs tabular-nums ${
+                          isPositive ? 'text-emerald-600' : isNegative ? 'text-rose-600' : 'text-slate-600'
+                        }`}
+                      >
+                        {isPositive ? `+${tx.baseQuantityChange}` : tx.baseQuantityChange} {tx.baseUnit}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 text-xs">
+                    <div>
+                      <span className="text-slate-400 text-[11px]">Tồn sau: </span>
+                      <span className="font-extrabold text-slate-900 font-mono">
+                        {tx.newStock.toLocaleString('vi-VN')} {tx.baseUnit}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTxForDetail(tx)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Chi tiết</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop View (>= 768px): Bảng dữ liệu chính */}
+        <div className="hidden md:block overflow-x-auto overscroll-x-contain">
           <table className="w-full text-left border-collapse text-xs sm:text-sm">
             <thead>
               <tr className="border-b border-slate-200/80 bg-slate-50/90 text-xs font-semibold text-slate-500 uppercase tracking-wider">
