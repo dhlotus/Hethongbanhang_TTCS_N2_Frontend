@@ -20,6 +20,7 @@ import {
   PackagePlus,
   Trash2,
   Wrench,
+  RefreshCw,
 } from 'lucide-react';
 import { showToast } from '../components/toast';
 import { ModalLayout } from '../components/modal-layout';

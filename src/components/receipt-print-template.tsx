@@ -294,10 +294,13 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
       if (element) {
         try {
           const html2canvasModule = await import('html2canvas');
-          const html2canvas = html2canvasModule.default || html2canvasModule;
+          const html2canvasFn = (html2canvasModule.default || html2canvasModule) as unknown as (
+            element: HTMLElement,
+            options?: any,
+          ) => Promise<HTMLCanvasElement>;
           const { jsPDF } = await import('jspdf');
 
-          const canvas = await html2canvas(element, {
+          const canvas = await html2canvasFn(element, {
             scale: 2.5,
             useCORS: true,
             logging: false,
