@@ -47,8 +47,8 @@ export function getTripTimingStatus(
   if (status === 'COMPLETED') {
     return {
       isOverdue: false,
-      text: 'Đã hoàn tất chuyến',
-      badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+      text: 'Đã hoàn tất',
+      badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     };
   }
 
@@ -56,33 +56,25 @@ export function getTripTimingStatus(
     return {
       isOverdue: false,
       text: 'Chưa xuất phát',
-      badgeClass: 'bg-slate-50 text-slate-700 ring-slate-600/20',
+      badgeClass: 'bg-slate-50 text-slate-600 border-slate-200',
     };
   }
 
   const now = Date.now();
   const est = new Date(estimatedCompletionTime).getTime();
-  const diffMinutes = Math.floor((now - est) / (1000 * 60));
+  const isOverdue = !isNaN(est) && now > est;
 
-  if (diffMinutes > 0) {
-    const hours = Math.floor(diffMinutes / 60);
-    const mins = diffMinutes % 60;
-    const timeStr = hours > 0 ? `${hours}h ${mins}p` : `${mins}p`;
+  if (isOverdue) {
     return {
       isOverdue: true,
-      text: `Trễ ${timeStr}`,
+      text: 'Quá hạn ETA',
       badgeClass: 'bg-rose-50 text-rose-700 border-rose-200',
     };
   }
 
-  const remainingMins = Math.abs(diffMinutes);
-  const remainingHours = Math.floor(remainingMins / 60);
-  const minsLeft = remainingMins % 60;
-  const timeStr = remainingHours > 0 ? `${remainingHours}h ${minsLeft}p` : `${minsLeft}p`;
-
   return {
     isOverdue: false,
-    text: `Còn ${timeStr}`,
-    badgeClass: 'bg-sky-50 text-sky-700 border-sky-200',
+    text: 'Đúng tiến độ',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   };
 }

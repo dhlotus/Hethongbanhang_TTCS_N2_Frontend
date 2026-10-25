@@ -61,21 +61,21 @@ export const TripCard: React.FC<TripCardProps> = ({
       <div className="space-y-3">
         {/* 1. Header: Mã chuyến, Biển số xe, Badge thời gian & Tên chuyến */}
         <div>
-          <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+          <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-md border border-indigo-200/80">
+              <span className="inline-flex items-center h-[26px] px-2.5 text-xs font-bold font-mono text-indigo-700 bg-indigo-50 rounded-lg border border-indigo-200/80">
                 {trip.tripCode || (trip as any).code}
               </span>
-              <span className="font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+              <span className="inline-flex items-center h-[26px] px-2 text-xs font-semibold font-mono text-slate-700 bg-slate-100 rounded-lg border border-slate-200">
                 {trip.vehicleNumber || (trip as any).licensePlate}
               </span>
             </div>
 
             <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-md text-2xs font-semibold border shrink-0 whitespace-nowrap ${timingStatus.badgeClass}`}
+              className={`inline-flex items-center gap-1.5 h-[26px] px-2.5 rounded-lg text-xs font-semibold border shrink-0 whitespace-nowrap ${timingStatus.badgeClass}`}
             >
-              <Clock className="w-3 h-3 mr-1 shrink-0" />
-              {timingStatus.text}
+              <Clock className="w-3.5 h-3.5 shrink-0" />
+              <span>{timingStatus.text}</span>
             </span>
           </div>
 

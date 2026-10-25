@@ -90,18 +90,30 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                  {trip.tripCode}
+                <span className="inline-flex items-center h-[26px] px-2.5 text-xs font-bold font-mono text-indigo-700 bg-indigo-50 rounded-lg border border-indigo-200/80">
+                  {trip.tripCode || (trip as any).code}
                 </span>
-                <span className="font-mono text-xs font-semibold text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
-                  {trip.vehicleNumber}
+                <span className="inline-flex items-center h-[26px] px-2 text-xs font-semibold font-mono text-slate-700 bg-slate-100 rounded-lg border border-slate-200">
+                  {trip.vehicleNumber || (trip as any).licensePlate}
                 </span>
-                {trip.isOverdue && trip.status === 'IN_TRANSIT' && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs font-medium bg-rose-50 text-rose-700 border border-rose-200/70">
-                    <AlertTriangle className="w-2.5 h-2.5 text-rose-500" />
-                    Trễ {trip.overdueMinutes > 60 ? `${Math.floor(trip.overdueMinutes / 60)}h ${trip.overdueMinutes % 60}p` : `${trip.overdueMinutes}p`}
+                <span
+                  className={`inline-flex items-center gap-1.5 h-[26px] px-2.5 rounded-lg text-xs font-semibold border shrink-0 ${
+                    trip.status === 'COMPLETED'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : trip.isOverdue && trip.status === 'IN_TRANSIT'
+                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    {trip.status === 'COMPLETED'
+                      ? 'Đã hoàn tất'
+                      : trip.isOverdue && trip.status === 'IN_TRANSIT'
+                      ? 'Quá hạn ETA'
+                      : 'Đúng tiến độ'}
                   </span>
-                )}
+                </span>
               </div>
               <h2 className="text-sm sm:text-base font-bold text-slate-900 mt-0.5">
                 {trip.tripName}
