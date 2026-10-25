@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Truck,
   Plus,
-  RefreshCw,
   Search,
   X,
   Building2,
@@ -128,31 +127,35 @@ export const GoodsInTransitPage: React.FC = () => {
     updateQueryParams({ warehouse: newWarehouse });
   };
 
-  // Tải dữ liệu từ API
-  const fetchData = useCallback(async (showNotification = false) => {
+  // Tải dữ liệu từ API (gửi kèm params truy vấn backend)
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      const queryParams: Record<string, string> = {};
+      if (searchTerm.trim()) queryParams.search = searchTerm.trim();
+      if (activeTab !== 'ALL') queryParams.status = activeTab;
+      if (selectedWarehouseId !== 'ALL') queryParams.warehouseId = selectedWarehouseId;
+
       const [tripsData, statsData] = await Promise.all([
-        deliveryTripsService.getTrips(),
-        deliveryTripsService.getGoodsInTransitStats(),
+        deliveryTripsService.getTrips(queryParams),
+        deliveryTripsService.getGoodsInTransitStats(
+          selectedWarehouseId !== 'ALL' ? selectedWarehouseId : undefined,
+        ),
       ]);
 
-      setTrips(tripsData);
+      const list = Array.isArray(tripsData) ? tripsData : [];
+      setTrips(list);
       setStats(statsData);
 
       setSelectedTripForDetail((prev) =>
-        prev ? tripsData.find((t) => t.id === prev.id) || null : null,
+        prev ? list.find((t) => t.id === prev.id) || null : null,
       );
-
-      if (showNotification) {
-        showToast('success', 'Đã cập nhật trạng thái các chuyến xe giao hàng mới nhất');
-      }
     } catch (err: unknown) {
       showToast('error', getFriendlyErrorMessage(err, 'Không thể tải dữ liệu chuyến đi giao hàng'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [searchTerm, activeTab, selectedWarehouseId]);
 
   useEffect(() => {
     fetchData();
@@ -193,19 +196,25 @@ export const GoodsInTransitPage: React.FC = () => {
     };
   }, [trips]);
 
-  // Bộ lọc danh sách chuyến đi
+  // Bộ lọc danh sách chuyến đi (an toàn tuyệt đối, tránh lỗi toLowerCase trên null/undefined gây crash màn hình trắng)
   const filteredTrips = useMemo(() => {
     return trips.filter((trip) => {
+      if (!trip) return false;
+
+      // 1. Lọc kho
       if (selectedWarehouseId !== 'ALL') {
         const targetWh = availableWarehouses.find((w) => w.id === selectedWarehouseId);
         const matchesId = trip.warehouseId === selectedWarehouseId;
         const matchesName =
-          targetWh && trip.warehouseName?.toLowerCase() === targetWh.name.toLowerCase();
+          targetWh &&
+          trip.warehouseName &&
+          trip.warehouseName.toLowerCase() === targetWh.name.toLowerCase();
         if (!matchesId && !matchesName) {
           return false;
         }
       }
 
+      // 2. Lọc trạng thái
       if (activeTab === 'OVERDUE') {
         if (!trip.isOverdue || trip.status !== 'IN_TRANSIT') return false;
       } else if (activeTab === 'IN_TRANSIT_ON_TIME') {
@@ -214,20 +223,33 @@ export const GoodsInTransitPage: React.FC = () => {
         if (trip.status !== 'COMPLETED') return false;
       }
 
+      // 3. Lọc từ khóa tìm kiếm (bảo vệ an toàn 100% không bị null pointer)
       if (searchTerm.trim()) {
         const term = searchTerm.trim().toLowerCase();
-        const matchCode = trip.tripCode.toLowerCase().includes(term);
-        const matchName = trip.tripName.toLowerCase().includes(term);
-        const matchDriver = trip.driverName.toLowerCase().includes(term);
-        const matchVehicle = trip.vehicleNumber.toLowerCase().includes(term);
-        const matchWh = trip.warehouseName?.toLowerCase().includes(term);
-        const matchStop = trip.stops.some(
-          (s) =>
-            s.orderCode.toLowerCase().includes(term) ||
-            s.customerName.toLowerCase().includes(term),
-        );
+        const code = (trip.tripCode || (trip as any).code || '').toLowerCase();
+        const name = (trip.tripName || (trip as any).name || '').toLowerCase();
+        const driver = (trip.driverName || '').toLowerCase();
+        const vehicle = (trip.vehicleNumber || (trip as any).licensePlate || '').toLowerCase();
+        const wh = (trip.warehouseName || '').toLowerCase();
+        const route = (trip.routeArea || '').toLowerCase();
 
-        if (!matchCode && !matchName && !matchDriver && !matchVehicle && !matchStop && !matchWh) {
+        const matchCode = code.includes(term);
+        const matchName = name.includes(term);
+        const matchDriver = driver.includes(term);
+        const matchVehicle = vehicle.includes(term);
+        const matchWh = wh.includes(term);
+        const matchRoute = route.includes(term);
+
+        const stops = Array.isArray(trip.stops) ? trip.stops : [];
+        const matchStop = stops.some((s) => {
+          if (!s) return false;
+          const orderCode = (s.orderCode || '').toLowerCase();
+          const customerName = (s.customerName || '').toLowerCase();
+          const phone = (s.contactPhone || s.receiverPhone || '').toLowerCase();
+          return orderCode.includes(term) || customerName.includes(term) || phone.includes(term);
+        });
+
+        if (!matchCode && !matchName && !matchDriver && !matchVehicle && !matchStop && !matchWh && !matchRoute) {
           return false;
         }
       }
@@ -332,36 +354,14 @@ export const GoodsInTransitPage: React.FC = () => {
 
   return (
     <main className="mx-auto w-full max-w-[1600px] space-y-4 p-4 sm:p-6 lg:p-8">
-      {/* 1. HÀNG NÚT THAO TÁC TRÊN ĐẦU (GỌN GÀNG, ĐỒNG BỘ STYLE BUTTON TOÀN HỆ THỐNG) */}
-      <div className="flex items-center justify-end gap-2.5">
-        <button
-          type="button"
-          onClick={() => fetchData(true)}
-          disabled={loading}
-          className="inline-flex items-center justify-center gap-1.5 h-[36px] px-3.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 active:scale-[0.99] rounded-lg shadow-xs transition-all cursor-pointer disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
-          <span>Làm mới</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => navigate('/inventory/issues/trips/create')}
-          className="inline-flex items-center justify-center gap-1.5 h-[36px] px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg shadow-xs transition-all cursor-pointer"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Lập chuyến đi mới</span>
-        </button>
-      </div>
-
-      {/* 2. THỐNG KÊ TỔNG QUAN (4 KPI CARDS ĐỒNG BỘ 100% GIAO DIỆN HỆ THỐNG) */}
+      {/* 1. THỐNG KÊ TỔNG QUAN (4 KPI CARDS ĐỒNG BỘ 100% GIAO DIỆN HỆ THỐNG, BỎ CHỮ NHỎ DƯỚI CHÂN) */}
       <TripStatsCards stats={stats} loading={loading} />
 
-      {/* 3. KHUNG BỘ LỌC & TÌM KIẾM (ĐỒNG BỘ 1 HÀNG, SELECT THAY THẾ DÀN TRẢI NÚT) */}
+      {/* 2. KHUNG BỘ LỌC, TÌM KIẾM & NÚT LẬP CHUYẾN ĐI MỚI (NẰM CHUNG 1 HÀNG/NHÓM) */}
       <div className="bg-white rounded-xl border border-slate-200/90 p-3 sm:p-4 shadow-xs">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          {/* Ô tìm kiếm */}
-          <div className="relative flex-1">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
+          {/* Ô tìm kiếm an toàn tuyệt đối */}
+          <div className="relative flex-1 min-w-[240px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
@@ -386,7 +386,7 @@ export const GoodsInTransitPage: React.FC = () => {
           </div>
 
           {/* Lọc theo Kho lưu trữ */}
-          <div className="relative w-full sm:w-56">
+          <div className="relative w-full sm:w-52">
             <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <select
               value={selectedWarehouseId}
@@ -404,7 +404,7 @@ export const GoodsInTransitPage: React.FC = () => {
           </div>
 
           {/* Lọc theo Trạng thái vận chuyển dạng Select */}
-          <div className="relative w-full sm:w-56">
+          <div className="relative w-full sm:w-52">
             <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <select
               value={activeTab}
@@ -431,10 +431,20 @@ export const GoodsInTransitPage: React.FC = () => {
               <span>Đặt lại</span>
             </button>
           )}
+
+          {/* Nút LẬP CHUYẾN ĐI MỚI (chuyển xuống chung nhóm với tìm kiếm và bộ lọc) */}
+          <button
+            type="button"
+            onClick={() => navigate('/inventory/issues/trips/create')}
+            className="inline-flex items-center justify-center gap-1.5 h-[38px] px-4 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Lập chuyến đi mới</span>
+          </button>
         </div>
       </div>
 
-      {/* 4. DANH SÁCH CHUYẾN XE */}
+      {/* 3. DANH SÁCH CHUYẾN XE */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -456,7 +466,7 @@ export const GoodsInTransitPage: React.FC = () => {
             {[1, 2, 3].map((n) => (
               <div
                 key={n}
-                className="h-72 rounded-xl bg-white border border-slate-200/90 p-5 animate-pulse space-y-3"
+                className="h-64 rounded-xl bg-white border border-slate-200/90 p-5 animate-pulse space-y-3"
               >
                 <div className="h-5 w-1/2 bg-slate-200 rounded" />
                 <div className="h-4 w-3/4 bg-slate-100 rounded" />
