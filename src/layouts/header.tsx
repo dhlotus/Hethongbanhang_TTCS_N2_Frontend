@@ -254,6 +254,23 @@ const getPageHeaderInfo = (
   }
 
   if (
+    pathname === '/inventory/shipments/trips/create' ||
+    pathname === '/app/inventory/shipments/trips/create' ||
+    pathname === '/inventory/issues/trips/create' ||
+    pathname === '/issues/trips/create'
+  ) {
+    const parentPath = pathname.includes('/issues') ? '/inventory/issues?tab=trips' : '/inventory/shipments?tab=trips';
+    return {
+      title: 'Lập chuyến giao mới',
+      category: 'Nhập / Xuất kho',
+      breadcrumbs: [
+        { label: 'Soạn hàng & Xuất kho', path: parentPath },
+        { label: 'Lập chuyến giao mới' },
+      ],
+    };
+  }
+
+  if (
     (pathname.startsWith('/inventory/shipments/') && pathname !== '/inventory/shipments') ||
     (pathname.startsWith('/app/inventory/shipments/') && pathname !== '/app/inventory/shipments') ||
     (pathname.startsWith('/inventory/issues/') && pathname !== '/inventory/issues') ||

@@ -37,7 +37,6 @@ import { getStoredUser } from '../utils/navigation';
 import { USER_ROLES } from '../types/auth';
 import { ConfirmExportModal } from '../components/confirm-export-modal';
 import { ConfirmDeliveryModal, ViewDeliveryProofModal } from '../components/confirm-delivery-modal';
-import { CreateDeliveryTripModal } from '../components/create-delivery-trip-modal';
 import { DeliveryTripDetailModal } from '../components/delivery-trip-detail-modal';
 import { PrintTripManifestModal } from '../components/print-trip-manifest-modal';
 import { Pagination } from '../components/pagination';
@@ -138,13 +137,15 @@ export const ShipmentsPage: React.FC = () => {
   const location = useLocation();
   const isIssuesPath = location.pathname.includes('/issues');
   const createShipmentUrl = isIssuesPath ? '/inventory/issues/shipments/create' : '/inventory/shipments/create';
+  const createTripUrl = isIssuesPath ? '/inventory/issues/trips/create' : '/inventory/shipments/trips/create';
   const getShipmentDetailUrl = (id: string) => isIssuesPath ? `/inventory/issues/shipments/${id}` : `/inventory/shipments/${id}`;
-
-  // Active view tab: 'SHIPMENTS' (Phiếu xuất kho lẻ) | 'TRIPS' (Chuyến giao hàng & Phân tuyến SN-196)
-  const [activeTab, setActiveTab] = useState<'SHIPMENTS' | 'TRIPS'>('SHIPMENTS');
 
   // URL Search Parameters
   const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab') === 'trips' ? 'TRIPS' : 'SHIPMENTS';
+
+  // Active view tab: 'SHIPMENTS' (Phiếu xuất kho lẻ) | 'TRIPS' (Chuyến giao hàng & Phân tuyến)
+  const [activeTab, setActiveTab] = useState<'SHIPMENTS' | 'TRIPS'>(urlTab);
   const urlPage = parseInt(searchParams.get('page') || '1', 10);
   const urlLimit = parseInt(searchParams.get('limit') || '10', 10);
   const urlSearch = searchParams.get('search') || '';
@@ -185,7 +186,6 @@ export const ShipmentsPage: React.FC = () => {
   const [tripAreaFilter, setTripAreaFilter] = useState<string>('ALL');
 
   // Modals quản lý chuyến giao (SN-196)
-  const [isCreateTripOpen, setIsCreateTripOpen] = useState(false);
   const [selectedTripForDetail, setSelectedTripForDetail] = useState<DeliveryTrip | null>(null);
   const [selectedTripForPrint, setSelectedTripForPrint] = useState<DeliveryTrip | null>(null);
 
@@ -844,7 +844,7 @@ export const ShipmentsPage: React.FC = () => {
         <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
           {canManageTrips && (
             <button
-              onClick={() => setIsCreateTripOpen(true)}
+              onClick={() => navigate(createTripUrl)}
               className="inline-flex items-center justify-center gap-1.5 h-[36px] px-3 sm:px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg transition-all shadow-xs cursor-pointer"
               title="Gom nhiều phiếu xuất vào một chuyến xe phân theo khu vực"
             >
@@ -1375,7 +1375,7 @@ export const ShipmentsPage: React.FC = () => {
                         </p>
                         {canManageTrips && (
                           <button
-                            onClick={() => setIsCreateTripOpen(true)}
+                            onClick={() => navigate(createTripUrl)}
                             className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5" />
@@ -1631,6 +1631,7 @@ export const ShipmentsPage: React.FC = () => {
           </div>
         </div>
       )}
+
 
       {/* Modal Cập nhật trạng thái */}
       {selectedShipment && (
@@ -1953,19 +1954,6 @@ export const ShipmentsPage: React.FC = () => {
         />
       )}
 
-      {/* SN-196: Modal Lập chuyến giao hàng mới gom nhiều phiếu xuất (AC 1 & 2) */}
-      {isCreateTripOpen && (
-        <CreateDeliveryTripModal
-          availableShipments={allShipments}
-          onClose={() => setIsCreateTripOpen(false)}
-          onCreated={() => {
-            setIsCreateTripOpen(false);
-            fetchTrips();
-            fetchShipments();
-            fetchOverviewStats();
-          }}
-        />
-      )}
 
       {/* SN-196: Modal Chi tiết chuyến giao, Lộ trình & Gán tài xế (AC 2) */}
       {selectedTripForDetail && (

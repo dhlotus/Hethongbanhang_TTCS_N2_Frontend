@@ -33,6 +33,7 @@ import { CreateInventoryReceiptPage } from '../pages/create-inventory-receipt-pa
 import { PortalOrdersPage } from '../pages/portal-orders-page';
 import { ShipmentsPage } from '../pages/shipments-page';
 import { CreateShipmentPage } from '../pages/create-shipment-page';
+import { CreateDeliveryTripPage } from '../pages/create-delivery-trip-page';
 import { ReturnsPage } from '../pages/returns-page';
 import { CreateReturnReceiptPage } from '../pages/create-return-receipt-page';
 import { DashboardPage } from '../pages/dashboard-page';
@@ -325,6 +326,10 @@ export const AppRoutes: React.FC = () => {
                 element={<CreateShipmentPage />}
               />
               <Route
+                path="/inventory/issues/trips/create"
+                element={<CreateDeliveryTripPage />}
+              />
+              <Route
                 path="/inventory/issues/shipments/:id"
                 element={<CreateShipmentPage />}
               />
@@ -352,6 +357,10 @@ export const AppRoutes: React.FC = () => {
               <Route
                 path="/inventory/shipments/create"
                 element={<CreateShipmentPage />}
+              />
+              <Route
+                path="/inventory/shipments/trips/create"
+                element={<CreateDeliveryTripPage />}
               />
               <Route
                 path="/inventory/shipments/:id"

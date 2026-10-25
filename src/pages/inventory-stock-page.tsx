@@ -390,7 +390,7 @@ export const InventoryStockPage: React.FC = () => {
           const next = new URLSearchParams(prev);
           Object.entries(updates).forEach(([key, val]) => {
             if (key === 'warehouse') {
-              const slug = toWarehouseSlug(val, warehousesList);
+              const slug = toWarehouseSlug(val !== undefined && val !== null ? String(val) : undefined, warehousesList);
               if (!slug || slug === 'all' || val === 'ALL' || val === '') {
                 next.delete('warehouse');
               } else {

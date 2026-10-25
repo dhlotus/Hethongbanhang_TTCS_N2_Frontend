@@ -887,7 +887,7 @@ export const CreateShipmentPage: React.FC = () => {
                 <ArrowLeft className="w-4 h-4" />
               </button>
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                1. Thông tin chung đơn hàng & Vận chuyển
+                Thông tin chung đơn hàng & Vận chuyển
               </h2>
             </div>
             {isDetailMode && currentShipment?.status && (
@@ -1077,7 +1077,7 @@ export const CreateShipmentPage: React.FC = () => {
             </div>
 
             {/* Địa chỉ giao hàng */}
-            <div className="sm:col-span-3">
+            <div className="sm:col-span-2 lg:col-span-3">
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Địa chỉ giao hàng chi tiết
               </label>
@@ -1097,7 +1097,7 @@ export const CreateShipmentPage: React.FC = () => {
             </div>
 
             {/* Mã vận đơn */}
-            <div>
+            <div className="sm:col-span-2 lg:col-span-1">
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Mã vận đơn
               </label>
@@ -1124,7 +1124,7 @@ export const CreateShipmentPage: React.FC = () => {
             <div>
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <Package className="w-4 h-4 text-indigo-600" />
-                <span>2. Bảng phân bổ lô xuất kho</span>
+                <span>Bảng phân bổ lô xuất kho</span>
               </h2>
             </div>
 
@@ -1422,7 +1422,7 @@ export const CreateShipmentPage: React.FC = () => {
                   ) : (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Xác nhận</span>
+                      <span>Tạo phiếu xuất kho</span>
                     </>
                   )}
                 </button>
