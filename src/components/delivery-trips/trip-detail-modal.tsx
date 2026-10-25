@@ -202,11 +202,11 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
 
           {/* Danh sách các điểm dừng giao hàng */}
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                 <span>Danh sách điểm giao hàng trên chuyến</span>
                 <span className="text-xs font-normal text-slate-500">
-                  ({trip.deliveredStops}/{trip.totalStops} điểm đã giao)
+                  ({trip.deliveredStops ?? trip.stops?.filter((s) => s.status === 'DELIVERED').length ?? 0}/{trip.totalStops ?? (trip.stops?.length || 0)} điểm đã giao)
                 </span>
               </h3>
 
@@ -214,7 +214,7 @@ export const TripDetailModal: React.FC<TripDetailModalProps> = ({
                 <button
                   type="button"
                   onClick={() => onOpenReturnCheckin(trip)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors shadow-2xs cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 h-[32px] text-xs font-semibold rounded-lg bg-amber-600 hover:bg-amber-700 text-white transition-all shadow-xs cursor-pointer"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   <span>Đối soát xe về kho ngay</span>

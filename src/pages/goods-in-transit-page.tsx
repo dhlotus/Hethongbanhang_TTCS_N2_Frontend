@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Truck,
   Plus,
@@ -7,7 +8,6 @@ import {
   X,
   Building2,
   Filter,
-  Sliders,
   RotateCcw,
   ChevronDown,
 } from 'lucide-react';
@@ -31,15 +31,26 @@ type FilterTab = 'ALL' | 'IN_TRANSIT_ON_TIME' | 'OVERDUE' | 'COMPLETED';
 
 /**
  * Màn hình Theo dõi Hàng đã xuất trên đường (SN-194 / SN-197)
- * Giao diện Clean Corporate SaaS chuẩn hệ thống LOHA SALES, gọn gàng, trang nhã, không màu mè
+ * Giao diện Clean Corporate SaaS chuẩn hệ thống LOHA SALES, gọn gàng, trang nhã, responsive
  */
 export const GoodsInTransitPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Đọc query parameters ban đầu từ URL
+  const urlSearch = searchParams.get('search') || '';
+  const urlStatus = (searchParams.get('status') as FilterTab) || 'ALL';
+  const urlWarehouse = searchParams.get('warehouse') || 'ALL';
+
   const [trips, setTrips] = useState<DeliveryTrip[]>([]);
   const [stats, setStats] = useState<GoodsInTransitStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('ALL');
+
+  // Bộ lọc đồng bộ URL
+  const [searchTerm, setSearchTerm] = useState(urlSearch);
+  const [searchInput, setSearchInput] = useState(urlSearch);
+  const [activeTab, setActiveTab] = useState<FilterTab>(urlStatus);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>(urlWarehouse);
 
   // Modals state
   const [selectedTripForDetail, setSelectedTripForDetail] = useState<DeliveryTrip | null>(null);
@@ -49,6 +60,73 @@ export const GoodsInTransitPage: React.FC = () => {
   const [isCheckinModalOpen, setIsCheckinModalOpen] = useState(false);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Đồng bộ searchParams từ URL (hỗ trợ nút Back/Forward)
+  useEffect(() => {
+    const s = searchParams.get('search') || '';
+    const st = (searchParams.get('status') as FilterTab) || 'ALL';
+    const wh = searchParams.get('warehouse') || 'ALL';
+
+    setSearchTerm((prev) => (prev !== s ? s : prev));
+    setSearchInput((prev) => (prev !== s ? s : prev));
+    setActiveTab((prev) => (prev !== st ? st : prev));
+    setSelectedWarehouseId((prev) => (prev !== wh ? wh : prev));
+  }, [searchParams]);
+
+  // Cập nhật Query Parameters trên URL
+  const updateQueryParams = useCallback(
+    (newParams: { search?: string; status?: FilterTab; warehouse?: string }) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (newParams.search !== undefined) {
+            const val = newParams.search.trim();
+            if (val) next.set('search', val);
+            else next.delete('search');
+          }
+          if (newParams.status !== undefined) {
+            if (newParams.status && newParams.status !== 'ALL') {
+              next.set('status', newParams.status);
+            } else {
+              next.delete('status');
+            }
+          }
+          if (newParams.warehouse !== undefined) {
+            if (newParams.warehouse && newParams.warehouse !== 'ALL') {
+              next.set('warehouse', newParams.warehouse);
+            } else {
+              next.delete('warehouse');
+            }
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  // Debounce tìm kiếm (350ms)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (searchInput.trim() !== searchTerm.trim()) {
+        const nextVal = searchInput.trim();
+        setSearchTerm(nextVal);
+        updateQueryParams({ search: nextVal });
+      }
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [searchInput, searchTerm, updateQueryParams]);
+
+  const handleStatusChange = (newStatus: FilterTab) => {
+    setActiveTab(newStatus);
+    updateQueryParams({ status: newStatus });
+  };
+
+  const handleWarehouseChange = (newWarehouse: string) => {
+    setSelectedWarehouseId(newWarehouse);
+    updateQueryParams({ warehouse: newWarehouse });
+  };
 
   // Tải dữ liệu từ API
   const fetchData = useCallback(async (showNotification = false) => {
@@ -102,6 +180,19 @@ export const GoodsInTransitPage: React.FC = () => {
     return list;
   }, [trips]);
 
+  // Số lượng đếm cho từng trạng thái
+  const counts = useMemo(() => {
+    const overdue = trips.filter((t) => t.status === 'IN_TRANSIT' && t.isOverdue).length;
+    const onTime = trips.filter((t) => t.status === 'IN_TRANSIT' && !t.isOverdue).length;
+    const completed = trips.filter((t) => t.status === 'COMPLETED').length;
+    return {
+      all: trips.length,
+      overdue,
+      onTime,
+      completed,
+    };
+  }, [trips]);
+
   // Bộ lọc danh sách chuyến đi
   const filteredTrips = useMemo(() => {
     return trips.filter((trip) => {
@@ -145,28 +236,17 @@ export const GoodsInTransitPage: React.FC = () => {
     });
   }, [trips, selectedWarehouseId, activeTab, searchTerm, availableWarehouses]);
 
-  // Số lượng đếm cho từng Tab
-  const counts = useMemo(() => {
-    const overdue = trips.filter((t) => t.status === 'IN_TRANSIT' && t.isOverdue).length;
-    const onTime = trips.filter((t) => t.status === 'IN_TRANSIT' && !t.isOverdue).length;
-    const completed = trips.filter((t) => t.status === 'COMPLETED').length;
-    return {
-      all: trips.length,
-      overdue,
-      onTime,
-      completed,
-    };
-  }, [trips]);
-
   // Kiểm tra trạng thái đang có lọc & đặt lại
   const hasActiveFilter = Boolean(
     searchTerm.trim() || selectedWarehouseId !== 'ALL' || activeTab !== 'ALL',
   );
 
   const handleResetFilters = () => {
+    setSearchInput('');
     setSearchTerm('');
     setSelectedWarehouseId('ALL');
     setActiveTab('ALL');
+    setSearchParams(new URLSearchParams(), { replace: true });
   };
 
   // Cập nhật trạng thái điểm dừng
@@ -251,60 +331,53 @@ export const GoodsInTransitPage: React.FC = () => {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
-      {/* 1. PAGE HEADER (CHUẨN THIẾT KẾ QUẢN LÝ KHO) */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Theo dõi hàng đã xuất trên đường
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Theo dõi tiền hàng luân chuyển, giám sát điểm đã giao và đối soát chuyến đi giao hàng.
-          </p>
-        </div>
+    <main className="mx-auto w-full max-w-[1600px] space-y-4 p-4 sm:p-6 lg:p-8">
+      {/* 1. HÀNG NÚT THAO TÁC TRÊN ĐẦU (GỌN GÀNG, ĐỒNG BỘ STYLE BUTTON TOÀN HỆ THỐNG) */}
+      <div className="flex items-center justify-end gap-2.5">
+        <button
+          type="button"
+          onClick={() => fetchData(true)}
+          disabled={loading}
+          className="inline-flex items-center justify-center gap-1.5 h-[36px] px-3.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 active:scale-[0.99] rounded-lg shadow-xs transition-all cursor-pointer disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
+          <span>Làm mới</span>
+        </button>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => fetchData(true)}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 shadow-xs transition-all cursor-pointer disabled:opacity-50"
-          >
-            <RefreshCw size={16} className={loading ? 'animate-spin text-[#371cdb]' : ''} />
-            <span>Làm mới</span>
-          </button>
+        <button
+          type="button"
+          onClick={() => navigate('/inventory/issues/trips/create')}
+          className="inline-flex items-center justify-center gap-1.5 h-[36px] px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] rounded-lg shadow-xs transition-all cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Lập chuyến đi mới</span>
+        </button>
+      </div>
 
-          <button
-            type="button"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#371cdb] hover:bg-[#2d14b8] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-all cursor-pointer active:scale-95"
-          >
-            <Plus size={16} />
-            <span>Lập chuyến đi mới</span>
-          </button>
-        </div>
-      </header>
-
-      {/* 2. THỐNG KÊ TỔNG QUAN (KPI SUMMARY) */}
+      {/* 2. THỐNG KÊ TỔNG QUAN (4 KPI CARDS ĐỒNG BỘ 100% GIAO DIỆN HỆ THỐNG) */}
       <TripStatsCards stats={stats} loading={loading} />
 
-      {/* 3. KHUNG BỘ LỌC & TÌM KIẾM (ĐỒNG BỘ 100% THEO CHUẨN THIẾT KẾ QUẢN LÝ KHO/LÔ HÀNG) */}
-      <div className="bg-white rounded-xl border border-slate-200/90 p-4 shadow-xs space-y-3.5">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+      {/* 3. KHUNG BỘ LỌC & TÌM KIẾM (ĐỒNG BỘ 1 HÀNG, SELECT THAY THẾ DÀN TRẢI NÚT) */}
+      <div className="bg-white rounded-xl border border-slate-200/90 p-3 sm:p-4 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           {/* Ô tìm kiếm */}
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Tìm theo mã chuyến, biển số xe, tài xế, mã đơn, khách hàng..."
-              className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 focus:border-[#371cdb] transition-all placeholder:text-slate-400"
+              className="w-full h-[38px] pl-9 pr-8 text-xs bg-slate-50/50 hover:bg-white focus:bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all placeholder:text-slate-400"
             />
-            {searchTerm && (
+            {searchInput && (
               <button
                 type="button"
-                onClick={() => setSearchTerm('')}
+                onClick={() => {
+                  setSearchInput('');
+                  setSearchTerm('');
+                  updateQueryParams({ search: '' });
+                }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X size={14} />
@@ -312,13 +385,13 @@ export const GoodsInTransitPage: React.FC = () => {
             )}
           </div>
 
-          {/* Lọc theo Kho hàng */}
-          <div className="relative w-full lg:w-56">
+          {/* Lọc theo Kho lưu trữ */}
+          <div className="relative w-full sm:w-56">
             <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <select
               value={selectedWarehouseId}
-              onChange={(e) => setSelectedWarehouseId(e.target.value)}
-              className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 focus:border-[#371cdb] transition-all appearance-none cursor-pointer truncate"
+              onChange={(e) => handleWarehouseChange(e.target.value)}
+              className="w-full h-[38px] pl-9 pr-7 text-xs bg-slate-50/50 hover:bg-white focus:bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all appearance-none cursor-pointer truncate font-medium text-slate-700"
             >
               <option value="ALL">Tất cả kho lưu trữ</option>
               {availableWarehouses.map((wh) => (
@@ -330,18 +403,18 @@ export const GoodsInTransitPage: React.FC = () => {
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* Lọc theo Trạng thái chuyến đi */}
-          <div className="relative w-full lg:w-56">
+          {/* Lọc theo Trạng thái vận chuyển dạng Select */}
+          <div className="relative w-full sm:w-56">
             <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <select
               value={activeTab}
-              onChange={(e) => setActiveTab(e.target.value as FilterTab)}
-              className="w-full pl-9 pr-6 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#371cdb]/20 focus:border-[#371cdb] transition-all appearance-none cursor-pointer truncate"
+              onChange={(e) => handleStatusChange(e.target.value as FilterTab)}
+              className="w-full h-[38px] pl-9 pr-7 text-xs bg-slate-50/50 hover:bg-white focus:bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all appearance-none cursor-pointer truncate font-medium text-slate-700"
             >
-              <option value="ALL">Tất cả trạng thái lô</option>
+              <option value="ALL">Tất cả trạng thái ({counts.all})</option>
               <option value="IN_TRANSIT_ON_TIME">Đúng giờ ({counts.onTime})</option>
-              <option value="OVERDUE">⚠️ Quá hạn ETA ({counts.overdue})</option>
-              <option value="COMPLETED">✅ Đã hoàn tất ({counts.completed})</option>
+              <option value="OVERDUE">Quá hạn ETA ({counts.overdue})</option>
+              <option value="COMPLETED">Đã hoàn tất ({counts.completed})</option>
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
@@ -351,7 +424,7 @@ export const GoodsInTransitPage: React.FC = () => {
             <button
               type="button"
               onClick={handleResetFilters}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-xl transition-all cursor-pointer shadow-2xs shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 h-[38px] px-3 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-lg transition-all cursor-pointer shadow-xs shrink-0"
               title="Đặt lại toàn bộ bộ lọc về mặc định"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -359,86 +432,21 @@ export const GoodsInTransitPage: React.FC = () => {
             </button>
           )}
         </div>
-
-        {/* Cấu hình Lọc nhanh trạng thái (Pills) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
-          <div className="flex flex-wrap items-center gap-2">
-            <Sliders className="w-3.5 h-3.5 text-[#371cdb] shrink-0" />
-            <span className="text-xs font-bold text-slate-700">Trạng thái vận chuyển:</span>
-
-            {/* Các nút bấm chọn nhanh */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setActiveTab('ALL')}
-                className={`h-7 px-2.5 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
-                  activeTab === 'ALL'
-                    ? 'bg-[#371cdb] text-white border-[#371cdb] shadow-2xs'
-                    : 'bg-white text-slate-600 border-slate-200 hover:border-[#371cdb]/40 hover:text-[#371cdb]'
-                }`}
-              >
-                Tất cả ({counts.all})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('IN_TRANSIT_ON_TIME')}
-                className={`h-7 px-2.5 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
-                  activeTab === 'IN_TRANSIT_ON_TIME'
-                    ? 'bg-[#371cdb] text-white border-[#371cdb] shadow-2xs'
-                    : 'bg-white text-slate-600 border-slate-200 hover:border-[#371cdb]/40 hover:text-[#371cdb]'
-                }`}
-              >
-                Đúng giờ ({counts.onTime})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('OVERDUE')}
-                className={`h-7 px-2.5 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
-                  activeTab === 'OVERDUE'
-                    ? 'bg-[#371cdb] text-white border-[#371cdb] shadow-2xs'
-                    : 'bg-white text-slate-600 border-slate-200 hover:border-[#371cdb]/40 hover:text-[#371cdb]'
-                }`}
-              >
-                Quá hạn ({counts.overdue})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('COMPLETED')}
-                className={`h-7 px-2.5 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
-                  activeTab === 'COMPLETED'
-                    ? 'bg-[#371cdb] text-white border-[#371cdb] shadow-2xs'
-                    : 'bg-white text-slate-600 border-slate-200 hover:border-[#371cdb]/40 hover:text-[#371cdb]'
-                }`}
-              >
-                Đã hoàn tất ({counts.completed})
-              </button>
-            </div>
-          </div>
-
-          <div className="text-xs text-slate-500">
-            Hiển thị <span className="font-bold text-slate-800">{filteredTrips.length}</span> chuyến xe
-          </div>
-        </div>
       </div>
 
       {/* 4. DANH SÁCH CHUYẾN XE */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eff2fe] text-[#371cdb]">
-              <Truck size={20} />
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+              <Truck className="w-4 h-4" />
             </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                Danh sách chuyến xe
-                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                  {filteredTrips.length}
-                </span>
-              </h2>
-              <p className="text-xs text-slate-500">
-                Giám sát lộ trình, tiến độ giao điểm dừng và đối soát hàng chưa giao về kho
-              </p>
-            </div>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+              Danh sách chuyến xe
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
+                {filteredTrips.length}
+              </span>
+            </h2>
           </div>
         </div>
 
@@ -448,7 +456,7 @@ export const GoodsInTransitPage: React.FC = () => {
             {[1, 2, 3].map((n) => (
               <div
                 key={n}
-                className="h-72 rounded-2xl bg-white border border-slate-200/90 p-5 animate-pulse space-y-3"
+                className="h-72 rounded-xl bg-white border border-slate-200/90 p-5 animate-pulse space-y-3"
               >
                 <div className="h-5 w-1/2 bg-slate-200 rounded" />
                 <div className="h-4 w-3/4 bg-slate-100 rounded" />
@@ -458,21 +466,23 @@ export const GoodsInTransitPage: React.FC = () => {
             ))}
           </div>
         ) : filteredTrips.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center space-y-3">
-            <div className="w-12 h-12 rounded-xl bg-[#eff2fe] text-[#371cdb] flex items-center justify-center mx-auto ring-1 ring-[#371cdb]/20">
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center space-y-3">
+            <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto ring-1 ring-indigo-500/20">
               <Truck size={24} />
             </div>
-            <h3 className="font-bold text-slate-800 text-base">Không tìm thấy chuyến đi nào</h3>
+            <h3 className="font-bold text-slate-800 text-base">Không tìm thấy chuyến xe nào</h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
               Không có chuyến xe nào khớp với điều kiện lọc hiện tại.
             </p>
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs"
-            >
-              Đặt lại bộ lọc
-            </button>
+            {hasActiveFilter && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="inline-flex items-center gap-1.5 px-3.5 h-[34px] rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-xs"
+              >
+                Đặt lại bộ lọc
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
